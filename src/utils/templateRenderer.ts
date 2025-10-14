@@ -1,7 +1,7 @@
 import { Canvas as FabricCanvas, Rect, Circle, IText, FabricImage } from 'fabric';
 import type { AIGeneratedTemplate, TemplateComponent } from '@/types/template';
 import { LayoutEngine, type LayoutResult } from './layoutEngine';
-import { TemplateValidator } from './templateValidator';
+import { validateTemplate } from './zodTemplateValidator';
 import { AssetPreloader } from './assetPreloader';
 
 /**
@@ -11,14 +11,12 @@ import { AssetPreloader } from './assetPreloader';
 export class TemplateRenderer {
   private canvas: FabricCanvas;
   private layoutEngine: LayoutEngine;
-  private validator: TemplateValidator;
   private preloader: AssetPreloader;
   private preloadedImages: Map<string, HTMLImageElement> = new Map();
 
   constructor(canvas: FabricCanvas) {
     this.canvas = canvas;
     this.layoutEngine = new LayoutEngine();
-    this.validator = new TemplateValidator();
     this.preloader = new AssetPreloader();
   }
 
@@ -29,7 +27,11 @@ export class TemplateRenderer {
   async renderTemplate(template: any, data?: Record<string, any>) {
     try {
       // Pillar 1: Validate and normalize template
-      const validatedTemplate = this.validator.validateTemplate(template);
+      const validationResult = validateTemplate(template);
+      if (!validationResult.success || !validationResult.data) {
+        throw new Error('Template validation failed: ' + (validationResult.errors?.join(', ') || 'Unknown error'));
+      }
+      const validatedTemplate = validationResult.data;
       console.log('[TemplateRenderer] Template validated:', validatedTemplate);
 
       // Pillar 4: Preload assets
@@ -41,29 +43,21 @@ export class TemplateRenderer {
         console.log(`[TemplateRenderer] Loading images: ${loaded}/${total}`);
       });
 
-      // Merge data with defaults
-      const mergedData = { ...validatedTemplate.data, ...data };
+      // Merge data with defaults (for any data bindings)
+      const mergedData = { ...data };
       
       // Clear canvas
       this.canvas.clear();
 
-      // Set canvas size based on first variant (guaranteed to exist after validation)
-      const variant = validatedTemplate.variants[0];
-      this.canvas.setWidth(variant.size.width);
-      this.canvas.setHeight(variant.size.height);
-      this.canvas.backgroundColor = '#ffffff';
+      // Set canvas size based on first frame (guaranteed to exist after validation)
+      const frame = validatedTemplate.frames[0];
+      this.canvas.setWidth(frame.width);
+      this.canvas.setHeight(frame.height);
+      this.canvas.backgroundColor = frame.background || '#ffffff';
 
-      // Pillar 2: Deterministic layout pass
-      let currentY = 0;
-      for (const section of validatedTemplate.sections) {
-        // Calculate layout
-        const layout = this.layoutEngine.applyLayout(section);
-        console.log(`[TemplateRenderer] Section "${section.name}" layout:`, layout);
-        
-        // Pillar 3: Safe adapter - render with error isolation
-        await this.renderSection(section, layout, mergedData, 0, currentY);
-        
-        currentY += layout.height;
+      // Pillar 2 & 3: Render layers from frame
+      for (const layer of frame.layers) {
+        await this.renderLayer(layer, mergedData);
       }
 
       this.canvas.renderAll();
@@ -77,96 +71,53 @@ export class TemplateRenderer {
     }
   }
 
-  private async renderSection(
-    section: any,
-    layout: LayoutResult,
-    data: Record<string, any>,
-    offsetX: number,
-    offsetY: number
-  ) {
-    for (const component of section.components) {
-      const componentLayout = layout.components.find((l) => l.id === component.id);
-      if (!componentLayout) continue;
+  private async renderLayer(layer: any, data: Record<string, any>) {
+    if (!layer.visible) return;
 
-      const x = offsetX + componentLayout.x;
-      const y = offsetY + componentLayout.y;
-
-      await this.renderComponent(component, data, x, y, componentLayout.width, componentLayout.height);
-    }
-  }
-
-  private async renderComponent(
-    component: TemplateComponent,
-    data: Record<string, any>,
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ) {
-    // Get data value if bound
-    let value = component.dataBinding?.defaultValue || '';
-    if (component.dataBinding && data[component.dataBinding.field] !== undefined) {
-      value = data[component.dataBinding.field];
-    }
-
-    switch (component.type) {
-      case 'shape': {
-        const shape = new Rect({
-          left: x,
-          top: y,
-          width,
-          height,
-          fill: component.style.backgroundColor || '#cccccc',
-          rx: component.style.borderRadius || 0,
-          ry: component.style.borderRadius || 0,
-          opacity: component.style.opacity ?? 1,
-          selectable: true, // Make fully editable
-          hasControls: true, // Show resize controls
-          hasBorders: true, // Show selection borders
-          lockScalingFlip: false, // Allow flipping
-          ...component.fabricProps,
-        });
-        shape.set('name', component.name); // Add name for identification
-        this.canvas.add(shape);
-        break;
-      }
-
+    switch (layer.type) {
       case 'text': {
-        const text = new IText(String(value), {
-          left: x,
-          top: y,
-          fontSize: component.fabricProps?.fontSize || 16,
-          fontFamily: component.fabricProps?.fontFamily || 'Arial',
-          fill: component.fabricProps?.fill || '#000000',
-          fontWeight: component.fabricProps?.fontWeight || 'normal',
-          opacity: component.style.opacity ?? 1,
-          selectable: true, // Make fully editable
-          editable: true, // Allow text editing
-          hasControls: true, // Show resize controls
-          hasBorders: true, // Show selection borders
-          ...component.fabricProps,
+        const text = new IText(layer.content || 'Text', {
+          left: layer.x,
+          top: layer.y,
+          fontSize: layer.fontSize,
+          fontFamily: layer.fontFamily,
+          fill: layer.color,
+          fontWeight: layer.fontWeight,
+          fontStyle: layer.fontStyle,
+          textAlign: layer.textAlign,
+          opacity: layer.opacity,
+          angle: layer.rotation,
+          selectable: !layer.locked,
+          editable: !layer.locked,
+          hasControls: !layer.locked,
+          hasBorders: !layer.locked,
         });
-        text.set('name', component.name); // Add name for identification
         this.canvas.add(text);
         break;
       }
 
       case 'image': {
-        if (value && typeof value === 'string') {
+        if (layer.src) {
           try {
-            const img = await FabricImage.fromURL(value);
+            const img = await FabricImage.fromURL(layer.src);
             img.set({
-              left: x,
-              top: y,
-              scaleX: width / (img.width || 1),
-              scaleY: height / (img.height || 1),
-              opacity: component.style.opacity ?? 1,
-              selectable: true, // Make fully editable
-              hasControls: true, // Show resize controls
-              hasBorders: true, // Show selection borders
-              lockScalingFlip: false, // Allow flipping
+              left: layer.x,
+              top: layer.y,
+              width: layer.width,
+              height: layer.height,
+              opacity: layer.opacity,
+              angle: layer.rotation,
+              selectable: !layer.locked,
+              hasControls: !layer.locked,
+              hasBorders: !layer.locked,
             });
-            img.set('name', component.name); // Add name for identification
+            
+            // Apply filters if any
+            if (layer.filters && layer.filters.length > 0) {
+              // Note: Fabric.js filters would need to be applied here
+              console.log('Filters:', layer.filters);
+            }
+            
             this.canvas.add(img);
           } catch (error) {
             console.error('Error loading image:', error);
@@ -175,47 +126,52 @@ export class TemplateRenderer {
         break;
       }
 
-      case 'button': {
-        // Render as rectangle + text (both individually editable)
-        const button = new Rect({
-          left: x,
-          top: y,
-          width,
-          height,
-          fill: component.style.backgroundColor || '#007bff',
-          rx: component.style.borderRadius || 4,
-          ry: component.style.borderRadius || 4,
-          opacity: component.style.opacity ?? 1,
-          selectable: true, // Make fully editable
-          hasControls: true, // Show resize controls
-          hasBorders: true, // Show selection borders
-        });
-        button.set('name', `${component.name} Background`);
-        this.canvas.add(button);
-
-        const buttonText = new IText(String(value), {
-          left: x + width / 2,
-          top: y + height / 2,
-          fontSize: component.fabricProps?.fontSize || 16,
-          fontFamily: component.fabricProps?.fontFamily || 'Arial',
-          fill: component.fabricProps?.fill || '#ffffff',
-          originX: 'center',
-          originY: 'center',
-          selectable: true, // Make text independently editable
-          editable: true, // Allow text editing
-          hasControls: true,
-          hasBorders: true,
-        });
-        buttonText.set('name', `${component.name} Text`);
-        this.canvas.add(buttonText);
+      case 'shape': {
+        let shapeObject;
+        
+        if (layer.shape === 'circle' || layer.shape === 'ellipse') {
+          shapeObject = new Circle({
+            left: layer.x,
+            top: layer.y,
+            radius: layer.width / 2,
+            fill: layer.fill,
+            stroke: layer.stroke,
+            strokeWidth: layer.strokeWidth,
+            opacity: layer.opacity,
+            angle: layer.rotation,
+            selectable: !layer.locked,
+            hasControls: !layer.locked,
+            hasBorders: !layer.locked,
+          });
+        } else {
+          // Rectangle or other shapes
+          shapeObject = new Rect({
+            left: layer.x,
+            top: layer.y,
+            width: layer.width,
+            height: layer.height,
+            fill: layer.fill,
+            stroke: layer.stroke,
+            strokeWidth: layer.strokeWidth,
+            rx: layer.borderRadius,
+            ry: layer.borderRadius,
+            opacity: layer.opacity,
+            angle: layer.rotation,
+            selectable: !layer.locked,
+            hasControls: !layer.locked,
+            hasBorders: !layer.locked,
+          });
+        }
+        
+        this.canvas.add(shapeObject);
         break;
       }
 
-      case 'container': {
-        // Containers are just layout containers, render children
-        if (component.children) {
-          for (const child of component.children) {
-            await this.renderComponent(child, data, x, y, width, height);
+      case 'group': {
+        // Recursively render group layers
+        if (layer.layers && Array.isArray(layer.layers)) {
+          for (const childLayer of layer.layers) {
+            await this.renderLayer(childLayer, data);
           }
         }
         break;

@@ -78,8 +78,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in generate-image function:', error);
+    const message = error instanceof Error ? error.message : 'Failed to generate image';
     return new Response(
-      JSON.stringify({ error: error.message || 'Failed to generate image' }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
