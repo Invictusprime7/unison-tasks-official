@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ImageEditor } from "@/components/creatives/ImageEditor";
 import { VideoEditor } from "@/components/creatives/VideoEditor";
 import { CreativeTaskSelector } from "@/components/creatives/CreativeTaskSelector";
-import { VisualEditor } from "@/components/creatives/VisualEditor";
 
 const Creatives = () => {
   const navigate = useNavigate();
