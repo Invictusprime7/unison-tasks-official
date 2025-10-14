@@ -107,8 +107,9 @@ Return ONLY the complete HTML code with embedded CSS, nothing else. Make it prod
     );
   } catch (error) {
     console.error('Error in generate-template function:', error);
+    const message = error instanceof Error ? error.message : 'An error occurred';
     return new Response(
-      JSON.stringify({ error: error.message || 'An error occurred' }),
+      JSON.stringify({ error: message }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
