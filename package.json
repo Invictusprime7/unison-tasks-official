@@ -76,10 +76,7 @@
     "zod": "^4.1.12"
   },
   "overrides": {
-    "prismjs": "^1.30.0",
-    "monaco-editor": {
-      "dompurify": "^3.3.0"
-    }
+    "prismjs": "^1.30.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
