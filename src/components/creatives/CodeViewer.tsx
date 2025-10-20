@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import { LiveCodePreview } from './LiveCodePreview';
 import { HTMLComponentPreview } from './HTMLComponentPreview';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
-import { parseComponentCode } from '@/utils/componentRenderer';
 
 interface CodeViewerProps {
   code: string;
@@ -31,18 +30,29 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const { toast } = useToast();
 
-  // Parse component for preview
-  const [componentData, setComponentData] = useState(() => {
-    const safeCode = initialCode || '';
-    return parseComponentCode(safeCode);
-  });
+  // Parse component for preview using dynamic import
+  const [componentData, setComponentData] = useState<{
+    type: string;
+    html: string;
+    css: string;
+    jsx?: string;
+    fabricElements?: unknown[];
+  } | null>(null);
 
-  // Update code when initialCode changes
+  // Parse code using dynamic import
+  const parseCode = async (code: string) => {
+    const { parseComponentCode } = await import('@/utils/componentRenderer');
+    return parseComponentCode(code);
+  };
+
+  // Initialize component data
   React.useEffect(() => {
-    const safeCode = initialCode || '';
-    setCode(safeCode);
-    setComponentData(parseComponentCode(safeCode));
-    console.log('[CodeViewer] Code updated:', safeCode.substring(0, 100));
+    const initializeData = async () => {
+      const safeCode = initialCode || '';
+      const data = await parseCode(safeCode);
+      setComponentData(data);
+    };
+    initializeData();
   }, [initialCode]);
 
   const handleCopy = () => {
@@ -192,7 +202,13 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             onChange={(value) => {
               const newCode = value || '';
               setCode(newCode);
-              setComponentData(parseComponentCode(newCode));
+              
+              // Update preview asynchronously
+              parseCode(newCode).then(data => {
+                setComponentData(data);
+              }).catch(() => {
+                setComponentData(null);
+              });
             }}
             theme="vs-dark"
             options={{

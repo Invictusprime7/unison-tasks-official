@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,13 @@ interface SelectedElement {
     height?: string;
     display?: string;
     opacity?: string;
+    flexDirection?: string;
+    justifyContent?: string;
+    alignItems?: string;
+    gap?: string;
+    gridTemplateColumns?: string;
+    gridTemplateRows?: string;
+    position?: string;
   };
   attributes: Record<string, string>;
   selector: string;
@@ -61,12 +68,16 @@ export const HTMLElementPropertiesPanel = ({
   const [localStyles, setLocalStyles] = useState(selectedElement?.styles || {});
   const [localText, setLocalText] = useState(selectedElement?.textContent || "");
 
-  useEffect(() => {
-    if (selectedElement) {
+  // Sync state when selectedElement changes - using direct assignment instead of effect
+  if (selectedElement && (localStyles !== selectedElement.styles || localText !== selectedElement.textContent)) {
+    // Only update if reference changed to avoid infinite loops
+    if (localStyles === (selectedElement?.styles || {})) {
       setLocalStyles(selectedElement.styles);
+    }
+    if (localText !== selectedElement.textContent) {
       setLocalText(selectedElement.textContent);
     }
-  }, [selectedElement]);
+  }
 
   if (!selectedElement) return null;
 
@@ -134,7 +145,7 @@ export const HTMLElementPropertiesPanel = ({
                 </Label>
                 <Input
                   value={localText}
-                  onChange={(e) => updateText(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateText(e.target.value)}
                   placeholder="Enter text..."
                   className="text-sm"
                 />
@@ -148,7 +159,7 @@ export const HTMLElementPropertiesPanel = ({
                 </Label>
                 <Input
                   value={selectedElement.attributes.src || ""}
-                  onChange={(e) => onUpdateElement({ 
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateElement({ 
                     attributes: { ...selectedElement.attributes, src: e.target.value } 
                   })}
                   placeholder="Image URL..."
@@ -164,7 +175,7 @@ export const HTMLElementPropertiesPanel = ({
                 </Label>
                 <Input
                   value={selectedElement.attributes.href || ""}
-                  onChange={(e) => onUpdateElement({ 
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateElement({ 
                     attributes: { ...selectedElement.attributes, href: e.target.value } 
                   })}
                   placeholder="https://..."
@@ -183,7 +194,7 @@ export const HTMLElementPropertiesPanel = ({
               </Label>
               <Select 
                 value={localStyles.fontFamily || "Arial"} 
-                onValueChange={(value) => updateStyle("fontFamily", value)}
+                onValueChange={(value: string) => updateStyle("fontFamily", value)}
               >
                 <SelectTrigger className="text-sm">
                   <SelectValue />
@@ -205,7 +216,7 @@ export const HTMLElementPropertiesPanel = ({
               </Label>
               <Select 
                 value={localStyles.fontSize || "16px"} 
-                onValueChange={(value) => updateStyle("fontSize", value)}
+                onValueChange={(value: string) => updateStyle("fontSize", value)}
               >
                 <SelectTrigger className="text-sm">
                   <SelectValue />
@@ -301,13 +312,13 @@ export const HTMLElementPropertiesPanel = ({
                 <Input
                   type="color"
                   value={localStyles.color || "#000000"}
-                  onChange={(e) => updateStyle("color", e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("color", e.target.value)}
                   className="h-10 w-16 p-1 cursor-pointer"
                 />
                 <Input
                   type="text"
                   value={localStyles.color || "#000000"}
-                  onChange={(e) => updateStyle("color", e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("color", e.target.value)}
                   className="flex-1 text-sm"
                   placeholder="#000000"
                 />
@@ -325,7 +336,7 @@ export const HTMLElementPropertiesPanel = ({
               <Input
                 type="number"
                 value={parseNumericValue(localStyles.padding)}
-                onChange={(e) => updateStyle("padding", formatSpacing(e.target.value))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("padding", formatSpacing(e.target.value))}
                 className="text-sm"
                 min="0"
               />
@@ -339,7 +350,7 @@ export const HTMLElementPropertiesPanel = ({
               <Input
                 type="number"
                 value={parseNumericValue(localStyles.margin)}
-                onChange={(e) => updateStyle("margin", formatSpacing(e.target.value))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("margin", formatSpacing(e.target.value))}
                 className="text-sm"
               />
             </div>
@@ -354,7 +365,7 @@ export const HTMLElementPropertiesPanel = ({
               <Input
                 type="text"
                 value={localStyles.width || "auto"}
-                onChange={(e) => updateStyle("width", e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("width", e.target.value)}
                 placeholder="auto, 100%, 200px"
                 className="text-sm"
               />
@@ -368,7 +379,7 @@ export const HTMLElementPropertiesPanel = ({
               <Input
                 type="text"
                 value={localStyles.height || "auto"}
-                onChange={(e) => updateStyle("height", e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("height", e.target.value)}
                 placeholder="auto, 100%, 200px"
                 className="text-sm"
               />
@@ -383,7 +394,7 @@ export const HTMLElementPropertiesPanel = ({
               </Label>
               <Select 
                 value={localStyles.display || "block"} 
-                onValueChange={(value) => updateStyle("display", value)}
+                onValueChange={(value: string) => updateStyle("display", value)}
               >
                 <SelectTrigger className="text-sm">
                   <SelectValue />
@@ -411,13 +422,13 @@ export const HTMLElementPropertiesPanel = ({
                 <Input
                   type="color"
                   value={localStyles.backgroundColor || "#ffffff"}
-                  onChange={(e) => updateStyle("backgroundColor", e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("backgroundColor", e.target.value)}
                   className="h-10 w-16 p-1 cursor-pointer"
                 />
                 <Input
                   type="text"
                   value={localStyles.backgroundColor || "transparent"}
-                  onChange={(e) => updateStyle("backgroundColor", e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("backgroundColor", e.target.value)}
                   className="flex-1 text-sm"
                   placeholder="transparent"
                 />
@@ -434,7 +445,7 @@ export const HTMLElementPropertiesPanel = ({
               <Input
                 type="text"
                 value={localStyles.border || "none"}
-                onChange={(e) => updateStyle("border", e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("border", e.target.value)}
                 placeholder="1px solid #000"
                 className="text-sm"
               />
@@ -448,7 +459,7 @@ export const HTMLElementPropertiesPanel = ({
               <Input
                 type="number"
                 value={parseNumericValue(localStyles.borderRadius)}
-                onChange={(e) => updateStyle("borderRadius", formatSpacing(e.target.value))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStyle("borderRadius", formatSpacing(e.target.value))}
                 className="text-sm"
                 min="0"
               />

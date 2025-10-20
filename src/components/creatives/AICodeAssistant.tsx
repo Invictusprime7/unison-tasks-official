@@ -3,7 +3,6 @@ import { Canvas as FabricCanvas, Rect, Textbox } from 'fabric';
 import { supabase } from "@/integrations/supabase/client";
 import MonacoEditor from './MonacoEditor';
 import { executeCanvasCode, getCanvasCodeExample } from '@/utils/canvasCodeRunner';
-import { parseComponentCode, renderComponentToCanvas, generateHTMLFile, generateReactComponent } from '@/utils/componentRenderer';
 import { Button } from '@/components/ui/button';
 import { CodeViewer } from './CodeViewer';
 import { LiveCodePreview } from './LiveCodePreview';
@@ -41,7 +40,7 @@ interface Message {
   content: string;
   timestamp: Date;
   hasCode?: boolean;
-  componentData?: any;
+  componentData?: Record<string, unknown>;
 }
 
 interface AICodeAssistantProps {
@@ -64,58 +63,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Load or create conversation on mount (only if authenticated)
-  useEffect(() => {
-    loadOrCreateConversation();
-  }, []);
-
-  const loadOrCreateConversation = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // Not authenticated - use in-memory only mode
-        console.log('[AICodeAssistant] Not authenticated - using in-memory chat');
-        return;
-      }
-
-      // Try to get the most recent conversation for this mode
-      const { data: existingConversations } = await supabase
-        .from('chat_conversations')
-        .select('id')
-        .eq('mode', mode)
-        .order('updated_at', { ascending: false })
-        .limit(1);
-
-      let convId: string;
-
-      if (existingConversations && existingConversations.length > 0) {
-        // Use existing conversation
-        convId = existingConversations[0].id;
-        await loadMessages(convId);
-      } else {
-        // Create new conversation
-        const { data: newConv, error } = await supabase
-          .from('chat_conversations')
-          .insert({
-            user_id: user.id,
-            mode,
-            title: `${mode.charAt(0).toUpperCase() + mode.slice(1)} Chat`,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        convId = newConv.id;
-      }
-
-      setConversationId(convId);
-      console.log('[AICodeAssistant] Conversation loaded:', convId);
-    } catch (error) {
-      console.error('Error loading conversation:', error);
-      // Continue without persistence
-    }
-  };
-
   const loadMessages = async (convId: string) => {
     try {
       const { data: chatMessages, error } = await supabase
@@ -132,7 +79,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
           content: msg.content,
           timestamp: new Date(msg.created_at),
           hasCode: msg.has_code || false,
-          componentData: msg.component_data,
+          componentData: typeof msg.component_data === 'object' && msg.component_data !== null 
+            ? msg.component_data as Record<string, unknown>
+            : undefined,
         }));
         setMessages(loadedMessages);
       }
@@ -140,6 +89,58 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
       console.error('Error loading messages:', error);
     }
   };
+
+  // Load or create conversation on mount (only if authenticated)
+  useEffect(() => {
+    const loadOrCreateConversation = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          // Not authenticated - use in-memory only mode
+          console.log('[AICodeAssistant] Not authenticated - using in-memory chat');
+          return;
+        }
+
+        // Try to get the most recent conversation for this mode
+        const { data: existingConversations } = await supabase
+          .from('chat_conversations')
+          .select('id')
+          .eq('mode', mode)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
+        let convId: string;
+
+        if (existingConversations && existingConversations.length > 0) {
+          // Use existing conversation
+          convId = existingConversations[0].id;
+          await loadMessages(convId);
+        } else {
+          // Create new conversation
+          const { data: newConv, error } = await supabase
+            .from('chat_conversations')
+            .insert({
+              user_id: user.id,
+              mode,
+              title: `${mode.charAt(0).toUpperCase() + mode.slice(1)} Chat`,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          convId = newConv.id;
+        }
+
+        setConversationId(convId);
+        console.log('[AICodeAssistant] Conversation loaded:', convId);
+      } catch (error) {
+        console.error('Error loading conversation:', error);
+        // Continue without persistence
+      }
+    };
+
+    void loadOrCreateConversation();
+  }, [mode]);
 
   const saveMessage = async (message: Message) => {
     if (!conversationId) {
@@ -153,7 +154,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
         role: message.role,
         content: message.content,
         has_code: message.hasCode || false,
-        component_data: message.componentData || null,
+        component_data: message.componentData as never || null,
       });
       console.log('[AICodeAssistant] Message saved to database');
     } catch (error) {
@@ -194,7 +195,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
         }
       );
     } else {
-      // HTML/React component code
+      // HTML/React component code - use dynamic import
+      const { parseComponentCode, renderComponentToCanvas } = await import('@/utils/componentRenderer');
       const component = parseComponentCode(code);
       await renderComponentToCanvas(component, fabricCanvas);
       
@@ -213,7 +215,26 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     });
   };
 
-  const renderComponentData = (componentData: any) => {
+  const renderComponentData = (componentData: {
+    elements?: Array<{
+      type: string;
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+      fill?: string;
+      rx?: number;
+      ry?: number;
+      stroke?: string;
+      strokeWidth?: number;
+      text?: string;
+      fontSize?: number;
+      fontFamily?: string;
+      fontWeight?: string;
+      textAlign?: string;
+    }>;
+    description?: string;
+  }) => {
     if (!fabricCanvas) {
       toast({
         title: 'Canvas not available',
@@ -236,7 +257,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
         return;
       }
 
-      elements.forEach((element: any) => {
+      elements.forEach((element) => {
         if (element.type === 'rectangle') {
           const rect = new Rect({
             left: element.x || 100,
@@ -370,7 +391,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantContent = '';
-      let toolCallData: any = null;
+      let toolCallData: Record<string, unknown> | null = null;
       let toolCallArgs = '';
 
       if (reader) {

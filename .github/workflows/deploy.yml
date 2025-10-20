@@ -49,6 +49,7 @@ jobs:
   deploy-vercel:
     needs: build-and-test
     runs-on: ubuntu-latest
+    # Only run on main branch
     if: github.ref == 'refs/heads/main'
     
     steps:
@@ -72,6 +73,7 @@ jobs:
   deploy-netlify:
     needs: build-and-test
     runs-on: ubuntu-latest
+    # Only run on main branch
     if: github.ref == 'refs/heads/main'
     
     steps:
@@ -98,6 +100,7 @@ jobs:
   deploy-docker:
     needs: build-and-test
     runs-on: ubuntu-latest
+    # Only run on main branch
     if: github.ref == 'refs/heads/main'
     
     steps:

@@ -24,7 +24,7 @@ export class TemplateRenderer {
    * Render AI-generated template to Fabric canvas
    * Implements all 5 pillars of reliable rendering
    */
-  async renderTemplate(template: any, data?: Record<string, any>) {
+  async renderTemplate(template: AIGeneratedTemplate, data?: Record<string, unknown>) {
     try {
       // Pillar 1: Validate and normalize template
       const validationResult = validateTemplate(template);
@@ -71,7 +71,8 @@ export class TemplateRenderer {
     }
   }
 
-  private async renderLayer(layer: any, data: Record<string, any>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async renderLayer(layer: any, data: Record<string, unknown>) {
     if (!layer.visible) return;
 
     switch (layer.type) {
@@ -79,19 +80,33 @@ export class TemplateRenderer {
         const text = new IText(layer.content || 'Text', {
           left: layer.x,
           top: layer.y,
-          fontSize: layer.fontSize,
-          fontFamily: layer.fontFamily,
-          fill: layer.color,
-          fontWeight: layer.fontWeight,
-          fontStyle: layer.fontStyle,
-          textAlign: layer.textAlign,
-          opacity: layer.opacity,
-          angle: layer.rotation,
-          selectable: !layer.locked,
-          editable: !layer.locked,
-          hasControls: !layer.locked,
-          hasBorders: !layer.locked,
+          fontSize: layer.fontSize || 16,
+          fontFamily: layer.fontFamily || 'Arial',
+          fill: layer.color || '#000000',
+          fontWeight: layer.fontWeight || 'normal',
+          fontStyle: layer.fontStyle || 'normal',
+          textAlign: layer.textAlign || 'left',
+          opacity: layer.opacity !== undefined ? layer.opacity : 1,
+          angle: layer.rotation || 0,
+          // FULL EDITABILITY - Always allow editing unless explicitly locked
+          selectable: true,
+          editable: true,
+          hasControls: true,
+          hasBorders: true,
+          lockMovementX: layer.locked || false,
+          lockMovementY: layer.locked || false,
+          lockRotation: layer.locked || false,
+          lockScalingX: layer.locked || false,
+          lockScalingY: layer.locked || false,
         });
+        
+        // Add metadata for template tracking
+        text.set('templateLayer', {
+          id: layer.id,
+          type: layer.type,
+          name: layer.name || 'Text Layer'
+        });
+        
         this.canvas.add(text);
         break;
       }
@@ -105,11 +120,25 @@ export class TemplateRenderer {
               top: layer.y,
               width: layer.width,
               height: layer.height,
-              opacity: layer.opacity,
-              angle: layer.rotation,
-              selectable: !layer.locked,
-              hasControls: !layer.locked,
-              hasBorders: !layer.locked,
+              opacity: layer.opacity !== undefined ? layer.opacity : 1,
+              angle: layer.rotation || 0,
+              // FULL EDITABILITY - Images can be resized, moved, rotated
+              selectable: true,
+              hasControls: true,
+              hasBorders: true,
+              lockMovementX: layer.locked || false,
+              lockMovementY: layer.locked || false,
+              lockRotation: layer.locked || false,
+              lockScalingX: layer.locked || false,
+              lockScalingY: layer.locked || false,
+            });
+            
+            // Add metadata for template tracking
+            img.set('templateLayer', {
+              id: layer.id,
+              type: layer.type,
+              name: layer.name || 'Image Layer',
+              originalSrc: layer.src
             });
             
             // Apply filters if any
@@ -134,14 +163,20 @@ export class TemplateRenderer {
             left: layer.x,
             top: layer.y,
             radius: layer.width / 2,
-            fill: layer.fill,
+            fill: layer.fill || '#000000',
             stroke: layer.stroke,
-            strokeWidth: layer.strokeWidth,
-            opacity: layer.opacity,
-            angle: layer.rotation,
-            selectable: !layer.locked,
-            hasControls: !layer.locked,
-            hasBorders: !layer.locked,
+            strokeWidth: layer.strokeWidth || 0,
+            opacity: layer.opacity !== undefined ? layer.opacity : 1,
+            angle: layer.rotation || 0,
+            // FULL EDITABILITY
+            selectable: true,
+            hasControls: true,
+            hasBorders: true,
+            lockMovementX: layer.locked || false,
+            lockMovementY: layer.locked || false,
+            lockRotation: layer.locked || false,
+            lockScalingX: layer.locked || false,
+            lockScalingY: layer.locked || false,
           });
         } else {
           // Rectangle or other shapes
@@ -150,20 +185,36 @@ export class TemplateRenderer {
             top: layer.y,
             width: layer.width,
             height: layer.height,
-            fill: layer.fill,
+            fill: layer.fill || '#000000',
             stroke: layer.stroke,
-            strokeWidth: layer.strokeWidth,
-            rx: layer.borderRadius,
-            ry: layer.borderRadius,
-            opacity: layer.opacity,
-            angle: layer.rotation,
-            selectable: !layer.locked,
-            hasControls: !layer.locked,
-            hasBorders: !layer.locked,
+            strokeWidth: layer.strokeWidth || 0,
+            rx: layer.borderRadius || 0,
+            ry: layer.borderRadius || 0,
+            opacity: layer.opacity !== undefined ? layer.opacity : 1,
+            angle: layer.rotation || 0,
+            // FULL EDITABILITY
+            selectable: true,
+            hasControls: true,
+            hasBorders: true,
+            lockMovementX: layer.locked || false,
+            lockMovementY: layer.locked || false,
+            lockRotation: layer.locked || false,
+            lockScalingX: layer.locked || false,
+            lockScalingY: layer.locked || false,
           });
         }
-        
-        this.canvas.add(shapeObject);
+
+        if (shapeObject) {
+          // Add metadata for template tracking
+          shapeObject.set('templateLayer', {
+            id: layer.id,
+            type: layer.type,
+            shape: layer.shape,
+            name: layer.name || `${layer.shape} Shape`
+          });
+          
+          this.canvas.add(shapeObject);
+        }
         break;
       }
 

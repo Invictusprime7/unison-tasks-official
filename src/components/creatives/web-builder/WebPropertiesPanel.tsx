@@ -9,40 +9,99 @@ import { useState, useEffect } from "react";
 import { CopyRewritePanel } from "./CopyRewritePanel";
 import { ImageOperationsPanel } from "./ImageOperationsPanel";
 
+interface FabricObjectProperties {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  opacity: number;
+  angle: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  borderRadius: number;
+}
+
+interface SelectedFabricObject {
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+  scaleX?: number;
+  scaleY?: number;
+  opacity?: number;
+  angle?: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  rx?: number;
+  ry?: number;
+  padding?: number;
+  text?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: string | number;
+  textAlign?: string;
+  shadow?: { toString: () => string };
+  globalCompositeOperation?: string;
+  skewX?: number;
+  skewY?: number;
+  type?: string;
+  blockData?: { id?: string };
+  set: (key: string | Record<string, unknown>, value?: string | number) => void;
+  bringForward?: () => void;
+  sendBackwards?: () => void;
+}
+
 interface WebPropertiesPanelProps {
   fabricCanvas: FabricCanvas | null;
-  selectedObject: any;
+  selectedObject: SelectedFabricObject | null;
   onUpdate: () => void;
 }
 
 export const WebPropertiesPanel = ({ fabricCanvas, selectedObject, onUpdate }: WebPropertiesPanelProps) => {
-  const [properties, setProperties] = useState<any>({});
+  // Initialize properties directly from selectedObject to avoid cascading renders
+  const getPropertiesFromObject = (obj: SelectedFabricObject): FabricObjectProperties => ({
+    left: Math.round(obj?.left || 0),
+    top: Math.round(obj?.top || 0),
+    width: Math.round((obj?.width || 0) * (obj?.scaleX || 1)),
+    height: Math.round((obj?.height || 0) * (obj?.scaleY || 1)),
+    opacity: obj?.opacity || 1,
+    angle: Math.round(obj?.angle || 0),
+    fill: obj?.fill || "#000000",
+    stroke: obj?.stroke || "transparent",
+    strokeWidth: obj?.strokeWidth || 0,
+    borderRadius: obj?.rx || 0,
+  });
 
-  useEffect(() => {
-    if (selectedObject) {
-      setProperties({
-        left: Math.round(selectedObject.left || 0),
-        top: Math.round(selectedObject.top || 0),
-        width: Math.round((selectedObject.width || 0) * (selectedObject.scaleX || 1)),
-        height: Math.round((selectedObject.height || 0) * (selectedObject.scaleY || 1)),
-        opacity: selectedObject.opacity || 1,
-        angle: Math.round(selectedObject.angle || 0),
-        fill: selectedObject.fill || "#000000",
-        stroke: selectedObject.stroke || "transparent",
-        strokeWidth: selectedObject.strokeWidth || 0,
-        borderRadius: selectedObject.rx || 0,
-      });
+  const [properties, setProperties] = useState<FabricObjectProperties>(() => 
+    selectedObject ? getPropertiesFromObject(selectedObject) : {
+      left: 0,
+      top: 0,
+      width: 0,
+      height: 0,
+      opacity: 1,
+      angle: 0,
+      fill: "#000000",
+      stroke: "transparent",
+      strokeWidth: 0,
+      borderRadius: 0,
     }
-  }, [selectedObject]);
+  );
 
-  const updateProperty = (key: string, value: any) => {
+  // Update properties when selectedObject changes
+  if (selectedObject && properties.left !== Math.round(selectedObject.left || 0)) {
+    setProperties(getPropertiesFromObject(selectedObject));
+  }
+
+  const updateProperty = (key: string, value: string | number) => {
     if (!selectedObject) return;
     
     selectedObject.set(key, value);
     fabricCanvas?.renderAll();
     onUpdate();
     
-    setProperties((prev: any) => ({ ...prev, [key]: value }));
+    setProperties((prev) => ({ ...prev, [key]: value }));
   };
 
   if (!selectedObject) {
@@ -155,9 +214,142 @@ export const WebPropertiesPanel = ({ fabricCanvas, selectedObject, onUpdate }: W
                 className="py-4"
               />
             </div>
+
+            {/* Spacing/Padding (for templates) */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Padding</Label>
+              <Input
+                type="number"
+                value={selectedObject.padding || 0}
+                onChange={(e) => updateProperty("padding", Number(e.target.value))}
+                className="h-8 text-sm"
+                placeholder="0"
+                min="0"
+              />
+            </div>
+
+            {/* Layer Order */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Layer Order</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    selectedObject.bringForward();
+                    fabricCanvas?.renderAll();
+                    onUpdate();
+                  }}
+                  className="h-8 px-3 text-xs border rounded hover:bg-accent"
+                >
+                  Bring Forward
+                </button>
+                <button
+                  onClick={() => {
+                    selectedObject.sendBackwards();
+                    fabricCanvas?.renderAll();
+                    onUpdate();
+                  }}
+                  className="h-8 px-3 text-xs border rounded hover:bg-accent"
+                >
+                  Send Backward
+                </button>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="style" className="p-4 space-y-4">
+            {/* Text Content for Text Objects */}
+            {(selectedObject.type === "text" || selectedObject.type === "i-text" || selectedObject.type === "textbox") && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Text Content</Label>
+                <Input
+                  type="text"
+                  value={selectedObject.text || ""}
+                  onChange={(e) => updateProperty("text", e.target.value)}
+                  className="h-8 text-sm"
+                  placeholder="Enter text..."
+                />
+              </div>
+            )}
+
+            {/* Typography Controls for Text */}
+            {(selectedObject.type === "text" || selectedObject.type === "i-text" || selectedObject.type === "textbox") && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Font Family</Label>
+                  <Select
+                    value={selectedObject.fontFamily || "Arial"}
+                    onValueChange={(value) => updateProperty("fontFamily", value)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Arial">Arial</SelectItem>
+                      <SelectItem value="Helvetica">Helvetica</SelectItem>
+                      <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                      <SelectItem value="Georgia">Georgia</SelectItem>
+                      <SelectItem value="Verdana">Verdana</SelectItem>
+                      <SelectItem value="Courier New">Courier New</SelectItem>
+                      <SelectItem value="Inter">Inter</SelectItem>
+                      <SelectItem value="Roboto">Roboto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Font Size</Label>
+                  <Input
+                    type="number"
+                    value={selectedObject.fontSize || 16}
+                    onChange={(e) => updateProperty("fontSize", Number(e.target.value))}
+                    className="h-8 text-sm"
+                    min="8"
+                    max="200"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Font Weight</Label>
+                  <Select
+                    value={String(selectedObject.fontWeight || "normal")}
+                    onValueChange={(value) => updateProperty("fontWeight", value)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="bold">Bold</SelectItem>
+                      <SelectItem value="100">Thin (100)</SelectItem>
+                      <SelectItem value="300">Light (300)</SelectItem>
+                      <SelectItem value="500">Medium (500)</SelectItem>
+                      <SelectItem value="600">Semi Bold (600)</SelectItem>
+                      <SelectItem value="700">Bold (700)</SelectItem>
+                      <SelectItem value="900">Black (900)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Text Align</Label>
+                  <Select
+                    value={selectedObject.textAlign || "left"}
+                    onValueChange={(value) => updateProperty("textAlign", value)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                      <SelectItem value="justify">Justify</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
             {/* Fill Color */}
             {selectedObject.fill !== undefined && (
               <div className="space-y-2">
@@ -233,6 +425,26 @@ export const WebPropertiesPanel = ({ fabricCanvas, selectedObject, onUpdate }: W
               />
             </div>
 
+            {/* Shadow */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Shadow</Label>
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="e.g., 0 4px 6px rgba(0,0,0,0.1)"
+                  value={selectedObject.shadow?.toString() || ""}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      updateProperty("shadow", e.target.value);
+                    } else {
+                      updateProperty("shadow", null);
+                    }
+                  }}
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+
             {/* Blend Mode */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Blend Mode</Label>
@@ -250,8 +462,39 @@ export const WebPropertiesPanel = ({ fabricCanvas, selectedObject, onUpdate }: W
                   <SelectItem value="overlay">Overlay</SelectItem>
                   <SelectItem value="darken">Darken</SelectItem>
                   <SelectItem value="lighten">Lighten</SelectItem>
+                  <SelectItem value="color-dodge">Color Dodge</SelectItem>
+                  <SelectItem value="color-burn">Color Burn</SelectItem>
+                  <SelectItem value="hard-light">Hard Light</SelectItem>
+                  <SelectItem value="soft-light">Soft Light</SelectItem>
+                  <SelectItem value="difference">Difference</SelectItem>
+                  <SelectItem value="exclusion">Exclusion</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Skew */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Skew X ({selectedObject.skewX || 0}°)</Label>
+              <Slider
+                value={[selectedObject.skewX || 0]}
+                onValueChange={([value]) => updateProperty("skewX", value)}
+                min={-45}
+                max={45}
+                step={1}
+                className="py-4"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Skew Y ({selectedObject.skewY || 0}°)</Label>
+              <Slider
+                value={[selectedObject.skewY || 0]}
+                onValueChange={([value]) => updateProperty("skewY", value)}
+                min={-45}
+                max={45}
+                step={1}
+                className="py-4"
+              />
             </div>
           </TabsContent>
 

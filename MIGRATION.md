@@ -1,19 +1,129 @@
-# Code Migration & Deployment Guide
+# Project Migration & Updates Guide
 
-This guide provides **actual runnable code** and scripts to migrate your Lovable project to other code editors and deployment platforms.
-
-## Quick Start Scripts
-
-All deployment scripts and configuration files are included in this repository:
-- `docker-compose.yml` - Docker setup
-- `.github/workflows/deploy.yml` - GitHub Actions CI/CD
-- `scripts/setup-local.sh` - Local setup automation
-- `scripts/deploy.sh` - Deployment automation
-- `vercel.json` / `netlify.toml` - Platform configs
+This comprehensive guide covers code migration, deployment, and recent dependency updates for the Lovable project.
 
 ## Table of Contents
-1. [Quick Start Scripts](#quick-start-scripts)
-2. [Exporting Your Code](#exporting-your-code)
+1. [Recent Updates (October 2025)](#recent-updates-october-2025)
+2. [Tailwind CSS v4 Migration](#tailwind-css-v4-migration)
+3. [Project Cleanup](#project-cleanup)
+4. [Exporting Your Code](#exporting-your-code)
+5. [Local Development Setup](#local-development-setup)
+6. [Environment Configuration](#environment-configuration)
+7. [Database Setup](#database-setup)
+8. [Docker Deployment](#docker-deployment)
+9. [CI/CD Pipelines](#cicd-pipelines)
+10. [Platform-Specific Deployments](#platform-specific-deployments)
+
+---
+
+## Recent Updates (October 2025)
+
+### Dependency Updates
+- **React**: Upgraded to v19.2.0
+- **Vite**: Upgraded to v7.1.10
+- **Tailwind CSS**: Migrated to v4.1.14
+- **Node.js**: CI/CD workflows now use Node.js v20
+
+### Files Removed (Redundant/Unused)
+- `bun.lockb` - Using npm exclusively
+- `tailwind.config.ts` - Now using CSS-based configuration in v4
+- `src/App.css` - Unused boilerplate file
+- `autoprefixer` - Included in @tailwindcss/postcss v4
+
+### Build Status
+✅ All builds passing
+✅ TypeScript checks pass
+✅ ESLint configured
+✅ GitHub Actions CI/CD operational
+
+---
+
+## Tailwind CSS v4 Migration
+
+### Changes Made
+
+#### 1. Package Dependencies
+**Updated in `package.json`:**
+```json
+{
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "tailwindcss": "^4.1.14"
+  }
+}
+```
+
+**Removed:**
+- `autoprefixer` - Now included in @tailwindcss/postcss
+
+#### 2. PostCSS Configuration
+**Updated `postcss.config.js`:**
+```javascript
+// v4 includes autoprefixer
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+};
+```
+
+#### 3. CSS Import Syntax
+**Updated `src/index.css`:**
+```css
+/* New v4 syntax */
+@import "tailwindcss";
+
+/* CSS-based configuration */
+@theme {
+  --content: ./pages/**/*.{ts,tsx}, ./components/**/*.{ts,tsx}, ./app/**/*.{ts,tsx}, ./src/**/*.{ts,tsx};
+  --container-center: true;
+  --container-padding: 2rem;
+  --breakpoint-2xl: 1400px;
+}
+```
+
+#### 4. @apply Directive Updates
+Replaced `@apply` with direct CSS properties for better v4 compatibility:
+```css
+/* Direct CSS properties instead of @apply */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+```
+
+### Benefits of v4
+1. **Unified PostCSS Plugin** - Single plugin includes all features
+2. **CSS-First Configuration** - Theme configuration directly in CSS
+3. **Better Performance** - Optimized build times
+4. **Smaller Bundle Size** - More efficient output
+5. **Modern Features** - Better support for container queries, CSS Grid
+
+---
+
+## Project Cleanup
+
+### Files Organization
+The project has been cleaned up to remove redundancy:
+
+**Removed Files:**
+- `bun.lockb` - Redundant with npm
+- `tailwind.config.ts` - Replaced by CSS-based config
+- `src/App.css` - Unused file
+- Deprecated dependencies
+
+**Configuration Files:**
+- Using `package-lock.json` only
+- Single source of truth for configs
+- Minimal configuration files
+
+---
+
+## Exporting Your Code
 3. [Automated Local Setup](#automated-local-setup)
 4. [Environment Configuration](#environment-configuration)
 5. [Database Setup](#database-setup)
