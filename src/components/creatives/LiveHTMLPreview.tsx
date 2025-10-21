@@ -27,7 +27,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const updateTimerRef = useRef<NodeJS.Timeout>();
+  const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
   const selectedElementRef = useRef<HTMLElement | null>(null);
 

@@ -19,12 +19,12 @@ export function SecureIframePreview({
   onError 
 }: SecureIframePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const rpcRef = useRef<RPCHost>();
-  const vfsRef = useRef<VirtualFilesystem>();
+  const rpcRef = useRef<RPCHost | null>(null);
+  const vfsRef = useRef<VirtualFilesystem | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Initialize VFS and RPC
+    // Initialize VFS and RPC - constructors don't need arguments
     if (!vfsRef.current) {
       vfsRef.current = new VirtualFilesystem();
     }
