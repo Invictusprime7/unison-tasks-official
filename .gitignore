@@ -17,6 +17,9 @@ dist-ssr
 .env.local
 .env.production
 
+# Migration and sensitive files
+vs code loveable migration.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -27,3 +30,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.vercel
