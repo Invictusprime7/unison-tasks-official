@@ -132,7 +132,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
           content: msg.content,
           timestamp: new Date(msg.created_at),
           hasCode: msg.has_code || false,
-          componentData: msg.component_data,
+          componentData: (msg.component_data && typeof msg.component_data === 'object' && !Array.isArray(msg.component_data)) 
+            ? msg.component_data as Record<string, unknown>
+            : undefined,
         }));
         setMessages(loadedMessages);
       }
@@ -153,7 +155,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
         role: message.role,
         content: message.content,
         has_code: message.hasCode || false,
-        component_data: message.componentData || null,
+        component_data: message.componentData as never || null,
       });
       console.log('[AICodeAssistant] Message saved to database');
     } catch (error) {
@@ -225,9 +227,10 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
 
     try {
       console.log('[AICodeAssistant] Rendering component:', componentData);
-      const { elements, description } = componentData;
+      const elements = componentData.elements as Array<Record<string, unknown>> | undefined;
+      const description = componentData.description as string | undefined;
 
-      if (!elements || elements.length === 0) {
+      if (!elements || !Array.isArray(elements) || elements.length === 0) {
         toast({
           title: 'No elements to render',
           description: 'The component has no visual elements.',
