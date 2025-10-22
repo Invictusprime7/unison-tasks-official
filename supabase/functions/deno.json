@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "nodeModulesDir": "none",
+  "imports": {
+  "serve": "https://deno.land/std@0.204.0/http/mod.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.39.7",
+    "xhr": "https://deno.land/x/xhr@0.1.0/mod.ts"
+  }
+}

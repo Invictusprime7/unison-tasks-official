@@ -1,16 +1,18 @@
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense, lazy } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FolderOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { DesignStudio } from "@/components/creatives/DesignStudio";
-import { FileBrowser } from "@/components/creatives/design-studio/FileBrowser";
-import { WebBuilder } from "@/components/creatives/WebBuilder";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Dynamic imports for heavy components
+const DesignStudio = lazy(() => import("@/components/creatives/DesignStudio").then(m => ({ default: m.DesignStudio })));
+const WebBuilder = lazy(() => import("@/components/creatives/WebBuilder").then(m => ({ default: m.WebBuilder })));
+const FileBrowser = lazy(() => import("@/components/creatives/design-studio/FileBrowser").then(m => ({ default: m.FileBrowser })));
 
 const DesignStudioPage = () => {
   const navigate = useNavigate();
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
-  const designStudioRef = useRef<any>(null);
+  const designStudioRef = useRef<{ addImageFromUrl: (url: string) => void } | null>(null);
   const [activeTab, setActiveTab] = useState<"canvas" | "web">("canvas");
 
   return (
@@ -46,19 +48,25 @@ const DesignStudioPage = () => {
         </TabsList>
         
         <TabsContent value="canvas" className="flex-1 mt-0 overflow-hidden">
-          <DesignStudio ref={designStudioRef} />
+          <Suspense fallback={<div className="flex items-center justify-center h-full">Loading Canvas Studio...</div>}>
+            <DesignStudio ref={designStudioRef} />
+          </Suspense>
         </TabsContent>
         
         <TabsContent value="web" className="flex-1 mt-0 overflow-hidden">
-          <WebBuilder />
+          <Suspense fallback={<div className="flex items-center justify-center h-full">Loading Web Builder...</div>}>
+            <WebBuilder />
+          </Suspense>
         </TabsContent>
       </Tabs>
 
-      <FileBrowser 
-        open={fileBrowserOpen} 
-        onOpenChange={setFileBrowserOpen}
-        onImageSelect={(imageUrl) => designStudioRef.current?.addImageFromUrl(imageUrl)}
-      />
+      <Suspense fallback={null}>
+        <FileBrowser 
+          open={fileBrowserOpen} 
+          onOpenChange={setFileBrowserOpen}
+          onImageSelect={(imageUrl) => designStudioRef.current?.addImageFromUrl(imageUrl)}
+        />
+      </Suspense>
     </div>
   );
 };
