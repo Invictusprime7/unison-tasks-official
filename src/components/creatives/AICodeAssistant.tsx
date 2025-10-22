@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Canvas as FabricCanvas, Rect, Textbox } from 'fabric';
 import { supabase } from "@/integrations/supabase/client";
 import MonacoEditor from './MonacoEditor';
@@ -41,7 +41,7 @@ interface Message {
   content: string;
   timestamp: Date;
   hasCode?: boolean;
-  componentData?: any;
+  componentData?: Record<string, unknown>;
 }
 
 interface AICodeAssistantProps {
@@ -64,12 +64,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Load or create conversation on mount (only if authenticated)
-  useEffect(() => {
-    loadOrCreateConversation();
-  }, []);
-
-  const loadOrCreateConversation = async () => {
+  const loadOrCreateConversation = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -114,7 +109,12 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
       console.error('Error loading conversation:', error);
       // Continue without persistence
     }
-  };
+  }, [mode]);
+
+  // Load or create conversation on mount (only if authenticated)
+  useEffect(() => {
+    loadOrCreateConversation();
+  }, [loadOrCreateConversation]);
 
   const loadMessages = async (convId: string) => {
     try {
@@ -213,7 +213,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     });
   };
 
-  const renderComponentData = (componentData: any) => {
+  const renderComponentData = (componentData: Record<string, unknown>) => {
     if (!fabricCanvas) {
       toast({
         title: 'Canvas not available',
@@ -236,32 +236,32 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
         return;
       }
 
-      elements.forEach((element: any) => {
+      elements.forEach((element: Record<string, unknown>) => {
         if (element.type === 'rectangle') {
           const rect = new Rect({
-            left: element.x || 100,
-            top: element.y || 100,
-            width: element.width || 200,
-            height: element.height || 100,
-            fill: element.fill || '#3b82f6',
-            rx: element.rx || 0,
-            ry: element.ry || 0,
-            stroke: element.stroke,
-            strokeWidth: element.strokeWidth || 0,
+            left: (element.x as number) || 100,
+            top: (element.y as number) || 100,
+            width: (element.width as number) || 200,
+            height: (element.height as number) || 100,
+            fill: (element.fill as string) || '#3b82f6',
+            rx: (element.rx as number) || 0,
+            ry: (element.ry as number) || 0,
+            stroke: element.stroke as string | undefined,
+            strokeWidth: (element.strokeWidth as number) || 0,
             selectable: true,
             hasControls: true,
             hasBorders: true,
           });
           fabricCanvas.add(rect);
         } else if (element.type === 'text') {
-          const text = new Textbox(element.text || 'Text', {
-            left: element.x || 100,
-            top: element.y || 100,
-            width: element.width || 300,
-            fontSize: element.fontSize || 16,
-            fill: element.fill || '#000000',
-            fontWeight: element.fontWeight || 'normal',
-            textAlign: element.textAlign || 'left',
+          const text = new Textbox((element.text as string) || 'Text', {
+            left: (element.x as number) || 100,
+            top: (element.y as number) || 100,
+            width: (element.width as number) || 300,
+            fontSize: (element.fontSize as number) || 16,
+            fill: (element.fill as string) || '#000000',
+            fontWeight: (element.fontWeight as string) || 'normal',
+            textAlign: (element.textAlign as string) || 'left',
             selectable: true,
             editable: true,
             hasControls: true,
@@ -370,7 +370,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantContent = '';
-      let toolCallData: any = null;
+      let toolCallData: Record<string, unknown> | null = null;
       let toolCallArgs = '';
 
       if (reader) {
