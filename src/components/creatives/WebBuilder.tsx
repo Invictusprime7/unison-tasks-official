@@ -21,7 +21,7 @@ import { ExportDialog } from "./design-studio/ExportDialog";
 import { PerformancePanel } from "./web-builder/PerformancePanel";
 import { DirectEditToolbar } from "./web-builder/DirectEditToolbar";
 import { ArrangementTools } from "./web-builder/ArrangementTools";
-import { HTMLElementPropertiesPanel } from "./web-builder/HTMLElementPropertiesPanel";
+
 import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
@@ -75,7 +75,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<any>(null);
-  const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
   const livePreviewRef = useRef<any>(null);
 
   // Configure Monaco for full React/JSX/TypeScript support
@@ -1090,12 +1089,16 @@ declare global {
                     autoRefresh={true}
                     className="w-full h-full"
                     enableSelection={true}
-                    onElementSelect={(elementData) => {
-                      console.log('[WebBuilder] HTML Element selected:', elementData);
-                      setSelectedHTMLElement(elementData);
-                      setHtmlPropertiesPanelOpen(true);
-                      toast.success('Element selected! Edit properties in the panel →');
-                    }}
+                      onElementSelect={(elementData) => {
+                        console.log('[WebBuilder] HTML Element selected:', elementData);
+                        setSelectedHTMLElement(elementData);
+                        // Clear Fabric selection when HTML element is selected
+                        if (fabricCanvas) {
+                          fabricCanvas.discardActiveObject();
+                          fabricCanvas.renderAll();
+                        }
+                        toast.success('HTML element selected! Edit properties in the right panel →');
+                      }}
                   />
                 </div>
               </div>
@@ -1195,8 +1198,12 @@ declare global {
                       onElementSelect={(elementData) => {
                         console.log('[WebBuilder] HTML Element selected:', elementData);
                         setSelectedHTMLElement(elementData);
-                        setHtmlPropertiesPanelOpen(true);
-                        toast.success('Element selected! Edit properties in the panel →');
+                        // Clear Fabric selection when HTML element is selected
+                        if (fabricCanvas) {
+                          fabricCanvas.discardActiveObject();
+                          fabricCanvas.renderAll();
+                        }
+                        toast.success('HTML element selected! Edit properties in the right panel →');
                       }}
                     />
                   </div>
@@ -1362,47 +1369,23 @@ declare global {
           </Button>
         </div>
         
-        {/* Show HTML Element Properties Panel when an HTML element is selected */}
-        {htmlPropertiesPanelOpen && selectedHTMLElement ? (
-          <HTMLElementPropertiesPanel
-            selectedElement={selectedHTMLElement}
-            onClose={() => {
-              setHtmlPropertiesPanelOpen(false);
-              setSelectedHTMLElement(null);
-            }}
-            onUpdateElement={(updates) => {
-              console.log('[WebBuilder] Updating element via DOM:', updates);
-              
-              // Update element directly in the iframe DOM (no code modification)
-              if (livePreviewRef.current) {
-                const success = livePreviewRef.current.updateElement(
-                  selectedHTMLElement.selector,
-                  updates
-                );
-                
-                if (success) {
-                  // Update the selected element data for the properties panel
-                  setSelectedHTMLElement({
-                    ...selectedHTMLElement,
-                    ...updates,
-                  });
-                  
-                  toast.success('Element updated successfully');
-                } else {
-                  toast.error('Failed to update element', {
-                    description: 'Element not found in preview'
-                  });
-                }
-              }
-            }}
-          />
-        ) : !rightPanelCollapsed ? (
+        {/* Right Properties Panel - Collapsible - Unified for both Fabric & HTML */}
+        {!rightPanelCollapsed && (
           <WebPropertiesPanel 
             fabricCanvas={fabricCanvas}
             selectedObject={selectedObject}
+            selectedHTMLElement={selectedHTMLElement}
+            onUpdateHTMLElement={(updates) => {
+              if (livePreviewRef.current && selectedHTMLElement) {
+                livePreviewRef.current.updateElement(selectedHTMLElement.selector, updates);
+              }
+            }}
+            onCloseHTMLElement={() => {
+              setSelectedHTMLElement(null);
+            }}
             onUpdate={() => fabricCanvas?.renderAll()}
           />
-        ) : null}
+        )}
       </div>
 
       {/* AI Assistant Panel */}

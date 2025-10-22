@@ -185,7 +185,7 @@ const MonacoEditor: React.FC<React.ComponentProps<typeof Editor>> = (props) => {
           return { items: [] };
         }
       },
-      freeInlineCompletions: () => {},
+      disposeInlineCompletions: () => {},
     });
 
     // Register AI assistant command (Ctrl+Shift+A or Cmd+Shift+A)
