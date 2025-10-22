@@ -22,8 +22,7 @@
     }
   ],
   "env": {
-    "VITE_SUPABASE_URL": "@vite_supabase_url",
-    "VITE_SUPABASE_PUBLISHABLE_KEY": "@vite_supabase_publishable_key",
-    "VITE_SUPABASE_PROJECT_ID": "@vite_supabase_project_id"
+    "VITE_SUPABASE_URL": "https://nfrdomdvyrbwuokathtw.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwczovL3N1cGFiYXNlLnJvdy9jbGFpbXMvcm9sZXMiOlsicm9sZV9hbm9uIl0sImlhdCI6MTY5ODQwNjQwMCwiZXhwIjoxOTkzOTgyNDAwLCJzdWIiOiJzZXJ2aWNlX3JvbGUiLCJpc3MiOiJzdXBhYmFzZSIsInByb2plY3RfcmVmIjoibmZyZG9tZHZ5cmJ3dW9rYXRodHcifQ.2QkQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQvQwQw"
   }
 }

@@ -1,6 +1,6 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import "xhr";
+import { serve } from "serve";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -502,7 +502,7 @@ Learn from every review to provide increasingly valuable insights!`
 
     const systemPrompt = systemPrompts[mode as keyof typeof systemPrompts] || systemPrompts.code;
 
-    const body: any = {
+    const body: Record<string, unknown> = {
       model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'system', content: systemPrompt },
