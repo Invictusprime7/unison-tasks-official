@@ -59,6 +59,8 @@ export const useWebBuilderAI = (
         }
       };
 
+      console.log('[useWebBuilderAI] Calling web-builder-ai function');
+      
       const { data, error } = await supabase.functions.invoke('web-builder-ai', {
         body: { 
           prompt,
@@ -68,13 +70,22 @@ export const useWebBuilderAI = (
       });
 
       if (error) {
-        if (error.message.includes('429')) {
-          toast.error('Rate limit exceeded. Please try again later.');
-        } else if (error.message.includes('402')) {
-          toast.error('Payment required. Please add credits to your workspace.');
+        console.error('[useWebBuilderAI] Edge function error:', error);
+        if (error.message?.includes('429') || error.status === 429) {
+          toast.error('Rate limit exceeded. Please try again in a moment.');
+        } else if (error.message?.includes('402') || error.status === 402) {
+          toast.error('AI credits required. Please check your workspace settings.');
+        } else if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch')) {
+          toast.error('Connection error. Please check your internet connection and try again.');
         } else {
-          toast.error('Failed to generate design: ' + error.message);
+          toast.error('Failed to generate design. Please try again.');
         }
+        return null;
+      }
+
+      if (!data || typeof data !== 'object') {
+        console.error('[useWebBuilderAI] Invalid response data:', data);
+        toast.error('Invalid response from AI. Please try again.');
         return null;
       }
 
@@ -82,13 +93,24 @@ export const useWebBuilderAI = (
       setLastResponse(aiResponse);
 
       // Add objects to canvas
-      await addObjectsToCanvas(aiResponse.objects);
-
-      toast.success(aiResponse.explanation || 'Design generated successfully!');
+      if (aiResponse.objects && Array.isArray(aiResponse.objects)) {
+        await addObjectsToCanvas(aiResponse.objects);
+        toast.success(aiResponse.explanation || 'Design generated successfully!');
+      } else {
+        console.error('[useWebBuilderAI] No objects in response:', aiResponse);
+        toast.error('AI returned empty design. Please try a different prompt.');
+        return null;
+      }
+      
       return aiResponse;
     } catch (error) {
-      console.error('Error generating design:', error);
-      toast.error('An unexpected error occurred');
+      console.error('[useWebBuilderAI] Unexpected error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('An unexpected error occurred. Please try again.');
+      }
       return null;
     } finally {
       setLoading(false);
@@ -211,13 +233,21 @@ export const useWebBuilderAI = (
 
       if (error) {
         console.error('[useWebBuilderAI] Edge function error:', error);
-        if (error.message.includes('429')) {
-          toast.error('Rate limit exceeded. Please try again later.');
-        } else if (error.message.includes('402')) {
-          toast.error('Payment required. Please add credits to your workspace.');
+        if (error.message?.includes('429') || error.status === 429) {
+          toast.error('Rate limit exceeded. Please try again in a moment.');
+        } else if (error.message?.includes('402') || error.status === 402) {
+          toast.error('AI credits required. Please check your workspace settings.');
+        } else if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch')) {
+          toast.error('Connection error. Please check your internet connection and try again.');
         } else {
-          toast.error('Failed to generate template: ' + error.message);
+          toast.error('Failed to generate template. Please try again.');
         }
+        return null;
+      }
+
+      if (!data || typeof data !== 'object') {
+        console.error('[useWebBuilderAI] Invalid response data:', data);
+        toast.error('Invalid response from AI. Please try again.');
         return null;
       }
 
@@ -226,9 +256,15 @@ export const useWebBuilderAI = (
       // Handle both wrapped and unwrapped responses
       const template = data.template || data;
       
-      if (!template || !template.sections || !template.variants) {
-        console.error('[useWebBuilderAI] Invalid template structure:', template);
-        toast.error('Generated template has invalid structure');
+      if (!template || !template.sections || !Array.isArray(template.sections)) {
+        console.error('[useWebBuilderAI] Invalid template structure - missing or invalid sections:', template);
+        toast.error('AI returned invalid template structure. Please try a different prompt.');
+        return null;
+      }
+
+      if (!template.variants || !Array.isArray(template.variants)) {
+        console.error('[useWebBuilderAI] Invalid template structure - missing or invalid variants:', template);
+        toast.error('AI returned invalid template structure. Please try a different prompt.');
         return null;
       }
 
@@ -237,13 +273,18 @@ export const useWebBuilderAI = (
         explanation: data.explanation || 'AI template generated successfully!'
       };
       
-      console.log('[useWebBuilderAI] Valid template created:', aiTemplateResponse);
+      console.log('[useWebBuilderAI] Valid template created with', template.sections.length, 'sections');
       
       toast.success(aiTemplateResponse.explanation);
       return aiTemplateResponse;
     } catch (error) {
-      console.error('[useWebBuilderAI] Error generating template:', error);
-      toast.error('An unexpected error occurred: ' + (error instanceof Error ? error.message : 'Unknown'));
+      console.error('[useWebBuilderAI] Unexpected error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('An unexpected error occurred. Please try a different prompt.');
+      }
       return null;
     } finally {
       setLoading(false);
