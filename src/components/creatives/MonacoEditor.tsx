@@ -238,23 +238,15 @@ const MonacoEditor: React.FC<React.ComponentProps<typeof Editor>> = (props) => {
   // AI completion helper
   const getAICompletion = async (context: string): Promise<string | null> => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-code-assistant`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            messages: [
-              { role: 'user', content: `Complete this code. Only return the next few lines of completion, no explanations:\n\n${context}` }
-            ],
-            mode: 'code',
-            savePattern: false,
-          }),
+      const { data } = await supabase.functions.invoke('ai-code-assistant', {
+        body: {
+          messages: [
+            { role: 'user', content: `Complete this code. Only return the next few lines of completion, no explanations:\n\n${context}` }
+          ],
+          mode: 'code',
+          savePattern: false,
         }
-      );
+      });
 
       if (!response.ok) return null;
 

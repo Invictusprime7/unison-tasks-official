@@ -538,16 +538,30 @@ Learn from every review to provide increasingly valuable insights!`
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    // Save learning session (async, don't wait)
+    // Save learning session (async, don't wait) - only if authenticated
     const userPrompt = messages[messages.length - 1]?.content || '';
     if (savePattern && userPrompt) {
-      supabase.from('ai_learning_sessions').insert({
-        session_type: mode === 'code' ? 'code_generation' : mode === 'design' ? 'design_review' : 'code_review',
-        user_prompt: userPrompt.substring(0, 500),
-        ai_response: 'Streaming response',
-        was_successful: true,
-        technologies_used: ['React', 'TypeScript', 'Tailwind CSS']
-      }).then(() => console.log('Learning session saved'));
+      const authHeader = req.headers.get('authorization');
+      const token = authHeader?.split('Bearer ')[1];
+      
+      // Create temp client for auth verification
+      const tempSupabase = createClient(supabaseUrl, supabaseKey, {
+        global: { headers: { Authorization: `Bearer ${token || ''}` } }
+      });
+      
+      // Only save if user is authenticated
+      tempSupabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          supabase.from('ai_learning_sessions').insert({
+            user_id: user.id,
+            session_type: mode === 'code' ? 'code_generation' : mode === 'design' ? 'design_review' : 'code_review',
+            user_prompt: userPrompt.substring(0, 500),
+            ai_response: 'Streaming response',
+            was_successful: true,
+            technologies_used: ['React', 'TypeScript', 'Tailwind CSS']
+          }).then(() => console.log('Learning session saved for user:', user.id));
+        }
+      }).catch(() => console.log('No authenticated user - skipping session save'));
     }
 
     return new Response(response.body, {

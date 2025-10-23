@@ -333,44 +333,34 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     await saveMessage(userMessage);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-code-assistant`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            messages: messages.map(m => ({ role: m.role, content: m.content })).concat([
-              { role: userMessage.role, content: userMessage.content }
-            ]),
-            mode,
-          }),
+      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
+        body: {
+          messages: messages.map(m => ({ role: m.role, content: m.content })).concat([
+            { role: userMessage.role, content: userMessage.content }
+          ]),
+          mode,
         }
-      );
+      });
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          toast({
-            title: 'Rate limit exceeded',
-            description: 'Please wait a moment before trying again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        if (response.status === 402) {
-          toast({
-            title: 'Credits required',
-            description: 'Please add credits to continue using AI features.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        throw new Error('Failed to get AI response');
+      if (error) {
+        console.error('AI assistant error:', error);
+        toast({
+          title: 'AI Assistant Error',
+          description: error.message || 'Failed to get AI response. Please try again.',
+          variant: 'destructive',
+        });
+        return;
       }
 
-      const reader = response.body?.getReader();
+      // Handle streaming response from edge function
+      if (!data) {
+        toast({
+          title: 'No Response',
+          description: 'No data received from AI assistant.',
+          variant: 'destructive',
+        });
+        return;
+      }
       const decoder = new TextDecoder();
       let assistantContent = '';
       let toolCallData: Record<string, unknown> | null = null;
