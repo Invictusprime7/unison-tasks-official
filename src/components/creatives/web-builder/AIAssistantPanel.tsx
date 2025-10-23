@@ -31,7 +31,8 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pendingTemplates, setPendingTemplates] = useState<Map<number, AIGeneratedTemplate>>(new Map());
   const { loading, generateDesign, generateTemplate } = useWebBuilderAI(
-    fabricCanvas
+    fabricCanvas,
+    onTemplateGenerated
   );
 
   useEffect(() => {

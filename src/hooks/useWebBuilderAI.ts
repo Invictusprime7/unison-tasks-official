@@ -239,12 +239,6 @@ export const useWebBuilderAI = (
       
       console.log('[useWebBuilderAI] Valid template created:', aiTemplateResponse);
       
-      // Notify parent - template state will handle dual rendering
-      if (onTemplateGenerated) {
-        console.log('[useWebBuilderAI] Calling onTemplateGenerated callback');
-        onTemplateGenerated(aiTemplateResponse.template);
-      }
-
       toast.success(aiTemplateResponse.explanation);
       return aiTemplateResponse;
     } catch (error) {
