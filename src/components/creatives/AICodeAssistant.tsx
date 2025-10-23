@@ -284,10 +284,30 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       </div>
 
       {codeViewerOpen && (
-        <CodeViewer
-          code={currentCode}
-          onClose={() => setCodeViewerOpen(false)}
-        />
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="fixed left-[50%] top-[50%] z-50 w-[90vw] h-[85vh] translate-x-[-50%] translate-y-[-50%]">
+            <CodeViewer
+              code={currentCode}
+              onMigrateToCanvas={(code) => {
+                if (onCodeGenerated) {
+                  onCodeGenerated(code);
+                }
+                if (onSwitchToCanvasView) {
+                  onSwitchToCanvasView();
+                }
+                setCodeViewerOpen(false);
+              }}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute top-4 right-4 z-10"
+              onClick={() => setCodeViewerOpen(false)}
+            >
+              <Code className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       )}
     </>
   );
