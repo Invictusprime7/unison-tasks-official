@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, Send, Loader2, Code } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -43,14 +44,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     setInput('');
     setIsLoading(true);
 
+    const supabaseUrl = supabase.functions['url'] || 'https://oruwtgdjurstvhgqcvbv.supabase.co';
+    const supabaseKey = supabase.functions['headers']?.apikey || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-code-assistant`,
+        `${supabaseUrl}/functions/v1/ai-code-assistant`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({
             messages: [...messages, userMessage].map(m => ({ 
@@ -62,23 +66,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       );
 
       if (!response.ok) {
-        if (response.status === 429) {
-          toast({
-            title: 'Rate limit exceeded',
-            description: 'Please wait a moment before trying again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        if (response.status === 402) {
-          toast({
-            title: 'Credits required',
-            description: 'Please add credits to continue using AI features.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        throw new Error('Failed to get AI response');
+        const errorData = await response.json().catch(() => ({}));
+        toast({
+          title: 'Error',
+          description: errorData.error || 'Failed to generate response. Please try again.',
+          variant: 'destructive',
+        });
+        return;
       }
 
       const reader = response.body?.getReader();
