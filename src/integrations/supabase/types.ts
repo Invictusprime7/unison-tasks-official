@@ -59,7 +59,6 @@ export type Database = {
           id: string
           session_type: string
           technologies_used: string[] | null
-          user_id: string | null
           user_prompt: string
           was_successful: boolean | null
         }
@@ -71,7 +70,6 @@ export type Database = {
           id?: string
           session_type: string
           technologies_used?: string[] | null
-          user_id?: string | null
           user_prompt: string
           was_successful?: boolean | null
         }
@@ -83,7 +81,6 @@ export type Database = {
           id?: string
           session_type?: string
           technologies_used?: string[] | null
-          user_id?: string | null
           user_prompt?: string
           was_successful?: boolean | null
         }

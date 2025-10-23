@@ -31,8 +31,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pendingTemplates, setPendingTemplates] = useState<Map<number, AIGeneratedTemplate>>(new Map());
   const { loading, generateDesign, generateTemplate } = useWebBuilderAI(
-    fabricCanvas,
-    onTemplateGenerated
+    fabricCanvas
   );
 
   useEffect(() => {
@@ -52,57 +51,44 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
     // Detect if user wants a full template or individual elements
     const isTemplateRequest = /\b(template|page|website|landing page|full design|complete design|entire page)\b/i.test(userInput);
 
-    try {
-      let response;
-      if (isTemplateRequest) {
-        console.log('[AIAssistantPanel] Generating template...');
-        response = await generateTemplate(userInput);
+    let response;
+    if (isTemplateRequest) {
+      response = await generateTemplate(userInput);
+      
+      if (response && response.template) {
+        const messageIndex = messages.length + 1; // +1 for user message
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: `✨ **Template Generated!**\n\n${response.explanation || 'Your template is ready'}\n\n📋 **Template Details:**\n• ${response.template.sections.length} sections\n• ${response.template.name}\n\nClick "Build to Canvas" below to add it as fully editable components!`,
+          template: response.template
+        };
+        setMessages(prev => [...prev, assistantMessage]);
         
-        if (response && response.template) {
-          const messageIndex = messages.length + 1; // +1 for user message
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: `✨ **Template Generated!**\n\n${response.explanation || 'Your template is ready'}\n\n📋 **Template Details:**\n• ${response.template.sections.length} sections\n• ${response.template.name}\n\nClick "Build to Canvas" below to add it as fully editable components!`,
-            template: response.template
-          };
-          setMessages(prev => [...prev, assistantMessage]);
-          
-          // Store template with message index for later building
-          setPendingTemplates(prev => new Map(prev).set(messageIndex, response.template));
-        } else {
-          console.error('[AIAssistantPanel] Template generation returned null');
-          const errorMessage: Message = {
-            role: 'assistant',
-            content: '❌ I encountered an issue creating that template.\n\n**Try:**\n• Simplifying your request\n• Being more specific about what you want\n• Checking your internet connection'
-          };
-          setMessages(prev => [...prev, errorMessage]);
-        }
+        // Store template with message index for later building
+        setPendingTemplates(prev => new Map(prev).set(messageIndex, response.template));
       } else {
-        console.log('[AIAssistantPanel] Generating design elements...');
-        response = await generateDesign(userInput);
-        
-        if (response) {
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: response.explanation || '✅ Design elements added to canvas!'
-          };
-          setMessages(prev => [...prev, assistantMessage]);
-        } else {
-          console.error('[AIAssistantPanel] Design generation returned null');
-          const errorMessage: Message = {
-            role: 'assistant',
-            content: '❌ I encountered an issue creating that design.\n\n**Try:**\n• Simplifying your request\n• Being more specific\n• Checking your internet connection'
-          };
-          setMessages(prev => [...prev, errorMessage]);
-        }
+        const errorMessage: Message = {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error creating that template. Please try again with a different prompt.'
+        };
+        setMessages(prev => [...prev, errorMessage]);
       }
-    } catch (error) {
-      console.error('[AIAssistantPanel] Unexpected error:', error);
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: '❌ An unexpected error occurred. Please try again or simplify your request.'
-      };
-      setMessages(prev => [...prev, errorMessage]);
+    } else {
+      response = await generateDesign(userInput);
+      
+      if (response) {
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: response.explanation || 'Design elements added to canvas!'
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      } else {
+        const errorMessage: Message = {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error creating that design. Please try again with a different prompt.'
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
     }
   };
 

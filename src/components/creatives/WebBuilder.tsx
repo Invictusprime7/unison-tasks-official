@@ -1542,6 +1542,7 @@ declare global {
 
       {/* AI Code Assistant - Bottom Panel */}
       <AICodeAssistant 
+        fabricCanvas={fabricCanvas}
         onCodeGenerated={handleAICodeGenerated}
         onSwitchToCanvasView={() => {
           console.log('[WebBuilder] Switching to Canvas view from AI Assistant');
