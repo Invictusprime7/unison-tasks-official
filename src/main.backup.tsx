@@ -68,7 +68,8 @@ if (!rootElement) {
 
 try {
   // Dynamic import to catch module resolution errors
-  import('./components/ErrorBoundary').then(({ ErrorBoundary }) => {
+  import('./components/ErrorBoundary.tsx').then((module) => {
+    const { default: ErrorBoundary } = module;
     createRoot(rootElement).render(
       <ErrorBoundary>
         <App />

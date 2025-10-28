@@ -64,12 +64,12 @@ export const teamMemberSchema = z.object({
   role: teamRoleSchema,
   joinedAt: z.string().datetime(),
   permissions: z.object({
-    canEdit: z.boolean().default(false),
+    canEdit: z.boolean().default(true),
     canDelete: z.boolean().default(false),
     canInvite: z.boolean().default(false),
     canManageSettings: z.boolean().default(false),
     canExport: z.boolean().default(true),
-  }).default({}),
+  }).optional(),
 });
 
 // Project Timeline Event Schema
@@ -89,7 +89,7 @@ export const timelineEventSchema = z.object({
     'comment_added'
   ]),
   description: z.string(),
-  metadata: z.record(z.unknown()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
   createdAt: z.string().datetime(),
   createdBy: z.string(),
 });
@@ -126,7 +126,7 @@ export const projectSchema = z.object({
   teamMembers: z.array(teamMemberSchema).default([]),
   
   // Configuration
-  settings: projectSettingsSchema.default({}),
+  settings: projectSettingsSchema.optional(),
   
   // Progress Tracking
   progress: z.number().min(0).max(100).default(0),

@@ -64,13 +64,10 @@ export const PropertiesTray: React.FC<PropertiesTrayProps> = ({ open, selectedOb
                     onStartCrop={onStartCrop}
                     onRemoveBackground={onRemoveBackground}
                     onAlign={onAlign}
-                    onApplyGradient={onApplyGradient}
-                    canvasEl={canvasEl}
-                    onClose={onClose}
                   />
                 </TabsContent>
                 <TabsContent value="filters" className="flex-1 overflow-y-auto m-0 p-0">
-                  <FiltersPanel selectedObject={selectedObject} onApplyFilter={onApplyFilter} onResetFilters={onResetFilters} onClose={onClose} />
+                  <FiltersPanel selectedObject={selectedObject} onApplyFilter={onApplyFilter} onResetFilters={onResetFilters} />
                 </TabsContent>
               </Tabs>
             </div>

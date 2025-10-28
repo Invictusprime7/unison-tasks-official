@@ -14,23 +14,17 @@ export type {
   Template,
   Layer,
   Frame,
-  TemplatePreview,
 } from './templateSchema';
 
 export type {
   // Project types
   Project,
-  ProjectMember,
-  ProjectStatus,
-  ProjectPriority,
+  TeamMember,
 } from './projectSchema';
 
 export type {
   // Task types
   Task,
-  TaskStatus,
-  TaskPriority,
-  TimeTrackingSession,
   TaskComment,
 } from './taskSchema';
 
