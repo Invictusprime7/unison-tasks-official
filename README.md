@@ -29,12 +29,108 @@ git clone <YOUR_GIT_URL>
 # Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
+# Step 3: Set up your environment configuration
+./scripts/setup-env.sh
+
+# Step 4: Install the necessary dependencies (if not done by setup script).
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+## 🔧 Environment Setup
+
+This project uses environment variables for configuration. Several setup options are available:
+
+### Quick Start (Recommended)
+
+Use the interactive setup script:
+
+```bash
+./scripts/setup-env.sh
+```
+
+This script will guide you through setting up the appropriate environment for your needs.
+
+### Manual Setup
+
+#### For Development
+
+1. Copy the development template:
+   ```bash
+   cp .env.development .env
+   ```
+
+2. Or copy from the local development example:
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+#### For Production
+
+1. Copy the production template:
+   ```bash
+   cp .env.production.example .env.production
+   ```
+
+2. Update the values with your production credentials
+
+### Environment Files Overview
+
+- **`.env.example`** - Complete template with all available variables and documentation
+- **`.env.local.example`** - Example for local development setup
+- **`.env.production.example`** - Example for production deployment
+- **`.env.development`** - Default development configuration (uses Lovable Cloud)
+
+### Required Environment Variables
+
+The following variables are required for the application to function:
+
+```bash
+# Supabase Configuration (required)
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+VITE_SUPABASE_PROJECT_ID=your-project-id
+```
+
+### Optional Environment Variables
+
+```bash
+# Feature flags
+VITE_ENABLE_AI_ASSISTANT=true
+VITE_ENABLE_WEB_BUILDER=true
+VITE_ENABLE_DESIGN_STUDIO=true
+
+# Development settings
+VITE_PORT=8080
+VITE_ENABLE_DEV_TOOLS=true
+
+# Third-party integrations
+VITE_LOVABLE_API_KEY=your-lovable-key
+VITE_OPENAI_API_KEY=your-openai-key
+```
+
+### Using Local Supabase
+
+If you want to use a local Supabase instance:
+
+1. Install Supabase CLI:
+   ```bash
+   npm install -g supabase
+   ```
+
+2. Start local Supabase:
+   ```bash
+   supabase start
+   ```
+
+3. Update your `.env` file:
+   ```bash
+   VITE_SUPABASE_URL=http://localhost:54321
+   VITE_SUPABASE_PUBLISHABLE_KEY=your-local-anon-key
+   VITE_SUPABASE_PROJECT_ID=localhost
+   ```
 
 **Edit a file directly in GitHub**
 
