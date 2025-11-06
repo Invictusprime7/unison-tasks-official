@@ -1,19 +1,35 @@
-import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { bundleCode, extractImageSources, resolveAssetPath } from '@/utils/codeBundler';
 import { getSelectedElementData, highlightElement, removeHighlight, updateElementInIframe } from '@/utils/htmlElementSelector';
+import { sanitizeHTMLClasses } from '@/utils/classSanitizer';
+
+interface ElementData {
+  tagName: string;
+  textContent: string;
+  attributes: Record<string, string>;
+  styles: Record<string, string>;
+  selector: string;
+  xpath: string;
+}
+
+interface ElementUpdates {
+  textContent?: string;
+  attributes?: Record<string, string>;
+  styles?: Record<string, string>;
+}
 
 interface LiveHTMLPreviewProps {
   code: string;
   className?: string;
   autoRefresh?: boolean;
-  onElementSelect?: (elementData: any) => void;
+  onElementSelect?: (elementData: ElementData) => void;
   enableSelection?: boolean;
 }
 
 export interface LiveHTMLPreviewHandle {
-  updateElement: (selector: string, updates: any) => boolean;
+  updateElement: (selector: string, updates: ElementUpdates) => boolean;
   getIframe: () => HTMLIFrameElement | null;
 }
 
@@ -33,7 +49,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
-    updateElement: (selector: string, updates: any) => {
+    updateElement: (selector: string, updates: ElementUpdates) => {
       if (!iframeRef.current) return false;
       const success = updateElementInIframe(iframeRef.current, selector, updates);
       if (success) {
@@ -107,7 +123,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
     };
   }, [enableSelection, onElementSelect, hoveredElement]);
 
-  const renderPreview = () => {
+  const renderPreview = useCallback(() => {
     // Guard against undefined or empty code
     if (!iframeRef.current || !code || typeof code !== 'string' || !code.trim()) {
       return;
@@ -155,7 +171,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : 'Failed to render');
     }
-  };
+  }, [code]);
 
   useEffect(() => {
     // Guard against undefined or invalid code
@@ -177,7 +193,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
         clearTimeout(updateTimerRef.current);
       }
     };
-  }, [code, autoRefresh]);
+  }, [code, autoRefresh, renderPreview]);
 
   return (
     <div className={cn('relative w-full h-full', className)}>
@@ -218,7 +234,7 @@ LiveHTMLPreview.displayName = 'LiveHTMLPreview';
 
 function buildHTMLDocument(html: string, css: string, javascript: string): string {
   // Guard against undefined values
-  const safeHtml = html || '';
+  const safeHtml = sanitizeHTMLClasses(html || '');
   const safeCss = css || '';
   const safeJs = javascript || '';
   

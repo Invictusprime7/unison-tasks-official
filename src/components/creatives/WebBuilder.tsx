@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { AICodeAssistant } from "./AICodeAssistant";
+import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
 import { 
@@ -26,6 +27,45 @@ import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
 import { webBlocks } from "./web-builder/webBlocks";
+import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
+
+// Define SelectedElement interface to match HTMLElementPropertiesPanel
+interface SelectedElement {
+  tagName: string;
+  textContent: string;
+  styles: {
+    color?: string;
+    backgroundColor?: string;
+    fontSize?: string;
+    fontFamily?: string;
+    fontWeight?: string;
+    fontStyle?: string;
+    textDecoration?: string;
+    textAlign?: string;
+    padding?: string;
+    margin?: string;
+    border?: string;
+    borderRadius?: string;
+    width?: string;
+    height?: string;
+    display?: string;
+    opacity?: string;
+  };
+  attributes: Record<string, string>;
+  selector: string;
+}
+
+// Define types for Fabric objects with their specific properties
+type FabricTextObject = FabricCanvas['_objects'][0] & {
+  text: string;
+  fontSize?: number;
+  fontFamily?: string;
+  textAlign?: string;
+};
+
+type FabricImageObject = FabricCanvas['_objects'][0] & {
+  getSrc(): string;
+};
 import { useKeyboardShortcuts, defaultWebBuilderShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose } from "lucide-react";
@@ -47,12 +87,15 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const location = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
-  const [selectedObject, setSelectedObject] = useState<any>(null);
+  const [selectedObject, setSelectedObject] = useState<FabricCanvas['_objects'][0] | null>(null);
   const [activeMode, setActiveMode] = useState<"insert" | "layout" | "text" | "vector">("insert");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(0.5);
   const [canvasHeight, setCanvasHeight] = useState(800);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [lastGenerationId, setLastGenerationId] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string>(''); // This would come from auth
   const [codePreviewOpen, setCodePreviewOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [integrationsPanelOpen, setIntegrationsPanelOpen] = useState(false);
@@ -74,9 +117,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [previewCode, setPreviewCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<Monaco | null>(null);
-  const [selectedHTMLElement, setSelectedHTMLElement] = useState<any>(null);
+  const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
-  const livePreviewRef = useRef<any>(null);
+  const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
 
   // Configure Monaco for full React/JSX/TypeScript support
   const handleEditorWillMount = (monaco: Monaco) => {
@@ -235,9 +278,9 @@ declare global {
     console.log('[WebBuilder] AI code received:', code.substring(0, 100));
     setEditorCode(code);
     setPreviewCode(code);
-    setViewMode('code'); // Switch to code view to show the generated code
-    toast('AI Code Generated!', {
-      description: 'Edit in Monaco and render to canvas',
+    setViewMode('canvas'); // Switch to canvas view to show the generated template preview
+    toast('AI Template Generated!', {
+      description: 'Glass UI template is ready for preview',
     });
   };
 
@@ -293,12 +336,12 @@ declare global {
 
     setFabricCanvas(canvas);
 
-    const handleSelectionCreated = (e: any) => {
-      setSelectedObject(e.selected?.[0]);
+    const handleSelectionCreated = (e: { selected?: FabricCanvas['_objects'] }) => {
+      setSelectedObject(e.selected?.[0] || null);
     };
 
-    const handleSelectionUpdated = (e: any) => {
-      setSelectedObject(e.selected?.[0]);
+    const handleSelectionUpdated = (e: { selected?: FabricCanvas['_objects'] }) => {
+      setSelectedObject(e.selected?.[0] || null);
     };
 
     const handleSelectionCleared = () => {
@@ -375,7 +418,7 @@ declare global {
   ]);
 
   // Auto-adjust canvas height based on content
-  const updateCanvasHeight = () => {
+  const updateCanvasHeight = useCallback(() => {
     if (!fabricCanvas) return;
     
     const objects = fabricCanvas.getObjects();
@@ -385,7 +428,7 @@ declare global {
     }
     
     let maxBottom = 800; // Minimum height
-    objects.forEach((obj: any) => {
+    objects.forEach((obj: FabricCanvas['_objects'][0]) => {
       const objBottom = (obj.top || 0) + (obj.height || 0) * (obj.scaleY || 1);
       if (objBottom > maxBottom) {
         maxBottom = objBottom;
@@ -397,7 +440,7 @@ declare global {
     if (newHeight !== canvasHeight) {
       setCanvasHeight(newHeight);
     }
-  };
+  }, [fabricCanvas, canvasHeight]);
 
   // Save to history when objects change
   useEffect(() => {
@@ -417,7 +460,7 @@ declare global {
       fabricCanvas.off("object:removed", handleObjectModified);
       fabricCanvas.off("object:modified", handleObjectModified);
     };
-  }, [fabricCanvas, history, canvasHeight]);
+  }, [fabricCanvas, history, canvasHeight, updateCanvasHeight]);
 
   const handleDelete = () => {
     if (!fabricCanvas || !selectedObject) return;
@@ -426,18 +469,17 @@ declare global {
     toast.success("Deleted");
   };
 
-  const handleDuplicate = () => {
+  const handleDuplicate = async () => {
     if (!fabricCanvas || !selectedObject) return;
-    selectedObject.clone((cloned: any) => {
-      cloned.set({
-        left: cloned.left + 10,
-        top: cloned.top + 10,
-      });
-      fabricCanvas.add(cloned);
-      fabricCanvas.setActiveObject(cloned);
-      fabricCanvas.renderAll();
-      toast.success("Duplicated");
+    const cloned = await selectedObject.clone();
+    cloned.set({
+      left: (cloned.left || 0) + 10,
+      top: (cloned.top || 0) + 10,
     });
+    fabricCanvas.add(cloned);
+    fabricCanvas.setActiveObject(cloned);
+    fabricCanvas.renderAll();
+    toast.success("Duplicated");
   };
 
   const addBlock = (blockId: string) => {
@@ -494,16 +536,16 @@ declare global {
     let html = '<div class="web-page">\n';
     let css = '.web-page {\n  min-height: 100vh;\n  position: relative;\n  background: white;\n}\n\n';
     
-    objects.forEach((obj: any, index: number) => {
+    objects.forEach((obj: FabricCanvas['_objects'][0], index: number) => {
       const className = `element-${index}`;
       
       // Generate HTML
       if (obj.type === 'text' || obj.type === 'textbox') {
-        html += `  <div class="${className}">${obj.text}</div>\n`;
+        html += `  <div class="${className}">${(obj as FabricTextObject).text}</div>\n`;
       } else if (obj.type === 'rect') {
         html += `  <div class="${className}"></div>\n`;
       } else if (obj.type === 'image') {
-        html += `  <img class="${className}" src="${obj.getSrc()}" alt="" />\n`;
+        html += `  <img class="${className}" src="${(obj as FabricImageObject).getSrc()}" alt="" />\n`;
       }
       
       // Generate CSS
@@ -517,14 +559,15 @@ declare global {
       if (obj.fill) {
         css += `  background-color: ${obj.fill};\n`;
       }
-      if (obj.fontSize) {
-        css += `  font-size: ${obj.fontSize}px;\n`;
+      const textObj = obj as FabricTextObject;
+      if (textObj.fontSize) {
+        css += `  font-size: ${textObj.fontSize}px;\n`;
       }
-      if (obj.fontFamily) {
-        css += `  font-family: ${obj.fontFamily};\n`;
+      if (textObj.fontFamily) {
+        css += `  font-family: ${textObj.fontFamily};\n`;
       }
-      if (obj.textAlign) {
-        css += `  text-align: ${obj.textAlign};\n`;
+      if (textObj.textAlign) {
+        css += `  text-align: ${textObj.textAlign};\n`;
       }
       css += `}\n\n`;
     });
@@ -877,6 +920,7 @@ declare global {
             <Eye className="h-4 w-4 mr-2" />
             {isFullscreen ? 'Exit Preview' : 'Preview'}
           </Button>
+
           <Button 
             size="sm" 
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -1433,6 +1477,29 @@ declare global {
             toast.error(error instanceof Error ? error.message : 'Failed to render template');
           }
         }}
+        onCodeGenerated={(code, type) => {
+          console.log(`[WebBuilder] ${type.toUpperCase()} code received from AI:`, code);
+          
+          if (type === 'html') {
+            setEditorCode(code);
+            setPreviewCode(code);
+            // Switch to code view to show the generated code
+            setViewMode('code');
+            toast.success('HTML code applied to editor! 📝');
+          } else if (type === 'css') {
+            // Inject CSS into preview
+            const styleElement = document.createElement('style');
+            styleElement.textContent = code;
+            document.head.appendChild(styleElement);
+            toast.success('CSS styles applied! 🎨');
+          } else if (type === 'javascript') {
+            // For JavaScript, we can append it to the HTML
+            const updatedCode = editorCode + `\n<script>\n${code}\n</script>`;
+            setEditorCode(updatedCode);
+            setPreviewCode(updatedCode);
+            toast.success('JavaScript code integrated! ⚡');
+          }
+        }}
       />
 
       {/* Code Preview Dialog */}
@@ -1569,6 +1636,25 @@ declare global {
           });
         }}
       />
+
+
+
+      {/* Template Feedback Dialog */}
+      {feedbackOpen && lastGenerationId && (
+        <TemplateFeedback
+          generationId={lastGenerationId}
+          userId={currentUserId || 'demo-user'} // In real app, get from auth
+          templateCode={editorCode}
+          onFeedbackSubmitted={() => {
+            console.log('[WebBuilder] Feedback submitted for generation:', lastGenerationId);
+            // Could refresh recommendations here
+          }}
+          onClose={() => {
+            setFeedbackOpen(false);
+            setLastGenerationId('');
+          }}
+        />
+      )}
     </div>
   );
 };

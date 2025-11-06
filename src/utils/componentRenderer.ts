@@ -5,12 +5,14 @@
 
 import { Canvas as FabricCanvas, Rect, IText, FabricImage } from 'fabric';
 
+import type { FabricObject } from 'fabric';
+
 export interface ComponentConfig {
   type: 'hero' | 'card' | 'button' | 'section' | 'form' | 'navigation' | 'custom';
   html: string;
   css: string;
   jsx?: string;
-  fabricElements?: any[];
+  fabricElements?: FabricObject[];
 }
 
 /**
@@ -62,7 +64,7 @@ function parseHTMLComponent(code: string): ComponentConfig {
 function parseReactComponent(code: string): ComponentConfig {
   // Extract JSX from return statement
   const returnMatch = code.match(/return\s*\(([\s\S]*?)\);/);
-  let jsx = returnMatch ? returnMatch[1].trim() : code;
+  const jsx = returnMatch ? returnMatch[1].trim() : code;
   
   // Convert JSX to HTML
   const html = convertJSXToHTML(jsx);
@@ -204,7 +206,7 @@ async function processElement(
   switch (tagName) {
     case 'h1':
     case 'h2':
-    case 'h3':
+    case 'h3': {
       const heading = new IText(el.textContent || '', {
         left: x,
         top: y,
@@ -215,8 +217,9 @@ async function processElement(
       });
       canvas.add(heading);
       break;
+    }
       
-    case 'p':
+    case 'p': {
       const text = new IText(el.textContent || '', {
         left: x,
         top: y,
@@ -226,8 +229,9 @@ async function processElement(
       });
       canvas.add(text);
       break;
+    }
       
-    case 'button':
+    case 'button': {
       const btnWidth = 150;
       const btnHeight = 40;
       const btn = new Rect({
@@ -250,8 +254,9 @@ async function processElement(
       });
       canvas.add(btnText);
       break;
+    }
       
-    case 'img':
+    case 'img': {
       const img = el as HTMLImageElement;
       if (img.src) {
         try {
@@ -268,9 +273,10 @@ async function processElement(
         }
       }
       break;
+    }
       
     case 'div':
-    case 'section':
+    case 'section': {
       const bgColor = styles.backgroundColor;
       if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
         const div = new Rect({
@@ -294,6 +300,7 @@ async function processElement(
         }
       }
       break;
+    }
   }
 }
 
