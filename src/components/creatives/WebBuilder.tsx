@@ -128,6 +128,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
   const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
 
+  // Add console log to confirm component is rendering
+  console.log('[WebBuilder] Component rendering...');
+
   // Configure Monaco for full React/JSX/TypeScript support
   const handleEditorWillMount = (monaco: Monaco) => {
     monacoRef.current = monaco;
@@ -832,6 +835,8 @@ declare global {
       container.removeEventListener('touchend', handleTouchEnd);
     };
   }, [zoom, fabricCanvas, panOffset]);
+
+  console.log('[WebBuilder] About to return JSX...');
 
   return (
     <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#0a0a0a]">
