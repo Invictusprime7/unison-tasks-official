@@ -35,6 +35,13 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { 
+  detectDesignPattern, 
+  getPatternStyles, 
+  generateComponentWithPattern,
+  enhancePromptWithPattern,
+  type DesignPattern 
+} from '@/services/designPatternService';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -61,6 +68,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
   const [currentCode, setCurrentCode] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [detectedPattern, setDetectedPattern] = useState<DesignPattern | null>(null);
+  const [showPatternGuide, setShowPatternGuide] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -316,6 +325,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    // Detect design pattern from user input
+    const pattern = detectDesignPattern(input);
+    if (pattern) {
+      setDetectedPattern(pattern);
+      const styles = getPatternStyles(pattern);
+      toast({
+        title: `${pattern.charAt(0).toUpperCase() + pattern.slice(1)} Pattern Detected! 🎨`,
+        description: `Applying ${pattern} design styles to your request`,
+      });
+    }
+
     const userMessage: Message = {
       role: 'user',
       content: input,
@@ -330,6 +350,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     await saveMessage(userMessage);
 
     try {
+      // Enhance prompt with pattern context if detected
+      const enhancedMessages = messages.map(m => ({ 
+        role: m.role, 
+        content: m.content 
+      })).concat([
+        { 
+          role: userMessage.role, 
+          content: pattern ? enhancePromptWithPattern(userMessage.content, pattern) : userMessage.content
+        }
+      ]);
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-code-assistant`,
         {
@@ -339,10 +370,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: messages.map(m => ({ role: m.role, content: m.content })).concat([
-              { role: userMessage.role, content: userMessage.content }
-            ]),
+            messages: enhancedMessages,
             mode,
+            designPattern: pattern, // Pass detected pattern to AI
           }),
         }
       );
@@ -500,14 +530,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
 
   const quickPrompts = {
     code: [
-      'Create a modern hero section with gradient background',
-      'Build a pricing card with three tiers',
-      'Generate a contact form with validation',
+      'Create a neomorphic card with soft shadows',
+      'Build a cyberpunk neon button with glow effects',
+      'Generate a gradient hero section with color transitions',
+      'Design a glassmorphism card with frosted glass effect',
     ],
     design: [
-      'Review my color scheme',
-      'Suggest improvements for this layout',
-      'Make this design more modern',
+      'Apply cyberpunk aesthetics to my layout',
+      'Add neomorphic styling to my buttons',
+      'Suggest gradient improvements for modern look',
     ],
     review: [
       'Review this React component',
@@ -540,8 +571,22 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
               🧠 Learning
             </span>
           )}
+          {detectedPattern && (
+            <span className="text-xs bg-white/20 text-white px-2 py-1 rounded-full flex items-center gap-1 animate-pulse">
+              🎨 {detectedPattern.charAt(0).toUpperCase() + detectedPattern.slice(1)}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowPatternGuide(!showPatternGuide)}
+            title="Design Pattern Guide"
+            className="text-white hover:bg-white/20"
+          >
+            🎨
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -618,13 +663,72 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
             <div className="space-y-4">
               {messages.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8">
                   <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">
+                  <p className="text-sm text-muted-foreground mb-6">
                     {mode === 'code' && 'Ask me to generate any React component or web design'}
                     {mode === 'design' && 'Get expert design recommendations and tips'}
                     {mode === 'review' && 'Submit your code for a thorough review'}
                   </p>
+                  
+                  {/* Design Pattern Showcase */}
+                  {mode === 'code' && (
+                    <div className="mt-8 space-y-4">
+                      <p className="text-sm font-semibold text-muted-foreground mb-4">🎨 Design Patterns I Can Apply:</p>
+                      <div className="grid grid-cols-2 gap-3 max-w-2xl mx-auto">
+                        <div 
+                          onClick={() => setInput('Create a neomorphic card with soft shadows and tactile design')}
+                          className="p-4 rounded-lg border-2 border-dashed border-muted hover:border-primary cursor-pointer transition-all hover:scale-105"
+                          style={{
+                            background: '#e0e5ec',
+                            boxShadow: '8px 8px 16px #b8bec7, -8px -8px 16px #ffffff'
+                          }}
+                        >
+                          <div className="text-lg font-bold mb-1" style={{ color: '#4a5568' }}>Neomorphic</div>
+                          <div className="text-xs" style={{ color: '#718096' }}>Soft UI, tactile shadows</div>
+                        </div>
+                        
+                        <div 
+                          onClick={() => setInput('Build a cyberpunk neon button with electric glow')}
+                          className="p-4 rounded-lg border-2 border-dashed cursor-pointer transition-all hover:scale-105"
+                          style={{
+                            background: '#1a1f3a',
+                            border: '2px solid #00ffff',
+                            boxShadow: '0 0 20px rgba(0, 255, 255, 0.5)'
+                          }}
+                        >
+                          <div className="text-lg font-bold mb-1" style={{ color: '#00ffff' }}>Cyberpunk</div>
+                          <div className="text-xs" style={{ color: '#ff00ff' }}>Neon, futuristic glow</div>
+                        </div>
+                        
+                        <div 
+                          onClick={() => setInput('Generate a gradient hero section with vibrant colors')}
+                          className="p-4 rounded-lg border-2 border-dashed border-transparent hover:border-white cursor-pointer transition-all hover:scale-105"
+                          style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)'
+                          }}
+                        >
+                          <div className="text-lg font-bold mb-1 text-white">Gradient</div>
+                          <div className="text-xs text-white/80">Vibrant color blends</div>
+                        </div>
+                        
+                        <div 
+                          onClick={() => setInput('Create a glassmorphism card with frosted glass effect')}
+                          className="p-4 rounded-lg border cursor-pointer transition-all hover:scale-105"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255, 255, 255, 0.18)',
+                            boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)'
+                          }}
+                        >
+                          <div className="text-lg font-bold mb-1 text-white">Glassmorphism</div>
+                          <div className="text-xs text-white/70">Frosted glass, blur</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -644,6 +748,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
                         : 'bg-muted overflow-hidden'
                     )}
                   >
+                    {/* Show pattern badge for user messages with detected patterns */}
+                    {message.role === 'user' && detectDesignPattern(message.content) && (
+                      <div className="mb-2 inline-flex items-center gap-1 px-2 py-1 bg-primary-foreground/10 rounded text-xs">
+                        🎨 {detectDesignPattern(message.content)?.toUpperCase()} Pattern
+                      </div>
+                    )}
+                    
                     {message.content.includes('```') ? (
                       <div className="space-y-2">
                         {message.content.split('```').map((part, i) => {
@@ -813,6 +924,137 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
               }}
               className="h-full"
             />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Design Pattern Guide Dialog */}
+      <Dialog open={showPatternGuide} onOpenChange={setShowPatternGuide}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              🎨 Design Pattern Guide
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Neomorphic */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-lg" style={{
+                  background: '#e0e5ec',
+                  boxShadow: '8px 8px 16px #b8bec7, -8px -8px 16px #ffffff'
+                }}></div>
+                <div>
+                  <h3 className="font-bold">Neomorphic</h3>
+                  <p className="text-sm text-muted-foreground">Soft UI, tactile shadows</p>
+                </div>
+              </div>
+              <p className="text-sm">Keywords: neomorphic, soft shadow, embossed, raised, inset, tactile</p>
+              <div className="text-xs bg-muted p-2 rounded">
+                Example: "Create a neomorphic card with soft shadows"
+              </div>
+            </div>
+
+            {/* Cyberpunk */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-lg" style={{
+                  background: '#1a1f3a',
+                  border: '2px solid #00ffff',
+                  boxShadow: '0 0 20px rgba(0, 255, 255, 0.5)'
+                }}></div>
+                <div>
+                  <h3 className="font-bold">Cyberpunk</h3>
+                  <p className="text-sm text-muted-foreground">Neon, futuristic glow</p>
+                </div>
+              </div>
+              <p className="text-sm">Keywords: cyberpunk, neon, futuristic, glow, electric, sci-fi, digital</p>
+              <div className="text-xs bg-muted p-2 rounded">
+                Example: "Build a cyberpunk neon button with electric glow"
+              </div>
+            </div>
+
+            {/* Gradient */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-lg" style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)'
+                }}></div>
+                <div>
+                  <h3 className="font-bold">Gradient</h3>
+                  <p className="text-sm text-muted-foreground">Vibrant color blends</p>
+                </div>
+              </div>
+              <p className="text-sm">Keywords: gradient, color blend, rainbow, spectrum, vibrant, colorful</p>
+              <div className="text-xs bg-muted p-2 rounded">
+                Example: "Generate a gradient hero section with vibrant colors"
+              </div>
+            </div>
+
+            {/* Glassmorphism */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-lg" style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)'
+                }}></div>
+                <div>
+                  <h3 className="font-bold">Glassmorphism</h3>
+                  <p className="text-sm text-muted-foreground">Frosted glass, blur</p>
+                </div>
+              </div>
+              <p className="text-sm">Keywords: glassmorphism, glass, frosted, translucent, blur, transparent</p>
+              <div className="text-xs bg-muted p-2 rounded">
+                Example: "Create a glassmorphism card with frosted glass effect"
+              </div>
+            </div>
+
+            {/* Minimal */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-lg border" style={{
+                  background: '#ffffff',
+                  border: '1px solid #e5e5e5'
+                }}></div>
+                <div>
+                  <h3 className="font-bold">Minimal</h3>
+                  <p className="text-sm text-muted-foreground">Clean, simple design</p>
+                </div>
+              </div>
+              <p className="text-sm">Keywords: minimal, minimalist, simple, clean, basic</p>
+              <div className="text-xs bg-muted p-2 rounded">
+                Example: "Design a minimal card with clean layout"
+              </div>
+            </div>
+
+            {/* Modern */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-lg" style={{
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)'
+                }}></div>
+                <div>
+                  <h3 className="font-bold">Modern</h3>
+                  <p className="text-sm text-muted-foreground">Professional, sleek</p>
+                </div>
+              </div>
+              <p className="text-sm">Keywords: modern, contemporary, sleek, professional, elegant</p>
+              <div className="text-xs bg-muted p-2 rounded">
+                Example: "Create a modern dashboard with sleek design"
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 p-4 bg-muted rounded-lg">
+            <p className="text-sm font-semibold mb-2">💡 Pro Tip:</p>
+            <p className="text-sm text-muted-foreground">
+              Just mention any of these keywords in your prompt, and I'll automatically apply the appropriate design pattern with all the right colors, shadows, and effects!
+            </p>
           </div>
         </DialogContent>
       </Dialog>
