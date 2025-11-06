@@ -64,112 +64,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'code' | 'design' | 'review'>('code');
   const [isExpanded, setIsExpanded] = useState(false);
-  const [learningEnabled, setLearningEnabled] = useState(true);
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
   const [currentCode, setCurrentCode] = useState('');
-  const [conversationId, setConversationId] = useState<string | null>(null);
   const [detectedPattern, setDetectedPattern] = useState<DesignPattern | null>(null);
   const [showPatternGuide, setShowPatternGuide] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Load or create conversation on mount (only if authenticated)
-  useEffect(() => {
-    loadOrCreateConversation();
-  }, []);
-
-  const loadOrCreateConversation = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // Not authenticated - use in-memory only mode
-        console.log('[AICodeAssistant] Not authenticated - using in-memory chat');
-        return;
-      }
-
-      // Try to get the most recent conversation for this mode
-      const { data: existingConversations } = await supabase
-        .from('chat_conversations')
-        .select('id')
-        .eq('mode', mode)
-        .order('updated_at', { ascending: false })
-        .limit(1);
-
-      let convId: string;
-
-      if (existingConversations && existingConversations.length > 0) {
-        // Use existing conversation
-        convId = existingConversations[0].id;
-        await loadMessages(convId);
-      } else {
-        // Create new conversation
-        const { data: newConv, error } = await supabase
-          .from('chat_conversations')
-          .insert({
-            user_id: user.id,
-            mode,
-            title: `${mode.charAt(0).toUpperCase() + mode.slice(1)} Chat`,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        convId = newConv.id;
-      }
-
-      setConversationId(convId);
-      console.log('[AICodeAssistant] Conversation loaded:', convId);
-    } catch (error) {
-      console.error('Error loading conversation:', error);
-      // Continue without persistence
-    }
-  };
-
-  const loadMessages = async (convId: string) => {
-    try {
-      const { data: chatMessages, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('conversation_id', convId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      if (chatMessages) {
-        const loadedMessages: Message[] = chatMessages.map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          timestamp: new Date(msg.created_at),
-          hasCode: msg.has_code || false,
-          componentData: msg.component_data,
-        }));
-        setMessages(loadedMessages);
-      }
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    }
-  };
-
-  const saveMessage = async (message: Message) => {
-    if (!conversationId) {
-      console.log('[AICodeAssistant] No conversation ID - skipping message save');
-      return;
-    }
-
-    try {
-      await supabase.from('chat_messages').insert({
-        conversation_id: conversationId,
-        role: message.role,
-        content: message.content,
-        has_code: message.hasCode || false,
-        component_data: message.componentData || null,
-      });
-      console.log('[AICodeAssistant] Message saved to database');
-    } catch (error) {
-      console.error('Error saving message:', error);
-      // Continue without persistence
-    }
-  };
+  // REMOVED: Conversation loading/persistence and learning features
+  // to ensure fresh iterations with new design pattern schemas
 
   const openCodeViewer = (code: string) => {
     console.log('[AICodeAssistant] Opening code viewer with code:', code.substring(0, 100));
@@ -287,14 +190,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
         description: description || 'Component added to canvas successfully.',
       });
 
-      // Save successful pattern to learning database
-      if (learningEnabled) {
-        saveCodePattern(
-          JSON.stringify(componentData),
-          'component',
-          'Successfully rendered component from AI generation'
-        );
-      }
+      // REMOVED: Pattern learning/caching to ensure fresh AI iterations with new design patterns
+      // This was saving old patterns to the database that could interfere with new schema
+      // if (learningEnabled) {
+      //   saveCodePattern(
+      //     JSON.stringify(componentData),
+      //     'component',
+      //     'Successfully rendered component from AI generation'
+      //   );
+      // }
     } catch (error) {
       console.error('[AICodeAssistant] Render error:', error);
       toast({
@@ -302,23 +206,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
         description: 'Could not render component to canvas.',
         variant: 'destructive',
       });
-    }
-  };
-
-  const saveCodePattern = async (code: string, patternType: string, description: string) => {
-    try {
-      const codeSnippet = code.substring(0, 5000); // Limit size
-      await supabase.from('ai_code_patterns').insert({
-        pattern_type: patternType,
-        code_snippet: codeSnippet,
-        description,
-        tags: [mode, patternType],
-        success_rate: 100,
-        usage_count: 1
-      });
-      console.log('✅ Code pattern saved to learning database');
-    } catch (error) {
-      console.error('Failed to save pattern:', error);
     }
   };
 
@@ -346,8 +233,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     setInput('');
     setIsLoading(true);
 
-    // Save user message to database (if authenticated)
-    await saveMessage(userMessage);
+    // REMOVED: Message persistence to ensure fresh AI iterations with new schema
 
     try {
       // Enhance prompt with pattern context if detected
@@ -492,17 +378,18 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
           }
         }
 
+        // REMOVED: Assistant message persistence to ensure fresh AI iterations
         // Save the complete assistant message to database
-        if (assistantContent) {
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: assistantContent,
-            timestamp: new Date(),
-            hasCode: assistantContent.includes('```'),
-            componentData: toolCallData,
-          };
-          await saveMessage(assistantMessage);
-        }
+        // if (assistantContent) {
+        //   const assistantMessage: Message = {
+        //     role: 'assistant',
+        //     content: assistantContent,
+        //     timestamp: new Date(),
+        //     hasCode: assistantContent.includes('```'),
+        //     componentData: toolCallData,
+        //   };
+        //   await saveMessage(assistantMessage);
+        // }
 
         // Auto-render if we got component data and canvas is available
         if (toolCallData && fabricCanvas && mode === 'code') {
@@ -566,11 +453,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
               ({messages.length} messages)
             </span>
           )}
-          {learningEnabled && (
-            <span className="text-xs bg-white/10 text-white px-2 py-1 rounded-full flex items-center gap-1">
-              🧠 Learning
-            </span>
-          )}
           {detectedPattern && (
             <span className="text-xs bg-white/20 text-white px-2 py-1 rounded-full flex items-center gap-1 animate-pulse">
               🎨 {detectedPattern.charAt(0).toUpperCase() + detectedPattern.slice(1)}
@@ -586,15 +468,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
             className="text-white hover:bg-white/20"
           >
             🎨
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLearningEnabled(!learningEnabled)}
-            title={learningEnabled ? "Disable learning" : "Enable learning"}
-            className="text-white hover:bg-white/20"
-          >
-            {learningEnabled ? "🧠" : "💤"}
           </Button>
           <Button
             variant="ghost"
