@@ -88,12 +88,16 @@ export const useProfessionalAITemplate = () => {
       toast.info(`Regenerating ${aspect}...`);
 
       // Recreate prompt from existing template
+      const industry = currentTemplate.designMetadata.industry;
+      const validIndustries = ['e-commerce', 'saas', 'education', 'healthcare', 'finance', 'entertainment', 'portfolio', 'blog', 'documentation'] as const;
+      const industryContext = validIndustries.includes(industry as any) ? industry as any : 'saas';
+      
       const prompt: ProfessionalAIPrompt = {
         designStyle: currentTemplate.designMetadata.style,
         colorHarmony: currentTemplate.designMetadata.colorHarmony,
         brandPersonality: currentTemplate.designMetadata.brandPersonality,
         targetEmotion: currentTemplate.designMetadata.targetEmotion,
-        industryContext: currentTemplate.designMetadata.industry as any || 'saas',
+        industryContext,
       };
 
       // Generate new template
@@ -101,18 +105,18 @@ export const useProfessionalAITemplate = () => {
 
       // Merge only the regenerated aspect
       let updatedTemplate = { ...currentTemplate };
-      if (aspect === 'colors' && newTemplate.designTokens) {
+      if (aspect === 'colors' && newTemplate.designTokens && currentTemplate.designTokens) {
         updatedTemplate.designTokens = {
           ...currentTemplate.designTokens,
           colors: newTemplate.designTokens.colors,
-        } as any;
+        };
       } else if (aspect === 'layout') {
         updatedTemplate.frames = newTemplate.frames;
-      } else if (aspect === 'typography' && newTemplate.designTokens) {
+      } else if (aspect === 'typography' && newTemplate.designTokens && currentTemplate.designTokens) {
         updatedTemplate.designTokens = {
           ...currentTemplate.designTokens,
           typography: newTemplate.designTokens.typography,
-        } as any;
+        };
       }
 
       updatedTemplate.updatedAt = new Date().toISOString();

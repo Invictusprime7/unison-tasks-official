@@ -26,7 +26,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useProfessionalAITemplate } from '@/hooks/useProfessionalAITemplate';
 import { Sparkles, Loader2, Palette, Layout, Type, Zap } from 'lucide-react';
-import type { ProfessionalAIPrompt } from '@/schemas/professionalTemplateSchema';
+import type { ProfessionalAIPrompt, IndustryContext, DesignStyle, ColorHarmonyType, BrandPersonality, TargetEmotion } from '@/schemas/professionalTemplateSchema';
 
 interface ProfessionalAITemplateGeneratorProps {
   open: boolean;
@@ -101,8 +101,8 @@ export const ProfessionalAITemplateGenerator = ({
                 <Label htmlFor="industryContext">Industry *</Label>
                 <Select
                   value={formData.industryContext}
-                  onValueChange={(value: any) => 
-                    setFormData({ ...formData, industryContext: value })
+                  onValueChange={(value) => 
+                    setFormData({ ...formData, industryContext: value as IndustryContext })
                   }
                 >
                   <SelectTrigger id="industryContext">
@@ -148,8 +148,8 @@ export const ProfessionalAITemplateGenerator = ({
                 <Label htmlFor="designStyle">Design Style</Label>
                 <Select
                   value={formData.designStyle}
-                  onValueChange={(value: any) => 
-                    setFormData({ ...formData, designStyle: value })
+                  onValueChange={(value) => 
+                    setFormData({ ...formData, designStyle: value as DesignStyle })
                   }
                 >
                   <SelectTrigger id="designStyle">
@@ -181,8 +181,8 @@ export const ProfessionalAITemplateGenerator = ({
                 <Label htmlFor="colorHarmony">Color Harmony</Label>
                 <Select
                   value={formData.colorHarmony}
-                  onValueChange={(value: any) => 
-                    setFormData({ ...formData, colorHarmony: value })
+                  onValueChange={(value) => 
+                    setFormData({ ...formData, colorHarmony: value as ColorHarmonyType })
                   }
                 >
                   <SelectTrigger id="colorHarmony">
@@ -213,8 +213,8 @@ export const ProfessionalAITemplateGenerator = ({
                 <Label htmlFor="brandPersonality">Brand Personality</Label>
                 <Select
                   value={formData.brandPersonality}
-                  onValueChange={(value: any) => 
-                    setFormData({ ...formData, brandPersonality: value })
+                  onValueChange={(value) => 
+                    setFormData({ ...formData, brandPersonality: value as BrandPersonality })
                   }
                 >
                   <SelectTrigger id="brandPersonality">
@@ -236,8 +236,8 @@ export const ProfessionalAITemplateGenerator = ({
                 <Label htmlFor="targetEmotion">Target Emotion</Label>
                 <Select
                   value={formData.targetEmotion}
-                  onValueChange={(value: any) => 
-                    setFormData({ ...formData, targetEmotion: value })
+                  onValueChange={(value) => 
+                    setFormData({ ...formData, targetEmotion: value as TargetEmotion })
                   }
                 >
                   <SelectTrigger id="targetEmotion">

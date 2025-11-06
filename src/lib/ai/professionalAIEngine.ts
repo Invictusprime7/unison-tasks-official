@@ -467,7 +467,7 @@ export class ProfessionalAIEngine {
       designTokens: {
         ...designSystem,
         ...styleTokens,
-      } as DesignTokens,
+      },
       frames,
       qualityMetrics,
       version: '2.0.0',

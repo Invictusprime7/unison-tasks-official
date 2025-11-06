@@ -268,24 +268,27 @@ export function generateLineHeights(): LineHeightScale {
 }
 
 /**
+ * Golden ratio constant for modular scale calculations
+ */
+const GOLDEN_RATIO = 1.618;
+
+/**
  * Generate modular scale based on golden ratio
  */
 export function generateModularScale(base = 16): ModularScale {
-  const ratio = 1.618; // Golden ratio
-  
   return {
-    '3xs': Math.round((base / Math.pow(ratio, 3)) * 100) / 100,
-    '2xs': Math.round((base / Math.pow(ratio, 2)) * 100) / 100,
-    xs: Math.round((base / ratio) * 100) / 100,
+    '3xs': Math.round((base / Math.pow(GOLDEN_RATIO, 3)) * 100) / 100,
+    '2xs': Math.round((base / Math.pow(GOLDEN_RATIO, 2)) * 100) / 100,
+    xs: Math.round((base / GOLDEN_RATIO) * 100) / 100,
     sm: Math.round((base / 1.25) * 100) / 100,
     md: base,
     lg: Math.round((base * 1.25) * 100) / 100,
-    xl: Math.round((base * ratio) * 100) / 100,
-    '2xl': Math.round((base * Math.pow(ratio, 2)) * 100) / 100,
-    '3xl': Math.round((base * Math.pow(ratio, 3)) * 100) / 100,
-    '4xl': Math.round((base * Math.pow(ratio, 4)) * 100) / 100,
-    '5xl': Math.round((base * Math.pow(ratio, 5)) * 100) / 100,
-    '6xl': Math.round((base * Math.pow(ratio, 6)) * 100) / 100,
+    xl: Math.round((base * GOLDEN_RATIO) * 100) / 100,
+    '2xl': Math.round((base * Math.pow(GOLDEN_RATIO, 2)) * 100) / 100,
+    '3xl': Math.round((base * Math.pow(GOLDEN_RATIO, 3)) * 100) / 100,
+    '4xl': Math.round((base * Math.pow(GOLDEN_RATIO, 4)) * 100) / 100,
+    '5xl': Math.round((base * Math.pow(GOLDEN_RATIO, 5)) * 100) / 100,
+    '6xl': Math.round((base * Math.pow(GOLDEN_RATIO, 6)) * 100) / 100,
   };
 }
 
