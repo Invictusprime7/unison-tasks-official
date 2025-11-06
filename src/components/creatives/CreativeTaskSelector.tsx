@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Palette, FileText, Video, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { WebDesignKit } from "./WebDesignKit";
+import type { AIGeneratedTemplate } from "@/types/template";
 
 interface CreativeTaskSelectorProps {
   open: boolean;
@@ -15,8 +16,21 @@ export const CreativeTaskSelector = ({ open, onOpenChange }: CreativeTaskSelecto
   const navigate = useNavigate();
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
 
-  const handleTemplateGenerated = (code: string, name: string, aesthetic: string) => {
+  const handleTemplateGenerated = (template: AIGeneratedTemplate) => {
     // Navigate to web builder with the generated template
+    navigate("/web-builder", {
+      state: {
+        generatedTemplate: template,
+        templateName: template.name,
+        aesthetic: template.description,
+      },
+    });
+    setSelectedTask(null);
+    onOpenChange(false);
+  };
+
+  const handleCodeGenerated = (code: string, name: string, aesthetic: string) => {
+    // Navigate to web builder with the generated code
     navigate("/web-builder", {
       state: {
         generatedCode: code,
@@ -66,6 +80,7 @@ export const CreativeTaskSelector = ({ open, onOpenChange }: CreativeTaskSelecto
         onOpenChange={onOpenChange}
         onBack={() => setSelectedTask(null)}
         onTemplateGenerated={handleTemplateGenerated}
+        onCodeGenerated={handleCodeGenerated}
       />
     );
   }

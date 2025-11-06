@@ -27,6 +27,11 @@ import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
 import { webBlocks } from "./web-builder/webBlocks";
+import { InteractiveModeToggle } from "./web-builder/InteractiveModeToggle";
+import { InteractiveElementHighlight } from "./web-builder/InteractiveElementHighlight";
+import { InteractiveElementOverlay } from "./web-builder/InteractiveElementOverlay";
+import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
+import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
 import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel
@@ -113,6 +118,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [showPreview, setShowPreview] = useState(false);
   const [viewMode, setViewMode] = useState<'canvas' | 'code' | 'split'>('canvas');
+  const [isInteractiveMode, setIsInteractiveMode] = useState(false);
+  const [isInteractiveModeHelpOpen, setIsInteractiveModeHelpOpen] = useState(false);
   const [editorCode, setEditorCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
   const [previewCode, setPreviewCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -415,7 +422,38 @@ declare global {
       ...defaultWebBuilderShortcuts.toggleCode,
       action: () => setCodePreviewOpen(true),
     },
+    {
+      key: 'F1',
+      description: 'Show Interactive Mode Help',
+      action: () => setIsInteractiveModeHelpOpen(true),
+    },
   ]);
+
+  // Handle generated templates from navigation state (Web Design Kit)
+  useEffect(() => {
+    if (location.state?.generatedTemplate) {
+      const { generatedTemplate, templateName } = location.state;
+      console.log('[WebBuilder] Template received from route state:', generatedTemplate);
+      
+      // Ensure canvas is ready
+      if (!fabricCanvas) {
+        console.log('[WebBuilder] Canvas not ready, will process template when canvas is available');
+        return;
+      }
+
+      // Use template state to render the template
+      templateState.updateTemplate(generatedTemplate).then(() => {
+        console.log('[WebBuilder] ✅ Template successfully rendered from route state');
+        toast.success(`✨ Template "${templateName}" rendered to canvas!`);
+        setShowPreview(true);
+        // Clear the state to prevent re-loading
+        window.history.replaceState({}, document.title);
+      }).catch((error) => {
+        console.error('[WebBuilder] ❌ Failed to render template from route state:', error);
+        toast.error('Failed to render template: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      });
+    }
+  }, [location.state, fabricCanvas, templateState]);
 
   // Auto-adjust canvas height based on content
   const updateCanvasHeight = useCallback(() => {
@@ -797,6 +835,12 @@ declare global {
 
   return (
     <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#0a0a0a]">
+      {/* Interactive Element Highlighting Styles */}
+      <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />
+      
+      {/* Interactive Mode Global Utils */}
+      <InteractiveModeUtils isInteractiveMode={isInteractiveMode} />
+      
       {/* Top Toolbar */}
       <div className="h-14 bg-[#1a1a1a] border-b border-white/10 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
@@ -1028,6 +1072,26 @@ declare global {
               </Button>
             </div>
 
+            {/* Interactive Mode Toggle - Only show for preview modes */}
+            {(viewMode === 'canvas' || viewMode === 'split') && (
+              <div className="flex items-center gap-2">
+                <InteractiveModeToggle
+                  isInteractiveMode={isInteractiveMode}
+                  onToggle={setIsInteractiveMode}
+                  className="flex-shrink-0"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsInteractiveModeHelpOpen(true)}
+                  className="h-8 text-white/70 hover:text-white hover:bg-white/10"
+                  title="Show Interactive Mode Help (F1)"
+                >
+                  <Zap className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
             <span className="text-sm text-white/50">{getCanvasWidth()}×{getCanvasHeight()}px (dynamic)</span>
           </div>
 
@@ -1085,7 +1149,13 @@ declare global {
             
             {/* Canvas Mode - AI Live Preview Only */}
             {viewMode === 'canvas' && (
-              <div className="w-full h-full flex flex-col bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl">
+              <div className="w-full h-full flex flex-col bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
+                {/* Interactive Elements Overlay */}
+                <InteractiveElementOverlay
+                  isInteractiveMode={isInteractiveMode}
+                  livePreviewRef={livePreviewRef}
+                />
+                
                 <div className="h-12 bg-muted border-b flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-muted-foreground" />
@@ -1134,6 +1204,7 @@ declare global {
                     autoRefresh={true}
                     className="w-full h-full"
                     enableSelection={true}
+                    isInteractiveMode={isInteractiveMode}
                     onElementSelect={(elementData) => {
                       console.log('[WebBuilder] HTML Element selected:', elementData);
                       setSelectedHTMLElement(elementData);
@@ -1224,7 +1295,13 @@ declare global {
             {viewMode === 'split' && (
               <div className="w-full h-full flex gap-4">
                 {/* Live Preview - Main viewing area */}
-                <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl">
+                <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
+                  {/* Interactive Elements Overlay */}
+                  <InteractiveElementOverlay
+                    isInteractiveMode={isInteractiveMode}
+                    livePreviewRef={livePreviewRef}
+                  />
+                  
                   <div className="h-10 bg-muted border-b flex items-center px-4">
                     <Eye className="w-4 h-4 text-muted-foreground mr-2" />
                     <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
@@ -1236,6 +1313,7 @@ declare global {
                       autoRefresh={true}
                       className="w-full h-full"
                       enableSelection={true}
+                      isInteractiveMode={isInteractiveMode}
                       onElementSelect={(elementData) => {
                         console.log('[WebBuilder] HTML Element selected:', elementData);
                         setSelectedHTMLElement(elementData);
@@ -1638,6 +1716,12 @@ declare global {
       />
 
 
+
+      {/* Interactive Mode Help Dialog */}
+      <InteractiveModeHelp
+        isOpen={isInteractiveModeHelpOpen}
+        onClose={() => setIsInteractiveModeHelpOpen(false)}
+      />
 
       {/* Template Feedback Dialog */}
       {feedbackOpen && lastGenerationId && (

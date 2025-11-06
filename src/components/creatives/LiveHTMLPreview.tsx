@@ -26,6 +26,7 @@ interface LiveHTMLPreviewProps {
   autoRefresh?: boolean;
   onElementSelect?: (elementData: ElementData) => void;
   enableSelection?: boolean;
+  isInteractiveMode?: boolean;
 }
 
 export interface LiveHTMLPreviewHandle {
@@ -39,6 +40,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
   autoRefresh = true,
   onElementSelect,
   enableSelection = true,
+  isInteractiveMode = false,
 }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -61,15 +63,18 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
   }));
 
 
-  // Setup click handlers for element selection
+  // Setup click handlers for element selection or interactive mode
   useEffect(() => {
-    if (!enableSelection || !iframeRef.current) return;
+    if (!iframeRef.current) return;
 
     const iframe = iframeRef.current;
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
     if (!iframeDoc) return;
 
     const handleMouseOver = (e: MouseEvent) => {
+      // Only show hover effects in edit mode
+      if (isInteractiveMode) return;
+      
       const target = e.target as HTMLElement;
       if (target && target !== iframeDoc.body && target !== iframeDoc.documentElement) {
         if (hoveredElement && hoveredElement !== target) {
@@ -81,6 +86,9 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
     };
 
     const handleMouseOut = (e: MouseEvent) => {
+      // Only remove hover effects in edit mode
+      if (isInteractiveMode) return;
+      
       const target = e.target as HTMLElement;
       if (target && hoveredElement === target) {
         removeHighlight(target);
@@ -89,30 +97,52 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
     };
 
     const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      if (isInteractiveMode) {
+        // Interactive mode: Allow natural click behavior for CTAs, links, buttons
+        if (target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button')) {
+          // Let the natural click behavior happen for interactive elements
+          console.log('[LiveHTMLPreview] Interactive mode: allowing natural click for', target.tagName);
+          return;
+        }
+        // For non-interactive elements, prevent default to avoid unwanted behavior
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // Edit mode: Prevent default and handle element selection
       e.preventDefault();
       e.stopPropagation();
       
-      const target = e.target as HTMLElement;
-      if (target && target !== iframeDoc.body && target !== iframeDoc.documentElement) {
-        // Remove previous selection highlight
-        if (selectedElementRef.current && selectedElementRef.current !== target) {
-          removeHighlight(selectedElementRef.current);
-        }
-        
-        const elementData = getSelectedElementData(target);
-        console.log('[LiveHTMLPreview] Element selected:', elementData);
-        onElementSelect?.(elementData);
-        
-        // Store reference to selected element and keep it highlighted
-        selectedElementRef.current = target;
-        highlightElement(target, '#10b981');
+      if (!enableSelection || !target || target === iframeDoc.body || target === iframeDoc.documentElement) {
+        return;
       }
+      
+      // Remove previous selection highlight
+      if (selectedElementRef.current && selectedElementRef.current !== target) {
+        removeHighlight(selectedElementRef.current);
+      }
+      
+      const elementData = getSelectedElementData(target);
+      console.log('[LiveHTMLPreview] Element selected for editing:', elementData);
+      onElementSelect?.(elementData);
+      
+      // Store reference to selected element and keep it highlighted
+      selectedElementRef.current = target;
+      highlightElement(target, '#10b981');
     };
 
     // Add event listeners to iframe document
     iframeDoc.addEventListener('mouseover', handleMouseOver);
     iframeDoc.addEventListener('mouseout', handleMouseOut);
     iframeDoc.addEventListener('click', handleClick);
+
+    // Set cursor style based on mode
+    if (iframeDoc.body) {
+      iframeDoc.body.style.cursor = isInteractiveMode ? 'default' : 'pointer';
+    }
 
     return () => {
       if (iframeDoc) {
@@ -121,7 +151,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
         iframeDoc.removeEventListener('click', handleClick);
       }
     };
-  }, [enableSelection, onElementSelect, hoveredElement]);
+  }, [enableSelection, onElementSelect, hoveredElement, isInteractiveMode]);
 
   const renderPreview = useCallback(() => {
     // Guard against undefined or empty code
@@ -208,7 +238,9 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
         {status === 'success' && (
           <div className="bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md border flex items-center gap-1.5 text-xs">
             <CheckCircle2 className="w-3 h-3 text-green-500" />
-            <span className="text-muted-foreground">Live</span>
+            <span className="text-muted-foreground">
+              {isInteractiveMode ? 'Interactive' : 'Live'}
+            </span>
           </div>
         )}
         {status === 'error' && (
@@ -284,7 +316,39 @@ function buildHTMLDocument(html: string, css: string, javascript: string): strin
       padding: 20px;
     }
     img { max-width: 100%; height: auto; }
-    button { cursor: pointer; font-family: inherit; }
+    button { 
+      cursor: pointer; 
+      font-family: inherit; 
+      transition: all 0.2s ease;
+      border: none;
+      outline: none;
+    }
+    button:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    button:active { 
+      transform: translateY(0);
+    }
+    a { 
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    a:hover { 
+      transform: translateY(-1px);
+    }
+    a[href="#"], a[href=""] {
+      cursor: pointer;
+    }
+    .cta-button, .btn-primary, .btn, [class*="button"] {
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-button:hover, .btn-primary:hover, .btn:hover, [class*="button"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
     #root { width: 100%; min-height: 100vh; }
     ${safeCss}
   </style>
@@ -299,9 +363,45 @@ function buildHTMLDocument(html: string, css: string, javascript: string): strin
       document.body.insertBefore(div, document.body.firstChild);
     });
     document.addEventListener('DOMContentLoaded', function() {
+      // Enhanced interactive behavior for CTAs and buttons
       document.querySelectorAll('a').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-          if (!link.href || link.href === '#') e.preventDefault();
+        if (!link.href || link.href === '#') {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Call-to-action clicked:', link.textContent?.trim());
+            // Show visual feedback for CTA clicks
+            link.style.transform = 'scale(0.95)';
+            setTimeout(() => link.style.transform = 'scale(1)', 150);
+          });
+        }
+      });
+      
+      document.querySelectorAll('button').forEach(function(button) {
+        button.addEventListener('click', function(e) {
+          console.log('Button clicked:', button.textContent?.trim());
+          // Show visual feedback for button clicks
+          button.style.transform = 'scale(0.95)';
+          setTimeout(() => button.style.transform = 'scale(1)', 150);
+          
+          // Add ripple effect for better UX
+          const ripple = document.createElement('div');
+          const rect = button.getBoundingClientRect();
+          ripple.style.cssText = 'position:absolute;border-radius:50%;background:rgba(255,255,255,0.5);transform:scale(0);animation:ripple 0.6s linear;pointer-events:none;';
+          ripple.style.width = ripple.style.height = Math.max(rect.width, rect.height) + 'px';
+          ripple.style.left = (e.clientX - rect.left - Math.max(rect.width, rect.height) / 2) + 'px';
+          ripple.style.top = (e.clientY - rect.top - Math.max(rect.width, rect.height) / 2) + 'px';
+          
+          if (!document.querySelector('#ripple-style')) {
+            const style = document.createElement('style');
+            style.id = 'ripple-style';
+            style.textContent = '@keyframes ripple { to { transform: scale(4); opacity: 0; } }';
+            document.head.appendChild(style);
+          }
+          
+          button.style.position = 'relative';
+          button.style.overflow = 'hidden';
+          button.appendChild(ripple);
+          setTimeout(() => ripple.remove(), 600);
         });
       });
     });
