@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { Canvas as FabricCanvas, Rect, Textbox } from 'fabric';
 import { supabase } from "@/integrations/supabase/client";
-import MonacoEditor from './MonacoEditor';
+// Lazy load Monaco Editor for better initial load time
+const MonacoEditor = lazy(() => import('./MonacoEditor'));
 import { executeCanvasCode, getCanvasCodeExample } from '@/utils/canvasCodeRunner';
 import { parseComponentCode, renderComponentToCanvas, generateHTMLFile, generateReactComponent } from '@/utils/componentRenderer';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import {
 import {
   detectPatternFromSupabase,
   enhancePromptWithSchema,
+  fetchDesignSchemas,
   type DesignSchema
 } from '@/services/designSchemaService';
 
@@ -75,6 +77,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const [showPatternGuide, setShowPatternGuide] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Prefetch design schemas on mount for faster pattern detection
+  useEffect(() => {
+    fetchDesignSchemas().catch(err => 
+      console.error('[AICodeAssistant] Failed to prefetch schemas:', err)
+    );
+  }, []);
 
   // Clear messages when component unmounts or remounts to prevent stale context
   useEffect(() => {
@@ -366,6 +375,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
       let assistantContent = '';
       let toolCallData: any = null;
       let toolCallArgs = '';
+      let updateCounter = 0;
+      const UPDATE_INTERVAL = 5; // Update UI every N chunks for better performance
 
       if (reader) {
         let buffer = '';
@@ -386,17 +397,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
               
               try {
                 const parsed = JSON.parse(data);
-                console.log('[AICodeAssistant] Parsed delta:', parsed);
                 
                 // Handle tool calls - accumulate arguments
                 if (parsed.choices?.[0]?.delta?.tool_calls) {
                   const toolCalls = parsed.choices[0].delta.tool_calls;
                   for (const toolCall of toolCalls) {
                     if (toolCall.function?.name === 'render_component') {
-                      console.log('[AICodeAssistant] Found render_component tool call');
                       if (toolCall.function.arguments) {
                         toolCallArgs += toolCall.function.arguments;
-                        console.log('[AICodeAssistant] Accumulated args:', toolCallArgs);
                       }
                     }
                   }
@@ -408,7 +416,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
                     toolCallData = JSON.parse(toolCallArgs);
                     console.log('[AICodeAssistant] Parsed complete tool call:', toolCallData);
                   } catch (e) {
-                    console.error('[AICodeAssistant] Failed to parse complete tool call:', e, toolCallArgs);
+                    console.error('[AICodeAssistant] Failed to parse complete tool call:', e);
                   }
                 }
                 
@@ -416,38 +424,43 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
                 const content = parsed.choices?.[0]?.delta?.content;
                 if (content) {
                   assistantContent += content;
-                  const hasCode = assistantContent.includes('```');
+                  updateCounter++;
                   
-                  // Extract code from markdown code blocks and send to parent
-                  if (hasCode && onCodeGenerated) {
-                    const codeMatch = assistantContent.match(/```(?:html|jsx|tsx|javascript)?\n([\s\S]*?)```/);
-                    if (codeMatch && codeMatch[1]) {
-                      onCodeGenerated(codeMatch[1].trim());
-                    }
-                  }
-                  
-                  setMessages(prev => {
-                    const newMessages = [...prev];
-                    const lastMessage = newMessages[newMessages.length - 1];
+                  // Throttle UI updates for better performance
+                  if (updateCounter % UPDATE_INTERVAL === 0 || parsed.choices?.[0]?.finish_reason) {
+                    const hasCode = assistantContent.includes('```');
                     
-                    if (lastMessage?.role === 'assistant') {
-                      newMessages[newMessages.length - 1] = {
-                        ...lastMessage,
-                        content: assistantContent,
-                        hasCode,
-                        componentData: toolCallData,
-                      };
-                    } else {
-                      newMessages.push({
-                        role: 'assistant',
-                        content: assistantContent,
-                        timestamp: new Date(),
-                        hasCode,
-                        componentData: toolCallData,
-                      });
+                    // Extract code from markdown code blocks and send to parent
+                    if (hasCode && onCodeGenerated) {
+                      const codeMatch = assistantContent.match(/```(?:html|jsx|tsx|javascript)?\n([\s\S]*?)```/);
+                      if (codeMatch && codeMatch[1]) {
+                        onCodeGenerated(codeMatch[1].trim());
+                      }
                     }
-                    return newMessages;
-                  });
+                    
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      const lastMessage = newMessages[newMessages.length - 1];
+                      
+                      if (lastMessage?.role === 'assistant') {
+                        newMessages[newMessages.length - 1] = {
+                          ...lastMessage,
+                          content: assistantContent,
+                          hasCode,
+                          componentData: toolCallData,
+                        };
+                      } else {
+                        newMessages.push({
+                          role: 'assistant',
+                          content: assistantContent,
+                          timestamp: new Date(),
+                          hasCode,
+                          componentData: toolCallData,
+                        });
+                      }
+                      return newMessages;
+                    });
+                  }
                 }
               } catch (e) {
                 console.error('[AICodeAssistant] Parse error:', e);
@@ -804,30 +817,36 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
                                 </div>
                               </div>
                               <div className="max-h-[400px] overflow-auto">
-                                <MonacoEditor
-                                  height="auto"
-                                  defaultLanguage={lang || 'typescript'}
-                                  language={lang || 'typescript'}
-                                  value={codeContent}
-                                  theme="vs-dark"
-                                  options={{
-                                    readOnly: true,
-                                    minimap: { enabled: false },
-                                    fontSize: 13,
-                                    lineNumbers: 'on',
-                                    scrollBeyondLastLine: false,
-                                    automaticLayout: true,
-                                    wordWrap: 'on',
-                                    padding: { top: 12, bottom: 12 },
-                                    scrollbar: {
-                                      vertical: 'auto',
-                                      horizontal: 'auto',
-                                    },
-                                    renderLineHighlight: 'none',
-                                    contextmenu: false,
-                                  }}
-                                  loading={null}
-                                />
+                                <Suspense fallback={
+                                  <div className="flex items-center justify-center p-8">
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                  </div>
+                                }>
+                                  <MonacoEditor
+                                    height="auto"
+                                    defaultLanguage={lang || 'typescript'}
+                                    language={lang || 'typescript'}
+                                    value={codeContent}
+                                    theme="vs-dark"
+                                    options={{
+                                      readOnly: true,
+                                      minimap: { enabled: false },
+                                      fontSize: 13,
+                                      lineNumbers: 'on',
+                                      scrollBeyondLastLine: false,
+                                      automaticLayout: true,
+                                      wordWrap: 'on',
+                                      padding: { top: 12, bottom: 12 },
+                                      scrollbar: {
+                                        vertical: 'auto',
+                                        horizontal: 'auto',
+                                      },
+                                      renderLineHighlight: 'none',
+                                      contextmenu: false,
+                                    }}
+                                    loading={null}
+                                  />
+                                </Suspense>
                               </div>
                             </div>
                           );

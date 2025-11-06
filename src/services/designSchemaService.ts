@@ -1,5 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Cache for design schemas to avoid repeated fetches
+let schemasCache: DesignSchema[] | null = null;
+let cacheTimestamp: number | null = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export interface DesignSchema {
   id: string;
   pattern_name: string;
@@ -39,9 +44,17 @@ export interface DesignSchema {
 }
 
 /**
- * Fetch all active design schemas from Supabase
+ * Fetch all active design schemas from Supabase with caching
  */
 export async function fetchDesignSchemas(): Promise<DesignSchema[]> {
+  // Return cached data if still valid
+  const now = Date.now();
+  if (schemasCache && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
+    console.log('[designSchemaService] Using cached schemas');
+    return schemasCache;
+  }
+
+  console.log('[designSchemaService] Fetching fresh schemas from Supabase');
   const { data, error } = await supabase
     .from("design_schemas")
     .select("*")
@@ -50,10 +63,22 @@ export async function fetchDesignSchemas(): Promise<DesignSchema[]> {
 
   if (error) {
     console.error("Error fetching design schemas:", error);
-    return [];
+    return schemasCache || []; // Return cached data on error, or empty array
   }
 
-  return data as DesignSchema[];
+  // Update cache
+  schemasCache = data as DesignSchema[];
+  cacheTimestamp = now;
+
+  return schemasCache;
+}
+
+/**
+ * Clear the schemas cache (useful after updates)
+ */
+export function clearSchemasCache(): void {
+  schemasCache = null;
+  cacheTimestamp = null;
 }
 
 /**
@@ -80,6 +105,7 @@ export async function getDesignSchemaByKeyword(
 
 /**
  * Detect design pattern from user prompt using Supabase schemas
+ * Optimized with caching and early termination
  */
 export async function detectPatternFromSupabase(
   prompt: string
@@ -87,12 +113,16 @@ export async function detectPatternFromSupabase(
   const lowerPrompt = prompt.toLowerCase();
   const schemas = await fetchDesignSchemas();
 
-  // Find first matching schema based on keywords
+  // Optimized: Find first matching schema (schemas are already priority-sorted)
   for (const schema of schemas) {
-    for (const keyword of schema.keywords) {
-      if (lowerPrompt.includes(keyword.toLowerCase())) {
-        return schema;
-      }
+    // Check if any keyword matches (early termination on first match)
+    const hasMatch = schema.keywords.some(keyword => 
+      lowerPrompt.includes(keyword.toLowerCase())
+    );
+    
+    if (hasMatch) {
+      console.log('[designSchemaService] Pattern matched:', schema.pattern_name);
+      return schema;
     }
   }
 
