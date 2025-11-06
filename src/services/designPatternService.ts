@@ -723,120 +723,43 @@ export function enhancePromptWithPattern(prompt: string, pattern: DesignPattern)
   const patternName = pattern.charAt(0).toUpperCase() + pattern.slice(1);
   
   let enhancedPrompt = `${prompt}\n\n`;
-  enhancedPrompt += `IMPORTANT: Apply ${patternName} design pattern with these specifications:\n\n`;
-  enhancedPrompt += `Colors:\n`;
-  enhancedPrompt += `- Primary: ${styles.colors.primary}\n`;
-  enhancedPrompt += `- Secondary: ${styles.colors.secondary}\n`;
-  enhancedPrompt += `- Accent: ${styles.colors.accent}\n`;
-  enhancedPrompt += `- Background: ${styles.colors.background}\n`;
-  enhancedPrompt += `- Text: ${styles.colors.text}\n\n`;
+  enhancedPrompt += `DESIGN STYLE: Apply ${patternName} aesthetic with these color references:\n`;
+  enhancedPrompt += `Primary: ${styles.colors.primary}, Secondary: ${styles.colors.secondary}, Accent: ${styles.colors.accent}\n`;
+  enhancedPrompt += `Background: ${styles.colors.background}, Surface: ${styles.colors.surface}\n\n`;
   
-  enhancedPrompt += `Shadows:\n`;
-  enhancedPrompt += `- Light: ${styles.shadows.light}\n`;
-  enhancedPrompt += `- Dark: ${styles.shadows.dark}\n`;
-  if (styles.shadows.glow !== 'none') {
-    enhancedPrompt += `- Glow: ${styles.shadows.glow}\n`;
-  }
-  enhancedPrompt += `\n`;
+  enhancedPrompt += `CREATIVE FREEDOM: You have complete creative control. Use modern design principles:\n`;
+  enhancedPrompt += `- Flexbox/Grid layouts with Tailwind CSS (flex, grid, gap-*, justify-*, items-*)\n`;
+  enhancedPrompt += `- Modern spacing (p-*, m-*, space-x-*, space-y-*)\n`;
+  enhancedPrompt += `- Responsive utilities (sm:, md:, lg:, xl:, 2xl:)\n`;
+  enhancedPrompt += `- Contemporary effects (shadow-*, rounded-*, backdrop-blur-*, opacity-*)\n`;
+  enhancedPrompt += `- Smooth transitions (transition-all, duration-*, ease-*)\n`;
+  enhancedPrompt += `- Modern typography (font-sans, font-serif, text-*, leading-*, tracking-*)\n\n`;
   
-  enhancedPrompt += `Effects:\n`;
-  if (styles.effects.blur !== '0px') {
-    enhancedPrompt += `- Backdrop Blur: ${styles.effects.blur}\n`;
-  }
-  enhancedPrompt += `- Border: ${styles.effects.border}\n\n`;
+  enhancedPrompt += `IMAGE INTEGRATION: Use vanilla JavaScript image handling:\n`;
+  enhancedPrompt += `- <img> elements with proper alt text and loading="lazy"\n`;
+  enhancedPrompt += `- Background images via inline styles or Tailwind bg-* utilities\n`;
+  enhancedPrompt += `- Placeholder images from https://images.unsplash.com/photo-* or https://via.placeholder.com\n`;
+  enhancedPrompt += `- Object-fit utilities (object-cover, object-contain, object-fill)\n`;
+  enhancedPrompt += `- Aspect ratio utilities (aspect-square, aspect-video, aspect-[16/9])\n\n`;
   
-  enhancedPrompt += `Gradients:\n`;
-  enhancedPrompt += `- Primary: ${styles.gradients.primary}\n`;
-  enhancedPrompt += `- Secondary: ${styles.gradients.secondary}\n`;
-  enhancedPrompt += `- Accent: ${styles.gradients.accent}\n\n`;
+  enhancedPrompt += `INDUSTRY STANDARDS:\n`;
+  enhancedPrompt += `- Semantic HTML5 (header, nav, main, section, article, aside, footer)\n`;
+  enhancedPrompt += `- BEM methodology for custom classes if needed\n`;
+  enhancedPrompt += `- ARIA labels for accessibility (aria-label, role, aria-labelledby)\n`;
+  enhancedPrompt += `- Mobile-first responsive design approach\n`;
+  enhancedPrompt += `- Performance optimizations (will-change, transform, translate)\n\n`;
   
-  // Add pattern-specific guidelines
-  switch (pattern) {
-    case 'neomorphic':
-      enhancedPrompt += `Neomorphic Guidelines:\n`;
-      enhancedPrompt += `- Use subtle, soft shadows for depth\n`;
-      enhancedPrompt += `- Create raised and inset effects\n`;
-      enhancedPrompt += `- Keep borders minimal or none\n`;
-      enhancedPrompt += `- Use monochromatic color schemes\n`;
-      enhancedPrompt += `- Elements should appear to extrude from the background\n`;
-      break;
-    case 'cyberpunk':
-      enhancedPrompt += `Cyberpunk Guidelines:\n`;
-      enhancedPrompt += `- Use bright neon colors (cyan, magenta, yellow)\n`;
-      enhancedPrompt += `- Apply strong glow effects\n`;
-      enhancedPrompt += `- Dark, high-contrast backgrounds\n`;
-      enhancedPrompt += `- Sharp, angular shapes\n`;
-      enhancedPrompt += `- Technology/sci-fi aesthetic\n`;
-      break;
-    case 'gradient':
-      enhancedPrompt += `Gradient Guidelines:\n`;
-      enhancedPrompt += `- Use smooth color transitions\n`;
-      enhancedPrompt += `- Apply gradients to backgrounds and text\n`;
-      enhancedPrompt += `- Create depth with layered gradients\n`;
-      enhancedPrompt += `- Vibrant, eye-catching colors\n`;
-      enhancedPrompt += `- Modern, dynamic appearance\n`;
-      break;
-    case 'glassmorphism':
-      enhancedPrompt += `Glassmorphism Guidelines:\n`;
-      enhancedPrompt += `- Use backdrop blur for frosted glass effect\n`;
-      enhancedPrompt += `- Semi-transparent backgrounds\n`;
-      enhancedPrompt += `- Subtle borders with transparency\n`;
-      enhancedPrompt += `- Layered depth with blur\n`;
-      enhancedPrompt += `- Light, airy appearance\n`;
-      break;
-    case 'material-design':
-      enhancedPrompt += `Material Design Guidelines:\n`;
-      enhancedPrompt += `- Use elevation with subtle shadows\n`;
-      enhancedPrompt += `- Follow Google's design principles\n`;
-      enhancedPrompt += `- Bold colors with proper contrast\n`;
-      enhancedPrompt += `- Roboto font family\n`;
-      enhancedPrompt += `- Ripple effects on interactions\n`;
-      enhancedPrompt += `- 8dp grid system for spacing\n`;
-      break;
-    case 'workspace-ui':
-      enhancedPrompt += `Workspace UI Guidelines:\n`;
-      enhancedPrompt += `- Clean, productivity-focused design\n`;
-      enhancedPrompt += `- Light backgrounds with subtle shadows\n`;
-      enhancedPrompt += `- Google Workspace color palette\n`;
-      enhancedPrompt += `- Collaborative interface elements\n`;
-      enhancedPrompt += `- Document-centric layout\n`;
-      break;
-    case 'android-interface':
-      enhancedPrompt += `Android Interface Guidelines:\n`;
-      enhancedPrompt += `- Material Design for Android\n`;
-      enhancedPrompt += `- Floating Action Button (FAB) for primary actions\n`;
-      enhancedPrompt += `- App bar with navigation\n`;
-      enhancedPrompt += `- Card-based layouts\n`;
-      enhancedPrompt += `- Mobile-first responsive design\n`;
-      break;
-    case 'creative-portfolio':
-      enhancedPrompt += `Creative Portfolio Guidelines:\n`;
-      enhancedPrompt += `- Bold, artistic typography (Playfair Display)\n`;
-      enhancedPrompt += `- Visual hierarchy with large headings\n`;
-      enhancedPrompt += `- Purple/blue creative color scheme\n`;
-      enhancedPrompt += `- Showcase-focused layouts\n`;
-      enhancedPrompt += `- Gallery grids for projects\n`;
-      enhancedPrompt += `- Strong CTAs with accent colors\n`;
-      break;
-    case 'ecommerce':
-      enhancedPrompt += `E-commerce Guidelines:\n`;
-      enhancedPrompt += `- Product-centric design\n`;
-      enhancedPrompt += `- Clear pricing and CTAs\n`;
-      enhancedPrompt += `- Shopping cart prominence\n`;
-      enhancedPrompt += `- Trust-building elements\n`;
-      enhancedPrompt += `- Clean product showcases\n`;
-      enhancedPrompt += `- Easy navigation structure\n`;
-      break;
-    case 'landing-page':
-      enhancedPrompt += `Landing Page Guidelines:\n`;
-      enhancedPrompt += `- Strong hero section with headline\n`;
-      enhancedPrompt += `- Clear value proposition\n`;
-      enhancedPrompt += `- Feature highlights\n`;
-      enhancedPrompt += `- Multiple CTAs throughout\n`;
-      enhancedPrompt += `- Social proof elements\n`;
-      enhancedPrompt += `- Conversion-optimized layout\n`;
-      break;
-  }
+  enhancedPrompt += `MODERN PATTERNS:\n`;
+  enhancedPrompt += `- Card-based layouts with hover effects\n`;
+  enhancedPrompt += `- Hero sections with background images/gradients\n`;
+  enhancedPrompt += `- Grid galleries with responsive columns\n`;
+  enhancedPrompt += `- Sticky headers with blur effects\n`;
+  enhancedPrompt += `- Feature sections with icons/images\n`;
+  enhancedPrompt += `- CTA sections with strong visual hierarchy\n`;
+  enhancedPrompt += `- Testimonial carousels with fade effects\n\n`;
+  
+  enhancedPrompt += `Be creative and modern. Don't feel constrained by rigid templates.\n`;
+  enhancedPrompt += `Create beautiful, functional designs that follow current web design trends.\n`;
   
   return enhancedPrompt;
 }

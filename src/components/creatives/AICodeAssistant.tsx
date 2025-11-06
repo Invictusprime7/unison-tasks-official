@@ -42,6 +42,11 @@ import {
   enhancePromptWithPattern,
   type DesignPattern 
 } from '@/services/designPatternService';
+import {
+  detectPatternFromSupabase,
+  enhancePromptWithSchema,
+  type DesignSchema
+} from '@/services/designSchemaService';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -212,15 +217,32 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    // Detect design pattern from user input
-    const pattern = detectDesignPattern(input);
-    if (pattern) {
-      setDetectedPattern(pattern);
-      const styles = getPatternStyles(pattern);
-      toast({
-        title: `${pattern.charAt(0).toUpperCase() + pattern.slice(1)} Pattern Detected! 🎨`,
-        description: `Applying ${pattern} design styles to your request`,
-      });
+    // First try to detect pattern from Supabase schemas
+    let supabaseSchema: DesignSchema | null = null;
+    try {
+      supabaseSchema = await detectPatternFromSupabase(input);
+      if (supabaseSchema) {
+        toast({
+          title: `${supabaseSchema.pattern_name.charAt(0).toUpperCase() + supabaseSchema.pattern_name.slice(1)} Pattern Detected! 🎨`,
+          description: supabaseSchema.description,
+        });
+      }
+    } catch (error) {
+      console.error('[AICodeAssistant] Supabase pattern detection error:', error);
+    }
+
+    // Fallback to local pattern detection if Supabase fails
+    let pattern: DesignPattern | null = null;
+    if (!supabaseSchema) {
+      pattern = detectDesignPattern(input);
+      if (pattern) {
+        setDetectedPattern(pattern);
+        const styles = getPatternStyles(pattern);
+        toast({
+          title: `${pattern.charAt(0).toUpperCase() + pattern.slice(1)} Pattern Detected! 🎨`,
+          description: `Applying ${pattern} design styles to your request`,
+        });
+      }
     }
 
     const userMessage: Message = {
@@ -233,17 +255,58 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     setInput('');
     setIsLoading(true);
 
-    // REMOVED: Message persistence to ensure fresh AI iterations with new schema
-
     try {
-      // Enhance prompt with pattern context if detected
+      // Enhance prompt based on detection method
+      let enhancedContent = userMessage.content;
+      
+      if (supabaseSchema) {
+        // Use Supabase schema for enhancement
+        enhancedContent = enhancePromptWithSchema(userMessage.content, supabaseSchema);
+      } else if (pattern) {
+        // Fallback to local pattern enhancement
+        enhancedContent = enhancePromptWithPattern(userMessage.content, pattern);
+      } else {
+        // No pattern detected - give AI maximum creative freedom
+        enhancedContent = `${userMessage.content}\n\n`;
+        enhancedContent += `CREATIVE FREEDOM: Design with complete creative control using modern web standards:\n\n`;
+        enhancedContent += `LAYOUT & STYLING:\n`;
+        enhancedContent += `- Use Tailwind CSS utilities (flex, grid, gap-4, p-6, rounded-lg, shadow-xl)\n`;
+        enhancedContent += `- Modern Flexbox/Grid patterns for responsive layouts\n`;
+        enhancedContent += `- Smooth transitions and hover effects (transition-all, hover:scale-105)\n`;
+        enhancedContent += `- Contemporary color schemes with gradients\n`;
+        enhancedContent += `- Mobile-first responsive design (sm:, md:, lg:, xl: breakpoints)\n\n`;
+        
+        enhancedContent += `IMAGES & MEDIA:\n`;
+        enhancedContent += `- Use <img> tags with loading="lazy" for performance\n`;
+        enhancedContent += `- Unsplash for placeholder images: https://images.unsplash.com/photo-[id]?w=800&q=80\n`;
+        enhancedContent += `- Background images with Tailwind: bg-[url('...')] bg-cover bg-center\n`;
+        enhancedContent += `- Object-fit utilities: object-cover, object-contain\n`;
+        enhancedContent += `- Aspect ratios: aspect-video, aspect-square\n\n`;
+        
+        enhancedContent += `CODE STANDARDS:\n`;
+        enhancedContent += `- Semantic HTML5 (header, nav, main, section, article, footer)\n`;
+        enhancedContent += `- ARIA accessibility (aria-label, role attributes)\n`;
+        enhancedContent += `- Vanilla JavaScript for interactions (event listeners, DOM manipulation)\n`;
+        enhancedContent += `- Performance optimizations (transform, will-change)\n\n`;
+        
+        enhancedContent += `MODERN COMPONENTS:\n`;
+        enhancedContent += `- Hero sections with full-height backgrounds\n`;
+        enhancedContent += `- Card grids with hover animations\n`;
+        enhancedContent += `- Sticky navigation with backdrop blur\n`;
+        enhancedContent += `- Feature showcases with icons/images\n`;
+        enhancedContent += `- Call-to-action sections with gradients\n`;
+        enhancedContent += `- Gallery layouts with responsive columns\n\n`;
+        
+        enhancedContent += `Be innovative, modern, and creative. Follow current design trends and industry best practices.\n`;
+      }
+      
       const enhancedMessages = messages.map(m => ({ 
         role: m.role, 
         content: m.content 
       })).concat([
         { 
           role: userMessage.role, 
-          content: pattern ? enhancePromptWithPattern(userMessage.content, pattern) : userMessage.content
+          content: enhancedContent
         }
       ]);
 
