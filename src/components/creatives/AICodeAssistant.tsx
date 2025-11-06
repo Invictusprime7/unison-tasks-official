@@ -76,6 +76,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Clear messages when component unmounts or remounts to prevent stale context
+  useEffect(() => {
+    return () => {
+      setMessages([]);
+    };
+  }, []);
+
   // REMOVED: Conversation loading/persistence and learning features
   // to ensure fresh iterations with new design pattern schemas
 
@@ -219,9 +226,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
 
     // First try to detect pattern from Supabase schemas
     let supabaseSchema: DesignSchema | null = null;
+    let detectionMethod = 'creative'; // Track which method was used
+    
     try {
       supabaseSchema = await detectPatternFromSupabase(input);
       if (supabaseSchema) {
+        detectionMethod = 'supabase';
+        console.log('[AICodeAssistant] Supabase pattern detected:', supabaseSchema.pattern_name);
         toast({
           title: `${supabaseSchema.pattern_name.charAt(0).toUpperCase() + supabaseSchema.pattern_name.slice(1)} Pattern Detected! 🎨`,
           description: supabaseSchema.description,
@@ -229,6 +240,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
       }
     } catch (error) {
       console.error('[AICodeAssistant] Supabase pattern detection error:', error);
+      // Continue with fallback detection
     }
 
     // Fallback to local pattern detection if Supabase fails
@@ -236,14 +248,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     if (!supabaseSchema) {
       pattern = detectDesignPattern(input);
       if (pattern) {
+        detectionMethod = 'local';
         setDetectedPattern(pattern);
-        const styles = getPatternStyles(pattern);
+        console.log('[AICodeAssistant] Local pattern detected:', pattern);
         toast({
           title: `${pattern.charAt(0).toUpperCase() + pattern.slice(1)} Pattern Detected! 🎨`,
           description: `Applying ${pattern} design styles to your request`,
         });
       }
     }
+
+    console.log('[AICodeAssistant] Detection method:', detectionMethod);
 
     const userMessage: Message = {
       role: 'user',
@@ -559,23 +574,45 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
           
           {/* Main chat area */}
           <div className="flex-1 flex flex-col min-w-0">
-          {/* Mode Selector */}
-          <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)} className="border-b">
-            <TabsList className="w-full grid grid-cols-3 rounded-none h-12">
-              <TabsTrigger value="code" className="gap-2">
-                <Code2 className="w-4 h-4" />
-                Generate Code
-              </TabsTrigger>
-              <TabsTrigger value="design" className="gap-2">
-                <Palette className="w-4 h-4" />
-                Design Tips
-              </TabsTrigger>
-              <TabsTrigger value="review" className="gap-2">
-                <CheckCircle2 className="w-4 h-4" />
-                Code Review
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Mode Selector with Clear Button */}
+          <div className="border-b">
+            <div className="flex items-center justify-between px-2">
+              <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)} className="flex-1">
+                <TabsList className="w-full grid grid-cols-3 rounded-none h-12">
+                  <TabsTrigger value="code" className="gap-2">
+                    <Code2 className="w-4 h-4" />
+                    Generate Code
+                  </TabsTrigger>
+                  <TabsTrigger value="design" className="gap-2">
+                    <Palette className="w-4 h-4" />
+                    Design Tips
+                  </TabsTrigger>
+                  <TabsTrigger value="review" className="gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Code Review
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMessages([]);
+                    setInput('');
+                    setDetectedPattern(null);
+                    toast({
+                      title: 'Conversation cleared',
+                      description: 'Starting fresh with a clean slate',
+                    });
+                  }}
+                  className="ml-2 text-xs"
+                >
+                  Clear Chat
+                </Button>
+              )}
+            </div>
+          </div>
 
           {/* Quick Prompts */}
           {messages.length === 0 && (

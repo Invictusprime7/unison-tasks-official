@@ -111,6 +111,60 @@ export type Database = {
         }
         Relationships: []
       }
+      design_schemas: {
+        Row: {
+          id: string
+          pattern_name: string
+          pattern_type: string
+          description: string | null
+          keywords: string[]
+          color_scheme: Json
+          shadows: Json
+          effects: Json
+          gradients: Json
+          guidelines: string[]
+          tailwind_utilities: string[]
+          is_active: boolean
+          priority: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          pattern_name: string
+          pattern_type: string
+          description?: string | null
+          keywords?: string[]
+          color_scheme?: Json
+          shadows?: Json
+          effects?: Json
+          gradients?: Json
+          guidelines?: string[]
+          tailwind_utilities?: string[]
+          is_active?: boolean
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          pattern_name?: string
+          pattern_type?: string
+          description?: string | null
+          keywords?: string[]
+          color_scheme?: Json
+          shadows?: Json
+          effects?: Json
+          gradients?: Json
+          guidelines?: string[]
+          tailwind_utilities?: string[]
+          is_active?: boolean
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       brand_kits: {
         Row: {
           colors: Json | null
@@ -1027,6 +1081,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_design_schema_by_keyword: {
+        Args: { search_keyword: string }
+        Returns: {
+          pattern_name: string
+          pattern_type: string
+          description: string
+          color_scheme: Json
+          guidelines: string[]
+        }[]
+      }
       increment_pattern_usage: {
         Args: { pattern_id: string }
         Returns: undefined

@@ -1,10 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 
-// Temporary: Bypass type checking until Supabase types are regenerated
-// After running the migration, run: npx supabase gen types typescript --project-id oruwtgdjurstvhgqcvbv
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const supabaseClient = supabase as any;
-
 export interface DesignSchema {
   id: string;
   pattern_name: string;
@@ -47,7 +42,7 @@ export interface DesignSchema {
  * Fetch all active design schemas from Supabase
  */
 export async function fetchDesignSchemas(): Promise<DesignSchema[]> {
-  const { data, error } = await supabaseClient
+  const { data, error } = await supabase
     .from("design_schemas")
     .select("*")
     .eq("is_active", true)
@@ -67,7 +62,7 @@ export async function fetchDesignSchemas(): Promise<DesignSchema[]> {
 export async function getDesignSchemaByKeyword(
   keyword: string
 ): Promise<DesignSchema | null> {
-  const { data, error } = await supabaseClient.rpc("get_design_schema_by_keyword", {
+  const { data, error } = await supabase.rpc("get_design_schema_by_keyword", {
     search_keyword: keyword.toLowerCase(),
   });
 
@@ -162,9 +157,10 @@ Be creative and modern. Don't feel constrained by rigid templates.`;
 export async function upsertDesignSchema(
   schema: Partial<DesignSchema>
 ): Promise<DesignSchema | null> {
-  const { data, error } = await supabaseClient
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await supabase
     .from("design_schemas")
-    .upsert(schema)
+    .upsert(schema as any) // Type assertion needed for Partial
     .select()
     .single();
 
@@ -180,7 +176,7 @@ export async function upsertDesignSchema(
  * Delete a design schema (soft delete by setting is_active to false)
  */
 export async function deleteDesignSchema(id: string): Promise<boolean> {
-  const { error } = await supabaseClient
+  const { error } = await supabase
     .from("design_schemas")
     .update({ is_active: false })
     .eq("id", id);
