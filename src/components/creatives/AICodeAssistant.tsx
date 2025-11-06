@@ -530,15 +530,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
 
   const quickPrompts = {
     code: [
-      'Create a neomorphic card with soft shadows',
-      'Build a cyberpunk neon button with glow effects',
-      'Generate a gradient hero section with color transitions',
-      'Design a glassmorphism card with frosted glass effect',
+      'Create a material design dashboard with metric cards',
+      'Build a creative portfolio with project gallery',
+      'Generate an e-commerce product showcase page',
+      'Design a landing page with hero and features',
     ],
     design: [
-      'Apply cyberpunk aesthetics to my layout',
-      'Add neomorphic styling to my buttons',
-      'Suggest gradient improvements for modern look',
+      'Apply material design elevation to my layout',
+      'Add creative portfolio styling to my showcase',
+      'Suggest workspace UI improvements',
     ],
     review: [
       'Review this React component',
@@ -675,47 +675,51 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
                   {mode === 'code' && (
                     <div className="mt-8 space-y-4">
                       <p className="text-sm font-semibold text-muted-foreground mb-4">🎨 Design Patterns I Can Apply:</p>
-                      <div className="grid grid-cols-2 gap-3 max-w-2xl mx-auto">
+                      <div className="grid grid-cols-3 gap-3 max-w-3xl mx-auto">
+                        {/* Neomorphic */}
                         <div 
                           onClick={() => setInput('Create a neomorphic card with soft shadows and tactile design')}
-                          className="p-4 rounded-lg border-2 border-dashed border-muted hover:border-primary cursor-pointer transition-all hover:scale-105"
+                          className="p-3 rounded-lg border-2 border-dashed border-muted hover:border-primary cursor-pointer transition-all hover:scale-105"
                           style={{
                             background: '#e0e5ec',
                             boxShadow: '8px 8px 16px #b8bec7, -8px -8px 16px #ffffff'
                           }}
                         >
-                          <div className="text-lg font-bold mb-1" style={{ color: '#4a5568' }}>Neomorphic</div>
-                          <div className="text-xs" style={{ color: '#718096' }}>Soft UI, tactile shadows</div>
+                          <div className="text-sm font-bold mb-1" style={{ color: '#4a5568' }}>Neomorphic</div>
+                          <div className="text-xs" style={{ color: '#718096' }}>Soft UI, tactile</div>
                         </div>
                         
+                        {/* Cyberpunk */}
                         <div 
                           onClick={() => setInput('Build a cyberpunk neon button with electric glow')}
-                          className="p-4 rounded-lg border-2 border-dashed cursor-pointer transition-all hover:scale-105"
+                          className="p-3 rounded-lg border-2 border-dashed cursor-pointer transition-all hover:scale-105"
                           style={{
                             background: '#1a1f3a',
                             border: '2px solid #00ffff',
                             boxShadow: '0 0 20px rgba(0, 255, 255, 0.5)'
                           }}
                         >
-                          <div className="text-lg font-bold mb-1" style={{ color: '#00ffff' }}>Cyberpunk</div>
-                          <div className="text-xs" style={{ color: '#ff00ff' }}>Neon, futuristic glow</div>
+                          <div className="text-sm font-bold mb-1" style={{ color: '#00ffff' }}>Cyberpunk</div>
+                          <div className="text-xs" style={{ color: '#ff00ff' }}>Neon, futuristic</div>
                         </div>
                         
+                        {/* Gradient */}
                         <div 
                           onClick={() => setInput('Generate a gradient hero section with vibrant colors')}
-                          className="p-4 rounded-lg border-2 border-dashed border-transparent hover:border-white cursor-pointer transition-all hover:scale-105"
+                          className="p-3 rounded-lg border-2 border-dashed border-transparent hover:border-white cursor-pointer transition-all hover:scale-105"
                           style={{
                             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)'
                           }}
                         >
-                          <div className="text-lg font-bold mb-1 text-white">Gradient</div>
-                          <div className="text-xs text-white/80">Vibrant color blends</div>
+                          <div className="text-sm font-bold mb-1 text-white">Gradient</div>
+                          <div className="text-xs text-white/80">Vibrant blends</div>
                         </div>
                         
+                        {/* Glassmorphism */}
                         <div 
                           onClick={() => setInput('Create a glassmorphism card with frosted glass effect')}
-                          className="p-4 rounded-lg border cursor-pointer transition-all hover:scale-105"
+                          className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-105"
                           style={{
                             background: 'rgba(255, 255, 255, 0.1)',
                             backdropFilter: 'blur(10px)',
@@ -723,8 +727,36 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
                             boxShadow: '0 8px 32px rgba(31, 38, 135, 0.15)'
                           }}
                         >
-                          <div className="text-lg font-bold mb-1 text-white">Glassmorphism</div>
-                          <div className="text-xs text-white/70">Frosted glass, blur</div>
+                          <div className="text-sm font-bold mb-1 text-white">Glassmorphism</div>
+                          <div className="text-xs text-white/70">Frosted glass</div>
+                        </div>
+                        
+                        {/* Material Design */}
+                        <div 
+                          onClick={() => setInput('Create a material design dashboard with elevation')}
+                          className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-105"
+                          style={{
+                            background: '#FFFFFF',
+                            border: '1px solid #E0E0E0',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.12)'
+                          }}
+                        >
+                          <div className="text-sm font-bold mb-1" style={{ color: '#1976D2' }}>Material Design</div>
+                          <div className="text-xs" style={{ color: '#757575' }}>Google style</div>
+                        </div>
+                        
+                        {/* Creative Portfolio */}
+                        <div 
+                          onClick={() => setInput('Build a creative portfolio with artistic showcase')}
+                          className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-105"
+                          style={{
+                            background: 'linear-gradient(135deg, #7B68EE 0%, #9B8AFE 100%)',
+                            border: '1px solid #9B8AFE',
+                            boxShadow: '0 4px 12px rgba(123, 104, 238, 0.2)'
+                          }}
+                        >
+                          <div className="text-sm font-bold mb-1 text-white">Portfolio</div>
+                          <div className="text-xs text-white/80">Creative Canva</div>
                         </div>
                       </div>
                     </div>
@@ -938,6 +970,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
           </DialogHeader>
           
           <div className="space-y-6 py-4">
+            <div className="mb-4 p-3 bg-primary/10 rounded-lg">
+              <p className="text-sm font-semibold">✨ Pattern Categories</p>
+              <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                <div><strong>Style Patterns:</strong> Neomorphic, Cyberpunk, Gradient, Glass</div>
+                <div><strong>Template Patterns:</strong> Material, Portfolio, E-commerce, Landing</div>
+              </div>
+            </div>
+
             {/* Neomorphic */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -1048,12 +1088,132 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
                 Example: "Create a modern dashboard with sleek design"
               </div>
             </div>
+
+            <div className="border-t pt-6 mt-6">
+              <h3 className="font-bold text-lg mb-4">🎯 Web Design Kit Patterns</h3>
+              
+              {/* Material Design */}
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 rounded-lg" style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E0E0E0',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.12)'
+                  }}></div>
+                  <div>
+                    <h3 className="font-bold">Material Design</h3>
+                    <p className="text-sm text-muted-foreground">Google Material UI</p>
+                  </div>
+                </div>
+                <p className="text-sm">Keywords: material design, google design, elevation, paper, material dashboard</p>
+                <div className="text-xs bg-muted p-2 rounded">
+                  Example: "Create a material design dashboard with metric cards"
+                </div>
+              </div>
+
+              {/* Workspace UI */}
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
+                    background: '#F8F9FA',
+                    border: '1px solid #DADCE0'
+                  }}>
+                    <span style={{ color: '#4285F4', fontSize: '20px', fontWeight: 'bold' }}>D</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold">Workspace UI</h3>
+                    <p className="text-sm text-muted-foreground">Google Workspace style</p>
+                  </div>
+                </div>
+                <p className="text-sm">Keywords: workspace, google workspace, docs, productivity app, collaborative</p>
+                <div className="text-xs bg-muted p-2 rounded">
+                  Example: "Build a workspace document interface like Google Docs"
+                </div>
+              </div>
+
+              {/* Android Interface */}
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
+                    background: '#6200EE',
+                    borderRadius: '50%',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.14)'
+                  }}>
+                    <span style={{ color: '#FFFFFF', fontSize: '20px' }}>+</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold">Android Interface</h3>
+                    <p className="text-sm text-muted-foreground">Material for Android</p>
+                  </div>
+                </div>
+                <p className="text-sm">Keywords: android, mobile app, fab, floating action button, app bar</p>
+                <div className="text-xs bg-muted p-2 rounded">
+                  Example: "Design an Android app interface with FAB"
+                </div>
+              </div>
+
+              {/* Creative Portfolio */}
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 rounded-lg" style={{
+                    background: 'linear-gradient(135deg, #7B68EE 0%, #9B8AFE 100%)',
+                    boxShadow: '0 4px 12px rgba(123, 104, 238, 0.2)'
+                  }}></div>
+                  <div>
+                    <h3 className="font-bold">Creative Portfolio</h3>
+                    <p className="text-sm text-muted-foreground">Canva creative style</p>
+                  </div>
+                </div>
+                <p className="text-sm">Keywords: creative portfolio, portfolio, showcase, designer portfolio</p>
+                <div className="text-xs bg-muted p-2 rounded">
+                  Example: "Build a creative portfolio with project gallery"
+                </div>
+              </div>
+
+              {/* E-commerce */}
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
+                    background: '#4ECDC4',
+                    borderRadius: '50%'
+                  }}>
+                    <span style={{ fontSize: '20px' }}>🛒</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold">E-commerce</h3>
+                    <p className="text-sm text-muted-foreground">Canva store style</p>
+                  </div>
+                </div>
+                <p className="text-sm">Keywords: ecommerce, shop, store, product showcase, online store</p>
+                <div className="text-xs bg-muted p-2 rounded">
+                  Example: "Create an e-commerce product showcase page"
+                </div>
+              </div>
+
+              {/* Landing Page */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 rounded-lg" style={{
+                    background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)',
+                    boxShadow: '0 4px 12px rgba(255, 107, 107, 0.2)'
+                  }}></div>
+                  <div>
+                    <h3 className="font-bold">Landing Page</h3>
+                    <p className="text-sm text-muted-foreground">Canva conversion style</p>
+                  </div>
+                </div>
+                <p className="text-sm">Keywords: landing page, hero section, features grid, cta, marketing page</p>
+                <div className="text-xs bg-muted p-2 rounded">
+                  Example: "Generate a landing page with hero and features"
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 p-4 bg-muted rounded-lg">
             <p className="text-sm font-semibold mb-2">💡 Pro Tip:</p>
             <p className="text-sm text-muted-foreground">
-              Just mention any of these keywords in your prompt, and I'll automatically apply the appropriate design pattern with all the right colors, shadows, and effects!
+              Just mention any of these keywords in your prompt, and I'll automatically apply the appropriate design pattern with all the right colors, shadows, effects, and layout structures from our Web Design Kit templates!
             </p>
           </div>
         </DialogContent>

@@ -1,9 +1,22 @@
 /**
  * Design Pattern Service
- * Intelligently detects and applies neomorphic, cyberpunk, and gradient design patterns
+ * Intelligently detects and applies neomorphic, cyberpunk, gradient, and Web Design Kit patterns
+ * Integrates with Web Design Kit templates (Google Material, Workspace, Android, Canva styles)
  */
 
-export type DesignPattern = 'neomorphic' | 'cyberpunk' | 'gradient' | 'glassmorphism' | 'minimal' | 'modern';
+export type DesignPattern = 
+  | 'neomorphic' 
+  | 'cyberpunk' 
+  | 'gradient' 
+  | 'glassmorphism' 
+  | 'minimal' 
+  | 'modern'
+  | 'material-design'
+  | 'workspace-ui'
+  | 'android-interface'
+  | 'creative-portfolio'
+  | 'ecommerce'
+  | 'landing-page';
 
 export interface DesignPatternStyles {
   pattern: DesignPattern;
@@ -67,6 +80,36 @@ export function detectDesignPattern(prompt: string): DesignPattern | null {
     modern: [
       'modern', 'contemporary', 'sleek', 'professional',
       'business', 'corporate', 'elegant'
+    ],
+    'material-design': [
+      'material design', 'material ui', 'google design',
+      'elevation', 'paper', 'ripple', 'flat design',
+      'material dashboard', 'google style', 'android material'
+    ],
+    'workspace-ui': [
+      'workspace', 'google workspace', 'docs', 'sheets',
+      'document interface', 'office suite', 'collaborative',
+      'productivity app', 'workspace ui'
+    ],
+    'android-interface': [
+      'android', 'mobile app', 'app interface', 'fab',
+      'floating action button', 'mobile ui', 'app bar',
+      'material app', 'android ui'
+    ],
+    'creative-portfolio': [
+      'creative portfolio', 'portfolio', 'showcase',
+      'creative design', 'designer portfolio', 'creative showcase',
+      'artistic', 'visual portfolio'
+    ],
+    'ecommerce': [
+      'ecommerce', 'e-commerce', 'shop', 'store',
+      'product showcase', 'online store', 'retail',
+      'shopping', 'cart', 'product page'
+    ],
+    'landing-page': [
+      'landing page', 'hero section', 'conversion',
+      'marketing page', 'sales page', 'features grid',
+      'call to action', 'cta', 'landing'
     ]
   };
   
@@ -225,6 +268,18 @@ export function getPatternStyles(pattern: DesignPattern): DesignPatternStyles {
       return getGradientStyles();
     case 'glassmorphism':
       return getGlassmorphismStyles();
+    case 'material-design':
+      return getMaterialDesignStyles();
+    case 'workspace-ui':
+      return getWorkspaceUIStyles();
+    case 'android-interface':
+      return getAndroidInterfaceStyles();
+    case 'creative-portfolio':
+      return getCreativePortfolioStyles();
+    case 'ecommerce':
+      return getEcommerceStyles();
+    case 'landing-page':
+      return getLandingPageStyles();
     case 'minimal':
       return {
         pattern: 'minimal',
@@ -284,6 +339,204 @@ export function getPatternStyles(pattern: DesignPattern): DesignPatternStyles {
     default:
       return getGradientStyles(); // Default fallback
   }
+}
+
+/**
+ * Get Material Design styles (Google)
+ */
+export function getMaterialDesignStyles(): DesignPatternStyles {
+  return {
+    pattern: 'material-design',
+    colors: {
+      primary: '#1976D2',
+      secondary: '#424242',
+      accent: '#FF5722',
+      background: '#FAFAFA',
+      surface: '#FFFFFF',
+      text: '#212121',
+      textSecondary: '#757575',
+    },
+    shadows: {
+      light: '0 2px 4px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08)',
+      dark: '0 8px 16px rgba(0, 0, 0, 0.16), 0 4px 8px rgba(0, 0, 0, 0.12)',
+      glow: '0 0 8px rgba(25, 118, 210, 0.3)',
+    },
+    effects: {
+      blur: '0px',
+      opacity: '1',
+      border: '1px solid #E0E0E0',
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
+      secondary: 'linear-gradient(135deg, #424242 0%, #303030 100%)',
+      accent: 'linear-gradient(135deg, #FF5722 0%, #E64A19 100%)',
+    },
+  };
+}
+
+/**
+ * Get Workspace UI styles (Google Workspace)
+ */
+export function getWorkspaceUIStyles(): DesignPatternStyles {
+  return {
+    pattern: 'workspace-ui',
+    colors: {
+      primary: '#4285F4',
+      secondary: '#34A853',
+      accent: '#FBBC04',
+      background: '#FFFFFF',
+      surface: '#F8F9FA',
+      text: '#3C4043',
+      textSecondary: '#5F6368',
+    },
+    shadows: {
+      light: '0 1px 2px rgba(60, 64, 67, 0.1)',
+      dark: '0 4px 8px rgba(60, 64, 67, 0.15)',
+      glow: '0 0 8px rgba(66, 133, 244, 0.2)',
+    },
+    effects: {
+      blur: '0px',
+      opacity: '1',
+      border: '1px solid #DADCE0',
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #4285F4 0%, #3367D6 100%)',
+      secondary: 'linear-gradient(135deg, #34A853 0%, #0F9D58 100%)',
+      accent: 'linear-gradient(135deg, #FBBC04 0%, #F9AB00 100%)',
+    },
+  };
+}
+
+/**
+ * Get Android Interface styles
+ */
+export function getAndroidInterfaceStyles(): DesignPatternStyles {
+  return {
+    pattern: 'android-interface',
+    colors: {
+      primary: '#6200EE',
+      secondary: '#03DAC6',
+      accent: '#FF5722',
+      background: '#FFFFFF',
+      surface: '#F5F5F5',
+      text: '#000000',
+      textSecondary: '#666666',
+    },
+    shadows: {
+      light: '0 2px 4px rgba(0, 0, 0, 0.14)',
+      dark: '0 8px 16px rgba(0, 0, 0, 0.2)',
+      glow: '0 0 12px rgba(98, 0, 238, 0.3)',
+    },
+    effects: {
+      blur: '0px',
+      opacity: '1',
+      border: '1px solid #E0E0E0',
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #6200EE 0%, #3700B3 100%)',
+      secondary: 'linear-gradient(135deg, #03DAC6 0%, #018786 100%)',
+      accent: 'linear-gradient(135deg, #FF5722 0%, #E64A19 100%)',
+    },
+  };
+}
+
+/**
+ * Get Creative Portfolio styles (Canva)
+ */
+export function getCreativePortfolioStyles(): DesignPatternStyles {
+  return {
+    pattern: 'creative-portfolio',
+    colors: {
+      primary: '#7B68EE',
+      secondary: '#2D1B69',
+      accent: '#FF6B6B',
+      background: '#FFFFFF',
+      surface: '#F8F9FA',
+      text: '#2D1B69',
+      textSecondary: '#666666',
+    },
+    shadows: {
+      light: '0 4px 12px rgba(123, 104, 238, 0.1)',
+      dark: '0 12px 24px rgba(123, 104, 238, 0.2)',
+      glow: '0 0 20px rgba(123, 104, 238, 0.3)',
+    },
+    effects: {
+      blur: '0px',
+      opacity: '1',
+      border: '1px solid #E9ECEF',
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #7B68EE 0%, #9B8AFE 100%)',
+      secondary: 'linear-gradient(135deg, #2D1B69 0%, #4A3490 100%)',
+      accent: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)',
+    },
+  };
+}
+
+/**
+ * Get E-commerce styles (Canva)
+ */
+export function getEcommerceStyles(): DesignPatternStyles {
+  return {
+    pattern: 'ecommerce',
+    colors: {
+      primary: '#2D1B69',
+      secondary: '#4ECDC4',
+      accent: '#FF6B6B',
+      background: '#FFFFFF',
+      surface: '#F8F9FA',
+      text: '#2D1B69',
+      textSecondary: '#666666',
+    },
+    shadows: {
+      light: '0 4px 8px rgba(0, 0, 0, 0.08)',
+      dark: '0 8px 16px rgba(0, 0, 0, 0.12)',
+      glow: '0 0 16px rgba(78, 205, 196, 0.3)',
+    },
+    effects: {
+      blur: '0px',
+      opacity: '1',
+      border: '1px solid #E9ECEF',
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #2D1B69 0%, #4A3490 100%)',
+      secondary: 'linear-gradient(135deg, #4ECDC4 0%, #44B3AA 100%)',
+      accent: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)',
+    },
+  };
+}
+
+/**
+ * Get Landing Page styles (Canva)
+ */
+export function getLandingPageStyles(): DesignPatternStyles {
+  return {
+    pattern: 'landing-page',
+    colors: {
+      primary: '#2D1B69',
+      secondary: '#7B68EE',
+      accent: '#FF6B6B',
+      background: '#FFFFFF',
+      surface: '#F8F9FA',
+      text: '#2D1B69',
+      textSecondary: '#666666',
+    },
+    shadows: {
+      light: '0 4px 12px rgba(45, 27, 105, 0.08)',
+      dark: '0 12px 24px rgba(45, 27, 105, 0.12)',
+      glow: '0 0 24px rgba(255, 107, 107, 0.3)',
+    },
+    effects: {
+      blur: '0px',
+      opacity: '1',
+      border: '1px solid #E9ECEF',
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #2D1B69 0%, #4A3490 100%)',
+      secondary: 'linear-gradient(135deg, #7B68EE 0%, #9B8AFE 100%)',
+      accent: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)',
+    },
+  };
 }
 
 /**
@@ -530,6 +783,58 @@ export function enhancePromptWithPattern(prompt: string, pattern: DesignPattern)
       enhancedPrompt += `- Subtle borders with transparency\n`;
       enhancedPrompt += `- Layered depth with blur\n`;
       enhancedPrompt += `- Light, airy appearance\n`;
+      break;
+    case 'material-design':
+      enhancedPrompt += `Material Design Guidelines:\n`;
+      enhancedPrompt += `- Use elevation with subtle shadows\n`;
+      enhancedPrompt += `- Follow Google's design principles\n`;
+      enhancedPrompt += `- Bold colors with proper contrast\n`;
+      enhancedPrompt += `- Roboto font family\n`;
+      enhancedPrompt += `- Ripple effects on interactions\n`;
+      enhancedPrompt += `- 8dp grid system for spacing\n`;
+      break;
+    case 'workspace-ui':
+      enhancedPrompt += `Workspace UI Guidelines:\n`;
+      enhancedPrompt += `- Clean, productivity-focused design\n`;
+      enhancedPrompt += `- Light backgrounds with subtle shadows\n`;
+      enhancedPrompt += `- Google Workspace color palette\n`;
+      enhancedPrompt += `- Collaborative interface elements\n`;
+      enhancedPrompt += `- Document-centric layout\n`;
+      break;
+    case 'android-interface':
+      enhancedPrompt += `Android Interface Guidelines:\n`;
+      enhancedPrompt += `- Material Design for Android\n`;
+      enhancedPrompt += `- Floating Action Button (FAB) for primary actions\n`;
+      enhancedPrompt += `- App bar with navigation\n`;
+      enhancedPrompt += `- Card-based layouts\n`;
+      enhancedPrompt += `- Mobile-first responsive design\n`;
+      break;
+    case 'creative-portfolio':
+      enhancedPrompt += `Creative Portfolio Guidelines:\n`;
+      enhancedPrompt += `- Bold, artistic typography (Playfair Display)\n`;
+      enhancedPrompt += `- Visual hierarchy with large headings\n`;
+      enhancedPrompt += `- Purple/blue creative color scheme\n`;
+      enhancedPrompt += `- Showcase-focused layouts\n`;
+      enhancedPrompt += `- Gallery grids for projects\n`;
+      enhancedPrompt += `- Strong CTAs with accent colors\n`;
+      break;
+    case 'ecommerce':
+      enhancedPrompt += `E-commerce Guidelines:\n`;
+      enhancedPrompt += `- Product-centric design\n`;
+      enhancedPrompt += `- Clear pricing and CTAs\n`;
+      enhancedPrompt += `- Shopping cart prominence\n`;
+      enhancedPrompt += `- Trust-building elements\n`;
+      enhancedPrompt += `- Clean product showcases\n`;
+      enhancedPrompt += `- Easy navigation structure\n`;
+      break;
+    case 'landing-page':
+      enhancedPrompt += `Landing Page Guidelines:\n`;
+      enhancedPrompt += `- Strong hero section with headline\n`;
+      enhancedPrompt += `- Clear value proposition\n`;
+      enhancedPrompt += `- Feature highlights\n`;
+      enhancedPrompt += `- Multiple CTAs throughout\n`;
+      enhancedPrompt += `- Social proof elements\n`;
+      enhancedPrompt += `- Conversion-optimized layout\n`;
       break;
   }
   

@@ -3,7 +3,10 @@
 # Script to update all Vercel domain aliases to point to the latest deployment
 # This ensures all your domains route to this environment's latest version
 
-LATEST_DEPLOY="unison-tasks-gqr74eggx-unrealdev02s-projects.vercel.app"
+# Check if LATEST_DEPLOY is set, otherwise use default
+if [ -z "$LATEST_DEPLOY" ]; then
+  LATEST_DEPLOY="unison-tasks-dud2xfgt4-unrealdev02s-projects.vercel.app"
+fi
 
 echo "🚀 Updating all domains to point to: $LATEST_DEPLOY"
 echo ""
