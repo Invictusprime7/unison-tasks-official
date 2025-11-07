@@ -14,7 +14,7 @@ import DesignStudioPage from "./pages/DesignStudioPage";
 import WebBuilderPage from "./pages/WebBuilderPage";
 import CodeEditorPage from "./pages/CodeEditorPage";
 import NotFound from "./pages/NotFound";
-import { AIPageGenerator } from "./components/creatives/AIPageGenerator";
+// import { AIPageGenerator } from "./components/creatives/AIPageGenerator"; // Archived component
 
 const queryClient = new QueryClient();
 
@@ -35,7 +35,7 @@ const App = () => (
             <Route path="/design-studio" element={<DesignStudioPage />} />
             <Route path="/web-builder" element={<WebBuilderPage />} />
             <Route path="/code-editor" element={<CodeEditorPage />} />
-            <Route path="/ai-generator" element={<AIPageGenerator />} />
+            {/* <Route path="/ai-generator" element={<AIPageGenerator />} /> */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
