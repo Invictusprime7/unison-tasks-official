@@ -297,9 +297,7 @@ declare global {
   // Render code from Monaco to Fabric.js canvas
   const handleRenderToCanvas = async () => {
     if (!fabricCanvas) {
-      toast('Canvas not ready', {
-        description: 'Please wait for canvas to initialize',
-      });
+      console.warn('[WebBuilder] Canvas not ready yet');
       return;
     }
 
@@ -1553,7 +1551,6 @@ declare global {
             // Ensure canvas is ready
             if (!fabricCanvas) {
               console.warn('[WebBuilder] Canvas not ready yet');
-              toast.error('Canvas not ready. Please wait a moment and try again.');
               return;
             }
 
