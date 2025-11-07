@@ -1,0 +1,182 @@
+{
+  "id": "restaurant-template",
+  "name": "Restaurant & Dining",
+  "industry": "restaurant",
+  "description": "Comprehensive template for restaurants, cafes, and dining establishments",
+  "defaultTone": "elegant",
+  "recommendedComponents": [
+    {
+      "component": "VideoHero",
+      "variants": ["overlay", "gradient-overlay"],
+      "priority": "required"
+    },
+    {
+      "component": "InteractiveMenu",
+      "variants": ["tabs", "accordion", "grid"],
+      "priority": "required"
+    },
+    {
+      "component": "Gallery",
+      "variants": ["masonry", "grid", "carousel"],
+      "priority": "recommended"
+    },
+    {
+      "component": "BookingForm",
+      "variants": ["inline", "modal"],
+      "priority": "required"
+    },
+    {
+      "component": "TestimonialSlider",
+      "variants": ["cards", "bubble"],
+      "priority": "recommended"
+    },
+    {
+      "component": "FooterColumns",
+      "variants": ["contact", "full"],
+      "priority": "required"
+    }
+  ],
+  "layoutPatterns": [
+    {
+      "name": "Full Experience",
+      "description": "Comprehensive restaurant website with all features",
+      "suitableFor": ["fine dining", "established restaurants", "franchises"],
+      "complexity": 4,
+      "structure": [
+        {
+          "id": "section-1",
+          "component": "VideoHero",
+          "variant": "overlay",
+          "order": 0,
+          "animation": {
+            "type": "fade",
+            "direction": "in",
+            "duration": 1200,
+            "trigger": "load"
+          },
+          "spacing": { "paddingY": "py-0", "paddingX": "px-0" }
+        },
+        {
+          "id": "section-2",
+          "component": "InteractiveMenu",
+          "variant": "tabs",
+          "order": 1,
+          "animation": {
+            "type": "fade",
+            "direction": "up",
+            "duration": 800,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-3",
+          "component": "Gallery",
+          "variant": "masonry",
+          "order": 2,
+          "animation": {
+            "type": "stagger",
+            "duration": 600,
+            "delay": 100,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-4",
+          "component": "BookingForm",
+          "variant": "inline",
+          "order": 3,
+          "animation": {
+            "type": "fade",
+            "direction": "up",
+            "duration": 600,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-5",
+          "component": "TestimonialSlider",
+          "variant": "cards",
+          "order": 4,
+          "animation": {
+            "type": "slide",
+            "direction": "left",
+            "duration": 800,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-6",
+          "component": "FooterColumns",
+          "variant": "contact",
+          "order": 5,
+          "spacing": { "paddingY": "py-12", "paddingX": "px-6" }
+        }
+      ]
+    },
+    {
+      "name": "Quick Service",
+      "description": "Streamlined layout for quick service restaurants",
+      "suitableFor": ["cafes", "quick service", "takeout"],
+      "complexity": 2,
+      "structure": [
+        {
+          "id": "section-1",
+          "component": "AnimatedHero",
+          "variant": "gradient",
+          "order": 0,
+          "spacing": { "paddingY": "py-0", "paddingX": "px-0" }
+        },
+        {
+          "id": "section-2",
+          "component": "InteractiveMenu",
+          "variant": "accordion",
+          "order": 1,
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-3",
+          "component": "BookingForm",
+          "variant": "inline",
+          "order": 2,
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-4",
+          "component": "MinimalFooter",
+          "variant": "centered",
+          "order": 3,
+          "spacing": { "paddingY": "py-12", "paddingX": "px-6" }
+        }
+      ]
+    }
+  ],
+  "contentGuidelines": {
+    "heroMessage": [
+      "Experience the art of [cuisine type]",
+      "Where flavors meet tradition",
+      "Taste that tells a story",
+      "Your table awaits",
+      "Crafted with passion, served with care"
+    ],
+    "valueProps": [
+      "Farm-to-table ingredients",
+      "Award-winning chef",
+      "Authentic [cuisine] recipes",
+      "Private dining available",
+      "Seasonal menu",
+      "Locally sourced produce"
+    ],
+    "ctaVariants": [
+      "Reserve Your Table",
+      "View Our Menu",
+      "Book Now",
+      "Order Online",
+      "Make a Reservation",
+      "Explore Menu"
+    ]
+  }
+}

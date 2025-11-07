@@ -1,0 +1,157 @@
+{
+  "id": "campaign-template",
+  "name": "Ad Campaign & Marketing",
+  "industry": "ad_campaign",
+  "description": "High-impact landing page template for advertising campaigns",
+  "defaultTone": "energetic",
+  "recommendedComponents": [
+    {
+      "component": "ParallaxHero",
+      "variants": ["bold"],
+      "priority": "required"
+    },
+    {
+      "component": "ScrollingNarrative",
+      "variants": ["story"],
+      "priority": "required"
+    },
+    {
+      "component": "VideoEmbed",
+      "variants": ["featured"],
+      "priority": "recommended"
+    },
+    {
+      "component": "CTASection",
+      "variants": ["animated", "pulse", "gradient"],
+      "priority": "required"
+    },
+    {
+      "component": "MinimalFooter",
+      "variants": ["centered"],
+      "priority": "required"
+    }
+  ],
+  "layoutPatterns": [
+    {
+      "name": "Full Campaign",
+      "description": "Complete campaign landing page with storytelling",
+      "suitableFor": ["product launches", "brand campaigns", "event promotion"],
+      "complexity": 5,
+      "structure": [
+        {
+          "id": "section-1",
+          "component": "ParallaxHero",
+          "variant": "bold",
+          "order": 0,
+          "animation": {
+            "type": "parallax",
+            "trigger": "scroll",
+            "duration": 1200,
+            "easing": "linear"
+          },
+          "spacing": { "paddingY": "py-0", "paddingX": "px-0" }
+        },
+        {
+          "id": "section-2",
+          "component": "ScrollingNarrative",
+          "variant": "story",
+          "order": 1,
+          "animation": {
+            "type": "fade",
+            "direction": "up",
+            "duration": 1000,
+            "trigger": "scroll",
+            "easing": "easeOut"
+          },
+          "spacing": { "paddingY": "py-0", "paddingX": "px-0" }
+        },
+        {
+          "id": "section-3",
+          "component": "VideoEmbed",
+          "variant": "featured",
+          "order": 2,
+          "animation": {
+            "type": "zoom",
+            "direction": "in",
+            "duration": 800,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-4",
+          "component": "CTASection",
+          "variant": "animated",
+          "order": 3,
+          "animation": {
+            "type": "pulse",
+            "duration": 2000,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-5",
+          "component": "MinimalFooter",
+          "variant": "centered",
+          "order": 4,
+          "spacing": { "paddingY": "py-12", "paddingX": "px-6" }
+        }
+      ]
+    },
+    {
+      "name": "Quick Impact",
+      "description": "Single-scroll high-impact campaign page",
+      "suitableFor": ["teaser campaigns", "event announcements", "limited offers"],
+      "complexity": 3,
+      "structure": [
+        {
+          "id": "section-1",
+          "component": "ParallaxHero",
+          "variant": "bold",
+          "order": 0,
+          "spacing": { "paddingY": "py-0", "paddingX": "px-0" }
+        },
+        {
+          "id": "section-2",
+          "component": "VideoEmbed",
+          "variant": "featured",
+          "order": 1,
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-3",
+          "component": "CTASection",
+          "variant": "pulse",
+          "order": 2,
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        }
+      ]
+    }
+  ],
+  "contentGuidelines": {
+    "heroMessage": [
+      "Ignite Imagination",
+      "The Future Starts Now",
+      "Experience the Revolution",
+      "Transform Everything",
+      "Be Part of Something Bigger"
+    ],
+    "valueProps": [
+      "Limited time offer",
+      "Exclusive access",
+      "Join 10,000+ early adopters",
+      "Be the first to know",
+      "Revolutionary technology",
+      "Change the game"
+    ],
+    "ctaVariants": [
+      "Join the Movement",
+      "Get Early Access",
+      "Reserve Your Spot",
+      "Sign Up Now",
+      "Don't Miss Out",
+      "Be Part of It"
+    ]
+  }
+}

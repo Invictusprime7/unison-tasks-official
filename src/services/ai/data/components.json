@@ -1,0 +1,769 @@
+{
+  "StickyNav": {
+    "component": "StickyNav",
+    "category": "navigation",
+    "tags": ["navigation", "sticky", "header"],
+    "defaultVariant": "glass",
+    "variants": [
+      {
+        "key": "glass",
+        "name": "Glass Morphism",
+        "description": "Modern glass morphism navigation with backdrop blur",
+        "layout": "full-width",
+        "complexity": 3,
+        "useCases": ["modern sites", "portfolios", "SaaS"],
+        "props": {
+          "sticky": true,
+          "blur": true,
+          "transparent": true
+        }
+      },
+      {
+        "key": "minimal",
+        "name": "Minimal Clean",
+        "description": "Minimal navigation with clean lines",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["portfolios", "agencies", "minimal sites"],
+        "props": {
+          "sticky": true,
+          "variant": "minimal"
+        }
+      },
+      {
+        "key": "solid",
+        "name": "Solid Background",
+        "description": "Traditional navigation with solid background",
+        "layout": "full-width",
+        "complexity": 2,
+        "useCases": ["corporate", "business", "ecommerce"],
+        "props": {
+          "sticky": true,
+          "background": "solid"
+        }
+      }
+    ]
+  },
+  "AnimatedHero": {
+    "component": "AnimatedHero",
+    "category": "hero",
+    "tags": ["hero", "landing", "animated", "cta"],
+    "defaultVariant": "gradient",
+    "variants": [
+      {
+        "key": "gradient",
+        "name": "Gradient Background",
+        "description": "Full-screen hero with animated gradient background",
+        "layout": "full-width",
+        "complexity": 4,
+        "useCases": ["SaaS", "tech", "modern sites"],
+        "props": {
+          "fullScreen": true,
+          "gradient": true,
+          "particles": true
+        }
+      },
+      {
+        "key": "glass",
+        "name": "Glass Hero",
+        "description": "Hero with glass morphism card overlay",
+        "layout": "full-width",
+        "complexity": 4,
+        "useCases": ["portfolios", "modern sites", "agencies"],
+        "props": {
+          "fullScreen": true,
+          "glassMorphism": true
+        }
+      },
+      {
+        "key": "text-focus",
+        "name": "Text Focused",
+        "description": "Minimal hero with typography focus",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["portfolios", "minimal sites", "blogs"],
+        "props": {
+          "fullScreen": false,
+          "centered": true,
+          "minimal": true
+        }
+      }
+    ]
+  },
+  "VideoHero": {
+    "component": "VideoHero",
+    "category": "hero",
+    "tags": ["hero", "video", "immersive", "media"],
+    "defaultVariant": "overlay",
+    "variants": [
+      {
+        "key": "overlay",
+        "name": "Dark Overlay",
+        "description": "Video background with dark overlay for readability",
+        "layout": "full-width",
+        "complexity": 4,
+        "useCases": ["restaurants", "hotels", "luxury brands"],
+        "props": {
+          "overlay": "rgba(0,0,0,0.5)",
+          "autoplay": true,
+          "muted": true,
+          "loop": true
+        }
+      },
+      {
+        "key": "gradient-overlay",
+        "name": "Gradient Overlay",
+        "description": "Video with gradient overlay",
+        "layout": "full-width",
+        "complexity": 4,
+        "useCases": ["creative", "agencies", "portfolios"],
+        "props": {
+          "overlay": "gradient",
+          "autoplay": true,
+          "muted": true
+        }
+      }
+    ]
+  },
+  "HeroSplit": {
+    "component": "HeroSplit",
+    "category": "hero",
+    "tags": ["hero", "split", "image", "two-column"],
+    "defaultVariant": "image-right",
+    "variants": [
+      {
+        "key": "image-right",
+        "name": "Image Right",
+        "description": "Split hero with image on right side",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["business", "contracting", "services"],
+        "props": {
+          "imagePosition": "right",
+          "imageSize": "50%"
+        }
+      },
+      {
+        "key": "image-left",
+        "name": "Image Left",
+        "description": "Split hero with image on left side",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["business", "services", "products"],
+        "props": {
+          "imagePosition": "left",
+          "imageSize": "50%"
+        }
+      }
+    ]
+  },
+  "ParallaxHero": {
+    "component": "ParallaxHero",
+    "category": "hero",
+    "tags": ["hero", "parallax", "scroll", "immersive"],
+    "defaultVariant": "bold",
+    "variants": [
+      {
+        "key": "bold",
+        "name": "Bold Statement",
+        "description": "Large typography with parallax scroll effect",
+        "layout": "full-width",
+        "complexity": 5,
+        "useCases": ["creators", "campaigns", "bold brands"],
+        "props": {
+          "parallaxSpeed": 0.5,
+          "fullScreen": true,
+          "boldText": true
+        }
+      }
+    ]
+  },
+  "FeatureGrid": {
+    "component": "FeatureGrid",
+    "category": "content",
+    "tags": ["features", "grid", "benefits", "icons"],
+    "defaultVariant": "3-col",
+    "variants": [
+      {
+        "key": "3-col",
+        "name": "3 Column Grid",
+        "description": "Feature cards in 3-column grid layout",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["SaaS", "services", "products"],
+        "props": {
+          "columns": 3,
+          "iconStyle": "gradient"
+        }
+      },
+      {
+        "key": "4-col",
+        "name": "4 Column Grid",
+        "description": "Compact 4-column grid for more features",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["SaaS", "platforms", "dashboards"],
+        "props": {
+          "columns": 4,
+          "compact": true
+        }
+      },
+      {
+        "key": "bento",
+        "name": "Bento Grid",
+        "description": "Asymmetric bento-style grid layout",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["modern sites", "creative", "unique"],
+        "props": {
+          "layout": "bento",
+          "asymmetric": true
+        }
+      }
+    ]
+  },
+  "PortfolioGrid": {
+    "component": "PortfolioGrid",
+    "category": "content",
+    "tags": ["portfolio", "work", "projects", "gallery"],
+    "defaultVariant": "masonry",
+    "variants": [
+      {
+        "key": "masonry",
+        "name": "Masonry Layout",
+        "description": "Pinterest-style masonry grid",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["portfolios", "galleries", "creative work"],
+        "props": {
+          "layout": "masonry",
+          "hover": "zoom"
+        }
+      },
+      {
+        "key": "bento",
+        "name": "Bento Grid",
+        "description": "Modern bento box layout",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["portfolios", "case studies", "modern"],
+        "props": {
+          "layout": "bento",
+          "featured": true
+        }
+      },
+      {
+        "key": "grid",
+        "name": "Uniform Grid",
+        "description": "Classic uniform grid layout",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["portfolios", "simple", "clean"],
+        "props": {
+          "layout": "grid",
+          "columns": 3
+        }
+      }
+    ]
+  },
+  "Gallery": {
+    "component": "Gallery",
+    "category": "media",
+    "tags": ["gallery", "images", "photos"],
+    "defaultVariant": "grid",
+    "variants": [
+      {
+        "key": "grid",
+        "name": "Grid Gallery",
+        "description": "Simple grid layout for images",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["restaurants", "products", "simple"],
+        "props": {
+          "layout": "grid",
+          "columns": 3
+        }
+      },
+      {
+        "key": "masonry",
+        "name": "Masonry Gallery",
+        "description": "Flowing masonry layout",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["creative", "varied sizes", "visual"],
+        "props": {
+          "layout": "masonry",
+          "lightbox": true
+        }
+      },
+      {
+        "key": "carousel",
+        "name": "Image Carousel",
+        "description": "Sliding carousel gallery",
+        "layout": "full-width",
+        "complexity": 3,
+        "useCases": ["products", "features", "storytelling"],
+        "props": {
+          "layout": "carousel",
+          "autoplay": true,
+          "arrows": true
+        }
+      }
+    ]
+  },
+  "InteractiveMenu": {
+    "component": "InteractiveMenu",
+    "category": "interactive",
+    "tags": ["menu", "restaurant", "food", "interactive"],
+    "defaultVariant": "tabs",
+    "variants": [
+      {
+        "key": "tabs",
+        "name": "Tabbed Menu",
+        "description": "Menu with category tabs",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["restaurants", "cafes", "food"],
+        "props": {
+          "layout": "tabs",
+          "filterable": true
+        }
+      },
+      {
+        "key": "accordion",
+        "name": "Accordion Menu",
+        "description": "Collapsible accordion sections",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["restaurants", "extensive menus"],
+        "props": {
+          "layout": "accordion",
+          "expandable": true
+        }
+      }
+    ]
+  },
+  "PricingTable": {
+    "component": "PricingTable",
+    "category": "interactive",
+    "tags": ["pricing", "plans", "subscription", "conversion"],
+    "defaultVariant": "cards",
+    "variants": [
+      {
+        "key": "cards",
+        "name": "Pricing Cards",
+        "description": "Side-by-side pricing cards",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["SaaS", "subscriptions", "services"],
+        "props": {
+          "layout": "cards",
+          "highlight": "popular"
+        }
+      },
+      {
+        "key": "tabs",
+        "name": "Toggle Pricing",
+        "description": "Toggle between monthly/annual",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["SaaS", "flexible pricing"],
+        "props": {
+          "layout": "tabs",
+          "toggle": true,
+          "discount": "annual"
+        }
+      },
+      {
+        "key": "comparison",
+        "name": "Feature Comparison",
+        "description": "Detailed feature comparison table",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["enterprise", "detailed", "B2B"],
+        "props": {
+          "layout": "comparison",
+          "features": "detailed"
+        }
+      }
+    ]
+  },
+  "TestimonialSlider": {
+    "component": "TestimonialSlider",
+    "category": "stats",
+    "tags": ["testimonials", "reviews", "social-proof"],
+    "defaultVariant": "cards",
+    "variants": [
+      {
+        "key": "cards",
+        "name": "Card Slider",
+        "description": "Sliding testimonial cards",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["all industries", "social proof"],
+        "props": {
+          "layout": "cards",
+          "autoplay": true
+        }
+      },
+      {
+        "key": "bubble",
+        "name": "Speech Bubbles",
+        "description": "Testimonials in speech bubble style",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["creative", "casual", "friendly"],
+        "props": {
+          "layout": "bubble",
+          "avatar": true
+        }
+      },
+      {
+        "key": "quote",
+        "name": "Large Quote",
+        "description": "Single large featured quote",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["minimal", "impactful", "simple"],
+        "props": {
+          "layout": "quote",
+          "large": true
+        }
+      }
+    ]
+  },
+  "StatsCounter": {
+    "component": "StatsCounter",
+    "category": "stats",
+    "tags": ["stats", "numbers", "achievements", "metrics"],
+    "defaultVariant": "highlighted",
+    "variants": [
+      {
+        "key": "highlighted",
+        "name": "Highlighted Stats",
+        "description": "Stats with gradient backgrounds",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["all industries", "achievements"],
+        "props": {
+          "layout": "grid",
+          "gradient": true,
+          "animated": true
+        }
+      },
+      {
+        "key": "minimal",
+        "name": "Minimal Stats",
+        "description": "Clean minimal stat display",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["minimal", "professional"],
+        "props": {
+          "layout": "row",
+          "minimal": true
+        }
+      }
+    ]
+  },
+  "BookingForm": {
+    "component": "BookingForm",
+    "category": "interactive",
+    "tags": ["booking", "reservation", "form", "conversion"],
+    "defaultVariant": "inline",
+    "variants": [
+      {
+        "key": "inline",
+        "name": "Inline Form",
+        "description": "Integrated inline booking form",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["restaurants", "hotels", "services"],
+        "props": {
+          "layout": "inline",
+          "validation": true
+        }
+      },
+      {
+        "key": "modal",
+        "name": "Modal Form",
+        "description": "Pop-up modal booking form",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["restaurants", "appointments"],
+        "props": {
+          "layout": "modal",
+          "trigger": "button"
+        }
+      }
+    ]
+  },
+  "ContactForm": {
+    "component": "ContactForm",
+    "category": "interactive",
+    "tags": ["contact", "form", "lead"],
+    "defaultVariant": "standard",
+    "variants": [
+      {
+        "key": "standard",
+        "name": "Standard Contact",
+        "description": "Traditional contact form",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["all industries"],
+        "props": {
+          "fields": ["name", "email", "message"],
+          "validation": true
+        }
+      }
+    ]
+  },
+  "FAQAccordion": {
+    "component": "FAQAccordion",
+    "category": "interactive",
+    "tags": ["faq", "questions", "help", "support"],
+    "defaultVariant": "simple",
+    "variants": [
+      {
+        "key": "simple",
+        "name": "Simple FAQ",
+        "description": "Basic accordion FAQ",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["SaaS", "support", "help"],
+        "props": {
+          "layout": "accordion",
+          "expandable": "single"
+        }
+      },
+      {
+        "key": "two-column",
+        "name": "Two Column FAQ",
+        "description": "FAQ in two columns",
+        "layout": "container",
+        "complexity": 3,
+        "useCases": ["extensive FAQ"],
+        "props": {
+          "layout": "two-column",
+          "columns": 2
+        }
+      }
+    ]
+  },
+  "CTASection": {
+    "component": "CTASection",
+    "category": "cta",
+    "tags": ["cta", "conversion", "action"],
+    "defaultVariant": "gradient",
+    "variants": [
+      {
+        "key": "gradient",
+        "name": "Gradient CTA",
+        "description": "Eye-catching gradient background",
+        "layout": "full-width",
+        "complexity": 3,
+        "useCases": ["SaaS", "conversion", "modern"],
+        "props": {
+          "gradient": true,
+          "centered": true
+        }
+      },
+      {
+        "key": "contrast",
+        "name": "High Contrast",
+        "description": "Bold contrasting colors",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["portfolios", "simple", "bold"],
+        "props": {
+          "contrast": true,
+          "large": true
+        }
+      },
+      {
+        "key": "animated",
+        "name": "Animated CTA",
+        "description": "CTA with pulse animation",
+        "layout": "full-width",
+        "complexity": 4,
+        "useCases": ["campaigns", "high-energy"],
+        "props": {
+          "animated": true,
+          "pulse": true
+        }
+      }
+    ]
+  },
+  "NewsletterSignup": {
+    "component": "NewsletterSignup",
+    "category": "cta",
+    "tags": ["newsletter", "signup", "email", "subscribe"],
+    "defaultVariant": "inline",
+    "variants": [
+      {
+        "key": "inline",
+        "name": "Inline Signup",
+        "description": "Integrated newsletter form",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["blogs", "content", "creators"],
+        "props": {
+          "layout": "inline",
+          "validation": true
+        }
+      }
+    ]
+  },
+  "FooterColumns": {
+    "component": "FooterColumns",
+    "category": "footer",
+    "tags": ["footer", "links", "navigation"],
+    "defaultVariant": "full",
+    "variants": [
+      {
+        "key": "full",
+        "name": "Full Footer",
+        "description": "Comprehensive multi-column footer",
+        "layout": "full-width",
+        "complexity": 3,
+        "useCases": ["corporate", "large sites", "ecommerce"],
+        "props": {
+          "columns": 4,
+          "social": true,
+          "newsletter": true
+        }
+      },
+      {
+        "key": "contact",
+        "name": "Contact Footer",
+        "description": "Footer with contact information",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["business", "services"],
+        "props": {
+          "columns": 3,
+          "contact": true
+        }
+      }
+    ]
+  },
+  "MinimalFooter": {
+    "component": "MinimalFooter",
+    "category": "footer",
+    "tags": ["footer", "minimal", "simple"],
+    "defaultVariant": "centered",
+    "variants": [
+      {
+        "key": "centered",
+        "name": "Centered Minimal",
+        "description": "Simple centered footer",
+        "layout": "container",
+        "complexity": 1,
+        "useCases": ["portfolios", "minimal", "simple"],
+        "props": {
+          "centered": true,
+          "social": true
+        }
+      }
+    ]
+  },
+  "ProductCarousel": {
+    "component": "ProductCarousel",
+    "category": "content",
+    "tags": ["products", "carousel", "ecommerce"],
+    "defaultVariant": "featured",
+    "variants": [
+      {
+        "key": "featured",
+        "name": "Featured Products",
+        "description": "Carousel of featured products",
+        "layout": "container",
+        "complexity": 4,
+        "useCases": ["ecommerce", "products"],
+        "props": {
+          "autoplay": true,
+          "arrows": true,
+          "dots": true
+        }
+      }
+    ]
+  },
+  "ScrollingNarrative": {
+    "component": "ScrollingNarrative",
+    "category": "content",
+    "tags": ["story", "narrative", "scroll"],
+    "defaultVariant": "story",
+    "variants": [
+      {
+        "key": "story",
+        "name": "Story Scroll",
+        "description": "Scroll-triggered narrative sections",
+        "layout": "full-width",
+        "complexity": 5,
+        "useCases": ["campaigns", "storytelling", "creators"],
+        "props": {
+          "scrollTrigger": true,
+          "animated": true
+        }
+      }
+    ]
+  },
+  "VideoEmbed": {
+    "component": "VideoEmbed",
+    "category": "media",
+    "tags": ["video", "media", "embed"],
+    "defaultVariant": "featured",
+    "variants": [
+      {
+        "key": "featured",
+        "name": "Featured Video",
+        "description": "Large featured video embed",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["campaigns", "creators", "media"],
+        "props": {
+          "aspectRatio": "16/9",
+          "provider": "youtube"
+        }
+      }
+    ]
+  },
+  "LogoCloud": {
+    "component": "LogoCloud",
+    "category": "stats",
+    "tags": ["clients", "partners", "brands", "social-proof"],
+    "defaultVariant": "clients",
+    "variants": [
+      {
+        "key": "clients",
+        "name": "Client Logos",
+        "description": "Grid of client/partner logos",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["agencies", "B2B", "trust"],
+        "props": {
+          "layout": "grid",
+          "grayscale": true
+        }
+      }
+    ]
+  },
+  "SocialProof": {
+    "component": "SocialProof",
+    "category": "stats",
+    "tags": ["social", "proof", "trust", "metrics"],
+    "defaultVariant": "stats",
+    "variants": [
+      {
+        "key": "stats",
+        "name": "Social Stats",
+        "description": "Display social metrics",
+        "layout": "container",
+        "complexity": 2,
+        "useCases": ["creators", "influencers"],
+        "props": {
+          "animated": true
+        }
+      }
+    ]
+  }
+}

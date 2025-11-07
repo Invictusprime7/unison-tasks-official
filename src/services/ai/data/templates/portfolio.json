@@ -1,0 +1,197 @@
+{
+  "id": "portfolio-template",
+  "name": "Portfolio & Creative",
+  "industry": "portfolio",
+  "description": "Professional portfolio template for designers, developers, and creatives",
+  "defaultTone": "minimal",
+  "recommendedComponents": [
+    {
+      "component": "AnimatedHero",
+      "variants": ["text-focus", "glass"],
+      "priority": "required"
+    },
+    {
+      "component": "StickyNav",
+      "variants": ["glass", "minimal"],
+      "priority": "recommended"
+    },
+    {
+      "component": "PortfolioGrid",
+      "variants": ["masonry", "bento", "grid"],
+      "priority": "required"
+    },
+    {
+      "component": "StatsCounter",
+      "variants": ["minimal", "highlighted"],
+      "priority": "optional"
+    },
+    {
+      "component": "TestimonialSlider",
+      "variants": ["bubble", "quote"],
+      "priority": "recommended"
+    },
+    {
+      "component": "CTASection",
+      "variants": ["contrast", "gradient"],
+      "priority": "required"
+    },
+    {
+      "component": "MinimalFooter",
+      "variants": ["centered"],
+      "priority": "required"
+    }
+  ],
+  "layoutPatterns": [
+    {
+      "name": "Creative Showcase",
+      "description": "Bold, creative portfolio with maximum visual impact",
+      "suitableFor": ["designers", "artists", "photographers"],
+      "complexity": 4,
+      "structure": [
+        {
+          "id": "section-1",
+          "component": "StickyNav",
+          "variant": "glass",
+          "order": 0,
+          "spacing": { "paddingY": "py-0", "paddingX": "px-0" }
+        },
+        {
+          "id": "section-2",
+          "component": "AnimatedHero",
+          "variant": "text-focus",
+          "order": 1,
+          "animation": {
+            "type": "fade",
+            "direction": "up",
+            "duration": 1000,
+            "trigger": "load",
+            "easing": "easeOut"
+          },
+          "spacing": { "paddingY": "py-32", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-3",
+          "component": "PortfolioGrid",
+          "variant": "bento",
+          "order": 2,
+          "animation": {
+            "type": "stagger",
+            "duration": 600,
+            "delay": 150,
+            "trigger": "viewport",
+            "easing": "spring"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-4",
+          "component": "TestimonialSlider",
+          "variant": "quote",
+          "order": 3,
+          "animation": {
+            "type": "fade",
+            "direction": "up",
+            "duration": 800,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-5",
+          "component": "CTASection",
+          "variant": "contrast",
+          "order": 4,
+          "animation": {
+            "type": "zoom",
+            "direction": "in",
+            "duration": 600,
+            "trigger": "viewport"
+          },
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-6",
+          "component": "MinimalFooter",
+          "variant": "centered",
+          "order": 5,
+          "spacing": { "paddingY": "py-12", "paddingX": "px-6" }
+        }
+      ]
+    },
+    {
+      "name": "Minimal Professional",
+      "description": "Clean, minimal portfolio focused on work quality",
+      "suitableFor": ["developers", "consultants", "professionals"],
+      "complexity": 2,
+      "structure": [
+        {
+          "id": "section-1",
+          "component": "StickyNav",
+          "variant": "minimal",
+          "order": 0,
+          "spacing": { "paddingY": "py-0", "paddingX": "px-0" }
+        },
+        {
+          "id": "section-2",
+          "component": "AnimatedHero",
+          "variant": "text-focus",
+          "order": 1,
+          "spacing": { "paddingY": "py-32", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-3",
+          "component": "PortfolioGrid",
+          "variant": "grid",
+          "order": 2,
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-4",
+          "component": "StatsCounter",
+          "variant": "minimal",
+          "order": 3,
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-5",
+          "component": "CTASection",
+          "variant": "contrast",
+          "order": 4,
+          "spacing": { "paddingY": "py-20", "paddingX": "px-6" }
+        },
+        {
+          "id": "section-6",
+          "component": "MinimalFooter",
+          "variant": "centered",
+          "order": 5,
+          "spacing": { "paddingY": "py-12", "paddingX": "px-6" }
+        }
+      ]
+    }
+  ],
+  "contentGuidelines": {
+    "heroMessage": [
+      "Designing Human Experiences",
+      "Creating Digital Excellence",
+      "Where Design Meets Code",
+      "Crafting Visual Stories",
+      "Transforming Ideas into Reality"
+    ],
+    "valueProps": [
+      "10+ years experience",
+      "Award-winning work",
+      "Client satisfaction: 100%",
+      "Featured on Awwwards",
+      "International clients",
+      "Full-stack expertise"
+    ],
+    "ctaVariants": [
+      "Get in Touch",
+      "Let's Work Together",
+      "Start a Project",
+      "View Full Portfolio",
+      "Contact Me",
+      "Hire Me"
+    ]
+  }
+}

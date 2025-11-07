@@ -1,0 +1,161 @@
+{
+  "fadeUp": {
+    "initial": { "opacity": 0, "y": 30 },
+    "whileInView": { "opacity": 1, "y": 0 },
+    "transition": { "duration": 0.6, "ease": "easeOut" },
+    "viewport": { "once": true, "amount": 0.3 }
+  },
+  "fadeDown": {
+    "initial": { "opacity": 0, "y": -30 },
+    "whileInView": { "opacity": 1, "y": 0 },
+    "transition": { "duration": 0.6, "ease": "easeOut" },
+    "viewport": { "once": true, "amount": 0.3 }
+  },
+  "fadeLeft": {
+    "initial": { "opacity": 0, "x": -50 },
+    "whileInView": { "opacity": 1, "x": 0 },
+    "transition": { "duration": 0.7, "ease": "easeOut" },
+    "viewport": { "once": true, "amount": 0.3 }
+  },
+  "fadeRight": {
+    "initial": { "opacity": 0, "x": 50 },
+    "whileInView": { "opacity": 1, "x": 0 },
+    "transition": { "duration": 0.7, "ease": "easeOut" },
+    "viewport": { "once": true, "amount": 0.3 }
+  },
+  "slideLeft": {
+    "initial": { "x": 100, "opacity": 0 },
+    "whileInView": { "x": 0, "opacity": 1 },
+    "transition": { "type": "spring", "stiffness": 100, "damping": 20 },
+    "viewport": { "once": true }
+  },
+  "slideRight": {
+    "initial": { "x": -100, "opacity": 0 },
+    "whileInView": { "x": 0, "opacity": 1 },
+    "transition": { "type": "spring", "stiffness": 100, "damping": 20 },
+    "viewport": { "once": true }
+  },
+  "slideUp": {
+    "initial": { "y": 100, "opacity": 0 },
+    "whileInView": { "y": 0, "opacity": 1 },
+    "transition": { "type": "spring", "stiffness": 80, "damping": 15 },
+    "viewport": { "once": true }
+  },
+  "slideDown": {
+    "initial": { "y": -100, "opacity": 0 },
+    "whileInView": { "y": 0, "opacity": 1 },
+    "transition": { "type": "spring", "stiffness": 80, "damping": 15 },
+    "viewport": { "once": true }
+  },
+  "zoomIn": {
+    "initial": { "scale": 0.8, "opacity": 0 },
+    "whileInView": { "scale": 1, "opacity": 1 },
+    "transition": { "duration": 0.5, "ease": "easeOut" },
+    "viewport": { "once": true, "amount": 0.5 }
+  },
+  "zoomOut": {
+    "initial": { "scale": 1.2, "opacity": 0 },
+    "whileInView": { "scale": 1, "opacity": 1 },
+    "transition": { "duration": 0.5, "ease": "easeOut" },
+    "viewport": { "once": true, "amount": 0.5 }
+  },
+  "staggeredZoom": {
+    "container": {
+      "whileInView": "visible",
+      "viewport": { "once": true, "amount": 0.2 }
+    },
+    "variants": {
+      "hidden": { "opacity": 0 },
+      "visible": {
+        "opacity": 1,
+        "transition": {
+          "staggerChildren": 0.15
+        }
+      }
+    },
+    "item": {
+      "initial": { "scale": 0.8, "opacity": 0 },
+      "animate": { "scale": 1, "opacity": 1 },
+      "transition": { "duration": 0.5, "ease": [0.25, 0.46, 0.45, 0.94] }
+    }
+  },
+  "parallax": {
+    "initial": { "y": 0 },
+    "whileInView": { "y": -50 },
+    "transition": { "duration": 0, "ease": "linear" },
+    "viewport": { "once": false }
+  },
+  "float": {
+    "animate": {
+      "y": [-10, 10, -10],
+      "transition": {
+        "duration": 6,
+        "repeat": 999999,
+        "ease": "easeInOut"
+      }
+    }
+  },
+  "pulse": {
+    "animate": {
+      "scale": [1, 1.05, 1],
+      "transition": {
+        "duration": 2,
+        "repeat": 999999,
+        "ease": "easeInOut"
+      }
+    }
+  },
+  "bounce": {
+    "animate": {
+      "y": [0, -20, 0],
+      "transition": {
+        "duration": 0.8,
+        "repeat": 999999,
+        "ease": [0.25, 0.46, 0.45, 0.94]
+      }
+    }
+  },
+  "rotate": {
+    "initial": { "rotate": -10, "opacity": 0 },
+    "whileInView": { "rotate": 0, "opacity": 1 },
+    "transition": { "duration": 0.8, "ease": [0.25, 0.46, 0.45, 0.94] },
+    "viewport": { "once": true }
+  },
+  "fadeInScroll": {
+    "initial": { "opacity": 0, "y": 50 },
+    "whileInView": { "opacity": 1, "y": 0 },
+    "transition": { "duration": 0.8, "ease": "easeOut" },
+    "viewport": { "once": false, "amount": 0.5 }
+  },
+  "hoverLift": {
+    "whileHover": {
+      "y": -8,
+      "scale": 1.02,
+      "transition": { "duration": 0.3, "ease": "easeOut" }
+    }
+  },
+  "hoverScale": {
+    "whileHover": {
+      "scale": 1.05,
+      "transition": { "duration": 0.2, "ease": "easeOut" }
+    }
+  },
+  "hoverRotate": {
+    "whileHover": {
+      "rotate": 5,
+      "transition": { "duration": 0.3, "ease": "easeOut" }
+    }
+  },
+  "hoverGlow": {
+    "whileHover": {
+      "boxShadow": "0 20px 60px rgba(0, 0, 0, 0.3)",
+      "transition": { "duration": 0.3 }
+    }
+  },
+  "tapShrink": {
+    "whileTap": {
+      "scale": 0.95,
+      "transition": { "duration": 0.1 }
+    }
+  }
+}
