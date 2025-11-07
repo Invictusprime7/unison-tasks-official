@@ -181,43 +181,88 @@ ${layoutPlan.sections.map((section, i) => `${i + 1}. ${section.component} (${sec
 
 Generate complete, working code that I can copy and use immediately.`;
 
-      // Call the ai-code-assistant edge function
-      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
-        body: {
+      // Call the ai-code-assistant edge function with proper authorization
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase configuration missing. Check environment variables.');
+      }
+
+      console.log('[useAIWebBuilder] Calling edge function:', {
+        url: `${supabaseUrl}/functions/v1/ai-code-assistant`,
+        hasAuth: !!supabaseKey
+      });
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-code-assistant`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
           messages: [
             {
               role: 'user',
-              content: prompt,
-              timestamp: new Date()
+              content: prompt
             }
           ],
           mode: 'code'
-        }
+        })
       });
 
-      if (error) {
-        console.error('[useAIWebBuilder] Edge function error:', error);
-        throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[useAIWebBuilder] Edge function error response:', errorText);
+        throw new Error(`Edge function failed: ${response.status} ${response.statusText}`);
       }
 
-      console.log('[useAIWebBuilder] Edge function response:', data);
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream available');
+      }
 
-      // The edge function returns generated code in the response
-      // Parse it based on the expected format
-      let code: AIWebBuilderResponse['code'];
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          
+          // Parse SSE format (data: {...})
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.slice(6); // Remove "data: " prefix
+                if (jsonStr.trim() === '[DONE]') continue;
+                
+                const data = JSON.parse(jsonStr);
+                if (data.choices?.[0]?.delta?.content) {
+                  fullContent += data.choices[0].delta.content;
+                }
+              } catch (e) {
+                // Skip invalid JSON chunks
+                console.debug('[useAIWebBuilder] Skipping invalid JSON chunk:', line);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
 
-      if (data.html || data.css || data.javascript) {
-        // Direct code response
-        code = {
-          html: data.html || '',
-          css: data.css || '',
-          javascript: data.javascript || ''
-        };
-      } else if (data.content) {
-        // Parse from content string
-        code = parseCodeFromContent(data.content);
-      } else {
-        throw new Error('No code generated from edge function');
+      console.log('[useAIWebBuilder] Full generated content length:', fullContent.length);
+
+      // Parse code from the full streamed content
+      const code = parseCodeFromContent(fullContent);
+
+      if (!code.html && !code.css && !code.javascript) {
+        throw new Error('No code blocks found in AI response');
       }
 
       setGeneratedCode(code);
