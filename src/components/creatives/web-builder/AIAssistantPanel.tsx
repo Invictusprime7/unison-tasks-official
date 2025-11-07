@@ -159,7 +159,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   return (
     <div className="fixed right-0 top-0 bottom-0 w-full md:w-[450px] bg-white opacity-100 shadow-2xl z-50 flex flex-col border-l">
       {/* Header */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden z-30">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 opacity-90"></div>
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-30"></div>
         
@@ -185,7 +185,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       </div>
 
       {/* Quick Prompts */}
-      <div className="p-4 border-b bg-gradient-to-br from-gray-50 to-purple-50">
+      <div className="p-4 border-b bg-gradient-to-br from-gray-50 to-purple-50 relative z-20">
         <p className="text-xs font-semibold text-gray-700 mb-3">✨ Quick Start</p>
         <div className="grid grid-cols-2 gap-2">
           {quickPrompts.map((prompt, idx) => (
@@ -204,8 +204,9 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4">
+      <div className="flex-1 relative z-10 bg-white overflow-hidden">
+        <ScrollArea className="h-full w-full p-4" ref={scrollRef}>
+          <div className="space-y-4 relative z-10">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -301,11 +302,12 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               </div>
             </div>
           )}
-        </div>
-      </ScrollArea>
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* Input */}
-      <div className="p-4 border-t bg-white">
+      <div className="p-4 border-t bg-white relative z-20">
         <div className="flex gap-2">
           <Input
             value={input}
