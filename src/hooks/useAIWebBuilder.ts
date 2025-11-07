@@ -223,7 +223,6 @@ Generate complete, working code that I can copy and use immediately.`;
         options.onLayoutGenerated(layoutPlan);
       }
 
-      toast.success(`✨ Layout plan generated with ${layoutPlan.sections.length} sections!`);
       return layoutPlan;
     } catch (error) {
       console.error('[useAIWebBuilder] Error generating layout:', error);
@@ -335,7 +334,6 @@ Generate complete, working code that I can copy and use immediately.`;
       // If React/TypeScript code is generated but might not render, convert to vanilla JS
       if (format === 'react' && code.html && !isValidReactCode(code.html)) {
         console.warn('[useAIWebBuilder] React code validation failed, converting to vanilla HTML');
-        toast.info('Converting React components to vanilla HTML for compatibility...');
         code = convertReactToVanilla(code);
       }
 
@@ -350,7 +348,6 @@ Generate complete, working code that I can copy and use immediately.`;
         options.onCodeGenerated(code);
       }
 
-      toast.success(`✨ ${format === 'react' ? 'React/TypeScript' : 'HTML'} code generated successfully!`);
       return code;
     } catch (error) {
       console.error('[useAIWebBuilder] Error generating code:', error);
@@ -567,7 +564,6 @@ Return ONLY valid code without explanations or markdown formatting.`;
     try {
       // TODO: Create ai_web_builder_projects table in Supabase
       console.log('Saving layout:', { layoutPlan, prompt });
-      toast.info('Layout save feature coming soon!');
       return null;
     } catch (error) {
       console.error('Error saving layout:', error);

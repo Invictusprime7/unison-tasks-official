@@ -378,7 +378,6 @@ declare global {
       action: () => {
         if (history.canUndo) {
           history.undo();
-          toast.success("Undone");
         }
       },
     },
@@ -387,7 +386,6 @@ declare global {
       action: () => {
         if (history.canRedo) {
           history.redo();
-          toast.success("Redone");
         }
       },
     },
@@ -396,7 +394,6 @@ declare global {
       action: () => {
         if (history.canRedo) {
           history.redo();
-          toast.success("Redone");
         }
       },
     },
@@ -416,7 +413,6 @@ declare global {
       ...defaultWebBuilderShortcuts.save,
       action: () => {
         history.save();
-        toast.success("Saved");
       },
     },
     {
@@ -445,7 +441,6 @@ declare global {
       // Use template state to render the template
       templateState.updateTemplate(generatedTemplate).then(() => {
         console.log('[WebBuilder] ✅ Template successfully rendered from route state');
-        toast.success(`✨ Template "${templateName}" rendered to canvas!`);
         setShowPreview(true);
         // Clear the state to prevent re-loading
         window.history.replaceState({}, document.title);
@@ -505,7 +500,6 @@ declare global {
     if (!fabricCanvas || !selectedObject) return;
     fabricCanvas.remove(selectedObject);
     fabricCanvas.renderAll();
-    toast.success("Deleted");
   };
 
   const handleDuplicate = async () => {
@@ -518,7 +512,6 @@ declare global {
     fabricCanvas.add(cloned);
     fabricCanvas.setActiveObject(cloned);
     fabricCanvas.renderAll();
-    toast.success("Duplicated");
   };
 
   const addBlock = (blockId: string) => {
@@ -532,7 +525,6 @@ declare global {
       fabricCanvas.add(component);
       fabricCanvas.setActiveObject(component);
       fabricCanvas.renderAll();
-      toast.success(`${block.label} added`);
     }
   };
 
@@ -630,7 +622,6 @@ declare global {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success('React component exported');
     } else if (format === 'json') {
       const json = JSON.stringify(fabricCanvas.toJSON(), null, 2);
       const blob = new Blob([json], { type: 'application/json' });
@@ -642,7 +633,6 @@ declare global {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success('JSON exported');
     }
   };
 
@@ -653,11 +643,9 @@ declare global {
       if (!document.fullscreenElement) {
         await mainContainerRef.current.requestFullscreen();
         setIsFullscreen(true);
-        toast.success('Entered fullscreen preview');
       } else {
         await document.exitFullscreen();
         setIsFullscreen(false);
-        toast.success('Exited fullscreen');
       }
     } catch (error) {
       console.error('Error toggling fullscreen:', error);
@@ -729,7 +717,6 @@ declare global {
         top: 0,
         behavior: 'smooth'
       });
-      toast.success('Scrolled to top');
     }
   };
 
@@ -739,7 +726,6 @@ declare global {
         top: scrollContainerRef.current.scrollHeight,
         behavior: 'smooth'
       });
-      toast.success('Scrolled to bottom');
     }
   };
 
@@ -951,7 +937,6 @@ declare global {
             size="sm"
             onClick={() => {
               history.save();
-              toast.success("Saved");
             }}
             className="text-white/70 hover:text-white"
             title="Save (Ctrl+S)"
@@ -980,7 +965,7 @@ declare global {
           <Button 
             size="sm" 
             className="bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => toast.success('Click Publish in the top right to deploy your website with a custom domain!')}
+            onClick={() => console.log('[WebBuilder] Publish clicked')}
           >
             <Play className="h-4 w-4 mr-2" />
             Publish
@@ -1221,7 +1206,6 @@ declare global {
                       console.log('[WebBuilder] HTML Element selected:', elementData);
                       setSelectedHTMLElement(elementData);
                       setHtmlPropertiesPanelOpen(true);
-                      toast.success('Element selected! Edit properties in the panel →');
                     }}
                   />
                 </div>
@@ -1330,7 +1314,6 @@ declare global {
                         console.log('[WebBuilder] HTML Element selected:', elementData);
                         setSelectedHTMLElement(elementData);
                         setHtmlPropertiesPanelOpen(true);
-                        toast.success('Element selected! Edit properties in the panel →');
                       }}
                     />
                   </div>
@@ -1471,7 +1454,6 @@ declare global {
                     fabricCanvas.setZoom(0.5);
                     fabricCanvas.renderAll();
                   }
-                  toast.success("Reset view");
                 }}
                 className="text-white/70 hover:text-white text-xs"
                 title="Reset zoom and pan"
@@ -1520,8 +1502,6 @@ declare global {
                     ...selectedHTMLElement,
                     ...updates,
                   });
-                  
-                  toast.success('Element updated successfully');
                 } else {
                   toast.error('Failed to update element', {
                     description: 'Element not found in preview'
@@ -1563,8 +1543,6 @@ declare global {
               typography: layout.typography.fontFamily.heading
             });
             
-            toast.success(`✨ Layout plan generated with ${layout.sections.length} sections!`);
-            
             // Show preview after successful render
             setShowPreview(true);
           } catch (error) {
@@ -1581,7 +1559,6 @@ declare global {
               setPreviewCode(code);
               // Switch to code view to show the generated code
               setViewMode('code');
-              toast.success('✅ HTML code applied to Monaco editor!');
             } else if (type === 'css') {
               // Inject CSS into preview - create a style element
               const styleId = 'ai-generated-css';
@@ -1594,13 +1571,11 @@ declare global {
               }
               
               styleElement.textContent = code;
-              toast.success('✅ CSS styles injected into preview!');
             } else if (type === 'javascript') {
               // For JavaScript, append it to the HTML with script tags
               const updatedCode = editorCode + `\n\n<script>\n${code}\n</script>`;
               setEditorCode(updatedCode);
               setPreviewCode(updatedCode);
-              toast.success('✅ JavaScript integrated into code!');
             }
           } catch (error) {
             console.error(`[WebBuilder] Failed to apply ${type}:`, error);
@@ -1641,7 +1616,7 @@ declare global {
           <PerformancePanel 
             fabricCanvas={fabricCanvas}
             onAutoFix={() => {
-              toast.success("Auto-fix applied! Optimizations complete.");
+              console.log('[WebBuilder] Auto-fix applied');
             }}
           />
         </div>
@@ -1664,7 +1639,6 @@ declare global {
             onExport={handleExport}
             onIntegrationConnect={(integration, config) => {
               console.log('Integration connected:', integration, config);
-              toast.success(`${integration} connected successfully!`);
             }}
           />
         </div>

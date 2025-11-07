@@ -36,7 +36,6 @@ ${prompt.brandKit ? `Brand Colors: Primary ${prompt.brandKit.primaryColor}, Seco
 
       const generatedTemplate = data.template as AIGeneratedTemplate;
       setTemplate(generatedTemplate);
-      toast.success('AI template generated successfully!');
       return generatedTemplate;
     } catch (error) {
       console.error('Error generating AI template:', error);
