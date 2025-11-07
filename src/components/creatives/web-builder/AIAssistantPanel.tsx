@@ -157,7 +157,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-full md:w-[450px] bg-white shadow-2xl z-50 flex flex-col border-l">
+    <div className="fixed right-0 top-0 bottom-0 w-full md:w-[450px] bg-white opacity-100 shadow-2xl z-50 flex flex-col border-l">
       {/* Header */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 opacity-90"></div>
