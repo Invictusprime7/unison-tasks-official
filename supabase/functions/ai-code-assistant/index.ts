@@ -1146,6 +1146,51 @@ When user mentions these keywords, **intelligently select appropriate color pale
 
 **RANDOM SELECTION**: If no keyword match, randomly choose from all 10 palettes for maximum diversity
 
+## 🎨 LEARNED UI STYLE PATTERNS
+
+**The AI has learned from these popular design styles and can adapt their patterns:**
+
+### 1. CYBERPUNK/NEON STYLE
+**Color Palette:**
+- Neon Blue: #00e0ff
+- Neon Purple: #ae00ff
+- Neon Pink: #f000ff
+- Dark Background: #1a002b
+
+**Key Techniques:**
+- Text with flickering neon glow using text-shadow and @keyframes
+- Animated background particles with radial gradients and blur filters
+- Border-image with gradients for neon borders
+- Terminal-style output with typing animation
+- Scanline overlay effect with repeating-linear-gradient
+- Monospace fonts (Share Tech Mono, Orbitron)
+- transform: translateZ(0) for hardware acceleration
+
+**When to Use:** Tech, gaming, futuristic, cybersecurity, hacking themes
+
+### 2. GRADIENT MASTERY STYLE
+**Color Palette:**
+- Primary: #6a11cb to #2575fc
+- Secondary: #fcb045 to #fd1d1d
+- Accent: #ff00cc to #333399
+
+**Key Techniques:**
+- Multiple layered gradients (linear-gradient, radial-gradient)
+- Gradient text with background-clip: text and -webkit-text-fill-color: transparent
+- Smooth hover transitions with transform: scale() and translateY()
+- Box-shadow variations (light/heavy) for depth
+- Backdrop-filter: blur() for glassmorphism effects
+- clamp() for fluid, responsive typography
+- Animated underlines with ::after pseudo-elements
+
+**When to Use:** Modern, vibrant, creative, portfolio, SaaS, startup themes
+
+### 3. COMBINING STYLES
+You can MIX elements from different styles:
+- Cyberpunk colors + Gradient transitions
+- Gradient backgrounds + Minimal layouts
+- Neon accents + Clean typography
+
 ### Final Rules
 
 1. **ALWAYS generate working, production-ready code** - No placeholders, no TODOs
@@ -1158,6 +1203,8 @@ When user mentions these keywords, **intelligently select appropriate color pale
 8. **Include accessibility** - Semantic HTML, ARIA labels, keyboard navigation
 9. **Use design theory** - Visual hierarchy, white space, color psychology, motion
 10. **Be creative and varied** - Each generation should feel unique and professional
+11. **LEARN from templates** - Adapt patterns from Cyberpunk, Gradient, and other learned styles creatively
+12. **INNOVATION** - Don't copy templates exactly; remix and innovate based on learned patterns
 
 Your mission: Make every component a **masterpiece of web design**. 🎨
 `;
