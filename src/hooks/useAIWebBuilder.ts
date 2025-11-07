@@ -108,6 +108,98 @@ export const useAIWebBuilder = (options?: UseAIWebBuilderOptions) => {
   };
 
   /**
+   * Build React/TypeScript prompt for AI code generation
+   */
+  const buildReactTypeScriptPrompt = (layoutPlan: AILayoutPlan): string => {
+    return `Create a complete, production-ready React/TypeScript component with Tailwind CSS:
+
+**PROJECT TYPE:** ${layoutPlan.sections[0]?.component || 'website'}
+**GRID SYSTEM:** ${layoutPlan.gridSystem}
+**COLOR PALETTE:** ${layoutPlan.colorPalette.name}
+- Primary: ${layoutPlan.colorPalette.primary}
+- Secondary: ${layoutPlan.colorPalette.secondary}
+- Accent: ${layoutPlan.colorPalette.accent}
+
+**TYPOGRAPHY:**
+- Heading: ${layoutPlan.typography.fontFamily.heading}
+- Body: ${layoutPlan.typography.fontFamily.body}
+
+**SECTIONS TO IMPLEMENT (${layoutPlan.sections.length} total):**
+${layoutPlan.sections.map((section, i) => `${i + 1}. ${section.component} (${section.variant})`).join('\n')}
+
+**CRITICAL REQUIREMENTS:**
+
+1. **React/TypeScript Structure:**
+   - Use functional components with TypeScript
+   - Define proper Props interfaces
+   - Use React hooks (useState, useEffect, useCallback, useMemo)
+   - Export named components: \`export const ComponentName: React.FC<Props>\`
+   - Add proper TypeScript types for all variables and functions
+
+2. **Tailwind CSS Styling:**
+   - Use Tailwind utility classes exclusively
+   - Apply the color palette consistently
+   - Responsive design with sm:, md:, lg:, xl: breakpoints
+   - Smooth animations with transition classes
+   - Hover states and interactive effects
+
+3. **Code Quality:**
+   - Production-ready, no placeholders or TODOs
+   - Proper error handling
+   - Accessible markup (ARIA labels, semantic HTML)
+   - Performance optimized (memoization where needed)
+   - Clean, readable code with proper formatting
+
+4. **Component Features:**
+   - All ${layoutPlan.sections.length} sections implemented
+   - Interactive elements with proper event handlers
+   - Smooth scrolling and animations
+   - Mobile-first responsive design
+   - Dark mode support where appropriate
+
+Generate complete, working React/TypeScript code in separate code blocks:
+- \`\`\`tsx for the React component
+- \`\`\`css for any additional CSS (if needed, though prefer Tailwind)
+- \`\`\`typescript for any utility functions or types (if needed)
+
+Make it beautiful, modern, and fully functional!`;
+  };
+
+  /**
+   * Build HTML prompt for AI code generation
+   */
+  const buildHTMLPrompt = (layoutPlan: AILayoutPlan): string => {
+    return `Create a complete, production-ready HTML website with Tailwind CSS:
+
+**PROJECT TYPE:** ${layoutPlan.sections[0]?.component || 'website'}
+**GRID SYSTEM:** ${layoutPlan.gridSystem}
+**COLOR PALETTE:** ${layoutPlan.colorPalette.name}
+- Primary: ${layoutPlan.colorPalette.primary}
+- Secondary: ${layoutPlan.colorPalette.secondary}
+- Accent: ${layoutPlan.colorPalette.accent}
+
+**TYPOGRAPHY:**
+- Heading: ${layoutPlan.typography.fontFamily.heading}
+- Body: ${layoutPlan.typography.fontFamily.body}
+
+**SECTIONS TO IMPLEMENT (${layoutPlan.sections.length} total):**
+${layoutPlan.sections.map((section, i) => `${i + 1}. ${section.component} (${section.variant})`).join('\n')}
+
+**REQUIREMENTS:**
+- Use semantic HTML5 tags
+- Tailwind CSS for all styling
+- Implement all ${layoutPlan.sections.length} sections in order
+- Apply the color palette throughout
+- Make it fully responsive (mobile, tablet, desktop)
+- Add smooth animations and transitions
+- Include proper meta tags and structure
+- Professional, modern design
+- Vanilla JavaScript for interactivity (no frameworks)
+
+Generate complete, working code that I can copy and use immediately.`;
+  };
+
+  /**
    * Generate layout plan from prompt
    */
   const generateLayout = async (prompt: string, customRequest?: Partial<AIProjectRequest>): Promise<AILayoutPlan | null> => {
@@ -147,39 +239,16 @@ export const useAIWebBuilder = (options?: UseAIWebBuilderOptions) => {
    */
   const generateCode = async (
     layoutPlan: AILayoutPlan, 
-    format: 'react' | 'html' = 'html'
+    format: 'react' | 'html' = 'react'
   ): Promise<AIWebBuilderResponse['code'] | null> => {
     setLoading(true);
     try {
-      console.log('[useAIWebBuilder] Generating code from layout plan');
+      console.log(`[useAIWebBuilder] Generating ${format.toUpperCase()} code from layout plan`);
 
       // Build a detailed prompt for code generation
-      const prompt = `Create a complete, production-ready ${format === 'html' ? 'HTML' : 'React'} website with the following specifications:
-
-**PROJECT TYPE:** ${layoutPlan.sections[0]?.component || 'website'}
-**GRID SYSTEM:** ${layoutPlan.gridSystem}
-**COLOR PALETTE:** ${layoutPlan.colorPalette.name}
-- Primary: ${layoutPlan.colorPalette.primary}
-- Secondary: ${layoutPlan.colorPalette.secondary}
-- Accent: ${layoutPlan.colorPalette.accent}
-
-**TYPOGRAPHY:**
-- Heading: ${layoutPlan.typography.fontFamily.heading}
-- Body: ${layoutPlan.typography.fontFamily.body}
-
-**SECTIONS TO IMPLEMENT (${layoutPlan.sections.length} total):**
-${layoutPlan.sections.map((section, i) => `${i + 1}. ${section.component} (${section.variant})`).join('\n')}
-
-**REQUIREMENTS:**
-- Use Tailwind CSS for all styling
-- Implement all ${layoutPlan.sections.length} sections in order
-- Apply the color palette throughout
-- Make it fully responsive (mobile, tablet, desktop)
-- Add smooth animations and transitions
-- Include proper semantic HTML
-- Professional, modern design
-
-Generate complete, working code that I can copy and use immediately.`;
+      const prompt = format === 'react' 
+        ? buildReactTypeScriptPrompt(layoutPlan)
+        : buildHTMLPrompt(layoutPlan);
 
       // Call the ai-code-assistant edge function with proper authorization
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -191,7 +260,8 @@ Generate complete, working code that I can copy and use immediately.`;
 
       console.log('[useAIWebBuilder] Calling edge function:', {
         url: `${supabaseUrl}/functions/v1/ai-code-assistant`,
-        hasAuth: !!supabaseKey
+        hasAuth: !!supabaseKey,
+        format
       });
 
       const response = await fetch(`${supabaseUrl}/functions/v1/ai-code-assistant`, {
@@ -207,7 +277,8 @@ Generate complete, working code that I can copy and use immediately.`;
               content: prompt
             }
           ],
-          mode: 'code'
+          mode: 'code',
+          format: format
         })
       });
 
@@ -259,7 +330,14 @@ Generate complete, working code that I can copy and use immediately.`;
       console.log('[useAIWebBuilder] Full generated content length:', fullContent.length);
 
       // Parse code from the full streamed content
-      const code = parseCodeFromContent(fullContent);
+      let code = parseCodeFromContent(fullContent, format);
+
+      // If React/TypeScript code is generated but might not render, convert to vanilla JS
+      if (format === 'react' && code.html && !isValidReactCode(code.html)) {
+        console.warn('[useAIWebBuilder] React code validation failed, converting to vanilla HTML');
+        toast.info('Converting React components to vanilla HTML for compatibility...');
+        code = convertReactToVanilla(code);
+      }
 
       if (!code.html && !code.css && !code.javascript) {
         throw new Error('No code blocks found in AI response');
@@ -272,7 +350,7 @@ Generate complete, working code that I can copy and use immediately.`;
         options.onCodeGenerated(code);
       }
 
-      toast.success('✨ Code generated successfully!');
+      toast.success(`✨ ${format === 'react' ? 'React/TypeScript' : 'HTML'} code generated successfully!`);
       return code;
     } catch (error) {
       console.error('[useAIWebBuilder] Error generating code:', error);
@@ -287,17 +365,147 @@ Generate complete, working code that I can copy and use immediately.`;
   /**
    * Parse code blocks from AI response content
    */
-  const parseCodeFromContent = (content: string): AIWebBuilderResponse['code'] => {
+  const parseCodeFromContent = (content: string, format: 'react' | 'html' = 'html'): AIWebBuilderResponse['code'] => {
+    // Try React/TypeScript patterns first
+    const tsxMatch = content.match(/```tsx\n([\s\S]*?)\n```/) || 
+                     content.match(/```typescript\n([\s\S]*?)\n```/) ||
+                     content.match(/```ts\n([\s\S]*?)\n```/);
+    
+    // Try HTML patterns
     const htmlMatch = content.match(/```html\n([\s\S]*?)\n```/);
+    
+    // Try CSS patterns
     const cssMatch = content.match(/```css\n([\s\S]*?)\n```/);
+    
+    // Try JavaScript patterns
     const jsMatch = content.match(/```javascript\n([\s\S]*?)\n```/) || 
                     content.match(/```js\n([\s\S]*?)\n```/);
 
+    // If React format, prioritize TSX/TS content
+    if (format === 'react' && tsxMatch) {
+      return {
+        html: tsxMatch[1],
+        css: cssMatch ? cssMatch[1] : '',
+        javascript: jsMatch ? jsMatch[1] : ''
+      };
+    }
+
+    // Otherwise use HTML
     return {
-      html: htmlMatch ? htmlMatch[1] : content,
+      html: htmlMatch ? htmlMatch[1] : (tsxMatch ? tsxMatch[1] : content),
       css: cssMatch ? cssMatch[1] : '',
       javascript: jsMatch ? jsMatch[1] : ''
     };
+  };
+
+  /**
+   * Validate if React code is properly structured
+   */
+  const isValidReactCode = (code: string): boolean => {
+    // Check for basic React patterns
+    const hasReactImport = /import\s+.*React/.test(code);
+    const hasComponentExport = /export\s+(const|function)/.test(code);
+    const hasJSXReturn = /<[A-Z]/.test(code) || /<(div|section|main|header|footer|nav|article)/.test(code);
+    const hasReactHooks = /(useState|useEffect|useCallback|useMemo|useRef)/.test(code);
+    
+    // Consider it valid if it has most React patterns
+    const validityScore = [hasReactImport, hasComponentExport, hasJSXReturn].filter(Boolean).length;
+    return validityScore >= 2; // At least 2 out of 3 patterns
+  };
+
+  /**
+   * Convert React/TypeScript code to vanilla HTML/JS
+   */
+  const convertReactToVanilla = (code: AIWebBuilderResponse['code']): AIWebBuilderResponse['code'] => {
+    if (!code.html) return code;
+
+    console.log('[useAIWebBuilder] Converting React to vanilla HTML/JS');
+
+    try {
+      let html = code.html;
+
+      // Remove React imports
+      html = html.replace(/import\s+.*from\s+['"]react['"];?\n?/g, '');
+      html = html.replace(/import\s+.*from\s+['"].*['"];?\n?/g, '');
+
+      // Remove TypeScript interfaces and types
+      html = html.replace(/interface\s+\w+\s*{[^}]*}\s*/g, '');
+      html = html.replace(/type\s+\w+\s*=\s*[^;]+;\s*/g, '');
+
+      // Extract JSX/HTML content from component
+      const componentMatch = html.match(/return\s*\(([\s\S]*?)\);?\s*}/);
+      if (componentMatch) {
+        html = componentMatch[1].trim();
+      } else {
+        // Try to extract content between return and closing brace
+        const returnMatch = html.match(/return\s*([\s\S]*?)(?:;|\})/);
+        if (returnMatch) {
+          html = returnMatch[1].trim();
+        }
+      }
+
+      // Convert JSX className to class
+      html = html.replace(/className=/g, 'class=');
+
+      // Convert React event handlers to vanilla JS
+      html = html.replace(/onClick={([^}]+)}/g, (match, handler) => {
+        return `onclick="${handler.replace(/\(\) =>\s*/, '')}"`;
+      });
+      html = html.replace(/onSubmit={([^}]+)}/g, (match, handler) => {
+        return `onsubmit="${handler.replace(/\(\) =>\s*/, '')}"`;
+      });
+      html = html.replace(/onChange={([^}]+)}/g, (match, handler) => {
+        return `onchange="${handler.replace(/\(\) =>\s*/, '')}"`;
+      });
+
+      // Remove JSX expressions in curly braces (convert to empty or default)
+      html = html.replace(/{\s*(\w+)\s*}/g, '');
+
+      // Extract useState calls and convert to vanilla JS
+      const stateMatches = code.html.match(/const\s+\[(\w+),\s*set\w+\]\s*=\s*useState\((.*?)\)/g);
+      let javascript = code.javascript || '';
+
+      if (stateMatches) {
+        stateMatches.forEach(stateMatch => {
+          const varMatch = stateMatch.match(/const\s+\[(\w+),\s*set(\w+)\]\s*=\s*useState\((.*?)\)/);
+          if (varMatch) {
+            const varName = varMatch[1];
+            const initialValue = varMatch[3];
+            javascript += `\nlet ${varName} = ${initialValue};\n`;
+          }
+        });
+      }
+
+      // Clean up any remaining JSX syntax
+      html = html.replace(/<>\s*/g, '');
+      html = html.replace(/\s*<\/>/g, '');
+
+      // Wrap in proper HTML structure if not already wrapped
+      if (!html.includes('<html') && !html.includes('<!DOCTYPE')) {
+        html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Website</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+      }
+
+      return {
+        html,
+        css: code.css || '',
+        javascript: javascript
+      };
+    } catch (error) {
+      console.error('[useAIWebBuilder] Error converting React to vanilla:', error);
+      // Return original code if conversion fails
+      return code;
+    }
   };
 
   /**
