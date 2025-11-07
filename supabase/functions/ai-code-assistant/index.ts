@@ -1,3 +1,6 @@
+// Type definitions for Deno runtime - see ./deno.d.ts
+
+// @deno-types="https://deno.land/x/types/index.d.ts"
 // AI Code Assistant Edge Function - Enhanced with Professional Design Theory
 // Lovable AI Quality + Figma Precision + WordPress Flexibility
 
@@ -952,8 +955,9 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("Edge function error:", error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: {
