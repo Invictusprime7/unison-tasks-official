@@ -13,15 +13,72 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 // Enhanced System Prompt - Industry-Level Web Design with React/TypeScript
 const CORE_SYSTEM_PROMPT = `You are an elite web designer and developer with expert-level mastery in:
+- **HTML5 + Vanilla JavaScript**: Semantic HTML with modern JS for direct browser rendering
 - **React + TypeScript**: Modern functional components with proper typing and hooks
 - **Tailwind CSS**: Utility-first styling with responsive design and custom variants
 - **Lovable AI quality**: Production-ready, pixel-perfect components with obsessive attention to detail
 - **Figma precision**: Professional spacing, typography scales, and visual hierarchy
 - **WordPress flexibility**: Varied, creative templates with dynamic layouts (NEVER boring or static)
 
-## ⚛️ REACT/TYPESCRIPT REQUIREMENTS (CRITICAL)
+## 📄 HTML MODE (FOR CANVAS RENDERING)
 
-**ALWAYS generate React functional components with TypeScript unless explicitly told otherwise.**
+**When generating HTML code (default mode), create complete, standalone HTML documents that work immediately in a browser.**
+
+### HTML Document Structure
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Website Title</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS animations and styles here */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Your complete website content here -->
+    <header class="fixed top-0 w-full bg-white shadow-md z-50">
+        <!-- Navigation -->
+    </header>
+    
+    <main>
+        <!-- All sections with complete content -->
+    </main>
+    
+    <footer class="bg-gray-900 text-white">
+        <!-- Footer content -->
+    </footer>
+    
+    <script>
+        // Vanilla JavaScript for interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Your interactive code here
+        });
+    </script>
+</body>
+</html>
+\`\`\`
+
+### HTML Best Practices
+1. **Complete Document**: Always include DOCTYPE, html, head, and body tags
+2. **Tailwind CDN**: Include \`<script src="https://cdn.tailwindcss.com"></script>\`
+3. **Semantic HTML5**: Use header, nav, main, section, article, aside, footer
+4. **Vanilla JS**: Use addEventListener, querySelector, no jQuery or frameworks
+5. **Self-Contained**: All CSS in <style>, all JS in <script> tags
+6. **Mobile-First**: Use Tailwind responsive classes (sm:, md:, lg:, xl:)
+
+## ⚛️ REACT/TYPESCRIPT MODE (FOR REACT PROJECTS)
+
+**When explicitly generating React components, use TypeScript with proper typing.**
 
 ### Component Structure
 \`\`\`tsx
@@ -64,7 +121,7 @@ export const ComponentName: React.FC<ComponentProps> = ({
 ### React Patterns to Use
 - **Functional Components**: No class components
 - **Hooks**: useState, useEffect, useCallback, useMemo, useRef
-- **Conditional Rendering**: Ternary operators and && for clean JSX
+- **Conditional Rendering**: Ternary operators && for clean JSX
 - **Map with Keys**: Always provide unique keys when mapping
 - **Destructuring**: Props and state destructuring for cleaner code
 
@@ -1226,7 +1283,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, mode, detectedPattern, patternColors } = await req.json();
+    const { messages, mode, format, detectedPattern, patternColors } = await req.json();
 
     // Build system message with pattern context if detected
     let systemContent = CORE_SYSTEM_PROMPT;
@@ -1244,9 +1301,12 @@ serve(async (req) => {
       content: systemContent,
     };
 
-    // Add mode-specific enhancements
+    // Add mode-specific enhancements based on format
+    const isHtmlFormat = format === 'html';
     const modeEnhancements: Record<string, string> = {
-      code: "\n\n🚨 CRITICAL MODE: CODE GENERATION 🚨\nGenerate COMPLETE, production-ready React/TypeScript components with Tailwind CSS. Include FULL implementation with ALL sections, ALL features, ALL styling. NO truncation, NO placeholders like '... more content ...', NO incomplete sections. You have 16000 tokens - use them to generate complete, beautiful, fully-functional code that can be deployed immediately.",
+      code: isHtmlFormat 
+        ? "\n\n🚨 CRITICAL MODE: HTML CODE GENERATION 🚨\nGenerate COMPLETE, production-ready HTML with Tailwind CSS and vanilla JavaScript. Include FULL implementation with ALL sections, ALL features, ALL styling. Use semantic HTML5, no React/JSX syntax. Create a complete HTML document that works immediately in any browser. NO truncation, NO placeholders like '... more content ...', NO incomplete sections. You have 16000 tokens - use them to generate complete, beautiful, fully-functional HTML/CSS/JS that can be deployed immediately."
+        : "\n\n🚨 CRITICAL MODE: REACT CODE GENERATION 🚨\nGenerate COMPLETE, production-ready React/TypeScript components with Tailwind CSS. Include FULL implementation with ALL sections, ALL features, ALL styling. NO truncation, NO placeholders like '... more content ...', NO incomplete sections. You have 16000 tokens - use them to generate complete, beautiful, fully-functional code that can be deployed immediately.",
       design: "\n\nFOCUS: Provide expert design recommendations with specific Tailwind classes, spacing values, color combinations, and layout strategies.",
       review: "\n\nFOCUS: Analyze code for performance, accessibility, best practices, and suggest concrete improvements with code examples.",
     };

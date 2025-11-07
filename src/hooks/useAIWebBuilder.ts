@@ -518,8 +518,8 @@ ${html}
     const layoutPlan = await generateLayout(prompt, customRequest);
     if (!layoutPlan) return null;
 
-    // Generate code from the layout plan
-    const code = await generateCode(layoutPlan);
+    // Generate HTML code (not React) for direct canvas rendering
+    const code = await generateCode(layoutPlan, 'html');
     
     return {
       layoutPlan,
