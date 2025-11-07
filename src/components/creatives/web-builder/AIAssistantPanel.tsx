@@ -302,7 +302,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               </div>
             </div>
           )}
-          </div>
+        </div>
         </ScrollArea>
       </div>
 
