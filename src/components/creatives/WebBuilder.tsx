@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { AICodeAssistant } from "./AICodeAssistant";
+// Removed: AICodeAssistant - now using AIAssistantPanel instead
 import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
@@ -1712,18 +1712,7 @@ declare global {
         </DialogContent>
       </Dialog>
 
-      {/* AI Code Assistant - Bottom Panel */}
-      <AICodeAssistant 
-        fabricCanvas={fabricCanvas}
-        onCodeGenerated={handleAICodeGenerated}
-        onSwitchToCanvasView={() => {
-          console.log('[WebBuilder] Switching to Canvas view from AI Assistant');
-          setViewMode('canvas');
-          toast.success('Switched to Canvas View', {
-            description: 'Your live preview is now showing in the Canvas tab',
-          });
-        }}
-      />
+      {/* AI Code Assistant - REMOVED: Now using AIAssistantPanel (right sidebar) instead */}
 
 
 

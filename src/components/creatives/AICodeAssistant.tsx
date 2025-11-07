@@ -59,9 +59,10 @@ interface AICodeAssistantProps {
   fabricCanvas?: FabricCanvas | null;
   onCodeGenerated?: (code: string) => void;
   onSwitchToCanvasView?: () => void;
+  hideContent?: boolean;
 }
 
-export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fabricCanvas, onCodeGenerated, onSwitchToCanvasView }) => {
+export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fabricCanvas, onCodeGenerated, onSwitchToCanvasView, hideContent = false }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
