@@ -143,7 +143,7 @@ export const useAIWebBuilder = (options?: UseAIWebBuilderOptions) => {
   };
 
   /**
-   * Generate React/HTML code from layout plan
+   * Generate React/HTML code from layout plan using ai-code-assistant
    */
   const generateCode = async (
     layoutPlan: AILayoutPlan, 
@@ -153,30 +153,73 @@ export const useAIWebBuilder = (options?: UseAIWebBuilderOptions) => {
     try {
       console.log('[useAIWebBuilder] Generating code from layout plan');
 
-      // Call edge function with enhanced context
-      const { data, error } = await supabase.functions.invoke('ai-web-builder', {
+      // Build a detailed prompt for code generation
+      const prompt = `Create a complete, production-ready ${format === 'html' ? 'HTML' : 'React'} website with the following specifications:
+
+**PROJECT TYPE:** ${layoutPlan.sections[0]?.component || 'website'}
+**GRID SYSTEM:** ${layoutPlan.gridSystem}
+**COLOR PALETTE:** ${layoutPlan.colorPalette.name}
+- Primary: ${layoutPlan.colorPalette.primary}
+- Secondary: ${layoutPlan.colorPalette.secondary}
+- Accent: ${layoutPlan.colorPalette.accent}
+
+**TYPOGRAPHY:**
+- Heading: ${layoutPlan.typography.fontFamily.heading}
+- Body: ${layoutPlan.typography.fontFamily.body}
+
+**SECTIONS TO IMPLEMENT (${layoutPlan.sections.length} total):**
+${layoutPlan.sections.map((section, i) => `${i + 1}. ${section.component} (${section.variant})`).join('\n')}
+
+**REQUIREMENTS:**
+- Use Tailwind CSS for all styling
+- Implement all ${layoutPlan.sections.length} sections in order
+- Apply the color palette throughout
+- Make it fully responsive (mobile, tablet, desktop)
+- Add smooth animations and transitions
+- Include proper semantic HTML
+- Professional, modern design
+
+Generate complete, working code that I can copy and use immediately.`;
+
+      // Call the ai-code-assistant edge function
+      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
         body: {
-          layoutPlan,
-          componentLibrary,
-          animationPresets,
-          format,
-          systemPrompt: generateSystemPrompt(layoutPlan)
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+              timestamp: new Date()
+            }
+          ],
+          mode: 'code'
         }
       });
 
       if (error) {
         console.error('[useAIWebBuilder] Edge function error:', error);
-        if (error.message.includes('429')) {
-          toast.error('Rate limit exceeded. Please try again later.');
-        } else if (error.message.includes('402')) {
-          toast.error('Payment required. Please add credits.');
-        } else {
-          toast.error('Failed to generate code: ' + error.message);
-        }
-        return null;
+        throw error;
       }
 
-      const code = data.code as AIWebBuilderResponse['code'];
+      console.log('[useAIWebBuilder] Edge function response:', data);
+
+      // The edge function returns generated code in the response
+      // Parse it based on the expected format
+      let code: AIWebBuilderResponse['code'];
+
+      if (data.html || data.css || data.javascript) {
+        // Direct code response
+        code = {
+          html: data.html || '',
+          css: data.css || '',
+          javascript: data.javascript || ''
+        };
+      } else if (data.content) {
+        // Parse from content string
+        code = parseCodeFromContent(data.content);
+      } else {
+        throw new Error('No code generated from edge function');
+      }
+
       setGeneratedCode(code);
 
       // Notify callback
@@ -188,11 +231,28 @@ export const useAIWebBuilder = (options?: UseAIWebBuilderOptions) => {
       return code;
     } catch (error) {
       console.error('[useAIWebBuilder] Error generating code:', error);
-      toast.error('An unexpected error occurred');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to generate code: ${errorMessage}`);
       return null;
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * Parse code blocks from AI response content
+   */
+  const parseCodeFromContent = (content: string): AIWebBuilderResponse['code'] => {
+    const htmlMatch = content.match(/```html\n([\s\S]*?)\n```/);
+    const cssMatch = content.match(/```css\n([\s\S]*?)\n```/);
+    const jsMatch = content.match(/```javascript\n([\s\S]*?)\n```/) || 
+                    content.match(/```js\n([\s\S]*?)\n```/);
+
+    return {
+      html: htmlMatch ? htmlMatch[1] : content,
+      css: cssMatch ? cssMatch[1] : '',
+      javascript: jsMatch ? jsMatch[1] : ''
+    };
   };
 
   /**
@@ -205,13 +265,14 @@ export const useAIWebBuilder = (options?: UseAIWebBuilderOptions) => {
     const layoutPlan = await generateLayout(prompt, customRequest);
     if (!layoutPlan) return null;
 
-    const code = await generateCode(layoutPlan);
+    // Skip code generation for now - edge function needs refactoring for this use case
+    // TODO: Create dedicated edge function or handle streaming response
     
     return {
       layoutPlan,
-      code: code || undefined,
+      code: undefined, // Will be generated separately if needed
       explanation: `Generated ${layoutPlan.gridSystem} layout with ${layoutPlan.sections.length} sections`,
-      confidence: 0.85 // Default confidence since planLayout doesn't return it in the plan itself
+      confidence: 0.85
     };
   };
 
