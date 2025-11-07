@@ -310,12 +310,12 @@ Generate complete, working code that I can copy and use immediately.`;
     const layoutPlan = await generateLayout(prompt, customRequest);
     if (!layoutPlan) return null;
 
-    // Skip code generation for now - edge function needs refactoring for this use case
-    // TODO: Create dedicated edge function or handle streaming response
+    // Generate code from the layout plan
+    const code = await generateCode(layoutPlan);
     
     return {
       layoutPlan,
-      code: undefined, // Will be generated separately if needed
+      code: code || undefined,
       explanation: `Generated ${layoutPlan.gridSystem} layout with ${layoutPlan.sections.length} sections`,
       confidence: 0.85
     };

@@ -1552,6 +1552,7 @@ declare global {
             
             // Ensure canvas is ready
             if (!fabricCanvas) {
+              console.warn('[WebBuilder] Canvas not ready yet');
               toast.error('Canvas not ready. Please wait a moment and try again.');
               return;
             }
@@ -1575,26 +1576,38 @@ declare global {
           }
         }}
         onCodeGenerated={(code, type) => {
-          console.log(`[WebBuilder] ${type.toUpperCase()} code received from AI:`, code);
+          console.log(`[WebBuilder] ${type.toUpperCase()} code received from AI (${code.length} chars)`);
           
-          if (type === 'html') {
-            setEditorCode(code);
-            setPreviewCode(code);
-            // Switch to code view to show the generated code
-            setViewMode('code');
-            toast.success('HTML code applied to editor! 📝');
-          } else if (type === 'css') {
-            // Inject CSS into preview
-            const styleElement = document.createElement('style');
-            styleElement.textContent = code;
-            document.head.appendChild(styleElement);
-            toast.success('CSS styles applied! 🎨');
-          } else if (type === 'javascript') {
-            // For JavaScript, we can append it to the HTML
-            const updatedCode = editorCode + `\n<script>\n${code}\n</script>`;
-            setEditorCode(updatedCode);
-            setPreviewCode(updatedCode);
-            toast.success('JavaScript code integrated! ⚡');
+          try {
+            if (type === 'html') {
+              setEditorCode(code);
+              setPreviewCode(code);
+              // Switch to code view to show the generated code
+              setViewMode('code');
+              toast.success('✅ HTML code applied to Monaco editor!');
+            } else if (type === 'css') {
+              // Inject CSS into preview - create a style element
+              const styleId = 'ai-generated-css';
+              let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+              
+              if (!styleElement) {
+                styleElement = document.createElement('style');
+                styleElement.id = styleId;
+                document.head.appendChild(styleElement);
+              }
+              
+              styleElement.textContent = code;
+              toast.success('✅ CSS styles injected into preview!');
+            } else if (type === 'javascript') {
+              // For JavaScript, append it to the HTML with script tags
+              const updatedCode = editorCode + `\n\n<script>\n${code}\n</script>`;
+              setEditorCode(updatedCode);
+              setPreviewCode(updatedCode);
+              toast.success('✅ JavaScript integrated into code!');
+            }
+          } catch (error) {
+            console.error(`[WebBuilder] Failed to apply ${type}:`, error);
+            toast.error(`Failed to apply ${type.toUpperCase()}`);
           }
         }}
       />

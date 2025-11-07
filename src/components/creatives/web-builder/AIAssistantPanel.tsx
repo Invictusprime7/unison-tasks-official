@@ -120,6 +120,26 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
         if (onLayoutGenerated) {
           onLayoutGenerated(result.layoutPlan);
         }
+
+        // Auto-apply generated code if available
+        if (result.code && onCodeGenerated) {
+          console.log('[AIAssistantPanel] Auto-applying generated code');
+          
+          // Apply HTML first
+          if (result.code.html) {
+            onCodeGenerated(result.code.html, 'html');
+          }
+          
+          // Then CSS
+          if (result.code.css) {
+            setTimeout(() => onCodeGenerated(result.code.css, 'css'), 100);
+          }
+          
+          // Finally JavaScript
+          if (result.code.javascript) {
+            setTimeout(() => onCodeGenerated(result.code.javascript, 'javascript'), 200);
+          }
+        }
       }
     } catch (error) {
       console.error('Generation error:', error);
