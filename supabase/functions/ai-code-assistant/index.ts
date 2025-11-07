@@ -1193,18 +1193,22 @@ You can MIX elements from different styles:
 
 ### Final Rules
 
-1. **ALWAYS generate working, production-ready code** - No placeholders, no TODOs
-2. **NEVER create boring, static layouts** - Add variance, creativity, movement
-3. **Use Lovable AI quality** - Pixel-perfect, attention to detail, beautiful
-4. **Apply Figma precision** - Exact spacing (4px grid), perfect alignment, typography scales
-5. **Channel WordPress flexibility** - Multiple layout options, template variations
-6. **Make it responsive** - Mobile-first with md:, lg:, xl: breakpoints
-7. **Add smooth animations** - Hover effects, entrance animations, transitions
-8. **Include accessibility** - Semantic HTML, ARIA labels, keyboard navigation
-9. **Use design theory** - Visual hierarchy, white space, color psychology, motion
-10. **Be creative and varied** - Each generation should feel unique and professional
-11. **LEARN from templates** - Adapt patterns from Cyberpunk, Gradient, and other learned styles creatively
-12. **INNOVATION** - Don't copy templates exactly; remix and innovate based on learned patterns
+1. **ALWAYS generate COMPLETE, working, production-ready code** - No placeholders, no TODOs, no "... rest of code here" comments, no truncation
+2. **GENERATE ALL SECTIONS** - If the prompt mentions 5 sections, generate ALL 5 sections completely, not just 2-3
+3. **NEVER create boring, static layouts** - Add variance, creativity, movement
+4. **Use Lovable AI quality** - Pixel-perfect, attention to detail, beautiful
+5. **Apply Figma precision** - Exact spacing (4px grid), perfect alignment, typography scales
+6. **Channel WordPress flexibility** - Multiple layout options, template variations
+7. **Make it responsive** - Mobile-first with md:, lg:, xl: breakpoints
+8. **Add smooth animations** - Hover effects, entrance animations, transitions
+9. **Include accessibility** - Semantic HTML, ARIA labels, keyboard navigation
+10. **Use design theory** - Visual hierarchy, white space, color psychology, motion
+11. **Be creative and varied** - Each generation should feel unique and professional
+12. **LEARN from templates** - Adapt patterns from Cyberpunk, Gradient, and other learned styles creatively
+13. **INNOVATION** - Don't copy templates exactly; remix and innovate based on learned patterns
+14. **FINISH WHAT YOU START** - If you begin generating a component, complete it entirely before closing the code block
+
+**CRITICAL**: You have sufficient token budget (16000 tokens) to generate complete, full-length code. USE IT ALL if needed. Don't be brief - be thorough and complete.
 
 Your mission: Make every component a **masterpiece of web design**. 🎨
 `;
@@ -1242,7 +1246,7 @@ serve(async (req) => {
 
     // Add mode-specific enhancements
     const modeEnhancements: Record<string, string> = {
-      code: "\n\nFOCUS: Generate complete, production-ready React/TypeScript components with Tailwind CSS. Include full implementation, not just snippets.",
+      code: "\n\n🚨 CRITICAL MODE: CODE GENERATION 🚨\nGenerate COMPLETE, production-ready React/TypeScript components with Tailwind CSS. Include FULL implementation with ALL sections, ALL features, ALL styling. NO truncation, NO placeholders like '... more content ...', NO incomplete sections. You have 16000 tokens - use them to generate complete, beautiful, fully-functional code that can be deployed immediately.",
       design: "\n\nFOCUS: Provide expert design recommendations with specific Tailwind classes, spacing values, color combinations, and layout strategies.",
       review: "\n\nFOCUS: Analyze code for performance, accessibility, best practices, and suggest concrete improvements with code examples.",
     };
@@ -1261,7 +1265,7 @@ serve(async (req) => {
         messages: [systemMessage, ...messages],
         stream: true,
         temperature: 0.8, // Higher for more creativity and variance
-        max_tokens: 3000,
+        max_tokens: 16000, // Increased to allow complete code generation (GPT-4 Turbo supports up to 128k context)
         top_p: 0.95,
         frequency_penalty: 0.3, // Reduce repetition
         presence_penalty: 0.3, // Encourage new topics
