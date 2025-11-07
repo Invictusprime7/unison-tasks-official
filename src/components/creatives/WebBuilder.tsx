@@ -895,6 +895,15 @@ declare global {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => setAiPanelOpen(true)}
+            className="text-white/70 hover:text-white"
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            AI Designer
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setPerformancePanelOpen(true)}
             className="text-white/70 hover:text-white"
           >
