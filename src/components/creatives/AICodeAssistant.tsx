@@ -38,14 +38,10 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { 
   detectDesignPattern, 
-  getPatternStyles, 
-  generateComponentWithPattern,
-  enhancePromptWithPattern,
   type DesignPattern 
 } from '@/services/designPatternService';
 import {
   detectPatternFromSupabase,
-  enhancePromptWithSchema,
   fetchDesignSchemas,
   type DesignSchema
 } from '@/services/designSchemaService';
@@ -233,41 +229,32 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    // First try to detect pattern from Supabase schemas
+    // Detect pattern for user feedback only - don't constrain AI
     let supabaseSchema: DesignSchema | null = null;
-    let detectionMethod = 'creative'; // Track which method was used
+    let pattern: DesignPattern | null = null;
     
     try {
       supabaseSchema = await detectPatternFromSupabase(input);
       if (supabaseSchema) {
-        detectionMethod = 'supabase';
-        console.log('[AICodeAssistant] Supabase pattern detected:', supabaseSchema.pattern_name);
+        console.log('[AICodeAssistant] Pattern reference:', supabaseSchema.pattern_name);
+        // Subtle notification - pattern is just a reference, not a constraint
         toast({
-          title: `${supabaseSchema.pattern_name.charAt(0).toUpperCase() + supabaseSchema.pattern_name.slice(1)} Pattern Detected! 🎨`,
-          description: supabaseSchema.description,
+          title: `${supabaseSchema.pattern_name.charAt(0).toUpperCase() + supabaseSchema.pattern_name.slice(1)} Style Reference`,
+          description: 'AI will use this as inspiration',
         });
       }
     } catch (error) {
-      console.error('[AICodeAssistant] Supabase pattern detection error:', error);
-      // Continue with fallback detection
+      console.error('[AICodeAssistant] Pattern detection error:', error);
     }
 
-    // Fallback to local pattern detection if Supabase fails
-    let pattern: DesignPattern | null = null;
+    // Fallback to local detection
     if (!supabaseSchema) {
       pattern = detectDesignPattern(input);
       if (pattern) {
-        detectionMethod = 'local';
         setDetectedPattern(pattern);
-        console.log('[AICodeAssistant] Local pattern detected:', pattern);
-        toast({
-          title: `${pattern.charAt(0).toUpperCase() + pattern.slice(1)} Pattern Detected! 🎨`,
-          description: `Applying ${pattern} design styles to your request`,
-        });
+        console.log('[AICodeAssistant] Style reference:', pattern);
       }
     }
-
-    console.log('[AICodeAssistant] Detection method:', detectionMethod);
 
     const userMessage: Message = {
       role: 'user',
@@ -280,57 +267,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
     setIsLoading(true);
 
     try {
-      // Enhance prompt based on detection method
-      let enhancedContent = userMessage.content;
-      
-      if (supabaseSchema) {
-        // Use Supabase schema for enhancement
-        enhancedContent = enhancePromptWithSchema(userMessage.content, supabaseSchema);
-      } else if (pattern) {
-        // Fallback to local pattern enhancement
-        enhancedContent = enhancePromptWithPattern(userMessage.content, pattern);
-      } else {
-        // No pattern detected - give AI maximum creative freedom
-        enhancedContent = `${userMessage.content}\n\n`;
-        enhancedContent += `CREATIVE FREEDOM: Design with complete creative control using modern web standards:\n\n`;
-        enhancedContent += `LAYOUT & STYLING:\n`;
-        enhancedContent += `- Use Tailwind CSS utilities (flex, grid, gap-4, p-6, rounded-lg, shadow-xl)\n`;
-        enhancedContent += `- Modern Flexbox/Grid patterns for responsive layouts\n`;
-        enhancedContent += `- Smooth transitions and hover effects (transition-all, hover:scale-105)\n`;
-        enhancedContent += `- Contemporary color schemes with gradients\n`;
-        enhancedContent += `- Mobile-first responsive design (sm:, md:, lg:, xl: breakpoints)\n\n`;
-        
-        enhancedContent += `IMAGES & MEDIA:\n`;
-        enhancedContent += `- Use <img> tags with loading="lazy" for performance\n`;
-        enhancedContent += `- Unsplash for placeholder images: https://images.unsplash.com/photo-[id]?w=800&q=80\n`;
-        enhancedContent += `- Background images with Tailwind: bg-[url('...')] bg-cover bg-center\n`;
-        enhancedContent += `- Object-fit utilities: object-cover, object-contain\n`;
-        enhancedContent += `- Aspect ratios: aspect-video, aspect-square\n\n`;
-        
-        enhancedContent += `CODE STANDARDS:\n`;
-        enhancedContent += `- Semantic HTML5 (header, nav, main, section, article, footer)\n`;
-        enhancedContent += `- ARIA accessibility (aria-label, role attributes)\n`;
-        enhancedContent += `- Vanilla JavaScript for interactions (event listeners, DOM manipulation)\n`;
-        enhancedContent += `- Performance optimizations (transform, will-change)\n\n`;
-        
-        enhancedContent += `MODERN COMPONENTS:\n`;
-        enhancedContent += `- Hero sections with full-height backgrounds\n`;
-        enhancedContent += `- Card grids with hover animations\n`;
-        enhancedContent += `- Sticky navigation with backdrop blur\n`;
-        enhancedContent += `- Feature showcases with icons/images\n`;
-        enhancedContent += `- Call-to-action sections with gradients\n`;
-        enhancedContent += `- Gallery layouts with responsive columns\n\n`;
-        
-        enhancedContent += `Be innovative, modern, and creative. Follow current design trends and industry best practices.\n`;
-      }
-      
-      const enhancedMessages = messages.map(m => ({ 
+      // Send user's request directly without heavy schema enhancement
+      // Let the AI be intelligent and creative naturally
+      const messagesToSend = messages.map(m => ({ 
         role: m.role, 
         content: m.content 
       })).concat([
         { 
           role: userMessage.role, 
-          content: enhancedContent
+          content: userMessage.content // Pure user request, no schema bloat
         }
       ]);
 
@@ -343,9 +288,11 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: enhancedMessages,
+            messages: messagesToSend,
             mode,
-            designPattern: pattern, // Pass detected pattern to AI
+            // Pass pattern metadata for reference, but don't pollute the prompt
+            detectedPattern: supabaseSchema?.pattern_name || pattern || null,
+            patternColors: supabaseSchema?.color_scheme || null,
           }),
         }
       );
