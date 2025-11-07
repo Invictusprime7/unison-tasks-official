@@ -1537,9 +1537,9 @@ declare global {
         isOpen={aiPanelOpen} 
         onClose={() => setAiPanelOpen(false)}
         fabricCanvas={fabricCanvas}
-        onTemplateGenerated={async (template) => {
+        onLayoutGenerated={(layout) => {
           try {
-            console.log('[WebBuilder] Template received from AI:', template);
+            console.log('[WebBuilder] Layout plan received from AI:', layout);
             
             // Ensure canvas is ready
             if (!fabricCanvas) {
@@ -1547,17 +1547,22 @@ declare global {
               return;
             }
 
-            // Template state handles both canvas and HTML rendering
-            await templateState.updateTemplate(template);
+            // TODO: Convert AILayoutPlan to template format or render directly
+            // For now, just log the layout plan
+            console.log('[WebBuilder] ✅ Layout plan received:', {
+              gridSystem: layout.gridSystem,
+              sections: layout.sections.length,
+              colorPalette: layout.colorPalette.name,
+              typography: layout.typography.fontFamily.heading
+            });
             
-            console.log('[WebBuilder] ✅ Template successfully rendered');
-            toast.success('✨ AI template rendered successfully!');
+            toast.success(`✨ Layout plan generated with ${layout.sections.length} sections!`);
             
             // Show preview after successful render
             setShowPreview(true);
           } catch (error) {
-            console.error('[WebBuilder] ❌ Failed to render template:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to render template');
+            console.error('[WebBuilder] ❌ Failed to process layout:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to process layout');
           }
         }}
         onCodeGenerated={(code, type) => {
