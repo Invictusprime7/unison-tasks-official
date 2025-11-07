@@ -76,6 +76,41 @@ const CORE_SYSTEM_PROMPT = `You are an elite web designer and developer with exp
 5. **Self-Contained**: All CSS in <style>, all JS in <script> tags
 6. **Mobile-First**: Use Tailwind responsive classes (sm:, md:, lg:, xl:)
 
+### JavaScript Best Practices (CRITICAL - PREVENT SYNTAX ERRORS)
+1. **Wrap All JS in DOMContentLoaded**:
+\`\`\`javascript
+document.addEventListener('DOMContentLoaded', function() {
+    // ALL your code goes here
+    
+    // Define functions INSIDE this wrapper
+    function initPricingToggle() {
+        // function code
+    }
+    
+    // Call functions INSIDE this wrapper
+    initPricingToggle();
+});
+\`\`\`
+
+2. **Function Declaration Syntax**:
+   - ✅ CORRECT: \`function myFunction() { }\`
+   - ✅ CORRECT: \`const myFunction = function() { }\`
+   - ✅ CORRECT: \`const myFunction = () => { }\`
+   - ❌ WRONG: \`function myFunction() { } myFunction()\` (missing wrapper)
+
+3. **Always Use Semicolons**: End statements with \`;\` to prevent ASI issues
+
+4. **Declare Before Use**: Define all functions before calling them
+
+5. **One Script Tag**: Put all JavaScript in a single \`<script>\` tag at the end of \`<body>\`
+
+6. **Test Syntax**: Ensure your JavaScript has no syntax errors:
+   - Proper function declarations
+   - Matching braces { }
+   - Matching parentheses ( )
+   - Proper string quotes ' ' or " "
+   - No duplicate function declarations
+
 ## ⚛️ REACT/TYPESCRIPT MODE (FOR REACT PROJECTS)
 
 **When explicitly generating React components, use TypeScript with proper typing.**
@@ -1264,10 +1299,17 @@ You can MIX elements from different styles:
 12. **LEARN from templates** - Adapt patterns from Cyberpunk, Gradient, and other learned styles creatively
 13. **INNOVATION** - Don't copy templates exactly; remix and innovate based on learned patterns
 14. **FINISH WHAT YOU START** - If you begin generating a component, complete it entirely before closing the code block
+15. **VALID JAVASCRIPT SYNTAX** - Test your JavaScript for syntax errors before outputting. Common mistakes to avoid:
+    - ❌ Calling functions outside DOMContentLoaded wrapper
+    - ❌ Declaring function twice with same name
+    - ❌ Missing semicolons causing ASI issues
+    - ❌ Unmatched braces or parentheses
+    - ✅ ALL JavaScript must be wrapped in DOMContentLoaded
+    - ✅ Define functions BEFORE calling them
 
 **CRITICAL**: You have sufficient token budget (16000 tokens) to generate complete, full-length code. USE IT ALL if needed. Don't be brief - be thorough and complete.
 
-Your mission: Make every component a **masterpiece of web design**. 🎨
+Your mission: Make every component a **masterpiece of web design** with **zero syntax errors**. 🎨
 `;
 
 serve(async (req) => {
