@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 // Cache for design schemas to avoid repeated fetches
 let schemasCache: DesignSchema[] | null = null;
@@ -187,10 +188,10 @@ Be creative and modern. Don't feel constrained by rigid templates.`;
 export async function upsertDesignSchema(
   schema: Partial<DesignSchema>
 ): Promise<DesignSchema | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Use Supabase's Insert type for proper type safety
   const { data, error } = await supabase
     .from("design_schemas")
-    .upsert(schema as any) // Type assertion needed for Partial
+    .upsert(schema as Database['public']['Tables']['design_schemas']['Insert'])
     .select()
     .single();
 
