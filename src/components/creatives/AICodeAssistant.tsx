@@ -8,7 +8,7 @@ import { parseComponentCode, renderComponentToCanvas, generateHTMLFile, generate
 import { Button } from '@/components/ui/button';
 import { CodeViewer } from './CodeViewer';
 import { LiveCodePreview } from './LiveCodePreview';
-import { CanvasQuickStart } from './CanvasQuickStart';
+// Removed: CanvasQuickStart - now using AIAssistantPanel in WebBuilder
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -545,17 +545,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({ className, fab
       {/* Main Content - Figma/Lovable Inspired Fluid Layout */}
       {isExpanded && (
         <div className="h-[calc(100%-64px)] bg-gradient-to-br from-background via-muted/10 to-purple-50/30 dark:to-purple-950/10 border-t flex overflow-hidden">
-          {/* Quick Start Sidebar (only in code mode) */}
-          {mode === 'code' && messages.length === 0 && (
-            <div className="w-80 border-r flex-shrink-0">
-              <CanvasQuickStart 
-                onCodeSelect={(code) => {
-                  setCurrentCode(code);
-                  setCodeViewerOpen(true);
-                }}
-              />
-            </div>
-          )}
+          {/* Quick Start Sidebar - REMOVED: Now using AIAssistantPanel instead */}
           
           {/* Main chat area - WordPress/Lovable Fluid Design */}
           <div className="flex-1 flex flex-col min-w-0 relative">
