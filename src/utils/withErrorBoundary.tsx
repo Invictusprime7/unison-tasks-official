@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import ErrorBoundary from '../components/ErrorBoundary';
+import { TemplateErrorBoundary } from '../components/TemplateErrorBoundary';
 
 // HOC wrapper for functional components
 export const withErrorBoundary = <P extends object>(
@@ -7,9 +7,9 @@ export const withErrorBoundary = <P extends object>(
   fallback?: ReactNode
 ) => {
   const WrappedComponent = (props: P) => (
-    <ErrorBoundary fallback={fallback}>
+    <TemplateErrorBoundary>
       <Component {...props} />
-    </ErrorBoundary>
+    </TemplateErrorBoundary>
   );
   
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;

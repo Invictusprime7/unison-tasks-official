@@ -68,16 +68,16 @@ if (!rootElement) {
 
 try {
   // Dynamic import to catch module resolution errors
-  import('./components/ErrorBoundary.tsx').then((module) => {
-    const { default: ErrorBoundary } = module;
+  import('./components/TemplateErrorBoundary').then((module) => {
+    const { TemplateErrorBoundary } = module;
     createRoot(rootElement).render(
-      <ErrorBoundary>
+      <TemplateErrorBoundary>
         <App />
-      </ErrorBoundary>
+      </TemplateErrorBoundary>
     );
     console.log('React app rendered successfully');
   }).catch((importError) => {
-    logError(importError, 'ErrorBoundary Import');
+    logError(importError, 'TemplateErrorBoundary Import');
     // Fallback without ErrorBoundary
     createRoot(rootElement).render(<App />);
     console.log('React app rendered successfully (without ErrorBoundary)');
