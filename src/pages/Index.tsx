@@ -1,22 +1,58 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { CheckSquare, Users, Zap, Shield, Sparkles, CalendarDays } from "lucide-react";
+import { CheckSquare, Users, Zap, Shield, Sparkles, CalendarDays, AlertCircle } from "lucide-react";
+
 const Index = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    supabase.auth.getSession().then(({
-      data: {
-        session
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured) {
+      console.warn('⚠️ Supabase is not properly configured. Some features may not work.');
+      setIsLoading(false);
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error);
       }
-    }) => {
       if (session) {
         navigate("/creatives");
       }
+      setIsLoading(false);
+    }).catch((error) => {
+      console.error('Failed to get session:', error);
+      setIsLoading(false);
     });
   }, [navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400 mx-auto mb-4"></div>
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 bg-slate-950">
+      {!isSupabaseConfigured && (
+        <div className="bg-yellow-900/20 border-b border-yellow-800/30 px-4 py-3">
+          <div className="container mx-auto flex items-center gap-2 text-yellow-200">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm">
+              <strong>Configuration Warning:</strong> Supabase environment variables are not properly set. 
+              Backend features may not work. Check browser console for details.
+            </p>
+          </div>
+        </div>
+      )}
       <nav className="container mx-auto px-4 py-6 flex justify-between items-center rounded-none bg-slate-950">
         <div className="flex items-center gap-2">
           <CheckSquare className="h-8 w-8 text-primary" />

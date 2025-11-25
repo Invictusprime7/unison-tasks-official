@@ -6,12 +6,15 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Validate environment variables
-if (!SUPABASE_URL) {
-  console.error('Missing VITE_SUPABASE_URL environment variable');
+if (!SUPABASE_URL || SUPABASE_URL === 'https://placeholder.supabase.co') {
+  console.error('❌ Missing or invalid VITE_SUPABASE_URL environment variable');
+  console.error('Current value:', SUPABASE_URL);
+  console.error('Please check your environment variables in Vercel dashboard');
 }
 
-if (!SUPABASE_ANON_KEY) {
-  console.error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'placeholder-key') {
+  console.error('❌ Missing or invalid VITE_SUPABASE_ANON_KEY environment variable');
+  console.error('Please check your environment variables in Vercel dashboard');
 }
 
 // Import the supabase client like this:
@@ -27,4 +30,12 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
     }
   }
+);
+
+// Export a flag to check if client is properly configured
+export const isSupabaseConfigured = Boolean(
+  SUPABASE_URL && 
+  SUPABASE_ANON_KEY && 
+  SUPABASE_URL !== 'https://placeholder.supabase.co' &&
+  SUPABASE_ANON_KEY !== 'placeholder-key'
 );
