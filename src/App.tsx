@@ -13,9 +13,7 @@ import TaskPlanning from "./pages/TaskPlanning";
 import DesignStudioPage from "./pages/DesignStudioPage";
 import WebBuilderPage from "./pages/WebBuilderPage";
 import CodeEditorPage from "./pages/CodeEditorPage";
-import ElementsSidebarDemo from "./pages/ElementsSidebarDemo";
 import NotFound from "./pages/NotFound";
-// import { AIPageGenerator } from "./components/creatives/AIPageGenerator"; // Archived component
 
 const queryClient = new QueryClient();
 
@@ -35,9 +33,7 @@ const App = () => (
             <Route path="/planning" element={<TaskPlanning />} />
             <Route path="/design-studio" element={<DesignStudioPage />} />
             <Route path="/web-builder" element={<WebBuilderPage />} />
-            <Route path="/elements-builder" element={<ElementsSidebarDemo />} />
             <Route path="/code-editor" element={<CodeEditorPage />} />
-            {/* <Route path="/ai-generator" element={<AIPageGenerator />} /> */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

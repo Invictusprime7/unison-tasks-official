@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Sparkles, Image, FileText, Video, Cloud, Home, Maximize2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { ImageEditor } from "@/components/creatives/ImageEditor";
+import { AIImageGeneratorDialog } from "@/components/creatives/AIImageGeneratorDialog";
 import { VideoEditor } from "@/components/creatives/VideoEditor";
 import { CreativeTaskSelector } from "@/components/creatives/CreativeTaskSelector";
 
@@ -19,6 +19,7 @@ const Creatives = () => {
   } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [aiImageDialogOpen, setAiImageDialogOpen] = useState(false);
   const {
     data: creativeTasks,
     isLoading
@@ -93,7 +94,25 @@ const Creatives = () => {
           </CardHeader>
           <CardContent className="bg-slate-950 rounded-none">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <ImageEditor />
+              <Card className="group hover:shadow-lg transition-all cursor-pointer border-2 hover:border-primary/50 bg-slate-950">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-slate-100">
+                      <Sparkles className="h-5 w-5 text-purple-500" />
+                      AI Image Generator
+                    </span>
+                    <Maximize2 className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </CardTitle>
+                  <CardDescription className="text-slate-100">
+                    Generate professional images with AI
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={() => setAiImageDialogOpen(true)} className="w-full text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                    Open AI Generator
+                  </Button>
+                </CardContent>
+              </Card>
               <Card className="group hover:shadow-lg transition-all cursor-pointer border-2 hover:border-primary/50 bg-slate-950">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
@@ -237,6 +256,17 @@ const Creatives = () => {
       </div>
 
       <CreativeTaskSelector open={selectorOpen} onOpenChange={setSelectorOpen} />
+      
+      <AIImageGeneratorDialog
+        open={aiImageDialogOpen}
+        onOpenChange={setAiImageDialogOpen}
+        onImageGenerated={(imageUrl) => {
+          toast({
+            title: 'Image Generated! ✨',
+            description: 'Your AI image has been created successfully'
+          });
+        }}
+      />
     </div>;
 };
 export default Creatives;
