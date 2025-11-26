@@ -1,5 +1,5 @@
 import React from 'react';
-import MonacoEditor from '@/components/creatives/MonacoEditor';
+import CodeMirrorEditor from '@/components/creatives/CodeMirrorEditor';
 import { FileExplorer } from './FileExplorer';
 import { EditorTabs } from './EditorTabs';
 import { useVirtualFileSystem } from '@/hooks/useVirtualFileSystem';
@@ -53,7 +53,7 @@ export function MultiFileEditor() {
 
             <div className="flex-1">
               {activeFile ? (
-                <MonacoEditor
+                <CodeMirrorEditor
                   height="100%"
                   language={activeFile.language}
                   value={activeFile.content}

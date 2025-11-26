@@ -45,7 +45,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const updateTimerRef = useRef<NodeJS.Timeout>();
+  const updateTimerRef = useRef<number>();
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
   const selectedElementRef = useRef<HTMLElement | null>(null);
 
@@ -174,12 +174,26 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
       const bundled = bundleCode(code);
       console.log('[LiveHTMLPreview] Bundled code:', bundled);
 
-      // Build complete HTML document
-      const completeHTML = buildHTMLDocument(
-        bundled.html || code,
-        bundled.css,
-        bundled.javascript
-      );
+      // Check if code is already a complete HTML document
+      let completeHTML: string;
+      if (code.trim().toLowerCase().includes('<!doctype html>') || 
+          code.trim().toLowerCase().startsWith('<html')) {
+        // Code is already a complete HTML document, use it directly
+        completeHTML = code.trim();
+        console.log('[LiveHTMLPreview] Using complete HTML document directly');
+      } else {
+        // Build complete HTML document from bundled parts
+        completeHTML = buildHTMLDocument(
+          bundled.html || code,
+          bundled.css,
+          bundled.javascript
+        );
+      }
+
+      // Validate the HTML document before writing
+      if (!completeHTML || !completeHTML.trim()) {
+        throw new Error('Generated HTML document is empty');
+      }
 
       // Write to iframe
       iframeDoc.open();
@@ -409,7 +423,19 @@ function buildHTMLDocument(html: string, css: string, javascript: string): strin
 </head>
 <body>
   <div id="root">${bodyContent}</div>
-  ${safeJs ? '<script>\ntry {\n(function() {\n' + safeJs + '\n})();\n} catch(e) { console.error("Script execution error:", e); throw e; }\n</script>' : ''}
+  ${safeJs && safeJs.trim() ? `<script>
+try {
+(function() {
+${safeJs}
+})();
+} catch(e) { 
+  console.error("Script execution error:", e); 
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#fee;border:2px solid #fcc;padding:16px;border-radius:8px;color:#c33;z-index:999999;font-family:monospace;font-size:12px;';
+  div.innerHTML = '<strong>⚠️ Script Error:</strong><br>' + e.message;
+  document.body.insertBefore(div, document.body.firstChild);
+}
+</script>` : ''}
 </body>
 </html>`;
 

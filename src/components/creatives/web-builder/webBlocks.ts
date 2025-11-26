@@ -6,7 +6,7 @@ export interface WebBlock {
   category: string;
   subcategory?: string;
   preview?: string;
-  html: string;
+  code: string; // JavaScript code instead of HTML
   create: (canvas: FabricCanvas) => any;
 }
 
@@ -17,11 +17,30 @@ export const webBlocks: WebBlock[] = [
     label: "Hero - Centered",
     category: "Sections",
     subcategory: "Hero",
-    html: `<section class="hero-section">
-  <h1>Welcome to Our Platform</h1>
-  <p>Build amazing experiences with our tools</p>
-  <button>Get Started</button>
-</section>`,
+    code: `// Hero Section - Centered
+const createHeroSection = () => {
+  const section = document.createElement('section');
+  section.className = 'hero-section';
+  section.style.cssText = 'text-align: center; padding: 80px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;';
+  
+  const title = document.createElement('h1');
+  title.textContent = 'Welcome to Our Platform';
+  title.style.cssText = 'font-size: 48px; margin-bottom: 20px;';
+  
+  const description = document.createElement('p');
+  description.textContent = 'Build amazing experiences with our tools';
+  description.style.cssText = 'font-size: 20px; margin-bottom: 30px;';
+  
+  const button = document.createElement('button');
+  button.textContent = 'Get Started';
+  button.style.cssText = 'padding: 12px 32px; font-size: 16px; cursor: pointer; background: white; color: #667eea; border: none; border-radius: 6px;';
+  
+  section.appendChild(title);
+  section.appendChild(description);
+  section.appendChild(button);
+  
+  return section;
+};`,
     create: (canvas: FabricCanvas) => {
       const background = new Rect({
         width: 1200,
@@ -78,7 +97,7 @@ export const webBlocks: WebBlock[] = [
 
       (group as any).blockData = {
         id: "hero-centered",
-        html: `<section class="hero-section">
+        code: `<section class="hero-section">
   <h1>Welcome to Our Platform</h1>
   <p>Build amazing experiences with our industry-leading tools</p>
   <button>Get Started</button>
@@ -95,7 +114,7 @@ export const webBlocks: WebBlock[] = [
     label: "Feature Grid - 3 Columns",
     category: "Sections",
     subcategory: "Features",
-    html: `<section class="feature-section">
+    code: `<section class="feature-section">
   <h2>Our Features</h2>
   <div class="feature-grid">
     <div class="card"><h3>Fast</h3><p>Lightning-fast performance</p></div>
@@ -169,7 +188,7 @@ export const webBlocks: WebBlock[] = [
 
       (group as any).blockData = {
         id: "feature-grid-3col",
-        html: `<section class="feature-section">
+        code: `<section class="feature-section">
   <h2>Our Features</h2>
   <div class="feature-grid">
     <div class="card"><h3>Fast Performance</h3><p>Lightning-fast load times</p></div>
@@ -189,7 +208,7 @@ export const webBlocks: WebBlock[] = [
     label: "Testimonials - 2 Columns",
     category: "Sections",
     subcategory: "Social Proof",
-    html: `<section class="testimonials">
+    code: `<section class="testimonials">
   <h2>What Our Customers Say</h2>
   <div class="testimonial-grid">
     <div class="testimonial-card">
@@ -285,7 +304,7 @@ export const webBlocks: WebBlock[] = [
 
       (group as any).blockData = {
         id: "testimonials-2col",
-        html: `<section class="testimonials">
+        code: `<section class="testimonials">
   <h2>What Our Customers Say</h2>
   <div class="testimonial-grid">
     <div class="testimonial-card">
@@ -310,7 +329,7 @@ export const webBlocks: WebBlock[] = [
     label: "CTA - Centered",
     category: "Sections",
     subcategory: "CTA",
-    html: `<section class="cta-section">
+    code: `<section class="cta-section">
   <h2>Ready to Get Started?</h2>
   <p>Join thousands of users</p>
   <button>Start Free Trial</button>
@@ -371,7 +390,7 @@ export const webBlocks: WebBlock[] = [
 
       (group as any).blockData = {
         id: "cta-centered",
-        html: `<section class="cta-section">
+        code: `<section class="cta-section">
   <h2>Ready to Get Started?</h2>
   <p>Join thousands of users who are already using our platform</p>
   <button>Start Free Trial</button>
@@ -388,7 +407,7 @@ export const webBlocks: WebBlock[] = [
     label: "Stats - 4 Columns",
     category: "Sections",
     subcategory: "Stats",
-    html: `<section class="stats-section">
+    code: `<section class="stats-section">
   <div class="stat"><h3>10K+</h3><p>Users</p></div>
   <div class="stat"><h3>50K+</h3><p>Projects</p></div>
   <div class="stat"><h3>99.9%</h3><p>Uptime</p></div>
@@ -438,7 +457,7 @@ export const webBlocks: WebBlock[] = [
 
       (group as any).blockData = {
         id: "stats-4col",
-        html: `<section class="stats-section">
+        code: `<section class="stats-section">
   <div class="stat"><h3>10K+</h3><p>Active Users</p></div>
   <div class="stat"><h3>50K+</h3><p>Projects Created</p></div>
   <div class="stat"><h3>99.9%</h3><p>Uptime</p></div>

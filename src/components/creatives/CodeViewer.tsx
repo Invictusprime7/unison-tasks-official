@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import MonacoEditor from './MonacoEditor';
+import CodeMirrorEditor from './CodeMirrorEditor';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, Download, Play, Code2, Eye, Monitor, Maximize2, X } from 'lucide-react';
@@ -183,52 +183,46 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="code" className="flex-1 m-0 p-0 data-[state=active]:flex">
-          <MonacoEditor
-            height="100%"
-            defaultLanguage={language}
-            language={language}
-            value={code}
-            onChange={(value) => {
-              const newCode = value || '';
-              setCode(newCode);
-              setComponentData(parseComponentCode(newCode));
-            }}
-            theme="vs-dark"
-            options={{
-              minimap: { enabled: true },
-              fontSize: 14,
-              lineNumbers: 'on',
-              roundedSelection: true,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              tabSize: 2,
-              wordWrap: 'on',
-              formatOnPaste: true,
-              formatOnType: true,
-              padding: { top: 16, bottom: 16 },
-            }}
-            loading={
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                  <p className="text-sm text-muted-foreground">Loading editor...</p>
-                </div>
-              </div>
-            }
-          />
+        <TabsContent value="code" className="flex-1 m-0 p-0 data-[state=active]:flex overflow-hidden">
+          <div className="w-full h-full overflow-auto">
+            <CodeMirrorEditor
+              height="100%"
+              language={language}
+              value={code}
+              onChange={(value) => {
+                const newCode = value || '';
+                setCode(newCode);
+                setComponentData(parseComponentCode(newCode));
+              }}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: true },
+                fontSize: 14,
+                lineNumbers: 'on',
+                roundedSelection: true,
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                wordWrap: 'on',
+                formatOnPaste: true,
+                formatOnType: true,
+              }}
+            />
+          </div>
         </TabsContent>
 
 
-        <TabsContent value="component" className="flex-1 m-0 p-0 data-[state=active]:flex">
-          <LiveHTMLPreview 
-            code={code}
-            autoRefresh={true}
-            className="w-full h-full"
-          />
+        <TabsContent value="component" className="flex-1 m-0 p-0 data-[state=active]:flex overflow-hidden">
+          <div className="w-full h-full overflow-auto">
+            <LiveHTMLPreview 
+              code={code}
+              autoRefresh={true}
+              className="w-full h-full"
+            />
+          </div>
         </TabsContent>
 
-        <TabsContent value="live" className="flex-1 m-0 p-0 data-[state=active]:flex flex-col">
+        <TabsContent value="live" className="flex-1 m-0 p-0 data-[state=active]:flex flex-col overflow-hidden">
           <div className="flex items-center justify-end px-4 py-2 border-b bg-muted/30">
             <Button
               variant="ghost"
@@ -240,7 +234,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               Expand
             </Button>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 overflow-auto">
             <LiveHTMLPreview 
               code={code}
               autoRefresh={true}
@@ -249,7 +243,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
           </div>
         </TabsContent>
 
-        <TabsContent value="preview" className="flex-1 m-0 p-0 data-[state=active]:flex flex-col">
+        <TabsContent value="preview" className="flex-1 m-0 p-0 data-[state=active]:flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
             <div className="flex items-center gap-2">
               <Monitor className="w-4 h-4 text-muted-foreground" />
@@ -265,7 +259,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
               Expand
             </Button>
           </div>
-          <div className="flex-1 bg-white">
+          <div className="flex-1 bg-white overflow-auto">
             <LiveHTMLPreview 
               code={code}
               autoRefresh={true}

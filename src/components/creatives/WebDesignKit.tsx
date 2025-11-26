@@ -8,8 +8,10 @@ import { ArrowLeft, Search, Sparkles, Layout, Palette, Globe, Loader2, Eye, Hamm
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { TemplateEditor } from "./TemplateEditor";
-import { TemplateGeneratorService } from "@/services/templateGeneratorService";
+import { DesignSystemGeneratorService } from "@/services/designSystemGeneratorService";
+import { RequirementsAnalysisService } from "@/services/requirementsAnalysisService";
 import type { AIGeneratedTemplate } from "@/types/template";
+import type { UserIntent } from "@/types/designSystem";
 
 interface WebDesignKitProps {
   open: boolean;
@@ -59,17 +61,111 @@ export const WebDesignKit = ({ open, onOpenChange, onBack, onTemplateGenerated, 
     isAI: boolean
   ) => {
     if (!isAI) {
-      // Generate predefined template using our service
+      // Generate predefined template using new design system
       try {
         setGenerating(true);
-        const template = TemplateGeneratorService.generateTemplate({
-          name: templateName,
-          aesthetic: aesthetic,
-          source: source as 'Google' | 'Canva',
-          templateType: templateName
-        });
+        
+        // Map template name to domain and mood
+        const domainMap: Record<string, UserIntent['domain']> = {
+          'Material Design Dashboard': 'corporate',
+          'Google Workspace UI': 'corporate',
+          'Android App Interface': 'corporate',
+          'Creative Portfolio': 'portfolio',
+          'E-commerce Store': 'ecommerce',
+          'Landing Page Pro': 'landing'
+        };
+        
+        const moodMap: Record<string, UserIntent['style']['mood']> = {
+          'Material Design Dashboard': 'corporate',
+          'Google Workspace UI': 'minimal',
+          'Android App Interface': 'corporate',
+          'Creative Portfolio': 'bold',
+          'E-commerce Store': 'corporate',
+          'Landing Page Pro': 'bold'
+        };
+        
+        const domain = domainMap[templateName] || 'other';
+        const mood = moodMap[templateName] || 'corporate';
+        
+        // Create user intent
+        const userIntent: UserIntent = {
+          domain,
+          sections: RequirementsAnalysisService.getDomainPattern(domain)?.defaultSections || ['hero', 'features', 'contact'],
+          style: { mood },
+          accessibility: { wcagTarget: 'AA' },
+          performance: { targetLoadTime: 3000, targetBundleSize: 100 }
+        };
+        
+        // Generate template with new design system
+        const designTemplate = DesignSystemGeneratorService.generateTemplate(userIntent);
+        const template = DesignSystemGeneratorService.convertToLegacyFormat(designTemplate);
 
-        if (onTemplateGenerated) {
+        // Convert template to HTML code for CodeMirror
+        const htmlCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${template.name}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Template: ${template.name} */
+        /* Colors: Primary ${template.brandKit.primaryColor}, Secondary ${template.brandKit.secondaryColor} */
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        .hover-scale:hover {
+            transform: scale(1.05);
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Generated Template: ${template.name} -->
+    <!-- ${template.description} -->
+    
+    ${template.sections.map(section => `
+    <!-- Section: ${section.name} (${section.type}) -->
+    <section class="py-16 px-6 fade-in">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-4xl font-bold mb-8" style="color: ${template.brandKit.primaryColor}">${section.name}</h2>
+            <div class="grid gap-6 md:grid-cols-${section.components.length > 2 ? '3' : section.components.length}">
+                ${section.components.map(comp => `
+                <div class="p-6 bg-white rounded-lg shadow-lg hover-scale">
+                    <h3 class="text-2xl font-semibold mb-4" style="color: ${template.brandKit.secondaryColor}">${comp.props.title || 'Component'}</h3>
+                    <p class="text-gray-600">${comp.props.description || 'Component content goes here'}</p>
+                </div>
+                `).join('\n                ')}
+            </div>
+        </div>
+    </section>
+    `).join('\n    ')}
+    
+    <footer class="bg-gray-900 text-white py-12 px-6 mt-20">
+        <div class="max-w-7xl mx-auto text-center">
+            <p>&copy; 2025 ${template.name}. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>`;
+
+        // Use code generation callback to load into Web Builder with CodeMirror
+        if (onCodeGenerated) {
+          onCodeGenerated(htmlCode, templateName, aesthetic);
+          onOpenChange(false);
+          toast.success(`${templateName} loaded in Web Builder!`);
+        } else if (onTemplateGenerated) {
           onTemplateGenerated(template);
           onOpenChange(false);
           toast.success(`${templateName} loaded to canvas!`);
@@ -304,12 +400,28 @@ export const WebDesignKit = ({ open, onOpenChange, onBack, onTemplateGenerated, 
                       variant="outline"
                       className="w-full"
                       onClick={() => {
-                        const generatedTemplate = TemplateGeneratorService.generateTemplate({
-                          name: template.name,
-                          aesthetic: template.aesthetic,
-                          source: 'Google',
-                          templateType: template.name
-                        });
+                        // Use new design system for preview
+                        const domainMap: Record<string, UserIntent['domain']> = {
+                          'Material Design Dashboard': 'corporate',
+                          'Google Workspace UI': 'corporate',
+                          'Android App Interface': 'corporate'
+                        };
+                        const moodMap: Record<string, UserIntent['style']['mood']> = {
+                          'Material Design Dashboard': 'corporate',
+                          'Google Workspace UI': 'minimal',
+                          'Android App Interface': 'corporate'
+                        };
+                        const domain = domainMap[template.name] || 'corporate';
+                        const mood = moodMap[template.name] || 'corporate';
+                        const userIntent: UserIntent = {
+                          domain,
+                          sections: RequirementsAnalysisService.getDomainPattern(domain)?.defaultSections || ['hero'],
+                          style: { mood },
+                          accessibility: { wcagTarget: 'AA' },
+                          performance: { targetLoadTime: 3000, targetBundleSize: 100 }
+                        };
+                        const designTemplate = DesignSystemGeneratorService.generateTemplate(userIntent);
+                        const generatedTemplate = DesignSystemGeneratorService.convertToLegacyFormat(designTemplate);
                         setSelectedTemplate(generatedTemplate);
                         setPreviewMode(true);
                       }}
@@ -367,12 +479,28 @@ export const WebDesignKit = ({ open, onOpenChange, onBack, onTemplateGenerated, 
                       variant="outline"
                       className="w-full"
                       onClick={() => {
-                        const generatedTemplate = TemplateGeneratorService.generateTemplate({
-                          name: template.name,
-                          aesthetic: template.aesthetic,
-                          source: 'Canva',
-                          templateType: template.name
-                        });
+                        // Use new design system for Canva templates
+                        const domainMap: Record<string, UserIntent['domain']> = {
+                          'Creative Portfolio': 'portfolio',
+                          'E-commerce Store': 'ecommerce',
+                          'Landing Page Pro': 'landing'
+                        };
+                        const moodMap: Record<string, UserIntent['style']['mood']> = {
+                          'Creative Portfolio': 'bold',
+                          'E-commerce Store': 'corporate',
+                          'Landing Page Pro': 'bold'
+                        };
+                        const domain = domainMap[template.name] || 'other';
+                        const mood = moodMap[template.name] || 'corporate';
+                        const userIntent: UserIntent = {
+                          domain,
+                          sections: RequirementsAnalysisService.getDomainPattern(domain)?.defaultSections || ['hero'],
+                          style: { mood },
+                          accessibility: { wcagTarget: 'AA' },
+                          performance: { targetLoadTime: 3000, targetBundleSize: 100 }
+                        };
+                        const designTemplate = DesignSystemGeneratorService.generateTemplate(userIntent);
+                        const generatedTemplate = DesignSystemGeneratorService.convertToLegacyFormat(designTemplate);
                         setSelectedTemplate(generatedTemplate);
                         setPreviewMode(true);
                       }}

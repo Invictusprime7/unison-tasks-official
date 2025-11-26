@@ -15,16 +15,34 @@ export interface BundledCode {
 }
 
 /**
- * Strip all comments from code
+ * Strip all comments from code safely
  */
 function stripComments(code: string): string {
-  // Remove single-line comments but preserve URLs (http://, https://)
-  let cleaned = code.replace(/(?<!:)\/\/(?!\/).*$/gm, '');
-  
-  // Remove multi-line comments (/* ... */)
-  cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
-  
-  return cleaned;
+  try {
+    // Remove single-line comments but preserve URLs (http://, https://)
+    // Use a more compatible regex without lookbehind
+    let cleaned = code.split('\n').map(line => {
+      // Don't remove // from URLs (http:// or https://)
+      if (line.includes('http://') || line.includes('https://')) {
+        return line;
+      }
+      // Remove // comments
+      const commentIndex = line.indexOf('//');
+      if (commentIndex !== -1) {
+        return line.substring(0, commentIndex);
+      }
+      return line;
+    }).join('\n');
+    
+    // Remove multi-line comments (/* ... */) safely
+    cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+    
+    return cleaned;
+  } catch (error) {
+    console.error('[codeBundler] Error stripping comments:', error);
+    // Return original code if comment stripping fails
+    return code;
+  }
 }
 
 /**
@@ -141,7 +159,7 @@ function parseReactCode(code: string, result: BundledCode): void {
   const rawCode = blockMatch ? blockMatch[1].trim() : code;
 
   // Remove imports
-  let cleanCode = rawCode.replace(/import\s+.*?from\s+['"][^'"]+['"];?\n?/g, '');
+  const cleanCode = rawCode.replace(/import\s+.*?from\s+['"][^'"]+['"];?\n?/g, '');
 
   // Extract component
   const componentMatch = cleanCode.match(/(?:export\s+)?(?:default\s+)?function\s+(\w+)\s*\([^)]*\)\s*{([\s\S]*?)return\s*\(([\s\S]*?)\);?\s*}/);
@@ -309,7 +327,7 @@ function convertReactToPlainHTML(code: string, componentName: string): {
       return { success: false, html: '', css: '', javascript: '' };
     }
 
-    let jsx = returnMatch[1].trim();
+    const jsx = returnMatch[1].trim();
     
     // Convert JSX to HTML
     let html = jsx
@@ -375,7 +393,7 @@ function transpileTypeScript(code: string): string {
   // Try Babel first for better compatibility
   try {
     // Remove imports and exports BEFORE Babel
-    let cleanCode = code
+    const cleanCode = code
       .replace(/import\s+.*?from\s+['"][^'"]+['"];?\n?/g, '')
       .replace(/import\s+['"][^'"]+['"];?\n?/g, '')
       .replace(/export\s+default\s+/g, '')

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-// Removed: AICodeAssistant - now using AIAssistantPanel instead
 import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
@@ -7,16 +6,16 @@ import {
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap,
-  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2
+  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
-import MonacoEditor from './MonacoEditor';
-import { Monaco } from '@monaco-editor/react';
+import CodeMirrorEditor from './CodeMirrorEditor';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
-import { NavigationPanel } from "./web-builder/NavigationPanel";
 import { WebPropertiesPanel } from "./web-builder/WebPropertiesPanel";
-import { AIAssistantPanel } from "./web-builder/AIAssistantPanel";
+import { ElementsSidebar } from "./ElementsSidebar";
+import { CanvasDragDropService } from "@/services/canvasDragDropService";
 import { CodePreviewDialog } from "./web-builder/CodePreviewDialog";
+import { AICodeAssistant } from "./AICodeAssistant";
 import { IntegrationsPanel } from "./design-studio/IntegrationsPanel";
 import { ExportDialog } from "./design-studio/ExportDialog";
 import { PerformancePanel } from "./web-builder/PerformancePanel";
@@ -97,7 +96,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(0.5);
   const [canvasHeight, setCanvasHeight] = useState(800);
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [lastGenerationId, setLastGenerationId] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>(''); // This would come from auth
@@ -109,6 +107,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [exportCss, setExportCss] = useState("");
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [performancePanelOpen, setPerformancePanelOpen] = useState(false);
   const mainContainerRef = useRef<HTMLDivElement>(null);
@@ -120,163 +119,87 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [viewMode, setViewMode] = useState<'canvas' | 'code' | 'split'>('canvas');
   const [isInteractiveMode, setIsInteractiveMode] = useState(false);
   const [isInteractiveModeHelpOpen, setIsInteractiveModeHelpOpen] = useState(false);
-  const [editorCode, setEditorCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
+  const [editorCode, setEditorCode] = useState('// AI Web Builder - JavaScript Mode\n// Use vanilla JavaScript to create interactive web experiences\n\n// Example: Create a simple interactive button\nconst createButton = () => {\n  const button = document.createElement("button");\n  button.textContent = "Click Me!";\n  button.style.padding = "12px 24px";\n  button.style.fontSize = "16px";\n  button.style.cursor = "pointer";\n  \n  button.onclick = () => {\n    alert("Hello from Web Builder!");\n  };\n  \n  return button;\n};\n\n// Usage: Uncomment to test\n// document.body.appendChild(createButton());');
   const [previewCode, setPreviewCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const monacoRef = useRef<Monaco | null>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
   const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
 
   // Add console log to confirm component is rendering
-  console.log('[WebBuilder] Component rendering...');
-
-  // Configure Monaco for full React/JSX/TypeScript support
-  const handleEditorWillMount = (monaco: Monaco) => {
-    monacoRef.current = monaco;
-
-    // Add React type definitions
-    const reactTypes = `
-declare module 'react' {
-  export interface FC<P = {}> {
-    (props: P): JSX.Element | null;
-  }
-  export function useState<T>(initialState: T | (() => T)): [T, (value: T) => void];
-  export function useEffect(effect: () => void | (() => void), deps?: any[]): void;
-  export function useCallback<T extends (...args: any[]) => any>(callback: T, deps: any[]): T;
-  export function useMemo<T>(factory: () => T, deps: any[]): T;
-  export function useRef<T>(initialValue: T): { current: T };
-  export function useContext<T>(context: React.Context<T>): T;
-  export function useReducer<R extends React.Reducer<any, any>>(
-    reducer: R,
-    initialState: React.ReducerState<R>
-  ): [React.ReducerState<R>, React.Dispatch<React.ReducerAction<R>>];
-  export const Children: {
-    map<T, C>(children: C | C[], fn: (child: C, index: number) => T): T[];
-    forEach<C>(children: C | C[], fn: (child: C, index: number) => void): void;
-    count(children: any): number;
-    only<C>(children: C): C extends any[] ? never : C;
-    toArray(children: any): any[];
-  };
-  export interface ReactNode {}
-  export interface ReactElement<P = any> {
-    type: any;
-    props: P;
-    key: string | null;
-  }
-  export interface CSSProperties {
-    [key: string]: string | number;
-  }
-}
-
-declare global {
-  namespace JSX {
-    interface Element extends React.ReactElement<any, any> {}
-    interface IntrinsicElements {
-      div: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
-      span: React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement>;
-      p: React.DetailedHTMLProps<React.HTMLAttributes<HTMLParagraphElement>, HTMLParagraphElement>;
-      h1: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h2: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h3: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h4: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h5: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h6: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      button: React.DetailedHTMLProps<React.ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>;
-      input: React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>;
-      img: React.DetailedHTMLProps<React.ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>;
-      a: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>;
-      ul: React.DetailedHTMLProps<React.HTMLAttributes<HTMLUListElement>, HTMLUListElement>;
-      ol: React.DetailedHTMLProps<React.OlHTMLAttributes<HTMLOListElement>, HTMLOListElement>;
-      li: React.DetailedHTMLProps<React.LiHTMLAttributes<HTMLLIElement>, HTMLLIElement>;
-      form: React.DetailedHTMLProps<React.FormHTMLAttributes<HTMLFormElement>, HTMLFormElement>;
-      label: React.DetailedHTMLProps<React.LabelHTMLAttributes<HTMLLabelElement>, HTMLLabelElement>;
-      select: React.DetailedHTMLProps<React.SelectHTMLAttributes<HTMLSelectElement>, HTMLSelectElement>;
-      option: React.DetailedHTMLProps<React.OptionHTMLAttributes<HTMLOptionElement>, HTMLOptionElement>;
-      textarea: React.DetailedHTMLProps<React.TextareaHTMLAttributes<HTMLTextAreaElement>, HTMLTextAreaElement>;
-      nav: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      header: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      footer: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      section: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      article: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      aside: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      main: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      svg: React.SVGProps<SVGSVGElement>;
-      path: React.SVGProps<SVGPathElement>;
-      [elemName: string]: any;
-    }
-  }
-}
-`;
-
-    // Configure TypeScript/JSX compiler options
-    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ESNext,
-      allowNonTsExtensions: true,
-      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monaco.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      jsx: monaco.languages.typescript.JsxEmit.React,
-      jsxFactory: 'React.createElement',
-      reactNamespace: 'React',
-      allowJs: true,
-      typeRoots: ['node_modules/@types'],
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-    });
-
-    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ESNext,
-      allowNonTsExtensions: true,
-      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monaco.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      jsx: monaco.languages.typescript.JsxEmit.React,
-      jsxFactory: 'React.createElement',
-      reactNamespace: 'React',
-      allowJs: true,
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-    });
-
-    // Add React type definitions to the editor
-    monaco.languages.typescript.typescriptDefaults.addExtraLib(
-      reactTypes,
-      'file:///node_modules/@types/react/index.d.ts'
-    );
-
-    monaco.languages.typescript.javascriptDefaults.addExtraLib(
-      reactTypes,
-      'file:///node_modules/@types/react/index.d.ts'
-    );
-
-    // Enable advanced diagnostics
-    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
-      noSuggestionDiagnostics: false,
-    });
-
-    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
-      noSuggestionDiagnostics: false,
-    });
-
-    // Configure editor features
-    monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
-    monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
-  };
+  console.log('[WebBuilder] Component rendering with CodeMirror...');
 
   // Load template from navigation state (from Web Design Kit)
   useEffect(() => {
     if (location.state?.generatedCode) {
       const { generatedCode, templateName, aesthetic } = location.state;
+      console.log('[WebBuilder] Loading template code from Web Design Kit:', templateName);
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
-      setViewMode('canvas'); // Start in canvas view for live preview
+      setViewMode('code'); // Start in code view to show the template in CodeMirror
       toast(`${templateName} loaded!`, {
-        description: `${aesthetic} - Edit in Monaco or view in Canvas`,
+        description: `${aesthetic} - View and edit in Code Editor`,
+      });
+      // Clear the state to prevent re-loading on subsequent renders
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.generatedTemplate) {
+      const { generatedTemplate, templateName, aesthetic } = location.state;
+      console.log('[WebBuilder] Loading template from Web Design Kit:', templateName);
+      
+      // Convert template to HTML code
+      const htmlCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${generatedTemplate.name}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Template: ${generatedTemplate.name} */
+        /* Colors: Primary ${generatedTemplate.brandKit.primaryColor}, Secondary ${generatedTemplate.brandKit.secondaryColor} */
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Generated Template: ${generatedTemplate.name} -->
+    <!-- ${generatedTemplate.description} -->
+    
+    ${generatedTemplate.sections.map(section => `
+    <!-- Section: ${section.name} (${section.type}) -->
+    <section class="py-16 px-6">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-4xl font-bold mb-8">${section.name}</h2>
+            <div class="grid gap-6 md:grid-cols-${section.components.length > 2 ? '3' : '2'}">
+                ${section.components.map(comp => `
+                <div class="p-6 bg-white rounded-lg shadow-lg">
+                    <h3 class="text-2xl font-semibold mb-4">${comp.props.title || 'Component'}</h3>
+                    <p class="text-gray-600">${comp.props.description || 'Component content'}</p>
+                </div>
+                `).join('\n                ')}
+            </div>
+        </div>
+    </section>
+    `).join('\n    ')}
+</body>
+</html>`;
+      
+      setEditorCode(htmlCode);
+      setPreviewCode(htmlCode);
+      setViewMode('code'); // Start in code view to show the template in CodeMirror
+      toast(`${templateName || generatedTemplate.name} loaded!`, {
+        description: `${aesthetic || generatedTemplate.description} - View and edit in Code Editor`,
       });
       // Clear the state to prevent re-loading on subsequent renders
       window.history.replaceState({}, document.title);
@@ -294,7 +217,28 @@ declare global {
     });
   };
 
-  // Render code from Monaco to Fabric.js canvas
+  // Clear canvas and reset to initial state
+  const handleClearCanvas = () => {
+    const defaultCode = '// AI Web Builder - JavaScript Mode\n// Use vanilla JavaScript to create interactive web experiences\n\n// Example: Create a simple interactive button\nconst createButton = () => {\n  const button = document.createElement("button");\n  button.textContent = "Click Me!";\n  button.style.padding = "12px 24px";\n  button.style.fontSize = "16px";\n  button.style.cursor = "pointer";\n  \n  button.onclick = () => {\n    alert("Hello from Web Builder!");\n  };\n  \n  return button;\n};\n\n// Usage: Uncomment to test\n// document.body.appendChild(createButton());';
+    
+    const defaultPreview = '<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>';
+    
+    setEditorCode(defaultCode);
+    setPreviewCode(defaultPreview);
+    
+    // Clear fabric canvas if it exists
+    if (fabricCanvas) {
+      fabricCanvas.clear();
+      fabricCanvas.backgroundColor = '#ffffff';
+      fabricCanvas.renderAll();
+    }
+    
+    toast('Canvas Cleared!', {
+      description: 'Starting fresh with a clean slate',
+    });
+  };
+
+  // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {
     if (!fabricCanvas) {
       console.warn('[WebBuilder] Canvas not ready yet');
@@ -495,6 +439,38 @@ declare global {
       fabricCanvas.off("object:modified", handleObjectModified);
     };
   }, [fabricCanvas, history, canvasHeight, updateCanvasHeight]);
+
+  // Initialize drag-drop service on preview container
+  useEffect(() => {
+    if (!scrollContainerRef.current) return;
+
+    const service = dragDropServiceRef.current;
+    const container = scrollContainerRef.current;
+
+    // Find the actual preview iframe/div inside
+    const previewElement = container.querySelector('[data-preview-container]') || container;
+    
+    // Initialize drag-drop
+    service.initializeCanvas(previewElement as HTMLElement);
+
+    // Handle drop events
+    service.on('drop', (data: unknown) => {
+      const dropData = data as { element: { name: string; htmlTemplate: string; category: string } };
+      
+      // Insert the HTML into the preview code
+      const newCode = previewCode + '\n' + dropData.element.htmlTemplate;
+      setPreviewCode(newCode);
+      setEditorCode(newCode);
+      
+      toast.success(`Added ${dropData.element.name}`, {
+        description: `${dropData.element.category} element added to preview`
+      });
+    });
+
+    return () => {
+      service.destroyCanvas(previewElement as HTMLElement);
+    };
+  }, [scrollContainerRef.current, previewCode]);
 
   const handleDelete = () => {
     if (!fabricCanvas || !selectedObject) return;
@@ -879,15 +855,6 @@ declare global {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setAiPanelOpen(true)}
-            className="text-white/70 hover:text-white"
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            AI Designer
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
             onClick={() => setPerformancePanelOpen(true)}
             className="text-white/70 hover:text-white"
           >
@@ -975,8 +942,22 @@ declare global {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Navigation Panel - Collapsible */}
-        {!leftPanelCollapsed && <NavigationPanel />}
+        {/* Left Panel - Elements Sidebar */}
+        {!leftPanelCollapsed && (
+          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+            <ElementsSidebar
+              onElementDragStart={(element) => {
+                dragDropServiceRef.current.onDragStart(element);
+                toast(`Dragging ${element.name}`, {
+                  description: 'Drop onto preview area to add element'
+                });
+              }}
+              onElementDragEnd={() => {
+                dragDropServiceRef.current.onDragEnd();
+              }}
+            />
+          </div>
+        )}
         
         {/* Left Panel Toggle */}
         <div className="relative">
@@ -1088,6 +1069,18 @@ declare global {
                 </Button>
               </div>
             )}
+
+            {/* Clear Canvas Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearCanvas}
+              className="h-8 text-white/70 hover:text-white hover:bg-white/10"
+              title="Clear Canvas and Start Over"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
 
             <span className="text-sm text-white/50">{getCanvasWidth()}×{getCanvasHeight()}px (dynamic)</span>
           </div>
@@ -1212,20 +1205,19 @@ declare global {
               </div>
             )}
 
-            {/* Code Mode - Full Monaco Editor Only */}
+            {/* Code Mode - Full Code Editor */}
             {viewMode === 'code' && (
-              <div className="w-full h-full bg-[#1e1e1e]">
-                <MonacoEditor
+              <div className="w-full h-full bg-[#1e1e1e] rounded-lg overflow-hidden" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                <CodeMirrorEditor
                   height="100%"
-                  defaultLanguage="typescript"
-                  language="typescript"
+                  language="javascript"
                   value={editorCode}
                   onChange={(value) => {
                     setEditorCode(value || '');
                     setPreviewCode(value || '');
                   }}
-                  beforeMount={handleEditorWillMount}
                   theme="vs-dark"
+                  isAIProcessing={templateState.isRendering}
                   options={{
                     minimap: { enabled: true },
                     fontSize: 14,
@@ -1237,51 +1229,8 @@ declare global {
                     wordWrap: 'on',
                     formatOnPaste: true,
                     formatOnType: true,
-                    padding: { top: 16, bottom: 16 },
                     suggestOnTriggerCharacters: true,
-                    quickSuggestions: {
-                      other: true,
-                      comments: true,
-                      strings: true,
-                    },
-                    parameterHints: { enabled: true },
-                    acceptSuggestionOnCommitCharacter: true,
-                    acceptSuggestionOnEnter: 'on',
-                    autoClosingBrackets: 'always',
-                    autoClosingQuotes: 'always',
-                    autoIndent: 'full',
-                    bracketPairColorization: { enabled: true },
-                    colorDecorators: true,
-                    contextmenu: true,
-                    cursorBlinking: 'smooth',
-                    cursorSmoothCaretAnimation: 'on',
-                    smoothScrolling: true,
-                    snippetSuggestions: 'inline',
-                    folding: true,
-                    foldingHighlight: true,
-                    showFoldingControls: 'always',
-                    suggest: {
-                      showWords: true,
-                      showMethods: true,
-                      showFunctions: true,
-                      showConstructors: true,
-                      showFields: true,
-                      showVariables: true,
-                      showClasses: true,
-                      showStructs: true,
-                      showInterfaces: true,
-                      showModules: true,
-                      showProperties: true,
-                      showEvents: true,
-                      showOperators: true,
-                      showUnits: true,
-                      showValues: true,
-                      showConstants: true,
-                      showEnums: true,
-                      showEnumMembers: true,
-                      showKeywords: true,
-                      showSnippets: true,
-                    },
+                    quickSuggestions: true,
                   }}
                 />
               </div>
@@ -1321,12 +1270,12 @@ declare global {
 
                 {/* Code Editor Panel */}
                 <div className="flex-1 flex flex-col gap-4">
-                  {/* Monaco Editor */}
-                  <div className="flex-1 bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10">
+                  {/* Code Editor */}
+                  <div className="flex-1 bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10 flex flex-col">
                     <div className="h-10 bg-[#2d2d2d] border-b border-white/10 flex items-center justify-between px-4">
                       <div className="flex items-center">
                         <FileCode className="w-4 h-4 text-white/70 mr-2" />
-                        <span className="text-sm text-white/70">Monaco Editor</span>
+                        <span className="text-sm text-white/70">Code Editor</span>
                       </div>
                       <Button
                         size="sm"
@@ -1338,17 +1287,17 @@ declare global {
                       </Button>
                     </div>
                     
-                      <MonacoEditor
-                        height="calc(100% - 40px)"
-                        defaultLanguage="typescript"
-                        language="typescript"
+                    <div className="flex-1">
+                      <CodeMirrorEditor
+                        height="100%"
+                        language="javascript"
                         value={editorCode}
                         onChange={(value) => {
                           setEditorCode(value || '');
                           setPreviewCode(value || '');
                         }}
-                        beforeMount={handleEditorWillMount}
                         theme="vs-dark"
+                        isAIProcessing={templateState.isRendering}
                         options={{
                           minimap: { enabled: true },
                           fontSize: 13,
@@ -1358,29 +1307,12 @@ declare global {
                           tabSize: 2,
                           wordWrap: 'on',
                           suggestOnTriggerCharacters: true,
-                          quickSuggestions: {
-                            other: true,
-                            comments: true,
-                            strings: true,
-                          },
-                          parameterHints: { enabled: true },
-                          acceptSuggestionOnCommitCharacter: true,
-                          acceptSuggestionOnEnter: 'on',
-                          autoClosingBrackets: 'always',
-                          autoClosingQuotes: 'always',
+                          quickSuggestions: true,
                           formatOnPaste: true,
                           formatOnType: true,
-                          suggest: {
-                            showWords: true,
-                            showMethods: true,
-                            showFunctions: true,
-                            showConstructors: true,
-                            showVariables: true,
-                            showProperties: true,
-                            showSnippets: true,
-                          },
                         }}
                       />
+                    </div>
                   </div>
 
                   {/* Component Info & Actions */}
@@ -1519,71 +1451,6 @@ declare global {
         ) : null}
       </div>
 
-      {/* AI Assistant Panel */}
-      <AIAssistantPanel 
-        isOpen={aiPanelOpen} 
-        onClose={() => setAiPanelOpen(false)}
-        fabricCanvas={fabricCanvas}
-        onLayoutGenerated={(layout) => {
-          try {
-            console.log('[WebBuilder] Layout plan received from AI:', layout);
-            
-            // Ensure canvas is ready
-            if (!fabricCanvas) {
-              console.warn('[WebBuilder] Canvas not ready yet');
-              return;
-            }
-
-            // TODO: Convert AILayoutPlan to template format or render directly
-            // For now, just log the layout plan
-            console.log('[WebBuilder] ✅ Layout plan received:', {
-              gridSystem: layout.gridSystem,
-              sections: layout.sections.length,
-              colorPalette: layout.colorPalette.name,
-              typography: layout.typography.fontFamily.heading
-            });
-            
-            // Show preview after successful render
-            setShowPreview(true);
-          } catch (error) {
-            console.error('[WebBuilder] ❌ Failed to process layout:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to process layout');
-          }
-        }}
-        onCodeGenerated={(code, type) => {
-          console.log(`[WebBuilder] ${type.toUpperCase()} code received from AI (${code.length} chars)`);
-          
-          try {
-            if (type === 'html') {
-              setEditorCode(code);
-              setPreviewCode(code);
-              // Switch to code view to show the generated code
-              setViewMode('code');
-            } else if (type === 'css') {
-              // Inject CSS into preview - create a style element
-              const styleId = 'ai-generated-css';
-              let styleElement = document.getElementById(styleId) as HTMLStyleElement;
-              
-              if (!styleElement) {
-                styleElement = document.createElement('style');
-                styleElement.id = styleId;
-                document.head.appendChild(styleElement);
-              }
-              
-              styleElement.textContent = code;
-            } else if (type === 'javascript') {
-              // For JavaScript, append it to the HTML with script tags
-              const updatedCode = editorCode + `\n\n<script>\n${code}\n</script>`;
-              setEditorCode(updatedCode);
-              setPreviewCode(updatedCode);
-            }
-          } catch (error) {
-            console.error(`[WebBuilder] Failed to apply ${type}:`, error);
-            toast.error(`Failed to apply ${type.toUpperCase()}`);
-          }
-        }}
-      />
-
       {/* Code Preview Dialog */}
       <CodePreviewDialog
         isOpen={codePreviewOpen}
@@ -1705,9 +1572,18 @@ declare global {
         </DialogContent>
       </Dialog>
 
-      {/* AI Code Assistant - REMOVED: Now using AIAssistantPanel (right sidebar) instead */}
-
-
+      {/* AI Code Assistant */}
+      <AICodeAssistant
+        fabricCanvas={fabricCanvas}
+        onCodeGenerated={(code) => {
+          console.log('[WebBuilder] Code generated from AI:', code.length, 'chars');
+          setEditorCode(code);
+          setPreviewCode(code);
+        }}
+        onSwitchToCanvasView={() => {
+          setViewMode('canvas');
+        }}
+      />
 
       {/* Interactive Mode Help Dialog */}
       <InteractiveModeHelp

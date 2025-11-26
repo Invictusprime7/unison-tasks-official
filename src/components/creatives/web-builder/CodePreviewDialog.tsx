@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Check, Upload, Save, Code2 } from "lucide-react";
 import { toast } from "sonner";
-import MonacoEditor from "../MonacoEditor";
+import CodeMirrorEditor from "../CodeMirrorEditor";
 
 interface CodePreviewDialogProps {
   isOpen: boolean;
@@ -188,10 +188,10 @@ export const CodePreviewDialog = ({
               </Button>
             </div>
             {isEditMode ? (
-              <div className="h-[500px] rounded-lg overflow-hidden border border-white/10">
-                <MonacoEditor
+              <div className="h-[500px] rounded-lg overflow-auto border border-white/10">
+                <CodeMirrorEditor
                   height="100%"
-                  defaultLanguage="html"
+                  language="html"
                   value={htmlCode}
                   onChange={(value) => setHtmlCode(value || "")}
                   theme="vs-dark"
@@ -244,10 +244,10 @@ export const CodePreviewDialog = ({
               </Button>
             </div>
             {isEditMode ? (
-              <div className="h-[500px] rounded-lg overflow-hidden border border-white/10">
-                <MonacoEditor
+              <div className="h-[500px] rounded-lg overflow-auto border border-white/10">
+                <CodeMirrorEditor
                   height="100%"
-                  defaultLanguage="css"
+                  language="css"
                   value={cssCode}
                   onChange={(value) => setCssCode(value || "")}
                   theme="vs-dark"

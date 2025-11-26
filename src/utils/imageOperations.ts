@@ -1,8 +1,5 @@
-import { pipeline, env } from '@huggingface/transformers';
-
-// Configure transformers.js
-env.allowLocalModels = false;
-env.useBrowserCache = false;
+// Background removal via Cloudinary (unsigned upload + transformation)
+// This avoids bundling heavy ML models into the client and keeps bundle size small.
 
 const MAX_IMAGE_DIMENSION = 1024;
 
@@ -31,71 +28,56 @@ function resizeImageIfNeeded(canvas: HTMLCanvasElement, ctx: CanvasRenderingCont
   return false;
 }
 
+// Uploads the image to Cloudinary (unsigned) then requests the background-removed
+// transformed image and returns it as a Blob.
 export const removeBackground = async (imageElement: HTMLImageElement): Promise<Blob> => {
-  try {
-    console.log('Starting background removal process...');
-    const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512', {
-      device: 'webgpu',
-    });
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) throw new Error('Could not get canvas context');
-    
-    const wasResized = resizeImageIfNeeded(canvas, ctx, imageElement);
-    console.log(`Image ${wasResized ? 'was' : 'was not'} resized. Final dimensions: ${canvas.width}x${canvas.height}`);
-    
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('Image converted to base64');
-    
-    console.log('Processing with segmentation model...');
-    const result = await segmenter(imageData);
-    
-    console.log('Segmentation result:', result);
-    
-    if (!result || !Array.isArray(result) || result.length === 0 || !result[0].mask) {
-      throw new Error('Invalid segmentation result');
-    }
-    
-    const outputCanvas = document.createElement('canvas');
-    outputCanvas.width = canvas.width;
-    outputCanvas.height = canvas.height;
-    const outputCtx = outputCanvas.getContext('2d');
-    
-    if (!outputCtx) throw new Error('Could not get output canvas context');
-    
-    outputCtx.drawImage(canvas, 0, 0);
-    
-    const outputImageData = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
-    const data = outputImageData.data;
-    
-    for (let i = 0; i < result[0].mask.data.length; i++) {
-      const alpha = Math.round((1 - result[0].mask.data[i]) * 255);
-      data[i * 4 + 3] = alpha;
-    }
-    
-    outputCtx.putImageData(outputImageData, 0, 0);
-    console.log('Mask applied successfully');
-    
-    return new Promise((resolve, reject) => {
-      outputCanvas.toBlob(
-        (blob) => {
-          if (blob) {
-            console.log('Successfully created final blob');
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to create blob'));
-          }
-        },
-        'image/png',
-        1.0
-      );
-    });
-  } catch (error) {
-    console.error('Error removing background:', error);
-    throw error;
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    throw new Error('Cloudinary configuration missing (VITE_CLOUDINARY_CLOUD_NAME or VITE_CLOUDINARY_UPLOAD_PRESET)');
   }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
+
+  const wasResized = resizeImageIfNeeded(canvas, ctx, imageElement);
+  console.log(`Image ${wasResized ? 'was' : 'was not'} resized. Final dimensions: ${canvas.width}x${canvas.height}`);
+
+  // Convert to blob for upload
+  const blob: Blob | null = await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9));
+  if (!blob) throw new Error('Failed to convert canvas to blob');
+
+  // Upload to Cloudinary (unsigned)
+  const form = new FormData();
+  form.append('file', blob, 'upload.jpg');
+  form.append('upload_preset', uploadPreset);
+
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+  const uploadResp = await fetch(uploadUrl, { method: 'POST', body: form });
+  if (!uploadResp.ok) {
+    const text = await uploadResp.text();
+    throw new Error(`Cloudinary upload failed: ${uploadResp.status} ${text}`);
+  }
+
+  const json = await uploadResp.json();
+  // json.public_id and json.format are returned
+  const publicId: string = json.public_id;
+  const format: string = json.format || 'png';
+
+  // Build transformation URL to remove background and return PNG to preserve transparency
+  // e_background_removal is Cloudinary's AI-driven effect
+  const transformedUrl = `https://res.cloudinary.com/${cloudName}/image/upload/e_background_removal/${publicId}.${format}`;
+
+  const transformedResp = await fetch(transformedUrl);
+  if (!transformedResp.ok) {
+    const text = await transformedResp.text();
+    throw new Error(`Cloudinary transformation failed: ${transformedResp.status} ${text}`);
+  }
+
+  const resultBlob = await transformedResp.blob();
+  return resultBlob;
 };
 
 export const loadImage = (file: Blob): Promise<HTMLImageElement> => {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AIGeneratedTemplate, TemplateComponent, TemplateSection } from '@/types/template';
 
 // Color schema with defaults
 const colorSchema = z.string().default('#000000').transform((val) => {
@@ -68,55 +69,92 @@ const shapeLayerSchema = baseLayerSchema.extend({
   gradient: gradientSchema,
 });
 
-// Group layer schema (recursive)
+// Group layer schema
 const groupLayerSchema = baseLayerSchema.extend({
   type: z.literal('group'),
-  layers: z.lazy(() => z.array(layerSchema)).default([]),
+  children: z.array(z.lazy(() => layerSchema)).default([]),
 });
 
-// Union of all layer types
-export const layerSchema: z.ZodType<any> = z.union([
+// Union layer schema
+const layerSchema: z.ZodType<any> = z.union([
   textLayerSchema,
   imageLayerSchema,
   shapeLayerSchema,
   groupLayerSchema,
 ]);
 
-// Frame schema (represents a page/artboard)
-export const frameSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().default('Frame'),
-  width: z.number().min(1).max(10000).default(1080),
-  height: z.number().min(1).max(10000).default(1080),
-  background: colorSchema,
-  layers: z.array(layerSchema).default([]),
-  layout: z.enum(['free', 'flex-column', 'flex-row', 'grid']).default('free'),
-  gap: z.number().min(0).max(200).default(0),
-  padding: z.number().min(0).max(200).default(0),
-});
-
-// Template schema
+// Main template schema
 export const templateSchema = z.object({
   id: z.string().optional(),
   name: z.string().default('Untitled Template'),
-  description: z.string().default(''),
-  category: z.string().default('general'),
-  frames: z.array(frameSchema).min(1).default([{
-    name: 'Frame 1',
-    width: 1080,
-    height: 1080,
-    background: '#ffffff',
-    layers: [],
-    layout: 'free',
-    gap: 0,
-    padding: 0,
-  }]),
+  description: z.string().optional(),
+  width: z.number().min(1).max(10000).default(1920),
+  height: z.number().min(1).max(10000).default(1080),
+  backgroundColor: colorSchema,
+  backgroundImage: z.string().url().optional(),
+  layers: z.array(layerSchema).default([]),
+  metadata: z.object({
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    author: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  }).optional(),
   version: z.string().default('1.0.0'),
 });
 
 export type Template = z.infer<typeof templateSchema>;
-export type Frame = z.infer<typeof frameSchema>;
 export type Layer = z.infer<typeof layerSchema>;
 export type TextLayer = z.infer<typeof textLayerSchema>;
 export type ImageLayer = z.infer<typeof imageLayerSchema>;
 export type ShapeLayer = z.infer<typeof shapeLayerSchema>;
+export type GroupLayer = z.infer<typeof groupLayerSchema>;
+
+// Validation helper
+export const validateTemplate = (data: unknown): { success: boolean; data?: Template; errors?: z.ZodError } => {
+  const result = templateSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, errors: result.error };
+};
+
+// Default template generator
+export const createDefaultTemplate = (): Template => {
+  return templateSchema.parse({
+    id: `template-${Date.now()}`,
+    name: 'New Template',
+    width: 1920,
+    height: 1080,
+    backgroundColor: '#ffffff',
+    layers: [],
+    metadata: {
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  });
+};
+
+// Helper to convert AIGeneratedTemplate to Fabric.js compatible format
+export const convertAITemplateToFabric = (aiTemplate: AIGeneratedTemplate): Template => {
+  // Get first variant or use default dimensions
+  const variant = aiTemplate.variants[0];
+  const width = variant?.size.width || 1920;
+  const height = variant?.size.height || 1080;
+  
+  return {
+    id: aiTemplate.id,
+    name: aiTemplate.name,
+    description: aiTemplate.description,
+    width,
+    height,
+    backgroundColor: aiTemplate.brandKit.primaryColor,
+    layers: [],
+    metadata: {
+      createdAt: aiTemplate.createdAt,
+      updatedAt: aiTemplate.updatedAt,
+      author: 'AI Generated',
+      tags: aiTemplate.industry ? [aiTemplate.industry] : [],
+    },
+    version: '1.0.0',
+  };
+};
