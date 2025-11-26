@@ -1131,6 +1131,81 @@ ${body.innerHTML}
               onElementDragEnd={() => {
                 dragDropServiceRef.current.onDragEnd();
               }}
+              onAIImageGenerated={(imageUrl, metadata) => {
+                // Insert AI-generated image into the canvas
+                const imageElement = `
+                  <div data-element-id="ai-image-${Date.now()}" data-element-type="media" draggable="true" class="canvas-element">
+                    <img src="${imageUrl}" alt="AI Generated Image" class="w-full h-auto rounded-2xl shadow-lg" />
+                  </div>
+                `;
+                
+                // Parse current preview code
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+                const body = doc.body;
+                
+                // Create wrapper for the AI image
+                const wrapper = doc.createElement('div');
+                wrapper.setAttribute('data-element-id', `ai-image-${Date.now()}`);
+                wrapper.setAttribute('data-element-type', 'media');
+                wrapper.setAttribute('draggable', 'true');
+                wrapper.setAttribute('class', 'canvas-element');
+                wrapper.innerHTML = `<img src="${imageUrl}" alt="AI Generated Image" class="w-full h-auto rounded-2xl shadow-lg" />`;
+                
+                // Append to body
+                body.appendChild(wrapper);
+                
+                // Generate full HTML with reordering system
+                const newCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .canvas-element {
+      cursor: move;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .canvas-element:hover {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+    .dragging {
+      opacity: 0.5;
+    }
+    .drag-over-top::before,
+    .drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      z-index: 1000;
+    }
+    .drag-over-top::before {
+      top: -2px;
+    }
+    .drag-over-bottom::after {
+      bottom: -2px;
+    }
+  </style>
+</head>
+<body>
+${body.innerHTML}
+</body>
+</html>`;
+                
+                setPreviewCode(newCode);
+                setEditorCode(newCode);
+                
+                toast({
+                  title: 'AI Image Added! 🎨',
+                  description: 'AI-generated image inserted into canvas'
+                });
+              }}
             />
           </div>
         )}
