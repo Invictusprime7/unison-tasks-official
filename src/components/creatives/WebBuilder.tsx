@@ -442,35 +442,211 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   // Initialize drag-drop service on preview container
   useEffect(() => {
-    if (!scrollContainerRef.current) return;
+    if (!scrollContainerRef.current || !livePreviewRef.current) return;
 
     const service = dragDropServiceRef.current;
     const container = scrollContainerRef.current;
 
-    // Find the actual preview iframe/div inside
-    const previewElement = container.querySelector('[data-preview-container]') || container;
+    // Get the actual preview content container
+    const previewElement = container.querySelector('iframe') || container;
     
-    // Initialize drag-drop
-    service.initializeCanvas(previewElement as HTMLElement);
+    // Initialize drag-drop on the preview area
+    service.initializeCanvas(container as HTMLElement);
 
-    // Handle drop events
+    // Handle drop events - render elements with smart positioning
     service.on('drop', (data: unknown) => {
-      const dropData = data as { element: { name: string; htmlTemplate: string; category: string } };
+      const dropData = data as { 
+        element: { 
+          name: string; 
+          htmlTemplate: string; 
+          category: string;
+          id: string;
+        };
+        context: {
+          position: 'append' | 'prepend' | 'before' | 'after';
+          targetElement?: HTMLElement;
+        }
+      };
       
-      // Insert the HTML into the preview code
-      const newCode = previewCode + '\n' + dropData.element.htmlTemplate;
+      const { element, context } = dropData;
+      
+      // Parse the current HTML to insert at the right position
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(previewCode || '<body></body>', 'text/html');
+      const body = doc.body;
+      
+      // Create wrapper for the new element with data attributes for reordering
+      const wrapper = doc.createElement('div');
+      wrapper.setAttribute('data-element-id', `element-${Date.now()}`);
+      wrapper.setAttribute('data-element-type', element.category);
+      wrapper.setAttribute('draggable', 'true');
+      wrapper.setAttribute('class', 'canvas-element');
+      wrapper.innerHTML = element.htmlTemplate;
+      
+      // Smart positioning based on drop context
+      if (context.position === 'prepend') {
+        body.insertBefore(wrapper, body.firstChild);
+      } else if (context.position === 'append' || !body.children.length) {
+        body.appendChild(wrapper);
+      } else {
+        // Insert at a specific position based on drop location
+        const children = Array.from(body.children);
+        const middleIndex = Math.floor(children.length / 2);
+        const referenceNode = children[middleIndex];
+        body.insertBefore(wrapper, referenceNode);
+      }
+      
+      // Get the updated HTML with proper formatting
+      const newCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .canvas-element {
+      position: relative;
+      cursor: move;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .canvas-element:hover {
+      opacity: 0.95;
+    }
+    .canvas-element.dragging {
+      opacity: 0.5;
+    }
+    .canvas-element.drag-over-top::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+      border-radius: 2px;
+    }
+    .canvas-element.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+${body.innerHTML}
+<script>
+  // Enable reordering of elements via drag and drop
+  (function() {
+    let draggedElement = null;
+    let dragOverElement = null;
+    
+    function handleDragStart(e) {
+      draggedElement = e.currentTarget;
+      draggedElement.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', draggedElement.innerHTML);
+    }
+    
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (!draggedElement || e.currentTarget === draggedElement) return;
+      
+      const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
+      dragOverElement = e.currentTarget;
+      
+      // Remove previous indicators
+      document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      
+      // Add indicator
+      if (afterElement) {
+        dragOverElement.classList.add('drag-over-bottom');
+      } else {
+        dragOverElement.classList.add('drag-over-top');
+      }
+    }
+    
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+    }
+    
+    function handleDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (!draggedElement || !dragOverElement || draggedElement === dragOverElement) return;
+      
+      const afterElement = getDragAfterElement(dragOverElement, e.clientY);
+      
+      if (afterElement) {
+        dragOverElement.parentNode.insertBefore(draggedElement, dragOverElement.nextSibling);
+      } else {
+        dragOverElement.parentNode.insertBefore(draggedElement, dragOverElement);
+      }
+      
+      dragOverElement.classList.remove('drag-over-top', 'drag-over-bottom');
+    }
+    
+    function handleDragEnd(e) {
+      e.currentTarget.classList.remove('dragging');
+      document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      draggedElement = null;
+      dragOverElement = null;
+    }
+    
+    function getDragAfterElement(container, y) {
+      const box = container.getBoundingClientRect();
+      const offset = y - box.top;
+      return offset > box.height / 2;
+    }
+    
+    // Attach event listeners to all canvas elements
+    function initDragAndDrop() {
+      document.querySelectorAll('.canvas-element').forEach(element => {
+        element.addEventListener('dragstart', handleDragStart);
+        element.addEventListener('dragover', handleDragOver);
+        element.addEventListener('dragleave', handleDragLeave);
+        element.addEventListener('drop', handleDrop);
+        element.addEventListener('dragend', handleDragEnd);
+      });
+    }
+    
+    // Initialize on load and when new elements are added
+    initDragAndDrop();
+    
+    // Observe for new elements
+    const observer = new MutationObserver(() => {
+      initDragAndDrop();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  })();
+</script>
+</body>
+</html>`;
+      
       setPreviewCode(newCode);
       setEditorCode(newCode);
       
-      toast.success(`Added ${dropData.element.name}`, {
-        description: `${dropData.element.category} element added to preview`
+      toast.success(`Added ${element.name}`, {
+        description: `${element.category} element added. Drag to reorder!`,
+        duration: 3000
       });
     });
 
     return () => {
-      service.destroyCanvas(previewElement as HTMLElement);
+      service.destroyCanvas(container as HTMLElement);
     };
-  }, [scrollContainerRef.current, previewCode]);
+  }, [scrollContainerRef.current, livePreviewRef.current]);
 
   const handleDelete = () => {
     if (!fabricCanvas || !selectedObject) return;
@@ -1186,6 +1362,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 </div>
                 <div 
                   ref={scrollContainerRef}
+                  data-drop-zone="true"
                   className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
                 >
                   <LiveHTMLPreview 
@@ -1251,7 +1428,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     <Eye className="w-4 h-4 text-muted-foreground mr-2" />
                     <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
                   </div>
-                  <div className="h-[calc(100%-40px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+                  <div 
+                    data-drop-zone="true"
+                    className="h-[calc(100%-40px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
+                  >
                     <LiveHTMLPreview 
                       ref={livePreviewRef}
                       code={previewCode}
