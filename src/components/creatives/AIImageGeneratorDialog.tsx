@@ -337,6 +337,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
 
             {/* Generate Button */}
             <Button
+              type="button"
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-6"
@@ -393,6 +394,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
             {generatedImage && (
               <div className="space-y-2">
                 <Button
+                  type="button"
                   onClick={handleInsertToCanvas}
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
                 >
@@ -402,6 +404,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
                 
                 <div className="grid grid-cols-3 gap-2">
                   <Button
+                    type="button"
                     onClick={handleDownload}
                     variant="outline"
                     className="border-slate-700 text-slate-300 hover:bg-slate-800"
@@ -411,6 +414,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
                   </Button>
                   
                   <Button
+                    type="button"
                     onClick={handleCopyUrl}
                     variant="outline"
                     className="border-slate-700 text-slate-300 hover:bg-slate-800"
@@ -429,6 +433,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
                   </Button>
                   
                   <Button
+                    type="button"
                     onClick={handleSaveToFiles}
                     variant="outline"
                     className="border-slate-700 text-slate-300 hover:bg-slate-800"
@@ -439,6 +444,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
                 </div>
 
                 <Button
+                  type="button"
                   onClick={() => setGeneratedImage(null)}
                   variant="ghost"
                   className="w-full text-slate-400 hover:text-slate-200"
