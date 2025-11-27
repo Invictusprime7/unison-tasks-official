@@ -122,6 +122,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [editorCode, setEditorCode] = useState('// AI Web Builder - JavaScript Mode\n// Use vanilla JavaScript to create interactive web experiences\n\n// Example: Create a simple interactive button\nconst createButton = () => {\n  const button = document.createElement("button");\n  button.textContent = "Click Me!";\n  button.style.padding = "12px 24px";\n  button.style.fontSize = "16px";\n  button.style.cursor = "pointer";\n  \n  button.onclick = () => {\n    alert("Hello from Web Builder!");\n  };\n  \n  return button;\n};\n\n// Usage: Uncomment to test\n// document.body.appendChild(createButton());');
   const [previewCode, setPreviewCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
   const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
@@ -440,18 +441,29 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     };
   }, [fabricCanvas, history, canvasHeight, updateCanvasHeight]);
 
-  // Initialize drag-drop service on preview container
+  // Initialize drag-drop service on preview containers
   useEffect(() => {
-    if (!scrollContainerRef.current || !livePreviewRef.current) return;
-
     const service = dragDropServiceRef.current;
-    const container = scrollContainerRef.current;
-
-    // Get the actual preview content container
-    const previewElement = container.querySelector('iframe') || container;
+    const containers: HTMLElement[] = [];
     
-    // Initialize drag-drop on the preview area
-    service.initializeCanvas(container as HTMLElement);
+    // Collect all active drop zones
+    if (scrollContainerRef.current) {
+      containers.push(scrollContainerRef.current);
+    }
+    if (splitViewDropZoneRef.current) {
+      containers.push(splitViewDropZoneRef.current);
+    }
+    
+    if (containers.length === 0) {
+      console.log('[WebBuilder] No drop zone containers found yet');
+      return;
+    }
+    
+    // Initialize drag-drop on all drop zones
+    containers.forEach(container => {
+      service.initializeCanvas(container);
+      console.log('[WebBuilder] ✅ Drag-drop initialized on:', container.dataset.dropZone);
+    });
 
     // Handle drop events - render elements with smart positioning
     service.on('drop', (data: unknown) => {
@@ -644,9 +656,13 @@ ${body.innerHTML}
     });
 
     return () => {
-      service.destroyCanvas(container as HTMLElement);
+      containers.forEach(container => {
+        service.destroyCanvas(container);
+        console.log('[WebBuilder] 🧹 Drag-drop destroyed on:', container.dataset.dropZone);
+      });
     };
-  }, [scrollContainerRef.current, livePreviewRef.current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
 
   const handleDelete = () => {
     if (!fabricCanvas || !selectedObject) return;
@@ -1201,8 +1217,7 @@ ${body.innerHTML}
                 setPreviewCode(newCode);
                 setEditorCode(newCode);
                 
-                toast({
-                  title: 'AI Image Added! 🎨',
+                toast('AI Image Added! 🎨', {
                   description: 'AI-generated image inserted into canvas'
                 });
               }}
@@ -1504,6 +1519,7 @@ ${body.innerHTML}
                     <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
                   </div>
                   <div 
+                    ref={splitViewDropZoneRef}
                     data-drop-zone="true"
                     className="h-[calc(100%-40px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
                   >
