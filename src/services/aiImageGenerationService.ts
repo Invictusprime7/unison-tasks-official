@@ -98,6 +98,8 @@ export class AIImageGenerationService {
       });
 
       // Call Supabase Edge Function for image generation
+      console.log('[AIImageService] Calling generate-image function...');
+      
       const { data, error } = await supabase.functions.invoke("generate-image", {
         body: {
           prompt: params.prompt,
@@ -111,8 +113,26 @@ export class AIImageGenerationService {
         }
       });
 
+      console.log('[AIImageService] Response:', { data, error });
+
       if (error) {
+        console.error('[AIImageService] Error from edge function:', error);
         throw new Error(`Image generation failed: ${error.message}`);
+      }
+
+      if (!data) {
+        console.error('[AIImageService] No data returned from edge function');
+        throw new Error('No data returned from image generation service');
+      }
+
+      if (data.error) {
+        console.error('[AIImageService] Error in response data:', data.error);
+        throw new Error(data.error);
+      }
+
+      if (!data.imageUrl && !data.url) {
+        console.error('[AIImageService] No image URL in response:', data);
+        throw new Error('Image URL not found in response');
       }
 
       onProgress?.({

@@ -96,10 +96,14 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
         quality: quality as ImageGenerationOptions['quality']
       };
 
+      console.log('[AIImageGenerator] Starting generation with options:', options);
+
       const image = await aiImageService.generateImage(options, (progressUpdate) => {
+        console.log('[AIImageGenerator] Progress:', progressUpdate);
         setProgress(progressUpdate);
       });
 
+      console.log('[AIImageGenerator] Image generated:', image);
       setGeneratedImage(image);
       
       toast({
@@ -109,11 +113,28 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Image generation error:', error);
+      console.error('[AIImageGenerator] Error:', error);
+      
+      // Provide more helpful error messages
+      let userMessage = errorMessage;
+      if (errorMessage.includes('not configured')) {
+        userMessage = 'AI service is not configured. Please check your settings.';
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        userMessage = 'Network error. Please check your connection and try again.';
+      } else if (errorMessage.includes('unauthorized') || errorMessage.includes('401')) {
+        userMessage = 'Authentication failed. Please check your API credentials.';
+      }
+      
       toast({
         title: 'Generation Failed',
-        description: errorMessage,
+        description: userMessage,
         variant: 'destructive'
+      });
+      
+      setProgress({
+        status: 'failed',
+        progress: 0,
+        message: 'Generation failed. Please try again.'
       });
     } finally {
       setIsGenerating(false);
