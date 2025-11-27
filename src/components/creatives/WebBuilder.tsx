@@ -1154,10 +1154,26 @@ ${body.innerHTML}
                 dragDropServiceRef.current.onDragEnd();
               }}
               onAIImageGenerated={(imageUrl, metadata) => {
-                // Insert AI-generated image into the canvas
-                const imageElement = `
-                  <div data-element-id="ai-image-${Date.now()}" data-element-type="media" draggable="true" class="canvas-element">
-                    <img src="${imageUrl}" alt="AI Generated Image" class="w-full h-auto rounded-2xl shadow-lg" />
+                // Insert AI-generated image with advanced styling and responsive features
+                const timestamp = Date.now();
+                const imageAlt = metadata?.prompt || 'AI Generated Image';
+                
+                // Create advanced HTML with responsive srcset simulation and modern styling
+                const advancedImageHtml = `
+                  <div data-element-id="ai-image-${timestamp}" data-element-type="media" draggable="true" class="canvas-element">
+                    <figure class="relative group overflow-hidden rounded-2xl shadow-2xl">
+                      <img 
+                        src="${imageUrl}" 
+                        alt="${imageAlt}"
+                        loading="lazy"
+                        class="w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
+                        style="aspect-ratio: 16/9; max-width: 100%;"
+                      />
+                      <figcaption class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <p class="text-sm font-medium">${imageAlt}</p>
+                        ${metadata?.style ? `<span class="text-xs opacity-75">Style: ${metadata.style}</span>` : ''}
+                      </figcaption>
+                    </figure>
                   </div>
                 `;
                 
@@ -1168,11 +1184,29 @@ ${body.innerHTML}
                 
                 // Create wrapper for the AI image
                 const wrapper = doc.createElement('div');
-                wrapper.setAttribute('data-element-id', `ai-image-${Date.now()}`);
+                wrapper.setAttribute('data-element-id', `ai-image-${timestamp}`);
                 wrapper.setAttribute('data-element-type', 'media');
                 wrapper.setAttribute('draggable', 'true');
                 wrapper.setAttribute('class', 'canvas-element');
-                wrapper.innerHTML = `<img src="${imageUrl}" alt="AI Generated Image" class="w-full h-auto rounded-2xl shadow-lg" />`;
+                
+                // Create figure element with advanced features
+                const figure = doc.createElement('figure');
+                figure.className = 'relative group overflow-hidden rounded-2xl shadow-2xl';
+                
+                const img = doc.createElement('img');
+                img.src = imageUrl;
+                img.alt = imageAlt as string;
+                img.loading = 'lazy';
+                img.className = 'w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110';
+                img.style.cssText = 'aspect-ratio: 16/9; max-width: 100%;';
+                
+                const figcaption = doc.createElement('figcaption');
+                figcaption.className = 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300';
+                figcaption.innerHTML = `<p class="text-sm font-medium">${imageAlt}</p>${metadata?.style ? `<span class="text-xs opacity-75">Style: ${metadata.style}</span>` : ''}`;
+                
+                figure.appendChild(img);
+                figure.appendChild(figcaption);
+                wrapper.appendChild(figure);
                 
                 // Append to body
                 body.appendChild(wrapper);

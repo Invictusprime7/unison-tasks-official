@@ -383,6 +383,114 @@ const ELEMENT_LIBRARY: WebElement[] = [
 </div>`
   },
   {
+    id: 'responsive-image',
+    name: 'Responsive Image',
+    category: 'media',
+    icon: <Image className="w-5 h-5" />,
+    description: 'Fully responsive image with srcset',
+    tags: ['image', 'responsive', 'srcset', 'performance', 'lazy'],
+    htmlTemplate: `<picture class="block w-full">
+  <source media="(min-width: 1024px)" srcset="https://picsum.photos/1920/1080" />
+  <source media="(min-width: 768px)" srcset="https://picsum.photos/1024/768" />
+  <img 
+    src="https://picsum.photos/640/480" 
+    alt="Responsive image"
+    loading="lazy"
+    class="w-full h-auto rounded-2xl shadow-2xl object-cover"
+    style="aspect-ratio: 16/9;"
+  />
+</picture>`
+  },
+  {
+    id: 'image-with-caption',
+    name: 'Image with Caption',
+    category: 'media',
+    icon: <Image className="w-5 h-5" />,
+    description: 'Image with styled caption overlay',
+    tags: ['image', 'caption', 'overlay', 'text'],
+    htmlTemplate: `<figure class="relative group overflow-hidden rounded-2xl shadow-2xl">
+  <img 
+    src="https://picsum.photos/800/600" 
+    alt="Featured image"
+    loading="lazy"
+    class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110"
+  />
+  <figcaption class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 text-white">
+    <h3 class="text-2xl font-bold mb-2">Image Caption</h3>
+    <p class="text-sm opacity-90">Add your description here</p>
+  </figcaption>
+</figure>`
+  },
+  {
+    id: 'image-gallery-grid',
+    name: 'Image Gallery',
+    category: 'media',
+    icon: <Grid3x3 className="w-5 h-5" />,
+    description: 'Responsive image gallery with hover effects',
+    tags: ['gallery', 'grid', 'images', 'portfolio'],
+    htmlTemplate: `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+  <div class="relative group overflow-hidden rounded-lg shadow-lg cursor-pointer">
+    <img src="https://picsum.photos/400/300?random=1" alt="Gallery 1" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+      <span class="text-white text-lg font-semibold">View Image</span>
+    </div>
+  </div>
+  <div class="relative group overflow-hidden rounded-lg shadow-lg cursor-pointer">
+    <img src="https://picsum.photos/400/300?random=2" alt="Gallery 2" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+      <span class="text-white text-lg font-semibold">View Image</span>
+    </div>
+  </div>
+  <div class="relative group overflow-hidden rounded-lg shadow-lg cursor-pointer">
+    <img src="https://picsum.photos/400/300?random=3" alt="Gallery 3" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+      <span class="text-white text-lg font-semibold">View Image</span>
+    </div>
+  </div>
+  <div class="relative group overflow-hidden rounded-lg shadow-lg cursor-pointer">
+    <img src="https://picsum.photos/400/300?random=4" alt="Gallery 4" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+      <span class="text-white text-lg font-semibold">View Image</span>
+    </div>
+  </div>
+</div>`
+  },
+  {
+    id: 'parallax-image',
+    name: 'Parallax Image',
+    category: 'media',
+    icon: <Layers className="w-5 h-5" />,
+    description: 'Image with parallax scroll effect',
+    tags: ['parallax', 'scroll', 'effect', 'animation'],
+    htmlTemplate: `<div class="relative h-96 overflow-hidden rounded-2xl shadow-2xl" data-parallax="true">
+  <img 
+    src="https://picsum.photos/1920/1080" 
+    alt="Parallax background"
+    loading="lazy"
+    class="absolute inset-0 w-full h-full object-cover parallax-image"
+  />
+  <div class="relative z-10 h-full flex items-center justify-center">
+    <div class="text-center text-white p-8 bg-black/30 backdrop-blur-sm rounded-2xl">
+      <h2 class="text-4xl font-bold mb-4">Parallax Effect</h2>
+      <p class="text-lg">Scroll to see the magic</p>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  window.addEventListener('scroll', function() {
+    const parallaxElements = document.querySelectorAll('[data-parallax="true"] .parallax-image');
+    parallaxElements.forEach(img => {
+      const rect = img.parentElement.getBoundingClientRect();
+      const scrolled = window.pageYOffset;
+      const rate = (rect.top + scrolled) * -0.3;
+      img.style.transform = 'translateY(' + rate + 'px)';
+    });
+  });
+})();
+</script>`
+  },
+  {
     id: 'content-video',
     name: 'Video',
     category: 'media',
