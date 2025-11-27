@@ -466,7 +466,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     });
 
     // Handle drop events - render elements with smart positioning
-    service.on('drop', (data: unknown) => {
+    const handleDropEvent = (data: unknown) => {
       const dropData = data as { 
         element: { 
           name: string; 
@@ -653,16 +653,22 @@ ${body.innerHTML}
         description: `${element.category} element added. Drag to reorder!`,
         duration: 3000
       });
-    });
+    };
+    
+    // Register the drop event handler
+    service.on('drop', handleDropEvent);
 
     return () => {
+      // Unregister the drop event handler
+      service.off('drop', handleDropEvent);
+      
+      // Destroy canvas listeners
       containers.forEach(container => {
         service.destroyCanvas(container);
         console.log('[WebBuilder] 🧹 Drag-drop destroyed on:', container.dataset.dropZone);
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode]);
+  }, [viewMode, previewCode]);
 
   const handleDelete = () => {
     if (!fabricCanvas || !selectedObject) return;
