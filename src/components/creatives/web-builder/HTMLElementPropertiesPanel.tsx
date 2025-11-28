@@ -68,37 +68,41 @@ export const HTMLElementPropertiesPanel: React.FC<HTMLElementPropertiesPanelProp
       return;
     }
 
-    selectedElement.set({
-      id: properties.id,
-      className: properties.className,
-      width: properties.width,
-      height: properties.height,
-      left: properties.left,
-      top: properties.top,
-      opacity: properties.opacity / 100,
-      fill: properties.backgroundColor,
-      text: properties.text,
-      fontSize: properties.fontSize,
-      fontFamily: properties.fontFamily,
-      visible: properties.visible
-    });
+    if (selectedElement.set) {
+      selectedElement.set('id', properties.id);
+      selectedElement.set('className', properties.className);
+      selectedElement.set('width', properties.width);
+      selectedElement.set('height', properties.height);
+      selectedElement.set('left', properties.left);
+      selectedElement.set('top', properties.top);
+      selectedElement.set('opacity', properties.opacity / 100);
+      selectedElement.set('fill', properties.backgroundColor);
+      selectedElement.set('text', properties.text);
+      selectedElement.set('fontSize', properties.fontSize);
+      selectedElement.set('fontFamily', properties.fontFamily);
+      selectedElement.set('visible', properties.visible);
+    }
 
     fabricCanvas.renderAll();
     onUpdate();
   };
 
   const duplicateElement = () => {
-    if (!selectedElement || !fabricCanvas) {
+    if (!selectedElement || !fabricCanvas || !selectedElement.clone) {
       return;
     }
 
-    selectedElement.clone((cloned: typeof selectedElement) => {
-      cloned.set({
-        left: (cloned.left || 0) + 20,
-        top: (cloned.top || 0) + 20
-      });
-      fabricCanvas.add(cloned);
-      fabricCanvas.setActiveObject(cloned);
+    selectedElement.clone((cloned: unknown) => {
+      if (cloned && typeof cloned === 'object' && cloned !== null && 'set' in cloned) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const element = cloned as any;
+        element.set('left', (element.left || 0) + 20);
+        element.set('top', (element.top || 0) + 20);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (fabricCanvas as any).add(cloned);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (fabricCanvas as any).setActiveObject(cloned);
       fabricCanvas.renderAll();
       onUpdate();
     });
@@ -109,14 +113,15 @@ export const HTMLElementPropertiesPanel: React.FC<HTMLElementPropertiesPanelProp
       return;
     }
 
-    fabricCanvas.remove(selectedElement);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (fabricCanvas as any).remove(selectedElement);
     fabricCanvas.discardActiveObject();
     fabricCanvas.renderAll();
     onUpdate();
   };
 
   const toggleVisibility = () => {
-    if (!selectedElement || !fabricCanvas) {
+    if (!selectedElement || !fabricCanvas || !selectedElement.set) {
       return;
     }
 
