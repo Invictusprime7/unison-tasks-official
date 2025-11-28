@@ -23,20 +23,20 @@ export const HTMLElementPropertiesPanel: React.FC<HTMLElementPropertiesPanelProp
   selectedElement,
   onUpdate
 }) => {
-  const [properties, setProperties] = useState({
-    id: '',
-    className: '',
-    width: 0,
-    height: 0,
-    left: 0,
-    top: 0,
-    opacity: 100,
-    backgroundColor: '#ffffff',
-    text: '',
-    fontSize: 16,
-    fontFamily: 'Arial',
-    visible: true
-  });
+  const [properties, setProperties] = useState(() => ({
+    id: selectedElement?.id || '',
+    className: selectedElement?.className || '',
+    width: Math.round((selectedElement?.width || 0) * (selectedElement?.scaleX || 1)),
+    height: Math.round((selectedElement?.height || 0) * (selectedElement?.scaleY || 1)),
+    left: Math.round(selectedElement?.left || 0),
+    top: Math.round(selectedElement?.top || 0),
+    opacity: Math.round((selectedElement?.opacity || 1) * 100),
+    backgroundColor: selectedElement?.fill || '#ffffff',
+    text: selectedElement?.text || '',
+    fontSize: selectedElement?.fontSize || 16,
+    fontFamily: selectedElement?.fontFamily || 'Arial',
+    visible: selectedElement?.visible !== false
+  }));
 
   useEffect(() => {
     if (selectedElement) {
