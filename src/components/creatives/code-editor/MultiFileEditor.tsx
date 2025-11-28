@@ -1,5 +1,5 @@
 import React from 'react';
-import MonacoEditor from '@/components/creatives/MonacoEditor';
+import CodeMirrorEditor from '@/components/creatives/CodeMirrorEditor';
 import { FileExplorer } from './FileExplorer';
 import { EditorTabs } from './EditorTabs';
 import { useVirtualFileSystem } from '@/hooks/useVirtualFileSystem';
@@ -53,12 +53,14 @@ export function MultiFileEditor() {
 
             <div className="flex-1">
               {activeFile ? (
-                <MonacoEditor
+                <CodeMirrorEditor
                   height="100%"
-                  language={activeFile.language}
+                  language={(activeFile.language === 'typescript' || activeFile.language === 'css' ? 'javascript' : (activeFile.language === 'html' || activeFile.language === 'javascript' ? activeFile.language : 'javascript'))}
+                  theme="dark"
                   value={activeFile.content}
-                  onChange={(value) => updateFileContent(activeFile.id, value || '')}
-                  theme="vs-dark"
+                  onChange={(value) => updateFileContent(activeFile.id, value)}
+                  readOnly={false}
+                  className="w-full h-full"
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">

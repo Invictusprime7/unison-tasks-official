@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Check, Upload, Save, Code2 } from "lucide-react";
 import { toast } from "sonner";
-import MonacoEditor from "../MonacoEditor";
+import CodeMirrorEditor from "../CodeMirrorEditor";
 
 interface CodePreviewDialogProps {
   isOpen: boolean;
@@ -189,19 +189,14 @@ export const CodePreviewDialog = ({
             </div>
             {isEditMode ? (
               <div className="h-[500px] rounded-lg overflow-hidden border border-white/10">
-                <MonacoEditor
+                <CodeMirrorEditor
                   height="100%"
-                  defaultLanguage="html"
+                  language="html"
+                  theme="dark"
                   value={htmlCode}
-                  onChange={(value) => setHtmlCode(value || "")}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: "on",
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                  }}
+                  onChange={(value) => setHtmlCode(value)}
+                  readOnly={false}
+                  className="w-full h-full"
                 />
               </div>
             ) : (
@@ -245,19 +240,14 @@ export const CodePreviewDialog = ({
             </div>
             {isEditMode ? (
               <div className="h-[500px] rounded-lg overflow-hidden border border-white/10">
-                <MonacoEditor
+                <CodeMirrorEditor
                   height="100%"
-                  defaultLanguage="css"
+                  language="css"
+                  theme="dark"
                   value={cssCode}
-                  onChange={(value) => setCssCode(value || "")}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: "on",
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                  }}
+                  onChange={(value) => setCssCode(value)}
+                  readOnly={false}
+                  className="w-full h-full"
                 />
               </div>
             ) : (
