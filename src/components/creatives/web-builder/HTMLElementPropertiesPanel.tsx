@@ -23,42 +23,27 @@ export const HTMLElementPropertiesPanel: React.FC<HTMLElementPropertiesPanelProp
   selectedElement,
   onUpdate
 }) => {
-  const [properties, setProperties] = useState(() => ({
-    id: selectedElement?.id || '',
-    className: selectedElement?.className || '',
-    width: Math.round((selectedElement?.width || 0) * (selectedElement?.scaleX || 1)),
-    height: Math.round((selectedElement?.height || 0) * (selectedElement?.scaleY || 1)),
-    left: Math.round(selectedElement?.left || 0),
-    top: Math.round(selectedElement?.top || 0),
-    opacity: Math.round((selectedElement?.opacity || 1) * 100),
-    backgroundColor: selectedElement?.fill || '#ffffff',
-    text: selectedElement?.text || '',
-    fontSize: selectedElement?.fontSize || 16,
-    fontFamily: selectedElement?.fontFamily || 'Arial',
-    visible: selectedElement?.visible !== false
-  }));
+  // Track local edits separately from selected element props
+  const [localEdits, setLocalEdits] = useState<Partial<typeof properties>>({});
+  
+  // Derive properties from selectedElement, with local edits taking precedence
+  const properties = {
+    id: localEdits.id ?? selectedElement?.id ?? '',
+    className: localEdits.className ?? selectedElement?.className ?? '',
+    width: localEdits.width ?? Math.round((selectedElement?.width || 0) * (selectedElement?.scaleX || 1)),
+    height: localEdits.height ?? Math.round((selectedElement?.height || 0) * (selectedElement?.scaleY || 1)),
+    left: localEdits.left ?? Math.round(selectedElement?.left || 0),
+    top: localEdits.top ?? Math.round(selectedElement?.top || 0),
+    opacity: localEdits.opacity ?? Math.round((selectedElement?.opacity || 1) * 100),
+    backgroundColor: localEdits.backgroundColor ?? selectedElement?.fill ?? '#ffffff',
+    text: localEdits.text ?? selectedElement?.text ?? '',
+    fontSize: localEdits.fontSize ?? selectedElement?.fontSize ?? 16,
+    fontFamily: localEdits.fontFamily ?? selectedElement?.fontFamily ?? 'Arial',
+    visible: localEdits.visible ?? (selectedElement?.visible !== false)
+  };
 
-  useEffect(() => {
-    if (selectedElement) {
-      setProperties({
-        id: selectedElement.id || '',
-        className: selectedElement.className || '',
-        width: Math.round((selectedElement.width || 0) * (selectedElement.scaleX || 1)),
-        height: Math.round((selectedElement.height || 0) * (selectedElement.scaleY || 1)),
-        left: Math.round(selectedElement.left || 0),
-        top: Math.round(selectedElement.top || 0),
-        opacity: Math.round((selectedElement.opacity || 1) * 100),
-        backgroundColor: selectedElement.fill || '#ffffff',
-        text: selectedElement.text || '',
-        fontSize: selectedElement.fontSize || 16,
-        fontFamily: selectedElement.fontFamily || 'Arial',
-        visible: selectedElement.visible !== false
-      });
-    }
-  }, [selectedElement]);
-
-  const handlePropertyChange = (key: string, value: any) => {
-    setProperties(prev => ({ ...prev, [key]: value }));
+  const handlePropertyChange = (key: string, value: string | number | boolean) => {
+    setLocalEdits(prev => ({ ...prev, [key]: value }));
   };
 
   const applyChanges = () => {
@@ -120,7 +105,7 @@ export const HTMLElementPropertiesPanel: React.FC<HTMLElementPropertiesPanelProp
 
     const newVisibility = !properties.visible;
     selectedElement.set('visible', newVisibility);
-    setProperties(prev => ({ ...prev, visible: newVisibility }));
+    setLocalEdits(prev => ({ ...prev, visible: newVisibility }));
     fabricCanvas.renderAll();
     onUpdate();
   };
