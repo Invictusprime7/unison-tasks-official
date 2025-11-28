@@ -14,7 +14,24 @@ import { Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 
 interface HTMLElementPropertiesPanelProps {
   fabricCanvas: FabricCanvas | null;
-  selectedElement: any;
+  selectedElement: {
+    id?: string;
+    className?: string;
+    width?: number;
+    height?: number;
+    left?: number;
+    top?: number;
+    opacity?: number;
+    fill?: string;
+    text?: string;
+    fontSize?: number;
+    fontFamily?: string;
+    visible?: boolean;
+    scaleX?: number;
+    scaleY?: number;
+    set?: (property: string, value: unknown) => void;
+    clone?: (callback: (cloned: unknown) => void) => void;
+  } | null;
   onUpdate: () => void;
 }
 
