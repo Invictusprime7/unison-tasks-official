@@ -64,4 +64,5 @@ export const defaultWebBuilderShortcuts = {
   sendBackward: { key: "[", ctrl: true, description: "Send backward" },
   togglePreview: { key: "p", ctrl: true, description: "Toggle preview" },
   toggleCode: { key: "k", ctrl: true, description: "Toggle code" },
+  aiImage: { key: "i", ctrl: true, description: "AI Image Generator" },
 };

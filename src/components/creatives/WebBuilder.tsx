@@ -6,8 +6,9 @@ import {
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap,
-  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2
+  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2, Image
 } from "lucide-react";
+import { AIImageGeneratorDialog } from "./AIImageGeneratorDialog";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
@@ -126,6 +127,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
   const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
+  const [aiImageDialogOpen, setAiImageDialogOpen] = useState(false);
 
   // Add console log to confirm component is rendering
   console.log('[WebBuilder] Component rendering with CodeMirror...');
@@ -363,6 +365,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     {
       ...defaultWebBuilderShortcuts.toggleCode,
       action: () => setCodePreviewOpen(true),
+    },
+    {
+      ...defaultWebBuilderShortcuts.aiImage,
+      action: () => setAiImageDialogOpen(true),
     },
     {
       key: 'F1',
@@ -1107,6 +1113,16 @@ ${body.innerHTML}
             title="Save (Ctrl+S)"
           >
             <Save className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setAiImageDialogOpen(true)}
+            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
+            title="AI Image Generator (Ctrl+I)"
+          >
+            <Image className="h-4 w-4 mr-2" />
+            AI Image
           </Button>
           <Button
             variant="ghost"
@@ -1918,6 +1934,101 @@ ${body.innerHTML}
           }}
         />
       )}
+
+      {/* AI Image Generator Dialog */}
+      <AIImageGeneratorDialog
+        open={aiImageDialogOpen}
+        onOpenChange={setAiImageDialogOpen}
+        onImageGenerated={(imageUrl, metadata) => {
+          // Insert AI-generated image with advanced styling and responsive features
+          const timestamp = Date.now();
+          const imageAlt = metadata?.prompt || 'AI Generated Image';
+          
+          // Parse current preview code
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+          const body = doc.body;
+          
+          // Create wrapper for the AI image
+          const wrapper = doc.createElement('div');
+          wrapper.setAttribute('data-element-id', `ai-image-${timestamp}`);
+          wrapper.setAttribute('data-element-type', 'media');
+          wrapper.setAttribute('draggable', 'true');
+          wrapper.setAttribute('class', 'canvas-element');
+          
+          // Create figure element with advanced features
+          const figure = doc.createElement('figure');
+          figure.className = 'relative group overflow-hidden rounded-2xl shadow-2xl';
+          
+          const img = doc.createElement('img');
+          img.src = imageUrl;
+          img.alt = imageAlt as string;
+          img.loading = 'lazy';
+          img.className = 'w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110';
+          img.style.cssText = 'aspect-ratio: 16/9; max-width: 100%;';
+          
+          const figcaption = doc.createElement('figcaption');
+          figcaption.className = 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300';
+          figcaption.innerHTML = `<p class="text-sm font-medium">${imageAlt}</p>${metadata?.style ? `<span class="text-xs opacity-75">Style: ${metadata.style}</span>` : ''}`;
+          
+          figure.appendChild(img);
+          figure.appendChild(figcaption);
+          wrapper.appendChild(figure);
+          
+          // Append to body
+          body.appendChild(wrapper);
+          
+          // Generate full HTML with reordering system
+          const newCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .canvas-element {
+      cursor: move;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .canvas-element:hover {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+    .dragging {
+      opacity: 0.5;
+    }
+    .drag-over-top::before,
+    .drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      z-index: 1000;
+    }
+    .drag-over-top::before {
+      top: -2px;
+    }
+    .drag-over-bottom::after {
+      bottom: -2px;
+    }
+  </style>
+</head>
+<body>
+${body.innerHTML}
+</body>
+</html>`;
+          
+          setPreviewCode(newCode);
+          setEditorCode(newCode);
+          
+          toast('AI Image Added! 🎨', {
+            description: 'AI-generated image inserted into canvas'
+          });
+        }}
+      />
     </div>
   );
 };
