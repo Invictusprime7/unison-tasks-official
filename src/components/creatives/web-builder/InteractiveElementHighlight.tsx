@@ -3,38 +3,31 @@
  * Visual highlight for elements in interactive/preview mode
  */
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 interface InteractiveElementHighlightProps {
-  element: HTMLElement | null;
+  isInteractiveMode: boolean;
 }
 
 export const InteractiveElementHighlight: React.FC<InteractiveElementHighlightProps> = ({
-  element
+  isInteractiveMode
 }) => {
-  const [bounds, setBounds] = useState<DOMRect | null>(null);
-
-  useEffect(() => {
-    if (element) {
-      const rect = element.getBoundingClientRect();
-      setBounds(rect);
-    } else {
-      setBounds(null);
-    }
-  }, [element]);
-
-  if (!bounds) return null;
+  // This component can add global styles for interactive mode highlighting
+  // The actual highlighting logic should be in the WebBuilder or LiveHTMLPreview
+  if (!isInteractiveMode) return null;
 
   return (
-    <div
-      className="pointer-events-none fixed border-2 border-blue-500 bg-blue-500/10 transition-all duration-150"
-      style={{
-        left: `${bounds.left}px`,
-        top: `${bounds.top}px`,
-        width: `${bounds.width}px`,
-        height: `${bounds.height}px`,
-        zIndex: 9998
-      }}
-    />
+    <style>{`
+      .interactive-element-hover {
+        outline: 2px solid #3b82f6 !important;
+        outline-offset: 2px;
+        cursor: pointer !important;
+      }
+      .interactive-element-selected {
+        outline: 2px solid #8b5cf6 !important;
+        outline-offset: 2px;
+        background: rgba(139, 92, 246, 0.05) !important;
+      }
+    `}</style>
   );
 };

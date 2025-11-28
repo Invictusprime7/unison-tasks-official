@@ -1001,9 +1001,6 @@ ${body.innerHTML}
       {/* Interactive Element Highlighting Styles */}
       <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />
       
-      {/* Interactive Mode Global Utils */}
-      <InteractiveModeUtils isInteractiveMode={isInteractiveMode} />
-      
       {/* Top Toolbar */}
       <div className="h-14 bg-[#1a1a1a] border-b border-white/10 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">

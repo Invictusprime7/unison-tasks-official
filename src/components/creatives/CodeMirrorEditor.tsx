@@ -10,7 +10,7 @@ interface CodeMirrorEditorProps {
   value: string;
   onChange?: (value: string) => void;
   language?: 'javascript' | 'typescript' | 'html' | 'css' | 'json';
-  theme?: 'vs-dark' | 'vs-light';
+  theme?: 'vs-dark' | 'vs-light' | 'dark' | 'light';
   height?: string;
   readOnly?: boolean;
   isAIProcessing?: boolean;

@@ -6,15 +6,40 @@
 type DropHandler = (event: DragEvent) => void;
 
 export class CanvasDragDropService {
+  private static instance: CanvasDragDropService;
   private handlers: Map<string, DropHandler> = new Map();
   private canvas: HTMLElement | null = null;
   private draggedElement: unknown = null;
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance(): CanvasDragDropService {
+    if (!CanvasDragDropService.instance) {
+      CanvasDragDropService.instance = new CanvasDragDropService();
+    }
+    return CanvasDragDropService.instance;
+  }
 
   /**
    * Initialize the service with a canvas element
    */
   init(canvas: HTMLElement): void {
     this.canvas = canvas;
+  }
+
+  /**
+   * Initialize canvas (alias for init)
+   */
+  initializeCanvas(canvas: HTMLElement): void {
+    this.init(canvas);
+  }
+
+  /**
+   * Destroy canvas and cleanup
+   */
+  destroyCanvas(_canvas: HTMLElement): void {
+    this.cleanup();
   }
 
   /**

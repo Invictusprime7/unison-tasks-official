@@ -707,8 +707,8 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
 
       {/* AI Image Generator Dialog */}
       <AIImageGeneratorDialog
-        open={showAIImageDialog}
-        onOpenChange={setShowAIImageDialog}
+        isOpen={showAIImageDialog}
+        onClose={() => setShowAIImageDialog(false)}
         onImageGenerated={(imageUrl, metadata) => {
           onAIImageGenerated?.(imageUrl, metadata);
         }}
