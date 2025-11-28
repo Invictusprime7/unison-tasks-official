@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Validate environment variables
 if (!SUPABASE_URL || SUPABASE_URL === 'https://placeholder.supabase.co') {
@@ -12,8 +12,8 @@ if (!SUPABASE_URL || SUPABASE_URL === 'https://placeholder.supabase.co') {
   console.error('Please check your environment variables in Vercel dashboard');
 }
 
-if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'placeholder-key') {
-  console.error('❌ Missing or invalid VITE_SUPABASE_ANON_KEY environment variable');
+if (!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY === 'placeholder-key') {
+  console.error('❌ Missing or invalid VITE_SUPABASE_PUBLISHABLE_KEY environment variable');
   console.error('Please check your environment variables in Vercel dashboard');
 }
 
@@ -22,7 +22,7 @@ if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'placeholder-key') {
 
 export const supabase = createClient<Database>(
   SUPABASE_URL || 'https://placeholder.supabase.co', 
-  SUPABASE_ANON_KEY || 'placeholder-key',
+  SUPABASE_PUBLISHABLE_KEY || 'placeholder-key',
   {
     auth: {
       storage: typeof window !== 'undefined' ? localStorage : undefined,
@@ -35,7 +35,7 @@ export const supabase = createClient<Database>(
 // Export a flag to check if client is properly configured
 export const isSupabaseConfigured = Boolean(
   SUPABASE_URL && 
-  SUPABASE_ANON_KEY && 
+  SUPABASE_PUBLISHABLE_KEY && 
   SUPABASE_URL !== 'https://placeholder.supabase.co' &&
-  SUPABASE_ANON_KEY !== 'placeholder-key'
+  SUPABASE_PUBLISHABLE_KEY !== 'placeholder-key'
 );
