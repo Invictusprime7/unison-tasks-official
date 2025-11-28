@@ -8,12 +8,34 @@ type DropHandler = (event: DragEvent) => void;
 export class CanvasDragDropService {
   private handlers: Map<string, DropHandler> = new Map();
   private canvas: HTMLElement | null = null;
+  private draggedElement: unknown = null;
 
   /**
    * Initialize the service with a canvas element
    */
   init(canvas: HTMLElement): void {
     this.canvas = canvas;
+  }
+
+  /**
+   * Handle drag start event
+   */
+  onDragStart(element: unknown): void {
+    this.draggedElement = element;
+  }
+
+  /**
+   * Handle drag end event
+   */
+  onDragEnd(): void {
+    this.draggedElement = null;
+  }
+
+  /**
+   * Get the currently dragged element
+   */
+  getDraggedElement(): unknown {
+    return this.draggedElement;
   }
 
   /**
