@@ -65,4 +65,5 @@ export const defaultWebBuilderShortcuts = {
   togglePreview: { key: "p", ctrl: true, description: "Toggle preview" },
   toggleCode: { key: "k", ctrl: true, description: "Toggle code" },
   aiImage: { key: "i", ctrl: true, description: "AI Image Generator" },
+  fileLibrary: { key: "l", ctrl: true, description: "File Library" },
 };

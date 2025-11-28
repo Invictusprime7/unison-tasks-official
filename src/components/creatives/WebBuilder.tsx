@@ -6,9 +6,10 @@ import {
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap,
-  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2, Image
+  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2, Image, FolderOpen
 } from "lucide-react";
 import { AIImageGeneratorDialog } from "./AIImageGeneratorDialog";
+import { FileLibraryPanel } from "./web-builder/FileLibraryPanel";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
@@ -128,6 +129,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
   const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
   const [aiImageDialogOpen, setAiImageDialogOpen] = useState(false);
+  const [fileLibraryOpen, setFileLibraryOpen] = useState(false);
 
   // Add console log to confirm component is rendering
   console.log('[WebBuilder] Component rendering with CodeMirror...');
@@ -369,6 +371,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     {
       ...defaultWebBuilderShortcuts.aiImage,
       action: () => setAiImageDialogOpen(true),
+    },
+    {
+      ...defaultWebBuilderShortcuts.fileLibrary,
+      action: () => setFileLibraryOpen(!fileLibraryOpen),
     },
     {
       key: 'F1',
@@ -1127,6 +1133,16 @@ ${body.innerHTML}
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => setFileLibraryOpen(!fileLibraryOpen)}
+            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+            title="File Library (Ctrl+L)"
+          >
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Files
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setCodePreviewOpen(true)}
             className="text-white/70 hover:text-white"
           >
@@ -1769,6 +1785,109 @@ ${body.innerHTML}
               }
             }}
           />
+        ) : fileLibraryOpen ? (
+          <div className="w-80 bg-slate-950 border-l border-slate-800 flex flex-col">
+            <FileLibraryPanel
+              onClose={() => setFileLibraryOpen(false)}
+              onFileInsert={(fileUrl, fileName, mimeType) => {
+                // Insert file into canvas based on type
+                const timestamp = Date.now();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+                const body = doc.body;
+                
+                // Create wrapper
+                const wrapper = doc.createElement('div');
+                wrapper.setAttribute('data-element-id', `file-${timestamp}`);
+                wrapper.setAttribute('data-element-type', mimeType.startsWith('image/') ? 'media' : 'file');
+                wrapper.setAttribute('draggable', 'true');
+                wrapper.setAttribute('class', 'canvas-element');
+                
+                if (mimeType.startsWith('image/')) {
+                  // Insert image with advanced styling
+                  const figure = doc.createElement('figure');
+                  figure.className = 'relative group overflow-hidden rounded-2xl shadow-2xl';
+                  
+                  const img = doc.createElement('img');
+                  img.src = fileUrl;
+                  img.alt = fileName;
+                  img.loading = 'lazy';
+                  img.className = 'w-full h-auto object-cover transition-all duration-500 group-hover:scale-105';
+                  img.style.cssText = 'max-width: 100%;';
+                  
+                  const figcaption = doc.createElement('figcaption');
+                  figcaption.className = 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300';
+                  figcaption.innerHTML = `<p class="text-sm font-medium">${fileName}</p>`;
+                  
+                  figure.appendChild(img);
+                  figure.appendChild(figcaption);
+                  wrapper.appendChild(figure);
+                } else if (mimeType.startsWith('video/')) {
+                  // Insert video player
+                  const video = doc.createElement('video');
+                  video.src = fileUrl;
+                  video.controls = true;
+                  video.className = 'w-full rounded-lg shadow-lg';
+                  video.style.cssText = 'max-width: 100%;';
+                  wrapper.appendChild(video);
+                } else if (mimeType.startsWith('audio/')) {
+                  // Insert audio player
+                  const audio = doc.createElement('audio');
+                  audio.src = fileUrl;
+                  audio.controls = true;
+                  audio.className = 'w-full';
+                  wrapper.appendChild(audio);
+                } else {
+                  // Insert file link
+                  const link = doc.createElement('a');
+                  link.href = fileUrl;
+                  link.download = fileName;
+                  link.className = 'inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition';
+                  link.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                    </svg>
+                    <span>Download ${fileName}</span>
+                  `;
+                  wrapper.appendChild(link);
+                }
+                
+                body.appendChild(wrapper);
+                
+                // Generate full HTML
+                const newCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .canvas-element {
+      cursor: move;
+      transition: all 0.2s;
+      position: relative;
+      margin: 1rem 0;
+    }
+    .canvas-element:hover {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+${body.innerHTML}
+</body>
+</html>`;
+                
+                setPreviewCode(newCode);
+                setEditorCode(newCode);
+                
+                toast(`File Added! 📁`, {
+                  description: `${fileName} inserted into canvas`
+                });
+              }}
+            />
+          </div>
         ) : !rightPanelCollapsed ? (
           <WebPropertiesPanel 
             fabricCanvas={fabricCanvas}
