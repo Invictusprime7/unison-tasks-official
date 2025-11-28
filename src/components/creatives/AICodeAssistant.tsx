@@ -206,15 +206,21 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     await saveMessage(userMessage);
 
     try {
-      // Use proxy in development to avoid DNS issues in Codespaces
-      const isDev = import.meta.env.DEV;
-      const baseUrl = isDev ? '/api/supabase' : import.meta.env.VITE_SUPABASE_URL;
+      // Always use direct Supabase URL for Edge Functions
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
-      const response = await fetch(`${baseUrl}/functions/v1/ai-code-assistant`, {
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase configuration missing');
+      }
+      
+      console.log('[AICodeAssistant] Calling Edge Function:', `${supabaseUrl}/functions/v1/ai-code-assistant`);
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-code-assistant`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({
           messages: messages
@@ -224,7 +230,12 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         }),
       });
 
+      console.log('[AICodeAssistant] Response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AICodeAssistant] Error response:', errorText);
+        
         if (response.status === 429) {
           toast({
             title: "Rate limit exceeded",
@@ -241,7 +252,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           });
           return;
         }
-        throw new Error("Failed to get AI response");
+        if (response.status === 500) {
+          toast({
+            title: "Server Error",
+            description: errorText || "The AI service encountered an error. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(`Failed to get AI response: ${response.status} ${errorText}`);
       }
 
       const reader = response.body?.getReader();
