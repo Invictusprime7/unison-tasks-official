@@ -64,6 +64,10 @@ for env in "${environments[@]}"; do
         update_env_var "VITE_SUPABASE_PROJECT_ID" "$VITE_SUPABASE_PROJECT_ID" "$env"
     fi
     
+    if [ ! -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+        update_env_var "SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_SERVICE_ROLE_KEY" "$env"
+    fi
+    
     # Additional production-specific variables
     if [ "$env" = "production" ]; then
         update_env_var "NODE_ENV" "production" "$env"
