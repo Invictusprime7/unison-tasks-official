@@ -10,6 +10,7 @@ interface LiveHTMLPreviewProps {
   autoRefresh?: boolean;
   onElementSelect?: (elementData: any) => void;
   enableSelection?: boolean;
+  isInteractiveMode?: boolean;
 }
 
 export interface LiveHTMLPreviewHandle {
@@ -23,6 +24,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
   autoRefresh = true,
   onElementSelect,
   enableSelection = true,
+  isInteractiveMode = false,
 }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
