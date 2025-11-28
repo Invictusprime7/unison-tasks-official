@@ -41,3 +41,5 @@ export const InteractiveModeToggle: React.FC<InteractiveModeToggleProps> = ({
     </div>
   );
 };
+
+export default InteractiveModeToggle;
