@@ -1,31 +1,75 @@
-import { useEffect, useRef, useState } from "react";
-import { AICodeAssistant } from "./AICodeAssistant";
+import { useEffect, useRef, useState, useCallback } from "react";
+import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
 import { 
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap,
-  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2
+  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
-import MonacoEditor from './MonacoEditor';
-import { Monaco } from '@monaco-editor/react';
+import CodeMirrorEditor from './CodeMirrorEditor';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
-import { NavigationPanel } from "./web-builder/NavigationPanel";
 import { WebPropertiesPanel } from "./web-builder/WebPropertiesPanel";
-import { AIAssistantPanel } from "./web-builder/AIAssistantPanel";
+import { ElementsSidebar } from "./ElementsSidebar";
+import { CanvasDragDropService } from "@/services/canvasDragDropService";
 import { CodePreviewDialog } from "./web-builder/CodePreviewDialog";
+import { AICodeAssistant } from "./AICodeAssistant";
 import { IntegrationsPanel } from "./design-studio/IntegrationsPanel";
 import { ExportDialog } from "./design-studio/ExportDialog";
 import { PerformancePanel } from "./web-builder/PerformancePanel";
 import { DirectEditToolbar } from "./web-builder/DirectEditToolbar";
 import { ArrangementTools } from "./web-builder/ArrangementTools";
-
+import { HTMLElementPropertiesPanel } from "./web-builder/HTMLElementPropertiesPanel";
 import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
 import { webBlocks } from "./web-builder/webBlocks";
+import { InteractiveModeToggle } from "./web-builder/InteractiveModeToggle";
+import { InteractiveElementHighlight } from "./web-builder/InteractiveElementHighlight";
+import { InteractiveElementOverlay } from "./web-builder/InteractiveElementOverlay";
+import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
+import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
+import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
+
+// Define SelectedElement interface to match HTMLElementPropertiesPanel
+interface SelectedElement {
+  tagName: string;
+  textContent: string;
+  styles: {
+    color?: string;
+    backgroundColor?: string;
+    fontSize?: string;
+    fontFamily?: string;
+    fontWeight?: string;
+    fontStyle?: string;
+    textDecoration?: string;
+    textAlign?: string;
+    padding?: string;
+    margin?: string;
+    border?: string;
+    borderRadius?: string;
+    width?: string;
+    height?: string;
+    display?: string;
+    opacity?: string;
+  };
+  attributes: Record<string, string>;
+  selector: string;
+}
+
+// Define types for Fabric objects with their specific properties
+type FabricTextObject = FabricCanvas['_objects'][0] & {
+  text: string;
+  fontSize?: number;
+  fontFamily?: string;
+  textAlign?: string;
+};
+
+type FabricImageObject = FabricCanvas['_objects'][0] & {
+  getSrc(): string;
+};
 import { useKeyboardShortcuts, defaultWebBuilderShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose } from "lucide-react";
@@ -47,12 +91,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const location = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
-  const [selectedObject, setSelectedObject] = useState<any>(null);
+  const [selectedObject, setSelectedObject] = useState<FabricCanvas['_objects'][0] | null>(null);
   const [activeMode, setActiveMode] = useState<"insert" | "layout" | "text" | "vector">("insert");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(0.5);
   const [canvasHeight, setCanvasHeight] = useState(800);
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [lastGenerationId, setLastGenerationId] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string>(''); // This would come from auth
   const [codePreviewOpen, setCodePreviewOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [integrationsPanelOpen, setIntegrationsPanelOpen] = useState(false);
@@ -61,6 +107,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [exportCss, setExportCss] = useState("");
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [performancePanelOpen, setPerformancePanelOpen] = useState(false);
   const mainContainerRef = useRef<HTMLDivElement>(null);
@@ -70,159 +117,90 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [showPreview, setShowPreview] = useState(false);
   const [viewMode, setViewMode] = useState<'canvas' | 'code' | 'split'>('canvas');
-  const [editorCode, setEditorCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
+  const [isInteractiveMode, setIsInteractiveMode] = useState(false);
+  const [isInteractiveModeHelpOpen, setIsInteractiveModeHelpOpen] = useState(false);
+  const [editorCode, setEditorCode] = useState('// AI Web Builder - JavaScript Mode\n// Use vanilla JavaScript to create interactive web experiences\n\n// Example: Create a simple interactive button\nconst createButton = () => {\n  const button = document.createElement("button");\n  button.textContent = "Click Me!";\n  button.style.padding = "12px 24px";\n  button.style.fontSize = "16px";\n  button.style.cursor = "pointer";\n  \n  button.onclick = () => {\n    alert("Hello from Web Builder!");\n  };\n  \n  return button;\n};\n\n// Usage: Uncomment to test\n// document.body.appendChild(createButton());');
   const [previewCode, setPreviewCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const monacoRef = useRef<Monaco | null>(null);
-  const [selectedHTMLElement, setSelectedHTMLElement] = useState<any>(null);
-  const livePreviewRef = useRef<any>(null);
+  const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
+  const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
+  const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
+  const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
 
-  // Configure Monaco for full React/JSX/TypeScript support
-  const handleEditorWillMount = (monaco: Monaco) => {
-    monacoRef.current = monaco;
-
-    // Add React type definitions
-    const reactTypes = `
-declare module 'react' {
-  export interface FC<P = {}> {
-    (props: P): JSX.Element | null;
-  }
-  export function useState<T>(initialState: T | (() => T)): [T, (value: T) => void];
-  export function useEffect(effect: () => void | (() => void), deps?: any[]): void;
-  export function useCallback<T extends (...args: any[]) => any>(callback: T, deps: any[]): T;
-  export function useMemo<T>(factory: () => T, deps: any[]): T;
-  export function useRef<T>(initialValue: T): { current: T };
-  export function useContext<T>(context: React.Context<T>): T;
-  export function useReducer<R extends React.Reducer<any, any>>(
-    reducer: R,
-    initialState: React.ReducerState<R>
-  ): [React.ReducerState<R>, React.Dispatch<React.ReducerAction<R>>];
-  export const Children: {
-    map<T, C>(children: C | C[], fn: (child: C, index: number) => T): T[];
-    forEach<C>(children: C | C[], fn: (child: C, index: number) => void): void;
-    count(children: any): number;
-    only<C>(children: C): C extends any[] ? never : C;
-    toArray(children: any): any[];
-  };
-  export interface ReactNode {}
-  export interface ReactElement<P = any> {
-    type: any;
-    props: P;
-    key: string | null;
-  }
-  export interface CSSProperties {
-    [key: string]: string | number;
-  }
-}
-
-declare global {
-  namespace JSX {
-    interface Element extends React.ReactElement<any, any> {}
-    interface IntrinsicElements {
-      div: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
-      span: React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement>;
-      p: React.DetailedHTMLProps<React.HTMLAttributes<HTMLParagraphElement>, HTMLParagraphElement>;
-      h1: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h2: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h3: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h4: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h5: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      h6: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-      button: React.DetailedHTMLProps<React.ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>;
-      input: React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>;
-      img: React.DetailedHTMLProps<React.ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>;
-      a: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>;
-      ul: React.DetailedHTMLProps<React.HTMLAttributes<HTMLUListElement>, HTMLUListElement>;
-      ol: React.DetailedHTMLProps<React.OlHTMLAttributes<HTMLOListElement>, HTMLOListElement>;
-      li: React.DetailedHTMLProps<React.LiHTMLAttributes<HTMLLIElement>, HTMLLIElement>;
-      form: React.DetailedHTMLProps<React.FormHTMLAttributes<HTMLFormElement>, HTMLFormElement>;
-      label: React.DetailedHTMLProps<React.LabelHTMLAttributes<HTMLLabelElement>, HTMLLabelElement>;
-      select: React.DetailedHTMLProps<React.SelectHTMLAttributes<HTMLSelectElement>, HTMLSelectElement>;
-      option: React.DetailedHTMLProps<React.OptionHTMLAttributes<HTMLOptionElement>, HTMLOptionElement>;
-      textarea: React.DetailedHTMLProps<React.TextareaHTMLAttributes<HTMLTextAreaElement>, HTMLTextAreaElement>;
-      nav: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      header: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      footer: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      section: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      article: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      aside: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      main: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      svg: React.SVGProps<SVGSVGElement>;
-      path: React.SVGProps<SVGPathElement>;
-      [elemName: string]: any;
-    }
-  }
-}
-`;
-
-    // Configure TypeScript/JSX compiler options
-    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ESNext,
-      allowNonTsExtensions: true,
-      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monaco.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      jsx: monaco.languages.typescript.JsxEmit.React,
-      jsxFactory: 'React.createElement',
-      reactNamespace: 'React',
-      allowJs: true,
-      typeRoots: ['node_modules/@types'],
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-    });
-
-    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ESNext,
-      allowNonTsExtensions: true,
-      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monaco.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      jsx: monaco.languages.typescript.JsxEmit.React,
-      jsxFactory: 'React.createElement',
-      reactNamespace: 'React',
-      allowJs: true,
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-    });
-
-    // Add React type definitions to the editor
-    monaco.languages.typescript.typescriptDefaults.addExtraLib(
-      reactTypes,
-      'file:///node_modules/@types/react/index.d.ts'
-    );
-
-    monaco.languages.typescript.javascriptDefaults.addExtraLib(
-      reactTypes,
-      'file:///node_modules/@types/react/index.d.ts'
-    );
-
-    // Enable advanced diagnostics
-    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
-      noSuggestionDiagnostics: false,
-    });
-
-    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
-      noSuggestionDiagnostics: false,
-    });
-
-    // Configure editor features
-    monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
-    monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
-  };
+  // Add console log to confirm component is rendering
+  console.log('[WebBuilder] Component rendering with CodeMirror...');
 
   // Load template from navigation state (from Web Design Kit)
   useEffect(() => {
     if (location.state?.generatedCode) {
       const { generatedCode, templateName, aesthetic } = location.state;
+      console.log('[WebBuilder] Loading template code from Web Design Kit:', templateName);
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
-      setViewMode('canvas'); // Start in canvas view for live preview
+      setViewMode('code'); // Start in code view to show the template in CodeMirror
       toast(`${templateName} loaded!`, {
-        description: `${aesthetic} - Edit in Monaco or view in Canvas`,
+        description: `${aesthetic} - View and edit in Code Editor`,
+      });
+      // Clear the state to prevent re-loading on subsequent renders
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.generatedTemplate) {
+      const { generatedTemplate, templateName, aesthetic } = location.state;
+      console.log('[WebBuilder] Loading template from Web Design Kit:', templateName);
+      
+      // Convert template to HTML code
+      const htmlCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${generatedTemplate.name}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Template: ${generatedTemplate.name} */
+        /* Colors: Primary ${generatedTemplate.brandKit.primaryColor}, Secondary ${generatedTemplate.brandKit.secondaryColor} */
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Generated Template: ${generatedTemplate.name} -->
+    <!-- ${generatedTemplate.description} -->
+    
+    ${generatedTemplate.sections.map(section => `
+    <!-- Section: ${section.name} (${section.type}) -->
+    <section class="py-16 px-6">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-4xl font-bold mb-8">${section.name}</h2>
+            <div class="grid gap-6 md:grid-cols-${section.components.length > 2 ? '3' : '2'}">
+                ${section.components.map(comp => `
+                <div class="p-6 bg-white rounded-lg shadow-lg">
+                    <h3 class="text-2xl font-semibold mb-4">${comp.props.title || 'Component'}</h3>
+                    <p class="text-gray-600">${comp.props.description || 'Component content'}</p>
+                </div>
+                `).join('\n                ')}
+            </div>
+        </div>
+    </section>
+    `).join('\n    ')}
+</body>
+</html>`;
+      
+      setEditorCode(htmlCode);
+      setPreviewCode(htmlCode);
+      setViewMode('code'); // Start in code view to show the template in CodeMirror
+      toast(`${templateName || generatedTemplate.name} loaded!`, {
+        description: `${aesthetic || generatedTemplate.description} - View and edit in Code Editor`,
       });
       // Clear the state to prevent re-loading on subsequent renders
       window.history.replaceState({}, document.title);
@@ -234,18 +212,37 @@ declare global {
     console.log('[WebBuilder] AI code received:', code.substring(0, 100));
     setEditorCode(code);
     setPreviewCode(code);
-    setViewMode('code'); // Switch to code view to show the generated code
-    toast('AI Code Generated!', {
-      description: 'Edit in Monaco and render to canvas',
+    setViewMode('canvas'); // Switch to canvas view to show the generated template preview
+    toast('AI Template Generated!', {
+      description: 'Glass UI template is ready for preview',
     });
   };
 
-  // Render code from Monaco to Fabric.js canvas
+  // Clear canvas and reset to initial state
+  const handleClearCanvas = () => {
+    const defaultCode = '// AI Web Builder - JavaScript Mode\n// Use vanilla JavaScript to create interactive web experiences\n\n// Example: Create a simple interactive button\nconst createButton = () => {\n  const button = document.createElement("button");\n  button.textContent = "Click Me!";\n  button.style.padding = "12px 24px";\n  button.style.fontSize = "16px";\n  button.style.cursor = "pointer";\n  \n  button.onclick = () => {\n    alert("Hello from Web Builder!");\n  };\n  \n  return button;\n};\n\n// Usage: Uncomment to test\n// document.body.appendChild(createButton());';
+    
+    const defaultPreview = '<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>';
+    
+    setEditorCode(defaultCode);
+    setPreviewCode(defaultPreview);
+    
+    // Clear fabric canvas if it exists
+    if (fabricCanvas) {
+      fabricCanvas.clear();
+      fabricCanvas.backgroundColor = '#ffffff';
+      fabricCanvas.renderAll();
+    }
+    
+    toast('Canvas Cleared!', {
+      description: 'Starting fresh with a clean slate',
+    });
+  };
+
+  // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {
     if (!fabricCanvas) {
-      toast('Canvas not ready', {
-        description: 'Please wait for canvas to initialize',
-      });
+      console.warn('[WebBuilder] Canvas not ready yet');
       return;
     }
 
@@ -292,12 +289,12 @@ declare global {
 
     setFabricCanvas(canvas);
 
-    const handleSelectionCreated = (e: any) => {
-      setSelectedObject(e.selected?.[0]);
+    const handleSelectionCreated = (e: { selected?: FabricCanvas['_objects'] }) => {
+      setSelectedObject(e.selected?.[0] || null);
     };
 
-    const handleSelectionUpdated = (e: any) => {
-      setSelectedObject(e.selected?.[0]);
+    const handleSelectionUpdated = (e: { selected?: FabricCanvas['_objects'] }) => {
+      setSelectedObject(e.selected?.[0] || null);
     };
 
     const handleSelectionCleared = () => {
@@ -326,7 +323,6 @@ declare global {
       action: () => {
         if (history.canUndo) {
           history.undo();
-          toast.success("Undone");
         }
       },
     },
@@ -335,7 +331,6 @@ declare global {
       action: () => {
         if (history.canRedo) {
           history.redo();
-          toast.success("Redone");
         }
       },
     },
@@ -344,7 +339,6 @@ declare global {
       action: () => {
         if (history.canRedo) {
           history.redo();
-          toast.success("Redone");
         }
       },
     },
@@ -364,17 +358,46 @@ declare global {
       ...defaultWebBuilderShortcuts.save,
       action: () => {
         history.save();
-        toast.success("Saved");
       },
     },
     {
       ...defaultWebBuilderShortcuts.toggleCode,
       action: () => setCodePreviewOpen(true),
     },
+    {
+      key: 'F1',
+      description: 'Show Interactive Mode Help',
+      action: () => setIsInteractiveModeHelpOpen(true),
+    },
   ]);
 
+  // Handle generated templates from navigation state (Web Design Kit)
+  useEffect(() => {
+    if (location.state?.generatedTemplate) {
+      const { generatedTemplate, templateName } = location.state;
+      console.log('[WebBuilder] Template received from route state:', generatedTemplate);
+      
+      // Ensure canvas is ready
+      if (!fabricCanvas) {
+        console.log('[WebBuilder] Canvas not ready, will process template when canvas is available');
+        return;
+      }
+
+      // Use template state to render the template
+      templateState.updateTemplate(generatedTemplate).then(() => {
+        console.log('[WebBuilder] ✅ Template successfully rendered from route state');
+        setShowPreview(true);
+        // Clear the state to prevent re-loading
+        window.history.replaceState({}, document.title);
+      }).catch((error) => {
+        console.error('[WebBuilder] ❌ Failed to render template from route state:', error);
+        toast.error('Failed to render template: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      });
+    }
+  }, [location.state, fabricCanvas, templateState]);
+
   // Auto-adjust canvas height based on content
-  const updateCanvasHeight = () => {
+  const updateCanvasHeight = useCallback(() => {
     if (!fabricCanvas) return;
     
     const objects = fabricCanvas.getObjects();
@@ -384,7 +407,7 @@ declare global {
     }
     
     let maxBottom = 800; // Minimum height
-    objects.forEach((obj: any) => {
+    objects.forEach((obj: FabricCanvas['_objects'][0]) => {
       const objBottom = (obj.top || 0) + (obj.height || 0) * (obj.scaleY || 1);
       if (objBottom > maxBottom) {
         maxBottom = objBottom;
@@ -396,7 +419,7 @@ declare global {
     if (newHeight !== canvasHeight) {
       setCanvasHeight(newHeight);
     }
-  };
+  }, [fabricCanvas, canvasHeight]);
 
   // Save to history when objects change
   useEffect(() => {
@@ -416,27 +439,253 @@ declare global {
       fabricCanvas.off("object:removed", handleObjectModified);
       fabricCanvas.off("object:modified", handleObjectModified);
     };
-  }, [fabricCanvas, history, canvasHeight]);
+  }, [fabricCanvas, history, canvasHeight, updateCanvasHeight]);
+
+  // Initialize drag-drop service on preview containers
+  useEffect(() => {
+    const service = dragDropServiceRef.current;
+    const containers: HTMLElement[] = [];
+    
+    // Collect all active drop zones
+    if (scrollContainerRef.current) {
+      containers.push(scrollContainerRef.current);
+    }
+    if (splitViewDropZoneRef.current) {
+      containers.push(splitViewDropZoneRef.current);
+    }
+    
+    if (containers.length === 0) {
+      console.log('[WebBuilder] No drop zone containers found yet');
+      return;
+    }
+    
+    // Initialize drag-drop on all drop zones
+    containers.forEach(container => {
+      service.initializeCanvas(container);
+      console.log('[WebBuilder] ✅ Drag-drop initialized on:', container.dataset.dropZone);
+    });
+
+    // Handle drop events - render elements with smart positioning
+    const handleDropEvent = (data: unknown) => {
+      const dropData = data as { 
+        element: { 
+          name: string; 
+          htmlTemplate: string; 
+          category: string;
+          id: string;
+        };
+        context: {
+          position: 'append' | 'prepend' | 'before' | 'after';
+          targetElement?: HTMLElement;
+        }
+      };
+      
+      const { element, context } = dropData;
+      
+      // Parse the current HTML to insert at the right position
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(previewCode || '<body></body>', 'text/html');
+      const body = doc.body;
+      
+      // Create wrapper for the new element with data attributes for reordering
+      const wrapper = doc.createElement('div');
+      wrapper.setAttribute('data-element-id', `element-${Date.now()}`);
+      wrapper.setAttribute('data-element-type', element.category);
+      wrapper.setAttribute('draggable', 'true');
+      wrapper.setAttribute('class', 'canvas-element');
+      wrapper.innerHTML = element.htmlTemplate;
+      
+      // Smart positioning based on drop context
+      if (context.position === 'prepend') {
+        body.insertBefore(wrapper, body.firstChild);
+      } else if (context.position === 'append' || !body.children.length) {
+        body.appendChild(wrapper);
+      } else {
+        // Insert at a specific position based on drop location
+        const children = Array.from(body.children);
+        const middleIndex = Math.floor(children.length / 2);
+        const referenceNode = children[middleIndex];
+        body.insertBefore(wrapper, referenceNode);
+      }
+      
+      // Get the updated HTML with proper formatting
+      const newCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .canvas-element {
+      position: relative;
+      cursor: move;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .canvas-element:hover {
+      opacity: 0.95;
+    }
+    .canvas-element.dragging {
+      opacity: 0.5;
+    }
+    .canvas-element.drag-over-top::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+      border-radius: 2px;
+    }
+    .canvas-element.drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+${body.innerHTML}
+<script>
+  // Enable reordering of elements via drag and drop
+  (function() {
+    let draggedElement = null;
+    let dragOverElement = null;
+    
+    function handleDragStart(e) {
+      draggedElement = e.currentTarget;
+      draggedElement.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', draggedElement.innerHTML);
+    }
+    
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (!draggedElement || e.currentTarget === draggedElement) return;
+      
+      const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
+      dragOverElement = e.currentTarget;
+      
+      // Remove previous indicators
+      document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      
+      // Add indicator
+      if (afterElement) {
+        dragOverElement.classList.add('drag-over-bottom');
+      } else {
+        dragOverElement.classList.add('drag-over-top');
+      }
+    }
+    
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+    }
+    
+    function handleDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (!draggedElement || !dragOverElement || draggedElement === dragOverElement) return;
+      
+      const afterElement = getDragAfterElement(dragOverElement, e.clientY);
+      
+      if (afterElement) {
+        dragOverElement.parentNode.insertBefore(draggedElement, dragOverElement.nextSibling);
+      } else {
+        dragOverElement.parentNode.insertBefore(draggedElement, dragOverElement);
+      }
+      
+      dragOverElement.classList.remove('drag-over-top', 'drag-over-bottom');
+    }
+    
+    function handleDragEnd(e) {
+      e.currentTarget.classList.remove('dragging');
+      document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      draggedElement = null;
+      dragOverElement = null;
+    }
+    
+    function getDragAfterElement(container, y) {
+      const box = container.getBoundingClientRect();
+      const offset = y - box.top;
+      return offset > box.height / 2;
+    }
+    
+    // Attach event listeners to all canvas elements
+    function initDragAndDrop() {
+      document.querySelectorAll('.canvas-element').forEach(element => {
+        element.addEventListener('dragstart', handleDragStart);
+        element.addEventListener('dragover', handleDragOver);
+        element.addEventListener('dragleave', handleDragLeave);
+        element.addEventListener('drop', handleDrop);
+        element.addEventListener('dragend', handleDragEnd);
+      });
+    }
+    
+    // Initialize on load and when new elements are added
+    initDragAndDrop();
+    
+    // Observe for new elements
+    const observer = new MutationObserver(() => {
+      initDragAndDrop();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  })();
+</script>
+</body>
+</html>`;
+      
+      setPreviewCode(newCode);
+      setEditorCode(newCode);
+      
+      toast.success(`Added ${element.name}`, {
+        description: `${element.category} element added. Drag to reorder!`,
+        duration: 3000
+      });
+    };
+    
+    // Register the drop event handler
+    service.on('drop', handleDropEvent);
+
+    return () => {
+      // Unregister the drop event handler
+      service.off('drop', handleDropEvent);
+      
+      // Destroy canvas listeners
+      containers.forEach(container => {
+        service.destroyCanvas(container);
+        console.log('[WebBuilder] 🧹 Drag-drop destroyed on:', container.dataset.dropZone);
+      });
+    };
+  }, [viewMode, previewCode]);
 
   const handleDelete = () => {
     if (!fabricCanvas || !selectedObject) return;
     fabricCanvas.remove(selectedObject);
     fabricCanvas.renderAll();
-    toast.success("Deleted");
   };
 
-  const handleDuplicate = () => {
+  const handleDuplicate = async () => {
     if (!fabricCanvas || !selectedObject) return;
-    selectedObject.clone((cloned: any) => {
-      cloned.set({
-        left: cloned.left + 10,
-        top: cloned.top + 10,
-      });
-      fabricCanvas.add(cloned);
-      fabricCanvas.setActiveObject(cloned);
-      fabricCanvas.renderAll();
-      toast.success("Duplicated");
+    const cloned = await selectedObject.clone();
+    cloned.set({
+      left: (cloned.left || 0) + 10,
+      top: (cloned.top || 0) + 10,
     });
+    fabricCanvas.add(cloned);
+    fabricCanvas.setActiveObject(cloned);
+    fabricCanvas.renderAll();
   };
 
   const addBlock = (blockId: string) => {
@@ -450,7 +699,6 @@ declare global {
       fabricCanvas.add(component);
       fabricCanvas.setActiveObject(component);
       fabricCanvas.renderAll();
-      toast.success(`${block.label} added`);
     }
   };
 
@@ -493,16 +741,16 @@ declare global {
     let html = '<div class="web-page">\n';
     let css = '.web-page {\n  min-height: 100vh;\n  position: relative;\n  background: white;\n}\n\n';
     
-    objects.forEach((obj: any, index: number) => {
+    objects.forEach((obj: FabricCanvas['_objects'][0], index: number) => {
       const className = `element-${index}`;
       
       // Generate HTML
       if (obj.type === 'text' || obj.type === 'textbox') {
-        html += `  <div class="${className}">${obj.text}</div>\n`;
+        html += `  <div class="${className}">${(obj as FabricTextObject).text}</div>\n`;
       } else if (obj.type === 'rect') {
         html += `  <div class="${className}"></div>\n`;
       } else if (obj.type === 'image') {
-        html += `  <img class="${className}" src="${obj.getSrc()}" alt="" />\n`;
+        html += `  <img class="${className}" src="${(obj as FabricImageObject).getSrc()}" alt="" />\n`;
       }
       
       // Generate CSS
@@ -516,14 +764,15 @@ declare global {
       if (obj.fill) {
         css += `  background-color: ${obj.fill};\n`;
       }
-      if (obj.fontSize) {
-        css += `  font-size: ${obj.fontSize}px;\n`;
+      const textObj = obj as FabricTextObject;
+      if (textObj.fontSize) {
+        css += `  font-size: ${textObj.fontSize}px;\n`;
       }
-      if (obj.fontFamily) {
-        css += `  font-family: ${obj.fontFamily};\n`;
+      if (textObj.fontFamily) {
+        css += `  font-family: ${textObj.fontFamily};\n`;
       }
-      if (obj.textAlign) {
-        css += `  text-align: ${obj.textAlign};\n`;
+      if (textObj.textAlign) {
+        css += `  text-align: ${textObj.textAlign};\n`;
       }
       css += `}\n\n`;
     });
@@ -547,7 +796,6 @@ declare global {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success('React component exported');
     } else if (format === 'json') {
       const json = JSON.stringify(fabricCanvas.toJSON(), null, 2);
       const blob = new Blob([json], { type: 'application/json' });
@@ -559,7 +807,6 @@ declare global {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success('JSON exported');
     }
   };
 
@@ -570,11 +817,9 @@ declare global {
       if (!document.fullscreenElement) {
         await mainContainerRef.current.requestFullscreen();
         setIsFullscreen(true);
-        toast.success('Entered fullscreen preview');
       } else {
         await document.exitFullscreen();
         setIsFullscreen(false);
-        toast.success('Exited fullscreen');
       }
     } catch (error) {
       console.error('Error toggling fullscreen:', error);
@@ -646,7 +891,6 @@ declare global {
         top: 0,
         behavior: 'smooth'
       });
-      toast.success('Scrolled to top');
     }
   };
 
@@ -656,7 +900,6 @@ declare global {
         top: scrollContainerRef.current.scrollHeight,
         behavior: 'smooth'
       });
-      toast.success('Scrolled to bottom');
     }
   };
 
@@ -751,8 +994,16 @@ declare global {
     };
   }, [zoom, fabricCanvas, panOffset]);
 
+  console.log('[WebBuilder] About to return JSX...');
+
   return (
     <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#0a0a0a]">
+      {/* Interactive Element Highlighting Styles */}
+      <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />
+      
+      {/* Interactive Mode Global Utils */}
+      <InteractiveModeUtils isInteractiveMode={isInteractiveMode} />
+      
       {/* Top Toolbar */}
       <div className="h-14 bg-[#1a1a1a] border-b border-white/10 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
@@ -851,7 +1102,6 @@ declare global {
             size="sm"
             onClick={() => {
               history.save();
-              toast.success("Saved");
             }}
             className="text-white/70 hover:text-white"
             title="Save (Ctrl+S)"
@@ -876,10 +1126,11 @@ declare global {
             <Eye className="h-4 w-4 mr-2" />
             {isFullscreen ? 'Exit Preview' : 'Preview'}
           </Button>
+
           <Button 
             size="sm" 
             className="bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => toast.success('Click Publish in the top right to deploy your website with a custom domain!')}
+            onClick={() => console.log('[WebBuilder] Publish clicked')}
           >
             <Play className="h-4 w-4 mr-2" />
             Publish
@@ -889,8 +1140,130 @@ declare global {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Navigation Panel - Collapsible */}
-        {!leftPanelCollapsed && <NavigationPanel />}
+        {/* Left Panel - Elements Sidebar */}
+        {!leftPanelCollapsed && (
+          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+            <ElementsSidebar
+              onElementDragStart={(element) => {
+                dragDropServiceRef.current.onDragStart(element);
+                toast(`Dragging ${element.name}`, {
+                  description: 'Drop onto preview area to add element'
+                });
+              }}
+              onElementDragEnd={() => {
+                dragDropServiceRef.current.onDragEnd();
+              }}
+              onAIImageGenerated={(imageUrl, metadata) => {
+                // Insert AI-generated image with advanced styling and responsive features
+                const timestamp = Date.now();
+                const imageAlt = metadata?.prompt || 'AI Generated Image';
+                
+                // Create advanced HTML with responsive srcset simulation and modern styling
+                const advancedImageHtml = `
+                  <div data-element-id="ai-image-${timestamp}" data-element-type="media" draggable="true" class="canvas-element">
+                    <figure class="relative group overflow-hidden rounded-2xl shadow-2xl">
+                      <img 
+                        src="${imageUrl}" 
+                        alt="${imageAlt}"
+                        loading="lazy"
+                        class="w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
+                        style="aspect-ratio: 16/9; max-width: 100%;"
+                      />
+                      <figcaption class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <p class="text-sm font-medium">${imageAlt}</p>
+                        ${metadata?.style ? `<span class="text-xs opacity-75">Style: ${metadata.style}</span>` : ''}
+                      </figcaption>
+                    </figure>
+                  </div>
+                `;
+                
+                // Parse current preview code
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+                const body = doc.body;
+                
+                // Create wrapper for the AI image
+                const wrapper = doc.createElement('div');
+                wrapper.setAttribute('data-element-id', `ai-image-${timestamp}`);
+                wrapper.setAttribute('data-element-type', 'media');
+                wrapper.setAttribute('draggable', 'true');
+                wrapper.setAttribute('class', 'canvas-element');
+                
+                // Create figure element with advanced features
+                const figure = doc.createElement('figure');
+                figure.className = 'relative group overflow-hidden rounded-2xl shadow-2xl';
+                
+                const img = doc.createElement('img');
+                img.src = imageUrl;
+                img.alt = imageAlt as string;
+                img.loading = 'lazy';
+                img.className = 'w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110';
+                img.style.cssText = 'aspect-ratio: 16/9; max-width: 100%;';
+                
+                const figcaption = doc.createElement('figcaption');
+                figcaption.className = 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300';
+                figcaption.innerHTML = `<p class="text-sm font-medium">${imageAlt}</p>${metadata?.style ? `<span class="text-xs opacity-75">Style: ${metadata.style}</span>` : ''}`;
+                
+                figure.appendChild(img);
+                figure.appendChild(figcaption);
+                wrapper.appendChild(figure);
+                
+                // Append to body
+                body.appendChild(wrapper);
+                
+                // Generate full HTML with reordering system
+                const newCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .canvas-element {
+      cursor: move;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .canvas-element:hover {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+    .dragging {
+      opacity: 0.5;
+    }
+    .drag-over-top::before,
+    .drag-over-bottom::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      z-index: 1000;
+    }
+    .drag-over-top::before {
+      top: -2px;
+    }
+    .drag-over-bottom::after {
+      bottom: -2px;
+    }
+  </style>
+</head>
+<body>
+${body.innerHTML}
+</body>
+</html>`;
+                
+                setPreviewCode(newCode);
+                setEditorCode(newCode);
+                
+                toast('AI Image Added! 🎨', {
+                  description: 'AI-generated image inserted into canvas'
+                });
+              }}
+            />
+          </div>
+        )}
         
         {/* Left Panel Toggle */}
         <div className="relative">
@@ -983,6 +1356,38 @@ declare global {
               </Button>
             </div>
 
+            {/* Interactive Mode Toggle - Only show for preview modes */}
+            {(viewMode === 'canvas' || viewMode === 'split') && (
+              <div className="flex items-center gap-2">
+                <InteractiveModeToggle
+                  isInteractiveMode={isInteractiveMode}
+                  onToggle={setIsInteractiveMode}
+                  className="flex-shrink-0"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsInteractiveModeHelpOpen(true)}
+                  className="h-8 text-white/70 hover:text-white hover:bg-white/10"
+                  title="Show Interactive Mode Help (F1)"
+                >
+                  <Zap className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
+            {/* Clear Canvas Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearCanvas}
+              className="h-8 text-white/70 hover:text-white hover:bg-white/10"
+              title="Clear Canvas and Start Over"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+
             <span className="text-sm text-white/50">{getCanvasWidth()}×{getCanvasHeight()}px (dynamic)</span>
           </div>
 
@@ -1040,7 +1445,13 @@ declare global {
             
             {/* Canvas Mode - AI Live Preview Only */}
             {viewMode === 'canvas' && (
-              <div className="w-full h-full flex flex-col bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl">
+              <div className="w-full h-full flex flex-col bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
+                {/* Interactive Elements Overlay */}
+                <InteractiveElementOverlay
+                  isInteractiveMode={isInteractiveMode}
+                  livePreviewRef={livePreviewRef}
+                />
+                
                 <div className="h-12 bg-muted border-b flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-muted-foreground" />
@@ -1081,6 +1492,7 @@ declare global {
                 </div>
                 <div 
                   ref={scrollContainerRef}
+                  data-drop-zone="true"
                   className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
                 >
                   <LiveHTMLPreview 
@@ -1089,35 +1501,30 @@ declare global {
                     autoRefresh={true}
                     className="w-full h-full"
                     enableSelection={true}
-                      onElementSelect={(elementData) => {
-                        console.log('[WebBuilder] HTML Element selected:', elementData);
-                        setSelectedHTMLElement(elementData);
-                        // Clear Fabric selection when HTML element is selected
-                        if (fabricCanvas) {
-                          fabricCanvas.discardActiveObject();
-                          fabricCanvas.renderAll();
-                        }
-                        toast.success('HTML element selected! Edit properties in the right panel →');
-                      }}
+                    isInteractiveMode={isInteractiveMode}
+                    onElementSelect={(elementData) => {
+                      console.log('[WebBuilder] HTML Element selected:', elementData);
+                      setSelectedHTMLElement(elementData);
+                      setHtmlPropertiesPanelOpen(true);
+                    }}
                   />
                 </div>
               </div>
             )}
 
-            {/* Code Mode - Full Monaco Editor Only */}
+            {/* Code Mode - Full Code Editor */}
             {viewMode === 'code' && (
-              <div className="w-full h-full bg-[#1e1e1e]">
-                <MonacoEditor
+              <div className="w-full h-full bg-[#1e1e1e] rounded-lg overflow-hidden" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                <CodeMirrorEditor
                   height="100%"
-                  defaultLanguage="typescript"
-                  language="typescript"
+                  language="javascript"
                   value={editorCode}
                   onChange={(value) => {
                     setEditorCode(value || '');
                     setPreviewCode(value || '');
                   }}
-                  beforeMount={handleEditorWillMount}
                   theme="vs-dark"
+                  isAIProcessing={templateState.isRendering}
                   options={{
                     minimap: { enabled: true },
                     fontSize: 14,
@@ -1129,51 +1536,8 @@ declare global {
                     wordWrap: 'on',
                     formatOnPaste: true,
                     formatOnType: true,
-                    padding: { top: 16, bottom: 16 },
                     suggestOnTriggerCharacters: true,
-                    quickSuggestions: {
-                      other: true,
-                      comments: true,
-                      strings: true,
-                    },
-                    parameterHints: { enabled: true },
-                    acceptSuggestionOnCommitCharacter: true,
-                    acceptSuggestionOnEnter: 'on',
-                    autoClosingBrackets: 'always',
-                    autoClosingQuotes: 'always',
-                    autoIndent: 'full',
-                    bracketPairColorization: { enabled: true },
-                    colorDecorators: true,
-                    contextmenu: true,
-                    cursorBlinking: 'smooth',
-                    cursorSmoothCaretAnimation: 'on',
-                    smoothScrolling: true,
-                    snippetSuggestions: 'inline',
-                    folding: true,
-                    foldingHighlight: true,
-                    showFoldingControls: 'always',
-                    suggest: {
-                      showWords: true,
-                      showMethods: true,
-                      showFunctions: true,
-                      showConstructors: true,
-                      showFields: true,
-                      showVariables: true,
-                      showClasses: true,
-                      showStructs: true,
-                      showInterfaces: true,
-                      showModules: true,
-                      showProperties: true,
-                      showEvents: true,
-                      showOperators: true,
-                      showUnits: true,
-                      showValues: true,
-                      showConstants: true,
-                      showEnums: true,
-                      showEnumMembers: true,
-                      showKeywords: true,
-                      showSnippets: true,
-                    },
+                    quickSuggestions: true,
                   }}
                 />
               </div>
@@ -1183,27 +1547,33 @@ declare global {
             {viewMode === 'split' && (
               <div className="w-full h-full flex gap-4">
                 {/* Live Preview - Main viewing area */}
-                <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl">
+                <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
+                  {/* Interactive Elements Overlay */}
+                  <InteractiveElementOverlay
+                    isInteractiveMode={isInteractiveMode}
+                    livePreviewRef={livePreviewRef}
+                  />
+                  
                   <div className="h-10 bg-muted border-b flex items-center px-4">
                     <Eye className="w-4 h-4 text-muted-foreground mr-2" />
                     <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
                   </div>
-                  <div className="h-[calc(100%-40px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+                  <div 
+                    ref={splitViewDropZoneRef}
+                    data-drop-zone="true"
+                    className="h-[calc(100%-40px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
+                  >
                     <LiveHTMLPreview 
                       ref={livePreviewRef}
                       code={previewCode}
                       autoRefresh={true}
                       className="w-full h-full"
                       enableSelection={true}
+                      isInteractiveMode={isInteractiveMode}
                       onElementSelect={(elementData) => {
                         console.log('[WebBuilder] HTML Element selected:', elementData);
                         setSelectedHTMLElement(elementData);
-                        // Clear Fabric selection when HTML element is selected
-                        if (fabricCanvas) {
-                          fabricCanvas.discardActiveObject();
-                          fabricCanvas.renderAll();
-                        }
-                        toast.success('HTML element selected! Edit properties in the right panel →');
+                        setHtmlPropertiesPanelOpen(true);
                       }}
                     />
                   </div>
@@ -1211,12 +1581,12 @@ declare global {
 
                 {/* Code Editor Panel */}
                 <div className="flex-1 flex flex-col gap-4">
-                  {/* Monaco Editor */}
-                  <div className="flex-1 bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10">
+                  {/* Code Editor */}
+                  <div className="flex-1 bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10 flex flex-col">
                     <div className="h-10 bg-[#2d2d2d] border-b border-white/10 flex items-center justify-between px-4">
                       <div className="flex items-center">
                         <FileCode className="w-4 h-4 text-white/70 mr-2" />
-                        <span className="text-sm text-white/70">Monaco Editor</span>
+                        <span className="text-sm text-white/70">Code Editor</span>
                       </div>
                       <Button
                         size="sm"
@@ -1228,17 +1598,17 @@ declare global {
                       </Button>
                     </div>
                     
-                      <MonacoEditor
-                        height="calc(100% - 40px)"
-                        defaultLanguage="typescript"
-                        language="typescript"
+                    <div className="flex-1">
+                      <CodeMirrorEditor
+                        height="100%"
+                        language="javascript"
                         value={editorCode}
                         onChange={(value) => {
                           setEditorCode(value || '');
                           setPreviewCode(value || '');
                         }}
-                        beforeMount={handleEditorWillMount}
                         theme="vs-dark"
+                        isAIProcessing={templateState.isRendering}
                         options={{
                           minimap: { enabled: true },
                           fontSize: 13,
@@ -1248,29 +1618,12 @@ declare global {
                           tabSize: 2,
                           wordWrap: 'on',
                           suggestOnTriggerCharacters: true,
-                          quickSuggestions: {
-                            other: true,
-                            comments: true,
-                            strings: true,
-                          },
-                          parameterHints: { enabled: true },
-                          acceptSuggestionOnCommitCharacter: true,
-                          acceptSuggestionOnEnter: 'on',
-                          autoClosingBrackets: 'always',
-                          autoClosingQuotes: 'always',
+                          quickSuggestions: true,
                           formatOnPaste: true,
                           formatOnType: true,
-                          suggest: {
-                            showWords: true,
-                            showMethods: true,
-                            showFunctions: true,
-                            showConstructors: true,
-                            showVariables: true,
-                            showProperties: true,
-                            showSnippets: true,
-                          },
                         }}
                       />
+                    </div>
                   </div>
 
                   {/* Component Info & Actions */}
@@ -1344,7 +1697,6 @@ declare global {
                     fabricCanvas.setZoom(0.5);
                     fabricCanvas.renderAll();
                   }
-                  toast.success("Reset view");
                 }}
                 className="text-white/70 hover:text-white text-xs"
                 title="Reset zoom and pan"
@@ -1369,54 +1721,46 @@ declare global {
           </Button>
         </div>
         
-        {/* Right Properties Panel - Collapsible - Unified for both Fabric & HTML */}
-        {!rightPanelCollapsed && (
+        {/* Show HTML Element Properties Panel when an HTML element is selected */}
+        {htmlPropertiesPanelOpen && selectedHTMLElement ? (
+          <HTMLElementPropertiesPanel
+            selectedElement={selectedHTMLElement}
+            onClose={() => {
+              setHtmlPropertiesPanelOpen(false);
+              setSelectedHTMLElement(null);
+            }}
+            onUpdateElement={(updates) => {
+              console.log('[WebBuilder] Updating element via DOM:', updates);
+              
+              // Update element directly in the iframe DOM (no code modification)
+              if (livePreviewRef.current) {
+                const success = livePreviewRef.current.updateElement(
+                  selectedHTMLElement.selector,
+                  updates
+                );
+                
+                if (success) {
+                  // Update the selected element data for the properties panel
+                  setSelectedHTMLElement({
+                    ...selectedHTMLElement,
+                    ...updates,
+                  });
+                } else {
+                  toast.error('Failed to update element', {
+                    description: 'Element not found in preview'
+                  });
+                }
+              }
+            }}
+          />
+        ) : !rightPanelCollapsed ? (
           <WebPropertiesPanel 
             fabricCanvas={fabricCanvas}
             selectedObject={selectedObject}
-            selectedHTMLElement={selectedHTMLElement}
-            onUpdateHTMLElement={(updates) => {
-              if (livePreviewRef.current && selectedHTMLElement) {
-                livePreviewRef.current.updateElement(selectedHTMLElement.selector, updates);
-              }
-            }}
-            onCloseHTMLElement={() => {
-              setSelectedHTMLElement(null);
-            }}
             onUpdate={() => fabricCanvas?.renderAll()}
           />
-        )}
+        ) : null}
       </div>
-
-      {/* AI Assistant Panel */}
-      <AIAssistantPanel 
-        isOpen={aiPanelOpen} 
-        onClose={() => setAiPanelOpen(false)}
-        fabricCanvas={fabricCanvas}
-        onTemplateGenerated={async (template) => {
-          try {
-            console.log('[WebBuilder] Template received from AI:', template);
-            
-            // Ensure canvas is ready
-            if (!fabricCanvas) {
-              toast.error('Canvas not ready. Please wait a moment and try again.');
-              return;
-            }
-
-            // Template state handles both canvas and HTML rendering
-            await templateState.updateTemplate(template);
-            
-            console.log('[WebBuilder] ✅ Template successfully rendered');
-            toast.success('✨ AI template rendered successfully!');
-            
-            // Show preview after successful render
-            setShowPreview(true);
-          } catch (error) {
-            console.error('[WebBuilder] ❌ Failed to render template:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to render template');
-          }
-        }}
-      />
 
       {/* Code Preview Dialog */}
       <CodePreviewDialog
@@ -1450,7 +1794,7 @@ declare global {
           <PerformancePanel 
             fabricCanvas={fabricCanvas}
             onAutoFix={() => {
-              toast.success("Auto-fix applied! Optimizations complete.");
+              console.log('[WebBuilder] Auto-fix applied');
             }}
           />
         </div>
@@ -1473,7 +1817,6 @@ declare global {
             onExport={handleExport}
             onIntegrationConnect={(integration, config) => {
               console.log('Integration connected:', integration, config);
-              toast.success(`${integration} connected successfully!`);
             }}
           />
         </div>
@@ -1540,18 +1883,41 @@ declare global {
         </DialogContent>
       </Dialog>
 
-      {/* AI Code Assistant - Bottom Panel */}
-      <AICodeAssistant 
+      {/* AI Code Assistant */}
+      <AICodeAssistant
         fabricCanvas={fabricCanvas}
-        onCodeGenerated={handleAICodeGenerated}
+        onCodeGenerated={(code) => {
+          console.log('[WebBuilder] Code generated from AI:', code.length, 'chars');
+          setEditorCode(code);
+          setPreviewCode(code);
+        }}
         onSwitchToCanvasView={() => {
-          console.log('[WebBuilder] Switching to Canvas view from AI Assistant');
           setViewMode('canvas');
-          toast.success('Switched to Canvas View', {
-            description: 'Your live preview is now showing in the Canvas tab',
-          });
         }}
       />
+
+      {/* Interactive Mode Help Dialog */}
+      <InteractiveModeHelp
+        isOpen={isInteractiveModeHelpOpen}
+        onClose={() => setIsInteractiveModeHelpOpen(false)}
+      />
+
+      {/* Template Feedback Dialog */}
+      {feedbackOpen && lastGenerationId && (
+        <TemplateFeedback
+          generationId={lastGenerationId}
+          userId={currentUserId || 'demo-user'} // In real app, get from auth
+          templateCode={editorCode}
+          onFeedbackSubmitted={() => {
+            console.log('[WebBuilder] Feedback submitted for generation:', lastGenerationId);
+            // Could refresh recommendations here
+          }}
+          onClose={() => {
+            setFeedbackOpen(false);
+            setLastGenerationId('');
+          }}
+        />
+      )}
     </div>
   );
 };
