@@ -1,9 +1,10 @@
 /**
  * Supabase Edge Function: Generate Image
  * Generates AI images using OpenAI DALL-E 3 or Stability AI
+ * 
+ * Runtime: Deno (not Node.js)
+ * Note: TypeScript errors in VS Code are expected - this runs in Deno runtime
  */
-
-/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
