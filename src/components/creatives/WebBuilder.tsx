@@ -33,11 +33,28 @@ import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
 import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
 import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 
-// Define SelectedElement interface to match HTMLElementPropertiesPanel
+// Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
-  tagName: string;
-  textContent: string;
-  styles: {
+  id?: string;
+  className?: string;
+  width?: number;
+  height?: number;
+  left?: number;
+  top?: number;
+  opacity?: number;
+  fill?: string;
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  visible?: boolean;
+  scaleX?: number;
+  scaleY?: number;
+  set?: (property: string, value: unknown) => void;
+  clone?: (callback: (cloned: unknown) => void) => void;
+  // HTML-specific properties
+  tagName?: string;
+  textContent?: string;
+  styles?: {
     color?: string;
     backgroundColor?: string;
     fontSize?: string;
@@ -55,8 +72,8 @@ interface SelectedElement {
     display?: string;
     opacity?: string;
   };
-  attributes: Record<string, string>;
-  selector: string;
+  attributes?: Record<string, string>;
+  selector?: string;
 }
 
 // Define types for Fabric objects with their specific properties
@@ -1357,9 +1374,8 @@ ${body.innerHTML}
             {(viewMode === 'canvas' || viewMode === 'split') && (
               <div className="flex items-center gap-2">
                 <InteractiveModeToggle
-                  isInteractiveMode={isInteractiveMode}
+                  isInteractive={isInteractiveMode}
                   onToggle={setIsInteractiveMode}
-                  className="flex-shrink-0"
                 />
                 <Button
                   variant="ghost"
@@ -1443,12 +1459,6 @@ ${body.innerHTML}
             {/* Canvas Mode - AI Live Preview Only */}
             {viewMode === 'canvas' && (
               <div className="w-full h-full flex flex-col bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
-                {/* Interactive Elements Overlay */}
-                <InteractiveElementOverlay
-                  isInteractiveMode={isInteractiveMode}
-                  livePreviewRef={livePreviewRef}
-                />
-                
                 <div className="h-12 bg-muted border-b flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-muted-foreground" />
@@ -1545,12 +1555,6 @@ ${body.innerHTML}
               <div className="w-full h-full flex gap-4">
                 {/* Live Preview - Main viewing area */}
                 <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
-                  {/* Interactive Elements Overlay */}
-                  <InteractiveElementOverlay
-                    isInteractiveMode={isInteractiveMode}
-                    livePreviewRef={livePreviewRef}
-                  />
-                  
                   <div className="h-10 bg-muted border-b flex items-center px-4">
                     <Eye className="w-4 h-4 text-muted-foreground mr-2" />
                     <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
@@ -1721,26 +1725,22 @@ ${body.innerHTML}
         {/* Show HTML Element Properties Panel when an HTML element is selected */}
         {htmlPropertiesPanelOpen && selectedHTMLElement ? (
           <HTMLElementPropertiesPanel
+            fabricCanvas={fabricCanvas}
             selectedElement={selectedHTMLElement}
-            onClose={() => {
-              setHtmlPropertiesPanelOpen(false);
-              setSelectedHTMLElement(null);
-            }}
-            onUpdateElement={(updates) => {
-              console.log('[WebBuilder] Updating element via DOM:', updates);
+            onUpdate={() => {
+              console.log('[WebBuilder] Updating element via DOM');
               
               // Update element directly in the iframe DOM (no code modification)
-              if (livePreviewRef.current) {
+              if (livePreviewRef.current && selectedHTMLElement) {
                 const success = livePreviewRef.current.updateElement(
-                  selectedHTMLElement.selector,
-                  updates
+                  selectedHTMLElement.selector || '',
+                  selectedHTMLElement
                 );
                 
                 if (success) {
                   // Update the selected element data for the properties panel
                   setSelectedHTMLElement({
                     ...selectedHTMLElement,
-                    ...updates,
                   });
                 } else {
                   toast.error('Failed to update element', {
