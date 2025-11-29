@@ -3,9 +3,7 @@
  * Generates AI images using OpenAI DALL-E 3 or Stability AI
  */
 
-/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
-
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'serve';
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
@@ -47,7 +45,7 @@ serve(async (req: Request) => {
       height = 1024,
       style = 'digital-art',
       quality = 'high',
-      num_images = 1,
+      num_images: _num_images = 1,
       seed
     }: ImageGenerationRequest = await req.json();
 

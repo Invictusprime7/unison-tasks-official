@@ -1,13 +1,22 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import "xhr";
+import { serve } from "serve";
+import { createClient } from "@supabase/supabase-js";
+
+interface CodePattern {
+  pattern_type: string;
+  description: string | null;
+  usage_count: number;
+  success_rate: number;
+  tags: string[] | null;
+  code_snippet: string;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -40,7 +49,7 @@ serve(async (req) => {
       .order('usage_count', { ascending: false })
       .limit(10);
 
-    const learnedPatterns = patterns && patterns.length > 0 ? patterns.map(p => `
+    const learnedPatterns = patterns && patterns.length > 0 ? (patterns as CodePattern[]).map((p: CodePattern) => `
 📚 Pattern: ${p.pattern_type.toUpperCase()}
 Description: ${p.description || 'N/A'}
 Used ${p.usage_count} times with ${p.success_rate}% success
