@@ -206,26 +206,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     await saveMessage(userMessage);
 
     try {
-      // Use proxy in development to avoid DNS issues in Codespaces
-      const isDev = import.meta.env.DEV;
-      const baseUrl = isDev ? '/api/supabase' : import.meta.env.VITE_SUPABASE_URL;
-      
-      const response = await fetch(`${baseUrl}/functions/v1/ai-code-assistant`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
+        body: {
           messages: messages
             .map((m) => ({ role: m.role, content: m.content }))
             .concat([{ role: userMessage.role, content: userMessage.content }]),
           mode,
-        }),
+        }
       });
 
-      if (!response.ok) {
-        if (response.status === 429) {
+      if (error) {
+        if (error.message.includes('429')) {
           toast({
             title: "Rate limit exceeded",
             description: "Please wait a moment before trying again.",
@@ -233,7 +224,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           });
           return;
         }
-        if (response.status === 402) {
+        if (error.message.includes('402')) {
           toast({
             title: "Credits required",
             description: "Please add credits to continue using AI features.",
@@ -241,113 +232,59 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           });
           return;
         }
-        throw new Error("Failed to get AI response");
+        throw new Error("Failed to get AI response: " + error.message);
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = "";
+      const assistantContent = data?.content || "";
+      const hasCode = assistantContent.includes("```");
 
-      if (reader) {
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") continue;
-
-              try {
-                const parsed = JSON.parse(data);
-
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  assistantContent += content;
-                  const hasCode = assistantContent.includes("```");
-
-                  if (hasCode && onCodeGenerated) {
-                    // Try to match code blocks with language specifiers
-                    let codeMatch = assistantContent.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
-                    
-                    // If no match, try without language specifier
-                    if (!codeMatch) {
-                      codeMatch = assistantContent.match(/```\n([\s\S]*?)```/);
-                    }
-                    
-                    if (codeMatch && codeMatch[1]) {
-                      let extractedCode = codeMatch[1].trim();
-                      
-                      // ALLOW vanilla JavaScript in DOMContentLoaded wrapper
-                      // Only remove inline event handlers for security
-                      extractedCode = extractedCode.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
-                      
-                      // Remove markdown syntax that sometimes slips through
-                      extractedCode = extractedCode
-                        // Remove markdown headers (###, ##, #)
-                        .replace(/^#{1,6}\s+.*$/gm, '')
-                        // Remove markdown code fences that appear in content
-                        .replace(/```[\w]*\n?/g, '')
-                        // Remove markdown arrows/symbols (<<<, >>>, ---)
-                        .replace(/^[<>-]{3,}.*$/gm, '')
-                        // Remove standalone markdown symbols
-                        .replace(/<<<|>>>|---/g, '')
-                        // Clean up any resulting empty lines (more than 2 consecutive)
-                        .replace(/\n{3,}/g, '\n\n');
-                      
-                      console.log('[AICodeAssistant] Extracted HTML/CSS code with vanilla JavaScript allowed');
-                      console.log('[AICodeAssistant] Code length:', extractedCode.length, 'characters');
-                      onCodeGenerated(extractedCode);
-                    }
-                  }
-
-                  setMessages((prev) => {
-                    const newMessages = [...prev];
-                    const lastMessage = newMessages[newMessages.length - 1];
-
-                    if (lastMessage?.role === "assistant") {
-                      newMessages[newMessages.length - 1] = {
-                        ...lastMessage,
-                        content: assistantContent,
-                        hasCode,
-                      };
-                    } else {
-                      newMessages.push({
-                        role: "assistant",
-                        content: assistantContent,
-                        timestamp: new Date(),
-                        hasCode,
-                      });
-                    }
-                    return newMessages;
-                  });
-                }
-              } catch (e) {
-                console.error("[AICodeAssistant] Parse error:", e);
-              }
-            }
-          }
+      if (hasCode && onCodeGenerated) {
+        // Try to match code blocks with language specifiers
+        let codeMatch = assistantContent.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
+        
+        // If no match, try without language specifier
+        if (!codeMatch) {
+          codeMatch = assistantContent.match(/```\n([\s\S]*?)```/);
         }
-
-        if (assistantContent) {
-          const assistantMessage: Message = {
-            role: "assistant",
-            content: assistantContent,
-            timestamp: new Date(),
-            hasCode: assistantContent.includes("```"),
-          };
-          await saveMessage(assistantMessage);
+        
+        if (codeMatch && codeMatch[1]) {
+          let extractedCode = codeMatch[1].trim();
+          
+          // ALLOW vanilla JavaScript in DOMContentLoaded wrapper
+          // Only remove inline event handlers for security
+          extractedCode = extractedCode.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+          
+          // Remove markdown syntax that sometimes slips through
+          extractedCode = extractedCode
+            // Remove markdown headers (###, ##, #)
+            .replace(/^#{1,6}\s+.*$/gm, '')
+            // Remove markdown code fences that appear in content
+            .replace(/```[\w]*\n?/g, '')
+            // Remove markdown arrows/symbols (<<<, >>>, ---)
+            .replace(/^[<>-]{3,}.*$/gm, '')
+            // Remove standalone markdown symbols
+            .replace(/<<<|>>>|---/g, '')
+            // Clean up any resulting empty lines (more than 2 consecutive)
+            .replace(/\n{3,}/g, '\n\n');
+                      
+          console.log('[AICodeAssistant] Extracted HTML/CSS code with vanilla JavaScript allowed');
+          console.log('[AICodeAssistant] Code length:', extractedCode.length, 'characters');
+          onCodeGenerated(extractedCode);
         }
       }
+
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: assistantContent,
+        timestamp: new Date(),
+        hasCode,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+      await saveMessage(assistantMessage);
+
     } catch (error) {
-      console.error("Error streaming AI response:", error);
+      console.error("Error getting AI response:", error);
       toast({
         title: "Error",
         description: "Failed to get AI response. Please try again.",

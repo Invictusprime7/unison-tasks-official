@@ -68,12 +68,30 @@ for env in "${environments[@]}"; do
         update_env_var "SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_SERVICE_ROLE_KEY" "$env"
     fi
     
-    # Additional production-specific variables
-    if [ "$env" = "production" ]; then
-        update_env_var "NODE_ENV" "production" "$env"
-        update_env_var "VITE_AI_ENABLED" "true" "$env"
-        update_env_var "VITE_ENABLE_ANALYTICS" "true" "$env"
-        update_env_var "VITE_ENABLE_ERROR_REPORTING" "true" "$env"
+    # AI Service API Keys
+    if [ ! -z "$OPENAI_API_KEY" ] && [ "$OPENAI_API_KEY" != "your_openai_api_key_here" ]; then
+        update_env_var "OPENAI_API_KEY" "$OPENAI_API_KEY" "$env"
+    fi
+    
+    if [ ! -z "$LOVABLE_API_KEY" ] && [ "$LOVABLE_API_KEY" != "your_lovable_api_key_here" ]; then
+        update_env_var "LOVABLE_API_KEY" "$LOVABLE_API_KEY" "$env"
+    fi
+    
+    # Additional application variables for all environments
+    if [ ! -z "$NODE_ENV" ]; then
+        update_env_var "NODE_ENV" "$NODE_ENV" "$env"
+    fi
+    
+    if [ ! -z "$VITE_AI_ENABLED" ]; then
+        update_env_var "VITE_AI_ENABLED" "$VITE_AI_ENABLED" "$env"
+    fi
+    
+    if [ ! -z "$VITE_ENABLE_ANALYTICS" ]; then
+        update_env_var "VITE_ENABLE_ANALYTICS" "$VITE_ENABLE_ANALYTICS" "$env"
+    fi
+    
+    if [ ! -z "$VITE_ENABLE_ERROR_REPORTING" ]; then
+        update_env_var "VITE_ENABLE_ERROR_REPORTING" "$VITE_ENABLE_ERROR_REPORTING" "$env"
     fi
 done
 

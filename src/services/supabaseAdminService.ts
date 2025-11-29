@@ -150,10 +150,26 @@ export class AITemplateService {
 
   static async getTemplateAnalytics() {
     try {
-      const { data: stats, error } = await supabaseServer
-        .rpc('get_template_analytics');
+      // Get template analytics using direct table queries
+      const { data: templates, error } = await supabaseServer
+        .from('design_templates')
+        .select('id, name, created_at, is_public, user_id');
 
       if (error) throw error;
+
+      // Calculate analytics
+      const stats = {
+        total_templates: templates?.length || 0,
+        public_templates: templates?.filter(t => t.is_public).length || 0,
+        private_templates: templates?.filter(t => !t.is_public).length || 0,
+        recent_templates: templates?.filter(t => {
+          const createdDate = new Date(t.created_at);
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          return createdDate > sevenDaysAgo;
+        }).length || 0
+      };
+
       return stats;
     } catch (error) {
       console.error('Template analytics failed:', error);

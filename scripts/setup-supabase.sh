@@ -62,9 +62,23 @@ echo -e "\n${YELLOW}Setting up secrets...${NC}"
 echo -e "Enter LOVABLE_API_KEY (or press Enter to skip):"
 read -r -s LOVABLE_KEY
 
+echo -e "Enter OPENAI_API_KEY (or press Enter to skip):"
+read -r -s OPENAI_KEY
+
 if [ -n "$LOVABLE_KEY" ]; then
     supabase secrets set LOVABLE_API_KEY="$LOVABLE_KEY"
+    echo -e "${GREEN}✓ Lovable API key configured${NC}"
+fi
+
+if [ -n "$OPENAI_KEY" ]; then
+    supabase secrets set OPENAI_API_KEY="$OPENAI_KEY"
+    echo -e "${GREEN}✓ OpenAI API key configured${NC}"
+fi
+
+if [ -n "$LOVABLE_KEY" ] || [ -n "$OPENAI_KEY" ]; then
     echo -e "${GREEN}✓ Secrets configured${NC}"
+else
+    echo -e "${YELLOW}⚠️  No secrets configured - AI features will be limited${NC}"
 fi
 
 # Get project URL and keys

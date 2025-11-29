@@ -19,34 +19,38 @@ export async function handleUserManagement(request: Request) {
 
   try {
     switch (`${method}:${action}`) {
-      case 'POST:create':
+      case 'POST:create': {
         const { email, password, role } = await request.json();
         const newUser = await UserManagementService.createUserWithRole(email, password, role);
         return new Response(JSON.stringify(newUser), {
           status: 201,
           headers: { 'Content-Type': 'application/json' }
         });
+      }
 
-      case 'GET:list':
+      case 'GET:list': {
         const page = parseInt(url.searchParams.get('page') || '1');
         const limit = parseInt(url.searchParams.get('limit') || '50');
         const users = await UserManagementService.getUsersWithPagination(page, limit);
         return new Response(JSON.stringify(users), {
           headers: { 'Content-Type': 'application/json' }
         });
+      }
 
-      case 'PUT:role':
+      case 'PUT:role': {
         const { userId, newRole } = await request.json();
         await UserManagementService.updateUserRole(userId, newRole);
         return new Response(JSON.stringify({ success: true }));
+      }
 
-      case 'DELETE:user':
+      case 'DELETE:user': {
         const userIdToDelete = url.searchParams.get('userId');
         if (!userIdToDelete) {
           return new Response('User ID required', { status: 400 });
         }
         await UserManagementService.deleteUserCompletely(userIdToDelete);
         return new Response(JSON.stringify({ success: true }));
+      }
 
       default:
         return new Response('Invalid action', { status: 400 });
@@ -72,17 +76,19 @@ export async function handleTemplateManagement(request: Request) {
     }
 
     switch (method) {
-      case 'GET':
+      case 'GET': {
         const includePrivate = url.searchParams.get('includePrivate') === 'true';
         const templates = await AITemplateService.getAllTemplates(includePrivate);
         return new Response(JSON.stringify(templates), {
           headers: { 'Content-Type': 'application/json' }
         });
+      }
 
-      case 'PUT':
+      case 'PUT': {
         const { templateId, status, moderatorNotes } = await request.json();
         const updated = await AITemplateService.updateTemplateStatus(templateId, status, moderatorNotes);
         return new Response(JSON.stringify(updated));
+      }
 
       default:
         return new Response('Method not allowed', { status: 405 });
@@ -104,7 +110,7 @@ export async function handleFileManagement(request: Request) {
 
   try {
     switch (`${method}:${action}`) {
-      case 'POST:upload':
+      case 'POST:upload': {
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const fileName = formData.get('fileName') as string;
@@ -117,16 +123,19 @@ export async function handleFileManagement(request: Request) {
         const result = await FileManagementService.uploadSystemAsset(buffer, fileName || file.name);
         
         return new Response(JSON.stringify(result));
+      }
 
-      case 'POST:cleanup':
+      case 'POST:cleanup': {
         const bucket = url.searchParams.get('bucket') || 'user-uploads';
         const cleanupResult = await FileManagementService.cleanupOrphanedFiles(bucket);
         return new Response(JSON.stringify(cleanupResult));
+      }
 
-      case 'POST:bulk-urls':
+      case 'POST:bulk-urls': {
         const { bucketName, paths } = await request.json();
         const urls = await FileManagementService.generateBulkDownloadUrls(bucketName, paths);
         return new Response(JSON.stringify(urls));
+      }
 
       default:
         return new Response('Invalid action', { status: 400 });
@@ -153,14 +162,16 @@ export async function handleAnalytics(request: Request) {
     const endpoint = url.pathname.split('/').pop();
 
     switch (endpoint) {
-      case 'dashboard':
+      case 'dashboard': {
         const stats = await AnalyticsService.getDashboardStats();
         return new Response(JSON.stringify(stats));
+      }
 
-      case 'activity':
+      case 'activity': {
         const days = parseInt(url.searchParams.get('days') || '30');
         const activity = await AnalyticsService.getUserActivityReport(days);
         return new Response(JSON.stringify(activity));
+      }
 
       default:
         return new Response('Invalid endpoint', { status: 400 });
@@ -213,9 +224,10 @@ export async function handleMaintenance(request: Request) {
 
   try {
     switch (operation) {
-      case 'cleanup-sessions':
+      case 'cleanup-sessions': {
         const cleanupResult = await SystemMaintenanceService.cleanupExpiredSessions();
         return new Response(JSON.stringify(cleanupResult));
+      }
 
       default:
         return new Response('Invalid operation', { status: 400 });
@@ -230,7 +242,7 @@ export async function handleMaintenance(request: Request) {
 }
 
 // Middleware for API authentication (example)
-export function withAdminAuth(handler: Function) {
+export function withAdminAuth(handler: (request: Request) => Promise<Response>) {
   return async (request: Request) => {
     const authHeader = request.headers.get('Authorization');
     
