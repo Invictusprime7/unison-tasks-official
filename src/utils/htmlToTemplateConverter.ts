@@ -1,4 +1,4 @@
-import type { AIGeneratedTemplate, TemplateSection, TemplateComponent, TemplateBrandKit, TemplateVariant } from '@/types/template';
+import type { AIGeneratedTemplate, TemplateSection, TemplateComponent, TemplateBrandKit, TemplateFormat } from '@/types/template';
 
 /**
  * Converts HTML/CSS code into AIGeneratedTemplate schema for canvas rendering
@@ -229,8 +229,8 @@ export class HTMLToTemplateConverter {
     // Parse HTML into sections
     const sections = this.parseHTMLToSections(htmlContent, cssContent);
     
-    // Create default variant
-    const variants: TemplateVariant[] = [
+    // Create default format
+    const formats: TemplateFormat[] = [
       {
         id: this.generateId(),
         name: 'Web Desktop',
@@ -247,7 +247,7 @@ export class HTMLToTemplateConverter {
       industry,
       brandKit,
       sections,
-      variants,
+      formats,
       data: {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

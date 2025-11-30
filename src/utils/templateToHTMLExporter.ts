@@ -270,13 +270,13 @@ ${bodyHTML}
     
     // Typography
     if (component.fabricProps?.fontSize) {
-      css.push(`      font-size: ${this.mapToFontSizeToken(component.fabricProps.fontSize)};`);
+      css.push(`      font-size: ${this.mapToFontSizeToken(Number(component.fabricProps.fontSize))};`);
     }
     if (component.fabricProps?.fontFamily) {
-      css.push(`      font-family: ${component.fabricProps.fontFamily}, sans-serif;`);
+      css.push(`      font-family: ${String(component.fabricProps.fontFamily)}, sans-serif;`);
     }
     if (component.fabricProps?.fill) {
-      css.push(`      color: ${this.mapToColorToken(component.fabricProps.fill)};`);
+      css.push(`      color: ${this.mapToColorToken(String(component.fabricProps.fill))};`);
     }
     if (component.fabricProps?.fontWeight) {
       css.push(`      font-weight: ${component.fabricProps.fontWeight};`);
@@ -367,9 +367,9 @@ ${bodyHTML}
     const className = this.toKebabCase(component.name);
     const spaces = '  '.repeat(indent);
     
-    let value = component.dataBinding?.defaultValue || '';
+    let value: string = String(component.dataBinding?.defaultValue || '');
     if (component.dataBinding && data[component.dataBinding.field] !== undefined) {
-      value = data[component.dataBinding.field];
+      value = String(data[component.dataBinding.field]);
       if (component.dataBinding.format) {
         value = component.dataBinding.format.replace('${0}', value);
       }
@@ -406,8 +406,8 @@ ${bodyHTML}
    * Infer semantic text tag from component properties
    */
   private inferTextTag(component: TemplateComponent): string {
-    const fontSize = component.fabricProps?.fontSize || 16;
-    const fontWeight = component.fabricProps?.fontWeight || 'normal';
+    const fontSize = Number(component.fabricProps?.fontSize) || 16;
+    const fontWeight = String(component.fabricProps?.fontWeight || 'normal');
     
     if (fontSize >= 36 || fontWeight === 'bold') return 'h1';
     if (fontSize >= 30) return 'h2';

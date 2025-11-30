@@ -37,8 +37,8 @@ export const useTemplateState = (fabricCanvas: FabricCanvas | null) => {
       if (!newTemplate.sections || !Array.isArray(newTemplate.sections)) {
         throw new Error('Invalid template: missing sections array');
       }
-      if (!newTemplate.variants || !Array.isArray(newTemplate.variants) || newTemplate.variants.length === 0) {
-        throw new Error('Invalid template: missing variants');
+      if (!newTemplate.formats || !Array.isArray(newTemplate.formats) || newTemplate.formats.length === 0) {
+        throw new Error('Invalid template: missing formats');
       }
 
       // Phase 4: Preload assets before rendering

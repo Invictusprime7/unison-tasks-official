@@ -151,9 +151,9 @@ ${this.generateCSS(template)}
     const className = this.toKebabCase(component.name);
     const spaces = '  '.repeat(indent);
     
-    let value = component.dataBinding?.defaultValue || '';
+    let value: string = String(component.dataBinding?.defaultValue || '');
     if (component.dataBinding && data[component.dataBinding.field] !== undefined) {
-      value = data[component.dataBinding.field];
+      value = String(data[component.dataBinding.field]);
       if (component.dataBinding.format) {
         value = component.dataBinding.format.replace('${0}', value);
       }
