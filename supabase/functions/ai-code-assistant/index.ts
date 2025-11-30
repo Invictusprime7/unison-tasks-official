@@ -516,7 +516,6 @@ Learn from every review to provide increasingly valuable insights!`
         { role: 'system', content: systemPrompt },
         ...messages
       ],
-      stream: true,
     };
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -546,24 +545,27 @@ Learn from every review to provide increasingly valuable insights!`
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
     // Save learning session (async, don't wait)
     const userPrompt = messages[messages.length - 1]?.content || '';
     if (savePattern && userPrompt) {
       supabase.from('ai_learning_sessions').insert({
         session_type: mode === 'code' ? 'code_generation' : mode === 'design' ? 'design_review' : 'code_review',
         user_prompt: userPrompt.substring(0, 500),
-        ai_response: 'Streaming response',
+        ai_response: content.substring(0, 500),
         was_successful: true,
         technologies_used: ['React', 'TypeScript', 'Tailwind CSS']
       }).then(() => console.log('Learning session saved'));
     }
 
-    return new Response(response.body, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-      },
-    });
+    return new Response(
+      JSON.stringify({ content }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error) {
     console.error('Error in ai-code-assistant:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
