@@ -153,7 +153,9 @@ function toast({ ...props }: Toast) {
       // @ts-ignore sonner accepts message and options
       sonnerToast(title || description || "", description ? { description } : undefined);
     }
-  } catch {}
+  } catch {
+    // Ignore toast errors - they shouldn't break the app
+  }
 
   dispatch({
     type: "ADD_TOAST",

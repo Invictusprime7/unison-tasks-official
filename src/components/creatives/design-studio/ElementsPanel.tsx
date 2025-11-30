@@ -145,7 +145,7 @@ export const ElementsPanel = ({ onElementSelect, onElementDragStart }: ElementsP
           <div className={`w-16 h-16 ${element.variant.includes('rounded') ? 'rounded-lg' : 'rounded-none'} border-2 border-gray-400`} />
         </div>;
       
-      case 'grid':
+      case 'grid': {
         const gridCols = element.config.cols || 2;
         return <div className={`${baseClass} bg-gray-50 p-2`}>
           <div className={`grid grid-cols-${gridCols} gap-1 h-full`}>
@@ -154,6 +154,7 @@ export const ElementsPanel = ({ onElementSelect, onElementDragStart }: ElementsP
             ))}
           </div>
         </div>;
+      }
       
       case 'shape':
         return <div className={`${baseClass} bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center`}>

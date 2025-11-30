@@ -110,7 +110,7 @@ export const useWebBuilderAI = (
         let fabricObj;
 
         switch (obj.type) {
-          case 'rect':
+          case 'rect': {
             const rectWidth = obj.width || 200;
             const rectHeight = obj.height || 100;
             fabricObj = new Rect({
@@ -126,8 +126,9 @@ export const useWebBuilderAI = (
               shadow: obj.shadow,
             });
             break;
+          }
 
-          case 'circle':
+          case 'circle': {
             const radius = obj.radius || 50;
             fabricObj = new Circle({
               left: constrainPosition(obj.left, canvasWidth, radius * 2),
@@ -138,8 +139,9 @@ export const useWebBuilderAI = (
               strokeWidth: obj.strokeWidth || 0,
             });
             break;
+          }
 
-          case 'text':
+          case 'text': {
             fabricObj = new IText(obj.text || 'Text', {
               left: constrainPosition(obj.left, canvasWidth),
               top: constrainPosition(obj.top, canvasHeight),
@@ -148,8 +150,9 @@ export const useWebBuilderAI = (
               fontFamily: obj.fontFamily || 'Arial',
             });
             break;
+          }
 
-          case 'textbox':
+          case 'textbox': {
             const textboxWidth = obj.width || 200;
             fabricObj = new Textbox(obj.text || 'Text', {
               left: constrainPosition(obj.left, canvasWidth, textboxWidth),
@@ -160,6 +163,7 @@ export const useWebBuilderAI = (
               fontFamily: obj.fontFamily || 'Arial',
             });
             break;
+          }
 
           case 'image':
             if (obj.src) {

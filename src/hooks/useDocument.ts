@@ -55,7 +55,7 @@ export const useDocument = (documentId: string | null) => {
         .maybeSingle();
 
       // Load pages and layers if design mode
-      let pages: Page[] = [];
+      const pages: Page[] = [];
       if (doc.type === "design") {
         const { data: pagesData } = await supabase
           .from("pages")

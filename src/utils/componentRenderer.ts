@@ -62,7 +62,7 @@ function parseHTMLComponent(code: string): ComponentConfig {
 function parseReactComponent(code: string): ComponentConfig {
   // Extract JSX from return statement
   const returnMatch = code.match(/return\s*\(([\s\S]*?)\);/);
-  let jsx = returnMatch ? returnMatch[1].trim() : code;
+  const jsx = returnMatch ? returnMatch[1].trim() : code;
   
   // Convert JSX to HTML
   const html = convertJSXToHTML(jsx);
