@@ -2,40 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-// Validate environment variables
-if (!SUPABASE_URL || SUPABASE_URL === 'https://placeholder.supabase.co') {
-  console.error('❌ Missing or invalid VITE_SUPABASE_URL environment variable');
-  console.error('Current value:', SUPABASE_URL);
-  console.error('Please check your environment variables in Vercel dashboard');
-}
-
-if (!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY === 'placeholder-key') {
-  console.error('❌ Missing or invalid VITE_SUPABASE_PUBLISHABLE_KEY environment variable');
-  console.error('Please check your environment variables in Vercel dashboard');
-}
+const SUPABASE_URL = "https://oruwtgdjurstvhgqcvbv.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ydXd0Z2RqdXJzdHZoZ3FjdmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyOTE5NzIsImV4cCI6MjA3NTg2Nzk3Mn0.aOV9uab2niXhszfqCg81yzDRDg1-15XS9BL3-2bhhYM";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(
-  SUPABASE_URL || 'https://placeholder.supabase.co', 
-  SUPABASE_PUBLISHABLE_KEY || 'placeholder-key',
-  {
-    auth: {
-      storage: typeof window !== 'undefined' ? localStorage : undefined,
-      persistSession: true,
-      autoRefreshToken: true,
-    }
-  }
-);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Export a flag to check if client is properly configured
-export const isSupabaseConfigured = Boolean(
-  SUPABASE_URL && 
-  SUPABASE_PUBLISHABLE_KEY && 
-  SUPABASE_URL !== 'https://placeholder.supabase.co' &&
-  SUPABASE_PUBLISHABLE_KEY !== 'placeholder-key'
-);
+// Export configuration status flag
+export const isSupabaseConfigured = true;
