@@ -21,7 +21,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, mode, savePattern = true } = await req.json();
+    const { messages, mode, savePattern = true, generateImage = false, imagePlacement } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -510,10 +510,94 @@ Learn from every review to provide increasingly valuable insights!`
 
     const systemPrompt = systemPrompts[mode as keyof typeof systemPrompts] || systemPrompts.code;
 
+    // Check if user wants to generate an image
+    const userPrompt = messages[messages.length - 1]?.content?.toLowerCase() || '';
+    const imageKeywords = ['generate image', 'create image', 'add image', 'brand logo', 'logo', 'add photo', 'insert image', 'place image'];
+    const shouldGenerateImage = generateImage || imageKeywords.some(kw => userPrompt.includes(kw));
+    
+    let generatedImageUrl = '';
+    let imageHtml = '';
+    
+    if (shouldGenerateImage) {
+      console.log('[AI-Code-Assistant] Generating image for request');
+      
+      // Extract image description from user prompt
+      const imagePromptMatch = userPrompt.match(/(?:generate|create|add|place|insert)\s+(?:an?\s+)?(?:image|logo|photo|picture)\s+(?:of\s+)?(.+?)(?:\s+(?:in|at|on|to)\s+|$)/i);
+      const imageDescription = imagePromptMatch?.[1] || userPrompt.replace(/generate|create|add|place|insert|image|logo|photo|picture/gi, '').trim();
+      
+      // Detect placement from prompt
+      let detectedPlacement = imagePlacement || 'top-left';
+      if (userPrompt.includes('corner left') || userPrompt.includes('top left')) detectedPlacement = 'top-left';
+      else if (userPrompt.includes('corner right') || userPrompt.includes('top right')) detectedPlacement = 'top-right';
+      else if (userPrompt.includes('bottom left')) detectedPlacement = 'bottom-left';
+      else if (userPrompt.includes('bottom right')) detectedPlacement = 'bottom-right';
+      else if (userPrompt.includes('center')) detectedPlacement = 'center';
+      else if (userPrompt.includes('header')) detectedPlacement = 'top-left';
+      else if (userPrompt.includes('footer')) detectedPlacement = 'bottom-left';
+      
+      // Determine if it's a logo request
+      const isLogo = userPrompt.includes('logo') || userPrompt.includes('brand');
+      const imageStyle = isLogo ? 'logo' : 'digital-art';
+      
+      try {
+        // Call image generation
+        const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash-image-preview',
+            messages: [{
+              role: 'user',
+              content: `${imageDescription}, ${isLogo ? 'clean professional logo design, minimal, vector style, transparent background' : 'high quality digital art'}`
+            }],
+            modalities: ['image', 'text']
+          }),
+        });
+        
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json();
+          generatedImageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || '';
+          
+          if (generatedImageUrl) {
+            // Generate placement CSS
+            const placementStyles: Record<string, string> = {
+              'top-left': 'position: absolute; top: 10px; left: 10px;',
+              'top-center': 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%);',
+              'top-right': 'position: absolute; top: 10px; right: 10px;',
+              'center': 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);',
+              'bottom-left': 'position: absolute; bottom: 10px; left: 10px;',
+              'bottom-right': 'position: absolute; bottom: 10px; right: 10px;',
+            };
+            
+            const placementCss = placementStyles[detectedPlacement] || placementStyles['top-left'];
+            const maxSize = isLogo ? 'max-width: 120px; max-height: 60px;' : 'max-width: 300px; max-height: 200px;';
+            
+            imageHtml = `
+<!-- AI Generated Image - Drag to reposition, use corner handles to resize -->
+<div class="ai-image-container resizable-image" style="${placementCss} ${maxSize} z-index: 100;">
+  <img src="${generatedImageUrl}" alt="${imageDescription}" class="w-full h-auto object-contain" />
+</div>`;
+            
+            console.log('[AI-Code-Assistant] Image generated and placed at:', detectedPlacement);
+          }
+        }
+      } catch (imageError) {
+        console.error('[AI-Code-Assistant] Image generation failed:', imageError);
+      }
+    }
+
     const body: Record<string, unknown> = {
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: systemPrompt + (generatedImageUrl ? `
+
+**IMPORTANT: An AI-generated image has been created for this request. Include this image HTML in your response at the appropriate location:**
+${imageHtml}
+
+The image is already styled for the "${imagePlacement || 'top-left'}" position. Make sure to include it in a relative-positioned container.` : '') },
         ...messages
       ],
     };
@@ -549,11 +633,11 @@ Learn from every review to provide increasingly valuable insights!`
     const content = data.choices?.[0]?.message?.content || '';
 
     // Save learning session (async, don't wait)
-    const userPrompt = messages[messages.length - 1]?.content || '';
-    if (savePattern && userPrompt) {
+    const originalUserPrompt = messages[messages.length - 1]?.content || '';
+    if (savePattern && originalUserPrompt) {
       supabase.from('ai_learning_sessions').insert({
         session_type: mode === 'code' ? 'code_generation' : mode === 'design' ? 'design_review' : 'code_review',
-        user_prompt: userPrompt.substring(0, 500),
+        user_prompt: originalUserPrompt.substring(0, 500),
         ai_response: content.substring(0, 500),
         was_successful: true,
         technologies_used: ['React', 'TypeScript', 'Tailwind CSS']
@@ -561,7 +645,11 @@ Learn from every review to provide increasingly valuable insights!`
     }
 
     return new Response(
-      JSON.stringify({ content }),
+      JSON.stringify({ 
+        content,
+        generatedImage: generatedImageUrl || undefined,
+        imagePlacement: generatedImageUrl ? (imagePlacement || 'top-left') : undefined
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
