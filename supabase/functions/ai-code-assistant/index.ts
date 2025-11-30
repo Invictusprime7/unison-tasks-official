@@ -22,13 +22,13 @@ serve(async (req: Request) => {
 
   try {
     const { messages, mode, savePattern = true } = await req.json();
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!OPENAI_API_KEY) {
-      console.warn("OPENAI_API_KEY not configured - AI features unavailable");
+    if (!LOVABLE_API_KEY) {
+      console.warn("LOVABLE_API_KEY not configured - AI features unavailable");
       return new Response(
         JSON.stringify({ 
-          error: "OpenAI API key not configured. Please add your OpenAI API key to enable AI capabilities.",
+          error: "AI features are not available. Please deploy to Lovable Cloud to enable AI capabilities.",
           isLocalDevelopment: true
         }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -511,7 +511,7 @@ Learn from every review to provide increasingly valuable insights!`
     const systemPrompt = systemPrompts[mode as keyof typeof systemPrompts] || systemPrompts.code;
 
     const body: Record<string, unknown> = {
-      model: 'gpt-4o',
+      model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages
@@ -519,10 +519,10 @@ Learn from every review to provide increasingly valuable insights!`
       stream: true,
     };
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
