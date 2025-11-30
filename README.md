@@ -1,8 +1,11 @@
-# Welcome to your Lovable project
+# Unison Tasks - Production Ready! 🚀
+
+> **Status:** Production deployment configured and tested - November 30, 2025
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/16184d1a-4f96-4f26-972e-cece3891ea55
+**Production Site:** Deployed via GitHub Actions to Vercel
 
 ## How can I edit this code?
 
