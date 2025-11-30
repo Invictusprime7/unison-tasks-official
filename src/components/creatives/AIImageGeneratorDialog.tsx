@@ -14,10 +14,15 @@ import { Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+interface ImagePlacement {
+  position: string;
+  css: string;
+}
+
 interface AIImageGeneratorDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onImageGenerated?: (imageUrl: string, prompt: string) => void;
+  onImageGenerated?: (imageUrl: string, prompt: string, placement?: ImagePlacement) => void;
 }
 
 export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
@@ -31,7 +36,9 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
   const [style, setStyle] = useState<string>('natural');
   const [size, setSize] = useState<string>('1024x1024');
   const [quality, setQuality] = useState<string>('standard');
+  const [placement, setPlacement] = useState<string>('none');
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('');
+  const [generatedPlacement, setGeneratedPlacement] = useState<ImagePlacement | undefined>();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -47,12 +54,15 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
     setGeneratedImageUrl('');
 
     try {
+      const placementConfig = placement !== 'none' ? { position: placement } : undefined;
+      
       const { data, error } = await supabase.functions.invoke('generate-image', {
         body: { 
           prompt: prompt.trim(),
           style,
           size,
-          quality
+          quality,
+          placement: placementConfig
         }
       });
 
@@ -63,13 +73,15 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
 
       if (data?.imageUrl) {
         setGeneratedImageUrl(data.imageUrl);
+        const placementData = data.placement as ImagePlacement | undefined;
+        setGeneratedPlacement(placementData);
         toast({
           title: 'Success!',
-          description: 'Image generated successfully'
+          description: placementData ? `Image generated and will be placed at ${placementData.position}` : 'Image generated successfully'
         });
 
         if (onImageGenerated) {
-          onImageGenerated(data.imageUrl, prompt);
+          onImageGenerated(data.imageUrl, prompt, placementData);
         }
       } else {
         throw new Error('No image URL returned');
@@ -88,7 +100,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
 
   const handleUseImage = () => {
     if (generatedImageUrl && onImageGenerated) {
-      onImageGenerated(generatedImageUrl, prompt);
+      onImageGenerated(generatedImageUrl, prompt, generatedPlacement);
       onClose();
     }
   };
@@ -98,7 +110,9 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
     setStyle('natural');
     setSize('1024x1024');
     setQuality('standard');
+    setPlacement('none');
     setGeneratedImageUrl('');
+    setGeneratedPlacement(undefined);
   };
 
   return (
@@ -124,7 +138,7 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="style">Style</Label>
               <Select value={style} onValueChange={setStyle}>
@@ -139,6 +153,8 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
                   <SelectItem value="abstract">Abstract</SelectItem>
                   <SelectItem value="minimalist">Minimalist</SelectItem>
                   <SelectItem value="cinematic">Cinematic</SelectItem>
+                  <SelectItem value="logo">Logo/Brand</SelectItem>
+                  <SelectItem value="icon">Icon</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -169,7 +185,33 @@ export const AIImageGeneratorDialog: React.FC<AIImageGeneratorDialogProps> = ({
                 </SelectContent>
               </Select>
             </div>
+
+            <div>
+              <Label htmlFor="placement">Placement</Label>
+              <Select value={placement} onValueChange={setPlacement}>
+                <SelectTrigger id="placement">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No placement</SelectItem>
+                  <SelectItem value="top-left">Top Left (Logo)</SelectItem>
+                  <SelectItem value="top-center">Top Center</SelectItem>
+                  <SelectItem value="top-right">Top Right</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
+                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                  <SelectItem value="bottom-center">Bottom Center</SelectItem>
+                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {placement !== 'none' && (
+            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+              The image will be placed at <strong>{placement}</strong> position in your template. 
+              You can drag to reposition and use corner handles to resize it in the Live Preview.
+            </div>
+          )}
 
           <div className="flex gap-2">
             <Button

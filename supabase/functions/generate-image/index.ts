@@ -1,28 +1,33 @@
 /**
  * Supabase Edge Function: Generate Image
- * Generates AI images using OpenAI DALL-E 3 or Stability AI
+ * Generates AI images using Lovable AI Gateway (Gemini image model)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 interface ImageGenerationRequest {
   prompt: string;
   negative_prompt?: string;
   width?: number;
   height?: number;
-  style?: 'digital-art' | 'realistic' | 'artistic' | 'photography' | 'illustration' | 'anime' | '3d-render';
+  style?: 'digital-art' | 'realistic' | 'artistic' | 'photography' | 'illustration' | 'anime' | '3d-render' | 'logo' | 'icon';
   quality?: 'standard' | 'high' | 'ultra';
-  num_images?: number;
-  seed?: number;
+  placement?: {
+    position: string; // e.g., "top-left", "center", "bottom-right"
+    container?: string; // e.g., "header", "hero", "sidebar"
+  };
 }
 
 interface ImageGenerationResponse {
   imageUrl: string;
   url: string;
   base64?: string;
-  seed?: number;
+  placement?: {
+    position: string;
+    css: string;
+  };
   error?: string;
 }
 
@@ -45,11 +50,10 @@ serve(async (req: Request) => {
       height = 1024,
       style = 'digital-art',
       quality = 'high',
-      num_images: _num_images = 1,
-      seed
+      placement
     }: ImageGenerationRequest = await req.json();
 
-    console.log('[Generate-Image] Request:', { prompt, style, quality });
+    console.log('[Generate-Image] Request:', { prompt, style, quality, placement });
 
     if (!prompt || prompt.trim().length === 0) {
       return new Response(
@@ -61,9 +65,9 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!OPENAI_API_KEY) {
+    if (!LOVABLE_API_KEY) {
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        JSON.stringify({ error: 'Lovable API key not configured' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -79,10 +83,16 @@ serve(async (req: Request) => {
       'photography': 'professional photography, sharp focus, perfect lighting',
       'illustration': 'illustrated style, clean lines, professional illustration',
       'anime': 'anime art style, vibrant colors, manga aesthetic',
-      '3d-render': '3D rendered, CGI, professional 3D visualization'
+      '3d-render': '3D rendered, CGI, professional 3D visualization',
+      'logo': 'clean logo design, minimal, professional brand identity, vector style',
+      'icon': 'clean icon design, simple, flat design, scalable'
     };
 
-    const enhancedPrompt = `${prompt}, ${stylePrompts[style] || stylePrompts['digital-art']}`;
+    // Add size context for better generation
+    const aspectRatio = width > height ? 'landscape' : width < height ? 'portrait' : 'square';
+    const sizeContext = `${aspectRatio} ${width}x${height} aspect ratio`;
+
+    const enhancedPrompt = `${prompt}, ${stylePrompts[style] || stylePrompts['digital-art']}, ${sizeContext}`;
     
     // Add negative prompt handling
     const fullPrompt = negative_prompt 
@@ -91,51 +101,72 @@ serve(async (req: Request) => {
 
     console.log('[Generate-Image] Enhanced prompt:', fullPrompt);
 
-    // Map quality to DALL-E 3 quality
-    const dalleQuality = quality === 'ultra' ? 'hd' : 'standard';
-    
-    // Determine size based on width/height (DALL-E 3 supports: 1024x1024, 1792x1024, 1024x1792)
-    let size = '1024x1024';
-    if (width > height && width >= 1792) {
-      size = '1792x1024';
-    } else if (height > width && height >= 1792) {
-      size = '1024x1792';
-    }
-
-    // Call OpenAI DALL-E 3 API
-    const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
+    // Call Lovable AI Gateway with Gemini image model
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: fullPrompt,
-        n: 1, // DALL-E 3 only supports n=1
-        size: size,
-        quality: dalleQuality,
-        response_format: 'url'
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: fullPrompt
+          }
+        ],
+        modalities: ['image', 'text']
       }),
     });
 
-    if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json();
-      console.error('[Generate-Image] OpenAI Error:', errorData);
-      throw new Error(errorData.error?.message || 'Failed to generate image');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Generate-Image] Lovable AI Error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Credits required. Please add credits to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error(`Failed to generate image: ${response.status}`);
     }
 
-    const result = await openaiResponse.json();
-    console.log('[Generate-Image] Success:', result.data[0].url);
+    const result = await response.json();
+    console.log('[Generate-Image] Response received');
 
-    const response: ImageGenerationResponse = {
-      imageUrl: result.data[0].url,
-      url: result.data[0].url,
-      seed: seed || Math.floor(Math.random() * 1000000)
+    // Extract image from response
+    const imageData = result.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (!imageData) {
+      throw new Error('No image generated');
+    }
+
+    // Generate placement CSS if specified
+    let placementInfo = undefined;
+    if (placement) {
+      placementInfo = generatePlacementCSS(placement.position, placement.container);
+    }
+
+    const responseData: ImageGenerationResponse = {
+      imageUrl: imageData,
+      url: imageData,
+      base64: imageData.startsWith('data:') ? imageData : undefined,
+      placement: placementInfo
     };
 
+    console.log('[Generate-Image] Success');
+
     return new Response(
-      JSON.stringify(response),
+      JSON.stringify(responseData),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -150,8 +181,8 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
-        imageUrl: 'https://via.placeholder.com/1024x1024?text=Generation+Failed',
-        url: 'https://via.placeholder.com/1024x1024?text=Generation+Failed'
+        imageUrl: '',
+        url: ''
       }),
       { 
         status: 500, 
@@ -160,3 +191,26 @@ serve(async (req: Request) => {
     );
   }
 });
+
+function generatePlacementCSS(position: string, container?: string): { position: string; css: string } {
+  const positionMap: Record<string, string> = {
+    'top-left': 'position: absolute; top: 10px; left: 10px;',
+    'top-center': 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%);',
+    'top-right': 'position: absolute; top: 10px; right: 10px;',
+    'center-left': 'position: absolute; top: 50%; left: 10px; transform: translateY(-50%);',
+    'center': 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);',
+    'center-right': 'position: absolute; top: 50%; right: 10px; transform: translateY(-50%);',
+    'bottom-left': 'position: absolute; bottom: 10px; left: 10px;',
+    'bottom-center': 'position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);',
+    'bottom-right': 'position: absolute; bottom: 10px; right: 10px;',
+    'corner-left': 'position: absolute; top: 10px; left: 10px;',
+    'corner-right': 'position: absolute; top: 10px; right: 10px;',
+  };
+
+  const css = positionMap[position] || positionMap['top-left'];
+  
+  return {
+    position,
+    css: css + ' max-width: 100%; cursor: move; resize: both; overflow: hidden;'
+  };
+}
