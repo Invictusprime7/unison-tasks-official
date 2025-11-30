@@ -3,7 +3,7 @@
  * Generates AI images using OpenAI DALL-E 3 or Stability AI
  */
 
-import { serve } from 'serve';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
