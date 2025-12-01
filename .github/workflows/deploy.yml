@@ -82,8 +82,8 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         
-      - name: Build Project with Environment Variables
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build Project Locally with Environment Variables
+        run: npm run build
         env:
           # Supabase Configuration
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -121,11 +121,13 @@ jobs:
           VITE_SSR_ENABLED: "false"
           VITE_ENABLE_ERROR_REPORTING: "true"
           VITE_ENABLE_ANALYTICS: "true"
-          # Vercel Configuration
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           # Build optimization
           NODE_OPTIONS: "--max_old_space_size=4096"
+        
+      - name: Create .vercel directory for deployment
+        run: |
+          mkdir -p .vercel
+          echo '{"projectId":"${{ secrets.VERCEL_PROJECT_ID }}","orgId":"${{ secrets.VERCEL_ORG_ID }}"}' > .vercel/project.json
         
       - name: Deploy Project Artifacts to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
