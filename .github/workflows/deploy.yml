@@ -37,9 +37,9 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           # AI Functionality
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           VITE_LOVABLE_API_KEY: ${{ secrets.VITE_LOVABLE_API_KEY }}
-          # Optional AI APIs
-          VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
+          VITE_AI_GATEWAY_API_KEY: ${{ secrets.VITE_AI_GATEWAY_API_KEY }}
           # Build optimization
           NODE_OPTIONS: "--max_old_space_size=4096"
 
