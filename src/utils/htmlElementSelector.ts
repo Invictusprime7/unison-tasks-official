@@ -144,7 +144,8 @@ export const applyStylesToElement = (element: HTMLElement, styles: Record<string
     if (value !== undefined && value !== null && value !== '') {
       // Convert camelCase to kebab-case for CSS properties
       const cssProperty = property.replace(/([A-Z])/g, '-$1').toLowerCase();
-      element.style.setProperty(cssProperty, value);
+      // Use setProperty with !important to override Tailwind classes
+      element.style.setProperty(cssProperty, value, 'important');
     }
   });
 };
