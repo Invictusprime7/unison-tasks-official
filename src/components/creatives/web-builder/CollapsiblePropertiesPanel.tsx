@@ -30,12 +30,23 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface SelectedHTMLElement {
+  tagName?: string;
+  textContent?: string;
+  styles?: Record<string, string>;
+  attributes?: Record<string, string>;
+  selector?: string;
+}
+
 interface CollapsiblePropertiesPanelProps {
   fabricCanvas: FabricCanvas | null;
   selectedObject: any | null;
+  selectedHTMLElement?: SelectedHTMLElement | null;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onUpdate: () => void;
+  onUpdateHTMLElement?: (updates: Partial<SelectedHTMLElement>) => void;
+  onClearHTMLSelection?: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
 }
@@ -79,9 +90,12 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProps> = ({
   fabricCanvas,
   selectedObject,
+  selectedHTMLElement,
   isCollapsed,
   onToggleCollapse,
   onUpdate,
+  onUpdateHTMLElement,
+  onClearHTMLSelection,
   onDelete,
   onDuplicate,
 }) => {
@@ -94,6 +108,15 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
   const [fontFamily, setFontFamily] = useState('Arial');
   const [isLocked, setIsLocked] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  
+  // HTML Element state
+  const [htmlTextColor, setHtmlTextColor] = useState('#000000');
+  const [htmlBgColor, setHtmlBgColor] = useState('#ffffff');
+  const [htmlPadding, setHtmlPadding] = useState('0');
+  const [htmlMargin, setHtmlMargin] = useState('0');
+  const [htmlFontSize, setHtmlFontSize] = useState('16');
+  const [htmlBorderRadius, setHtmlBorderRadius] = useState('0');
+  const [htmlTextContent, setHtmlTextContent] = useState('');
 
   useEffect(() => {
     if (selectedObject) {
@@ -114,6 +137,52 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
       setIsVisible(selectedObject.visible !== false);
     }
   }, [selectedObject]);
+
+  // Update HTML element state when selectedHTMLElement changes
+  useEffect(() => {
+    if (selectedHTMLElement) {
+      const styles = selectedHTMLElement.styles || {};
+      setHtmlTextColor(styles.color || '#000000');
+      setHtmlBgColor(styles.backgroundColor || 'transparent');
+      setHtmlPadding(styles.padding?.replace('px', '') || '0');
+      setHtmlMargin(styles.margin?.replace('px', '') || '0');
+      setHtmlFontSize(styles.fontSize?.replace('px', '') || '16');
+      setHtmlBorderRadius(styles.borderRadius?.replace('px', '') || '0');
+      setHtmlTextContent(selectedHTMLElement.textContent || '');
+    }
+  }, [selectedHTMLElement]);
+
+  const updateHTMLElement = (property: string, value: string) => {
+    if (!selectedHTMLElement || !onUpdateHTMLElement) return;
+    
+    const updatedStyles = { ...selectedHTMLElement.styles };
+    
+    switch (property) {
+      case 'color':
+        updatedStyles.color = value;
+        break;
+      case 'backgroundColor':
+        updatedStyles.backgroundColor = value;
+        break;
+      case 'padding':
+        updatedStyles.padding = value + 'px';
+        break;
+      case 'margin':
+        updatedStyles.margin = value + 'px';
+        break;
+      case 'fontSize':
+        updatedStyles.fontSize = value + 'px';
+        break;
+      case 'borderRadius':
+        updatedStyles.borderRadius = value + 'px';
+        break;
+      case 'textContent':
+        onUpdateHTMLElement({ textContent: value, styles: updatedStyles });
+        return;
+    }
+    
+    onUpdateHTMLElement({ styles: updatedStyles });
+  };
 
   const updateObject = (property: string, value: any) => {
     if (!selectedObject || !fabricCanvas) return;
@@ -204,14 +273,154 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
               <Layers className="w-4 h-4" />
               Properties
             </h3>
-            {selectedObject && (
+            {selectedHTMLElement && (
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs text-muted-foreground capitalize">
+                  {selectedHTMLElement.tagName || 'Element'}
+                </p>
+                <Button variant="ghost" size="sm" onClick={onClearHTMLSelection} className="h-5 px-2 text-xs">
+                  Clear
+                </Button>
+              </div>
+            )}
+            {selectedObject && !selectedHTMLElement && (
               <p className="text-xs text-muted-foreground mt-1 capitalize">
                 {selectedObject.type || 'Object'}
               </p>
             )}
           </div>
 
-          {selectedObject ? (
+          {selectedHTMLElement ? (
+            <ScrollArea className="flex-1">
+              <CollapsibleSection title="Content" icon={<Type className="w-4 h-4" />}>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Text Content</Label>
+                  <Input
+                    value={htmlTextContent}
+                    onChange={(e) => {
+                      setHtmlTextContent(e.target.value);
+                      updateHTMLElement('textContent', e.target.value);
+                    }}
+                    className="h-8 text-sm"
+                    placeholder="Enter text..."
+                  />
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection title="Colors" icon={<Palette className="w-4 h-4" />}>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Text Color</Label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={htmlTextColor}
+                      onChange={(e) => {
+                        setHtmlTextColor(e.target.value);
+                        updateHTMLElement('color', e.target.value);
+                      }}
+                      className="w-10 h-8 rounded border border-border cursor-pointer"
+                    />
+                    <Input
+                      value={htmlTextColor}
+                      onChange={(e) => {
+                        setHtmlTextColor(e.target.value);
+                        updateHTMLElement('color', e.target.value);
+                      }}
+                      className="h-8 text-sm flex-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Background Color</Label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={htmlBgColor === 'transparent' ? '#ffffff' : htmlBgColor}
+                      onChange={(e) => {
+                        setHtmlBgColor(e.target.value);
+                        updateHTMLElement('backgroundColor', e.target.value);
+                      }}
+                      className="w-10 h-8 rounded border border-border cursor-pointer"
+                    />
+                    <Input
+                      value={htmlBgColor}
+                      onChange={(e) => {
+                        setHtmlBgColor(e.target.value);
+                        updateHTMLElement('backgroundColor', e.target.value);
+                      }}
+                      className="h-8 text-sm flex-1"
+                    />
+                  </div>
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection title="Typography" icon={<Type className="w-4 h-4" />}>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Font Size (px)</Label>
+                  <div className="flex gap-2 items-center">
+                    <Slider
+                      value={[parseInt(htmlFontSize) || 16]}
+                      min={8}
+                      max={72}
+                      step={1}
+                      onValueChange={([val]) => {
+                        setHtmlFontSize(String(val));
+                        updateHTMLElement('fontSize', String(val));
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-xs w-10 text-right">{htmlFontSize}px</span>
+                  </div>
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection title="Spacing" icon={<Move className="w-4 h-4" />}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Padding (px)</Label>
+                    <Input
+                      type="number"
+                      value={htmlPadding}
+                      onChange={(e) => {
+                        setHtmlPadding(e.target.value);
+                        updateHTMLElement('padding', e.target.value);
+                      }}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Margin (px)</Label>
+                    <Input
+                      type="number"
+                      value={htmlMargin}
+                      onChange={(e) => {
+                        setHtmlMargin(e.target.value);
+                        updateHTMLElement('margin', e.target.value);
+                      }}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Border Radius (px)</Label>
+                  <div className="flex gap-2 items-center">
+                    <Slider
+                      value={[parseInt(htmlBorderRadius) || 0]}
+                      min={0}
+                      max={50}
+                      step={1}
+                      onValueChange={([val]) => {
+                        setHtmlBorderRadius(String(val));
+                        updateHTMLElement('borderRadius', String(val));
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-xs w-10 text-right">{htmlBorderRadius}px</span>
+                  </div>
+                </div>
+              </CollapsibleSection>
+            </ScrollArea>
+          ) : selectedObject ? (
             <ScrollArea className="flex-1">
               <div className="px-4 py-3 border-b border-border/50 flex gap-2">
                 <Button variant="outline" size="sm" onClick={onDuplicate} className="flex-1 h-8">

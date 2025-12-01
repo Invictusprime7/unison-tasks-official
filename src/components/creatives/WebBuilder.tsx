@@ -23,7 +23,6 @@ import { ExportDialog } from "./design-studio/ExportDialog";
 import { PerformancePanel } from "./web-builder/PerformancePanel";
 import { DirectEditToolbar } from "./web-builder/DirectEditToolbar";
 import { ArrangementTools } from "./web-builder/ArrangementTools";
-import { HTMLElementPropertiesPanel } from "./web-builder/HTMLElementPropertiesPanel";
 import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
@@ -144,7 +143,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
-  const [htmlPropertiesPanelOpen, setHtmlPropertiesPanelOpen] = useState(false);
   const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
 
   // Add console log to confirm component is rendering
@@ -1570,7 +1568,6 @@ ${body.innerHTML}
                     onElementSelect={(elementData) => {
                       console.log('[WebBuilder] HTML Element selected:', elementData);
                       setSelectedHTMLElement(elementData);
-                      setHtmlPropertiesPanelOpen(true);
                     }}
                   />
                 </div>
@@ -1632,7 +1629,6 @@ ${body.innerHTML}
                       onElementSelect={(elementData) => {
                         console.log('[WebBuilder] HTML Element selected:', elementData);
                         setSelectedHTMLElement(elementData);
-                        setHtmlPropertiesPanelOpen(true);
                       }}
                     />
                   </div>
@@ -1767,44 +1763,29 @@ ${body.innerHTML}
         </div>
 
         {/* Right Properties Panel - Collapsible with integrated toggle */}
-        {htmlPropertiesPanelOpen && selectedHTMLElement ? (
-          <HTMLElementPropertiesPanel
-            fabricCanvas={fabricCanvas}
-            selectedElement={selectedHTMLElement}
-            onUpdate={() => {
-              console.log('[WebBuilder] Updating element via DOM');
-              
-              // Update element directly in the iframe DOM (no code modification)
-              if (livePreviewRef.current && selectedHTMLElement) {
-                const success = livePreviewRef.current.updateElement(
-                  selectedHTMLElement.selector || '',
-                  selectedHTMLElement
-                );
-                
-                if (success) {
-                  // Update the selected element data for the properties panel
-                  setSelectedHTMLElement({
-                    ...selectedHTMLElement,
-                  });
-                } else {
-                  toast.error('Failed to update element', {
-                    description: 'Element not found in preview'
-                  });
-                }
+        <CollapsiblePropertiesPanel 
+          fabricCanvas={fabricCanvas}
+          selectedObject={selectedObject}
+          selectedHTMLElement={selectedHTMLElement}
+          isCollapsed={rightPanelCollapsed}
+          onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+          onUpdate={() => fabricCanvas?.renderAll()}
+          onUpdateHTMLElement={(updates) => {
+            if (livePreviewRef.current && selectedHTMLElement) {
+              const updatedElement = { ...selectedHTMLElement, ...updates };
+              const success = livePreviewRef.current.updateElement(
+                selectedHTMLElement.selector || '',
+                updatedElement
+              );
+              if (success) {
+                setSelectedHTMLElement(updatedElement);
               }
-            }}
-          />
-        ) : (
-          <CollapsiblePropertiesPanel 
-            fabricCanvas={fabricCanvas}
-            selectedObject={selectedObject}
-            isCollapsed={rightPanelCollapsed}
-            onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-            onUpdate={() => fabricCanvas?.renderAll()}
-            onDelete={handleDelete}
-            onDuplicate={handleDuplicate}
-          />
-        )}
+            }
+          }}
+          onClearHTMLSelection={() => setSelectedHTMLElement(null)}
+          onDelete={handleDelete}
+          onDuplicate={handleDuplicate}
+        />
       </div>
 
       {/* Code Preview Dialog */}
