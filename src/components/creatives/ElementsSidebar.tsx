@@ -76,6 +76,7 @@ export type ElementCategory =
 interface ElementsSidebarProps {
   onElementDragStart?: (element: WebElement) => void;
   onElementDragEnd?: () => void;
+  onElementClick?: (element: WebElement) => void;
   onAIImageGenerated?: (imageUrl: string, metadata?: Record<string, unknown>) => void;
 }
 
@@ -536,6 +537,7 @@ const ELEMENT_LIBRARY: WebElement[] = [
 export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
   onElementDragStart,
   onElementDragEnd,
+  onElementClick,
   onAIImageGenerated
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -667,6 +669,7 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
                         element={element}
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
+                        onClick={onElementClick}
                       />
                     ))}
                   </div>
@@ -682,6 +685,7 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
                   element={element}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
+                  onClick={onElementClick}
                 />
               ))}
             </div>
@@ -722,15 +726,17 @@ interface ElementCardProps {
   element: WebElement;
   onDragStart: (e: React.DragEvent, element: WebElement) => void;
   onDragEnd: () => void;
+  onClick?: (element: WebElement) => void;
 }
 
-const ElementCard: React.FC<ElementCardProps> = ({ element, onDragStart, onDragEnd }) => {
+const ElementCard: React.FC<ElementCardProps> = ({ element, onDragStart, onDragEnd, onClick }) => {
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, element)}
       onDragEnd={onDragEnd}
-      className="group relative bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-500 hover:shadow-md transition cursor-move"
+      onClick={() => onClick?.(element)}
+      className="group relative bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-500 hover:shadow-md transition cursor-pointer"
     >
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
