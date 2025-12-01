@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
 import { WebPropertiesPanel } from "./web-builder/WebPropertiesPanel";
+import { EnhancedPropertiesPanel } from "./web-builder/EnhancedPropertiesPanel";
 import { ElementsSidebar } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
 import { CodePreviewDialog } from "./web-builder/CodePreviewDialog";
@@ -26,7 +27,7 @@ import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
 import { webBlocks } from "./web-builder/webBlocks";
-import { InteractiveModeToggle } from "./web-builder/InteractiveModeToggle";
+import { EnhancedModeToggle, BuilderMode } from "./web-builder/EnhancedModeToggle";
 import { InteractiveElementHighlight } from "./web-builder/InteractiveElementHighlight";
 import { InteractiveElementOverlay } from "./web-builder/InteractiveElementOverlay";
 import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
@@ -110,6 +111,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [selectedObject, setSelectedObject] = useState<FabricCanvas['_objects'][0] | null>(null);
   const [activeMode, setActiveMode] = useState<"insert" | "layout" | "text" | "vector">("insert");
+  const [builderMode, setBuilderMode] = useState<BuilderMode>('select');
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(0.5);
   const [canvasHeight, setCanvasHeight] = useState(800);
@@ -385,6 +387,29 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       key: 'F1',
       description: 'Show Interactive Mode Help',
       action: () => setIsInteractiveModeHelpOpen(true),
+    },
+    {
+      key: 'v',
+      description: 'Select mode',
+      action: () => setBuilderMode('select'),
+    },
+    {
+      key: 'e',
+      description: 'Edit mode',
+      action: () => setBuilderMode('edit'),
+    },
+    {
+      key: 'p',
+      description: 'Preview mode',
+      action: () => {
+        setBuilderMode('preview');
+        setIsInteractiveMode(true);
+      },
+    },
+    {
+      key: 'h',
+      description: 'Pan mode',
+      action: () => setBuilderMode('pan'),
     },
   ]);
 
@@ -1307,101 +1332,103 @@ ${body.innerHTML}
             selectedObject={selectedObject}
           />
 
-          {/* Device & Breakpoint Controls */}
-          <div className="h-12 border-b border-white/10 flex items-center justify-between px-4">
-            <div className="flex items-center gap-2">
+          {/* Device & Mode Controls */}
+          <div className="h-12 border-b border-white/10 flex items-center px-4 gap-4">
+            {/* Device Breakpoints */}
+            <div className="flex items-center gap-1 border-r border-white/10 pr-4">
               <Button
                 variant={device === "desktop" ? "secondary" : "ghost"}
-                size="sm"
+                size="icon"
                 onClick={() => setDevice("desktop")}
-                className="text-white/70 hover:text-white"
+                className="h-8 w-8 text-white/70 hover:text-white"
+                title="Desktop"
               >
-                <Monitor className="h-4 w-4 mr-2" />
-                Desktop
+                <Monitor className="h-4 w-4" />
               </Button>
               <Button
                 variant={device === "tablet" ? "secondary" : "ghost"}
-                size="sm"
+                size="icon"
                 onClick={() => setDevice("tablet")}
-                className="text-white/70 hover:text-white"
+                className="h-8 w-8 text-white/70 hover:text-white"
+                title="Tablet"
               >
-                <Tablet className="h-4 w-4 mr-2" />
-                Tablet
+                <Tablet className="h-4 w-4" />
               </Button>
               <Button
                 variant={device === "mobile" ? "secondary" : "ghost"}
-                size="sm"
+                size="icon"
                 onClick={() => setDevice("mobile")}
-                className="text-white/70 hover:text-white"
+                className="h-8 w-8 text-white/70 hover:text-white"
+                title="Mobile"
               >
-                <Smartphone className="h-4 w-4 mr-2" />
-                Mobile
+                <Smartphone className="h-4 w-4" />
               </Button>
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-2 border border-white/10 rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
               <Button
                 variant={viewMode === "canvas" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("canvas")}
-                className="text-white/70 hover:text-white h-8"
+                className="text-white/70 hover:text-white h-7 px-2"
               >
-                <Square className="h-4 w-4 mr-1" />
+                <Square className="h-3.5 w-3.5 mr-1" />
                 Canvas
               </Button>
               <Button
                 variant={viewMode === "code" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("code")}
-                className="text-white/70 hover:text-white h-8"
+                className="text-white/70 hover:text-white h-7 px-2"
               >
-                <FileCode className="h-4 w-4 mr-1" />
+                <FileCode className="h-3.5 w-3.5 mr-1" />
                 Code
               </Button>
               <Button
                 variant={viewMode === "split" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("split")}
-                className="text-white/70 hover:text-white h-8"
+                className="text-white/70 hover:text-white h-7 px-2"
               >
-                <Layout className="h-4 w-4 mr-1" />
+                <Layout className="h-3.5 w-3.5 mr-1" />
                 Split
               </Button>
             </div>
 
-            {/* Interactive Mode Toggle - Only show for preview modes */}
-            {(viewMode === 'canvas' || viewMode === 'split') && (
-              <div className="flex items-center gap-2">
-                <InteractiveModeToggle
-                  isInteractive={isInteractiveMode}
-                  onToggle={setIsInteractiveMode}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsInteractiveModeHelpOpen(true)}
-                  className="h-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title="Show Interactive Mode Help (F1)"
-                >
-                  <Zap className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
+            {/* Spacer */}
+            <div className="flex-1" />
 
-            {/* Clear Canvas Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearCanvas}
-              className="h-8 text-white/70 hover:text-white hover:bg-white/10"
-              title="Clear Canvas and Start Over"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Clear
-            </Button>
+            {/* Enhanced Mode Toggle - Industry-level controls */}
+            <EnhancedModeToggle
+              currentMode={builderMode}
+              onModeChange={(mode) => {
+                setBuilderMode(mode);
+                if (mode === 'preview') {
+                  setIsInteractiveMode(true);
+                } else if (mode === 'select' || mode === 'edit') {
+                  setIsInteractiveMode(false);
+                } else if (mode === 'code') {
+                  setViewMode('code');
+                }
+              }}
+              isInteractive={isInteractiveMode}
+              onInteractiveToggle={setIsInteractiveMode}
+            />
 
-            <span className="text-sm text-white/50">{getCanvasWidth()}×{getCanvasHeight()}px (dynamic)</span>
+            {/* Actions */}
+            <div className="flex items-center gap-1 border-l border-white/10 pl-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClearCanvas}
+                className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                title="Clear Canvas"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-white/40 ml-2">{getCanvasWidth()}×{getCanvasHeight()}</span>
+            </div>
           </div>
 
           {/* Main Content Area - Canvas/Code/Split View */}
@@ -1751,10 +1778,12 @@ ${body.innerHTML}
             }}
           />
         ) : !rightPanelCollapsed ? (
-          <WebPropertiesPanel 
+          <EnhancedPropertiesPanel 
             fabricCanvas={fabricCanvas}
             selectedObject={selectedObject}
             onUpdate={() => fabricCanvas?.renderAll()}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
           />
         ) : null}
       </div>
