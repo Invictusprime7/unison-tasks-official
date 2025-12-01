@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { bundleCode, extractImageSources, resolveAssetPath } from '@/utils/codeBundler';
 import { getSelectedElementData, highlightElement, removeHighlight, updateElementInIframe } from '@/utils/htmlElementSelector';
+import { getDragDropScript, getDragDropStyles } from '@/services/canvasDragDropService';
 
 interface LiveHTMLPreviewProps {
   code: string;
@@ -272,46 +273,8 @@ function buildHTMLDocument(html: string, css: string, javascript: string): strin
     button { cursor: pointer; font-family: inherit; }
     #root { width: 100%; min-height: 100vh; }
     
-    /* Drag and Drop Reordering Styles */
-    section, [data-section], .section, .draggable-section {
-      position: relative;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .drag-handle {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      width: 32px;
-      height: 32px;
-      background: #3b82f6;
-      border-radius: 6px;
-      cursor: grab;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 100;
-    }
-    section:hover .drag-handle, [data-section]:hover .drag-handle {
-      opacity: 1;
-    }
-    .drag-handle:active {
-      cursor: grabbing;
-    }
-    .drag-handle svg {
-      width: 16px;
-      height: 16px;
-      color: white;
-    }
-    .dragging {
-      opacity: 0.5 !important;
-      transform: scale(1.02) !important;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
-    }
-    .drag-over {
-      border-top: 3px solid #3b82f6 !important;
-    }
+    /* Drag and Drop Styles - Imported from service */
+    ${getDragDropStyles()}
     
     /* Resizable image styles */
     .resizable-image {
@@ -399,88 +362,10 @@ function buildHTMLDocument(html: string, css: string, javascript: string): strin
       
       // Make images resizable and draggable
       initResizableImages();
-      // Initialize drag-drop for sections
-      initDragDrop();
     });
     
-    // Drag and Drop Section Reordering
-    let draggedElement = null;
-    
-    function initDragDrop() {
-      const sections = document.querySelectorAll('section, [data-section], .section');
-      if (sections.length === 0) return;
-      
-      sections.forEach(function(section, index) {
-        if (section.getAttribute('data-drag-initialized')) return;
-        section.setAttribute('data-drag-initialized', 'true');
-        section.setAttribute('draggable', 'true');
-        section.setAttribute('data-index', index);
-        
-        // Add drag handle
-        const handle = document.createElement('div');
-        handle.className = 'drag-handle';
-        handle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
-        section.insertBefore(handle, section.firstChild);
-        
-        section.addEventListener('dragstart', function(e) {
-          draggedElement = this;
-          this.classList.add('dragging');
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', this.getAttribute('data-index'));
-        });
-        
-        section.addEventListener('dragend', function() {
-          this.classList.remove('dragging');
-          document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
-          draggedElement = null;
-        });
-        
-        section.addEventListener('dragover', function(e) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-        });
-        
-        section.addEventListener('dragenter', function(e) {
-          e.preventDefault();
-          if (this !== draggedElement) {
-            this.classList.add('drag-over');
-          }
-        });
-        
-        section.addEventListener('dragleave', function() {
-          this.classList.remove('drag-over');
-        });
-        
-        section.addEventListener('drop', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          if (draggedElement && this !== draggedElement) {
-            const parent = this.parentNode;
-            const allSections = Array.from(parent.querySelectorAll('section, [data-section], .section'));
-            const draggedIdx = allSections.indexOf(draggedElement);
-            const targetIdx = allSections.indexOf(this);
-            
-            if (draggedIdx < targetIdx) {
-              parent.insertBefore(draggedElement, this.nextSibling);
-            } else {
-              parent.insertBefore(draggedElement, this);
-            }
-            
-            // Re-index sections
-            parent.querySelectorAll('section, [data-section], .section').forEach(function(s, i) {
-              s.setAttribute('data-index', i);
-            });
-            
-            console.log('[DragDrop] Section reordered from', draggedIdx, 'to', targetIdx);
-          }
-          
-          this.classList.remove('drag-over');
-        });
-      });
-      
-      console.log('[DragDrop] Initialized', sections.length, 'sections');
-    }
+    // Drag and Drop Section Reordering - Self-initializing script from service
+    ${getDragDropScript()}
     
     function initResizableImages() {
       document.querySelectorAll('img:not(.no-resize)').forEach(function(img) {
@@ -625,140 +510,4 @@ function buildHTMLDocument(html: string, css: string, javascript: string): strin
   return doc;
 }
 
-function getDragDropStyles(): string {
-  return `
-    /* Drag and Drop Reordering Styles */
-    section, [data-section], .section, .draggable-section {
-      position: relative;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    section:hover, [data-section]:hover, .section:hover, .draggable-section:hover {
-      outline: 2px dashed #3b82f6 !important;
-      outline-offset: -2px !important;
-    }
-    .drag-handle {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      width: 32px;
-      height: 32px;
-      background: #3b82f6;
-      border-radius: 6px;
-      cursor: grab;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 100;
-    }
-    section:hover .drag-handle, [data-section]:hover .drag-handle {
-      opacity: 1;
-    }
-    .drag-handle:active {
-      cursor: grabbing;
-    }
-    .drag-handle svg {
-      width: 16px;
-      height: 16px;
-      color: white;
-    }
-    .dragging {
-      opacity: 0.5 !important;
-      transform: scale(1.02) !important;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
-    }
-    .drag-over {
-      border-top: 3px solid #3b82f6 !important;
-    }
-  `;
-}
-
-function getDragDropScript(): string {
-  return `
-    // Drag and Drop Reordering
-    document.addEventListener('DOMContentLoaded', function() {
-      initDragDrop();
-    });
-    
-    function initDragDrop() {
-      const sections = document.querySelectorAll('section, [data-section], .section');
-      
-      sections.forEach(function(section, index) {
-        section.setAttribute('draggable', 'true');
-        section.setAttribute('data-index', index);
-        
-        // Add drag handle
-        const handle = document.createElement('div');
-        handle.className = 'drag-handle';
-        handle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
-        section.insertBefore(handle, section.firstChild);
-        
-        section.addEventListener('dragstart', handleDragStart);
-        section.addEventListener('dragend', handleDragEnd);
-        section.addEventListener('dragover', handleDragOver);
-        section.addEventListener('dragenter', handleDragEnter);
-        section.addEventListener('dragleave', handleDragLeave);
-        section.addEventListener('drop', handleDrop);
-      });
-    }
-    
-    let draggedElement = null;
-    
-    function handleDragStart(e) {
-      draggedElement = this;
-      this.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', this.getAttribute('data-index'));
-    }
-    
-    function handleDragEnd(e) {
-      this.classList.remove('dragging');
-      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-      draggedElement = null;
-    }
-    
-    function handleDragOver(e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-    }
-    
-    function handleDragEnter(e) {
-      e.preventDefault();
-      if (this !== draggedElement) {
-        this.classList.add('drag-over');
-      }
-    }
-    
-    function handleDragLeave(e) {
-      this.classList.remove('drag-over');
-    }
-    
-    function handleDrop(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      if (draggedElement && this !== draggedElement) {
-        const parent = this.parentNode;
-        const allSections = Array.from(parent.querySelectorAll('section, [data-section], .section'));
-        const draggedIdx = allSections.indexOf(draggedElement);
-        const targetIdx = allSections.indexOf(this);
-        
-        if (draggedIdx < targetIdx) {
-          parent.insertBefore(draggedElement, this.nextSibling);
-        } else {
-          parent.insertBefore(draggedElement, this);
-        }
-        
-        // Re-index sections
-        parent.querySelectorAll('section, [data-section], .section').forEach((s, i) => {
-          s.setAttribute('data-index', i);
-        });
-        
-        console.log('[DragDrop] Section reordered from', draggedIdx, 'to', targetIdx);
-      }
-      
-      this.classList.remove('drag-over');
-    }
-  `;
-}
+// getDragDropStyles and getDragDropScript are now imported from canvasDragDropService
