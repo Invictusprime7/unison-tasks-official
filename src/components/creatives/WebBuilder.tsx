@@ -1771,14 +1771,42 @@ ${body.innerHTML}
           onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
           onUpdate={() => fabricCanvas?.renderAll()}
           onUpdateHTMLElement={(updates) => {
-            if (livePreviewRef.current && selectedHTMLElement) {
-              const updatedElement = { ...selectedHTMLElement, ...updates };
+            if (livePreviewRef.current && selectedHTMLElement?.selector) {
+              // Format the update object correctly for updateElementInIframe
+              const formattedUpdates: { 
+                styles?: Record<string, string>; 
+                textContent?: string; 
+                attributes?: Record<string, string>;
+              } = {};
+              
+              if (updates.styles) {
+                formattedUpdates.styles = updates.styles;
+              }
+              if (updates.textContent !== undefined) {
+                formattedUpdates.textContent = updates.textContent;
+              }
+              if (updates.attributes) {
+                formattedUpdates.attributes = updates.attributes;
+              }
+              
+              console.log('[WebBuilder] Updating HTML element:', selectedHTMLElement.selector, formattedUpdates);
+              
               const success = livePreviewRef.current.updateElement(
-                selectedHTMLElement.selector || '',
-                updatedElement
+                selectedHTMLElement.selector,
+                formattedUpdates
               );
+              
               if (success) {
+                // Update local state with merged styles
+                const updatedElement = { 
+                  ...selectedHTMLElement, 
+                  styles: { ...selectedHTMLElement.styles, ...updates.styles },
+                  textContent: updates.textContent ?? selectedHTMLElement.textContent 
+                };
                 setSelectedHTMLElement(updatedElement);
+                console.log('[WebBuilder] Element updated successfully');
+              } else {
+                console.error('[WebBuilder] Failed to update element');
               }
             }
           }}
