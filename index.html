@@ -57,15 +57,14 @@
     </style>
     
     <script>
-      // Hide loading placeholder once React app renders
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          const placeholder = document.querySelector('.loading-placeholder');
-          if (placeholder && document.querySelector('[data-reactroot], .app-loaded')) {
-            placeholder.style.display = 'none';
-          }
-        }, 100);
-      });
+      // Prevent infinite loading with max timeout fallback
+      setTimeout(() => {
+        const placeholder = document.querySelector('.loading-placeholder');
+        if (placeholder) {
+          console.warn('Loading timeout - removing placeholder');
+          placeholder.remove();
+        }
+      }, 3000);
     </script>
   </body>
 </html>

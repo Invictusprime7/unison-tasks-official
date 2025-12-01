@@ -33,18 +33,18 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
+// Remove loading placeholder immediately
+const placeholder = rootElement.querySelector('.loading-placeholder');
+if (placeholder) {
+  placeholder.remove();
+}
+
 try {
   const root = createRoot(rootElement);
   root.render(<App />);
   
-  // Mark app as loaded for preview optimization
-  setTimeout(() => {
-    document.body.classList.add('app-loaded');
-    const placeholder = document.querySelector('.loading-placeholder');
-    if (placeholder) {
-      placeholder.style.display = 'none';
-    }
-  }, 1000);
+  // Mark app as loaded
+  document.body.classList.add('app-loaded');
   
 } catch (error) {
   console.error('Failed to render app:', error);
