@@ -13,7 +13,7 @@
   ],
   "headers": [
     {
-      "source": "/assets/**/*.css",
+      "source": "/assets/(.*)\\.css",
       "headers": [
         {
           "key": "Content-Type",
