@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { 
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
@@ -27,7 +28,7 @@ import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
 import { webBlocks } from "./web-builder/webBlocks";
-import { EnhancedModeToggle, BuilderMode } from "./web-builder/EnhancedModeToggle";
+import { SimpleModeToggle, SimpleBuilderMode } from "./web-builder/SimpleModeToggle";
 import { InteractiveElementHighlight } from "./web-builder/InteractiveElementHighlight";
 import { InteractiveElementOverlay } from "./web-builder/InteractiveElementOverlay";
 import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
@@ -111,7 +112,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [selectedObject, setSelectedObject] = useState<FabricCanvas['_objects'][0] | null>(null);
   const [activeMode, setActiveMode] = useState<"insert" | "layout" | "text" | "vector">("insert");
-  const [builderMode, setBuilderMode] = useState<BuilderMode>('select');
+  const [builderMode, setBuilderMode] = useState<SimpleBuilderMode>('select');
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(0.5);
   const [canvasHeight, setCanvasHeight] = useState(800);
@@ -390,12 +391,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     {
       key: 'v',
       description: 'Select mode',
-      action: () => setBuilderMode('select'),
-    },
-    {
-      key: 'e',
-      description: 'Edit mode',
-      action: () => setBuilderMode('edit'),
+      action: () => {
+        setBuilderMode('select');
+        setIsInteractiveMode(false);
+      },
     },
     {
       key: 'p',
@@ -406,9 +405,38 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       },
     },
     {
-      key: 'h',
-      description: 'Pan mode',
-      action: () => setBuilderMode('pan'),
+      key: 'Delete',
+      description: 'Delete selected HTML element',
+      action: () => {
+        if (selectedHTMLElement?.selector) {
+          handleDeleteHTMLElement();
+        } else if (selectedObject) {
+          handleDelete();
+        }
+      },
+    },
+    {
+      key: 'Backspace',
+      description: 'Delete selected HTML element',
+      action: () => {
+        if (selectedHTMLElement?.selector) {
+          handleDeleteHTMLElement();
+        } else if (selectedObject) {
+          handleDelete();
+        }
+      },
+    },
+    {
+      key: 'd',
+      ctrl: true,
+      description: 'Duplicate selected HTML element',
+      action: () => {
+        if (selectedHTMLElement?.selector) {
+          handleDuplicateHTMLElement();
+        } else if (selectedObject) {
+          handleDuplicate();
+        }
+      },
     },
   ]);
 
@@ -728,6 +756,43 @@ ${body.innerHTML}
     fabricCanvas.setActiveObject(cloned);
     fabricCanvas.renderAll();
   };
+
+  // Handle delete for HTML elements in the live preview
+  const handleDeleteHTMLElement = useCallback(() => {
+    if (!selectedHTMLElement?.selector || !livePreviewRef.current) return;
+    
+    const deleted = livePreviewRef.current.deleteElement(selectedHTMLElement.selector);
+    if (deleted) {
+      setSelectedHTMLElement(null);
+      toast.success('Element deleted');
+      
+      // Update the code
+      const iframe = document.querySelector('iframe');
+      if (iframe?.contentDocument) {
+        const newHtml = iframe.contentDocument.documentElement.outerHTML;
+        setPreviewCode(newHtml);
+        setEditorCode(newHtml);
+      }
+    }
+  }, [selectedHTMLElement]);
+
+  // Handle duplicate for HTML elements in the live preview
+  const handleDuplicateHTMLElement = useCallback(() => {
+    if (!selectedHTMLElement?.selector || !livePreviewRef.current) return;
+    
+    const duplicated = livePreviewRef.current.duplicateElement(selectedHTMLElement.selector);
+    if (duplicated) {
+      toast.success('Element duplicated');
+      
+      // Update the code
+      const iframe = document.querySelector('iframe');
+      if (iframe?.contentDocument) {
+        const newHtml = iframe.contentDocument.documentElement.outerHTML;
+        setPreviewCode(newHtml);
+        setEditorCode(newHtml);
+      }
+    }
+  }, [selectedHTMLElement]);
 
   const addBlock = (blockId: string) => {
     if (!fabricCanvas) return;
@@ -1428,21 +1493,28 @@ ${body.innerHTML}
             {/* Spacer */}
             <div className="flex-1" />
 
-            {/* Enhanced Mode Toggle - Industry-level controls */}
-            <EnhancedModeToggle
+            {/* Simple Mode Toggle */}
+            <SimpleModeToggle
               currentMode={builderMode}
               onModeChange={(mode) => {
                 setBuilderMode(mode);
-                if (mode === 'preview') {
-                  setIsInteractiveMode(true);
-                } else if (mode === 'select' || mode === 'edit') {
-                  setIsInteractiveMode(false);
-                } else if (mode === 'code') {
-                  setViewMode('code');
+                setIsInteractiveMode(mode === 'preview');
+              }}
+              hasSelection={!!selectedHTMLElement || !!selectedObject}
+              onDelete={() => {
+                if (selectedHTMLElement?.selector) {
+                  handleDeleteHTMLElement();
+                } else if (selectedObject) {
+                  handleDelete();
                 }
               }}
-              isInteractive={isInteractiveMode}
-              onInteractiveToggle={setIsInteractiveMode}
+              onDuplicate={() => {
+                if (selectedHTMLElement?.selector) {
+                  handleDuplicateHTMLElement();
+                } else if (selectedObject) {
+                  handleDuplicate();
+                }
+              }}
             />
 
             {/* Actions */}
@@ -1515,42 +1587,22 @@ ${body.innerHTML}
             {/* Canvas Mode - AI Live Preview Only */}
             {viewMode === 'canvas' && (
               <div className="w-full h-full flex flex-col bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
-                <div className="h-12 bg-muted border-b flex items-center justify-between px-4">
+                <div className="h-10 bg-muted/50 border-b flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-muted-foreground">AI Generated Live Preview</span>
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      builderMode === 'select' ? "bg-emerald-500" : "bg-blue-500"
+                    )} />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {builderMode === 'select' ? 'Select Mode - Click elements to edit' : 'Preview Mode - Test interactions'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setViewMode('code')}
-                      className="h-8"
-                    >
-                      <FileCode className="w-3 h-3 mr-1" />
-                      Edit Code
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setViewMode('split')}
-                      className="h-8"
-                    >
-                      <Layout className="w-3 h-3 mr-1" />
-                      Split View
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(editorCode);
-                        toast('Code copied to clipboard!');
-                      }}
-                      className="h-8"
-                    >
-                      <Copy className="w-3 h-3 mr-1" />
-                      Copy Code
-                    </Button>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">Del</kbd>
+                    <span>Delete</span>
+                    <span className="mx-1">·</span>
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘D</kbd>
+                    <span>Duplicate</span>
                   </div>
                 </div>
                 <div 
@@ -1563,7 +1615,7 @@ ${body.innerHTML}
                     code={previewCode}
                     autoRefresh={true}
                     className="w-full h-full"
-                    enableSelection={true}
+                    enableSelection={builderMode === 'select'}
                     isInteractiveMode={isInteractiveMode}
                     onElementSelect={(elementData) => {
                       console.log('[WebBuilder] HTML Element selected:', elementData);

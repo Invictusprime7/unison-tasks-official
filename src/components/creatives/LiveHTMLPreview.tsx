@@ -16,6 +16,8 @@ interface LiveHTMLPreviewProps {
 
 export interface LiveHTMLPreviewHandle {
   updateElement: (selector: string, updates: any) => boolean;
+  deleteElement: (selector: string) => boolean;
+  duplicateElement: (selector: string) => boolean;
   getIframe: () => HTMLIFrameElement | null;
 }
 
@@ -43,6 +45,40 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
         console.log('[LiveHTMLPreview] Element updated successfully:', selector);
       }
       return success;
+    },
+    deleteElement: (selector: string) => {
+      if (!iframeRef.current?.contentDocument) return false;
+      try {
+        const element = iframeRef.current.contentDocument.querySelector(selector);
+        if (element) {
+          element.remove();
+          selectedElementRef.current = null;
+          console.log('[LiveHTMLPreview] Element deleted:', selector);
+          return true;
+        }
+      } catch (e) {
+        console.error('[LiveHTMLPreview] Delete failed:', e);
+      }
+      return false;
+    },
+    duplicateElement: (selector: string) => {
+      if (!iframeRef.current?.contentDocument) return false;
+      try {
+        const element = iframeRef.current.contentDocument.querySelector(selector);
+        if (element && element.parentNode) {
+          const clone = element.cloneNode(true) as HTMLElement;
+          // Update ID if exists to avoid duplicates
+          if (clone.id) {
+            clone.id = `${clone.id}-copy-${Date.now()}`;
+          }
+          element.parentNode.insertBefore(clone, element.nextSibling);
+          console.log('[LiveHTMLPreview] Element duplicated:', selector);
+          return true;
+        }
+      } catch (e) {
+        console.error('[LiveHTMLPreview] Duplicate failed:', e);
+      }
+      return false;
     },
     getIframe: () => iframeRef.current,
   }));
