@@ -15,10 +15,57 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <!-- Preview optimization -->
+    <meta name="robots" content="index, follow" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    
+    <style>
+      /* Prevent flash of unstyled content during preview loading */
+      #root {
+        min-height: 100vh;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      .loading-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="loading-placeholder">
+        <div style="text-align: center; font-family: system-ui;">
+          <div style="width: 48px; height: 48px; border: 4px solid #374151; border-radius: 50%; border-top: 4px solid #3b82f6; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+          <p style="color: #9ca3af; margin: 0;">Loading application...</p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    
+    <script>
+      // Hide loading placeholder once React app renders
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const placeholder = document.querySelector('.loading-placeholder');
+          if (placeholder && document.querySelector('[data-reactroot], .app-loaded')) {
+            placeholder.style.display = 'none';
+          }
+        }, 100);
+      });
+    </script>
   </body>
 </html>

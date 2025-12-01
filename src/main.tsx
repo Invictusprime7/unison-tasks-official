@@ -34,7 +34,18 @@ if (!rootElement) {
 }
 
 try {
-  createRoot(rootElement).render(<App />);
+  const root = createRoot(rootElement);
+  root.render(<App />);
+  
+  // Mark app as loaded for preview optimization
+  setTimeout(() => {
+    document.body.classList.add('app-loaded');
+    const placeholder = document.querySelector('.loading-placeholder');
+    if (placeholder) {
+      placeholder.style.display = 'none';
+    }
+  }, 1000);
+  
 } catch (error) {
   console.error('Failed to render app:', error);
   rootElement.innerHTML = `
