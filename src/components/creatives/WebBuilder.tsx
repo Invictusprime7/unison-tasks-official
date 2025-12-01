@@ -13,7 +13,8 @@ import CodeMirrorEditor from './CodeMirrorEditor';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
 import { WebPropertiesPanel } from "./web-builder/WebPropertiesPanel";
 import { EnhancedPropertiesPanel } from "./web-builder/EnhancedPropertiesPanel";
-import { ElementsSidebar } from "./ElementsSidebar";
+import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
+import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
 import { CodePreviewDialog } from "./web-builder/CodePreviewDialog";
 import { AICodeAssistant } from "./AICodeAssistant";
@@ -1300,6 +1301,36 @@ ${body.innerHTML}
                   description: 'AI-generated image inserted into canvas'
                 });
               }}
+              onElementClick={(element: WebElement) => {
+                // Insert element HTML into preview code on click
+                const parser = new DOMParser();
+                let doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+                
+                // Ensure TailwindCSS is included
+                if (!doc.head.querySelector('script[src*="tailwindcss"]')) {
+                  const tailwindScript = doc.createElement('script');
+                  tailwindScript.src = 'https://cdn.tailwindcss.com';
+                  doc.head.appendChild(tailwindScript);
+                }
+                
+                // Create a wrapper and insert element HTML
+                const tempDiv = doc.createElement('div');
+                tempDiv.innerHTML = element.htmlTemplate;
+                
+                // Append all children to body
+                while (tempDiv.firstChild) {
+                  doc.body.appendChild(tempDiv.firstChild);
+                }
+                
+                // Get the new HTML
+                const newCode = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+                setEditorCode(newCode);
+                setPreviewCode(newCode);
+                
+                toast.success(`Added ${element.name}`, {
+                  description: 'Element added to preview'
+                });
+              }}
             />
           </div>
         )}
@@ -1735,21 +1766,7 @@ ${body.innerHTML}
           </div>
         </div>
 
-        {/* Right Properties Panel - Collapsible */}
-        {/* Right Panel Toggle */}
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-12 w-6 rounded-l-md rounded-r-none bg-[#1a1a1a] border-r-0 border border-white/10 text-white/70 hover:text-white hover:bg-[#252525]"
-            title={rightPanelCollapsed ? "Show properties panel" : "Hide properties panel"}
-          >
-            {rightPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </Button>
-        </div>
-        
-        {/* Show HTML Element Properties Panel when an HTML element is selected */}
+        {/* Right Properties Panel - Collapsible with integrated toggle */}
         {htmlPropertiesPanelOpen && selectedHTMLElement ? (
           <HTMLElementPropertiesPanel
             fabricCanvas={fabricCanvas}
@@ -1777,15 +1794,17 @@ ${body.innerHTML}
               }
             }}
           />
-        ) : !rightPanelCollapsed ? (
-          <EnhancedPropertiesPanel 
+        ) : (
+          <CollapsiblePropertiesPanel 
             fabricCanvas={fabricCanvas}
             selectedObject={selectedObject}
+            isCollapsed={rightPanelCollapsed}
+            onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
             onUpdate={() => fabricCanvas?.renderAll()}
             onDelete={handleDelete}
             onDuplicate={handleDuplicate}
           />
-        ) : null}
+        )}
       </div>
 
       {/* Code Preview Dialog */}
