@@ -4,11 +4,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
-  "functions": {
-    "app.js": {
-      "maxDuration": 30
-    }
-  },
   "regions": ["iad1"],
   "rewrites": [
     {
