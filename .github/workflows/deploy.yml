@@ -9,60 +9,75 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  NODE_VERSION: '20'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 jobs:
   build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run linter
-        run: npm run lint || true
+      - name: Type check
+        run: npm run type-check
+        continue-on-error: true
 
-      - name: Build project
+      - name: Lint code
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build application
         run: npm run build
         env:
-          # Supabase Configuration
+          NODE_ENV: production
+          NODE_OPTIONS: "--max_old_space_size=4096"
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-          # AI Functionality
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          VITE_LOVABLE_API_KEY: ${{ secrets.VITE_LOVABLE_API_KEY }}
           VITE_AI_GATEWAY_API_KEY: ${{ secrets.VITE_AI_GATEWAY_API_KEY }}
-          # Build optimization
-          NODE_OPTIONS: "--max_old_space_size=4096"
+          VITE_CLOUDINARY_CLOUD_NAME: ${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}
+          VITE_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.VITE_CLOUDINARY_UPLOAD_PRESET }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: production-build
           path: dist/
-          retention-days: 1
+          retention-days: 7
+          if-no-files-found: error
 
-  deploy-vercel:
+  deploy-production:
+    name: Deploy to Vercel
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 10
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: Install dependencies
@@ -71,61 +86,43 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Create Vercel Project Configuration
+      - name: Configure Vercel project
         run: |
           mkdir -p .vercel
-          echo '{"projectId":"${{ secrets.VERCEL_PROJECT_ID }}","orgId":"${{ secrets.VERCEL_ORG_ID }}"}' > .vercel/project.json
+          cat > .vercel/project.json << EOF
+          {
+            "projectId": "${{ secrets.VERCEL_PROJECT_ID }}",
+            "orgId": "${{ secrets.VERCEL_ORG_ID }}"
+          }
+          EOF
         
-      - name: Pull Vercel Environment Information
+      - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         
-      - name: Build Project Locally with Environment Variables
+      - name: Build for production
         run: npm run build
         env:
-          # Supabase Configuration
+          NODE_ENV: production
+          NODE_OPTIONS: "--max_old_space_size=4096"
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-          # AI Functionality - Core
-          VITE_AI_ENABLED: "true"
-          VITE_ENABLE_AI_ASSISTANT: "true"
-          VITE_ENABLE_AI_CODE_GENERATION: "true"
-          VITE_ENABLE_AI_DESIGN_TIPS: "true"
-          VITE_ENABLE_AI_CODE_REVIEW: "true"
-          VITE_ENABLE_AI_LEARNING: "true"
-          # AI API Keys
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          VITE_LOVABLE_API_KEY: ${{ secrets.VITE_LOVABLE_API_KEY }}
           VITE_AI_GATEWAY_API_KEY: ${{ secrets.VITE_AI_GATEWAY_API_KEY }}
-          # AI Configuration
-          VITE_AI_TEMPERATURE: "0.7"
-          VITE_AI_MAX_TOKENS: "2048"
-          VITE_AI_REQUEST_TIMEOUT: "30000"
-          # Cloudinary Configuration
           VITE_CLOUDINARY_CLOUD_NAME: ${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}
           VITE_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.VITE_CLOUDINARY_UPLOAD_PRESET }}
-          # App Configuration
           VITE_APP_TITLE: "Unison Tasks"
           VITE_APP_DESCRIPTION: "AI-powered task and project management platform"
           VITE_BASE_URL: "https://unison-tasks-unrealdev02s-projects.vercel.app"
-          # Environment Settings
-          NODE_ENV: "production"
-          VITE_DEPLOYMENT_PLATFORM: "vercel"
-          VITE_BUILD_OPTIMIZED: "true"
-          VITE_SSR_ENABLED: "false"
-          VITE_ENABLE_ERROR_REPORTING: "true"
-          VITE_ENABLE_ANALYTICS: "true"
-          # Build optimization
-          NODE_OPTIONS: "--max_old_space_size=4096"
         
-      - name: Deploy to Vercel
-        run: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Deploy to Vercel production
+        id: deploy
+        run: |
+          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} > deployment-url.txt
+          echo "url=$(cat deployment-url.txt)" >> $GITHUB_OUTPUT
+        
+      - name: Deployment summary
+        run: |
+          echo "### Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Production URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
