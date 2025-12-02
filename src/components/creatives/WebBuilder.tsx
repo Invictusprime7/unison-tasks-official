@@ -1673,6 +1673,10 @@ ${body.innerHTML}
                     enableSelection={builderMode === 'select'}
                     isInteractiveMode={isInteractiveMode}
                     onElementSelect={(elementData) => {
+                      // Open properties panel when element is selected in edit mode
+                      if (rightPanelCollapsed) {
+                        setRightPanelCollapsed(false);
+                      }
                       console.log('[WebBuilder] HTML Element selected:', elementData);
                       setSelectedHTMLElement(elementData);
                     }}
@@ -1736,6 +1740,10 @@ ${body.innerHTML}
                       onElementSelect={(elementData) => {
                         console.log('[WebBuilder] HTML Element selected:', elementData);
                         setSelectedHTMLElement(elementData);
+                        // Open properties panel when element is selected
+                        if (rightPanelCollapsed) {
+                          setRightPanelCollapsed(false);
+                        }
                       }}
                     />
                   </div>

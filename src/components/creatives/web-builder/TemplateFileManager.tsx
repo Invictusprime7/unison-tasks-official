@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { 
   FolderOpen, File, Save, Trash2, Clock, Search, 
-  Plus, MoreVertical, Globe, Lock, Edit2, Copy
+  Plus, MoreVertical, Globe, Edit2, Copy, HardDrive, Cloud
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -26,8 +25,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 
 interface SavedTemplate {
   id: string;
@@ -69,39 +68,26 @@ export const TemplateFileManager = ({
   const [saveIsPublic, setSaveIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchTemplates();
-    }
-  }, [isOpen]);
+  const templateFiles = useTemplateFiles();
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("Please sign in to view saved templates");
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("design_templates")
-        .select("*")
-        .or(`user_id.eq.${user.id},is_public.eq.true`)
-        .order("updated_at", { ascending: false });
-
-      if (error) throw error;
-      
-      setTemplates((data || []) as SavedTemplate[]);
+      const allTemplates = await templateFiles.getAllTemplates();
+      setTemplates(allTemplates);
     } catch (error) {
       console.error("Error fetching templates:", error);
       toast.error("Failed to load templates");
     } finally {
       setLoading(false);
     }
-  };
+  }, [templateFiles]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTemplates();
+    }
+  }, [isOpen, fetchTemplates]);
 
   const handleSave = async () => {
     if (!saveName.trim()) {
@@ -112,22 +98,8 @@ export const TemplateFileManager = ({
     setSaving(true);
     try {
       if (editingTemplate) {
-        // Update existing template
-        const { error } = await supabase
-          .from("design_templates")
-          .update({
-            name: saveName,
-            description: saveDescription,
-            is_public: saveIsPublic,
-            canvas_data: { html: currentCode, previewCode: currentCode },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingTemplate.id);
-
-        if (error) throw error;
-        toast.success("Template updated!");
+        await templateFiles.updateTemplate(editingTemplate.id, currentCode);
       } else {
-        // Create new template
         await onSaveTemplate(saveName, saveDescription, saveIsPublic);
       }
       
@@ -149,14 +121,7 @@ export const TemplateFileManager = ({
     if (!confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
 
     try {
-      const { error } = await supabase
-        .from("design_templates")
-        .delete()
-        .eq("id", template.id);
-
-      if (error) throw error;
-      
-      toast.success("Template deleted");
+      await templateFiles.deleteTemplate(template.id);
       fetchTemplates();
     } catch (error) {
       console.error("Error deleting template:", error);
@@ -166,24 +131,13 @@ export const TemplateFileManager = ({
 
   const handleDuplicate = async (template: SavedTemplate) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please sign in");
-        return;
-      }
-
-      const { error } = await supabase
-        .from("design_templates")
-        .insert({
-          name: `${template.name} (Copy)`,
-          description: template.description,
-          canvas_data: template.canvas_data,
-          is_public: false,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
-      
+      const code = template.canvas_data?.html || template.canvas_data?.previewCode || '';
+      await templateFiles.saveTemplate(
+        `${template.name} (Copy)`,
+        template.description || '',
+        false,
+        code
+      );
       toast.success("Template duplicated!");
       fetchTemplates();
     } catch (error) {
@@ -213,6 +167,8 @@ export const TemplateFileManager = ({
     t.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const isLocalTemplate = (id: string) => id.startsWith("local-");
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -223,12 +179,11 @@ export const TemplateFileManager = ({
               Template Files
             </DialogTitle>
             <DialogDescription>
-              Save, open, and manage your web templates
+              Save, open, and manage your web templates. No sign-in required for local storage.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Actions Bar */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -245,7 +200,6 @@ export const TemplateFileManager = ({
               </Button>
             </div>
 
-            {/* Template List */}
             <ScrollArea className="h-[400px] border rounded-lg">
               {loading ? (
                 <div className="flex items-center justify-center h-full">
@@ -280,10 +234,12 @@ export const TemplateFileManager = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate">{template.name}</span>
-                          {template.is_public ? (
-                            <Globe className="h-3 w-3 text-muted-foreground" />
+                          {isLocalTemplate(template.id) ? (
+                            <span title="Saved locally"><HardDrive className="h-3 w-3 text-amber-500" /></span>
+                          ) : template.is_public ? (
+                            <span title="Public"><Globe className="h-3 w-3 text-muted-foreground" /></span>
                           ) : (
-                            <Lock className="h-3 w-3 text-muted-foreground" />
+                            <span title="Saved to cloud"><Cloud className="h-3 w-3 text-blue-500" /></span>
                           )}
                         </div>
                         {template.description && (
@@ -344,7 +300,6 @@ export const TemplateFileManager = ({
         </DialogContent>
       </Dialog>
 
-      {/* Save/Edit Dialog */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -380,7 +335,7 @@ export const TemplateFileManager = ({
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="public">Make Public</Label>
+              <Label htmlFor="public" className="text-muted-foreground">Make Public (requires sign in)</Label>
               <Switch
                 id="public"
                 checked={saveIsPublic}

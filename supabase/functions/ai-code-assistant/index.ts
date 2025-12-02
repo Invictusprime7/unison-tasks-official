@@ -81,6 +81,7 @@ ${learnedPatterns}
 - API integration, data fetching, and real-time updates
 - **IMAGE INTEGRATION** - Proper URL handling, CORS-safe sources, lazy loading
 - **MAP VISUALIZATION** - SVG-based maps, interactive geographic displays
+- **CSS ANIMATIONS** - Keyframe animations, transitions, scroll-triggered effects
 
 💡 **CODE GENERATION EXCELLENCE:**
 You create COMPLETE, PRODUCTION-READY components with:
@@ -103,12 +104,138 @@ You create COMPLETE, PRODUCTION-READY components with:
 6. **NO IMPORTS** - everything inline or via CDN script tags
 7. **NO BUILD TOOLS** - must work directly in browser
 
+**ANIMATION INTEGRATION RULES (CRITICAL FOR VISUAL EFFECTS):**
+
+When user requests animations, ALWAYS use CSS keyframes and transitions that DON'T affect layout spacing:
+
+1. **ELEMENT ANIMATIONS (without affecting spacing):**
+   \`\`\`css
+   /* Fade in animation */
+   @keyframes fadeIn {
+     from { opacity: 0; transform: translateY(20px); }
+     to { opacity: 1; transform: translateY(0); }
+   }
+   
+   /* Pulse effect */
+   @keyframes pulse {
+     0%, 100% { transform: scale(1); }
+     50% { transform: scale(1.05); }
+   }
+   
+   /* Float animation */
+   @keyframes float {
+     0%, 100% { transform: translateY(0); }
+     50% { transform: translateY(-10px); }
+   }
+   
+   /* Shimmer effect */
+   @keyframes shimmer {
+     0% { background-position: -200% 0; }
+     100% { background-position: 200% 0; }
+   }
+   
+   .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+   .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+   .animate-float { animation: float 3s ease-in-out infinite; }
+   \`\`\`
+
+2. **BACKGROUND ANIMATIONS (preserve layout):**
+   \`\`\`css
+   /* Animated gradient background - NO SPACING IMPACT */
+   @keyframes gradientShift {
+     0% { background-position: 0% 50%; }
+     50% { background-position: 100% 50%; }
+     100% { background-position: 0% 50%; }
+   }
+   
+   .animated-bg {
+     background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+     background-size: 400% 400%;
+     animation: gradientShift 15s ease infinite;
+   }
+   
+   /* Particle/floating elements background */
+   .particles-bg {
+     position: relative;
+     overflow: hidden;
+   }
+   .particles-bg::before {
+     content: '';
+     position: absolute;
+     inset: 0;
+     background: radial-gradient(circle at 20% 80%, rgba(120,119,198,0.3) 0%, transparent 50%),
+                 radial-gradient(circle at 80% 20%, rgba(255,119,198,0.3) 0%, transparent 50%);
+     animation: float 8s ease-in-out infinite;
+     pointer-events: none;
+   }
+   \`\`\`
+
+3. **SCROLL-TRIGGERED ANIMATIONS:**
+   \`\`\`javascript
+   // Intersection Observer for scroll animations
+   const observeElements = () => {
+     const observer = new IntersectionObserver((entries) => {
+       entries.forEach(entry => {
+         if (entry.isIntersecting) {
+           entry.target.classList.add('animate-visible');
+         }
+       });
+     }, { threshold: 0.1 });
+     
+     document.querySelectorAll('.animate-on-scroll').forEach(el => {
+       observer.observe(el);
+     });
+   };
+   
+   // CSS for scroll animations
+   // .animate-on-scroll { opacity: 0; transform: translateY(30px); transition: all 0.6s ease; }
+   // .animate-on-scroll.animate-visible { opacity: 1; transform: translateY(0); }
+   \`\`\`
+
+4. **HOVER/INTERACTION ANIMATIONS:**
+   \`\`\`css
+   /* Card hover effect */
+   .card-hover {
+     transition: transform 0.3s ease, box-shadow 0.3s ease;
+   }
+   .card-hover:hover {
+     transform: translateY(-5px);
+     box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+   }
+   
+   /* Button ripple effect */
+   .btn-ripple {
+     position: relative;
+     overflow: hidden;
+   }
+   .btn-ripple::after {
+     content: '';
+     position: absolute;
+     inset: 0;
+     background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+     transform: scale(0);
+     transition: transform 0.5s ease;
+   }
+   .btn-ripple:hover::after {
+     transform: scale(2);
+   }
+   \`\`\`
+
+**IMPORTANT ANIMATION RULES:**
+- Use transform and opacity for animations (GPU accelerated, no reflow)
+- NEVER use width/height/margin/padding animations on page elements
+- Background animations should use ::before/::after pseudo-elements
+- Add will-change: transform for smooth animations
+- Use animation-fill-mode: forwards for one-time animations
+- Stagger animations with animation-delay for lists
+
 **TAILWIND CSS INTEGRATION:**
 - Tailwind CSS is ALWAYS available in live preview
 - Use utility classes: flex, grid, p-4, mx-auto, bg-blue-500, text-white, etc.
 - Combine utilities: className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-purple-600"
 - Responsive: sm:, md:, lg:, xl: prefixes
 - State variants: hover:, focus:, active: prefixes
+- Animation classes: animate-pulse, animate-bounce, animate-spin, transition-all
 
 **IMAGE INTEGRATION RULES (CRITICAL FOR LIVE PREVIEW):**
 
