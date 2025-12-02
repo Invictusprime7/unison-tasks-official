@@ -7,7 +7,8 @@ import {
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap,
-  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2
+  ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
+  FolderOpen
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
@@ -34,6 +35,8 @@ import { InteractiveElementOverlay } from "./web-builder/InteractiveElementOverl
 import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
 import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
 import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
+import { TemplateFileManager } from "./web-builder/TemplateFileManager";
+import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
@@ -145,6 +148,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
+  
+  // Template file management
+  const [fileManagerOpen, setFileManagerOpen] = useState(false);
+  const templateFiles = useTemplateFiles();
 
   // Add console log to confirm component is rendering
   console.log('[WebBuilder] Component rendering with CodeMirror...');
@@ -257,6 +264,43 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       description: 'Starting fresh with a clean slate',
     });
   };
+
+  // Handle loading a saved template
+  const handleLoadTemplate = useCallback((template: {
+    id: string;
+    name: string;
+    canvas_data: { html?: string; previewCode?: string };
+  }) => {
+    const code = template.canvas_data?.html || template.canvas_data?.previewCode || '';
+    if (code) {
+      setEditorCode(code);
+      setPreviewCode(code);
+      templateFiles.setCurrentTemplateId(template.id);
+      toast.success(`Loaded "${template.name}"`, {
+        description: 'Template is ready for editing',
+      });
+    } else {
+      toast.error('Template has no content');
+    }
+  }, [templateFiles]);
+
+  // Handle saving current template
+  const handleSaveTemplate = useCallback(async (
+    name: string,
+    description: string,
+    isPublic: boolean
+  ) => {
+    await templateFiles.saveTemplate(name, description, isPublic, previewCode);
+  }, [templateFiles, previewCode]);
+
+  // Handle quick save (update existing template)
+  const handleQuickSave = useCallback(async () => {
+    if (templateFiles.currentTemplateId) {
+      await templateFiles.updateTemplate(templateFiles.currentTemplateId, previewCode);
+    } else {
+      setFileManagerOpen(true);
+    }
+  }, [templateFiles, previewCode]);
 
   // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {
@@ -1203,13 +1247,24 @@ ${body.innerHTML}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              history.save();
-            }}
+            onClick={() => setFileManagerOpen(true)}
             className="text-white/70 hover:text-white"
-            title="Save (Ctrl+S)"
+            title="Open Files"
+          >
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Files
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleQuickSave}
+            className="text-white/70 hover:text-white"
+            title={templateFiles.currentTemplateId ? "Save (Ctrl+S)" : "Save As... (Ctrl+S)"}
           >
             <Save className="h-4 w-4" />
+            {templateFiles.currentTemplateId && (
+              <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" title="Saved" />
+            )}
           </Button>
           <Button
             variant="ghost"
@@ -2024,6 +2079,15 @@ ${body.innerHTML}
           }}
         />
       )}
+
+      {/* Template File Manager */}
+      <TemplateFileManager
+        isOpen={fileManagerOpen}
+        onOpenChange={setFileManagerOpen}
+        currentCode={previewCode}
+        onLoadTemplate={handleLoadTemplate}
+        onSaveTemplate={handleSaveTemplate}
+      />
     </div>
   );
 };
