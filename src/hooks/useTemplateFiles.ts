@@ -20,6 +20,24 @@ interface SavedTemplate {
   thumbnail_url: string | null;
 }
 
+// Local storage key for anonymous templates
+const LOCAL_STORAGE_KEY = "webbuilder_templates";
+
+// Get templates from local storage
+const getLocalTemplates = (): SavedTemplate[] => {
+  try {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Save templates to local storage
+const saveLocalTemplates = (templates: SavedTemplate[]) => {
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(templates));
+};
+
 export function useTemplateFiles() {
   const [loading, setLoading] = useState(false);
   const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
@@ -34,9 +52,26 @@ export function useTemplateFiles() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      // If no user, save to local storage
       if (!user) {
-        toast.error("Please sign in to save templates");
-        return null;
+        const localTemplates = getLocalTemplates();
+        const newTemplate: SavedTemplate = {
+          id: `local-${Date.now()}`,
+          name,
+          description: description || null,
+          canvas_data: { html: code, previewCode: code },
+          is_public: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          thumbnail_url: null,
+        };
+        localTemplates.unshift(newTemplate);
+        saveLocalTemplates(localTemplates);
+        setCurrentTemplateId(newTemplate.id);
+        toast.success("Template saved locally!", {
+          description: `"${name}" saved to browser storage`,
+        });
+        return newTemplate.id;
       }
 
       const canvasData = {
@@ -79,6 +114,23 @@ export function useTemplateFiles() {
   ): Promise<boolean> => {
     setLoading(true);
     try {
+      // Check if it's a local template
+      if (id.startsWith("local-")) {
+        const localTemplates = getLocalTemplates();
+        const index = localTemplates.findIndex(t => t.id === id);
+        if (index !== -1) {
+          localTemplates[index] = {
+            ...localTemplates[index],
+            canvas_data: { html: code, previewCode: code },
+            updated_at: new Date().toISOString(),
+          };
+          saveLocalTemplates(localTemplates);
+          toast.success("Template updated!");
+          return true;
+        }
+        throw new Error("Template not found");
+      }
+
       const canvasData = {
         html: code,
         previewCode: code,
@@ -108,6 +160,17 @@ export function useTemplateFiles() {
   const loadTemplate = useCallback(async (id: string): Promise<SavedTemplate | null> => {
     setLoading(true);
     try {
+      // Check if it's a local template
+      if (id.startsWith("local-")) {
+        const localTemplates = getLocalTemplates();
+        const template = localTemplates.find(t => t.id === id);
+        if (template) {
+          setCurrentTemplateId(template.id);
+          return template;
+        }
+        throw new Error("Template not found");
+      }
+
       const { data, error } = await supabase
         .from("design_templates")
         .select("*")
@@ -134,10 +197,52 @@ export function useTemplateFiles() {
     }
   }, []);
 
+  const deleteTemplate = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      // Check if it's a local template
+      if (id.startsWith("local-")) {
+        const localTemplates = getLocalTemplates();
+        const filtered = localTemplates.filter(t => t.id !== id);
+        saveLocalTemplates(filtered);
+        toast.success("Template deleted");
+        return true;
+      }
+
+      const { error } = await supabase
+        .from("design_templates")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Template deleted");
+      return true;
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      toast.error("Failed to delete template");
+      return false;
+    }
+  }, []);
+
   const autoSave = useCallback(async (code: string): Promise<boolean> => {
     if (!currentTemplateId) return false;
     
     try {
+      // Check if it's a local template
+      if (currentTemplateId.startsWith("local-")) {
+        const localTemplates = getLocalTemplates();
+        const index = localTemplates.findIndex(t => t.id === currentTemplateId);
+        if (index !== -1) {
+          localTemplates[index] = {
+            ...localTemplates[index],
+            canvas_data: { html: code, previewCode: code },
+            updated_at: new Date().toISOString(),
+          };
+          saveLocalTemplates(localTemplates);
+          return true;
+        }
+        return false;
+      }
+
       const canvasData = {
         html: code,
         previewCode: code,
@@ -163,14 +268,49 @@ export function useTemplateFiles() {
     setCurrentTemplateId(null);
   }, []);
 
+  // Get all templates (local + cloud if authenticated)
+  const getAllTemplates = useCallback(async (): Promise<SavedTemplate[]> => {
+    const localTemplates = getLocalTemplates();
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return localTemplates;
+      }
+
+      const { data, error } = await supabase
+        .from("design_templates")
+        .select("*")
+        .or(`user_id.eq.${user.id},is_public.eq.true`)
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+      
+      const cloudTemplates = (data || []).map(t => ({
+        ...t,
+        canvas_data: t.canvas_data as unknown as TemplateData,
+      })) as SavedTemplate[];
+
+      // Combine local and cloud templates, local first
+      return [...localTemplates, ...cloudTemplates];
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      return localTemplates;
+    }
+  }, []);
+
   return {
     loading,
     currentTemplateId,
     saveTemplate,
     updateTemplate,
     loadTemplate,
+    deleteTemplate,
     autoSave,
     clearCurrentTemplate,
     setCurrentTemplateId,
+    getAllTemplates,
+    getLocalTemplates,
   };
 }
