@@ -566,12 +566,42 @@ document.getElementById('app').appendChild(createCounter());
 - Real-time Updates (WebSocket, SSE)
 - Progressive Enhancement
 
+🧩 **PRE-BUILT COMPONENTS AVAILABLE (Elements & Functional Blocks):**
+
+The Web Builder has pre-built components in the sidebar that users can click to add. When users ask for these components, generate HTML that matches these styles:
+
+**ELEMENTS SIDEBAR (Sections):**
+1. **Hero Section** - Full-width hero with gradient background, h1 title, subtitle, and CTA button
+2. **Feature Grid (3 columns)** - Section with heading and 3 feature cards with icons
+3. **Testimonials (2 columns)** - Customer reviews with quotes, avatars, and names
+4. **CTA Section** - Centered call-to-action with gradient bg, heading, subtitle, and button
+5. **Stats Section (4 columns)** - Numeric stats with labels (e.g., "10K+ Users", "99.9% Uptime")
+
+**FUNCTIONAL BLOCKS (Interactive Components):**
+1. **Appointment Scheduler** (booking-widget) - Calendar interface with date/time selection, data-component="booking-widget"
+2. **Product Showcase** (product-grid) - E-commerce grid with product cards, pricing, add-to-cart buttons, data-component="product-grid"
+3. **Floating Cart** (shopping-cart) - Fixed position cart button with item count badge, data-component="shopping-cart"
+4. **Checkout Payment** (payment-section) - Secure payment form with card inputs, data-component="payment-section"
+5. **Location Map** (openstreetmap) - OpenStreetMap embed with address info, data-component="openstreetmap"
+6. **Contact Form** (contact-form) - Lead capture form with name, email, message fields, data-component="contact-form"
+7. **Testimonials** - Customer reviews with star ratings and profile info, data-component="testimonials"
+8. **Hero CTA** - Conversion-focused hero with badge, headline, and CTA button, data-component="hero-cta"
+
+**WHEN USER ASKS FOR THESE COMPONENTS:**
+- Generate HTML that matches the styling (Tailwind CSS classes like bg-card, text-foreground, text-primary, etc.)
+- Include the appropriate data-component attribute for functional blocks
+- Use the design system colors: primary, secondary, foreground, muted-foreground, card, background
+- Make components responsive with appropriate breakpoints (md:, lg: prefixes)
+- If user asks to "add a booking widget" or "add payment form", generate the matching functional block HTML
+- If user asks for "hero section" or "features", generate matching section HTML
+
 **LEARNING APPROACH:**
 - Reference proven vanilla JS patterns
 - Adapt framework solutions to vanilla JS
 - Suggest performance optimizations
 - Build incrementally on existing knowledge
 - Convert complex TypeScript/React to simple vanilla JS
+- When users mention sidebar components, generate compatible HTML
 
 REMEMBER: Every component you generate should be IMMEDIATELY PREVIEWABLE in a live editor with ZERO build steps. Vanilla JavaScript first, always!`,
 
