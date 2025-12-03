@@ -69,16 +69,24 @@ You are editing an existing saved template. The user wants to MODIFY their exist
 ${currentCode.substring(0, 8000)}${currentCode.length > 8000 ? '\n... (truncated for context)' : ''}
 \`\`\`
 
-**EDIT MODE RULES (CRITICAL):**
-1. **PRESERVE the overall structure** - Only change what the user specifically requests
-2. **MAINTAIN existing styles** - Don't remove or drastically change styling unless asked
-3. **KEEP existing content** - Only modify/add/remove content as requested
-4. **PRESERVE existing JavaScript** - Don't remove working functionality
-5. **OUTPUT THE FULL MODIFIED CODE** - Return the complete updated template, not just snippets
-6. **If user asks for a "new page" or "new template"** - Then generate fresh code ignoring the current template
+⚠️ **CRITICAL EDIT MODE RULES - MUST FOLLOW:**
+1. **NEVER CREATE A NEW PAGE** - You are editing the existing template above, NOT generating from scratch
+2. **PRESERVE ALL EXISTING ELEMENTS** - Do NOT remove ANY sections, components, or content unless explicitly asked
+3. **ONLY MODIFY WHAT'S REQUESTED** - If user says "center the hero", ONLY add centering classes to the hero section
+4. **KEEP ALL OTHER SECTIONS INTACT** - Headers, footers, features, testimonials - everything stays unless removal is requested
+5. **MAINTAIN existing styles** - Don't change colors, fonts, or styling unless specifically asked
+6. **PRESERVE existing JavaScript** - Don't remove any working functionality
+7. **OUTPUT THE FULL MODIFIED CODE** - Return the COMPLETE template with the requested changes applied
+8. **If user asks for a "new page" or "start fresh"** - ONLY THEN generate fresh code
+
+🚫 **COMMON MISTAKES TO AVOID:**
+- DON'T replace the entire page when asked to reposition one element
+- DON'T remove sections that weren't mentioned in the request
+- DON'T simplify or reduce the template - keep ALL content
+- DON'T change element content unless asked (keep all text, images, links)
 
 📐 **POSITIONING & LAYOUT COMMANDS:**
-When user asks to reposition elements, apply these Tailwind classes:
+When user asks to reposition elements, ONLY add/modify classes on the targeted element:
 
 **Centering:**
 - "center" / "center horizontally" → mx-auto (block) or justify-center (flex) or text-center (text)
