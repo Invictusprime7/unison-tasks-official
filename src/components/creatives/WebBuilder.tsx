@@ -37,6 +37,8 @@ import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
 import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 import { TemplateFileManager } from "./web-builder/TemplateFileManager";
 import { useTemplateFiles } from "@/hooks/useTemplateFiles";
+import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
@@ -1301,6 +1303,12 @@ ${body.innerHTML}
         {/* Left Panel - Elements Sidebar */}
         {!leftPanelCollapsed && (
           <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+            <Tabs defaultValue="elements" className="flex-1 flex flex-col">
+              <TabsList className="w-full justify-start rounded-none border-b px-2 h-10">
+                <TabsTrigger value="elements" className="text-xs">Elements</TabsTrigger>
+                <TabsTrigger value="functional" className="text-xs">Functional</TabsTrigger>
+              </TabsList>
+              <TabsContent value="elements" className="flex-1 m-0 overflow-hidden">
             <ElementsSidebar
               onElementDragStart={(element) => {
                 dragDropServiceRef.current.onDragStart(element);
@@ -1450,6 +1458,25 @@ ${body.innerHTML}
                 });
               }}
             />
+              </TabsContent>
+              <TabsContent value="functional" className="flex-1 m-0 overflow-hidden">
+                <FunctionalBlocksPanel 
+                  onInsertBlock={(html) => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+                    const tempDiv = doc.createElement('div');
+                    tempDiv.innerHTML = html;
+                    while (tempDiv.firstChild) {
+                      doc.body.appendChild(tempDiv.firstChild);
+                    }
+                    const newCode = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+                    setEditorCode(newCode);
+                    setPreviewCode(newCode);
+                    toast.success('Functional block added');
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
         

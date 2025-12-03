@@ -89,6 +89,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bookings: {
+        Row: {
+          booking_date: string
+          booking_time: string
+          created_at: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          duration_minutes: number | null
+          ghl_calendar_id: string | null
+          ghl_contact_id: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          service_name: string
+          session_id: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          booking_date: string
+          booking_time: string
+          created_at?: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          duration_minutes?: number | null
+          ghl_calendar_id?: string | null
+          ghl_contact_id?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          service_name: string
+          session_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          booking_date?: string
+          booking_time?: string
+          created_at?: string | null
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          duration_minutes?: number | null
+          ghl_calendar_id?: string | null
+          ghl_contact_id?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          service_name?: string
+          session_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       brand_kits: {
         Row: {
           colors: Json | null
@@ -120,6 +180,44 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cart_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          product_id: string | null
+          quantity: number
+          session_id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          session_id: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          session_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -622,6 +720,66 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          customer_email: string
+          customer_name: string | null
+          id: string
+          items: Json
+          metadata: Json | null
+          payment_intent_id: string | null
+          payment_method: string | null
+          session_id: string | null
+          shipping_address: Json | null
+          status: string | null
+          subtotal: number
+          tax: number | null
+          total: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          customer_email: string
+          customer_name?: string | null
+          id?: string
+          items: Json
+          metadata?: Json | null
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          session_id?: string | null
+          shipping_address?: Json | null
+          status?: string | null
+          subtotal: number
+          tax?: number | null
+          total: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          customer_email?: string
+          customer_name?: string | null
+          id?: string
+          items?: Json
+          metadata?: Json | null
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          session_id?: string | null
+          shipping_address?: Json | null
+          status?: string | null
+          subtotal?: number
+          tax?: number | null
+          total?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       page_sections: {
         Row: {
           created_at: string | null
@@ -694,6 +852,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      products: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          inventory_count: number | null
+          is_active: boolean | null
+          metadata: Json | null
+          name: string
+          price: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          inventory_count?: number | null
+          is_active?: boolean | null
+          metadata?: Json | null
+          name: string
+          price: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          inventory_count?: number | null
+          is_active?: boolean | null
+          metadata?: Json | null
+          name?: string
+          price?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
