@@ -3,12 +3,13 @@ import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { 
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap,
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
-  FolderOpen
+  FolderOpen, Cloud, CloudOff
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
@@ -165,6 +166,89 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
   const templateFiles = useTemplateFiles();
+  
+  // Auto-save functionality
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedCodeRef = useRef<string>('');
+  const AUTO_SAVE_KEY = 'webbuilder_autosave_draft';
+  const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
+  
+  // Auto-save draft to localStorage
+  const saveDraft = useCallback(() => {
+    if (previewCode && previewCode !== lastSavedCodeRef.current) {
+      setAutoSaveStatus('saving');
+      try {
+        const draft = {
+          code: previewCode,
+          editorCode: editorCode,
+          savedAt: new Date().toISOString(),
+          templateId: templateFiles.currentTemplateId || null,
+        };
+        localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(draft));
+        lastSavedCodeRef.current = previewCode;
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 2000);
+      } catch (error) {
+        console.error('[AutoSave] Error saving draft:', error);
+        setAutoSaveStatus('idle');
+      }
+    }
+  }, [previewCode, editorCode, templateFiles.currentTemplateId]);
+  
+  // Set up auto-save interval
+  useEffect(() => {
+    autoSaveTimerRef.current = setInterval(saveDraft, AUTO_SAVE_INTERVAL);
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearInterval(autoSaveTimerRef.current);
+      }
+    };
+  }, [saveDraft]);
+  
+  // Restore draft on mount
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(AUTO_SAVE_KEY);
+      if (savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        const savedTime = new Date(draft.savedAt);
+        const now = new Date();
+        const hoursSinceLastSave = (now.getTime() - savedTime.getTime()) / (1000 * 60 * 60);
+        
+        // Only restore if draft is less than 24 hours old
+        if (hoursSinceLastSave < 24 && draft.code) {
+          // Check if there's meaningful content (not just default)
+          const isDefaultContent = draft.code.includes('AI-generated code will appear here');
+          if (!isDefaultContent) {
+            setPreviewCode(draft.code);
+            if (draft.editorCode) {
+              setEditorCode(draft.editorCode);
+            }
+            lastSavedCodeRef.current = draft.code;
+            toast.info('Draft restored', {
+              description: `Last saved ${format(savedTime, 'MMM d, h:mm a')}`,
+              action: {
+                label: 'Discard',
+                onClick: () => {
+                  localStorage.removeItem(AUTO_SAVE_KEY);
+                  setPreviewCode('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
+                },
+              },
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[AutoSave] Error restoring draft:', error);
+    }
+  }, []);
+  
+  // Clear draft when template is saved
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(AUTO_SAVE_KEY);
+    lastSavedCodeRef.current = '';
+  }, []);
 
   // Add console log to confirm component is rendering
   console.log('[WebBuilder] Component rendering with CodeMirror...');
@@ -335,6 +419,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setSaveProjectDialogOpen(false);
       setSaveProjectName("");
       setSaveProjectDescription("");
+      clearDraft(); // Clear auto-save draft after successful save
       toast.success(`Saved "${saveProjectName}" to Projects`);
     } catch (error) {
       console.error("Error saving to projects:", error);
@@ -342,7 +427,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     } finally {
       setIsSavingProject(false);
     }
-  }, [saveProjectName, saveProjectDescription, templateFiles, previewCode]);
+  }, [saveProjectName, saveProjectDescription, templateFiles, previewCode, clearDraft]);
 
   // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {
@@ -1603,6 +1688,24 @@ ${body.innerHTML}
                 <Save className="h-4 w-4 mr-1" />
                 <span className="text-xs">Save</span>
               </Button>
+              
+              {/* Auto-save status indicator */}
+              {autoSaveStatus !== 'idle' && (
+                <div className="flex items-center gap-1 text-xs text-white/50 ml-1">
+                  {autoSaveStatus === 'saving' ? (
+                    <>
+                      <div className="animate-spin h-3 w-3 border border-white/30 border-t-white/70 rounded-full" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="h-3 w-3 text-green-400" />
+                      <span className="text-green-400">Saved</span>
+                    </>
+                  )}
+                </div>
+              )}
+              
               <Button
                 variant="ghost"
                 size="icon"
