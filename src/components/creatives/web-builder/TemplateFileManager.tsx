@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -59,7 +59,7 @@ export const TemplateFileManager = ({
   onOpenChange,
 }: TemplateFileManagerProps) => {
   const [templates, setTemplates] = useState<SavedTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SavedTemplate | null>(null);
@@ -67,13 +67,15 @@ export const TemplateFileManager = ({
   const [saveDescription, setSaveDescription] = useState("");
   const [saveIsPublic, setSaveIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
+  const hasFetched = useRef(false);
 
-  const templateFiles = useTemplateFiles();
+  const { getAllTemplates, updateTemplate, deleteTemplate, saveTemplate } = useTemplateFiles();
 
   const fetchTemplates = useCallback(async () => {
+    if (loading) return;
     setLoading(true);
     try {
-      const allTemplates = await templateFiles.getAllTemplates();
+      const allTemplates = await getAllTemplates();
       setTemplates(allTemplates);
     } catch (error) {
       console.error("Error fetching templates:", error);
@@ -81,11 +83,15 @@ export const TemplateFileManager = ({
     } finally {
       setLoading(false);
     }
-  }, [templateFiles]);
+  }, [getAllTemplates]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !hasFetched.current) {
+      hasFetched.current = true;
       fetchTemplates();
+    }
+    if (!isOpen) {
+      hasFetched.current = false;
     }
   }, [isOpen, fetchTemplates]);
 
@@ -98,7 +104,7 @@ export const TemplateFileManager = ({
     setSaving(true);
     try {
       if (editingTemplate) {
-        await templateFiles.updateTemplate(editingTemplate.id, currentCode);
+        await updateTemplate(editingTemplate.id, currentCode);
       } else {
         await onSaveTemplate(saveName, saveDescription, saveIsPublic);
       }
@@ -108,6 +114,7 @@ export const TemplateFileManager = ({
       setSaveName("");
       setSaveDescription("");
       setSaveIsPublic(false);
+      hasFetched.current = false;
       fetchTemplates();
     } catch (error) {
       console.error("Error saving template:", error);
@@ -121,7 +128,8 @@ export const TemplateFileManager = ({
     if (!confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
 
     try {
-      await templateFiles.deleteTemplate(template.id);
+      await deleteTemplate(template.id);
+      hasFetched.current = false;
       fetchTemplates();
     } catch (error) {
       console.error("Error deleting template:", error);
@@ -132,13 +140,14 @@ export const TemplateFileManager = ({
   const handleDuplicate = async (template: SavedTemplate) => {
     try {
       const code = template.canvas_data?.html || template.canvas_data?.previewCode || '';
-      await templateFiles.saveTemplate(
+      await saveTemplate(
         `${template.name} (Copy)`,
         template.description || '',
         false,
         code
       );
       toast.success("Template duplicated!");
+      hasFetched.current = false;
       fetchTemplates();
     } catch (error) {
       console.error("Error duplicating template:", error);
