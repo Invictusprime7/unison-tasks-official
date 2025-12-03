@@ -282,15 +282,22 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const handleLoadTemplate = useCallback((template: {
     id: string;
     name: string;
-    canvas_data: { html?: string; previewCode?: string };
+    canvas_data: { html?: string; css?: string; previewCode?: string };
   }) => {
-    const code = template.canvas_data?.html || template.canvas_data?.previewCode || '';
+    const code = template.canvas_data?.previewCode || template.canvas_data?.html || '';
     if (code) {
+      // Set the code in both editor and preview
       setEditorCode(code);
       setPreviewCode(code);
+      
+      // Track the current template ID for quick save
       templateFiles.setCurrentTemplateId(template.id);
-      toast.success(`Loaded "${template.name}"`, {
-        description: 'Template is ready for editing',
+      
+      // Switch to preview mode to show the loaded template
+      setBuilderMode('preview');
+      
+      toast.success(`Opened "${template.name}"`, {
+        description: 'Template loaded - you can continue editing',
       });
     } else {
       toast.error('Template has no content');
