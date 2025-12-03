@@ -298,7 +298,7 @@ export function useTemplateFiles() {
       console.error("Error fetching templates:", error);
       return localTemplates;
     }
-  }, []);
+  }, []); // Empty dependency array for stable reference
 
   return {
     loading,

@@ -38,7 +38,9 @@ import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 import { TemplateFileManager } from "./web-builder/TemplateFileManager";
 import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
+import { ProjectsPanel } from "./web-builder/ProjectsPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
@@ -1302,13 +1304,14 @@ ${body.innerHTML}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Elements Sidebar */}
         {!leftPanelCollapsed && (
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-            <Tabs defaultValue="elements" className="flex-1 flex flex-col">
-              <TabsList className="w-full justify-start rounded-none border-b px-2 h-10">
+          <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+            <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
+              <TabsList className="w-full justify-start rounded-none border-b px-2 h-10 shrink-0">
                 <TabsTrigger value="elements" className="text-xs">Elements</TabsTrigger>
                 <TabsTrigger value="functional" className="text-xs">Functional</TabsTrigger>
+                <TabsTrigger value="projects" className="text-xs">Projects</TabsTrigger>
               </TabsList>
-              <TabsContent value="elements" className="flex-1 m-0 overflow-hidden">
+              <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
               onElementDragStart={(element) => {
                 dragDropServiceRef.current.onDragStart(element);
@@ -1323,25 +1326,6 @@ ${body.innerHTML}
                 // Insert AI-generated image with advanced styling and responsive features
                 const timestamp = Date.now();
                 const imageAlt = metadata?.prompt || 'AI Generated Image';
-                
-                // Create advanced HTML with responsive srcset simulation and modern styling
-                const advancedImageHtml = `
-                  <div data-element-id="ai-image-${timestamp}" data-element-type="media" draggable="true" class="canvas-element">
-                    <figure class="relative group overflow-hidden rounded-2xl shadow-2xl">
-                      <img 
-                        src="${imageUrl}" 
-                        alt="${imageAlt}"
-                        loading="lazy"
-                        class="w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
-                        style="aspect-ratio: 16/9; max-width: 100%;"
-                      />
-                      <figcaption class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <p class="text-sm font-medium">${imageAlt}</p>
-                        ${metadata?.style ? `<span class="text-xs opacity-75">Style: ${metadata.style}</span>` : ''}
-                      </figcaption>
-                    </figure>
-                  </div>
-                `;
                 
                 // Parse current preview code
                 const parser = new DOMParser();
@@ -1373,57 +1357,20 @@ ${body.innerHTML}
                 figure.appendChild(img);
                 figure.appendChild(figcaption);
                 wrapper.appendChild(figure);
-                
-                // Append to body
                 body.appendChild(wrapper);
                 
-                // Generate full HTML with reordering system
-                const newCode = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .canvas-element {
-      cursor: move;
-      transition: all 0.2s;
-      position: relative;
-    }
-    .canvas-element:hover {
-      outline: 2px solid #3b82f6;
-      outline-offset: 2px;
-    }
-    .dragging {
-      opacity: 0.5;
-    }
-    .drag-over-top::before,
-    .drag-over-bottom::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-      z-index: 1000;
-    }
-    .drag-over-top::before {
-      top: -2px;
-    }
-    .drag-over-bottom::after {
-      bottom: -2px;
-    }
-  </style>
-</head>
-<body>
-${body.innerHTML}
-</body>
-</html>`;
+                // Ensure TailwindCSS is included
+                if (!doc.head.querySelector('script[src*="tailwindcss"]')) {
+                  const tailwindScript = doc.createElement('script');
+                  tailwindScript.src = 'https://cdn.tailwindcss.com';
+                  doc.head.appendChild(tailwindScript);
+                }
                 
+                const newCode = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
                 setPreviewCode(newCode);
                 setEditorCode(newCode);
                 
-                toast('AI Image Added! 🎨', {
+                toast('AI Image Added!', {
                   description: 'AI-generated image inserted into canvas'
                 });
               }}
@@ -1459,7 +1406,7 @@ ${body.innerHTML}
               }}
             />
               </TabsContent>
-              <TabsContent value="functional" className="flex-1 m-0 overflow-hidden">
+              <TabsContent value="functional" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <FunctionalBlocksPanel 
                   onInsertBlock={(html) => {
                     const parser = new DOMParser();
@@ -1474,6 +1421,13 @@ ${body.innerHTML}
                     setPreviewCode(newCode);
                     toast.success('Functional block added');
                   }}
+                />
+              </TabsContent>
+              <TabsContent value="projects" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <ProjectsPanel
+                  onLoadTemplate={handleLoadTemplate}
+                  onSaveTemplate={handleSaveTemplate}
+                  currentCode={previewCode}
                 />
               </TabsContent>
             </Tabs>
