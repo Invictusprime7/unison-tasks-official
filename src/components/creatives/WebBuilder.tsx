@@ -140,6 +140,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [saveProjectDialogOpen, setSaveProjectDialogOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState("");
   const [saveProjectDescription, setSaveProjectDescription] = useState("");
+  const [currentTemplateName, setCurrentTemplateName] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [exportCss, setExportCss] = useState("");
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -350,6 +351,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     setEditorCode(defaultCode);
     setPreviewCode(defaultPreview);
     
+    // Clear current template state
+    templateFiles.clearCurrentTemplate();
+    setCurrentTemplateName(null);
+    setSaveProjectName("");
+    setSaveProjectDescription("");
+    
     // Clear fabric canvas if it exists
     if (fabricCanvas) {
       fabricCanvas.clear();
@@ -366,6 +373,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const handleLoadTemplate = useCallback((template: {
     id: string;
     name: string;
+    description?: string;
     canvas_data: { html?: string; css?: string; previewCode?: string };
   }) => {
     const code = template.canvas_data?.previewCode || template.canvas_data?.html || '';
@@ -374,8 +382,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setEditorCode(code);
       setPreviewCode(code);
       
-      // Track the current template ID for quick save
+      // Track the current template ID and name for re-save
       templateFiles.setCurrentTemplateId(template.id);
+      setCurrentTemplateName(template.name);
+      setSaveProjectName(template.name);
+      setSaveProjectDescription(template.description || '');
       
       // Switch to preview mode to show the loaded template
       setBuilderMode('preview');
@@ -407,7 +418,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [templateFiles, previewCode]);
 
   // Handle save to projects from preview
-  const handleSaveToProjects = useCallback(async () => {
+  const handleSaveToProjects = useCallback(async (saveAsNew: boolean = false) => {
     if (!saveProjectName.trim()) {
       toast.error("Please enter a project name");
       return;
@@ -415,12 +426,20 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     
     setIsSavingProject(true);
     try {
-      await templateFiles.saveTemplate(saveProjectName, saveProjectDescription, false, previewCode);
+      const isUpdating = templateFiles.currentTemplateId && !saveAsNew;
+      
+      if (isUpdating) {
+        // Update existing template
+        await templateFiles.updateTemplate(templateFiles.currentTemplateId, previewCode);
+        toast.success(`Updated "${saveProjectName}"`);
+      } else {
+        // Save as new template
+        await templateFiles.saveTemplate(saveProjectName, saveProjectDescription, false, previewCode);
+        toast.success(`Saved "${saveProjectName}" to Projects`);
+      }
+      
       setSaveProjectDialogOpen(false);
-      setSaveProjectName("");
-      setSaveProjectDescription("");
       clearDraft(); // Clear auto-save draft after successful save
-      toast.success(`Saved "${saveProjectName}" to Projects`);
     } catch (error) {
       console.error("Error saving to projects:", error);
       toast.error("Failed to save template");
@@ -1678,15 +1697,23 @@ ${body.innerHTML}
 
             {/* Actions */}
             <div className="flex items-center gap-1 border-l border-white/10 pl-4">
+              {/* Current template indicator */}
+              {currentTemplateName && (
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 rounded text-xs text-primary mr-2">
+                  <Cloud className="h-3 w-3" />
+                  <span className="max-w-[120px] truncate">{currentTemplateName}</span>
+                </div>
+              )}
+              
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSaveProjectDialogOpen(true)}
                 className="h-8 text-white/70 hover:text-white hover:bg-white/10 px-2"
-                title="Save to Projects"
+                title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
               >
                 <Save className="h-4 w-4 mr-1" />
-                <span className="text-xs">Save</span>
+                <span className="text-xs">{currentTemplateName ? 'Update' : 'Save'}</span>
               </Button>
               
               {/* Auto-save status indicator */}
@@ -2234,13 +2261,24 @@ ${body.innerHTML}
       <Dialog open={saveProjectDialogOpen} onOpenChange={setSaveProjectDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="text-base">Save to Projects</DialogTitle>
+            <DialogTitle className="text-base">
+              {templateFiles.currentTemplateId ? 'Update Template' : 'Save to Projects'}
+            </DialogTitle>
             <DialogDescription className="text-xs">
-              Save your current template design to access it later
+              {templateFiles.currentTemplateId 
+                ? `Updating "${currentTemplateName}" - or save as a new template`
+                : 'Save your current template design to access it later'
+              }
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-3 py-3">
+            {templateFiles.currentTemplateId && (
+              <div className="flex items-center gap-2 px-2 py-1.5 bg-primary/10 rounded-md text-xs text-primary">
+                <Cloud className="h-3 w-3" />
+                <span>Editing: {currentTemplateName}</span>
+              </div>
+            )}
             <div className="grid gap-1.5">
               <Label htmlFor="project-name" className="text-xs">Name *</Label>
               <Input
@@ -2264,17 +2302,32 @@ ${body.innerHTML}
             </div>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" size="sm" onClick={() => setSaveProjectDialogOpen(false)}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSaveToProjects} disabled={!saveProjectName.trim() || isSavingProject}>
+            {templateFiles.currentTemplateId && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleSaveToProjects(true)} 
+                disabled={!saveProjectName.trim() || isSavingProject}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Save as New
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              onClick={() => handleSaveToProjects(false)} 
+              disabled={!saveProjectName.trim() || isSavingProject}
+            >
               {isSavingProject ? (
                 <div className="animate-spin h-3 w-3 border-2 border-background border-t-transparent rounded-full mr-1" />
               ) : (
                 <Save className="h-3 w-3 mr-1" />
               )}
-              Save
+              {templateFiles.currentTemplateId ? 'Update' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
