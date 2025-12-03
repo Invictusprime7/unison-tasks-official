@@ -1,1 +1,4 @@
 project_id = "oruwtgdjurstvhgqcvbv"
+
+[functions.gohighlevel-crm]
+verify_jwt = false
