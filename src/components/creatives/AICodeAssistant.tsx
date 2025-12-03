@@ -38,6 +38,7 @@ interface AICodeAssistantProps {
   fabricCanvas?: FabricCanvas | null;
   onCodeGenerated?: (code: string) => void;
   onSwitchToCanvasView?: () => void;
+  currentCode?: string; // Current template code for editing existing templates
 }
 
 export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
@@ -45,6 +46,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   fabricCanvas,
   onCodeGenerated,
   onSwitchToCanvasView,
+  currentCode,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -53,7 +55,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [learningEnabled, setLearningEnabled] = useState(true);
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
-  const [currentCode, setCurrentCode] = useState("");
+  const [viewerCode, setViewerCode] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -174,7 +176,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   };
 
   const openCodeViewer = (code: string) => {
-    setCurrentCode(code);
+    setViewerCode(code);
     setCodeViewerOpen(true);
     toast({
       title: "Code editor opened",
@@ -206,12 +208,19 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     await saveMessage(userMessage);
 
     try {
+      // Check if we have current code and should be in edit mode
+      const hasExistingTemplate = currentCode && 
+        !currentCode.includes('AI-generated code will appear here') && 
+        currentCode.trim().length > 100;
+      
       const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
         body: {
           messages: messages
             .map((m) => ({ role: m.role, content: m.content }))
             .concat([{ role: userMessage.role, content: userMessage.content }]),
           mode,
+          currentCode: hasExistingTemplate ? currentCode : undefined,
+          editMode: hasExistingTemplate,
         }
       });
 
@@ -568,8 +577,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               <CodeMirrorEditor
                 height="100%"
                 language="javascript"
-                value={currentCode}
-                onChange={(value) => setCurrentCode(value || "")}
+                value={viewerCode}
+                onChange={(value) => setViewerCode(value || "")}
                 theme="vs-dark"
                 options={{
                   lineNumbers: "on",
