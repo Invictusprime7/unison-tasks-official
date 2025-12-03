@@ -103,9 +103,14 @@ import { useLocation } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface WebBuilderProps {
   initialHtml?: string;
@@ -131,6 +136,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [integrationsPanelOpen, setIntegrationsPanelOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportHtml, setExportHtml] = useState("");
+  const [saveProjectDialogOpen, setSaveProjectDialogOpen] = useState(false);
+  const [saveProjectName, setSaveProjectName] = useState("");
+  const [saveProjectDescription, setSaveProjectDescription] = useState("");
+  const [isSavingProject, setIsSavingProject] = useState(false);
   const [exportCss, setExportCss] = useState("");
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
@@ -305,6 +314,28 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setFileManagerOpen(true);
     }
   }, [templateFiles, previewCode]);
+
+  // Handle save to projects from preview
+  const handleSaveToProjects = useCallback(async () => {
+    if (!saveProjectName.trim()) {
+      toast.error("Please enter a project name");
+      return;
+    }
+    
+    setIsSavingProject(true);
+    try {
+      await templateFiles.saveTemplate(saveProjectName, saveProjectDescription, false, previewCode);
+      setSaveProjectDialogOpen(false);
+      setSaveProjectName("");
+      setSaveProjectDescription("");
+      toast.success(`Saved "${saveProjectName}" to Projects`);
+    } catch (error) {
+      console.error("Error saving to projects:", error);
+      toast.error("Failed to save template");
+    } finally {
+      setIsSavingProject(false);
+    }
+  }, [saveProjectName, saveProjectDescription, templateFiles, previewCode]);
 
   // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {
@@ -1557,6 +1588,16 @@ ${body.innerHTML}
             <div className="flex items-center gap-1 border-l border-white/10 pl-4">
               <Button
                 variant="ghost"
+                size="sm"
+                onClick={() => setSaveProjectDialogOpen(true)}
+                className="h-8 text-white/70 hover:text-white hover:bg-white/10 px-2"
+                title="Save to Projects"
+              >
+                <Save className="h-4 w-4 mr-1" />
+                <span className="text-xs">Save</span>
+              </Button>
+              <Button
+                variant="ghost"
                 size="icon"
                 onClick={handleClearCanvas}
                 className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
@@ -2077,6 +2118,56 @@ ${body.innerHTML}
         onLoadTemplate={handleLoadTemplate}
         onSaveTemplate={handleSaveTemplate}
       />
+
+      {/* Save to Projects Dialog */}
+      <Dialog open={saveProjectDialogOpen} onOpenChange={setSaveProjectDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-base">Save to Projects</DialogTitle>
+            <DialogDescription className="text-xs">
+              Save your current template design to access it later
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-3 py-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="project-name" className="text-xs">Name *</Label>
+              <Input
+                id="project-name"
+                value={saveProjectName}
+                onChange={(e) => setSaveProjectName(e.target.value)}
+                placeholder="My Template Design"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="project-description" className="text-xs">Description</Label>
+              <Textarea
+                id="project-description"
+                value={saveProjectDescription}
+                onChange={(e) => setSaveProjectDescription(e.target.value)}
+                placeholder="Optional description..."
+                rows={2}
+                className="text-sm resize-none"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setSaveProjectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveToProjects} disabled={!saveProjectName.trim() || isSavingProject}>
+              {isSavingProject ? (
+                <div className="animate-spin h-3 w-3 border-2 border-background border-t-transparent rounded-full mr-1" />
+              ) : (
+                <Save className="h-3 w-3 mr-1" />
+              )}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
