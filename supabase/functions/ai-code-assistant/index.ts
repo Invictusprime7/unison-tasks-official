@@ -21,7 +21,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, mode, savePattern = true, generateImage = false, imagePlacement } = await req.json();
+    const { messages, mode, savePattern = true, generateImage = false, imagePlacement, currentCode, editMode = false } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -59,9 +59,29 @@ ${p.code_snippet.substring(0, 300)}${p.code_snippet.length > 300 ? '...' : ''}
 \`\`\`
 `).join('\n---\n') : 'No learned patterns yet - but I will learn from every successful interaction!';
 
+    // Build edit mode context if we have current code
+    const editModeContext = editMode && currentCode ? `
+🔄 **EDIT MODE ACTIVE - MODIFYING EXISTING TEMPLATE**
+You are editing an existing saved template. The user wants to MODIFY their existing code, NOT replace it entirely.
+
+**CURRENT TEMPLATE CODE:**
+\`\`\`html
+${currentCode.substring(0, 8000)}${currentCode.length > 8000 ? '\n... (truncated for context)' : ''}
+\`\`\`
+
+**EDIT MODE RULES (CRITICAL):**
+1. **PRESERVE the overall structure** - Only change what the user specifically requests
+2. **MAINTAIN existing styles** - Don't remove or drastically change styling unless asked
+3. **KEEP existing content** - Only modify/add/remove content as requested
+4. **PRESERVE existing JavaScript** - Don't remove working functionality
+5. **OUTPUT THE FULL MODIFIED CODE** - Return the complete updated template, not just snippets
+6. **If user asks for a "new page" or "new template"** - Then generate fresh code ignoring the current template
+
+` : '';
+
     const systemPrompts = {
       code: `You are an ELITE "Super Web Builder Expert" AI - a continuously learning, production-grade code generator specializing in VANILLA JAVASCRIPT, HTML5, and modern CSS.
-
+${editModeContext}
 🧠 **CONTINUOUS LEARNING SYSTEM:**
 You actively learn from successful code patterns and build upon proven solutions. Your knowledge base grows with each interaction, making you increasingly capable of creating robust, dynamic webpages.
 

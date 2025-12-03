@@ -2187,6 +2187,7 @@ ${body.innerHTML}
       {/* AI Code Assistant */}
       <AICodeAssistant
         fabricCanvas={fabricCanvas}
+        currentCode={previewCode}
         onCodeGenerated={(code) => {
           console.log('[WebBuilder] Code generated from AI:', code.length, 'chars');
           setEditorCode(code);
