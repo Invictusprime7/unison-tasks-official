@@ -137,12 +137,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [integrationsPanelOpen, setIntegrationsPanelOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportHtml, setExportHtml] = useState("");
+  const [exportCss, setExportCss] = useState("");
+  const [exportJs, setExportJs] = useState("");
+  const [exportProjectName, setExportProjectName] = useState("my-project");
   const [saveProjectDialogOpen, setSaveProjectDialogOpen] = useState(false);
   const [saveProjectName, setSaveProjectName] = useState("");
   const [saveProjectDescription, setSaveProjectDescription] = useState("");
   const [currentTemplateName, setCurrentTemplateName] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
-  const [exportCss, setExportCss] = useState("");
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
@@ -1031,6 +1033,35 @@ ${body.innerHTML}
   };
 
   const handleExport = (format: string) => {
+    // Prefer preview code if available (live HTML preview), otherwise use fabric canvas
+    if (previewCode) {
+      // Extract HTML body content
+      const bodyMatch = previewCode.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      const htmlContent = bodyMatch ? bodyMatch[1] : previewCode;
+      
+      // Extract CSS from style tags
+      const styleMatches = previewCode.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      const cssContent = styleMatches 
+        ? styleMatches.map(s => s.replace(/<style[^>]*>|<\/style>/gi, '')).join('\n\n')
+        : '';
+      
+      // Extract JavaScript from script tags
+      const scriptMatches = previewCode.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+      const jsContent = scriptMatches 
+        ? scriptMatches
+            .map(s => s.replace(/<script[^>]*>|<\/script>/gi, ''))
+            .filter(s => s.trim())
+            .join('\n\n')
+        : '';
+      
+      setExportHtml(htmlContent);
+      setExportCss(cssContent);
+      setExportJs(jsContent);
+      setExportProjectName(currentTemplateName || 'my-project');
+      setExportDialogOpen(true);
+      return;
+    }
+    
     if (!fabricCanvas) return;
     
     const objects = fabricCanvas.getObjects();
@@ -1077,21 +1108,13 @@ ${body.innerHTML}
     
     setExportHtml(html);
     setExportCss(css);
+    setExportJs('');
+    setExportProjectName(currentTemplateName || 'my-project');
     
     if (format === 'html') {
       setExportDialogOpen(true);
     } else if (format === 'react') {
-      // Convert to React component
-      const reactCode = `import React from 'react';\n\nconst GeneratedComponent = () => {\n  return (\n${html.split('\n').map(l => '    ' + l).join('\n')}\n  );\n};\n\nexport default GeneratedComponent;`;
-      const blob = new Blob([reactCode], { type: 'text/javascript' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'GeneratedComponent.jsx';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      setExportDialogOpen(true);
     } else if (format === 'json') {
       const json = JSON.stringify(fabricCanvas.toJSON(), null, 2);
       const blob = new Blob([json], { type: 'application/json' });
@@ -2103,6 +2126,8 @@ ${body.innerHTML}
         onOpenChange={setExportDialogOpen}
         html={exportHtml}
         css={exportCss}
+        js={exportJs}
+        projectName={exportProjectName}
       />
 
       {/* Performance Panel as Sidebar */}
