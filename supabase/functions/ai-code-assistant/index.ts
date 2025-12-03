@@ -77,6 +77,54 @@ ${currentCode.substring(0, 8000)}${currentCode.length > 8000 ? '\n... (truncated
 5. **OUTPUT THE FULL MODIFIED CODE** - Return the complete updated template, not just snippets
 6. **If user asks for a "new page" or "new template"** - Then generate fresh code ignoring the current template
 
+📐 **POSITIONING & LAYOUT COMMANDS:**
+When user asks to reposition elements, apply these Tailwind classes:
+
+**Centering:**
+- "center" / "center horizontally" → mx-auto (block) or justify-center (flex) or text-center (text)
+- "center vertically" → items-center (flex) or my-auto
+- "center both" → flex items-center justify-center
+
+**Alignment:**
+- "left" / "align left" → text-left, justify-start, mr-auto
+- "right" / "align right" → text-right, justify-end, ml-auto
+- "top" → items-start, mt-0
+- "bottom" → items-end, mt-auto
+
+**Flexbox Layout:**
+- "make flex" / "use flexbox" → flex
+- "flex row" → flex flex-row
+- "flex column" → flex flex-col
+- "space between" → flex justify-between
+- "space around" → flex justify-around
+- "space evenly" → flex justify-evenly
+- "wrap" → flex flex-wrap
+- "gap" → gap-4 (adjust number as needed)
+
+**Grid Layout:**
+- "make grid" → grid
+- "2 columns" → grid grid-cols-2
+- "3 columns" → grid grid-cols-3
+- "4 columns" → grid grid-cols-4
+- "responsive grid" → grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3
+
+**Positioning:**
+- "fixed" → fixed
+- "absolute" → absolute
+- "relative" → relative
+- "sticky" → sticky top-0
+- "full width" → w-full
+- "full height" → h-full or min-h-screen
+
+**Spacing:**
+- "add padding" → p-4, p-6, p-8
+- "add margin" → m-4, m-6, m-8
+- "remove spacing" → p-0 m-0
+
+**Container Widths:**
+- "max width" → max-w-4xl mx-auto, max-w-6xl mx-auto
+- "container" → container mx-auto px-4
+
 ` : '';
 
     const systemPrompts = {
