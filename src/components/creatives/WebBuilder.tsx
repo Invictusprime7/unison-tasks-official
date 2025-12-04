@@ -42,6 +42,10 @@ import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
 import { ProjectsPanel } from "./web-builder/ProjectsPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useVirtualFileSystem, VirtualFile } from "@/hooks/useVirtualFileSystem";
+import { FileExplorer } from "./code-editor/FileExplorer";
+import { EditorTabs } from "./code-editor/EditorTabs";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
@@ -169,6 +173,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
   const templateFiles = useTemplateFiles();
+  
+  // Virtual file system for code editor
+  const virtualFS = useVirtualFileSystem();
   
   // Auto-save functionality
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -1920,34 +1927,85 @@ ${body.innerHTML}
               </div>
             )}
 
-            {/* Code Mode - Full Code Editor */}
+            {/* Code Mode - Full Code Editor with Folder Structure */}
             {viewMode === 'code' && (
-              <div className="w-full h-full bg-[#1e1e1e] rounded-lg overflow-hidden" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-                <CodeMirrorEditor
-                  height="100%"
-                  language="javascript"
-                  value={editorCode}
-                  onChange={(value) => {
-                    setEditorCode(value || '');
-                    setPreviewCode(value || '');
-                  }}
-                  theme="vs-dark"
-                  isAIProcessing={templateState.isRendering}
-                  options={{
-                    minimap: { enabled: true },
-                    fontSize: 14,
-                    lineNumbers: 'on',
-                    roundedSelection: true,
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    tabSize: 2,
-                    wordWrap: 'on',
-                    formatOnPaste: true,
-                    formatOnType: true,
-                    suggestOnTriggerCharacters: true,
-                    quickSuggestions: true,
-                  }}
-                />
+              <div className="w-full h-full bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                <ResizablePanelGroup direction="horizontal" className="h-full">
+                  {/* File Explorer */}
+                  <ResizablePanel defaultSize={20} minSize={15} maxSize={35}>
+                    <FileExplorer
+                      nodes={virtualFS.nodes}
+                      activeFileId={virtualFS.activeFileId}
+                      onFileSelect={virtualFS.openFile}
+                      onCreateFile={virtualFS.createFile}
+                      onCreateFolder={virtualFS.createFolder}
+                      onDelete={virtualFS.deleteNode}
+                      onRename={virtualFS.renameNode}
+                      onDuplicate={virtualFS.duplicateNode}
+                      onToggleFolder={virtualFS.toggleFolder}
+                      onExpandAll={virtualFS.expandAll}
+                      onCollapseAll={virtualFS.collapseAll}
+                    />
+                  </ResizablePanel>
+
+                  <ResizableHandle withHandle className="bg-white/5 hover:bg-white/10" />
+
+                  {/* Editor Panel */}
+                  <ResizablePanel defaultSize={80}>
+                    <div className="h-full flex flex-col">
+                      {/* Editor Tabs */}
+                      <EditorTabs
+                        tabs={virtualFS.getOpenFiles().map(f => ({ id: f.id, name: f.name }))}
+                        activeTabId={virtualFS.activeFileId}
+                        onTabSelect={virtualFS.openFile}
+                        onTabClose={virtualFS.closeTab}
+                      />
+
+                      {/* Code Editor */}
+                      <div className="flex-1">
+                        {(() => {
+                          const activeFile = virtualFS.getActiveFile();
+                          if (activeFile) {
+                            const lang = (['javascript', 'typescript', 'html', 'css', 'json'].includes(activeFile.language)
+                              ? (activeFile.language === 'typescript' ? 'javascript' : activeFile.language)
+                              : 'javascript') as 'javascript' | 'html' | 'css' | 'json';
+                            return (
+                              <CodeMirrorEditor
+                                height="100%"
+                                language={lang}
+                                value={activeFile.content}
+                                onChange={(value) => virtualFS.updateFileContent(activeFile.id, value)}
+                                theme="vs-dark"
+                                isAIProcessing={templateState.isRendering}
+                                options={{
+                                  minimap: { enabled: true },
+                                  fontSize: 14,
+                                  lineNumbers: 'on',
+                                  roundedSelection: true,
+                                  scrollBeyondLastLine: false,
+                                  automaticLayout: true,
+                                  tabSize: 2,
+                                  wordWrap: 'on',
+                                  formatOnPaste: true,
+                                  formatOnType: true,
+                                  suggestOnTriggerCharacters: true,
+                                  quickSuggestions: true,
+                                }}
+                                className="w-full h-full"
+                              />
+                            );
+                          }
+                          return (
+                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-[#1a1a1a]">
+                              <p className="text-lg font-medium">No file selected</p>
+                              <p className="text-sm mt-1">Select a file from the explorer to start editing</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
               </div>
             )}
 

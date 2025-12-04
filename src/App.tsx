@@ -18,7 +18,6 @@ const Creatives = lazy(() => import("./pages/Creatives"));
 const TaskPlanning = lazy(() => import("./pages/TaskPlanning"));
 const DesignStudioPage = lazy(() => import("./pages/DesignStudioPage"));
 const WebBuilderPage = lazy(() => import("./pages/WebBuilderPage"));
-const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage"));
 const AIPageGenerator = lazy(() => import("./components/creatives/AIPageGenerator").then(m => ({ default: m.AIPageGenerator })));
 
 const queryClient = new QueryClient();
@@ -75,11 +74,6 @@ const App = () => (
             <Route path="/web-builder" element={
               <Suspense fallback={<PageLoader />}>
                 <WebBuilderPage />
-              </Suspense>
-            } />
-            <Route path="/code-editor" element={
-              <Suspense fallback={<PageLoader />}>
-                <CodeEditorPage />
               </Suspense>
             } />
             <Route path="/ai-generator" element={
