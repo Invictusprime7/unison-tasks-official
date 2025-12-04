@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useTemplateFiles } from '@/hooks/useTemplateFiles';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,7 @@ interface SavedTemplate {
   canvas_data: {
     html: string;
     css?: string;
+    js?: string;
     previewCode?: string;
   };
   is_public: boolean;
@@ -77,56 +79,121 @@ const readFileAsText = (file: File): Promise<string> => {
   });
 };
 
-// Helper to process ZIP files
+// Helper to process ZIP files - reads all HTML, CSS, JS, and linked stylesheets
 const processZipFile = async (file: File): Promise<{ html: string; css: string; js: string }> => {
   const zip = await JSZip.loadAsync(file);
   let html = '';
   let css = '';
   let js = '';
+  const cssFiles: Record<string, string> = {};
+  const jsFiles: Record<string, string> = {};
 
+  // First pass: collect all files
   for (const [filename, zipEntry] of Object.entries(zip.files)) {
     if (zipEntry.dir) continue;
     
     const content = await zipEntry.async('string');
     const lowerName = filename.toLowerCase();
+    const baseName = filename.split('/').pop() || filename;
     
     if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
-      html = content;
+      // Prefer index.html or take first HTML file
+      if (!html || baseName.toLowerCase() === 'index.html') {
+        html = content;
+      }
     } else if (lowerName.endsWith('.css')) {
-      css += content + '\n';
-    } else if (lowerName.endsWith('.js')) {
-      js += content + '\n';
+      cssFiles[baseName] = content;
+      css += `/* === ${baseName} === */\n${content}\n\n`;
+    } else if (lowerName.endsWith('.js') && !lowerName.includes('.min.')) {
+      jsFiles[baseName] = content;
+      js += `/* === ${baseName} === */\n${content}\n\n`;
     }
   }
 
-  return { html, css, js };
+  // Second pass: resolve linked CSS/JS in HTML
+  if (html) {
+    // Find all linked stylesheets
+    const linkRegex = /<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi;
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+      const cssPath = match[1].split('/').pop() || match[1];
+      // CSS is already collected, just remove the link tag since we'll inline it
+    }
+    
+    // Find all script sources
+    const scriptRegex = /<script[^>]+src=["']([^"']+\.js)["'][^>]*><\/script>/gi;
+    while ((match = scriptRegex.exec(html)) !== null) {
+      const jsPath = match[1].split('/').pop() || match[1];
+      // JS is already collected
+    }
+  }
+
+  return { html, css: css.trim(), js: js.trim() };
 };
 
-// Helper to inject CSS/JS into HTML
+// Helper to inject CSS/JS into HTML - creates complete document
 const injectStylesAndScripts = (html: string, css: string, js: string): string => {
-  if (!css && !js) return html;
-
   let result = html;
+  
+  // Remove existing link tags for CSS files we're inlining
+  result = result.replace(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi, '');
+  result = result.replace(/<link[^>]+href=["'][^"']+\.css["'][^>]*>/gi, '');
+  
+  // Remove existing script src tags for JS files we're inlining
+  result = result.replace(/<script[^>]+src=["'][^"']+\.js["'][^>]*><\/script>/gi, '');
 
-  // Inject CSS before </head> or at start
+  // Check if it's a full HTML document
+  const isFullDoc = result.toLowerCase().includes('<!doctype') || result.toLowerCase().includes('<html');
+  
+  if (!isFullDoc) {
+    // Wrap in complete HTML document
+    result = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imported Template</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  ${css ? `<style>\n${css}\n</style>` : ''}
+</head>
+<body>
+${result}
+${js ? `<script>\n${js}\n</script>` : ''}
+</body>
+</html>`;
+    return result;
+  }
+
+  // Inject CSS before </head>
   if (css) {
     const styleTag = `<style>\n${css}\n</style>`;
     if (result.includes('</head>')) {
       result = result.replace('</head>', `${styleTag}\n</head>`);
-    } else if (result.includes('<body')) {
-      result = result.replace('<body', `${styleTag}\n<body`);
+    } else if (result.toLowerCase().includes('<body')) {
+      result = result.replace(/<body/i, `<head>${styleTag}</head>\n<body`);
     } else {
-      result = styleTag + '\n' + result;
+      // Insert after <html> tag
+      result = result.replace(/<html[^>]*>/i, (match) => `${match}\n<head>${styleTag}</head>`);
     }
   }
 
-  // Inject JS before </body> or at end
+  // Inject JS before </body>
   if (js) {
     const scriptTag = `<script>\n${js}\n</script>`;
     if (result.includes('</body>')) {
       result = result.replace('</body>', `${scriptTag}\n</body>`);
+    } else if (result.includes('</html>')) {
+      result = result.replace('</html>', `${scriptTag}\n</html>`);
     } else {
-      result = result + '\n' + scriptTag;
+      result = result + `\n${scriptTag}`;
+    }
+  }
+  
+  // Ensure Tailwind CSS is included
+  if (!result.includes('tailwindcss') && !result.includes('tailwind.css')) {
+    const tailwindScript = '<script src="https://cdn.tailwindcss.com"></script>';
+    if (result.includes('</head>')) {
+      result = result.replace('</head>', `${tailwindScript}\n</head>`);
     }
   }
 
@@ -636,7 +703,3 @@ export const ProjectsPanel: React.FC<ProjectsPanelProps> = ({
     </div>
   );
 };
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
