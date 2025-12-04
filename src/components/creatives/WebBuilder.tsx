@@ -371,35 +371,88 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     });
   };
 
+  // Helper to integrate CSS into HTML document
+  const integrateCSSIntoHTML = useCallback((html: string, css: string): string => {
+    if (!css || !css.trim()) return html;
+    
+    const styleTag = `<style>\n${css}\n</style>`;
+    
+    // Check if it's a full HTML document
+    if (html.includes('</head>')) {
+      // Insert CSS before </head>
+      return html.replace('</head>', `${styleTag}\n</head>`);
+    } else if (html.includes('<html') || html.includes('<!DOCTYPE')) {
+      // Has HTML but no head - add before body or at start
+      if (html.includes('<body')) {
+        return html.replace('<body', `<head>${styleTag}</head>\n<body`);
+      }
+      return html.replace(/<html[^>]*>/i, (match) => `${match}\n<head>${styleTag}</head>`);
+    } else {
+      // Fragment - wrap in full document with CSS
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  ${styleTag}
+</head>
+<body>
+${html}
+</body>
+</html>`;
+    }
+  }, []);
+
   // Handle loading a saved template
   const handleLoadTemplate = useCallback((template: {
     id: string;
     name: string;
     description?: string;
-    canvas_data: { html?: string; css?: string; previewCode?: string };
+    canvas_data: { html?: string; css?: string; previewCode?: string; js?: string };
   }) => {
-    const code = template.canvas_data?.previewCode || template.canvas_data?.html || '';
-    if (code) {
-      // Set the code in both editor and preview
-      setEditorCode(code);
-      setPreviewCode(code);
-      
-      // Track the current template ID and name for re-save
-      templateFiles.setCurrentTemplateId(template.id);
-      setCurrentTemplateName(template.name);
-      setSaveProjectName(template.name);
-      setSaveProjectDescription(template.description || '');
-      
-      // Switch to preview mode to show the loaded template
-      setBuilderMode('preview');
-      
-      toast.success(`Opened "${template.name}"`, {
-        description: 'Template loaded - you can continue editing',
-      });
-    } else {
+    // Get the base HTML - prefer previewCode as it's the most complete
+    let code = template.canvas_data?.previewCode || template.canvas_data?.html || '';
+    
+    if (!code) {
       toast.error('Template has no content');
+      return;
     }
-  }, [templateFiles]);
+    
+    // If there's separate CSS that's not in previewCode, integrate it
+    const separateCss = template.canvas_data?.css || '';
+    if (separateCss && !code.includes(separateCss.substring(0, 50))) {
+      code = integrateCSSIntoHTML(code, separateCss);
+    }
+    
+    // If there's separate JS that's not in previewCode, integrate it
+    const separateJs = template.canvas_data?.js || '';
+    if (separateJs && !code.includes(separateJs.substring(0, 50))) {
+      const scriptTag = `<script>\n${separateJs}\n</script>`;
+      if (code.includes('</body>')) {
+        code = code.replace('</body>', `${scriptTag}\n</body>`);
+      } else {
+        code = code + `\n${scriptTag}`;
+      }
+    }
+    
+    // Set the code in both editor and preview
+    setEditorCode(code);
+    setPreviewCode(code);
+    
+    // Track the current template ID and name for re-save
+    templateFiles.setCurrentTemplateId(template.id);
+    setCurrentTemplateName(template.name);
+    setSaveProjectName(template.name);
+    setSaveProjectDescription(template.description || '');
+    
+    // Switch to preview mode to show the loaded template
+    setBuilderMode('preview');
+    
+    toast.success(`Opened "${template.name}"`, {
+      description: 'Template loaded - you can continue editing',
+    });
+  }, [templateFiles, integrateCSSIntoHTML]);
 
   // Handle saving current template
   const handleSaveTemplate = useCallback(async (
