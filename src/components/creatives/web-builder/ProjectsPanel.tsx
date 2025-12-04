@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FolderOpen, File, Save, Trash2, Clock, Search, Plus, MoreVertical, Edit2, Copy, HardDrive, Cloud, RefreshCw } from 'lucide-react';
+import { FolderOpen, File, Save, Trash2, Clock, Search, Plus, MoreVertical, Edit2, Copy, HardDrive, Cloud, RefreshCw, Upload, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import JSZip from 'jszip';
 
 interface SavedTemplate {
   id: string;
@@ -65,6 +67,72 @@ const addToRecentTemplates = (id: string) => {
   localStorage.setItem(RECENT_TEMPLATES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
 };
 
+// Helper to read file as text
+const readFileAsText = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target?.result as string);
+    reader.onerror = (e) => reject(e);
+    reader.readAsText(file);
+  });
+};
+
+// Helper to process ZIP files
+const processZipFile = async (file: File): Promise<{ html: string; css: string; js: string }> => {
+  const zip = await JSZip.loadAsync(file);
+  let html = '';
+  let css = '';
+  let js = '';
+
+  for (const [filename, zipEntry] of Object.entries(zip.files)) {
+    if (zipEntry.dir) continue;
+    
+    const content = await zipEntry.async('string');
+    const lowerName = filename.toLowerCase();
+    
+    if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
+      html = content;
+    } else if (lowerName.endsWith('.css')) {
+      css += content + '\n';
+    } else if (lowerName.endsWith('.js')) {
+      js += content + '\n';
+    }
+  }
+
+  return { html, css, js };
+};
+
+// Helper to inject CSS/JS into HTML
+const injectStylesAndScripts = (html: string, css: string, js: string): string => {
+  if (!css && !js) return html;
+
+  let result = html;
+
+  // Inject CSS before </head> or at start
+  if (css) {
+    const styleTag = `<style>\n${css}\n</style>`;
+    if (result.includes('</head>')) {
+      result = result.replace('</head>', `${styleTag}\n</head>`);
+    } else if (result.includes('<body')) {
+      result = result.replace('<body', `${styleTag}\n<body`);
+    } else {
+      result = styleTag + '\n' + result;
+    }
+  }
+
+  // Inject JS before </body> or at end
+  if (js) {
+    const scriptTag = `<script>\n${js}\n</script>`;
+    if (result.includes('</body>')) {
+      result = result.replace('</body>', `${scriptTag}\n</body>`);
+    } else {
+      result = result + '\n' + scriptTag;
+    }
+  }
+
+  return result;
+};
+
 export const ProjectsPanel: React.FC<ProjectsPanelProps> = ({
   onLoadTemplate,
   onSaveTemplate,
@@ -79,6 +147,12 @@ export const ProjectsPanel: React.FC<ProjectsPanelProps> = ({
   const [saveDescription, setSaveDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const hasFetched = useRef(false);
+  
+  // File upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { getAllTemplates, deleteTemplate, saveTemplate, currentTemplateId } = useTemplateFiles();
 
@@ -108,6 +182,114 @@ export const ProjectsPanel: React.FC<ProjectsPanelProps> = ({
       fetchTemplates();
     }
   }, [fetchTemplates]);
+
+  // Handle file upload
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    const fileName = file.name.toLowerCase();
+    
+    // Validate file type
+    const validExtensions = ['.html', '.htm', '.zip'];
+    const isValid = validExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!isValid) {
+      toast.error('Invalid file type', {
+        description: 'Please upload an HTML file or ZIP archive containing HTML/CSS/JS files'
+      });
+      return;
+    }
+    
+    setUploading(true);
+    setUploadProgress(10);
+    
+    try {
+      let finalHtml = '';
+      let templateName = file.name.replace(/\.(html|htm|zip)$/i, '');
+      
+      if (fileName.endsWith('.zip')) {
+        // Process ZIP file
+        setUploadProgress(30);
+        const { html, css, js } = await processZipFile(file);
+        
+        if (!html) {
+          toast.error('No HTML file found in ZIP', {
+            description: 'The ZIP archive must contain at least one HTML file'
+          });
+          setUploading(false);
+          setUploadProgress(0);
+          return;
+        }
+        
+        setUploadProgress(60);
+        finalHtml = injectStylesAndScripts(html, css, js);
+      } else {
+        // Process HTML file
+        setUploadProgress(50);
+        finalHtml = await readFileAsText(file);
+      }
+      
+      setUploadProgress(80);
+      
+      // Create a temporary template object to load into canvas
+      const uploadedTemplate: SavedTemplate = {
+        id: `upload-${Date.now()}`,
+        name: templateName,
+        description: `Uploaded from ${file.name}`,
+        canvas_data: {
+          html: finalHtml,
+          previewCode: finalHtml,
+        },
+        is_public: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        thumbnail_url: null,
+      };
+      
+      setUploadProgress(100);
+      
+      // Load the template into canvas
+      onLoadTemplate(uploadedTemplate);
+      
+      toast.success('File uploaded successfully!', {
+        description: `"${templateName}" is now loaded in the canvas. Save it to keep your changes.`
+      });
+      
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast.error('Failed to process file', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+  
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    handleFileUpload(e.dataTransfer.files);
+  };
 
   const handleSave = async () => {
     if (!saveName.trim()) {
@@ -190,6 +372,56 @@ export const ProjectsPanel: React.FC<ProjectsPanelProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 h-8 text-xs"
               />
+            </div>
+          </div>
+
+          {/* File Upload Zone */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Upload className="h-3 w-3" />
+              Upload Project
+            </div>
+            <div
+              className={cn(
+                "border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer",
+                isDragOver 
+                  ? "border-primary bg-primary/10" 
+                  : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+              )}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".html,.htm,.zip"
+                onChange={(e) => handleFileUpload(e.target.files)}
+                className="hidden"
+              />
+              
+              {uploading ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                  </div>
+                  <Progress value={uploadProgress} className="h-1" />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Processing file...
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <FileCode className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-xs font-medium">
+                    {isDragOver ? "Drop file here" : "Drop HTML/ZIP or click to upload"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Supports .html, .htm, and .zip files
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -347,7 +579,7 @@ export const ProjectsPanel: React.FC<ProjectsPanelProps> = ({
           {/* Info */}
           <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground">
             <p className="font-medium mb-1">💡 Tip</p>
-            <p>Templates are saved locally. Sign in to sync across devices.</p>
+            <p>Upload HTML or ZIP files to generate templates on the canvas. Templates are saved locally - sign in to sync across devices.</p>
           </div>
         </div>
       </ScrollArea>
