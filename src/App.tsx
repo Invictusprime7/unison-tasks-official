@@ -1,9 +1,10 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Suspense, lazy } from "react";
+import { GlobalNav } from "@/components/GlobalNav";
 
 // Static imports for lightweight pages
 import Index from "./pages/Index";
@@ -33,13 +34,18 @@ const PageLoader = () => (
   </div>
 );
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <DirectionProvider dir="ltr">
-      <TooltipProvider>
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
+// Pages that should NOT show the global nav (full-screen experiences)
+const fullScreenPaths = ["/design-studio", "/web-builder", "/crm"];
+
+function AppContent() {
+  const location = useLocation();
+  const showGlobalNav = !fullScreenPaths.some((p) => location.pathname.startsWith(p));
+
+  return (
+    <>
+      {showGlobalNav && <GlobalNav />}
+      <div className={showGlobalNav ? "pt-12" : ""}>
+        <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={
@@ -90,6 +96,18 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+        </div>
+      </>
+    );
+}
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <DirectionProvider dir="ltr">
+      <TooltipProvider>
+        <Sonner />
+        <BrowserRouter>
+          <AppContent />
         </BrowserRouter>
       </TooltipProvider>
     </DirectionProvider>

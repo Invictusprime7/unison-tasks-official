@@ -21,8 +21,10 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Play, Pause, Trash2, Edit, Workflow, Clock, Zap } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Plus, Play, Trash2, Edit, Workflow, Clock, Zap, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { WorkflowStepBuilder, WorkflowStep } from "./WorkflowStepBuilder";
 
 interface WorkflowType {
   id: string;
@@ -55,6 +57,7 @@ export function CRMWorkflows() {
     cron: "",
     formId: "",
   });
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
 
   useEffect(() => {
     fetchWorkflows();
@@ -94,7 +97,11 @@ export function CRMWorkflows() {
         description: formData.description || null,
         trigger_type: formData.trigger_type,
         trigger_config: triggerConfig,
-        steps: editingWorkflow?.steps || [],
+        steps: workflowSteps.map((s) => ({
+          action_type: s.action_type,
+          action_config: s.action_config,
+          order: s.order,
+        })),
       };
 
       if (editingWorkflow) {
@@ -117,6 +124,7 @@ export function CRMWorkflows() {
       setDialogOpen(false);
       setEditingWorkflow(null);
       setFormData({ name: "", description: "", trigger_type: "manual", cron: "", formId: "" });
+      setWorkflowSteps([]);
       fetchWorkflows();
     } catch (error) {
       console.error("Error saving workflow:", error);
@@ -177,6 +185,14 @@ export function CRMWorkflows() {
       cron: workflow.trigger_config?.cron || "",
       formId: workflow.trigger_config?.formId || "",
     });
+    // Convert stored steps to WorkflowStep format
+    const existingSteps: WorkflowStep[] = (workflow.steps || []).map((s: any, i: number) => ({
+      id: crypto.randomUUID(),
+      action_type: s.action_type || "send_email",
+      action_config: s.action_config || {},
+      order: s.order ?? i,
+    }));
+    setWorkflowSteps(existingSteps);
     setDialogOpen(true);
   }
 
@@ -210,85 +226,104 @@ export function CRMWorkflows() {
             <Button onClick={() => {
               setEditingWorkflow(null);
               setFormData({ name: "", description: "", trigger_type: "manual", cron: "", formId: "" });
+              setWorkflowSteps([]);
             }}>
               <Plus className="h-4 w-4 mr-1" /> Add Workflow
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingWorkflow ? "Edit Workflow" : "Create Workflow"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Name *</Label>
-                <Input
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Workflow name"
+            <Tabs defaultValue="settings" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="settings">
+                  <Settings className="h-4 w-4 mr-1" /> Settings
+                </TabsTrigger>
+                <TabsTrigger value="steps">
+                  <Workflow className="h-4 w-4 mr-1" /> Steps
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="settings">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Name *</Label>
+                    <Input
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Workflow name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="What does this workflow do?"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Trigger Type</Label>
+                    <Select
+                      value={formData.trigger_type}
+                      onValueChange={(v) => setFormData({ ...formData, trigger_type: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual</SelectItem>
+                        <SelectItem value="webhook">Webhook</SelectItem>
+                        <SelectItem value="schedule">Scheduled</SelectItem>
+                        <SelectItem value="form_submit">Form Submission</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.trigger_type === "schedule" && (
+                    <div className="space-y-2">
+                      <Label>Schedule</Label>
+                      <Select
+                        value={formData.cron}
+                        onValueChange={(v) => setFormData({ ...formData, cron: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="*/5">Every 5 minutes</SelectItem>
+                          <SelectItem value="*/15">Every 15 minutes</SelectItem>
+                          <SelectItem value="*/30">Every 30 minutes</SelectItem>
+                          <SelectItem value="@hourly">Every hour</SelectItem>
+                          <SelectItem value="@daily">Daily</SelectItem>
+                          <SelectItem value="@weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {formData.trigger_type === "form_submit" && (
+                    <div className="space-y-2">
+                      <Label>Form ID</Label>
+                      <Input
+                        value={formData.formId}
+                        onChange={(e) => setFormData({ ...formData, formId: e.target.value })}
+                        placeholder="contact-form, newsletter, etc."
+                      />
+                    </div>
+                  )}
+                  <Button type="submit" className="w-full">
+                    {editingWorkflow ? "Update Workflow" : "Create Workflow"}
+                  </Button>
+                </form>
+              </TabsContent>
+              <TabsContent value="steps" className="mt-4">
+                <WorkflowStepBuilder
+                  steps={workflowSteps}
+                  onStepsChange={setWorkflowSteps}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="What does this workflow do?"
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Trigger Type</Label>
-                <Select
-                  value={formData.trigger_type}
-                  onValueChange={(v) => setFormData({ ...formData, trigger_type: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">Manual</SelectItem>
-                    <SelectItem value="webhook">Webhook</SelectItem>
-                    <SelectItem value="schedule">Scheduled</SelectItem>
-                    <SelectItem value="form_submit">Form Submission</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {formData.trigger_type === "schedule" && (
-                <div className="space-y-2">
-                  <Label>Schedule</Label>
-                  <Select
-                    value={formData.cron}
-                    onValueChange={(v) => setFormData({ ...formData, cron: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select frequency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="*/5">Every 5 minutes</SelectItem>
-                      <SelectItem value="*/15">Every 15 minutes</SelectItem>
-                      <SelectItem value="*/30">Every 30 minutes</SelectItem>
-                      <SelectItem value="@hourly">Every hour</SelectItem>
-                      <SelectItem value="@daily">Daily</SelectItem>
-                      <SelectItem value="@weekly">Weekly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {formData.trigger_type === "form_submit" && (
-                <div className="space-y-2">
-                  <Label>Form ID</Label>
-                  <Input
-                    value={formData.formId}
-                    onChange={(e) => setFormData({ ...formData, formId: e.target.value })}
-                    placeholder="contact-form, newsletter, etc."
-                  />
-                </div>
-              )}
-              <Button type="submit" className="w-full">
-                {editingWorkflow ? "Update Workflow" : "Create Workflow"}
-              </Button>
-            </form>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
