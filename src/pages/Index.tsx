@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { CheckSquare, Users, Zap, Shield, Sparkles, CalendarDays, AlertCircle } from "lucide-react";
+import { CheckSquare, Users, Zap, Shield, Sparkles, CalendarDays, AlertCircle, Workflow } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -62,6 +62,9 @@ const Index = () => {
           <Button variant="ghost" onClick={() => navigate("/creatives")} className="text-base text-slate-100 bg-gray-950 hover:bg-gray-800">
             Creatives
           </Button>
+          <Button variant="ghost" onClick={() => navigate("/crm")} className="text-slate-100 bg-slate-950 hover:bg-slate-800">
+            CRM
+          </Button>
           <Button variant="ghost" onClick={() => navigate("/planning")} className="text-slate-100 bg-slate-950 hover:bg-slate-800">
             Planning
           </Button>
@@ -86,7 +89,7 @@ const Index = () => {
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16 bg-gray-950">
+        <div className="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto mb-16 bg-gray-950">
           <div onClick={() => navigate("/creatives")} className="text-center p-6 rounded-lg border hover:shadow-lg transition-shadow cursor-pointer bg-emerald-50">
             <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Sparkles className="h-8 w-8 text-primary" />
@@ -94,6 +97,16 @@ const Index = () => {
             <h3 className="text-xl font-semibold mb-2">Creatives</h3>
             <p className="text-muted-foreground">
               Manage design, content, and media creative tasks in one place.
+            </p>
+          </div>
+
+          <div onClick={() => navigate("/crm")} className="text-center p-6 rounded-lg border hover:shadow-lg transition-shadow cursor-pointer bg-emerald-50">
+            <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Workflow className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">CRM</h3>
+            <p className="text-muted-foreground">
+              Manage contacts, leads, workflows, and form submissions.
             </p>
           </div>
 

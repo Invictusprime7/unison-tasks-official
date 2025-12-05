@@ -19,6 +19,7 @@ const TaskPlanning = lazy(() => import("./pages/TaskPlanning"));
 const DesignStudioPage = lazy(() => import("./pages/DesignStudioPage"));
 const WebBuilderPage = lazy(() => import("./pages/WebBuilderPage"));
 const AIPageGenerator = lazy(() => import("./components/creatives/AIPageGenerator").then(m => ({ default: m.AIPageGenerator })));
+const CRMDashboard = lazy(() => import("./pages/CRMDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,11 @@ const App = () => (
             <Route path="/ai-generator" element={
               <Suspense fallback={<PageLoader />}>
                 <AIPageGenerator />
+              </Suspense>
+            } />
+            <Route path="/crm" element={
+              <Suspense fallback={<PageLoader />}>
+                <CRMDashboard />
               </Suspense>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
