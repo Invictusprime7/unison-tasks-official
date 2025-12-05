@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { 
   Users, 
   Target, 
@@ -8,7 +9,8 @@ import {
   Settings,
   Menu,
   X,
-  Plus
+  Plus,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -58,9 +60,16 @@ export default function CRMDashboard() {
       >
         {/* Header */}
         <div className="h-16 border-b border-border flex items-center justify-between px-4">
-          {sidebarOpen && (
-            <h1 className="font-bold text-lg text-foreground">CRM</h1>
-          )}
+          <div className="flex items-center gap-2">
+            <Link to="/">
+              <Button variant="ghost" size="icon" title="Back to Home">
+                <Home className="h-4 w-4" />
+              </Button>
+            </Link>
+            {sidebarOpen && (
+              <h1 className="font-bold text-lg text-foreground">CRM</h1>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="icon"
