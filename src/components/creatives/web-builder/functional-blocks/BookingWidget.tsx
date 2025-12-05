@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTemplateAutomation } from '@/hooks/useTemplateAutomation';
+import { useWorkflowTrigger } from '@/hooks/useWorkflowTrigger';
 
 interface BookingWidgetProps {
   serviceName?: string;
@@ -13,6 +14,7 @@ interface BookingWidgetProps {
   ghlCalendarId?: string;
   locationId?: string;
   primaryColor?: string;
+  workflowId?: string;
   onBookingComplete?: (booking: any) => void;
 }
 
@@ -23,9 +25,11 @@ export const BookingWidget: React.FC<BookingWidgetProps> = ({
   ghlCalendarId,
   locationId,
   primaryColor = '#3b82f6',
+  workflowId,
   onBookingComplete
 }) => {
   const { createBooking, getAvailableSlots, loading } = useTemplateAutomation();
+  const { triggerBookingCreated } = useWorkflowTrigger();
   const [step, setStep] = useState<'date' | 'time' | 'details' | 'confirmed'>('date');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -89,6 +93,19 @@ export const BookingWidget: React.FC<BookingWidgetProps> = ({
     if (booking) {
       setConfirmedBooking(booking);
       setStep('confirmed');
+      
+      // Trigger CRM workflow
+      await triggerBookingCreated({
+        bookingId: booking.id,
+        serviceName,
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        bookingDate: selectedDate,
+        bookingTime: selectedTime,
+        durationMinutes
+      }, workflowId);
+      
       onBookingComplete?.(booking);
     }
   };

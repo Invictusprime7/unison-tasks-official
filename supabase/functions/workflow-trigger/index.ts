@@ -48,13 +48,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create workflow run
+    // Log the trigger event type for debugging
+    const eventType = triggerData?.event || workflow.trigger_type;
+    console.log("Processing workflow for event:", eventType);
+
+    // Create workflow run with event context
     const { data: workflowRun, error: runError } = await supabase
       .from("crm_workflow_runs")
       .insert({
         workflow_id: workflowId,
         status: "running",
-        trigger_data: triggerData || {},
+        trigger_data: {
+          ...triggerData,
+          event_type: eventType,
+          workflow_name: workflow.name,
+          triggered_at: new Date().toISOString()
+        },
       })
       .select()
       .single();
@@ -70,13 +79,20 @@ Deno.serve(async (req) => {
     const steps = workflow.steps || [];
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
+      
+      // Merge trigger data into action config for variable substitution
+      const actionConfig = {
+        ...step.config,
+        _triggerData: triggerData
+      };
+      
       const { error: jobError } = await supabase
         .from("crm_workflow_jobs")
         .insert({
           workflow_run_id: workflowRun.id,
           step_index: i,
           action_type: step.action_type,
-          action_config: step.config || {},
+          action_config: actionConfig,
           status: "queued",
           scheduled_at: new Date().toISOString(),
         });
@@ -97,6 +113,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         workflowRunId: workflowRun.id,
+        eventType,
         message: "Workflow triggered successfully",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

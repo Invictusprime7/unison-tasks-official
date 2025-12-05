@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useWorkflowTrigger } from '@/hooks/useWorkflowTrigger';
 
 interface PaymentButtonProps {
   amount: number;
@@ -12,6 +13,7 @@ interface PaymentButtonProps {
   productName?: string;
   buttonText?: string;
   primaryColor?: string;
+  workflowId?: string;
   onPaymentComplete?: (paymentData: any) => void;
   mode?: 'button' | 'form';
 }
@@ -22,9 +24,11 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
   productName = 'Product',
   buttonText = 'Pay Now',
   primaryColor = '#3b82f6',
+  workflowId,
   onPaymentComplete,
   mode = 'button'
 }) => {
+  const { triggerPaymentCompleted } = useWorkflowTrigger();
   const [isOpen, setIsOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -64,6 +68,17 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
     setProcessing(false);
     setCompleted(true);
     toast.success('Payment successful!');
+    
+    // Trigger CRM workflow
+    await triggerPaymentCompleted({
+      paymentId: paymentData.id,
+      amount,
+      currency,
+      productName,
+      customerEmail: formData.email,
+      customerName: formData.name
+    }, workflowId);
+    
     onPaymentComplete?.(paymentData);
 
     setTimeout(() => {
