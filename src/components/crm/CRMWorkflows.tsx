@@ -22,7 +22,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Play, Trash2, Edit, Workflow, Clock, Zap, Settings } from "lucide-react";
+import { Search, Plus, Play, Trash2, Edit, Workflow, Clock, Zap, Settings, MousePointer, CreditCard, Calendar, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { WorkflowStepBuilder, WorkflowStep } from "./WorkflowStepBuilder";
 
@@ -42,6 +42,10 @@ const triggerIcons: Record<string, typeof Zap> = {
   webhook: Zap,
   schedule: Clock,
   form_submit: Workflow,
+  button_click: MousePointer,
+  payment: CreditCard,
+  booking: Calendar,
+  checkout: ShoppingCart,
 };
 
 export function CRMWorkflows() {
@@ -278,6 +282,10 @@ export function CRMWorkflows() {
                         <SelectItem value="webhook">Webhook</SelectItem>
                         <SelectItem value="schedule">Scheduled</SelectItem>
                         <SelectItem value="form_submit">Form Submission</SelectItem>
+                        <SelectItem value="button_click">Button Click</SelectItem>
+                        <SelectItem value="payment">Payment Completed</SelectItem>
+                        <SelectItem value="booking">Booking Created</SelectItem>
+                        <SelectItem value="checkout">Cart Checkout</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

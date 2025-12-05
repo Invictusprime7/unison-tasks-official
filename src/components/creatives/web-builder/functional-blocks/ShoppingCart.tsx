@@ -6,16 +6,19 @@ import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { useTemplateAutomation } from '@/hooks/useTemplateAutomation';
+import { useWorkflowTrigger } from '@/hooks/useWorkflowTrigger';
 
 interface ShoppingCartProps {
   primaryColor?: string;
   showBadge?: boolean;
+  workflowId?: string;
   onCheckoutComplete?: (order: any) => void;
 }
 
 export const ShoppingCart: React.FC<ShoppingCartProps> = ({
   primaryColor = '#3b82f6',
   showBadge = true,
+  workflowId,
   onCheckoutComplete
 }) => {
   const { 
@@ -27,6 +30,7 @@ export const ShoppingCart: React.FC<ShoppingCartProps> = ({
     createOrder,
     loading 
   } = useTemplateAutomation();
+  const { triggerCartCheckout } = useWorkflowTrigger();
   
   const [isOpen, setIsOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'success'>('cart');
@@ -54,6 +58,22 @@ export const ShoppingCart: React.FC<ShoppingCartProps> = ({
     if (order) {
       setCompletedOrder(order);
       setCheckoutStep('success');
+      
+      // Trigger CRM workflow
+      await triggerCartCheckout({
+        orderId: order.id,
+        customerEmail: checkoutData.email,
+        customerName: checkoutData.name,
+        items: cart.map(item => ({
+          productId: item.product_id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity
+        })),
+        subtotal: cartTotal,
+        total: order.total
+      }, workflowId);
+      
       onCheckoutComplete?.(order);
     }
   };
