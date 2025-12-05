@@ -38,3 +38,15 @@ verify_jwt = false
 
 [functions.ai-web-assistant]
 verify_jwt = false
+
+[functions.workflow-trigger]
+verify_jwt = false
+
+[functions.workflow-cron]
+verify_jwt = false
+
+[functions.workflow-job-processor]
+verify_jwt = false
+
+[functions.form-submit]
+verify_jwt = false
