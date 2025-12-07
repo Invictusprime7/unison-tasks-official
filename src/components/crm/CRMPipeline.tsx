@@ -40,6 +40,17 @@ interface Lead {
   title: string;
 }
 
+interface AutomationCondition {
+  field: string;
+  operator?: string;
+  value: string;
+}
+
+interface AutomationAction {
+  type: string;
+  config?: Record<string, any>;
+}
+
 const stages = [
   { id: "prospecting", label: "Prospecting", color: "bg-blue-100 border-blue-300" },
   { id: "negotiation", label: "Negotiation", color: "bg-yellow-100 border-yellow-300" },
@@ -182,8 +193,10 @@ export function CRMPipeline() {
 
       // Trigger workflows based on conditions
       for (const automation of automations || []) {
-        const conditions = automation.conditions as any[];
-        const shouldTrigger = conditions.every((condition: any) => {
+        const conditions = Array.isArray(automation.conditions) 
+          ? (automation.conditions as unknown as AutomationCondition[]) 
+          : [];
+        const shouldTrigger = conditions.every((condition) => {
           if (condition.field === "old_stage" && condition.value === oldStage) return true;
           if (condition.field === "new_stage" && condition.value === newStage) return true;
           if (condition.field === "stage" && condition.value === newStage) return true;
@@ -192,7 +205,9 @@ export function CRMPipeline() {
 
         if (shouldTrigger || conditions.length === 0) {
           // Execute automation actions
-          const actions = Array.isArray(automation.actions) ? automation.actions : [];
+          const actions = Array.isArray(automation.actions) 
+            ? (automation.actions as unknown as AutomationAction[]) 
+            : [];
           await executeAutomationActions(actions, dealId);
         }
       }
@@ -201,15 +216,18 @@ export function CRMPipeline() {
     }
   }
 
-  async function executeAutomationActions(actions: any[], dealId: string) {
+  async function executeAutomationActions(actions: AutomationAction[], dealId: string) {
     try {
       for (const action of actions) {
         if (action.type === "send_email") {
-          console.log("Sending email for deal:", dealId, action);
+          // TODO: Implement email sending via email service
+          console.log("TODO: Send email for deal:", dealId, action);
         } else if (action.type === "create_task") {
-          console.log("Creating task for deal:", dealId, action);
+          // TODO: Create task in crm_activities table
+          console.log("TODO: Create task for deal:", dealId, action);
         } else if (action.type === "update_field") {
-          console.log("Updating field for deal:", dealId, action);
+          // TODO: Update deal fields based on action config
+          console.log("TODO: Update field for deal:", dealId, action);
         }
       }
     } catch (error) {

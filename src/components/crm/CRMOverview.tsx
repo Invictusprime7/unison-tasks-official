@@ -14,7 +14,7 @@ interface OverviewStats {
 }
 
 interface CRMOverviewProps {
-  onNavigate: (view: "contacts" | "leads" | "pipeline" | "workflows" | "forms") => void;
+  onNavigate: (view: "contacts" | "leads" | "pipeline" | "workflows" | "automations" | "forms") => void;
 }
 
 export function CRMOverview({ onNavigate }: CRMOverviewProps) {
