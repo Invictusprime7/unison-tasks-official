@@ -196,14 +196,21 @@ export function CRMPipeline() {
         const conditions = Array.isArray(automation.conditions) 
           ? (automation.conditions as unknown as AutomationCondition[]) 
           : [];
-        const shouldTrigger = conditions.every((condition) => {
-          if (condition.field === "old_stage" && condition.value === oldStage) return true;
-          if (condition.field === "new_stage" && condition.value === newStage) return true;
-          if (condition.field === "stage" && condition.value === newStage) return true;
-          return false;
+        
+        // Check if all conditions are satisfied
+        const shouldTrigger = conditions.length === 0 || conditions.every((condition) => {
+          // Check each condition based on its field
+          if (condition.field === "old_stage") {
+            return condition.value === oldStage;
+          }
+          if (condition.field === "new_stage" || condition.field === "stage") {
+            return condition.value === newStage;
+          }
+          // Unknown condition field - skip this condition
+          return true;
         });
 
-        if (shouldTrigger || conditions.length === 0) {
+        if (shouldTrigger) {
           // Execute automation actions
           const actions = Array.isArray(automation.actions) 
             ? (automation.actions as unknown as AutomationAction[]) 
