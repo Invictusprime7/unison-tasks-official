@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Target, Workflow, FileText, TrendingUp, Clock } from "lucide-react";
+import { Users, Target, Workflow, FileText, TrendingUp, Clock, Kanban } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OverviewStats {
   contacts: number;
   leads: number;
+  deals: number;
   workflows: number;
   submissions: number;
   recentLeads: any[];
@@ -13,13 +14,14 @@ interface OverviewStats {
 }
 
 interface CRMOverviewProps {
-  onNavigate: (view: "contacts" | "leads" | "workflows" | "forms") => void;
+  onNavigate: (view: "contacts" | "leads" | "pipeline" | "workflows" | "forms") => void;
 }
 
 export function CRMOverview({ onNavigate }: CRMOverviewProps) {
   const [stats, setStats] = useState<OverviewStats>({
     contacts: 0,
     leads: 0,
+    deals: 0,
     workflows: 0,
     submissions: 0,
     recentLeads: [],
@@ -30,9 +32,10 @@ export function CRMOverview({ onNavigate }: CRMOverviewProps) {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [contactsRes, leadsRes, workflowsRes, submissionsRes] = await Promise.all([
+        const [contactsRes, leadsRes, dealsRes, workflowsRes, submissionsRes] = await Promise.all([
           supabase.from("crm_contacts").select("id", { count: "exact", head: true }),
           supabase.from("crm_leads").select("*").order("created_at", { ascending: false }).limit(5),
+          supabase.from("crm_deals").select("id", { count: "exact", head: true }),
           supabase.from("crm_workflows").select("id", { count: "exact", head: true }),
           supabase.from("crm_form_submissions").select("*").order("created_at", { ascending: false }).limit(5),
         ]);
@@ -40,6 +43,7 @@ export function CRMOverview({ onNavigate }: CRMOverviewProps) {
         setStats({
           contacts: contactsRes.count || 0,
           leads: leadsRes.data?.length || 0,
+          deals: dealsRes.count || 0,
           workflows: workflowsRes.count || 0,
           submissions: submissionsRes.data?.length || 0,
           recentLeads: leadsRes.data || [],
@@ -58,6 +62,7 @@ export function CRMOverview({ onNavigate }: CRMOverviewProps) {
   const statCards = [
     { title: "Total Contacts", value: stats.contacts, icon: Users, color: "text-blue-500", view: "contacts" as const },
     { title: "Active Leads", value: stats.leads, icon: Target, color: "text-green-500", view: "leads" as const },
+    { title: "Pipeline Deals", value: stats.deals, icon: Kanban, color: "text-indigo-500", view: "pipeline" as const },
     { title: "Workflows", value: stats.workflows, icon: Workflow, color: "text-purple-500", view: "workflows" as const },
     { title: "Form Submissions", value: stats.submissions, icon: FileText, color: "text-orange-500", view: "forms" as const },
   ];
@@ -73,7 +78,7 @@ export function CRMOverview({ onNavigate }: CRMOverviewProps) {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <Card 
             key={stat.title} 

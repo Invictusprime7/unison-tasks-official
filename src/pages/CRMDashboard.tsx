@@ -11,6 +11,7 @@ import {
   X,
   Plus,
   Home,
+  Kanban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,13 +20,15 @@ import { CRMLeads } from "@/components/crm/CRMLeads";
 import { CRMWorkflows } from "@/components/crm/CRMWorkflows";
 import { CRMFormSubmissions } from "@/components/crm/CRMFormSubmissions";
 import { CRMOverview } from "@/components/crm/CRMOverview";
+import { CRMPipeline } from "@/components/crm/CRMPipeline";
 
-type CRMView = "overview" | "contacts" | "leads" | "workflows" | "forms";
+type CRMView = "overview" | "contacts" | "leads" | "pipeline" | "workflows" | "forms";
 
 const navItems = [
   { id: "overview" as CRMView, label: "Overview", icon: BarChart3 },
   { id: "contacts" as CRMView, label: "Contacts", icon: Users },
   { id: "leads" as CRMView, label: "Leads", icon: Target },
+  { id: "pipeline" as CRMView, label: "Pipeline", icon: Kanban },
   { id: "workflows" as CRMView, label: "Workflows", icon: Workflow },
   { id: "forms" as CRMView, label: "Form Submissions", icon: FileText },
 ];
@@ -40,6 +43,8 @@ export default function CRMDashboard() {
         return <CRMContacts />;
       case "leads":
         return <CRMLeads />;
+      case "pipeline":
+        return <CRMPipeline />;
       case "workflows":
         return <CRMWorkflows />;
       case "forms":
@@ -122,7 +127,7 @@ export default function CRMDashboard() {
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            {activeView !== "overview" && activeView !== "forms" && (
+            {activeView !== "overview" && activeView !== "forms" && activeView !== "pipeline" && (
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-1" />
                 Add {activeView === "workflows" ? "Workflow" : activeView.slice(0, -1)}
