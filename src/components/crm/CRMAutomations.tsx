@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, Zap, Trash2, Edit } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +42,7 @@ const triggerEvents = [
   { value: "form_submitted", label: "Form Submitted" },
 ];
 
+// Action types available for future action configuration UI
 const actionTypes = [
   { value: "send_email", label: "Send Email" },
   { value: "create_task", label: "Create Task" },
