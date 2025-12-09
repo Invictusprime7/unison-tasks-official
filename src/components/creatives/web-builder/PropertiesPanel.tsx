@@ -6,12 +6,14 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useState, useEffect } from "react";
-import { Lock, Unlock, X, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, Type, Palette, Box, Sparkles } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState, useEffect, useCallback } from "react";
+import { Lock, Unlock, X, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, Type, Palette, Box, Sparkles, ChevronDown, ChevronRight, Trash2, Plus } from "lucide-react";
 import { CopyRewritePanel } from "./CopyRewritePanel";
 import { ImageOperationsPanel } from "./ImageOperationsPanel";
+import { loadWebFont } from "@/utils/fontLoader";
 
 interface SelectedHTMLElement {
   tagName: string;
@@ -32,8 +34,20 @@ interface PropertiesPanelProps {
   onUpdate?: () => void;
 }
 
-const fontFamilies = ["Arial", "Helvetica", "Times New Roman", "Georgia", "Verdana", "Courier New", "Inter", "Roboto", "Montserrat", "Open Sans", "Lato", "Poppins"];
-const fontSizes = ["12", "14", "16", "18", "20", "24", "28", "32", "36", "42", "48", "56", "64", "72"];
+// Categorized font families
+const fontCategories = {
+  sansSerif: [
+    "Arial", "Helvetica", "Inter", "Roboto", "Montserrat", 
+    "Open Sans", "Lato", "Poppins", "Nunito"
+  ],
+  serif: [
+    "Times New Roman", "Georgia", "Playfair Display", "Merriweather"
+  ],
+  monospace: [
+    "Courier New", "Fira Code", "JetBrains Mono", "Source Code Pro"
+  ]
+};
+
 const fontWeights = ["300", "400", "500", "600", "700", "800", "900"];
 const lineHeights = ["1", "1.25", "1.5", "1.75", "2", "2.5"];
 
@@ -43,6 +57,19 @@ const colorPalette = [
   "#3B82F6", "#6366F1", "#8B5CF6", "#A855F7", "#D946EF", "#EC4899",
   "#F43F5E", "#64748B", "#94A3B8", "#CBD5E1", "#E2E8F0", "#F1F5F9"
 ];
+
+const gradientPresets = [
+  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+  "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+  "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+  "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+  "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
+  "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)"
+];
+
+const SAVED_COLORS_KEY = "webbuilder_saved_colors";
 
 export const PropertiesPanel = ({ 
   fabricCanvas, 
@@ -59,6 +86,44 @@ export const PropertiesPanel = ({
   const [htmlText, setHtmlText] = useState("");
   const [aspectLocked, setAspectLocked] = useState(true);
   const [aspectRatio, setAspectRatio] = useState(1);
+  const [typographyOpen, setTypographyOpen] = useState(true);
+  const [savedColors, setSavedColors] = useState<{color: string; usageCount: number}[]>([]);
+  const [customGradient, setCustomGradient] = useState("");
+
+  // Load saved colors from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(SAVED_COLORS_KEY);
+    if (stored) {
+      try {
+        setSavedColors(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to parse saved colors");
+      }
+    }
+  }, []);
+
+  // Save color to localStorage
+  const saveColor = useCallback((color: string) => {
+    setSavedColors(prev => {
+      const existing = prev.find(c => c.color === color);
+      let updated;
+      if (existing) {
+        updated = prev.map(c => c.color === color ? { ...c, usageCount: c.usageCount + 1 } : c);
+      } else {
+        updated = [...prev, { color, usageCount: 1 }].slice(-12); // Keep last 12 colors
+      }
+      localStorage.setItem(SAVED_COLORS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const removeColor = useCallback((color: string) => {
+    setSavedColors(prev => {
+      const updated = prev.filter(c => c.color !== color);
+      localStorage.setItem(SAVED_COLORS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const isHTMLElement = !!selectedHTMLElement;
   const isFabricObject = !!selectedObject && !isHTMLElement;
@@ -416,33 +481,91 @@ export const PropertiesPanel = ({
             </TabsContent>
 
             <TabsContent value="text" className="p-4 space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-2">
+              <Collapsible open={typographyOpen} onOpenChange={setTypographyOpen}>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full text-xs text-muted-foreground hover:text-foreground">
+                  {typographyOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                   <Type className="h-3 w-3" />
                   Typography
-                </Label>
-                <Select value={htmlStyles.fontFamily || "Arial"} onValueChange={(value) => updateHTMLStyle("fontFamily", value)}>
-                  <SelectTrigger className="text-sm h-8"><SelectValue placeholder="Font Family" /></SelectTrigger>
-                  <SelectContent>{fontFamilies.map((font) => <SelectItem key={font} value={font}>{font}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 mt-3">
+                  {/* Font Family - Categorized Dropdown */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Font Family</Label>
+                    <Select 
+                      value={htmlStyles.fontFamily || "Arial"} 
+                      onValueChange={(value) => {
+                        loadWebFont(value);
+                        updateHTMLStyle("fontFamily", value);
+                      }}
+                    >
+                      <SelectTrigger className="text-sm h-8">
+                        <SelectValue placeholder="Font Family" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectGroup>
+                          <SelectLabel className="text-xs font-semibold text-muted-foreground">Sans Serif</SelectLabel>
+                          {fontCategories.sansSerif.map((font) => (
+                            <SelectItem key={font} value={font} className="text-sm" style={{ fontFamily: font }}>
+                              {font}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                        <SelectGroup>
+                          <SelectLabel className="text-xs font-semibold text-muted-foreground">Serif</SelectLabel>
+                          {fontCategories.serif.map((font) => (
+                            <SelectItem key={font} value={font} className="text-sm" style={{ fontFamily: font }}>
+                              {font}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                        <SelectGroup>
+                          <SelectLabel className="text-xs font-semibold text-muted-foreground">Monospace</SelectLabel>
+                          {fontCategories.monospace.map((font) => (
+                            <SelectItem key={font} value={font} className="text-sm" style={{ fontFamily: font }}>
+                              {font}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label className="text-xs">Size</Label>
-                  <Select value={htmlStyles.fontSize?.replace('px', '') || "16"} onValueChange={(value) => updateHTMLStyle("fontSize", `${value}px`)}>
-                    <SelectTrigger className="text-sm h-8"><SelectValue /></SelectTrigger>
-                    <SelectContent>{fontSizes.map((size) => <SelectItem key={size} value={size}>{size}px</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Weight</Label>
-                  <Select value={htmlStyles.fontWeight || "400"} onValueChange={(value) => updateHTMLStyle("fontWeight", value)}>
-                    <SelectTrigger className="text-sm h-8"><SelectValue /></SelectTrigger>
-                    <SelectContent>{fontWeights.map((weight) => <SelectItem key={weight} value={weight}>{weight}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  {/* Font Size - Slider with px indicator */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Font Size</Label>
+                    <div className="flex items-center gap-2">
+                      <Slider 
+                        value={[parseInt(htmlStyles.fontSize?.replace('px', '') || "16")]} 
+                        min={8} 
+                        max={120} 
+                        step={1}
+                        onValueChange={([value]) => updateHTMLStyle("fontSize", `${value}px`)}
+                        className="flex-1"
+                      />
+                      <div className="flex items-center gap-1 min-w-[60px]">
+                        <Input 
+                          type="number" 
+                          value={parseInt(htmlStyles.fontSize?.replace('px', '') || "16")} 
+                          onChange={(e) => updateHTMLStyle("fontSize", `${e.target.value}px`)} 
+                          className="h-7 w-12 text-xs text-center" 
+                          min={8}
+                          max={120}
+                        />
+                        <span className="text-xs text-muted-foreground">px</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Font Weight */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Weight</Label>
+                    <Select value={htmlStyles.fontWeight || "400"} onValueChange={(value) => updateHTMLStyle("fontWeight", value)}>
+                      <SelectTrigger className="text-sm h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>{fontWeights.map((weight) => <SelectItem key={weight} value={weight}>{weight}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
               <Separator />
 
@@ -541,13 +664,16 @@ export const PropertiesPanel = ({
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground flex items-center gap-2">
                   <Palette className="h-3 w-3" />
-                  Color
+                  Text Color
                 </Label>
                 <div className="space-y-2">
                   <Input 
                     type="color" 
                     value={htmlStyles.color || "#000000"} 
-                    onChange={(e) => updateHTMLStyle("color", e.target.value)} 
+                    onChange={(e) => {
+                      updateHTMLStyle("color", e.target.value);
+                      saveColor(e.target.value);
+                    }} 
                     className="h-10 w-full cursor-pointer"
                   />
                   <div className="grid grid-cols-8 gap-1">
@@ -556,7 +682,10 @@ export const PropertiesPanel = ({
                         key={color}
                         className="h-6 w-6 rounded border border-border hover:scale-110 transition-transform"
                         style={{ backgroundColor: color }}
-                        onClick={() => updateHTMLStyle("color", color)}
+                        onClick={() => {
+                          updateHTMLStyle("color", color);
+                          saveColor(color);
+                        }}
                       />
                     ))}
                   </div>
@@ -570,8 +699,11 @@ export const PropertiesPanel = ({
                 <div className="space-y-2">
                   <Input 
                     type="color" 
-                    value={htmlStyles.backgroundColor || "#FFFFFF"} 
-                    onChange={(e) => updateHTMLStyle("backgroundColor", e.target.value)} 
+                    value={htmlStyles.backgroundColor?.startsWith("#") ? htmlStyles.backgroundColor : "#FFFFFF"} 
+                    onChange={(e) => {
+                      updateHTMLStyle("backgroundColor", e.target.value);
+                      saveColor(e.target.value);
+                    }} 
                     className="h-10 w-full cursor-pointer"
                   />
                   <div className="grid grid-cols-8 gap-1">
@@ -580,7 +712,10 @@ export const PropertiesPanel = ({
                         key={color}
                         className="h-6 w-6 rounded border border-border hover:scale-110 transition-transform"
                         style={{ backgroundColor: color }}
-                        onClick={() => updateHTMLStyle("backgroundColor", color)}
+                        onClick={() => {
+                          updateHTMLStyle("backgroundColor", color);
+                          saveColor(color);
+                        }}
                       />
                     ))}
                   </div>
@@ -588,6 +723,86 @@ export const PropertiesPanel = ({
               </div>
 
               <Separator />
+
+              {/* Gradient Presets */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Gradient Background</Label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {gradientPresets.map((gradient, idx) => (
+                    <button
+                      key={idx}
+                      className="h-8 w-full rounded border border-border hover:scale-105 transition-transform"
+                      style={{ background: gradient }}
+                      onClick={() => updateHTMLStyle("background", gradient)}
+                      title="Apply gradient"
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Input 
+                    placeholder="Custom gradient..." 
+                    value={customGradient}
+                    onChange={(e) => setCustomGradient(e.target.value)}
+                    className="h-8 text-xs flex-1"
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-8 px-2"
+                    onClick={() => {
+                      if (customGradient) {
+                        updateHTMLStyle("background", customGradient);
+                      }
+                    }}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Saved/Recent Colors */}
+              {savedColors.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Saved Colors</Label>
+                    <span className="text-[10px] text-muted-foreground">Recently used</span>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {savedColors
+                      .sort((a, b) => b.usageCount - a.usageCount)
+                      .map((item) => (
+                        <div key={item.color} className="relative group">
+                          <button
+                            className="h-7 w-7 rounded border border-border hover:scale-110 transition-transform"
+                            style={{ backgroundColor: item.color }}
+                            onClick={() => {
+                              updateHTMLStyle("backgroundColor", item.color);
+                              saveColor(item.color);
+                            }}
+                            title={`${item.color} (used ${item.usageCount}x)`}
+                          />
+                          <button
+                            className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeColor(item.color);
+                            }}
+                          >
+                            <X className="h-2 w-2" />
+                          </button>
+                          {item.usageCount > 1 && (
+                            <span className="absolute -bottom-1 -right-1 text-[8px] bg-primary text-primary-foreground rounded-full px-1">
+                              {item.usageCount}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
 
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Border Radius</Label>
