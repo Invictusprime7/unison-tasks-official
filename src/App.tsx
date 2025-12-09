@@ -6,9 +6,13 @@ import { DirectionProvider } from "@radix-ui/react-direction";
 import { Suspense, lazy } from "react";
 
 // Static imports for lightweight pages
-import Index from "./pages/Index";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+
+// Dynamic imports for heavy pages
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Index = lazy(() => import("./pages/Index"));
 
 // Dynamic imports for heavy pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -40,8 +44,18 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/pricing" element={
+              <Suspense fallback={<PageLoader />}>
+                <Pricing />
+              </Suspense>
+            } />
+            <Route path="/home" element={
+              <Suspense fallback={<PageLoader />}>
+                <Index />
+              </Suspense>
+            } />
             <Route path="/dashboard" element={
               <Suspense fallback={<PageLoader />}>
                 <Dashboard />
