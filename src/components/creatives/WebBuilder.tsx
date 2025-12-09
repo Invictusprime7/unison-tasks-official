@@ -103,6 +103,7 @@ type FabricImageObject = FabricCanvas['_objects'][0] & {
 };
 import { useKeyboardShortcuts, defaultWebBuilderShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useCanvasHistory } from "@/hooks/useCanvasHistory";
+import { useCodeHistory } from "@/hooks/useCodeHistory";
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import {
@@ -544,8 +545,40 @@ ${html}
   // State management - template schema as source of truth
   const templateState = useTemplateState(fabricCanvas);
 
-  // History management
-  const history = useCanvasHistory(fabricCanvas);
+  // History management - both canvas and code history
+  const canvasHistory = useCanvasHistory(fabricCanvas);
+  const codeHistory = useCodeHistory(100);
+
+  // Track code changes for undo/redo
+  useEffect(() => {
+    if (previewCode && !previewCode.includes('AI-generated code will appear here')) {
+      codeHistory.push(previewCode);
+    }
+  }, [previewCode]);
+
+  // Unified undo handler
+  const handleUndo = useCallback(() => {
+    const previousCode = codeHistory.undo();
+    if (previousCode) {
+      setPreviewCode(previousCode);
+      setEditorCode(previousCode);
+      toast.success('Undo', { description: 'Previous state restored' });
+    } else if (canvasHistory.canUndo) {
+      canvasHistory.undo();
+    }
+  }, [codeHistory, canvasHistory]);
+
+  // Unified redo handler
+  const handleRedo = useCallback(() => {
+    const nextCode = codeHistory.redo();
+    if (nextCode) {
+      setPreviewCode(nextCode);
+      setEditorCode(nextCode);
+      toast.success('Redo', { description: 'Next state restored' });
+    } else if (canvasHistory.canRedo) {
+      canvasHistory.redo();
+    }
+  }, [codeHistory, canvasHistory]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -591,27 +624,15 @@ ${html}
   useKeyboardShortcuts([
     {
       ...defaultWebBuilderShortcuts.undo,
-      action: () => {
-        if (history.canUndo) {
-          history.undo();
-        }
-      },
+      action: handleUndo,
     },
     {
       ...defaultWebBuilderShortcuts.redo,
-      action: () => {
-        if (history.canRedo) {
-          history.redo();
-        }
-      },
+      action: handleRedo,
     },
     {
       ...defaultWebBuilderShortcuts.redoAlt,
-      action: () => {
-        if (history.canRedo) {
-          history.redo();
-        }
-      },
+      action: handleRedo,
     },
     {
       ...defaultWebBuilderShortcuts.delete,
@@ -628,7 +649,7 @@ ${html}
     {
       ...defaultWebBuilderShortcuts.save,
       action: () => {
-        history.save();
+        canvasHistory.save();
       },
     },
     {
@@ -748,7 +769,7 @@ ${html}
 
     const handleObjectModified = () => {
       updateCanvasHeight();
-      setTimeout(() => history.save(), 100);
+      setTimeout(() => canvasHistory.save(), 100);
     };
 
     fabricCanvas.on("object:added", handleObjectModified);
@@ -760,7 +781,7 @@ ${html}
       fabricCanvas.off("object:removed", handleObjectModified);
       fabricCanvas.off("object:modified", handleObjectModified);
     };
-  }, [fabricCanvas, history, canvasHeight, updateCanvasHeight]);
+  }, [fabricCanvas, canvasHistory, canvasHeight, updateCanvasHeight]);
 
   // Initialize drag-drop service on preview containers
   useEffect(() => {
@@ -1456,8 +1477,8 @@ ${body.innerHTML}
           <Button
             variant="ghost"
             size="sm"
-            onClick={history.undo}
-            disabled={!history.canUndo}
+            onClick={handleUndo}
+            disabled={!codeHistory.canUndo && !canvasHistory.canUndo}
             className="text-white/70 hover:text-white disabled:opacity-30"
             title="Undo (Ctrl+Z)"
           >
@@ -1466,8 +1487,8 @@ ${body.innerHTML}
           <Button
             variant="ghost"
             size="sm"
-            onClick={history.redo}
-            disabled={!history.canRedo}
+            onClick={handleRedo}
+            disabled={!codeHistory.canRedo && !canvasHistory.canRedo}
             className="text-white/70 hover:text-white disabled:opacity-30"
             title="Redo (Ctrl+Y)"
           >
@@ -1678,7 +1699,7 @@ ${body.innerHTML}
           <DirectEditToolbar 
             fabricCanvas={fabricCanvas}
             selectedObject={selectedObject}
-            onPropertyChange={() => history.save()}
+            onPropertyChange={() => canvasHistory.save()}
           />
           
           {/* Arrangement Tools - Layer Order, Alignment, Actions */}
