@@ -12,23 +12,9 @@ const Index = () => {
     // Check if Supabase is configured
     if (!isSupabaseConfigured) {
       console.warn('⚠️ Supabase is not properly configured. Some features may not work.');
-      setIsLoading(false);
-      return;
     }
-
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error);
-      }
-      if (session) {
-        navigate("/creatives");
-      }
-      setIsLoading(false);
-    }).catch((error) => {
-      console.error('Failed to get session:', error);
-      setIsLoading(false);
-    });
-  }, [navigate]);
+    setIsLoading(false);
+  }, []);
 
   if (isLoading) {
     return (
