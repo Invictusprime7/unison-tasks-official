@@ -154,7 +154,7 @@ const Landing = () => {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/dashboard");
+        navigate("/creatives");
       }
       setIsLoading(false);
     }).catch(() => {
