@@ -31,3 +31,4 @@ vs code loveable migration.txt
 *.sln
 *.sw?
 .vercel
+.env*.local
