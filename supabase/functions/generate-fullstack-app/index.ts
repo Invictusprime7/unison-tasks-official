@@ -401,8 +401,9 @@ Generate a COMPLETE, PRODUCTION-READY application now. Include ALL components, p
 
   } catch (error) {
     console.error('[Full-Stack Generator] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

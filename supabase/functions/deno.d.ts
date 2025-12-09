@@ -1,11 +1,6 @@
 // Type definitions for Deno Edge Functions runtime
 // This file suppresses TypeScript errors in VS Code for Deno-specific code
-
-declare namespace Deno {
-  export const env: {
-    get(key: string): string | undefined;
-  };
-}
+// Note: Deno namespace is already available globally in Deno runtime
 
 declare module "https://deno.land/std@*/http/server.ts" {
   export function serve(handler: (req: Request) => Response | Promise<Response>): void;
