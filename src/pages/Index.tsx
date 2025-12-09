@@ -2,19 +2,40 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { CheckSquare, Users, Zap, Shield, Sparkles, CalendarDays, AlertCircle, Workflow } from "lucide-react";
+import { CheckSquare, Users, Zap, Shield, Sparkles, CalendarDays, AlertCircle, Workflow, LogOut } from "lucide-react";
+import { User } from "@supabase/supabase-js";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Check if Supabase is configured
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
     if (!isSupabaseConfigured) {
       console.warn('⚠️ Supabase is not properly configured. Some features may not work.');
     }
-    setIsLoading(false);
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Signed out",
+      description: "You have been successfully signed out.",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -57,7 +78,16 @@ const Index = () => {
           <Button variant="ghost" onClick={() => navigate("/files")} className="text-slate-100 bg-slate-950 hover:bg-slate-800">
             Files
           </Button>
-          <Button onClick={() => navigate("/auth")} className="bg-emerald-50 text-gray-950">Get Started</Button>
+          {user ? (
+            <Button variant="outline" onClick={handleSignOut} className="bg-emerald-50 text-gray-950">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          ) : (
+            <Button onClick={() => navigate("/auth")} className="bg-emerald-50 text-gray-950">
+              Sign Up / Login
+            </Button>
+          )}
         </div>
       </nav>
 
@@ -70,9 +100,11 @@ const Index = () => {
             Create projects, assign tasks, collaborate in real-time, and track progress with analytics. 
             Built for distributed teams that need to stay in sync.
           </p>
-          <Button size="lg" onClick={() => navigate("/auth")} className="bg-emerald-50 text-gray-950">
-            Start Free Trial
-          </Button>
+          {!user && (
+            <Button size="lg" onClick={() => navigate("/auth")} className="bg-emerald-50 text-gray-950">
+              Start Free Trial
+            </Button>
+          )}
         </div>
 
         <div className="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto mb-16 bg-gray-950">
