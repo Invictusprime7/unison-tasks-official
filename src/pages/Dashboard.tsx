@@ -5,8 +5,10 @@ import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { ProjectsList } from "@/components/ProjectsList";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
-import { LogOut, Plus } from "lucide-react";
+import { SubscriptionBadge } from "@/components/SubscriptionBadge";
+import { LogOut, Plus, CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -14,6 +16,20 @@ const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const { canCreateProject, incrementProjectCount } = useSubscription();
+
+  const handleCreateProject = () => {
+    if (!canCreateProject()) {
+      toast({
+        title: "Project limit reached",
+        description: "Upgrade your plan to create more projects.",
+        variant: "destructive"
+      });
+      navigate("/pricing");
+      return;
+    }
+    setCreateDialogOpen(true);
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -49,14 +65,16 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 
-            className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors" 
+          <div 
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" 
             onClick={() => navigate("/")}
           >
-            Unison Tasks
-          </h1>
+            <CheckSquare className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl font-bold">Unison Tasks</h1>
+          </div>
           <div className="flex items-center gap-4">
-            <Button onClick={() => setCreateDialogOpen(true)}>
+            <SubscriptionBadge />
+            <Button onClick={handleCreateProject}>
               <Plus className="h-4 w-4 mr-2" />
               New Project
             </Button>

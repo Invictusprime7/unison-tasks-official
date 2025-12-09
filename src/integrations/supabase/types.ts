@@ -1657,6 +1657,63 @@ export type Database = {
           },
         ]
       }
+      user_subscriptions: {
+        Row: {
+          ai_generations_reset_at: string | null
+          ai_generations_used: number | null
+          cancel_at_period_end: boolean | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan: string
+          projects_count: number | null
+          status: string
+          storage_used_mb: number | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          team_members_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_generations_reset_at?: string | null
+          ai_generations_used?: number | null
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan?: string
+          projects_count?: number | null
+          status?: string
+          storage_used_mb?: number | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          team_members_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_generations_reset_at?: string | null
+          ai_generations_used?: number | null
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan?: string
+          projects_count?: number | null
+          status?: string
+          storage_used_mb?: number | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          team_members_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
