@@ -67,12 +67,12 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-b border-border/50">
+    <div className="border-b border-border">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-foreground">
           {icon}
           <span className="text-sm font-medium">{title}</span>
         </div>
@@ -255,22 +255,22 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
       {/* Toggle Button */}
       <button
         onClick={onToggleCollapse}
-        className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-6 h-16 bg-background border border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors shadow-md"
+        className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-6 h-16 bg-secondary border border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors"
         title={isCollapsed ? 'Show properties' : 'Hide properties'}
       >
         {isCollapsed ? (
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-4 h-4 text-foreground" />
         ) : (
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4 text-foreground" />
         )}
       </button>
 
       {/* Panel Content */}
       {!isCollapsed && (
-        <div className="w-72 bg-background border-l border-border flex flex-col h-full">
-          <div className="px-4 py-3 border-b border-border bg-muted/30">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <Layers className="w-4 h-4" />
+        <div className="w-72 bg-card border-l border-border flex flex-col h-full">
+          <div className="px-4 py-3 border-b border-border bg-secondary">
+            <h3 className="font-semibold text-sm flex items-center gap-2 text-foreground">
+              <Layers className="w-4 h-4 text-muted-foreground" />
               Properties
             </h3>
             {selectedHTMLElement && (
@@ -278,7 +278,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                 <p className="text-xs text-muted-foreground capitalize">
                   {selectedHTMLElement.tagName || 'Element'}
                 </p>
-                <Button variant="ghost" size="sm" onClick={onClearHTMLSelection} className="h-5 px-2 text-xs">
+                <Button variant="ghost" size="sm" onClick={onClearHTMLSelection} className="h-5 px-2 text-xs bg-primary/20 text-primary-foreground hover:bg-primary/30">
                   Clear
                 </Button>
               </div>

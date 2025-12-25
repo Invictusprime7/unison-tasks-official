@@ -20,10 +20,26 @@ import {
   Maximize2,
   Code,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  generateDefaultSlots,
+  createSlotRegistry,
+  AISlotRulesEngine,
+  generateSlotContextForAI,
+  ImageSlotTracker,
+} from "@/services/imageSlotService";
 
 interface Message {
   role: "user" | "assistant";
@@ -33,12 +49,193 @@ interface Message {
   componentData?: Json;
 }
 
+interface AITheme {
+  id: string;
+  name: string;
+  emoji: string;
+  gradient: {
+    header: string;
+    headerHover: string;
+    tab: string;
+    button: string;
+    buttonHover: string;
+    glow: string;
+    accent: string;
+  };
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+}
+
+const AI_THEMES: AITheme[] = [
+  {
+    id: "dark-default",
+    name: "Dark Mode",
+    emoji: "🌑",
+    gradient: {
+      header: "from-gray-800 via-gray-900 to-black",
+      headerHover: "hover:from-gray-700 hover:via-gray-800 hover:to-gray-900",
+      tab: "from-gray-700 to-gray-900",
+      button: "from-gray-800 via-gray-900 to-black",
+      buttonHover: "hover:from-gray-700 hover:via-gray-800 hover:to-gray-900",
+      glow: "from-gray-600 to-gray-900",
+      accent: "gray",
+    },
+    colors: {
+      primary: "gray-800",
+      secondary: "gray-900",
+      accent: "gray-700",
+    },
+  },
+  {
+    id: "purple-cyan",
+    name: "Purple Cyan",
+    emoji: "💎",
+    gradient: {
+      header: "from-purple-700 via-indigo-700 to-cyan-700",
+      headerHover: "hover:from-purple-800 hover:via-indigo-800 hover:to-cyan-800",
+      tab: "from-purple-600 to-cyan-600",
+      button: "from-purple-700 via-indigo-700 to-cyan-700",
+      buttonHover: "hover:from-purple-800 hover:via-indigo-800 hover:to-cyan-800",
+      glow: "from-purple-600 to-cyan-600",
+      accent: "indigo",
+    },
+    colors: {
+      primary: "purple-700",
+      secondary: "indigo-700",
+      accent: "cyan-700",
+    },
+  },
+  {
+    id: "pink-orange",
+    name: "Pink Orange",
+    emoji: "🌺",
+    gradient: {
+      header: "from-pink-700 via-rose-700 to-orange-700",
+      headerHover: "hover:from-pink-800 hover:via-rose-800 hover:to-orange-800",
+      tab: "from-pink-600 to-orange-600",
+      button: "from-pink-700 via-rose-700 to-orange-700",
+      buttonHover: "hover:from-pink-800 hover:via-rose-800 hover:to-orange-800",
+      glow: "from-pink-600 to-orange-600",
+      accent: "rose",
+    },
+    colors: {
+      primary: "pink-700",
+      secondary: "rose-700",
+      accent: "orange-700",
+    },
+  },
+  {
+    id: "blue-teal",
+    name: "Blue Teal",
+    emoji: "🌊",
+    gradient: {
+      header: "from-blue-700 via-sky-700 to-teal-700",
+      headerHover: "hover:from-blue-800 hover:via-sky-800 hover:to-teal-800",
+      tab: "from-blue-600 to-teal-600",
+      button: "from-blue-700 via-sky-700 to-teal-700",
+      buttonHover: "hover:from-blue-800 hover:via-sky-800 hover:to-teal-800",
+      glow: "from-blue-600 to-teal-600",
+      accent: "sky",
+    },
+    colors: {
+      primary: "blue-700",
+      secondary: "sky-700",
+      accent: "teal-700",
+    },
+  },
+  {
+    id: "green-lime",
+    name: "Green Lime",
+    emoji: "🍃",
+    gradient: {
+      header: "from-green-700 via-emerald-700 to-lime-700",
+      headerHover: "hover:from-green-800 hover:via-emerald-800 hover:to-lime-800",
+      tab: "from-green-600 to-lime-600",
+      button: "from-green-700 via-emerald-700 to-lime-700",
+      buttonHover: "hover:from-green-800 hover:via-emerald-800 hover:to-lime-800",
+      glow: "from-green-600 to-lime-600",
+      accent: "emerald",
+    },
+    colors: {
+      primary: "green-700",
+      secondary: "emerald-700",
+      accent: "lime-700",
+    },
+  },
+  {
+    id: "red-amber",
+    name: "Red Amber",
+    emoji: "🔥",
+    gradient: {
+      header: "from-red-700 via-orange-700 to-amber-700",
+      headerHover: "hover:from-red-800 hover:via-orange-800 hover:to-amber-800",
+      tab: "from-red-600 to-amber-600",
+      button: "from-red-700 via-orange-700 to-amber-700",
+      buttonHover: "hover:from-red-800 hover:via-orange-800 hover:to-amber-800",
+      glow: "from-red-600 to-amber-600",
+      accent: "orange",
+    },
+    colors: {
+      primary: "red-700",
+      secondary: "orange-700",
+      accent: "amber-700",
+    },
+  },
+  {
+    id: "violet-fuchsia",
+    name: "Violet Fuchsia",
+    emoji: "✨",
+    gradient: {
+      header: "from-violet-700 via-purple-700 to-fuchsia-700",
+      headerHover: "hover:from-violet-800 hover:via-purple-800 hover:to-fuchsia-800",
+      tab: "from-violet-600 to-fuchsia-600",
+      button: "from-violet-700 via-purple-700 to-fuchsia-700",
+      buttonHover: "hover:from-violet-800 hover:via-purple-800 hover:to-fuchsia-800",
+      glow: "from-violet-600 to-fuchsia-600",
+      accent: "purple",
+    },
+    colors: {
+      primary: "violet-700",
+      secondary: "purple-700",
+      accent: "fuchsia-700",
+    },
+  },
+  {
+    id: "indigo-rose",
+    name: "Indigo Rose",
+    emoji: "🌹",
+    gradient: {
+      header: "from-indigo-700 via-pink-700 to-rose-700",
+      headerHover: "hover:from-indigo-800 hover:via-pink-800 hover:to-rose-800",
+      tab: "from-indigo-600 to-rose-600",
+      button: "from-indigo-700 via-pink-700 to-rose-700",
+      buttonHover: "hover:from-indigo-800 hover:via-pink-800 hover:to-rose-800",
+      glow: "from-indigo-600 to-rose-600",
+      accent: "pink",
+    },
+    colors: {
+      primary: "indigo-700",
+      secondary: "pink-700",
+      accent: "rose-700",
+    },
+  },
+];
+
 interface AICodeAssistantProps {
   className?: string;
   fabricCanvas?: FabricCanvas | null;
   onCodeGenerated?: (code: string) => void;
   onSwitchToCanvasView?: () => void;
   currentCode?: string; // Current template code for editing existing templates
+  selectedElement?: {
+    html: string;
+    selector: string;
+    section?: string;
+  }; // Selected element from preview for targeted editing
+  onElementUpdate?: (selector: string, newHtml: string) => void;
 }
 
 export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
@@ -47,18 +244,86 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   onCodeGenerated,
   onSwitchToCanvasView,
   currentCode,
+  selectedElement,
+  onElementUpdate,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<"code" | "design" | "review">("code");
+  const [mode, setMode] = useState<"code" | "design" | "review" | "debug">("code");
   const [isExpanded, setIsExpanded] = useState(false);
   const [learningEnabled, setLearningEnabled] = useState(true);
+  const [autoDetectErrors, setAutoDetectErrors] = useState(true);
+  const [isEditingElement, setIsEditingElement] = useState(false);
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
   const [viewerCode, setViewerCode] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<AITheme>(() => {
+    // Load theme from localStorage or default to first theme
+    const savedThemeId = localStorage.getItem("ai-assistant-theme");
+    return AI_THEMES.find(t => t.id === savedThemeId) || AI_THEMES[0];
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  
+  // Image slot system for AI with taste
+  const slotRegistryRef = useRef(createSlotRegistry());
+  const [slotEngine, setSlotEngine] = useState<AISlotRulesEngine | null>(null);
+  const [imageInsights, setImageInsights] = useState<string[]>([]);
+  
+  // Track when user selects an element to edit
+  useEffect(() => {
+    if (selectedElement) {
+      setIsEditingElement(true);
+      setIsExpanded(true);
+      toast({
+        title: "Element selected for editing",
+        description: `Ready to edit: ${selectedElement.section || 'element'}`,
+      });
+    } else {
+      setIsEditingElement(false);
+    }
+  }, [selectedElement, toast]);
+
+  const handleThemeChange = (theme: AITheme) => {
+    setCurrentTheme(theme);
+    localStorage.setItem("ai-assistant-theme", theme.id);
+    toast({
+      title: `Theme changed to ${theme.name} ${theme.emoji}`,
+      description: "Your AI assistant has a new look!",
+    });
+  };
+  
+  // Initialize image slot engine with smart defaults
+  const initializeSlotEngine = useCallback(async () => {
+    const registry = slotRegistryRef.current;
+    registry.clear();
+    
+    // Generate default slots based on common template structure
+    const slots = generateDefaultSlots({
+      hasHero: true,
+      hasFeatures: 3,
+      hasTeam: 3,
+      hasLogo: true,
+      industry: 'general',
+    });
+    
+    slots.forEach(slot => registry.register(slot));
+    
+    const engine = new AISlotRulesEngine({ 
+      registry, 
+      industry: 'general' 
+    });
+    
+    setSlotEngine(engine);
+    
+    // Load AI insights from tracking
+    const recommendations = await ImageSlotTracker.getImageAIRecommendations();
+    setImageInsights(recommendations.insights);
+    
+    console.log('[AICodeAssistant] Image slot engine initialized with', slots.length, 'slots');
+    console.log('[AICodeAssistant] AI Insights:', recommendations.insights);
+  }, []);
 
   const loadOrCreateConversation = useCallback(async () => {
     try {
@@ -96,6 +361,10 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       }
 
       setConversationId(convId);
+      
+      // Initialize image slot engine
+      initializeSlotEngine();
+      
     } catch (error) {
       console.error("Error loading conversation:", error);
     }
@@ -213,24 +482,76 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         !currentCode.includes('AI-generated code will appear here') && 
         currentCode.trim().length > 100;
       
+      // Check if editing a selected element
+      const isEditingSelectedElement = selectedElement && isEditingElement;
+      
+      // Add image slot context for AI with taste
+      let slotContext = '';
+      if (slotEngine && mode === "code") {
+        slotContext = '\n\n' + generateSlotContextForAI(slotEngine);
+        if (imageInsights.length > 0) {
+          slotContext += `\n🎯 AI INSIGHTS FROM LEARNING:\n`;
+          imageInsights.forEach(insight => {
+            slotContext += `  - ${insight}\n`;
+          });
+        }
+      }
+      
+      // Enhanced context for element editing
+      let enhancedPrompt = userMessage.content;
+      
+      if (isEditingSelectedElement) {
+        enhancedPrompt = `🎯 ELEMENT EDITING MODE - Modify specific section only\n\n`;
+        enhancedPrompt += `Selected Element (${selectedElement.section || 'section'}):\n`;
+        enhancedPrompt += `Selector: ${selectedElement.selector}\n\n`;
+        enhancedPrompt += `Current HTML:\n\`\`\`html\n${selectedElement.html}\n\`\`\`\n\n`;
+        enhancedPrompt += `User Request: ${userMessage.content}\n\n`;
+        enhancedPrompt += `INSTRUCTIONS:\n`;
+        enhancedPrompt += `- Only modify THIS element/section\n`;
+        enhancedPrompt += `- You can: add grid/column layouts, change components, rewrite text, modify UI, add images\n`;
+        enhancedPrompt += `- Preserve the overall structure unless requested to change it\n`;
+        enhancedPrompt += `- Return ONLY the modified HTML for this element\n`;
+        enhancedPrompt += `- Use Tailwind CSS classes for styling\n`;
+        enhancedPrompt += slotContext;
+        console.log('[AICodeAssistant] Element editing mode activated for:', selectedElement.selector);
+      } else if (mode === "debug" && hasExistingTemplate) {
+        // Limit code size to prevent token overflow (max 6000 chars)
+        const truncatedCode = currentCode.length > 6000 
+          ? currentCode.substring(0, 6000) + '\n... (code truncated for context)'
+          : currentCode;
+          
+        enhancedPrompt = `I need help fixing rendering/error issues in my code. Here's the current code:\n\n\`\`\`html\n${truncatedCode}\n\`\`\`\n\nIssue: ${userMessage.content}\n\nPlease analyze the code, identify the issue, and provide a fixed version with explanation.${slotContext}`;
+        console.log('[AICodeAssistant] Debug mode: Enhanced prompt created with code context');
+      } else if (slotContext && mode === "code") {
+        enhancedPrompt = `${userMessage.content}${slotContext}`;
+        console.log('[AICodeAssistant] Code mode: Added slot context for AI with taste');
+      }
+      
+      console.log('[AICodeAssistant] Sending request - Mode:', mode, 'Debug Mode:', mode === "debug");
+      
       const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
         body: {
           messages: messages
             .map((m) => ({ role: m.role, content: m.content }))
-            .concat([{ role: userMessage.role, content: userMessage.content }]),
+            .concat([{ role: userMessage.role, content: enhancedPrompt }]),
           mode,
           currentCode: hasExistingTemplate ? currentCode : undefined,
-          editMode: hasExistingTemplate,
+          editMode: hasExistingTemplate || mode === "debug",
+          debugMode: mode === "debug",
         }
       });
 
+      console.log('[AICodeAssistant] Response received:', { hasData: !!data, hasError: !!error });
+
       if (error) {
+        console.error('[AICodeAssistant] Error from edge function:', error);
         if (error.message.includes('429')) {
           toast({
             title: "Rate limit exceeded",
             description: "Please wait a moment before trying again.",
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
         if (error.message.includes('402')) {
@@ -239,12 +560,27 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
             description: "Please add credits to continue using AI features.",
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
         throw new Error("Failed to get AI response: " + error.message);
       }
 
       const assistantContent = data?.content || "";
+      
+      if (!assistantContent) {
+        console.warn('[AICodeAssistant] Empty response from AI');
+        toast({
+          title: "Empty Response",
+          description: "AI returned an empty response. Please try rephrasing your request.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('[AICodeAssistant] AI response received:', assistantContent.substring(0, 200) + '...');
+      
       const hasCode = assistantContent.includes("```");
 
       if (hasCode && onCodeGenerated) {
@@ -275,10 +611,21 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
             .replace(/<<<|>>>|---/g, '')
             // Clean up any resulting empty lines (more than 2 consecutive)
             .replace(/\n{3,}/g, '\n\n');
-                      
-          console.log('[AICodeAssistant] Extracted HTML/CSS code with vanilla JavaScript allowed');
-          console.log('[AICodeAssistant] Code length:', extractedCode.length, 'characters');
-          onCodeGenerated(extractedCode);
+          
+          // Handle element editing vs full code generation
+          if (isEditingSelectedElement && onElementUpdate && selectedElement) {
+            console.log('[AICodeAssistant] Updating selected element with new HTML');
+            onElementUpdate(selectedElement.selector, extractedCode);
+            toast({
+              title: "Element updated",
+              description: `${selectedElement.section || 'Section'} has been modified`,
+            });
+            setIsEditingElement(false);
+          } else if (onCodeGenerated) {
+            console.log('[AICodeAssistant] Extracted HTML/CSS code with vanilla JavaScript allowed');
+            console.log('[AICodeAssistant] Code length:', extractedCode.length, 'characters');
+            onCodeGenerated(extractedCode);
+          }
         }
       }
 
@@ -293,10 +640,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       await saveMessage(assistantMessage);
 
     } catch (error) {
-      console.error("Error getting AI response:", error);
+      console.error("[AICodeAssistant] Error getting AI response:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      console.error("[AICodeAssistant] Error details:", errorMessage);
+      
       toast({
         title: "Error",
-        description: "Failed to get AI response. Please try again.",
+        description: errorMessage.includes("Failed to get AI response") 
+          ? errorMessage 
+          : "Failed to get AI response. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -305,7 +657,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   };
 
   const quickPrompts = {
-    code: [
+    code: isEditingElement && selectedElement ? [
+      "Add a 3-column grid layout",
+      "Change to 2-column responsive design",
+      "Rewrite the heading and description",
+      "Add an image gallery",
+      "Make this section stand out with better UI",
+      "Add icons to each item",
+    ] : [
       "Create a modern hero section",
       "Build a pricing section with 3 tiers",
       "Generate a features showcase",
@@ -320,97 +679,216 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       "Enhance color consistency",
     ],
     review: [
-      "Check responsive design",
-      "Review accessibility",
-      "Suggest performance improvements",
+      "Check code quality",
+      "Review best practices",
+      "Security audit",
+      "Performance check",
+    ],
+    debug: [
+      "Fix rendering issues",
+      "Resolve layout problems",
+      "Debug JavaScript errors",
+      "Fix responsive breakpoints",
     ],
   };
 
   return (
-    <div
-      className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 transition-all duration-300",
-        isExpanded ? "h-[500px]" : "h-14",
-        className,
+    <>
+      {/* Floating AI Button */}
+      {!isExpanded && (
+        <button
+          onClick={() => setIsExpanded(true)}
+          className={cn(
+            "fixed bottom-6 right-6 z-50 rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105",
+            `bg-gradient-to-br ${currentTheme.gradient.button} ${currentTheme.gradient.buttonHover}`
+          )}
+        >
+          <div className="px-4 py-3 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-white" />
+            <span className="text-white font-semibold text-sm">AI Assistant</span>
+            {messages.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs font-bold">
+                {messages.length}
+              </span>
+            )}
+          </div>
+        </button>
       )}
-    >
-      <div
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="h-14 bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-between px-4 cursor-pointer hover:from-purple-700 hover:to-blue-700 transition-all"
-      >
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-white" />
-          <h3 className="text-white font-semibold">AI Code Assistant</h3>
-          {!isExpanded && messages.length > 0 && (
-            <span className="text-white/70 text-sm">({messages.length} messages)</span>
-          )}
-          {learningEnabled && (
-            <span className="text-xs bg-white/10 text-white px-2 py-1 rounded-full flex items-center gap-1">
-              🧠 Learning
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-              e.stopPropagation();
-              clearConversationHistory();
-            }}
-            title="Clear conversation history"
-            className="text-white hover:bg-white/20"
-            disabled={messages.length === 0}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-              e.stopPropagation();
-              setLearningEnabled(!learningEnabled);
-            }}
-            title={learningEnabled ? "Disable learning" : "Enable learning"}
-            className="text-white hover:bg-white/20"
-          >
-            {learningEnabled ? "🧠" : "💤"}
-          </Button>
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-          </Button>
-        </div>
-      </div>
 
+      {/* Floating AI Panel */}
       {isExpanded && (
-        <div className="h-[calc(100%-56px)] bg-background border-t flex">
-          <div className="flex-1 flex flex-col min-w-0">
-            <Tabs value={mode} onValueChange={(v: string) => setMode(v as typeof mode)} className="border-b">
-              <TabsList className="w-full grid grid-cols-3 rounded-none h-12">
-                <TabsTrigger value="code" className="gap-2">
-                  <Code2 className="w-4 h-4" />
-                  Generate Code
+        <div className={cn(
+          "fixed bottom-6 right-6 z-50 w-[480px] h-[600px] rounded-2xl shadow-2xl backdrop-blur-xl bg-black/90 border border-white/10 flex flex-col overflow-hidden transition-all duration-300",
+          className
+        )}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "p-1.5 rounded-lg",
+                `bg-gradient-to-br ${currentTheme.gradient.button}`
+              )}>
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+                {currentTheme.emoji} AI Assistant
+                {isEditingElement && selectedElement && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                    ✏️ Editing: {selectedElement.section || 'element'}
+                  </span>
+                )}
+              </h3>
+              {learningEnabled && !isEditingElement && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70">
+                  🧠
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {isEditingElement && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditingElement(false);
+                    toast({
+                      title: "Editing mode cancelled",
+                      description: "Switched back to normal mode",
+                    });
+                  }}
+                  title="Cancel element editing"
+                  className="h-8 px-2 text-white/70 hover:text-white hover:bg-white/10 text-xs"
+                >
+                  ✕ Cancel
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Wand2 className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-56 bg-gray-950 border border-white/20"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DropdownMenuLabel className="font-semibold text-sm text-white">
+                    🎨 Themes
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  {AI_THEMES.map((theme) => (
+                    <DropdownMenuItem
+                      key={theme.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleThemeChange(theme);
+                      }}
+                      className={cn(
+                        "cursor-pointer gap-3 py-2 text-white/80 hover:text-white hover:bg-white/10",
+                        currentTheme.id === theme.id && "bg-white/10 font-semibold"
+                      )}
+                    >
+                      <span className="text-lg">{theme.emoji}</span>
+                      <span className="flex-1">{theme.name}</span>
+                      {currentTheme.id === theme.id && (
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearConversationHistory}
+                title="Clear chat"
+                className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                disabled={messages.length === 0}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLearningEnabled(!learningEnabled)}
+                title={learningEnabled ? "Disable learning" : "Enable learning"}
+                className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              >
+                {learningEnabled ? "🧠" : "💤"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsExpanded(false)}
+                className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Mode Tabs */}
+          <div className="flex-1 flex flex-col min-h-0">
+            <Tabs value={mode} onValueChange={(v: string) => setMode(v as typeof mode)} className="flex-1 flex flex-col min-h-0">
+              <TabsList className="w-full grid grid-cols-4 rounded-none h-9 bg-transparent border-0 border-b border-white/10">
+                <TabsTrigger 
+                  value="code" 
+                  className={cn(
+                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
+                    `data-[state=active]:border-${currentTheme.colors.primary}`
+                  )}
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  <span>Code</span>
                 </TabsTrigger>
-                <TabsTrigger value="design" className="gap-2">
-                  <Palette className="w-4 h-4" />
-                  Design Tips
+                <TabsTrigger 
+                  value="design" 
+                  className={cn(
+                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
+                    `data-[state=active]:border-${currentTheme.colors.secondary}`
+                  )}
+                >
+                  <Palette className="w-3.5 h-3.5" />
+                  <span>Design</span>
                 </TabsTrigger>
-                <TabsTrigger value="review" className="gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Code Review
+                <TabsTrigger 
+                  value="review" 
+                  className={cn(
+                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
+                    `data-[state=active]:border-${currentTheme.colors.accent}`
+                  )}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Review</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="debug" 
+                  className={cn(
+                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
+                    "data-[state=active]:border-red-500"
+                  )}
+                  title="Debug & fix code issues"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Debug</span>
                 </TabsTrigger>
               </TabsList>
-            </Tabs>
 
-            {messages.length === 0 && (
-              <div className="p-3 border-b bg-muted/30">
-                <p className="text-xs text-muted-foreground mb-2">Quick prompts:</p>
-                <div className="flex flex-wrap gap-2">
-                  {quickPrompts[mode].map((prompt, i) => (
+            {messages.length === 0 && (mode === "code" || mode === "debug") && (
+              <div className="px-3 py-2 border-b border-white/10">
+                <p className="text-xs font-medium text-white/60 mb-1.5">Quick start:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {quickPrompts[mode].slice(0, 4).map((prompt, i) => (
                     <button
                       key={i}
                       onClick={() => setInput(prompt)}
-                      className="text-xs px-3 py-1.5 bg-background border rounded-full hover:bg-accent hover:border-primary/50 transition-colors"
+                      className="text-xs px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/70 hover:text-white transition-all"
                     >
                       {prompt}
                     </button>
@@ -419,25 +897,45 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               </div>
             )}
 
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 px-3" ref={scrollRef}>
+              <div className="space-y-2.5 py-3">
                 {messages.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">
-                      {mode === "code" && "Ask me to generate any web component or JavaScript code"}
-                      {mode === "design" && "Get expert design recommendations and tips"}
-                      {mode === "review" && "Submit your code for a thorough review"}
+                  <div className="text-center py-12">
+                    <div className={cn(
+                      "inline-flex p-3 rounded-2xl mb-3",
+                      `bg-gradient-to-br ${currentTheme.gradient.button}`
+                    )}>
+                      <span className="text-3xl">{currentTheme.emoji}</span>
+                    </div>
+                    <h4 className="text-sm font-semibold text-white mb-1">
+                      {mode === "code" && "Let's Build Something"}
+                      {mode === "design" && "Design Excellence"}
+                      {mode === "review" && "Code Quality"}
+                      {mode === "debug" && "Debug & Fix Issues"}
+                    </h4>
+                    <p className="text-xs text-white/50">
+                      {mode === "code" && "Generate web components & code"}
+                      {mode === "design" && "Get expert design tips"}
+                      {mode === "review" && "Submit code for review"}
+                      {mode === "debug" && "AI will analyze and fix your code"}
                     </p>
                   </div>
                 )}
 
                 {messages.map((message, index) => (
-                  <div key={index} className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
+                  <div 
+                    key={index} 
+                    className={cn(
+                      "flex",
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    )}
+                  >
                     <div
                       className={cn(
-                        "max-w-[80%] rounded-lg",
-                        message.role === "user" ? "bg-primary text-primary-foreground p-3" : "bg-muted overflow-hidden",
+                        "max-w-[90%] rounded-xl text-sm",
+                        message.role === "user" 
+                          ? `bg-gradient-to-br ${currentTheme.gradient.button} text-white px-3 py-2` 
+                          : "bg-white/5 border border-white/10 overflow-hidden",
                       )}
                     >
                       {message.content.includes("```") ? (
@@ -446,7 +944,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                             if (i % 2 === 0) {
                               return part ? (
                                 <div key={i} className="px-3 py-2">
-                                  <p className="whitespace-pre-wrap m-0 text-sm">{part}</p>
+                                  <p className="whitespace-pre-wrap m-0 text-xs leading-relaxed text-gray-200">{part}</p>
                                 </div>
                               ) : null;
                             }
@@ -457,12 +955,12 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                             return (
                               <div
                                 key={i}
-                                className="relative group border border-border/50 rounded-lg overflow-hidden"
+                                className="border border-white/10 rounded-lg overflow-hidden"
                               >
-                                <div className="flex items-center justify-between bg-muted/50 px-4 py-2 border-b border-border/50">
-                                  <div className="flex items-center gap-2">
-                                    <Code className="w-3.5 h-3.5 text-muted-foreground" />
-                                    <span className="text-xs font-medium text-muted-foreground uppercase">
+                                <div className="flex items-center justify-between bg-white/5 px-2.5 py-1.5 border-b border-white/10">
+                                  <div className="flex items-center gap-1.5">
+                                    <Code className="w-3 h-3 text-white/70" />
+                                    <span className="text-xs font-medium text-white/80 uppercase">
                                       {lang || "code"}
                                     </span>
                                   </div>
@@ -471,24 +969,23 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => openCodeViewer(codeContent)}
-                                      className="h-7 px-2 hover:bg-accent"
+                                      className="h-6 px-1.5 text-xs text-white/60 hover:text-white hover:bg-white/10"
                                       title="Open in full editor"
                                     >
-                                      <Maximize2 className="w-3.5 h-3.5 mr-1" />
-                                      <span className="text-xs">Edit</span>
+                                      <Maximize2 className="w-3 h-3" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => copyToClipboard(codeContent)}
-                                      className="h-7 px-2 hover:bg-accent"
+                                      className="h-6 px-1.5 text-white/60 hover:text-white hover:bg-white/10"
                                       title="Copy code"
                                     >
-                                      <Copy className="w-3.5 h-3.5" />
+                                      <Copy className="w-3 h-3" />
                                     </Button>
                                   </div>
                                 </div>
-                                <div className="max-h-[400px] overflow-auto rounded-lg">
+                                <div className="max-h-[200px] overflow-auto">
                                   <CodeMirrorEditor
                                     height="auto"
                                     language={(lang === "typescript" ? "javascript" : (lang as "javascript" | "html" | "css" | "json")) || "javascript"}
@@ -507,7 +1004,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                         </div>
                       ) : (
                         <div className="px-3 py-2">
-                          <p className="whitespace-pre-wrap m-0 text-sm">{message.content}</p>
+                          <p className="whitespace-pre-wrap m-0 text-xs leading-relaxed text-white/80">{message.content}</p>
                         </div>
                       )}
                     </div>
@@ -516,64 +1013,71 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-muted rounded-lg p-3 flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">Thinking...</span>
+                    <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white/70" />
+                      <span className="text-xs text-white/70">AI is thinking...</span>
                     </div>
                   </div>
                 )}
               </div>
             </ScrollArea>
 
-            <div className="p-4 border-t bg-background">
+            <div className="p-2.5 border-t border-white/10">
+              {mode === "debug" && currentCode && currentCode.trim().length > 100 && !currentCode.includes('AI-generated code will appear here') && (
+                <div className="mb-2 px-2 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-400 flex items-center gap-2">
+                  <Code2 className="w-3 h-3" />
+                  <span>✓ AI will analyze {Math.min(currentCode.length, 6000)} chars of your code</span>
+                </div>
+              )}
               <div className="flex gap-2">
                 <Textarea
-                  value={input}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
+                    value={input}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder={
+                      mode === "code" ? "Describe what to build..." :
+                      mode === "design" ? "Ask about design..." :
+                      mode === "review" ? "Paste code for review..." :
+                      "Describe the issue or error..."
                     }
-                  }}
-                  placeholder={
-                    mode === "code"
-                      ? "Describe the code you want to create..."
-                      : mode === "design"
-                        ? "Describe what you want to improve..."
-                        : "Paste your code for review..."
-                  }
-                  disabled={isLoading}
-                  className="min-h-[60px] max-h-[120px] resize-none"
-                  autoFocus={false}
-                />
+                    className="min-h-[44px] max-h-[120px] bg-white/5 border-white/10 focus:border-white/20 rounded-lg resize-none text-sm text-white placeholder:text-white/40"
+                  />
                 <Button
                   onClick={handleSend}
                   disabled={isLoading || !input.trim()}
-                  size="icon"
-                  className="h-[60px] w-[60px] bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  className={cn(
+                    "h-11 w-11 rounded-lg",
+                    `bg-gradient-to-br ${currentTheme.gradient.button} hover:opacity-90 transition-opacity`
+                  )}
                 >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Powered by AI • Press Enter to send, Shift+Enter for new line
-              </p>
             </div>
+            </Tabs>
           </div>
         </div>
       )}
 
       <Dialog open={codeViewerOpen} onOpenChange={setCodeViewerOpen}>
-        <DialogContent className="max-w-6xl h-[80vh] p-0 gap-0">
-          <DialogHeader className="px-6 py-4 border-b">
-            <DialogTitle className="flex items-center gap-2">
-              <Code className="w-5 h-5" />
-              Code Viewer & Editor
+        <DialogContent className="max-w-7xl h-[85vh] p-0 gap-0 border border-white/20 bg-black/95">
+          <DialogHeader className="px-4 py-3 border-b border-white/10">
+            <DialogTitle className="flex items-center gap-2 text-base text-white">
+              <Code className="w-4 h-4 text-white/70" />
+              <span>Code Editor</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden p-4">
-            <div className="h-full border rounded-lg overflow-hidden">
+          <div className="flex-1 overflow-hidden p-3">
+            <div className="h-full border border-white/10 rounded-lg overflow-hidden">
               <CodeMirrorEditor
                 height="100%"
                 language="javascript"
@@ -589,6 +1093,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };

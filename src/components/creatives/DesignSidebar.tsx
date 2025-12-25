@@ -42,11 +42,11 @@ export const DesignSidebar = ({
   onCancelCrop,
 }: DesignSidebarProps) => {
   return (
-    <Tabs defaultValue="elements" className="w-full h-full flex flex-col">
-      <TabsList className="w-full grid grid-cols-3 bg-white border-b-2 border-primary h-8 text-[10px]" style={{ boxShadow: 'var(--shadow-neon-blue)' }}>
-        <TabsTrigger value="elements" className="text-[10px] py-1 text-gray-700">Design</TabsTrigger>
-        <TabsTrigger value="layers" className="text-[10px] py-1 text-gray-700">Layers</TabsTrigger>
-        <TabsTrigger value="export" className="text-[10px] py-1 text-gray-700">Export</TabsTrigger>
+    <Tabs defaultValue="elements" className="w-full h-full flex flex-col bg-card">
+      <TabsList className="w-full grid grid-cols-3 bg-secondary border-b-2 border-border h-8 text-[10px]">
+        <TabsTrigger value="elements" className="text-[10px] py-1 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Design</TabsTrigger>
+        <TabsTrigger value="layers" className="text-[10px] py-1 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Layers</TabsTrigger>
+        <TabsTrigger value="export" className="text-[10px] py-1 text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Export</TabsTrigger>
       </TabsList>
 
       <TabsContent value="elements" className="flex-1 m-0 overflow-hidden">
@@ -60,15 +60,15 @@ export const DesignSidebar = ({
         <IntegrationsPanel />
       </TabsContent>
 
-      <TabsContent value="layers" className="flex-1 m-0 p-2 overflow-y-auto space-y-2">
+      <TabsContent value="layers" className="flex-1 m-0 p-2 overflow-y-auto space-y-2 bg-card">
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5">Quick Add</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Quick Add</div>
           <div className="flex flex-col gap-1.5">
             <Button
               variant="ghost"
               size="sm"
               onClick={onAddText}
-              className="justify-start bg-gray-100 hover:bg-gray-200 h-7 text-xs px-2 text-gray-900"
+              className="justify-start bg-secondary hover:bg-accent border border-border h-7 text-xs px-2 text-secondary-foreground"
             >
               Text
             </Button>
@@ -76,7 +76,7 @@ export const DesignSidebar = ({
               variant="ghost"
               size="sm"
               onClick={onAddRectangle}
-              className="justify-start bg-gray-100 hover:bg-gray-200 h-7 text-xs px-2 text-gray-900"
+              className="justify-start bg-secondary hover:bg-accent border border-border h-7 text-xs px-2 text-secondary-foreground"
             >
               Rectangle
             </Button>
@@ -84,7 +84,7 @@ export const DesignSidebar = ({
               variant="ghost"
               size="sm"
               onClick={onAddCircle}
-              className="justify-start bg-gray-100 hover:bg-gray-200 h-7 text-xs px-2 text-gray-900"
+              className="justify-start bg-secondary hover:bg-accent border border-border h-7 text-xs px-2 text-secondary-foreground"
             >
               Circle
             </Button>
@@ -92,7 +92,7 @@ export const DesignSidebar = ({
               variant="ghost"
               size="sm"
               onClick={onAddImage}
-              className="justify-start bg-gray-100 hover:bg-gray-200 h-7 text-xs px-2 text-gray-900"
+              className="justify-start bg-secondary hover:bg-accent border border-border h-7 text-xs px-2 text-secondary-foreground"
             >
               Upload Image
             </Button>
@@ -100,17 +100,16 @@ export const DesignSidebar = ({
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5">Layers</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Layers</div>
           <div className="flex flex-col gap-1 max-h-48 overflow-auto pr-1">
             {layers.map((obj: any, idx: number) => (
               <button
                 key={idx}
                 className={`text-left px-1.5 py-1 rounded border-2 text-[10px] transition-all ${
                   selectedObject === obj
-                    ? 'border-primary bg-blue-50 text-blue-700'
-                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-primary'
+                    ? 'border-primary bg-primary/20 text-primary-foreground'
+                    : 'border-border bg-secondary text-secondary-foreground hover:bg-accent hover:border-accent'
                 }`}
-                style={selectedObject === obj ? { boxShadow: 'var(--shadow-neon-blue)' } : {}}
                 onClick={() => onLayerSelect(obj)}
               >
                 {idx + 1}. {obj.type || 'Object'}
@@ -120,13 +119,13 @@ export const DesignSidebar = ({
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5">Actions</div>
+          <div className="text-[10px] uppercase tracking-wide text-purple-300/70 mb-1.5">Actions</div>
           <div className="flex gap-1.5 flex-wrap">
             <Button
               variant="ghost"
               size="sm"
               onClick={onDuplicate}
-              className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 hover:bg-gray-200 h-6 text-gray-900"
+              className="px-1.5 py-0.5 text-[10px] rounded bg-[#1a1625] hover:bg-[#211b2e] border border-purple-500/20 h-6 text-purple-200"
             >
               Duplicate
             </Button>
@@ -134,7 +133,7 @@ export const DesignSidebar = ({
               variant="ghost"
               size="sm"
               onClick={onBringForward}
-              className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 hover:bg-gray-200 h-6 text-gray-900"
+              className="px-1.5 py-0.5 text-[10px] rounded bg-[#1a1625] hover:bg-[#211b2e] border border-purple-500/20 h-6 text-purple-200"
             >
               Forward
             </Button>
@@ -142,7 +141,7 @@ export const DesignSidebar = ({
               variant="ghost"
               size="sm"
               onClick={onSendBackward}
-              className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 hover:bg-gray-200 h-6 text-gray-900"
+              className="px-1.5 py-0.5 text-[10px] rounded bg-[#1a1625] hover:bg-[#211b2e] border border-purple-500/20 h-6 text-purple-200"
             >
               Backward
             </Button>
@@ -150,7 +149,7 @@ export const DesignSidebar = ({
               variant="ghost"
               size="sm"
               onClick={onDelete}
-              className="px-1.5 py-0.5 text-[10px] rounded bg-red-600 hover:bg-red-500 h-6 text-white"
+              className="px-1.5 py-0.5 text-[10px] rounded bg-red-600/80 hover:bg-red-500 border border-red-400/30 h-6 text-white"
             >
               Delete
             </Button>
@@ -158,14 +157,14 @@ export const DesignSidebar = ({
         </div>
 
         {isCropping && (
-          <div className="p-1.5 bg-blue-50 border border-blue-300 rounded">
-            <div className="text-[10px] text-blue-700 mb-1.5">Crop Mode Active</div>
+          <div className="p-1.5 bg-purple-500/10 border border-purple-400/30 rounded">
+            <div className="text-[10px] text-purple-200 mb-1.5">Crop Mode Active</div>
             <div className="flex gap-1.5">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onApplyCrop}
-                className="flex-1 h-6 text-[10px] bg-blue-600 hover:bg-blue-500 text-white"
+                className="flex-1 h-6 text-[10px] bg-purple-600 hover:bg-purple-500 text-white"
               >
                 Apply
               </Button>
@@ -173,7 +172,7 @@ export const DesignSidebar = ({
                 variant="ghost"
                 size="sm"
                 onClick={onCancelCrop}
-                className="flex-1 h-6 text-[10px] bg-gray-200 hover:bg-gray-300 text-gray-900"
+                className="flex-1 h-6 text-[10px] bg-[#1a1625] hover:bg-[#211b2e] border border-purple-500/30 text-purple-200"
               >
                 Cancel
               </Button>

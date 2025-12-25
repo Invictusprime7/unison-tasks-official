@@ -595,12 +595,12 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white border-r border-gray-200">
+    <div className="h-full flex flex-col bg-card border-r border-border">
       
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <Layers className="w-5 h-5 text-blue-600" />
+      <div className="p-4 border-b border-border">
+        <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+          <Layers className="w-5 h-5 text-primary" />
           Elements
         </h2>
         
@@ -610,7 +610,7 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
           placeholder="Search elements..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="mb-3"
+          className="mb-3 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary"
         />
 
         {/* Category Filter */}
@@ -621,8 +621,8 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
               onClick={() => setSelectedCategory(category.id)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${
                 selectedCategory === category.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-accent border border-border'
               }`}
             >
               {category.icon}
@@ -634,7 +634,7 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
         {/* AI Image Generator Button */}
         <button
           onClick={() => setShowAIImageDialog(true)}
-          className="mt-3 w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition flex items-center justify-center gap-2 shadow-md"
+          className="mt-3 w-full px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
           <span>Generate AI Image</span>
@@ -651,13 +651,13 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
               <div key={category} className="space-y-2">
                 <button
                   onClick={() => toggleCategory(category as ElementCategory)}
-                  className="w-full flex items-center justify-between text-sm font-semibold text-gray-900 hover:text-blue-600 transition"
+                  className="w-full flex items-center justify-between text-sm font-semibold text-foreground hover:text-primary transition"
                 >
                   <span className="capitalize">{category}</span>
                   {expandedCategories.has(category as ElementCategory) ? (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   ) : (
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   )}
                 </button>
 
@@ -693,8 +693,8 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
 
           {filteredElements.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500 text-sm">No elements found</p>
-              <p className="text-gray-400 text-xs mt-1">Try a different search</p>
+              <p className="text-muted-foreground text-sm">No elements found</p>
+              <p className="text-muted-foreground/60 text-xs mt-1">Try a different search</p>
             </div>
           )}
 
@@ -702,9 +702,9 @@ export const ElementsSidebar: React.FC<ElementsSidebarProps> = ({
       </ScrollArea>
 
       {/* Footer Tip */}
-      <div className="p-4 border-t border-gray-200 bg-blue-50">
-        <p className="text-xs text-blue-900 flex items-start gap-2">
-          <GripVertical className="w-4 h-4 flex-shrink-0 mt-0.5" />
+      <div className="p-4 border-t border-border bg-secondary">
+        <p className="text-xs text-secondary-foreground flex items-start gap-2">
+          <GripVertical className="w-4 h-4 flex-shrink-0 mt-0.5 text-muted-foreground" />
           <span>Drag elements onto the canvas to add them to your page</span>
         </p>
       </div>
@@ -736,22 +736,22 @@ const ElementCard: React.FC<ElementCardProps> = ({ element, onDragStart, onDragE
       onDragStart={(e) => onDragStart(e, element)}
       onDragEnd={onDragEnd}
       onClick={() => onClick?.(element)}
-      className="group relative bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-500 hover:shadow-md transition cursor-pointer"
+      className="group relative bg-card border border-border rounded-lg p-3 hover:border-primary transition cursor-pointer"
     >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
+        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition">
           {element.icon}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="text-sm font-semibold text-gray-900 truncate">
+            <h4 className="text-sm font-semibold text-foreground truncate">
               {element.name}
             </h4>
             {element.isPro && (
               <Badge variant="secondary" className="text-xs px-1.5 py-0">PRO</Badge>
             )}
           </div>
-          <p className="text-xs text-gray-600 line-clamp-2">
+          <p className="text-xs text-muted-foreground line-clamp-2">
             {element.description}
           </p>
         </div>
@@ -759,7 +759,7 @@ const ElementCard: React.FC<ElementCardProps> = ({ element, onDragStart, onDragE
 
       {/* Drag Indicator */}
       <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition">
-        <GripVertical className="w-4 h-4 text-gray-400" />
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
       </div>
     </div>
   );

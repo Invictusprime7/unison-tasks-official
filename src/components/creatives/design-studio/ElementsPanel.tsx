@@ -191,16 +191,16 @@ export const ElementsPanel = ({ onElementSelect, onElementDragStart }: ElementsP
   );
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-card">
       {/* Search */}
-      <div className="p-3 border-b border-gray-200 space-y-3">
+      <div className="p-3 border-b border-border space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search elements"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-white border-gray-300 text-sm h-9 text-gray-900"
+            className="pl-9 bg-background border-border text-sm h-9 text-foreground placeholder:text-muted-foreground/50 focus:border-primary"
           />
         </div>
 
@@ -209,29 +209,29 @@ export const ElementsPanel = ({ onElementSelect, onElementDragStart }: ElementsP
           value={activeCategory}
           onValueChange={(value: any) => setActiveCategory(value)}
         >
-          <SelectTrigger className="w-full bg-white border-gray-300 h-9 text-sm text-gray-700">
+          <SelectTrigger className="w-full bg-secondary border-border h-9 text-sm text-foreground">
             <SelectValue placeholder="Select category">
               {(() => {
                 const currentCategory = categories.find(c => c.id === activeCategory);
                 if (!currentCategory) return "Select category";
                 const Icon = currentCategory.icon;
                 return (
-                  <div className="flex items-center gap-2 text-gray-700">
+                  <div className="flex items-center gap-2 text-foreground">
                     <Icon className="w-4 h-4" />
-                    <span className="text-gray-700">{currentCategory.label}</span>
+                    <span className="text-foreground">{currentCategory.label}</span>
                   </div>
                 );
               })()}
             </SelectValue>
           </SelectTrigger>
-          <SelectContent className="bg-white border-gray-300 z-50">
+          <SelectContent className="bg-card border-border z-50">
             {categories.map(({ id, label, icon: Icon }) => (
               <SelectItem 
                 key={id} 
                 value={id}
-                className="text-sm text-gray-700 focus:bg-gray-100 focus:text-gray-900 cursor-pointer hover:bg-gray-50"
+                className="text-sm text-foreground focus:bg-accent focus:text-accent-foreground cursor-pointer hover:bg-accent"
               >
-                <div className="flex items-center gap-2 text-gray-700">
+                <div className="flex items-center gap-2 text-foreground">
                   <Icon className="w-4 h-4" />
                   <span>{label}</span>
                 </div>
@@ -263,7 +263,7 @@ export const ElementsPanel = ({ onElementSelect, onElementDragStart }: ElementsP
                 className="group"
               >
                 {renderElementPreview(element)}
-                <p className="text-xs text-gray-500 mt-1 text-center group-hover:text-blue-600 transition-colors">
+                <p className="text-xs text-purple-300/70 mt-1 text-center group-hover:text-purple-200 transition-colors">
                   {item.name}
                 </p>
               </div>

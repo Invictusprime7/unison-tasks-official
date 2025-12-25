@@ -54,24 +54,24 @@ export const NavigationPanel = () => {
   ];
 
   return (
-    <div className="w-52 bg-[#1a1a1a] border-r border-white/10 flex flex-col">
+    <div className="w-52 bg-card border-r border-border flex flex-col">
       {/* Search */}
-      <div className="p-3 border-b border-white/10">
+      <div className="p-3 border-b border-border">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 bg-white/5 border-white/10 text-white/90 placeholder:text-white/30 text-sm"
+            className="pl-8 h-8 bg-background border-border text-foreground placeholder:text-muted-foreground/50 text-sm focus:border-primary"
           />
         </div>
       </div>
 
       {/* Wireframer */}
-      <div className="p-3 border-b border-white/10">
-        <button className="w-full flex items-center gap-2 p-2 rounded hover:bg-white/5 text-white/70 hover:text-white transition-colors">
+      <div className="p-3 border-b border-border">
+        <button className="w-full flex items-center gap-2 p-2 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
           <LayoutGrid className="h-4 w-4" />
           <span className="text-sm font-medium">Wireframer</span>
         </button>
@@ -86,11 +86,11 @@ export const NavigationPanel = () => {
               open={openSections.includes(section.id)}
               onOpenChange={() => toggleSection(section.id)}
             >
-              <CollapsibleTrigger className="w-full flex items-center justify-between p-2 hover:bg-white/5 rounded text-white/50 hover:text-white transition-colors group">
+              <CollapsibleTrigger className="w-full flex items-center justify-between p-2 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors group">
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   {section.label}
                 </span>
-                <ChevronRight className={`h-3 w-3 transition-transform ${
+                <ChevronRight className={`h-3 w-3 transition-transform text-muted-foreground ${
                   openSections.includes(section.id) ? "rotate-90" : ""
                 }`} />
               </CollapsibleTrigger>
@@ -100,11 +100,11 @@ export const NavigationPanel = () => {
                   return (
                     <button
                       key={item.id}
-                      className="w-full flex items-center gap-2 p-2 pl-3 rounded hover:bg-white/5 text-white/60 hover:text-white transition-colors group"
+                      className="w-full flex items-center gap-2 p-2 pl-3 rounded hover:bg-[#1a1625] text-purple-300/70 hover:text-purple-200 hover:shadow-[0_0_8px_rgba(168,85,247,0.2)] transition-colors group"
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4 text-purple-400" />
                       <span className="text-sm">{item.label}</span>
-                      <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100" />
+                      <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 text-purple-400" />
                     </button>
                   );
                 })}

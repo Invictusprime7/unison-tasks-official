@@ -102,10 +102,10 @@ export const PropertiesPanel = ({
 
   if (!selectedObject) {
     return (
-      <Card className="h-full">
+      <Card className="h-full bg-card border-border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Settings className="h-4 w-4" />
+          <CardTitle className="flex items-center gap-2 text-sm text-foreground">
+            <Settings className="h-4 w-4 text-muted-foreground" />
             Properties
           </CardTitle>
         </CardHeader>
@@ -113,7 +113,7 @@ export const PropertiesPanel = ({
           <p className="text-sm text-muted-foreground text-center py-8">
             Select an object to edit its properties
           </p>
-          <div className="text-xs text-muted-foreground mt-4 space-y-2 p-4 bg-muted/20 rounded-lg">
+          <div className="text-xs text-muted-foreground mt-4 space-y-2 p-4 bg-secondary rounded-lg">
             <p>💡 <strong>WYSIWYG Tips:</strong></p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Double-click text to edit inline</li>
@@ -129,72 +129,72 @@ export const PropertiesPanel = ({
   }
 
   return (
-    <Card className="h-full overflow-auto border-0 rounded-none shadow-none">
-      <CardHeader className="p-3 pb-2">
-        <CardTitle className="flex items-center gap-2 text-xs font-medium">
-          <Settings className="h-3 w-3" />
+    <Card className="h-full overflow-auto border-0 rounded-none shadow-none bg-card">
+      <CardHeader className="p-3 pb-2 border-b border-border">
+        <CardTitle className="flex items-center gap-2 text-xs font-medium text-foreground">
+          <Settings className="h-3 w-3 text-muted-foreground" />
           Properties
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 p-3 pt-0">
         <Tabs defaultValue="position" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-7">
-            <TabsTrigger value="position" className="text-[10px]">Position</TabsTrigger>
-            <TabsTrigger value="style" className="text-[10px]">Style</TabsTrigger>
-            <TabsTrigger value="text" className="text-[10px]">Text</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-7 bg-secondary">
+            <TabsTrigger value="position" className="text-[10px] text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Position</TabsTrigger>
+            <TabsTrigger value="style" className="text-[10px] text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Style</TabsTrigger>
+            <TabsTrigger value="text" className="text-[10px] text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Text</TabsTrigger>
           </TabsList>
 
           <TabsContent value="position" className="space-y-2 mt-2">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label htmlFor="x-pos" className="text-[10px]">X</Label>
+                <Label htmlFor="x-pos" className="text-[10px] text-muted-foreground">X</Label>
                 <Input
                   id="x-pos"
                   type="number"
                   value={localValues.left}
                   onChange={(e) => handleInputChange("left", parseInt(e.target.value) || 0)}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs bg-[#211b2e] border-purple-500/30 text-purple-200"
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="y-pos" className="text-[10px]">Y</Label>
+                <Label htmlFor="y-pos" className="text-[10px] text-purple-300">Y</Label>
                 <Input
                   id="y-pos"
                   type="number"
                   value={localValues.top}
                   onChange={(e) => handleInputChange("top", parseInt(e.target.value) || 0)}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs bg-[#211b2e] border-purple-500/30 text-purple-200"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label htmlFor="width" className="text-[10px]">W</Label>
+                <Label htmlFor="width" className="text-[10px] text-purple-300">W</Label>
                 <Input
                   id="width"
                   type="number"
                   value={localValues.width}
                   onChange={(e) => handleInputChange("width", parseInt(e.target.value) || 0)}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs bg-[#211b2e] border-purple-500/30 text-purple-200"
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="height" className="text-[10px]">H</Label>
+                <Label htmlFor="height" className="text-[10px] text-purple-300">H</Label>
                 <Input
                   id="height"
                   type="number"
                   value={localValues.height}
                   onChange={(e) => handleInputChange("height", parseInt(e.target.value) || 0)}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs bg-[#211b2e] border-purple-500/30 text-purple-200"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <Label htmlFor="rotation" className="text-[10px]">Rotation</Label>
-                <span className="text-[10px] text-muted-foreground">{rotation}°</span>
+                <Label htmlFor="rotation" className="text-[10px] text-purple-300">Rotation</Label>
+                <span className="text-[10px] text-purple-300/70">{rotation}°</span>
               </div>
               <Slider
                 id="rotation"
@@ -213,8 +213,8 @@ export const PropertiesPanel = ({
 
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <Label htmlFor="opacity" className="text-[10px]">Opacity</Label>
-                <span className="text-[10px] text-muted-foreground">{opacityVal}%</span>
+                <Label htmlFor="opacity" className="text-[10px] text-purple-300">Opacity</Label>
+                <span className="text-[10px] text-purple-300/70">{opacityVal}%</span>
               </div>
               <Slider
                 id="opacity"
@@ -232,14 +232,14 @@ export const PropertiesPanel = ({
             </div>
 
             {selectedObject.type === "image" && (
-              <div className="space-y-3 pb-4 border-b">
-                <Label className="text-sm font-medium">Image Controls</Label>
+              <div className="space-y-3 pb-4 border-b border-purple-500/20">
+                <Label className="text-sm font-medium text-purple-200">Image Controls</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => onPropertyChange("flipX", !selectedObject.flipX)}
-                    className="h-9 gap-2"
+                    className="h-9 gap-2 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]"
                   >
                     <FlipHorizontal className="h-4 w-4" />
                     Flip H
@@ -248,7 +248,7 @@ export const PropertiesPanel = ({
                     variant="outline"
                     size="sm"
                     onClick={() => onPropertyChange("flipY", !selectedObject.flipY)}
-                    className="h-9 gap-2"
+                    className="h-9 gap-2 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]"
                   >
                     <FlipVertical className="h-4 w-4" />
                     Flip V
@@ -257,7 +257,7 @@ export const PropertiesPanel = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="col-span-2 h-9 gap-2"
+                      className="col-span-2 h-9 gap-2 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]"
                       onClick={onStartCrop}
                     >
                       <Crop className="h-4 w-4" />
@@ -270,31 +270,31 @@ export const PropertiesPanel = ({
 
             {onAlign && (
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Alignment</Label>
+                <Label className="text-sm font-medium text-purple-200">Alignment</Label>
                 <div className="grid grid-cols-3 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onAlign("left")} className="h-9 gap-1">
+                  <Button variant="outline" size="sm" onClick={() => onAlign("left")} className="h-9 gap-1 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]">
                     <AlignLeft className="h-4 w-4" />
                     Left
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => onAlign("center-h")} className="h-9 gap-1">
+                  <Button variant="outline" size="sm" onClick={() => onAlign("center-h")} className="h-9 gap-1 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]">
                     <AlignCenter className="h-4 w-4" />
                     Center
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => onAlign("right")} className="h-9 gap-1">
+                  <Button variant="outline" size="sm" onClick={() => onAlign("right")} className="h-9 gap-1 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]">
                     <AlignRight className="h-4 w-4" />
                     Right
                   </Button>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onAlign("top")} className="h-9 gap-1">
+                  <Button variant="outline" size="sm" onClick={() => onAlign("top")} className="h-9 gap-1 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]">
                     <AlignHorizontalJustifyStart className="h-4 w-4 rotate-90" />
                     Top
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => onAlign("center-v")} className="h-9 gap-1">
+                  <Button variant="outline" size="sm" onClick={() => onAlign("center-v")} className="h-9 gap-1 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]">
                     <AlignVerticalJustifyCenter className="h-4 w-4" />
                     Middle
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => onAlign("bottom")} className="h-9 gap-1">
+                  <Button variant="outline" size="sm" onClick={() => onAlign("bottom")} className="h-9 gap-1 bg-[#1a1625] border-purple-500/30 text-purple-200 hover:bg-[#211b2e]">
                     <AlignHorizontalJustifyEnd className="h-4 w-4 rotate-90" />
                     Bottom
                   </Button>

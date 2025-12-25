@@ -14,8 +14,6 @@ import {
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { LiveHTMLPreview } from './LiveHTMLPreview';
-import { WebPropertiesPanel } from "./web-builder/WebPropertiesPanel";
-import { EnhancedPropertiesPanel } from "./web-builder/EnhancedPropertiesPanel";
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
@@ -40,6 +38,7 @@ import { TemplateFileManager } from "./web-builder/TemplateFileManager";
 import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
 import { ProjectsPanel } from "./web-builder/ProjectsPanel";
+import { LayoutTemplatesPanel } from "./web-builder/LayoutTemplatesPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useVirtualFileSystem, VirtualFile } from "@/hooks/useVirtualFileSystem";
@@ -104,8 +103,8 @@ type FabricImageObject = FabricCanvas['_objects'][0] & {
 import { useKeyboardShortcuts, defaultWebBuilderShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { useCodeHistory } from "@/hooks/useCodeHistory";
-import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose, ArrowLeft } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -126,6 +125,7 @@ interface WebBuilderProps {
 
 export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [selectedObject, setSelectedObject] = useState<FabricCanvas['_objects'][0] | null>(null);
@@ -184,6 +184,48 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const lastSavedCodeRef = useRef<string>('');
   const AUTO_SAVE_KEY = 'webbuilder_autosave_draft';
   const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
+  
+  // Track unsaved changes for back button warning
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const initialCodeRef = useRef<string>(previewCode);
+  
+  // Get referrer page name from location state or determine from history
+  const referrerPageName = (location.state as { from?: string })?.from || 
+    (window.history.length > 1 ? 'Previous Page' : 'Dashboard');
+  
+  // Handle back navigation with unsaved changes warning
+  const handleBackNavigation = useCallback(() => {
+    const codeChanged = previewCode !== initialCodeRef.current;
+    
+    if (codeChanged && hasUnsavedChanges) {
+      const confirmLeave = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave? Your draft will be auto-saved.'
+      );
+      if (confirmLeave) {
+        saveDraft(); // Save draft before leaving
+        // If no history, navigate to dashboard
+        if (window.history.length <= 1) {
+          navigate('/');
+        } else {
+          navigate(-1);
+        }
+      }
+    } else {
+      // If no history, navigate to dashboard
+      if (window.history.length <= 1) {
+        navigate('/');
+      } else {
+        navigate(-1);
+      }
+    }
+  }, [previewCode, hasUnsavedChanges, navigate]);
+  
+  // Track changes to code
+  useEffect(() => {
+    const hasChanges = previewCode !== initialCodeRef.current && 
+                      !previewCode.includes('AI-generated code will appear here');
+    setHasUnsavedChanges(hasChanges);
+  }, [previewCode]);
   
   // Auto-save draft to localStorage
   const saveDraft = useCallback(() => {
@@ -622,6 +664,11 @@ ${html}
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
+    {
+      key: 'Alt+ArrowLeft',
+      description: 'Go back to previous page',
+      action: handleBackNavigation,
+    },
     {
       ...defaultWebBuilderShortcuts.undo,
       action: handleUndo,
@@ -1400,162 +1447,18 @@ ${body.innerHTML}
     <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#0a0a0a]">
       {/* Interactive Element Highlighting Styles */}
       <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />
-      
-      {/* Top Toolbar */}
-      <div className="h-14 bg-[#1a1a1a] border-b border-white/10 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <Button
-            variant={activeMode === "insert" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveMode("insert")}
-            className="text-white/70 hover:text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Insert
-          </Button>
-          <Button
-            variant={activeMode === "layout" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveMode("layout")}
-            className="text-white/70 hover:text-white"
-          >
-            <Layout className="h-4 w-4 mr-2" />
-            Layout
-          </Button>
-          <Button
-            variant={activeMode === "text" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveMode("text")}
-            className="text-white/70 hover:text-white"
-          >
-            <Type className="h-4 w-4 mr-2" />
-            Text
-          </Button>
-          <Button
-            variant={activeMode === "vector" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveMode("vector")}
-            className="text-white/70 hover:text-white"
-          >
-            <Square className="h-4 w-4 mr-2" />
-            Vector
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-white/50">Web Builder</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setPerformancePanelOpen(true)}
-            className="text-white/70 hover:text-white"
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            Performance
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIntegrationsPanelOpen(true)}
-            className="text-white/70 hover:text-white"
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Export & Integrations
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShortcutsDialogOpen(true)}
-            className="text-white/70 hover:text-white"
-            title="Keyboard shortcuts"
-          >
-            <Keyboard className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleUndo}
-            disabled={!codeHistory.canUndo && !canvasHistory.canUndo}
-            className="text-white/70 hover:text-white disabled:opacity-30"
-            title="Undo (Ctrl+Z)"
-          >
-            <Undo2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRedo}
-            disabled={!codeHistory.canRedo && !canvasHistory.canRedo}
-            className="text-white/70 hover:text-white disabled:opacity-30"
-            title="Redo (Ctrl+Y)"
-          >
-            <Redo2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFileManagerOpen(true)}
-            className="text-white/70 hover:text-white"
-            title="Open Files"
-          >
-            <FolderOpen className="h-4 w-4 mr-2" />
-            Files
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleQuickSave}
-            className="text-white/70 hover:text-white"
-            title={templateFiles.currentTemplateId ? "Save (Ctrl+S)" : "Save As... (Ctrl+S)"}
-          >
-            <Save className="h-4 w-4" />
-            {templateFiles.currentTemplateId && (
-              <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" title="Saved" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setCodePreviewOpen(true)}
-            className="text-white/70 hover:text-white"
-          >
-            <Code className="h-4 w-4 mr-2" />
-            Code
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleFullscreen}
-            className="text-white/70 hover:text-white"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            {isFullscreen ? 'Exit Preview' : 'Preview'}
-          </Button>
-
-          <Button 
-            size="sm" 
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => console.log('[WebBuilder] Publish clicked')}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Publish
-          </Button>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Elements Sidebar */}
         {!leftPanelCollapsed && (
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+          <div className="w-80 bg-[#0f0d15] border-r border-purple-500/20 flex flex-col overflow-hidden">
             <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full justify-start rounded-none border-b px-2 h-10 shrink-0">
-                <TabsTrigger value="elements" className="text-xs">Elements</TabsTrigger>
-                <TabsTrigger value="functional" className="text-xs">Functional</TabsTrigger>
-                <TabsTrigger value="projects" className="text-xs">Projects</TabsTrigger>
+              <TabsList className="w-full justify-start rounded-none border-b border-purple-500/20 bg-[#1a1625] px-2 h-10 shrink-0">
+                <TabsTrigger value="elements" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Elements</TabsTrigger>
+                <TabsTrigger value="templates" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Templates</TabsTrigger>
+                <TabsTrigger value="functional" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Functional</TabsTrigger>
+                <TabsTrigger value="projects" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Projects</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
@@ -1623,7 +1526,7 @@ ${body.innerHTML}
               onElementClick={(element: WebElement) => {
                 // Insert element HTML into preview code on click
                 const parser = new DOMParser();
-                let doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+                const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
                 
                 // Ensure TailwindCSS is included
                 if (!doc.head.querySelector('script[src*="tailwindcss"]')) {
@@ -1651,6 +1554,15 @@ ${body.innerHTML}
                 });
               }}
             />
+              </TabsContent>
+              <TabsContent value="templates" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <LayoutTemplatesPanel
+                  onSelectTemplate={(code, name) => {
+                    setEditorCode(code);
+                    setPreviewCode(code);
+                    toast.success(`Loaded template: ${name}`);
+                  }}
+                />
               </TabsContent>
               <TabsContent value="functional" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <FunctionalBlocksPanel 
@@ -1695,21 +1607,25 @@ ${body.innerHTML}
 
         {/* Center Canvas Area */}
         <div className="flex-1 flex flex-col bg-[#0a0a0a]">
-          {/* Direct Edit Toolbar - Typography and Quick Edits */}
-          <DirectEditToolbar 
-            fabricCanvas={fabricCanvas}
-            selectedObject={selectedObject}
-            onPropertyChange={() => canvasHistory.save()}
-          />
-          
-          {/* Arrangement Tools - Layer Order, Alignment, Actions */}
-          <ArrangementTools 
-            fabricCanvas={fabricCanvas}
-            selectedObject={selectedObject}
-          />
-
           {/* Device & Mode Controls */}
           <div className="h-12 border-b border-white/10 flex items-center px-4 gap-4">
+            {/* Back Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBackNavigation}
+              className="text-white/70 hover:text-white h-8 px-2 border-r border-white/10 pr-4"
+              title={`Go back to ${referrerPageName}${hasUnsavedChanges ? ' (unsaved changes will be auto-saved)' : ''} - Alt+←`}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              <span className="flex items-center gap-1">
+                Back
+                {hasUnsavedChanges && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" title="Unsaved changes" />
+                )}
+              </span>
+            </Button>
+            
             {/* Device Breakpoints */}
             <div className="flex items-center gap-1 border-r border-white/10 pr-4">
               <Button

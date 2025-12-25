@@ -82,17 +82,17 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
     <div 
       ref={containerRef}
       className={cn(
-        'relative overflow-hidden rounded-lg border border-slate-700 bg-slate-950',
+        'relative overflow-hidden rounded-lg border border-border bg-background',
         isAIProcessing && 'opacity-60 pointer-events-none',
         className
       )}
       style={{ height }}
     >
       {isAIProcessing && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm">
           <div className="text-center">
-            <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-sm text-slate-400">AI is processing...</p>
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">AI is processing...</p>
           </div>
         </div>
       )}
@@ -104,8 +104,8 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
         onKeyDown={handleKeyDown}
         readOnly={readOnly}
         className={cn(
-          'w-full h-full p-4 bg-slate-950 text-slate-100 font-mono text-sm',
-          'resize-none outline-none focus:ring-2 focus:ring-purple-500/50',
+          'w-full h-full p-4 bg-background text-foreground font-mono text-sm',
+          'resize-none outline-none focus:ring-2 focus:ring-primary/50',
           'leading-relaxed',
           readOnly && 'cursor-default'
         )}
@@ -122,12 +122,12 @@ const CodeMirrorEditor: React.FC<CodeMirrorEditorProps> = ({
       />
       
       {/* Language indicator */}
-      <div className="absolute top-2 right-2 px-3 py-1 bg-slate-800/90 text-slate-400 text-xs font-semibold rounded backdrop-blur-sm">
+      <div className="absolute top-2 right-2 px-3 py-1 bg-purple-900/90 text-purple-200 text-xs font-semibold rounded backdrop-blur-sm border border-purple-500/30">
         {language.toUpperCase()}
       </div>
       
       {/* Line count indicator */}
-      <div className="absolute bottom-2 right-2 px-3 py-1 bg-slate-800/90 text-slate-500 text-xs rounded backdrop-blur-sm">
+      <div className="absolute bottom-2 right-2 px-3 py-1 bg-purple-900/90 text-purple-300 text-xs rounded backdrop-blur-sm border border-purple-500/30">
         {value.split('\n').length} lines
       </div>
     </div>
