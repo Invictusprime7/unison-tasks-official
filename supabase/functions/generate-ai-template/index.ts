@@ -132,9 +132,9 @@ Your templates MUST use this exact schema:
       ]
     }
   ],
-  "variants": [
+  "formats": [
     {
-      "id": "v1",
+      "id": "desktop",
       "name": "Desktop",
       "size": { "width": 1280, "height": 800 },
       "format": "web"
@@ -221,9 +221,15 @@ Make templates production-ready with real content, proper spacing, and visual hi
       throw new Error("Invalid template structure: missing sections");
     }
 
-    if (!templateStructure.variants || !Array.isArray(templateStructure.variants)) {
-      console.error("Invalid template structure: missing variants");
-      throw new Error("Invalid template structure: missing variants");
+    // Normalize variants to formats for compatibility
+    if (templateStructure.variants && !templateStructure.formats) {
+      templateStructure.formats = templateStructure.variants;
+      delete templateStructure.variants;
+    }
+
+    if (!templateStructure.formats || !Array.isArray(templateStructure.formats)) {
+      console.error("Invalid template structure: missing formats");
+      throw new Error("Invalid template structure: missing formats");
     }
 
     const completeTemplate = {

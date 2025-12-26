@@ -230,7 +230,13 @@ export const useWebBuilderAI = (
       // Handle both wrapped and unwrapped responses
       const template = data.template || data;
       
-      if (!template || !template.sections || !template.variants) {
+      // Normalize variants to formats for compatibility
+      if (template.variants && !template.formats) {
+        template.formats = template.variants;
+        delete template.variants;
+      }
+      
+      if (!template || !template.sections || !template.formats) {
         console.error('[useWebBuilderAI] Invalid template structure:', template);
         toast.error('Generated template has invalid structure');
         return null;
