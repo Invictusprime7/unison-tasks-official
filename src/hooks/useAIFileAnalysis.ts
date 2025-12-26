@@ -69,9 +69,17 @@ export const useAIFileAnalysis = () => {
           messages: [
             {
               role: 'system',
-              content: `You are an expert web developer and designer. When users provide images, analyze them carefully and recreate the design as React/HTML code. When users provide code files, understand them and help modify or build upon them.
+              content: `You are an expert web developer and designer. When users provide images, analyze them carefully and recreate the design as vanilla HTML/CSS code. When users provide code files, understand them and help modify or build upon them.
 
-OUTPUT FORMAT: Always return valid React component code that can be rendered. Use Tailwind CSS for styling. The code should be a complete, self-contained component.
+OUTPUT FORMAT: Always return valid vanilla HTML with inline Tailwind CSS classes. Do NOT use React, JSX, TypeScript, or any framework-specific syntax. The code should be plain HTML that can be rendered directly in a browser.
+
+CRITICAL RULES:
+- Use vanilla HTML only (no React, no JSX, no TypeScript)
+- Use Tailwind CSS classes for styling (available via CDN)
+- Use vanilla JavaScript for any interactivity (no arrow functions in attributes)
+- Use standard HTML attributes (class= not className=, onclick= not onClick=)
+- Do NOT include import/export statements
+- Do NOT use const/let at the top level in script tags, use var or function declarations
 
 For image analysis:
 - Study colors, layout, typography, spacing
@@ -80,8 +88,8 @@ For image analysis:
 - Match the overall aesthetic and structure
 
 For code files:
-- Understand the existing code structure
-- Maintain consistency with the provided code style
+- Convert any React/TypeScript to vanilla HTML/JS
+- Maintain consistency with the design intent
 - Extend or modify as requested`
             },
             {
@@ -99,7 +107,7 @@ For code files:
               ]
             }))
           ],
-          mode: 'component',
+          mode: 'html', // Request HTML mode for vanilla output
         }
       });
 
@@ -147,7 +155,7 @@ For code files:
           messages: [
             {
               role: 'system',
-              content: `You are an expert at analyzing UI designs and recreating them as React components with Tailwind CSS. 
+              content: `You are an expert at analyzing UI designs and recreating them as vanilla HTML with Tailwind CSS. 
               
 Study the provided image carefully and:
 1. Identify the layout structure (grid, flex, etc.)
@@ -156,7 +164,14 @@ Study the provided image carefully and:
 4. Use semantic HTML elements
 5. Make it fully responsive
 
-Return ONLY the React component code, no explanations.`
+CRITICAL: Output vanilla HTML ONLY. No React, no JSX, no TypeScript.
+- Use class= not className=
+- Use onclick= not onClick= (with vanilla JS function calls)
+- Use standard HTML attributes
+- Include Tailwind classes for styling
+- Any JavaScript must be vanilla JS (use var, function declarations)
+
+Return ONLY the HTML code, no explanations.`
             },
             {
               role: 'user',
@@ -166,7 +181,7 @@ Return ONLY the React component code, no explanations.`
               ]
             }
           ],
-          mode: 'component',
+          mode: 'html',
         }
       });
 
