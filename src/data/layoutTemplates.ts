@@ -17,11 +17,8 @@
  */
 
 // Re-export everything from the templates folder
+export type { LayoutCategory, LayoutTemplate } from './templates';
 export {
-  // Types
-  LayoutCategory,
-  LayoutTemplate,
-  
   // Utilities
   wrapInHtmlDoc,
   

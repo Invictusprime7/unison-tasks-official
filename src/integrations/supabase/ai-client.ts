@@ -32,13 +32,13 @@ export async function invokeAIFunction<T = any>(
     });
 
     if (error) {
-      console.error(\AI Function Error [\]:\, error);
+      console.error(`AI Function Error [${functionName}]:`, error);
       return { data: null, error };
     }
 
     return { data, error: null };
   } catch (err) {
-    console.error(\AI Function Exception [\]:\, err);
+    console.error(`AI Function Exception [${functionName}]:`, err);
     return { 
       data: null, 
       error: err instanceof Error ? err : new Error(String(err)) 
