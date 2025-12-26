@@ -45,7 +45,7 @@ export function bundleCode(code: string): BundledCode {
 
   // Detect code type
   result.hasTypeScript = cleanCode.includes('interface ') || cleanCode.includes('type ') || cleanCode.includes(': React.') || cleanCode.includes(': string') || cleanCode.includes(': number');
-  result.hasReact = cleanCode.includes('React') || cleanCode.includes('jsx') || cleanCode.includes('tsx') || cleanCode.includes('useState') || cleanCode.includes('useEffect');
+  result.hasReact = cleanCode.includes('React') || cleanCode.includes('jsx') || cleanCode.includes('tsx') || cleanCode.includes('useState') || cleanCode.includes('useEffect') || cleanCode.includes('className=');
 
   // Extract imports
   const imports = extractImports(cleanCode);
@@ -64,23 +64,73 @@ export function bundleCode(code: string): BundledCode {
     // React/TypeScript component - transpile with Babel
     try {
       const transpiled = transpileReactWithBabel(cleanCode);
-      result.javascript = transpiled.javascript;
+      result.javascript = sanitizeJavaScript(transpiled.javascript);
       result.html = transpiled.html;
       result.css = transpiled.css;
     } catch (error) {
       console.error('Babel transpilation failed:', error);
       // Fallback to basic transpilation
-      result.javascript = transpileTypeScript(cleanCode);
+      result.javascript = sanitizeJavaScript(transpileTypeScript(cleanCode));
     }
   } else if (cleanCode.includes('function') || cleanCode.includes('const ') || cleanCode.includes('class ')) {
     // Plain JS/TS code
-    result.javascript = transpileTypeScript(cleanCode);
+    result.javascript = sanitizeJavaScript(transpileTypeScript(cleanCode));
   } else {
     // Assume HTML
     result.html = cleanCode;
   }
 
+  // Final sanitization pass on JavaScript
+  if (result.javascript) {
+    result.javascript = sanitizeJavaScript(result.javascript);
+  }
+
   return result;
+}
+
+/**
+ * Sanitize JavaScript to ensure it's valid vanilla JS for iframe execution
+ */
+function sanitizeJavaScript(code: string): string {
+  if (!code || typeof code !== 'string') return '';
+  
+  let sanitized = code;
+  
+  // Remove any remaining TypeScript type annotations
+  sanitized = sanitized.replace(/:\s*[A-Z][a-zA-Z<>[\],\s|&]*(?=\s*[=,);{])/g, '');
+  sanitized = sanitized.replace(/:\s*(?:string|number|boolean|any|void|null|undefined)(?:\[\])?(?=\s*[=,);{])/g, '');
+  
+  // Remove interface declarations
+  sanitized = sanitized.replace(/interface\s+\w+\s*\{[^}]*\}/g, '');
+  
+  // Remove type declarations
+  sanitized = sanitized.replace(/type\s+\w+\s*=\s*[^;]+;/g, '');
+  
+  // Remove generic type parameters
+  sanitized = sanitized.replace(/<[A-Z][a-zA-Z<>[\],\s|&]*>/g, '');
+  
+  // Remove 'as' type assertions
+  sanitized = sanitized.replace(/\s+as\s+[A-Za-z<>[\],\s|&]+/g, '');
+  
+  // Remove non-null assertions
+  sanitized = sanitized.replace(/!(?=\.|\[)/g, '');
+  
+  // Convert arrow functions in specific problem patterns to regular functions
+  // This handles cases like: const handleClick = (e) => { ... }
+  sanitized = sanitized.replace(/const\s+(\w+)\s*=\s*\(([^)]*)\)\s*=>\s*\{/g, 'function $1($2) {');
+  sanitized = sanitized.replace(/let\s+(\w+)\s*=\s*\(([^)]*)\)\s*=>\s*\{/g, 'function $1($2) {');
+  
+  // Remove any remaining import/export statements
+  sanitized = sanitized.replace(/import\s+.*?from\s+['"][^'"]+['"];?\n?/g, '');
+  sanitized = sanitized.replace(/import\s+['"][^'"]+['"];?\n?/g, '');
+  sanitized = sanitized.replace(/export\s+default\s+/g, '');
+  sanitized = sanitized.replace(/export\s+\{[^}]*\};?\n?/g, '');
+  sanitized = sanitized.replace(/export\s+/g, '');
+  
+  // Clean up empty lines and extra whitespace
+  sanitized = sanitized.replace(/\n\s*\n\s*\n/g, '\n\n');
+  
+  return sanitized.trim();
 }
 
 /**
@@ -303,24 +353,27 @@ function convertReactToPlainHTML(code: string, componentName: string): {
   javascript: string;
 } {
   try {
-    // Extract JSX from return statement
-    const returnMatch = code.match(/return\s*\(([\s\S]*?)\);?\s*}[^}]*$/);
+    // Extract JSX from return statement - handle multiple patterns
+    let returnMatch = code.match(/return\s*\(([\s\S]*?)\);?\s*}[^}]*$/);
+    if (!returnMatch) {
+      // Try simpler pattern for single-line returns
+      returnMatch = code.match(/return\s*\(([\s\S]+)\)/);
+    }
+    if (!returnMatch) {
+      // Try to find any JSX-like content
+      returnMatch = code.match(/<[a-zA-Z][^>]*>[\s\S]*<\/[a-zA-Z]+>/);
+      if (returnMatch) {
+        returnMatch = [code, returnMatch[0]];
+      }
+    }
     if (!returnMatch) {
       return { success: false, html: '', css: '', javascript: '' };
     }
 
     const jsx = returnMatch[1].trim();
     
-    // Convert JSX to HTML
-    let html = jsx
-      .replace(/className=/g, 'class=')
-      .replace(/htmlFor=/g, 'for=')
-      .replace(/onClick=/g, 'onclick=')
-      .replace(/onChange=/g, 'onchange=')
-      .replace(/onSubmit=/g, 'onsubmit=')
-      .replace(/\{(['"])(.*?)\1\}/g, '$2') // Simple string expressions
-      .replace(/<>/g, '') // Remove fragments
-      .replace(/<\/>/g, '');
+    // Convert JSX to HTML with comprehensive transformations
+    let html = convertJSXToVanillaHTML(jsx);
 
     // Extract state and effects to create plain JS
     const stateMatches = code.matchAll(/useState<[^>]+>\(([^)]+)\)|useState\(([^)]+)\)/g);
@@ -336,25 +389,31 @@ function convertReactToPlainHTML(code: string, componentName: string): {
       css = styleMatch[1].trim();
     }
 
-    // Create plain JavaScript
+    // Create plain JavaScript - ensure it's valid vanilla JS
     let javascript = '';
     if (states.length > 0) {
-      javascript = states.map(s => `let ${s.name} = ${s.initial};`).join('\n');
+      javascript = states.map(s => `var ${s.name} = ${s.initial};`).join('\n');
     }
 
-    // Extract event handlers
-    const handlerMatches = code.matchAll(/const\s+(\w+)\s*=\s*\([^)]*\)\s*=>\s*{([^}]*)}/g);
+    // Extract event handlers and convert arrow functions to regular functions
+    const handlerMatches = code.matchAll(/const\s+(\w+)\s*=\s*(?:\([^)]*\)|[^=]+)\s*=>\s*\{([^}]*)\}/g);
     for (const match of handlerMatches) {
-      javascript += `\nfunction ${match[1]}() {\n  ${match[2]}\n}`;
+      const handlerName = match[1];
+      const handlerBody = match[2].trim();
+      // Convert to vanilla function
+      javascript += `\nfunction ${handlerName}() {\n  ${handlerBody}\n}`;
     }
 
     // Replace React-specific template expressions with IDs for manipulation
     let idCounter = 0;
     html = html.replace(/\{(\w+)\}/g, (match, varName) => {
       const id = `dynamic-${idCounter++}`;
-      javascript += `\ndocument.getElementById('${id}').textContent = ${varName} || '';`;
+      javascript += `\nif (document.getElementById('${id}')) { document.getElementById('${id}').textContent = (typeof ${varName} !== 'undefined' ? ${varName} : ''); }`;
       return `<span id="${id}"></span>`;
     });
+
+    // Clean up any remaining JSX expressions
+    html = cleanRemainingJSXExpressions(html);
 
     return {
       success: true,
@@ -366,6 +425,85 @@ function convertReactToPlainHTML(code: string, componentName: string): {
     console.warn('Plain HTML conversion failed:', error);
     return { success: false, html: '', css: '', javascript: '' };
   }
+}
+
+/**
+ * Convert JSX to vanilla HTML with comprehensive transformations
+ */
+function convertJSXToVanillaHTML(jsx: string): string {
+  let html = jsx
+    // React attribute to HTML attribute conversions
+    .replace(/className=/g, 'class=')
+    .replace(/htmlFor=/g, 'for=')
+    .replace(/onClick=/g, 'onclick=')
+    .replace(/onChange=/g, 'onchange=')
+    .replace(/onSubmit=/g, 'onsubmit=')
+    .replace(/onInput=/g, 'oninput=')
+    .replace(/onFocus=/g, 'onfocus=')
+    .replace(/onBlur=/g, 'onblur=')
+    .replace(/onKeyDown=/g, 'onkeydown=')
+    .replace(/onKeyUp=/g, 'onkeyup=')
+    .replace(/onMouseOver=/g, 'onmouseover=')
+    .replace(/onMouseOut=/g, 'onmouseout=')
+    .replace(/onMouseEnter=/g, 'onmouseenter=')
+    .replace(/onMouseLeave=/g, 'onmouseleave=')
+    .replace(/tabIndex=/g, 'tabindex=')
+    .replace(/autoComplete=/g, 'autocomplete=')
+    .replace(/autoFocus/g, 'autofocus')
+    .replace(/readOnly/g, 'readonly')
+    .replace(/maxLength=/g, 'maxlength=')
+    .replace(/minLength=/g, 'minlength=')
+    // Handle fragments
+    .replace(/<>/g, '<div>')
+    .replace(/<\/>/g, '</div>')
+    .replace(/<React\.Fragment>/g, '<div>')
+    .replace(/<\/React\.Fragment>/g, '</div>')
+    // Handle simple string expressions in attributes
+    .replace(/\{['"]([^'"]+)['"]\}/g, '$1')
+    // Handle template literals in attributes
+    .replace(/\{`([^`]+)`\}/g, '$1')
+    // Handle boolean attributes
+    .replace(/=\{true\}/g, '')
+    .replace(/=\{false\}/g, '=""')
+    // Handle numeric attributes
+    .replace(/=\{(\d+)\}/g, '="$1"')
+    // Handle inline styles object (simplified)
+    .replace(/style=\{\{([^}]+)\}\}/g, (match, styleObj) => {
+      const cssStyle = styleObj
+        .replace(/(['"]?)(\w+)\1:\s*(['"]?)([^,'"]+)\3/g, (m: string, q1: string, prop: string, q2: string, val: string) => {
+          const cssProp = prop.replace(/([A-Z])/g, '-$1').toLowerCase();
+          return `${cssProp}: ${val}`;
+        })
+        .replace(/,\s*/g, '; ');
+      return `style="${cssStyle}"`;
+    });
+
+  return html;
+}
+
+/**
+ * Clean remaining JSX expressions that couldn't be converted
+ */
+function cleanRemainingJSXExpressions(html: string): string {
+  // Remove arrow function expressions from event handlers
+  html = html.replace(/=\{[^}]*=>[^}]*\}/g, '=""');
+  
+  // Remove complex object expressions
+  html = html.replace(/=\{\{[^}]+\}\}/g, '=""');
+  
+  // Remove function call expressions
+  html = html.replace(/=\{[a-zA-Z_$][\w$]*\([^)]*\)\}/g, '=""');
+  
+  // Remove remaining variable expressions in attributes (convert to empty)
+  html = html.replace(/=\{[a-zA-Z_$][\w$]*\}/g, '=""');
+  
+  // Remove TypeScript type annotations that might remain
+  html = html.replace(/:\s*[A-Z][a-zA-Z]*(?:<[^>]+>)?/g, '');
+  
+  // Clean up dangling expressions in text content (wrap in spans)
+  html = html.replace(/>\{([^}]+)\}</g, '><span data-bind="$1"></span><');
+  
+  return html;
 }
 
 /**
