@@ -507,17 +507,55 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    const hasFiles = droppedFiles.length > 0;
+    if ((!input.trim() && !hasFiles) || isLoading || analyzing) return;
 
     const userMessage: Message = {
       role: "user",
-      content: input,
+      content: input || (hasFiles ? 'Analyze these files and create a design' : ''),
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const userInput = input;
+    const filesToProcess = [...droppedFiles];
     setInput("");
+    setDroppedFiles([]);
     setIsLoading(true);
+
+    // If files are attached, use file analysis first
+    if (hasFiles) {
+      const result = await analyzeAndGenerate(
+        userInput || 'Analyze these files and create a matching React component with Tailwind CSS',
+        filesToProcess
+      );
+
+      if (result.success && result.code) {
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: `✨ **Code Generated from Files!**\n\n${result.explanation}\n\n\`\`\`html\n${result.code}\n\`\`\``,
+          timestamp: new Date(),
+          hasCode: true,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        
+        if (onCodeGenerated) {
+          onCodeGenerated(result.code);
+          toast({
+            title: "Code applied to canvas",
+            description: "Generated from your uploaded files",
+          });
+        }
+      } else {
+        setMessages((prev) => [...prev, {
+          role: "assistant",
+          content: `Sorry, I couldn't process those files: ${result.error || 'Unknown error'}`,
+          timestamp: new Date(),
+        }]);
+      }
+      setIsLoading(false);
+      return;
+    }
 
     await saveMessage(userMessage);
 
@@ -1074,7 +1112,50 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                   <span>✓ AI will analyze {Math.min(currentCode.length, 6000)} chars of your code</span>
                 </div>
               )}
+              
+              {/* Dropped files preview */}
+              {droppedFiles.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {droppedFiles.map((file) => (
+                    <div key={file.id} className="relative group flex items-center gap-1.5 px-2 py-1 bg-white/10 border border-white/20 rounded text-xs text-white/80">
+                      {file.type === 'image' && file.preview ? (
+                        <img src={file.preview} alt={file.name} className="w-5 h-5 object-cover rounded" />
+                      ) : (
+                        <Code2 className="w-3.5 h-3.5 text-blue-400" />
+                      )}
+                      <span className="max-w-[80px] truncate">{file.name}</span>
+                      <button onClick={() => handleRemoveFile(file.id)} className="opacity-60 hover:opacity-100">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* File drop zone */}
+              {showFileZone && (
+                <div className="mb-2">
+                  <FileDropZone
+                    onFilesDropped={handleFilesDropped}
+                    files={droppedFiles}
+                    onRemoveFile={handleRemoveFile}
+                  />
+                </div>
+              )}
+              
               <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowFileZone(!showFileZone)}
+                  className={cn(
+                    "h-11 w-11 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10",
+                    showFileZone && "bg-white/15 border-white/30"
+                  )}
+                  title="Attach files or images"
+                >
+                  <Paperclip className="w-4 h-4 text-white/70" />
+                </Button>
                 <Textarea
                     value={input}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
@@ -1084,8 +1165,10 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                         handleSend();
                       }
                     }}
+                    onPaste={handlePaste}
                     placeholder={
-                      mode === "code" ? "Describe what to build..." :
+                      droppedFiles.length > 0 ? "Describe what to do with files..." :
+                      mode === "code" ? "Describe what to build or paste an image..." :
                       mode === "design" ? "Ask about design..." :
                       mode === "review" ? "Paste code for review..." :
                       "Describe the issue or error..."
@@ -1094,19 +1177,22 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                   />
                 <Button
                   onClick={handleSend}
-                  disabled={isLoading || !input.trim()}
+                  disabled={(isLoading || analyzing) || (!input.trim() && droppedFiles.length === 0)}
                   className={cn(
                     "h-11 w-11 rounded-lg",
                     `bg-gradient-to-br ${currentTheme.gradient.button} hover:opacity-90 transition-opacity`
                   )}
                 >
-                  {isLoading ? (
+                  {(isLoading || analyzing) ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
                 </Button>
               </div>
+              <p className="text-[10px] text-white/40 mt-1.5 text-center">
+                📎 Paste images or drop files • Ctrl+Enter to send
+              </p>
             </div>
             </Tabs>
           </div>
