@@ -21,6 +21,9 @@ import {
   Code,
   Trash2,
   Wand2,
+  Paperclip,
+  Image,
+  X,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -40,6 +43,8 @@ import {
   generateSlotContextForAI,
   ImageSlotTracker,
 } from "@/services/imageSlotService";
+import { FileDropZone, DroppedFile } from "./web-builder/FileDropZone";
+import { useAIFileAnalysis } from "@/hooks/useAIFileAnalysis";
 
 interface Message {
   role: "user" | "assistant";
@@ -258,8 +263,10 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
   const [viewerCode, setViewerCode] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
+  const [showFileZone, setShowFileZone] = useState(false);
+  const { analyzing, analyzeAndGenerate } = useAIFileAnalysis();
   const [currentTheme, setCurrentTheme] = useState<AITheme>(() => {
-    // Load theme from localStorage or default to first theme
     const savedThemeId = localStorage.getItem("ai-assistant-theme");
     return AI_THEMES.find(t => t.id === savedThemeId) || AI_THEMES[0];
   });
@@ -459,6 +466,44 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       title: "Copied to clipboard",
       description: "Code copied successfully",
     });
+  };
+
+  const handleFilesDropped = useCallback((files: DroppedFile[]) => {
+    setDroppedFiles(prev => [...prev, ...files]);
+    setShowFileZone(false);
+  }, []);
+
+  const handleRemoveFile = useCallback((id: string) => {
+    setDroppedFiles(prev => prev.filter(f => f.id !== id));
+  }, []);
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+    
+    if (imageItems.length > 0) {
+      e.preventDefault();
+      const files: DroppedFile[] = [];
+      
+      for (const item of imageItems) {
+        const file = item.getAsFile();
+        if (file) {
+          const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const preview = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+          
+          files.push({ id, file, name: `pasted-image.png`, type: 'image', preview });
+        }
+      }
+      
+      if (files.length > 0) {
+        setDroppedFiles(prev => [...prev, ...files]);
+        toast({ title: "Image pasted", description: "Ready to analyze" });
+      }
+    }
   };
 
   const handleSend = async () => {

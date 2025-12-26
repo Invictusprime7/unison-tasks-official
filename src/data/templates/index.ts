@@ -4,7 +4,7 @@
  */
 
 // Types
-export { LayoutCategory, LayoutTemplate } from './types';
+export type { LayoutCategory, LayoutTemplate } from './types';
 
 // Utilities
 export { wrapInHtmlDoc } from './utils';
