@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
-import { LiveHTMLPreview } from './LiveHTMLPreview';
+import { UnifiedPreview, UnifiedPreviewHandle } from './UnifiedPreview';
+import { LiveHTMLPreview, LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
@@ -33,7 +34,7 @@ import { InteractiveElementHighlight } from "./web-builder/InteractiveElementHig
 import { InteractiveElementOverlay } from "./web-builder/InteractiveElementOverlay";
 import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
 import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
-import { LiveHTMLPreviewHandle } from './LiveHTMLPreview';
+// LiveHTMLPreviewHandle is imported above with UnifiedPreview
 import { TemplateFileManager } from "./web-builder/TemplateFileManager";
 import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
@@ -169,7 +170,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
-  const livePreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
+  const livePreviewRef = useRef<UnifiedPreviewHandle | null>(null);
   
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
@@ -1844,13 +1845,15 @@ ${body.innerHTML}
                   data-drop-zone="true"
                   className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
                 >
-                  <LiveHTMLPreview 
+                  <UnifiedPreview 
                     ref={livePreviewRef}
                     code={previewCode}
                     autoRefresh={true}
                     className="w-full h-full"
                     enableSelection={builderMode === 'select'}
                     isInteractiveMode={isInteractiveMode}
+                    preferredMode="auto"
+                    showModeToggle={true}
                     onElementSelect={(elementData) => {
                       // Open properties panel when element is selected in edit mode
                       if (rightPanelCollapsed) {
@@ -1960,13 +1963,15 @@ ${body.innerHTML}
                     data-drop-zone="true"
                     className="h-[calc(100%-40px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
                   >
-                    <LiveHTMLPreview 
+                    <UnifiedPreview 
                       ref={livePreviewRef}
                       code={previewCode}
                       autoRefresh={true}
                       className="w-full h-full"
                       enableSelection={true}
                       isInteractiveMode={isInteractiveMode}
+                      preferredMode="auto"
+                      showModeToggle={true}
                       onElementSelect={(elementData) => {
                         console.log('[WebBuilder] HTML Element selected:', elementData);
                         setSelectedHTMLElement(elementData);
