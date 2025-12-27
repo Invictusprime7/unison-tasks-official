@@ -221,7 +221,7 @@ export const UnifiedPreview = forwardRef<UnifiedPreviewHandle, UnifiedPreviewPro
   }));
 
   return (
-    <div className={cn('relative w-full h-full', className)}>
+    <div className={cn('relative w-full h-full flex flex-col min-h-0', className)}>
       {/* Mode toggle */}
       {showModeToggle && (
         <div className="absolute top-2 left-2 z-20 flex items-center gap-2">
@@ -263,7 +263,7 @@ export const UnifiedPreview = forwardRef<UnifiedPreviewHandle, UnifiedPreviewPro
       {/* React Preview (Sandpack) */}
       {actualMode === 'react' && (
         <Suspense fallback={
-          <div className="w-full h-full flex items-center justify-center bg-background">
+          <div className="flex-1 min-h-0 flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="text-sm text-muted-foreground">Loading React runtime...</span>
@@ -274,7 +274,7 @@ export const UnifiedPreview = forwardRef<UnifiedPreviewHandle, UnifiedPreviewPro
             ref={reactPreviewRef}
             code={files ? undefined : previewCode}
             files={files}
-            className="w-full h-full"
+            className="flex-1 min-h-0 w-full"
             onError={(err) => setError(err)}
             onSuccess={() => setError(null)}
             entryFile={activeFile}
@@ -291,7 +291,7 @@ export const UnifiedPreview = forwardRef<UnifiedPreviewHandle, UnifiedPreviewPro
           onElementSelect={onElementSelect}
           enableSelection={enableSelection}
           isInteractiveMode={isInteractiveMode}
-          className="w-full h-full"
+          className="flex-1 min-h-0 w-full"
         />
       )}
     </div>
