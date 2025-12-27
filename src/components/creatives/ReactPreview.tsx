@@ -84,14 +84,17 @@ const SandpackInner: React.FC<{
   showNavigator?: boolean;
 }> = ({ onError, onSuccess, showNavigator }) => {
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full min-h-0 flex flex-col">
       <SandpackStatus onError={onError} onSuccess={onSuccess} />
-      <SandpackLayout className="!h-full !border-0 !rounded-none">
+      <SandpackLayout 
+        className="!flex-1 !min-h-0 !border-0 !rounded-none"
+        style={{ height: '100%', minHeight: 0 }}
+      >
         <SandpackPreviewComponent 
           showNavigator={showNavigator}
           showRefreshButton={false}
           showOpenInCodeSandbox={false}
-          className="!h-full"
+          style={{ height: '100%', minHeight: 0 }}
         />
       </SandpackLayout>
     </div>
@@ -345,7 +348,7 @@ body {
   }, [files, entryFile]);
 
   return (
-    <div className={cn('w-full h-full', className)} key={key}>
+    <div className={cn('w-full h-full flex flex-col min-h-0', className)} key={key}>
       <SandpackProvider
         template="react-ts"
         files={files}

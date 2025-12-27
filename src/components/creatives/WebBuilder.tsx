@@ -1843,13 +1843,15 @@ ${body.innerHTML}
                 <div 
                   ref={scrollContainerRef}
                   data-drop-zone="true"
-                  className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
+                  className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
                   <UnifiedPreview 
                     ref={livePreviewRef}
                     code={previewCode}
+                    files={virtualFS.getSandpackFiles()}
+                    activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
                     autoRefresh={true}
-                    className="w-full h-full"
+                    className="w-full h-full min-h-0 flex-1"
                     enableSelection={builderMode === 'select'}
                     isInteractiveMode={isInteractiveMode}
                     preferredMode="auto"
@@ -1953,21 +1955,23 @@ ${body.innerHTML}
             {viewMode === 'split' && (
               <div className="w-full h-full flex gap-4">
                 {/* Live Preview - Main viewing area */}
-                <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
-                  <div className="h-10 bg-muted border-b flex items-center px-4">
+                <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative flex flex-col">
+                  <div className="h-10 bg-muted border-b flex items-center px-4 flex-shrink-0">
                     <Eye className="w-4 h-4 text-muted-foreground mr-2" />
                     <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
                   </div>
                   <div 
                     ref={splitViewDropZoneRef}
                     data-drop-zone="true"
-                    className="h-[calc(100%-40px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
+                    className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
                     <UnifiedPreview 
                       ref={livePreviewRef}
                       code={previewCode}
+                      files={virtualFS.getSandpackFiles()}
+                      activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
                       autoRefresh={true}
-                      className="w-full h-full"
+                      className="w-full h-full min-h-0 flex-1"
                       enableSelection={true}
                       isInteractiveMode={isInteractiveMode}
                       preferredMode="auto"
