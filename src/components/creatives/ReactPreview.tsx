@@ -17,11 +17,13 @@ import { cn } from '@/lib/utils';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface ReactPreviewProps {
-  code: string;
+  code?: string;
+  files?: Record<string, string>;
   className?: string;
   onError?: (error: string) => void;
   onSuccess?: () => void;
   showNavigator?: boolean;
+  entryFile?: string;
 }
 
 export interface ReactPreviewHandle {
@@ -239,10 +241,12 @@ export default function App() {
 
 export const ReactPreview = forwardRef<ReactPreviewHandle, ReactPreviewProps>(({
   code,
+  files: externalFiles,
   className,
   onError,
   onSuccess,
-  showNavigator = false
+  showNavigator = false,
+  entryFile = '/src/App.tsx'
 }, ref) => {
   const [key, setKey] = useState(0);
 
@@ -251,6 +255,54 @@ export const ReactPreview = forwardRef<ReactPreviewHandle, ReactPreviewProps>(({
   }));
 
   const files = useMemo(() => {
+    // If external files are provided (from VFS), use them
+    if (externalFiles && Object.keys(externalFiles).length > 0) {
+      const sandpackFiles: Record<string, string> = {};
+      
+      // Convert VFS paths to Sandpack format
+      Object.entries(externalFiles).forEach(([path, content]) => {
+        // Sandpack needs paths starting with /
+        const sandpackPath = path.startsWith('/') ? path : `/${path}`;
+        sandpackFiles[sandpackPath] = content;
+      });
+      
+      // Ensure we have essential files
+      if (!sandpackFiles['/src/styles/index.css'] && !sandpackFiles['/styles.css']) {
+        sandpackFiles['/styles.css'] = `
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}`;
+      }
+      
+      return sandpackFiles;
+    }
+    
+    // Fallback: single code string mode
     if (!code?.trim()) {
       return {
         '/App.tsx': `import React from 'react';
@@ -282,7 +334,15 @@ body {
       '/App.tsx': appCode,
       '/styles.css': cssCode
     };
-  }, [code]);
+  }, [code, externalFiles]);
+
+  // Determine entry file for Sandpack
+  const activeFile = useMemo(() => {
+    if (files[entryFile]) return entryFile;
+    if (files['/src/App.tsx']) return '/src/App.tsx';
+    if (files['/App.tsx']) return '/App.tsx';
+    return Object.keys(files)[0] || '/App.tsx';
+  }, [files, entryFile]);
 
   return (
     <div className={cn('w-full h-full', className)} key={key}>
@@ -294,6 +354,7 @@ body {
           externalResources: [
             'https://cdn.tailwindcss.com'
           ],
+          activeFile,
           autorun: true,
           autoReload: true,
           recompileMode: 'delayed',
@@ -301,7 +362,9 @@ body {
         }}
         customSetup={{
           dependencies: {
-            "lucide-react": "latest"
+            "lucide-react": "latest",
+            "clsx": "latest",
+            "tailwind-merge": "latest"
           }
         }}
       >

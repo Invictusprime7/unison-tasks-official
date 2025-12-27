@@ -22,7 +22,8 @@ const ReactPreview = lazy(() => import('./ReactPreview').then(m => ({ default: m
 type PreviewMode = 'auto' | 'react' | 'html';
 
 interface UnifiedPreviewProps {
-  code: string;
+  code?: string;
+  files?: Record<string, string>;
   className?: string;
   autoRefresh?: boolean;
   onElementSelect?: (elementData: any) => void;
@@ -30,6 +31,7 @@ interface UnifiedPreviewProps {
   isInteractiveMode?: boolean;
   preferredMode?: PreviewMode;
   showModeToggle?: boolean;
+  activeFile?: string;
 }
 
 export interface UnifiedPreviewHandle {
@@ -115,38 +117,52 @@ async function convertToHTML(code: string): Promise<string> {
 
 export const UnifiedPreview = forwardRef<UnifiedPreviewHandle, UnifiedPreviewProps>(({
   code,
+  files,
   className,
   autoRefresh = true,
   onElementSelect,
   enableSelection = true,
   isInteractiveMode = false,
   preferredMode = 'auto',
-  showModeToggle = true
+  showModeToggle = true,
+  activeFile = '/src/App.tsx'
 }, ref) => {
   const [mode, setMode] = useState<PreviewMode>(preferredMode);
-  const [convertedCode, setConvertedCode] = useState<string>(code);
+  const [convertedCode, setConvertedCode] = useState<string>(code || '');
   const [isConverting, setIsConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const htmlPreviewRef = useRef<LiveHTMLPreviewHandle>(null);
   const reactPreviewRef = useRef<{ refresh: () => void } | null>(null);
 
+  // Get the code to preview - either from files or direct code prop
+  const previewCode = useMemo(() => {
+    if (code) return code;
+    if (files && activeFile && files[activeFile]) {
+      return files[activeFile];
+    }
+    return '';
+  }, [code, files, activeFile]);
   // Determine actual mode based on 'auto' detection
   const actualMode = useMemo(() => {
     if (mode === 'auto') {
-      return detectCodeType(code);
+      // If we have multiple files, assume React project
+      if (files && Object.keys(files).length > 1) {
+        return 'react';
+      }
+      return detectCodeType(previewCode);
     }
     return mode === 'react' ? 'react' : 'html';
-  }, [mode, code]);
+  }, [mode, previewCode, files]);
 
   // Convert code when switching to HTML mode for React code
   const handleModeSwitch = useCallback(async () => {
     const newMode = actualMode === 'react' ? 'html' : 'react';
     
-    if (newMode === 'html' && detectCodeType(code) === 'react') {
+    if (newMode === 'html' && detectCodeType(previewCode) === 'react') {
       setIsConverting(true);
       try {
-        const converted = await convertToHTML(code);
+        const converted = await convertToHTML(previewCode);
         setConvertedCode(converted);
       } catch (err) {
         console.error('[UnifiedPreview] Conversion error:', err);
@@ -155,20 +171,20 @@ export const UnifiedPreview = forwardRef<UnifiedPreviewHandle, UnifiedPreviewPro
         setIsConverting(false);
       }
     } else {
-      setConvertedCode(code);
+      setConvertedCode(previewCode);
     }
     
     setMode(newMode);
-  }, [actualMode, code]);
+  }, [actualMode, previewCode]);
 
   // Update converted code when source code changes
   React.useEffect(() => {
-    if (mode === 'html' && detectCodeType(code) === 'react') {
-      convertToHTML(code).then(setConvertedCode);
+    if (mode === 'html' && detectCodeType(previewCode) === 'react') {
+      convertToHTML(previewCode).then(setConvertedCode);
     } else {
-      setConvertedCode(code);
+      setConvertedCode(previewCode);
     }
-  }, [code, mode]);
+  }, [previewCode, mode]);
 
   useImperativeHandle(ref, () => ({
     updateElement: (selector: string, updates: any) => {
@@ -256,10 +272,12 @@ export const UnifiedPreview = forwardRef<UnifiedPreviewHandle, UnifiedPreviewPro
         }>
           <ReactPreview 
             ref={reactPreviewRef}
-            code={code}
+            code={files ? undefined : previewCode}
+            files={files}
             className="w-full h-full"
             onError={(err) => setError(err)}
             onSuccess={() => setError(null)}
+            entryFile={activeFile}
           />
         </Suspense>
       )}
