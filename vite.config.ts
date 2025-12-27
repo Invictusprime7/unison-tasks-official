@@ -108,14 +108,15 @@ export default defineConfig(({ mode }) => ({
       'react-router-dom',
       'lucide-react',
       'clsx',
-      'tailwind-merge'
+      'tailwind-merge',
+      // Sandpack needs to be pre-bundled to fix ESM compatibility with 'anser' dependency
+      '@codesandbox/sandpack-react'
     ],
     exclude: [
       // Heavy libraries that should be dynamically loaded
       '@huggingface/transformers',
       'fabric',
       '@monaco-editor/react',
-      '@codesandbox/sandpack-react',
       'html2canvas'
     ]
   },
