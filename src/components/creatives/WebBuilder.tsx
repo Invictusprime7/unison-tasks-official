@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
-import { UnifiedPreview, UnifiedPreviewHandle } from './UnifiedPreview';
-import { LiveHTMLPreview, LiveHTMLPreviewHandle } from './LiveHTMLPreview';
+import { SimplePreview, type SimplePreviewHandle } from './SimplePreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
@@ -34,7 +33,6 @@ import { InteractiveElementHighlight } from "./web-builder/InteractiveElementHig
 import { InteractiveElementOverlay } from "./web-builder/InteractiveElementOverlay";
 import { InteractiveModeUtils } from "./web-builder/InteractiveModeUtils";
 import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
-// LiveHTMLPreviewHandle is imported above with UnifiedPreview
 import { TemplateFileManager } from "./web-builder/TemplateFileManager";
 import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
@@ -170,7 +168,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
-  const livePreviewRef = useRef<UnifiedPreviewHandle | null>(null);
+  const livePreviewRef = useRef<SimplePreviewHandle | null>(null);
   
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
@@ -1079,40 +1077,18 @@ ${body.innerHTML}
   };
 
   // Handle delete for HTML elements in the live preview
+  // Note: Direct DOM manipulation not supported in Sandpack preview
   const handleDeleteHTMLElement = useCallback(() => {
-    if (!selectedHTMLElement?.selector || !livePreviewRef.current) return;
-    
-    const deleted = livePreviewRef.current.deleteElement(selectedHTMLElement.selector);
-    if (deleted) {
-      setSelectedHTMLElement(null);
-      toast.success('Element deleted');
-      
-      // Update the code
-      const iframe = document.querySelector('iframe');
-      if (iframe?.contentDocument) {
-        const newHtml = iframe.contentDocument.documentElement.outerHTML;
-        setPreviewCode(newHtml);
-        setEditorCode(newHtml);
-      }
-    }
+    if (!selectedHTMLElement?.selector) return;
+    toast.info('Direct element deletion not available in preview mode. Edit the code instead.');
+    setSelectedHTMLElement(null);
   }, [selectedHTMLElement]);
 
   // Handle duplicate for HTML elements in the live preview
+  // Note: Direct DOM manipulation not supported in Sandpack preview
   const handleDuplicateHTMLElement = useCallback(() => {
-    if (!selectedHTMLElement?.selector || !livePreviewRef.current) return;
-    
-    const duplicated = livePreviewRef.current.duplicateElement(selectedHTMLElement.selector);
-    if (duplicated) {
-      toast.success('Element duplicated');
-      
-      // Update the code
-      const iframe = document.querySelector('iframe');
-      if (iframe?.contentDocument) {
-        const newHtml = iframe.contentDocument.documentElement.outerHTML;
-        setPreviewCode(newHtml);
-        setEditorCode(newHtml);
-      }
-    }
+    if (!selectedHTMLElement?.selector) return;
+    toast.info('Direct element duplication not available in preview mode. Edit the code instead.');
   }, [selectedHTMLElement]);
 
   const addBlock = (blockId: string) => {
@@ -1845,25 +1821,14 @@ ${body.innerHTML}
                   data-drop-zone="true"
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
-                  <UnifiedPreview 
-                    ref={livePreviewRef}
-                    code={previewCode}
+                  <SimplePreview 
                     files={virtualFS.getSandpackFiles()}
                     activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
-                    autoRefresh={true}
                     className="w-full h-full min-h-0 flex-1"
-                    enableSelection={builderMode === 'select'}
-                    isInteractiveMode={isInteractiveMode}
-                    preferredMode="auto"
-                    showModeToggle={true}
-                    onElementSelect={(elementData) => {
-                      // Open properties panel when element is selected in edit mode
-                      if (rightPanelCollapsed) {
-                        setRightPanelCollapsed(false);
-                      }
-                      console.log('[WebBuilder] HTML Element selected:', elementData);
-                      setSelectedHTMLElement(elementData);
-                    }}
+                    showConsole={false}
+                    showNavigator={false}
+                    onReady={() => console.log('[WebBuilder] Preview ready')}
+                    onError={(err) => console.warn('[WebBuilder] Preview error:', err)}
                   />
                 </div>
               </div>
@@ -1965,25 +1930,14 @@ ${body.innerHTML}
                     data-drop-zone="true"
                     className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
-                    <UnifiedPreview 
-                      ref={livePreviewRef}
-                      code={previewCode}
+                    <SimplePreview 
                       files={virtualFS.getSandpackFiles()}
                       activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
-                      autoRefresh={true}
                       className="w-full h-full min-h-0 flex-1"
-                      enableSelection={true}
-                      isInteractiveMode={isInteractiveMode}
-                      preferredMode="auto"
-                      showModeToggle={true}
-                      onElementSelect={(elementData) => {
-                        console.log('[WebBuilder] HTML Element selected:', elementData);
-                        setSelectedHTMLElement(elementData);
-                        // Open properties panel when element is selected
-                        if (rightPanelCollapsed) {
-                          setRightPanelCollapsed(false);
-                        }
-                      }}
+                      showConsole={true}
+                      showNavigator={false}
+                      onReady={() => console.log('[WebBuilder] Split preview ready')}
+                      onError={(err) => console.warn('[WebBuilder] Split preview error:', err)}
                     />
                   </div>
                 </div>
@@ -2125,43 +2079,19 @@ ${body.innerHTML}
           onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
           onUpdate={() => fabricCanvas?.renderAll()}
           onUpdateHTMLElement={(updates) => {
-            if (livePreviewRef.current && selectedHTMLElement?.selector) {
-              // Format the update object correctly for updateElementInIframe
-              const formattedUpdates: { 
-                styles?: Record<string, string>; 
-                textContent?: string; 
-                attributes?: Record<string, string>;
-              } = {};
+            // SimplePreview doesn't support direct DOM manipulation
+            // Updates should be made in the code editor instead
+            if (selectedHTMLElement?.selector) {
+              console.log('[WebBuilder] Element update requested:', selectedHTMLElement.selector, updates);
+              toast.info('Edit the code to update elements. Changes will be reflected in preview.');
               
-              if (updates.styles) {
-                formattedUpdates.styles = updates.styles;
-              }
-              if (updates.textContent !== undefined) {
-                formattedUpdates.textContent = updates.textContent;
-              }
-              if (updates.attributes) {
-                formattedUpdates.attributes = updates.attributes;
-              }
-              
-              console.log('[WebBuilder] Updating HTML element:', selectedHTMLElement.selector, formattedUpdates);
-              
-              const success = livePreviewRef.current.updateElement(
-                selectedHTMLElement.selector,
-                formattedUpdates
-              );
-              
-              if (success) {
-                // Update local state with merged styles
-                const updatedElement = { 
-                  ...selectedHTMLElement, 
-                  styles: { ...selectedHTMLElement.styles, ...updates.styles },
-                  textContent: updates.textContent ?? selectedHTMLElement.textContent 
-                };
-                setSelectedHTMLElement(updatedElement);
-                console.log('[WebBuilder] Element updated successfully');
-              } else {
-                console.error('[WebBuilder] Failed to update element');
-              }
+              // Update local state for UI consistency
+              const updatedElement = { 
+                ...selectedHTMLElement, 
+                styles: { ...selectedHTMLElement.styles, ...updates.styles },
+                textContent: updates.textContent ?? selectedHTMLElement.textContent 
+              };
+              setSelectedHTMLElement(updatedElement);
             }
           }}
           onClearHTMLSelection={() => setSelectedHTMLElement(null)}

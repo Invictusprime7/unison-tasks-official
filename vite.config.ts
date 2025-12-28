@@ -84,13 +84,66 @@ export default defineConfig(({ mode }) => ({
             return 'form-handling';
           }
           
-          // Syntax highlighting and code tools
+          // Syntax highlighting and code tools - split languages separately
           if (id.includes('react-syntax-highlighter') || id.includes('prismjs')) {
             return 'syntax-highlighting';
           }
+          if (id.includes('refractor/lang')) {
+            return 'syntax-languages';
+          }
+          if (id.includes('refractor')) {
+            return 'refractor-core';
+          }
           
-          // Node modules vendor chunk for everything else
+          // Animation libraries
+          if (id.includes('framer-motion') || id.includes('motion')) {
+            return 'animation';
+          }
+          
+          // CodeMirror / code editor
+          if (id.includes('@codemirror') || id.includes('@lezer')) {
+            return 'codemirror';
+          }
+          
+          // Markdown and rich text
+          if (id.includes('marked') || id.includes('dompurify') || id.includes('turndown')) {
+            return 'markdown';
+          }
+          
+          // PDF generation
+          if (id.includes('jspdf') || id.includes('html2pdf')) {
+            return 'pdf-export';
+          }
+          
+          // Image processing
+          if (id.includes('heic2any') || id.includes('browser-image-compression')) {
+            return 'image-processing';
+          }
+          
+          // Embla carousel
+          if (id.includes('embla-carousel')) {
+            return 'carousel';
+          }
+          
+          // React Select and similar
+          if (id.includes('react-select') || id.includes('react-day-picker')) {
+            return 'form-widgets';
+          }
+          
+          // Sonner toast
+          if (id.includes('sonner')) {
+            return 'toast';
+          }
+
+          // Node modules vendor chunk for everything else (split by first-level package name)
           if (id.includes('node_modules')) {
+            // Extract package name for more granular splitting
+            const match = id.match(/node_modules\/(?:\.pnpm\/)?(@?[^/@]+(?:\/[^/@]+)?)/);
+            if (match) {
+              const pkgName = match[1].replace('@', '').replace('/', '-');
+              // Group smaller packages together
+              return `vendor-${pkgName}`;
+            }
             return 'vendor';
           }
         },
