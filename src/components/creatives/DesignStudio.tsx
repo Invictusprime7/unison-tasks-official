@@ -15,6 +15,8 @@ import { DesignSidebar } from "./DesignSidebar";
 import { MobileToolbar } from "./MobileToolbar";
 import { TemplateDebugPanel } from "./design-studio/TemplateDebugPanel";
 import { TemplateErrorBoundary } from "../TemplateErrorBoundary";
+import { AIDesignAssistant } from "./AIDesignAssistant";
+import { useDesignStudio } from "@/hooks/useDesignStudio";
 import { supabase } from "@/integrations/supabase/client";
 import { TemplateRenderer } from "@/utils/templateRenderer";
 import { validateTemplateStrict } from "@/utils/zodTemplateValidator";
@@ -69,6 +71,9 @@ export const DesignStudio = forwardRef((props, ref) => {
   
   // Autosave
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Design Intent Compiler - AI mockup generation
+  const { state: designStudioState, actions: designStudioActions } = useDesignStudio();
 
   // Initialize canvas with responsive sizing
   useEffect(() => {
@@ -1381,6 +1386,18 @@ export const DesignStudio = forwardRef((props, ref) => {
       </TemplateErrorBoundary>
 
       <TemplateDebugPanel debugInfo={debugInfo} enabled={debugMode} />
+
+      {/* AI Design Assistant - Floating Panel */}
+      <AIDesignAssistant
+        state={designStudioState}
+        actions={designStudioActions}
+        onMockupGenerated={() => {
+          toast({
+            title: "Mockup Generated",
+            description: "Your AI-generated mockup is ready for editing",
+          });
+        }}
+      />
     </div>
   );
 });

@@ -18,8 +18,9 @@ import type { MockupSpec, DesignTokens } from '@/types/designSystem';
 import { DesignIntentCompiler } from '@/services/designIntentCompiler';
 import { ScenePatchEngine, PatchOperation, createPatchFromAIInstruction, AIEditInstruction } from '@/services/scenePatchEngine';
 import { SceneExporter, ExportOptions, ExportResult } from '@/services/sceneExporter';
-import { getTokenManager, THEME_PRESETS, ThemePreset } from '@/services/designTokens';
-import { getAssetRegistry, Asset, AssetMetadata } from '@/services/assetRegistry';
+import { getTokenManager, THEME_PRESETS } from '@/services/designTokens';
+import { getAssetRegistry } from '@/services/assetRegistry';
+import type { Asset } from '@/types/asset';
 import { getComponentLibrary } from '@/services/componentLibrary';
 
 // ============================================
@@ -69,7 +70,7 @@ export interface DesignStudioActions {
   getSlots: () => SlotNode[];
 
   // Themes
-  applyThemePreset: (preset: ThemePreset) => void;
+  applyThemePreset: (preset: string) => void;
   updateTokens: (updates: Partial<DesignTokens>) => void;
 
   // History
@@ -101,20 +102,13 @@ function createEmptyScene(): RootNode {
     id: `scene_${Date.now()}`,
     type: 'root',
     name: 'New Design',
-    layout: {
-      x: 0,
-      y: 0,
-      width: 1440,
-      height: 900,
-    },
+    visible: true,
+    locked: false,
     children: [],
     canvas: {
       width: 1440,
       height: 900,
       backgroundColor: '#ffffff',
-      gridEnabled: true,
-      gridSize: 8,
-      snapEnabled: true,
     },
   };
 }
@@ -387,27 +381,14 @@ export function useDesignStudio(initialScene?: RootNode): UseDesignStudioReturn 
 
   const uploadAsset = useCallback(async (file: File): Promise<Asset | null> => {
     try {
-      const metadata: AssetMetadata = {
-        originalName: file.name,
-        fileSize: file.size,
-        uploadedAt: new Date().toISOString(),
-      };
-
-      // Create object URL for preview
-      const url = URL.createObjectURL(file);
+      // Use the AssetRegistry upload method which handles everything
+      const result = await assetRegistry.upload({ file });
       
-      // Detect type from file
-      const type = file.type.startsWith('image/') ? 'image' : 'other';
+      if (result.success && result.asset) {
+        return result.asset;
+      }
       
-      // Register asset
-      const asset = assetRegistry.register({
-        type: type as Asset['type'],
-        url,
-        name: file.name,
-        metadata,
-      });
-
-      return asset;
+      return null;
     } catch (error) {
       console.error('Asset upload failed:', error);
       return null;
@@ -423,23 +404,25 @@ export function useDesignStudio(initialScene?: RootNode): UseDesignStudioReturn 
   // THEMES
   // ============================================
 
-  const applyThemePreset = useCallback((preset: ThemePreset) => {
+  const applyThemePreset = useCallback((preset: string) => {
     tokenManager.applyPreset(preset);
     setTokens(tokenManager.getTokens());
 
     // Update scene background based on theme
     if (scene && patchEngineRef.current) {
-      const colors = THEME_PRESETS[preset].colors;
-      applyPatch({
-        type: 'node:update',
-        nodeId: scene.id,
-        updates: {
-          canvas: {
-            ...scene.canvas,
-            backgroundColor: colors.background,
+      const themeColors = THEME_PRESETS[preset]?.colors;
+      if (themeColors) {
+        applyPatch({
+          type: 'node:update',
+          nodeId: scene.id,
+          updates: {
+            canvas: {
+              ...scene.canvas,
+              backgroundColor: themeColors.background,
+            },
           },
-        },
-      } as Omit<PatchOperation, 'id' | 'timestamp' | 'source'>);
+        } as Omit<PatchOperation, 'id' | 'timestamp' | 'source'>);
+      }
     }
   }, [tokenManager, scene, applyPatch]);
 
@@ -492,11 +475,39 @@ export function useDesignStudio(initialScene?: RootNode): UseDesignStudioReturn 
   const addSection = useCallback((sectionType: string, variant?: string, insertIndex?: number) => {
     if (!scene) return;
 
-    const template = componentLibrary.getTemplate(sectionType, variant);
+    const template = variant 
+      ? componentLibrary.getByVariant(sectionType as import('@/types/designSystem').SectionType, variant)
+      : componentLibrary.getDefault(sectionType as import('@/types/designSystem').SectionType);
     if (!template) return;
 
-    const sectionNode = componentLibrary.createSectionNode(sectionType, variant);
-    if (!sectionNode) return;
+    // Create a section node from the template
+    const sectionNode: SceneNode = {
+      id: `section_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'container',
+      name: template.name,
+      visible: true,
+      locked: false,
+      layout: {
+        x: 0,
+        y: 0,
+        width: 1440,
+        height: 600,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: [48, 24, 48, 24],
+      },
+      style: {
+        backgroundColor: '#ffffff',
+      },
+      children: [],
+      metadata: {
+        sectionType,
+        variant: variant || template.variant,
+        templateId: template.id,
+      },
+    } as SceneNode;
 
     applyPatch({
       type: 'node:add',
@@ -515,15 +526,14 @@ export function useDesignStudio(initialScene?: RootNode): UseDesignStudioReturn 
   }, [applyPatch]);
 
   const getAvailableSections = useCallback(() => {
-    const sections = componentLibrary.listTemplates();
+    const allComponents = componentLibrary.getAll();
     const grouped = new Map<string, string[]>();
 
-    sections.forEach(key => {
-      const [type, variant] = key.split(':');
-      if (!grouped.has(type)) {
-        grouped.set(type, []);
+    allComponents.forEach(comp => {
+      if (!grouped.has(comp.type)) {
+        grouped.set(comp.type, []);
       }
-      grouped.get(type)!.push(variant);
+      grouped.get(comp.type)!.push(comp.variant);
     });
 
     return Array.from(grouped.entries()).map(([type, variants]) => ({
