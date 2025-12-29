@@ -22,7 +22,14 @@ export interface VirtualFolder {
 
 export type VirtualNode = VirtualFile | VirtualFolder;
 
+// Minimal empty structure - just the essential folders
+// Files are added only when templates are loaded or AI generates code
+const EMPTY_PROJECT_STRUCTURE: VirtualNode[] = [
+  { id: 'src', name: 'src', type: 'folder', parentId: null, isOpen: true, path: '/src' },
+];
+
 // Complete React project structure with all essential files
+// This is used when loading a full React template
 const DEFAULT_PROJECT_STRUCTURE: VirtualNode[] = [
   // Root folders
   { id: 'src', name: 'src', type: 'folder', parentId: null, isOpen: true, path: '/src' },
@@ -671,6 +678,97 @@ export default {
     path: '/tailwind.config.ts',
     readOnly: true
   },
+  // Root index.html for Vite (required at root, not in /public)
+  { 
+    id: 'root-index-html', 
+    name: 'index.html', 
+    content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="My awesome React application" />
+  <title>My App</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>`, 
+    type: 'file', 
+    language: 'html', 
+    parentId: null, 
+    path: '/index.html',
+    readOnly: true
+  },
+  // Vite config for runtime preview
+  { 
+    id: 'vite-config-ts', 
+    name: 'vite.config.ts', 
+    content: `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    host: true,
+    port: 4173,
+    strictPort: true,
+    hmr: {
+      clientPort: 443,
+    },
+  },
+});`, 
+    type: 'file', 
+    language: 'typescript', 
+    parentId: null, 
+    path: '/vite.config.ts',
+    readOnly: true
+  },
+  // PostCSS config for Tailwind
+  { 
+    id: 'postcss-config-js', 
+    name: 'postcss.config.js', 
+    content: `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};`, 
+    type: 'file', 
+    language: 'javascript', 
+    parentId: null, 
+    path: '/postcss.config.js',
+    readOnly: true
+  },
+  // TypeScript config for Node (Vite config)
+  { 
+    id: 'tsconfig-node-json', 
+    name: 'tsconfig.node.json', 
+    content: `{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true
+  },
+  "include": ["vite.config.ts"]
+}`, 
+    type: 'file', 
+    language: 'json', 
+    parentId: null, 
+    path: '/tsconfig.node.json',
+    readOnly: true
+  },
 ];
 
 export function getLanguageFromFileName(name: string): string {
@@ -751,10 +849,46 @@ export function vfsToSandpackFiles(nodes: VirtualNode[]): Record<string, string>
   return files;
 }
 
+/**
+ * FileMap type: The standard format for VFS snapshots
+ * Key = path (e.g., "/src/App.tsx")
+ * Value = file content
+ */
+export type FileMap = Record<string, string>;
+
+/**
+ * Convert VFS nodes to FileMap snapshot for preview sessions
+ * Filters to files only (excludes folders), maps path → content
+ */
+export function vfsToFileMap(nodes: VirtualNode[]): FileMap {
+  const fileMap: FileMap = {};
+  
+  nodes.forEach(node => {
+    if (node.type === 'file' && 'content' in node) {
+      const file = node as VirtualFile;
+      const path = file.path || `/${file.name}`;
+      fileMap[path] = file.content;
+    }
+  });
+  
+  return fileMap;
+}
+
+/**
+ * Get all file paths in the VFS
+ */
+export function getFilePaths(nodes: VirtualNode[]): string[] {
+  return nodes
+    .filter((node): node is VirtualFile => node.type === 'file' && 'content' in node)
+    .map(file => file.path || `/${file.name}`)
+    .sort();
+}
+
 export function useVirtualFileSystem() {
-  const [nodes, setNodes] = useState<VirtualNode[]>(DEFAULT_PROJECT_STRUCTURE);
-  const [activeFileId, setActiveFileId] = useState<string>('app-tsx');
-  const [openTabs, setOpenTabs] = useState<string[]>(['app-tsx']);
+  // Start with empty structure - files added via templates/AI
+  const [nodes, setNodes] = useState<VirtualNode[]>(EMPTY_PROJECT_STRUCTURE);
+  const [activeFileId, setActiveFileId] = useState<string>('');
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
 
   const getNodePath = useCallback((nodeId: string, currentNodes: VirtualNode[]): string => {
     const node = currentNodes.find(n => n.id === nodeId);
@@ -1093,11 +1227,31 @@ export default ${componentName};`;
     };
   }, [nodes]);
 
+  // Reset to empty structure
+  const resetToEmpty = useCallback(() => {
+    setNodes(EMPTY_PROJECT_STRUCTURE);
+    setActiveFileId('');
+    setOpenTabs([]);
+  }, []);
+
+  // Load the full default React project template
+  const loadDefaultTemplate = useCallback(() => {
+    setNodes(DEFAULT_PROJECT_STRUCTURE);
+    setActiveFileId('app-tsx');
+    setOpenTabs(['app-tsx']);
+  }, []);
+
+  // Check if VFS has any user files (not just folders)
+  const hasFiles = useMemo(() => {
+    return nodes.some(n => n.type === 'file');
+  }, [nodes]);
+
   return {
     nodes: sortedNodes,
     activeFileId,
     openTabs,
     stats,
+    hasFiles,
     setActiveFileId,
     createFile,
     createFolder,
@@ -1116,5 +1270,7 @@ export default ${componentName};`;
     getNodePath,
     getSandpackFiles,
     importFiles,
+    resetToEmpty,
+    loadDefaultTemplate,
   };
 }

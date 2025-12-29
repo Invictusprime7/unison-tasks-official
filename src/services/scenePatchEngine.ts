@@ -23,7 +23,13 @@ import type {
   ImageNode,
   NodeStyle,
   NodeLayout,
+  PositionedNode,
 } from '@/types/scene';
+
+// Type guard for nodes with layout and style
+function isPositionedNode(node: SceneNode): node is PositionedNode & SceneNode {
+  return node.type !== 'root' && 'layout' in node && 'style' in node;
+}
 
 // ============================================
 // PATCH TYPES
@@ -372,20 +378,23 @@ export class ScenePatchEngine {
   }
 
   private applyNodeUpdate(scene: RootNode, patch: NodeUpdatePatch): RootNode {
-    return this.updateNode(scene, patch.nodeId, (node) => {
+    return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
       // Store previous values for undo
       const previousValues: Record<string, unknown> = {};
       for (const key of Object.keys(patch.updates)) {
-        previousValues[key] = (node as Record<string, unknown>)[key];
+        previousValues[key] = (node as unknown as Record<string, unknown>)[key];
       }
       patch._previousValues = previousValues as Partial<SceneNode>;
 
-      return { ...node, ...patch.updates };
+      return { ...node, ...patch.updates } as SceneNode;
     });
   }
 
   private applyNodeMove(scene: RootNode, patch: NodeMovePatch): RootNode {
-    return this.updateNode(scene, patch.nodeId, (node) => {
+    return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+      if (!isPositionedNode(node)) {
+        throw new Error(`Cannot move node ${node.id}: not a positioned node`);
+      }
       return {
         ...node,
         layout: {
@@ -393,7 +402,7 @@ export class ScenePatchEngine {
           x: (node.layout.x || 0) + patch.deltaX,
           y: (node.layout.y || 0) + patch.deltaY,
         },
-      };
+      } as SceneNode;
     });
   }
 
@@ -452,7 +461,10 @@ export class ScenePatchEngine {
   }
 
   private applyStyleUpdate(scene: RootNode, patch: StyleUpdatePatch): RootNode {
-    return this.updateNode(scene, patch.nodeId, (node) => {
+    return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+      if (!isPositionedNode(node)) {
+        throw new Error(`Cannot update style on node ${node.id}: not a positioned node`);
+      }
       const previousStyle: Partial<NodeStyle> = {};
       for (const key of Object.keys(patch.style) as (keyof NodeStyle)[]) {
         if (node.style) {
@@ -464,12 +476,15 @@ export class ScenePatchEngine {
       return {
         ...node,
         style: { ...node.style, ...patch.style },
-      };
+      } as SceneNode;
     });
   }
 
   private applyLayoutUpdate(scene: RootNode, patch: LayoutUpdatePatch): RootNode {
-    return this.updateNode(scene, patch.nodeId, (node) => {
+    return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+      if (!isPositionedNode(node)) {
+        throw new Error(`Cannot update layout on node ${node.id}: not a positioned node`);
+      }
       const previousLayout: Partial<NodeLayout> = {};
       for (const key of Object.keys(patch.layout) as (keyof NodeLayout)[]) {
         previousLayout[key] = node.layout[key] as never;
@@ -479,7 +494,7 @@ export class ScenePatchEngine {
       return {
         ...node,
         layout: { ...node.layout, ...patch.layout },
-      };
+      } as SceneNode;
     });
   }
 
@@ -546,13 +561,16 @@ export class ScenePatchEngine {
 
       case 'node:update':
         if (!patch._previousValues) throw new Error('Cannot revert: missing undo data');
-        return this.updateNode(scene, patch.nodeId, (node) => {
-          return { ...node, ...patch._previousValues };
+        return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+          return { ...node, ...patch._previousValues } as SceneNode;
         });
 
       case 'node:move':
         // Undo move = move in opposite direction
-        return this.updateNode(scene, patch.nodeId, (node) => {
+        return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+          if (!isPositionedNode(node)) {
+            throw new Error(`Cannot revert move on node ${node.id}: not a positioned node`);
+          }
           return {
             ...node,
             layout: {
@@ -560,7 +578,7 @@ export class ScenePatchEngine {
               x: (node.layout.x || 0) - patch.deltaX,
               y: (node.layout.y || 0) - patch.deltaY,
             },
-          };
+          } as SceneNode;
         });
 
       case 'node:reparent':
@@ -574,36 +592,42 @@ export class ScenePatchEngine {
 
       case 'slot:bind':
         if (patch._previousAsset) {
-          return this.updateNode(scene, patch.slotId, (node) => {
-            return { ...node, currentAsset: patch._previousAsset };
+          return this.updateNode(scene, patch.slotId, (node): SceneNode => {
+            return { ...node, currentAsset: patch._previousAsset } as SceneNode;
           });
         }
-        return this.updateNode(scene, patch.slotId, (node) => {
-          return { ...node, currentAsset: undefined };
+        return this.updateNode(scene, patch.slotId, (node): SceneNode => {
+          return { ...node, currentAsset: undefined } as SceneNode;
         });
 
       case 'slot:unbind':
         if (!patch._previousAsset) throw new Error('Cannot revert: missing undo data');
-        return this.updateNode(scene, patch.slotId, (node) => {
-          return { ...node, currentAsset: patch._previousAsset };
+        return this.updateNode(scene, patch.slotId, (node): SceneNode => {
+          return { ...node, currentAsset: patch._previousAsset } as SceneNode;
         });
 
       case 'style:update':
         if (!patch._previousStyle) throw new Error('Cannot revert: missing undo data');
-        return this.updateNode(scene, patch.nodeId, (node) => {
-          return { ...node, style: { ...node.style, ...patch._previousStyle } };
+        return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+          if (!isPositionedNode(node)) {
+            throw new Error(`Cannot revert style on node ${node.id}: not a positioned node`);
+          }
+          return { ...node, style: { ...node.style, ...patch._previousStyle } } as SceneNode;
         });
 
       case 'layout:update':
         if (!patch._previousLayout) throw new Error('Cannot revert: missing undo data');
-        return this.updateNode(scene, patch.nodeId, (node) => {
-          return { ...node, layout: { ...node.layout, ...patch._previousLayout } };
+        return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+          if (!isPositionedNode(node)) {
+            throw new Error(`Cannot revert layout on node ${node.id}: not a positioned node`);
+          }
+          return { ...node, layout: { ...node.layout, ...patch._previousLayout } } as SceneNode;
         });
 
       case 'text:update':
         if (patch._previousContent === undefined) throw new Error('Cannot revert: missing undo data');
-        return this.updateNode(scene, patch.nodeId, (node) => {
-          return { ...node, content: patch._previousContent };
+        return this.updateNode(scene, patch.nodeId, (node): SceneNode => {
+          return { ...node, content: patch._previousContent } as SceneNode;
         });
 
       case 'bulk:update':

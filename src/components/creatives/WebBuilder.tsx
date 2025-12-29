@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { SimplePreview, type SimplePreviewHandle } from './SimplePreview';
+import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
@@ -42,8 +43,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useVirtualFileSystem, VirtualFile } from "@/hooks/useVirtualFileSystem";
 import { FileExplorer } from "./code-editor/FileExplorer";
+import { ModernFileExplorer } from "./code-editor/ModernFileExplorer";
 import { EditorTabs } from "./code-editor/EditorTabs";
+import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
@@ -168,7 +172,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
-  const livePreviewRef = useRef<SimplePreviewHandle | null>(null);
+  const livePreviewRef = useRef<VFSPreviewHandle | null>(null);
   
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
@@ -176,6 +180,111 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Virtual file system for code editor
   const virtualFS = useVirtualFileSystem();
+  
+  // Track modified and AI-generated files for modern UI
+  const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
+  const [aiGeneratedFiles, setAIGeneratedFiles] = useState<Set<string>>(new Set());
+  const [recentlyChangedFiles, setRecentlyChangedFiles] = useState<Set<string>>(new Set());
+  const originalFileContents = useRef<Map<string, string>>(new Map());
+  
+  // Track file modifications for UI indicators
+  const trackFileModification = useCallback((fileId: string, content: string) => {
+    const original = originalFileContents.current.get(fileId);
+    const newModified = new Set(modifiedFiles);
+    
+    if (original === undefined) {
+      // First time seeing this file, store original content
+      originalFileContents.current.set(fileId, content);
+    } else if (original !== content) {
+      // Content changed from original
+      newModified.add(fileId);
+    } else {
+      // Content matches original
+      newModified.delete(fileId);
+    }
+    
+    setModifiedFiles(newModified);
+    
+    // Mark as recently changed for highlighting animation
+    setRecentlyChangedFiles(prev => new Set([...prev, fileId]));
+    setTimeout(() => {
+      setRecentlyChangedFiles(prev => {
+        const next = new Set(prev);
+        next.delete(fileId);
+        return next;
+      });
+    }, 2000);
+  }, [modifiedFiles]);
+  
+  // Mark files as AI-generated when importing from templates
+  const markFilesAsAIGenerated = useCallback((fileIds: string[]) => {
+    setAIGeneratedFiles(prev => new Set([...prev, ...fileIds]));
+  }, []);
+  
+  // Sync previewCode to VFS when it changes (for templates and AI-generated code)
+  // This ensures the preview component sees the same code as the editor
+  const lastSyncedCodeRef = useRef<string>('');
+  const syncingFromVFSRef = useRef(false);
+  
+  useEffect(() => {
+    // Skip if we're syncing from VFS to avoid loops
+    if (syncingFromVFSRef.current) return;
+    
+    // Only sync if previewCode has meaningful content and changed
+    if (previewCode && previewCode !== lastSyncedCodeRef.current) {
+      const isDefaultContent = previewCode.includes('AI-generated code will appear here');
+      if (!isDefaultContent) {
+        console.log('[WebBuilder] Syncing previewCode to VFS');
+        // Determine file type based on content
+        const isHTML = previewCode.trim().startsWith('<!DOCTYPE') || 
+                       previewCode.trim().startsWith('<html') ||
+                       previewCode.includes('<body');
+        const isTSX = previewCode.includes('import React') || 
+                      previewCode.includes('export default') ||
+                      previewCode.includes('const ') && previewCode.includes('return (');
+        
+        if (isHTML) {
+          // For HTML templates, sync to index.html
+          virtualFS.importFiles({
+            '/index.html': previewCode,
+          });
+        } else if (isTSX) {
+          // For React/TSX, sync to App.tsx
+          virtualFS.importFiles({
+            '/src/App.tsx': previewCode,
+          });
+        } else {
+          // Default to App.tsx for other code
+          virtualFS.importFiles({
+            '/src/App.tsx': previewCode,
+          });
+        }
+        lastSyncedCodeRef.current = previewCode;
+      }
+    }
+  }, [previewCode, virtualFS]);
+  
+  // Sync VFS changes back to previewCode (for code editor edits)
+  // This keeps the legacy previewCode state in sync with VFS
+  useEffect(() => {
+    const activeFile = virtualFS.getActiveFile();
+    if (activeFile && activeFile.content !== lastSyncedCodeRef.current) {
+      // Check if this is a main file that should update previewCode
+      const isMainFile = activeFile.path === '/src/App.tsx' || 
+                         activeFile.path === '/index.html' ||
+                         activeFile.path === '/App.tsx';
+      if (isMainFile) {
+        console.log('[WebBuilder] Syncing VFS to previewCode:', activeFile.path);
+        syncingFromVFSRef.current = true;
+        setPreviewCode(activeFile.content);
+        lastSyncedCodeRef.current = activeFile.content;
+        // Reset the flag after state update
+        setTimeout(() => {
+          syncingFromVFSRef.current = false;
+        }, 0);
+      }
+    }
+  }, [virtualFS.nodes, virtualFS.activeFileId]);
   
   // Auto-save functionality
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -401,6 +510,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     
     setEditorCode(defaultCode);
     setPreviewCode(defaultPreview);
+    
+    // Clear VFS to empty state
+    virtualFS.resetToEmpty();
     
     // Clear current template state
     templateFiles.clearCurrentTemplate();
@@ -1449,85 +1561,57 @@ ${body.innerHTML}
                 dragDropServiceRef.current.onDragEnd();
               }}
               onAIImageGenerated={(imageUrl, metadata) => {
-                // Insert AI-generated image with advanced styling and responsive features
-                const timestamp = Date.now();
-                const imageAlt = metadata?.prompt || 'AI Generated Image';
+                // Create AI image element HTML
+                const imageAlt = (metadata?.prompt as string) || 'AI Generated Image';
+                const styleInfo = metadata?.style ? `<span className="text-xs opacity-75">Style: ${metadata.style}</span>` : '';
                 
-                // Parse current preview code
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
-                const body = doc.body;
+                const imageHtml = `
+                  <figure className="relative group overflow-hidden rounded-2xl shadow-2xl my-6">
+                    <img 
+                      src="${imageUrl}" 
+                      alt="${imageAlt}"
+                      loading="lazy"
+                      className="w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
+                      style={{ aspectRatio: '16/9', maxWidth: '100%' }}
+                    />
+                    <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <p className="text-sm font-medium">${imageAlt}</p>
+                      ${styleInfo}
+                    </figcaption>
+                  </figure>
+                `;
                 
-                // Create wrapper for the AI image
-                const wrapper = doc.createElement('div');
-                wrapper.setAttribute('data-element-id', `ai-image-${timestamp}`);
-                wrapper.setAttribute('data-element-type', 'media');
-                wrapper.setAttribute('draggable', 'true');
-                wrapper.setAttribute('class', 'canvas-element');
+                // Use VFS to add image
+                const currentFiles = virtualFS.getSandpackFiles();
+                const patchFiles = elementToVFSPatch(currentFiles, imageHtml, 'AIImage');
+                virtualFS.importFiles(patchFiles);
                 
-                // Create figure element with advanced features
-                const figure = doc.createElement('figure');
-                figure.className = 'relative group overflow-hidden rounded-2xl shadow-2xl';
-                
-                const img = doc.createElement('img');
-                img.src = imageUrl;
-                img.alt = imageAlt as string;
-                img.loading = 'lazy';
-                img.className = 'w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110';
-                img.style.cssText = 'aspect-ratio: 16/9; max-width: 100%;';
-                
-                const figcaption = doc.createElement('figcaption');
-                figcaption.className = 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300';
-                figcaption.innerHTML = `<p class="text-sm font-medium">${imageAlt}</p>${metadata?.style ? `<span class="text-xs opacity-75">Style: ${metadata.style}</span>` : ''}`;
-                
-                figure.appendChild(img);
-                figure.appendChild(figcaption);
-                wrapper.appendChild(figure);
-                body.appendChild(wrapper);
-                
-                // Ensure TailwindCSS is included
-                if (!doc.head.querySelector('script[src*="tailwindcss"]')) {
-                  const tailwindScript = doc.createElement('script');
-                  tailwindScript.src = 'https://cdn.tailwindcss.com';
-                  doc.head.appendChild(tailwindScript);
+                // Update legacy state
+                const newAppCode = patchFiles['/src/App.tsx'] || '';
+                if (newAppCode) {
+                  setEditorCode(newAppCode);
+                  setPreviewCode(newAppCode);
                 }
                 
-                const newCode = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-                setPreviewCode(newCode);
-                setEditorCode(newCode);
-                
                 toast('AI Image Added!', {
-                  description: 'AI-generated image inserted into canvas'
+                  description: 'AI-generated image added to VFS preview'
                 });
               }}
               onElementClick={(element: WebElement) => {
-                // Insert element HTML into preview code on click
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
+                // Use VFS to add element
+                const currentFiles = virtualFS.getSandpackFiles();
+                const patchFiles = elementToVFSPatch(currentFiles, element.htmlTemplate, element.name);
+                virtualFS.importFiles(patchFiles);
                 
-                // Ensure TailwindCSS is included
-                if (!doc.head.querySelector('script[src*="tailwindcss"]')) {
-                  const tailwindScript = doc.createElement('script');
-                  tailwindScript.src = 'https://cdn.tailwindcss.com';
-                  doc.head.appendChild(tailwindScript);
+                // Update legacy state for compatibility
+                const newAppCode = patchFiles['/src/App.tsx'] || '';
+                if (newAppCode) {
+                  setEditorCode(newAppCode);
+                  setPreviewCode(newAppCode);
                 }
-                
-                // Create a wrapper and insert element HTML
-                const tempDiv = doc.createElement('div');
-                tempDiv.innerHTML = element.htmlTemplate;
-                
-                // Append all children to body
-                while (tempDiv.firstChild) {
-                  doc.body.appendChild(tempDiv.firstChild);
-                }
-                
-                // Get the new HTML
-                const newCode = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-                setEditorCode(newCode);
-                setPreviewCode(newCode);
                 
                 toast.success(`Added ${element.name}`, {
-                  description: 'Element added to preview'
+                  description: 'Element added to VFS preview'
                 });
               }}
             />
@@ -1535,26 +1619,37 @@ ${body.innerHTML}
               <TabsContent value="templates" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <LayoutTemplatesPanel
                   onSelectTemplate={(code, name) => {
-                    setEditorCode(code);
-                    setPreviewCode(code);
-                    toast.success(`Loaded template: ${name}`);
+                    // Convert template to VFS-compatible React files
+                    const files = templateToVFSFiles(code, name);
+                    virtualFS.importFiles(files);
+                    
+                    // Also update legacy state for compatibility
+                    const appCode = files['/src/App.tsx'] || code;
+                    setEditorCode(appCode);
+                    setPreviewCode(appCode);
+                    
+                    toast.success(`Loaded template: ${name}`, {
+                      description: 'Template imported to VFS preview'
+                    });
                   }}
                 />
               </TabsContent>
               <TabsContent value="functional" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <FunctionalBlocksPanel 
                   onInsertBlock={(html) => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(previewCode || '<!DOCTYPE html><html><head></head><body></body></html>', 'text/html');
-                    const tempDiv = doc.createElement('div');
-                    tempDiv.innerHTML = html;
-                    while (tempDiv.firstChild) {
-                      doc.body.appendChild(tempDiv.firstChild);
+                    // Get current VFS files and patch with new element
+                    const currentFiles = virtualFS.getSandpackFiles();
+                    const patchFiles = elementToVFSPatch(currentFiles, html, 'FunctionalBlock');
+                    virtualFS.importFiles(patchFiles);
+                    
+                    // Update legacy state
+                    const newAppCode = patchFiles['/src/App.tsx'] || '';
+                    if (newAppCode) {
+                      setEditorCode(newAppCode);
+                      setPreviewCode(newAppCode);
                     }
-                    const newCode = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-                    setEditorCode(newCode);
-                    setPreviewCode(newCode);
-                    toast.success('Functional block added');
+                    
+                    toast.success('Functional block added to VFS');
                   }}
                 />
               </TabsContent>
@@ -1821,12 +1916,15 @@ ${body.innerHTML}
                   data-drop-zone="true"
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
-                  <SimplePreview 
+                  <VFSPreview 
+                    ref={livePreviewRef}
+                    nodes={virtualFS.nodes}
                     files={virtualFS.getSandpackFiles()}
                     activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
                     className="w-full h-full min-h-0 flex-1"
                     showConsole={false}
-                    showNavigator={false}
+                    showToolbar={true}
+                    autoStart={true}
                     onReady={() => console.log('[WebBuilder] Preview ready')}
                     onError={(err) => console.warn('[WebBuilder] Preview error:', err)}
                   />
@@ -1836,11 +1934,11 @@ ${body.innerHTML}
 
             {/* Code Mode - Full Code Editor with Folder Structure */}
             {viewMode === 'code' && (
-              <div className="w-full h-full bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+              <div className="w-full h-full bg-[#0d1117] rounded-lg overflow-hidden border border-white/10 shadow-xl" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                 <ResizablePanelGroup direction="horizontal" className="h-full">
-                  {/* File Explorer */}
-                  <ResizablePanel defaultSize={20} minSize={15} maxSize={35}>
-                    <FileExplorer
+                  {/* Modern File Explorer */}
+                  <ResizablePanel defaultSize={22} minSize={18} maxSize={35}>
+                    <ModernFileExplorer
                       nodes={virtualFS.nodes}
                       activeFileId={virtualFS.activeFileId}
                       onFileSelect={virtualFS.openFile}
@@ -1852,20 +1950,39 @@ ${body.innerHTML}
                       onToggleFolder={virtualFS.toggleFolder}
                       onExpandAll={virtualFS.expandAll}
                       onCollapseAll={virtualFS.collapseAll}
+                      modifiedFiles={modifiedFiles}
+                      aiGeneratedFiles={aiGeneratedFiles}
+                      recentlyChangedFiles={recentlyChangedFiles}
                     />
                   </ResizablePanel>
 
-                  <ResizableHandle withHandle className="bg-white/5 hover:bg-white/10" />
+                  <ResizableHandle withHandle className="bg-white/5 hover:bg-primary/20 transition-colors" />
 
                   {/* Editor Panel */}
-                  <ResizablePanel defaultSize={80}>
+                  <ResizablePanel defaultSize={78}>
                     <div className="h-full flex flex-col">
-                      {/* Editor Tabs */}
-                      <EditorTabs
-                        tabs={virtualFS.getOpenFiles().map(f => ({ id: f.id, name: f.name }))}
+                      {/* Modern Editor Tabs */}
+                      <ModernEditorTabs
+                        tabs={virtualFS.getOpenFiles().map(f => ({ 
+                          id: f.id, 
+                          name: f.name,
+                          path: f.path,
+                          isModified: modifiedFiles.has(f.id),
+                          isAIGenerated: aiGeneratedFiles.has(f.id),
+                        }))}
                         activeTabId={virtualFS.activeFileId}
                         onTabSelect={virtualFS.openFile}
                         onTabClose={virtualFS.closeTab}
+                        onCloseOthers={(keepId) => {
+                          const openFiles = virtualFS.getOpenFiles();
+                          openFiles.filter(f => f.id !== keepId).forEach(f => virtualFS.closeTab(f.id));
+                        }}
+                        onCloseAll={() => {
+                          const openFiles = virtualFS.getOpenFiles();
+                          openFiles.forEach(f => virtualFS.closeTab(f.id));
+                        }}
+                        modifiedTabs={modifiedFiles}
+                        aiGeneratedTabs={aiGeneratedFiles}
                       />
 
                       {/* Code Editor */}
@@ -1881,7 +1998,10 @@ ${body.innerHTML}
                                 height="100%"
                                 language={lang}
                                 value={activeFile.content}
-                                onChange={(value) => virtualFS.updateFileContent(activeFile.id, value)}
+                                onChange={(value) => {
+                                  virtualFS.updateFileContent(activeFile.id, value);
+                                  trackFileModification(activeFile.id, value);
+                                }}
                                 theme="vs-dark"
                                 isAIProcessing={templateState.isRendering}
                                 options={{
@@ -1900,6 +2020,51 @@ ${body.innerHTML}
                                 }}
                                 className="w-full h-full"
                               />
+                            );
+                          }
+                          // Show empty state with options when no files exist
+                          if (!virtualFS.hasFiles) {
+                            return (
+                              <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-[#1a1a1a] p-8">
+                                <div className="text-center max-w-md">
+                                  <h3 className="text-xl font-semibold text-white mb-2">No Project Loaded</h3>
+                                  <p className="text-sm mb-6">Load a template or generate code with AI to get started</p>
+                                  <div className="flex gap-3 justify-center flex-wrap">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => virtualFS.loadDefaultTemplate()}
+                                      className="gap-2"
+                                    >
+                                      <Layout className="w-4 h-4" />
+                                      Load React Template
+                                    </Button>
+                                    <Button
+                                      variant="default"
+                                      onClick={() => {
+                                        // Create a simple starter file
+                                        virtualFS.importFiles({
+                                          '/src/App.tsx': `import React from 'react';
+
+export default function App() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">Hello World</h1>
+        <p className="text-gray-600">Start editing to build something amazing!</p>
+      </div>
+    </div>
+  );
+}`,
+                                        });
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                      Create New File
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
                             );
                           }
                           return (
@@ -1930,12 +2095,15 @@ ${body.innerHTML}
                     data-drop-zone="true"
                     className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
-                    <SimplePreview 
+                    <VFSPreview 
+                      nodes={virtualFS.nodes}
                       files={virtualFS.getSandpackFiles()}
                       activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
                       className="w-full h-full min-h-0 flex-1"
                       showConsole={true}
-                      showNavigator={false}
+                      showToolbar={true}
+                      autoStart={false}
+                      forceBackend="sandpack"
                       onReady={() => console.log('[WebBuilder] Split preview ready')}
                       onError={(err) => console.warn('[WebBuilder] Split preview error:', err)}
                     />

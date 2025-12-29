@@ -449,7 +449,7 @@ export class DesignIntentCompiler {
       primaryText.content = content.ctaText;
       primaryText.textStyle = {
         fontSize: 16,
-        fontWeight: 'semibold',
+        fontWeight: 600,
         color: tokens.colors.textInverse,
         textAlign: 'center',
       };
@@ -486,7 +486,7 @@ export class DesignIntentCompiler {
         secondaryText.content = content.secondaryCtaText;
         secondaryText.textStyle = {
           fontSize: 16,
-          fontWeight: 'medium',
+          fontWeight: 500,
           color: tokens.colors.textPrimary,
           textAlign: 'center',
         };

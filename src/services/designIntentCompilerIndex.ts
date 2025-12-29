@@ -66,10 +66,9 @@ export type { ThemePreset } from '@/services/designTokens';
 
 // Component Library
 export {
-  ComponentLibrary,
+  ComponentLibraryImpl,
   getComponentLibrary,
 } from '@/services/componentLibrary';
-export type { SectionTemplate } from '@/services/componentLibrary';
 
 // Design Intent Compiler
 export {

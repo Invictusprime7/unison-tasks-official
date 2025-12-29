@@ -68,7 +68,7 @@ export interface PlacementIntent {
   assetId: string;
   slotId: string;
   fit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
-  position?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  position?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'background' | 'inline';
   opacity?: number;
   filters?: AssetFilters;
 }

@@ -465,7 +465,7 @@ ${pad}</div>`;
     }
 
     // Line height
-    if (textStyle.lineHeight) {
+    if (textStyle.lineHeight && typeof textStyle.lineHeight === 'number') {
       if (textStyle.lineHeight <= 1.25) classes.push('leading-tight');
       else if (textStyle.lineHeight >= 1.75) classes.push('leading-relaxed');
       else classes.push('leading-normal');

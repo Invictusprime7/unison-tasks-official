@@ -51,9 +51,6 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('@huggingface/transformers')) {
             return 'ai-transformers';
           }
-          if (id.includes('@codesandbox/sandpack')) {
-            return 'sandpack-editor';
-          }
           
           // UI Component libraries
           if (id.includes('@radix-ui')) {
@@ -161,9 +158,7 @@ export default defineConfig(({ mode }) => ({
       'react-router-dom',
       'lucide-react',
       'clsx',
-      'tailwind-merge',
-      // Sandpack needs to be pre-bundled to fix ESM compatibility with 'anser' dependency
-      '@codesandbox/sandpack-react'
+      'tailwind-merge'
     ],
     exclude: [
       // Heavy libraries that should be dynamically loaded
