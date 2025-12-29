@@ -17,6 +17,12 @@ dist-ssr
 .env.local
 .env.production
 
+# Large binaries - use official installers instead
+supabase.exe
+supabase_windows_amd64.tar.gz
+*.exe
+*.tar.gz
+
 # Migration and sensitive files
 vs code loveable migration.txt
 
