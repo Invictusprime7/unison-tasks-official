@@ -20,6 +20,44 @@ export interface SimplePreviewProps {
 }
 
 /**
+ * Detect if code is vanilla HTML (not React/JSX)
+ */
+function isVanillaHtml(code: string): boolean {
+  const trimmed = code.trim();
+  
+  // Complete HTML document
+  if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
+    return true;
+  }
+  
+  // Has <script> tags with vanilla JS (not JSX) - AI generates this format
+  if (code.includes('<script>') || code.includes('<script ')) {
+    // If it has script tags but NO React imports/JSX patterns, it's vanilla
+    const hasReactImport = code.includes('import React') || code.includes("from 'react'") || code.includes('from "react"');
+    const hasJsxSyntax = code.includes('className={') || code.includes('onClick={') || code.includes('useState(');
+    if (!hasReactImport && !hasJsxSyntax) {
+      return true;
+    }
+  }
+  
+  // Starts with HTML element and doesn't have React patterns
+  if (trimmed.startsWith('<') && !trimmed.startsWith('<>')) {
+    const hasReactPatterns = 
+      code.includes('import React') ||
+      code.includes('export default function') ||
+      code.includes('export default const') ||
+      code.includes('className={') ||
+      (code.includes('useState') && code.includes('import'));
+    
+    if (!hasReactPatterns) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Convert any code (HTML, JSX, React) to a renderable HTML document
  */
 function codeToHtml(code: string): string {
@@ -29,26 +67,31 @@ function codeToHtml(code: string): string {
   
   const trimmedCode = code.trim();
   
-  // Case 1: Already a complete HTML document
+  // Case 1: Already a complete HTML document - use as-is
   if (trimmedCode.startsWith('<!DOCTYPE') || trimmedCode.startsWith('<html')) {
-    console.log('[SimplePreview] Code is already HTML document');
+    console.log('[SimplePreview] Code is complete HTML document - using directly');
     return code;
   }
   
-  // Case 2: Check if it's React/JSX code that needs conversion
+  // Case 2: Vanilla HTML/JS (AI-generated format) - wrap without JSX conversion
+  if (isVanillaHtml(code)) {
+    console.log('[SimplePreview] Code is vanilla HTML/JS - wrapping directly');
+    return wrapHtmlSnippet(code);
+  }
+  
+  // Case 3: React/JSX code that needs conversion
   const isReactCode = 
     code.includes('import React') ||
     code.includes('export default') ||
-    code.includes('function App') ||
-    code.includes('const App') ||
-    (code.includes('return (') && code.includes('className='));
+    (code.includes('function ') && code.includes('return (') && code.includes('className=')) ||
+    (code.includes('const ') && code.includes('=> (') && code.includes('className='));
   
   if (isReactCode) {
     console.log('[SimplePreview] Converting React/JSX to HTML');
     return jsxToHtml(code);
   }
   
-  // Case 3: Plain HTML snippet - wrap it
+  // Case 4: Plain HTML snippet - wrap it
   console.log('[SimplePreview] Wrapping HTML snippet');
   return wrapHtmlSnippet(code);
 }
