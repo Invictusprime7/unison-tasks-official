@@ -568,6 +568,29 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       // Check if editing a selected element
       const isEditingSelectedElement = selectedElement && isEditingElement;
       
+      // Detect template action from user message
+      const detectTemplateAction = (message: string): string | undefined => {
+        const lowerMessage = message.toLowerCase();
+        if (lowerMessage.match(/\b(add|insert|include|create new|put|place)\b.*\b(section|element|component|button|image|form|card|hero|footer|header|nav)/)) {
+          return 'add';
+        }
+        if (lowerMessage.match(/\b(remove|delete|hide|get rid of|take out)\b/)) {
+          return 'remove';
+        }
+        if (lowerMessage.match(/\b(change|modify|update|edit|adjust|tweak|fix)\b/)) {
+          return 'modify';
+        }
+        if (lowerMessage.match(/\b(suggest|improve|recommend|enhance|optimize|better|upgrade)\b/)) {
+          return 'suggest';
+        }
+        if (lowerMessage.match(/\b(restyle|redesign|new look|change color|change style|theme|recolor)\b/)) {
+          return 'restyle';
+        }
+        return hasExistingTemplate ? 'modify' : undefined;
+      };
+      
+      const templateAction = hasExistingTemplate ? detectTemplateAction(userMessage.content) : undefined;
+      
       // Add image slot context for AI with taste
       let slotContext = '';
       if (slotEngine && mode === "code") {
@@ -610,7 +633,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         console.log('[AICodeAssistant] Code mode: Added slot context for AI with taste');
       }
       
-      console.log('[AICodeAssistant] Sending request - Mode:', mode, 'Debug Mode:', mode === "debug");
+      console.log('[AICodeAssistant] Sending request - Mode:', mode, 'Template Action:', templateAction, 'Debug Mode:', mode === "debug");
       
       const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
         body: {
@@ -621,6 +644,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           currentCode: hasExistingTemplate ? currentCode : undefined,
           editMode: hasExistingTemplate || mode === "debug",
           debugMode: mode === "debug",
+          templateAction,
         }
       });
 
