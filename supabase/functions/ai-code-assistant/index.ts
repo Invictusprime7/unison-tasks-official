@@ -21,7 +21,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, mode, savePattern = true, generateImage = false, imagePlacement, currentCode, editMode = false, debugMode = false } = await req.json();
+    const { messages, mode, savePattern = true, generateImage = false, imagePlacement, currentCode, editMode = false, debugMode = false, templateAction, templateAnalysis } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -59,12 +59,82 @@ ${p.code_snippet.substring(0, 300)}${p.code_snippet.length > 300 ? '...' : ''}
 \`\`\`
 `).join('\n---\n') : 'No learned patterns yet - but I will learn from every successful interaction!';
 
+    // Analyze template structure for context-aware editing
+    const analyzeTemplateStructure = (code: string): string => {
+      if (!code) return '';
+      
+      const sections: string[] = [];
+      const patterns = [
+        { regex: /<header[^>]*>|class="[^"]*header[^"]*"/gi, name: 'Header/Navigation' },
+        { regex: /<nav[^>]*>|class="[^"]*nav[^"]*"/gi, name: 'Navigation' },
+        { regex: /class="[^"]*hero[^"]*"|id="[^"]*hero[^"]*"/gi, name: 'Hero Section' },
+        { regex: /class="[^"]*feature[^"]*"|id="[^"]*feature[^"]*"/gi, name: 'Features Section' },
+        { regex: /class="[^"]*about[^"]*"|id="[^"]*about[^"]*"/gi, name: 'About Section' },
+        { regex: /class="[^"]*pricing[^"]*"|id="[^"]*pricing[^"]*"/gi, name: 'Pricing Section' },
+        { regex: /class="[^"]*testimonial[^"]*"|id="[^"]*testimonial[^"]*"/gi, name: 'Testimonials' },
+        { regex: /class="[^"]*team[^"]*"|id="[^"]*team[^"]*"/gi, name: 'Team Section' },
+        { regex: /class="[^"]*contact[^"]*"|id="[^"]*contact[^"]*"|<form[^>]*>/gi, name: 'Contact/Form Section' },
+        { regex: /class="[^"]*cta[^"]*"|id="[^"]*cta[^"]*"/gi, name: 'Call-to-Action' },
+        { regex: /<footer[^>]*>|class="[^"]*footer[^"]*"/gi, name: 'Footer' },
+        { regex: /class="[^"]*gallery[^"]*"|id="[^"]*gallery[^"]*"/gi, name: 'Gallery/Portfolio' },
+        { regex: /class="[^"]*faq[^"]*"|id="[^"]*faq[^"]*"/gi, name: 'FAQ Section' },
+        { regex: /class="[^"]*blog[^"]*"|id="[^"]*blog[^"]*"/gi, name: 'Blog/News Section' },
+      ];
+      
+      patterns.forEach(({ regex, name }) => {
+        if (regex.test(code) && !sections.includes(name)) {
+          sections.push(name);
+        }
+      });
+      
+      // Count images and buttons
+      const imageCount = (code.match(/<img[^>]*>/gi) || []).length;
+      const buttonCount = (code.match(/<button[^>]*>|class="[^"]*btn[^"]*"/gi) || []).length;
+      const linkCount = (code.match(/<a[^>]*href/gi) || []).length;
+      
+      return `
+📊 **TEMPLATE STRUCTURE ANALYSIS:**
+- Detected Sections: ${sections.length > 0 ? sections.join(', ') : 'Basic layout'}
+- Images: ${imageCount} | Buttons: ${buttonCount} | Links: ${linkCount}
+- Approximate Size: ${code.length} characters
+`;
+    };
+
     // Build edit mode context if we have current code - limit to 4000 chars to prevent token overflow
     const maxCodeLength = 4000;
+    const templateStructure = currentCode ? analyzeTemplateStructure(currentCode) : '';
+    
+    // Build template action context for specific edit operations
+    const templateActionContext = templateAction ? `
+🎯 **TEMPLATE ACTION: ${templateAction.toUpperCase()}**
+${templateAction === 'add' ? `User wants to ADD new elements/sections to the template.
+- Identify the best location for new content
+- Maintain existing design patterns and styles
+- Ensure new elements match the template's visual language` : ''}
+${templateAction === 'remove' ? `User wants to REMOVE elements/sections from the template.
+- Carefully remove ONLY what's specified
+- Clean up any orphaned styles or empty containers
+- Maintain structural integrity after removal` : ''}
+${templateAction === 'modify' ? `User wants to MODIFY existing elements/sections.
+- Make targeted changes without affecting other parts
+- Preserve overall design consistency
+- Update only the specified properties/content` : ''}
+${templateAction === 'suggest' ? `User wants UI/UX SUGGESTIONS for improvement.
+- Analyze current template for improvements
+- Suggest specific, actionable enhancements
+- Provide code examples for each suggestion
+- Consider accessibility, performance, and UX best practices` : ''}
+${templateAction === 'restyle' ? `User wants to RESTYLE the template visually.
+- Change colors, fonts, spacing as requested
+- Maintain layout and structure
+- Ensure consistent styling across all sections` : ''}
+` : '';
+
     const editModeContext = editMode && currentCode ? `
 🔄 **EDIT MODE ACTIVE - MODIFYING EXISTING TEMPLATE**
 You are editing an existing saved template. The user wants to MODIFY their existing code, NOT replace it entirely.
-
+${templateStructure}
+${templateActionContext}
 **CURRENT TEMPLATE CODE (${currentCode.length > maxCodeLength ? 'truncated' : 'full'}):**
 \`\`\`html
 ${currentCode.substring(0, maxCodeLength)}${currentCode.length > maxCodeLength ? '\n... (truncated for context)' : ''}
