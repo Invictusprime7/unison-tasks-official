@@ -1,275 +1,146 @@
 /**
- * Example API endpoint demonstrating server-side Supabase operations
- * This would typically be used in a Node.js/Express server or Vercel Functions
+ * @deprecated This file is deprecated and should not be used directly.
+ * 
+ * All admin operations should now be handled via Edge Functions:
+ * - Use 'builder-actions' edge function for pack installation and wiring
+ * - Use 'create-lead' edge function for lead creation
+ * - Use 'create-booking' edge function for booking management
+ * - Use Supabase Auth for user authentication
+ * 
+ * See src/runtime/intentRouter.ts for the intent-based routing system.
  */
 
-import { 
-  UserManagementService, 
-  AITemplateService, 
-  FileManagementService,
-  AnalyticsService,
-  SystemMaintenanceService 
-} from '../services/supabaseAdminService';
+import { supabase } from "@/integrations/supabase/client";
+import { handleIntent, INTENT_PACKS } from "@/runtime/intentRouter";
 
-// Example: Admin User Management API
-export async function handleUserManagement(request: Request) {
-  const { method } = request;
-  const url = new URL(request.url);
-  const action = url.searchParams.get('action');
+// Deprecation warning
+console.warn(
+  '[DEPRECATED] adminApi.ts is deprecated. ' +
+  'Use Edge Functions via intentRouter.ts instead.'
+);
 
-  try {
-    switch (`${method}:${action}`) {
-      case 'POST:create': {
-        const { email, password, role } = await request.json();
-        const newUser = await UserManagementService.createUserWithRole(email, password, role);
-        return new Response(JSON.stringify(newUser), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' }
-        });
+/**
+ * New recommended API: Use Intent Router for all actions
+ */
+export const IntentAPI = {
+  // Execute an intent
+  async executeIntent(intent: string, payload: Record<string, unknown>) {
+    return handleIntent(intent, payload);
+  },
+
+  // Get available intents
+  getAvailableIntents() {
+    return INTENT_PACKS;
+  },
+
+  // Install a pack via builder-actions
+  async installPack(packName: 'leads' | 'booking' | 'auth', businessId: string) {
+    const { data, error } = await supabase.functions.invoke('builder-actions', {
+      body: {
+        businessId,
+        actions: [{ type: 'install_pack', pack: packName }]
       }
-
-      case 'GET:list': {
-        const page = parseInt(url.searchParams.get('page') || '1');
-        const limit = parseInt(url.searchParams.get('limit') || '50');
-        const users = await UserManagementService.getUsersWithPagination(page, limit);
-        return new Response(JSON.stringify(users), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      case 'PUT:role': {
-        const { userId, newRole } = await request.json();
-        await UserManagementService.updateUserRole(userId, newRole);
-        return new Response(JSON.stringify({ success: true }));
-      }
-
-      case 'DELETE:user': {
-        const userIdToDelete = url.searchParams.get('userId');
-        if (!userIdToDelete) {
-          return new Response('User ID required', { status: 400 });
-        }
-        await UserManagementService.deleteUserCompletely(userIdToDelete);
-        return new Response(JSON.stringify({ success: true }));
-      }
-
-      default:
-        return new Response('Invalid action', { status: 400 });
-    }
-  } catch (error) {
-    console.error('User management error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
     });
-  }
-}
 
-// Example: Admin Template Management API
-export async function handleTemplateManagement(request: Request) {
-  const { method } = request;
-  const url = new URL(request.url);
+    if (error) throw error;
+    return data;
+  },
 
-  try {
-    if (method === 'GET' && url.pathname.includes('/analytics')) {
-      const analytics = await AITemplateService.getTemplateAnalytics();
-      return new Response(JSON.stringify(analytics));
-    }
-
-    switch (method) {
-      case 'GET': {
-        const includePrivate = url.searchParams.get('includePrivate') === 'true';
-        const templates = await AITemplateService.getAllTemplates(includePrivate);
-        return new Response(JSON.stringify(templates), {
-          headers: { 'Content-Type': 'application/json' }
-        });
+  // Wire a button to an intent
+  async wireButton(selector: string, intent: string, payload: Record<string, unknown>) {
+    const { data, error } = await supabase.functions.invoke('builder-actions', {
+      body: {
+        actions: [{
+          type: 'wire_button',
+          selector,
+          intent,
+          payload
+        }]
       }
-
-      case 'PUT': {
-        const { templateId, status, moderatorNotes } = await request.json();
-        const updated = await AITemplateService.updateTemplateStatus(templateId, status, moderatorNotes);
-        return new Response(JSON.stringify(updated));
-      }
-
-      default:
-        return new Response('Method not allowed', { status: 405 });
-    }
-  } catch (error) {
-    console.error('Template management error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
     });
-  }
-}
 
-// Example: File Management API
-export async function handleFileManagement(request: Request) {
-  const { method } = request;
-  const url = new URL(request.url);
-  const action = url.searchParams.get('action');
+    if (error) throw error;
+    return data;
+  },
 
-  try {
-    switch (`${method}:${action}`) {
-      case 'POST:upload': {
-        const formData = await request.formData();
-        const file = formData.get('file') as File;
-        const fileName = formData.get('fileName') as string;
-        
-        if (!file) {
-          return new Response('File required', { status: 400 });
-        }
-
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const result = await FileManagementService.uploadSystemAsset(buffer, fileName || file.name);
-        
-        return new Response(JSON.stringify(result));
+  // Get pack status
+  async getPackStatus() {
+    const { data, error } = await supabase.functions.invoke('builder-actions', {
+      body: {
+        actions: [{ type: 'get_pack_status' }]
       }
-
-      case 'POST:cleanup': {
-        const bucket = url.searchParams.get('bucket') || 'user-uploads';
-        const cleanupResult = await FileManagementService.cleanupOrphanedFiles(bucket);
-        return new Response(JSON.stringify(cleanupResult));
-      }
-
-      case 'POST:bulk-urls': {
-        const { bucketName, paths } = await request.json();
-        const urls = await FileManagementService.generateBulkDownloadUrls(bucketName, paths);
-        return new Response(JSON.stringify(urls));
-      }
-
-      default:
-        return new Response('Invalid action', { status: 400 });
-    }
-  } catch (error) {
-    console.error('File management error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
     });
+
+    if (error) throw error;
+    return data;
   }
-}
-
-// Example: Analytics API
-export async function handleAnalytics(request: Request) {
-  const { method } = request;
-  const url = new URL(request.url);
-
-  if (method !== 'GET') {
-    return new Response('Method not allowed', { status: 405 });
-  }
-
-  try {
-    const endpoint = url.pathname.split('/').pop();
-
-    switch (endpoint) {
-      case 'dashboard': {
-        const stats = await AnalyticsService.getDashboardStats();
-        return new Response(JSON.stringify(stats));
-      }
-
-      case 'activity': {
-        const days = parseInt(url.searchParams.get('days') || '30');
-        const activity = await AnalyticsService.getUserActivityReport(days);
-        return new Response(JSON.stringify(activity));
-      }
-
-      default:
-        return new Response('Invalid endpoint', { status: 400 });
-    }
-  } catch (error) {
-    console.error('Analytics error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
-// Example: System Health Check API
-export async function handleHealthCheck(request: Request) {
-  if (request.method !== 'GET') {
-    return new Response('Method not allowed', { status: 405 });
-  }
-
-  try {
-    const health = await SystemMaintenanceService.performHealthCheck();
-    const status = health.status === 'healthy' ? 200 : 503;
-    
-    return new Response(JSON.stringify(health), {
-      status,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    console.error('Health check error:', error);
-    return new Response(JSON.stringify({ 
-      status: 'error', 
-      error: error.message,
-      timestamp: new Date().toISOString()
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
-// Example: Maintenance Operations API
-export async function handleMaintenance(request: Request) {
-  const { method } = request;
-  const url = new URL(request.url);
-  const operation = url.searchParams.get('operation');
-
-  if (method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
-
-  try {
-    switch (operation) {
-      case 'cleanup-sessions': {
-        const cleanupResult = await SystemMaintenanceService.cleanupExpiredSessions();
-        return new Response(JSON.stringify(cleanupResult));
-      }
-
-      default:
-        return new Response('Invalid operation', { status: 400 });
-    }
-  } catch (error) {
-    console.error('Maintenance error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
-// Middleware for API authentication (example)
-export function withAdminAuth(handler: (request: Request) => Promise<Response>) {
-  return async (request: Request) => {
-    const authHeader = request.headers.get('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    
-    // Verify admin token here (implement your own logic)
-    // For example, verify JWT or check against a whitelist
-    
-    try {
-      // Your authentication logic here
-      return await handler(request);
-    } catch (error) {
-      return new Response('Authentication failed', { status: 403 });
-    }
-  };
-}
-
-// Example usage in a Vercel Function or Express.js
-export default {
-  users: withAdminAuth(handleUserManagement),
-  templates: withAdminAuth(handleTemplateManagement),
-  files: withAdminAuth(handleFileManagement),
-  analytics: withAdminAuth(handleAnalytics),
-  health: handleHealthCheck,
-  maintenance: withAdminAuth(handleMaintenance)
 };
+
+/**
+ * Legacy compatibility exports - all throw deprecation errors
+ */
+
+// User Management API (deprecated - use Supabase Auth directly)
+export const adminUserApi = {
+  createUserWithRole: async () => {
+    throw new Error('Deprecated: Use supabase.auth.signUp() directly');
+  },
+  getUsersWithPagination: async () => {
+    throw new Error('Deprecated: Use Edge Functions for admin operations');
+  },
+  updateUserRole: async () => {
+    throw new Error('Deprecated: Use Edge Functions for admin operations');
+  },
+  deleteUser: async () => {
+    throw new Error('Deprecated: Use Edge Functions for admin operations');
+  },
+};
+
+// Template API (deprecated - use AI code assistant)
+export const adminTemplateApi = {
+  getAnalytics: async () => {
+    throw new Error('Deprecated: Use Edge Functions');
+  },
+  listAll: async () => {
+    throw new Error('Deprecated: Query templates table directly');
+  },
+  updateStatus: async () => {
+    throw new Error('Deprecated: Update templates table directly');
+  },
+};
+
+// File Management API (deprecated - use Supabase Storage)
+export const adminFileApi = {
+  uploadSystemAsset: async () => {
+    throw new Error('Deprecated: Use Supabase Storage directly');
+  },
+  cleanupOrphanedFiles: async () => {
+    throw new Error('Deprecated: Use Edge Functions');
+  },
+  generateBulkDownloadUrls: async () => {
+    throw new Error('Deprecated: Use Edge Functions');
+  },
+};
+
+// Analytics API (deprecated)
+export const adminAnalyticsApi = {
+  getDashboard: async () => {
+    throw new Error('Deprecated: Use Edge Functions');
+  },
+  getUserActivity: async () => {
+    throw new Error('Deprecated: Use Edge Functions');
+  },
+};
+
+// System Maintenance API (deprecated)
+export const adminMaintenanceApi = {
+  healthCheck: async () => {
+    throw new Error('Deprecated: Use Edge Functions');
+  },
+  cleanupSessions: async () => {
+    throw new Error('Deprecated: Use Edge Functions');
+  },
+};
+
+// Default export for backwards compatibility
+export default IntentAPI;

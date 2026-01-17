@@ -89,22 +89,64 @@ export type Database = {
         }
         Relationships: []
       }
+      availability_slots: {
+        Row: {
+          business_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          is_booked: boolean
+          service_id: string | null
+          starts_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          is_booked?: boolean
+          service_id?: string | null
+          starts_at: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          is_booked?: boolean
+          service_id?: string | null
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_slots_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           booking_date: string
           booking_time: string
+          business_id: string | null
           created_at: string | null
           customer_email: string
           customer_name: string
           customer_phone: string | null
           duration_minutes: number | null
+          ends_at: string | null
           ghl_calendar_id: string | null
           ghl_contact_id: string | null
           id: string
           metadata: Json | null
           notes: string | null
+          service_id: string | null
           service_name: string
           session_id: string | null
+          starts_at: string | null
           status: string | null
           updated_at: string | null
           user_id: string | null
@@ -112,18 +154,22 @@ export type Database = {
         Insert: {
           booking_date: string
           booking_time: string
+          business_id?: string | null
           created_at?: string | null
           customer_email: string
           customer_name: string
           customer_phone?: string | null
           duration_minutes?: number | null
+          ends_at?: string | null
           ghl_calendar_id?: string | null
           ghl_contact_id?: string | null
           id?: string
           metadata?: Json | null
           notes?: string | null
+          service_id?: string | null
           service_name: string
           session_id?: string | null
+          starts_at?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -131,23 +177,35 @@ export type Database = {
         Update: {
           booking_date?: string
           booking_time?: string
+          business_id?: string | null
           created_at?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
           duration_minutes?: number | null
+          ends_at?: string | null
           ghl_calendar_id?: string | null
           ghl_contact_id?: string | null
           id?: string
           metadata?: Json | null
           notes?: string | null
+          service_id?: string | null
           service_name?: string
           session_id?: string | null
+          starts_at?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bookings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brand_kits: {
         Row: {
@@ -1171,6 +1229,42 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          business_id: string
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          metadata: Json | null
+          name: string | null
+          phone: string | null
+          source: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string | null
@@ -1449,6 +1543,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      services: {
+        Row: {
+          business_id: string
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          name: string
+          price_cents: number | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price_cents?: number | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_cents?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       shared_files: {
         Row: {
