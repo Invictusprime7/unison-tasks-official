@@ -1142,12 +1142,14 @@ export default ${componentName};`;
 
   // Import files from external source (e.g., AI-generated code)
   const importFiles = useCallback((files: Record<string, string>) => {
+    console.log('[VFS] importFiles called with:', Object.keys(files));
     setNodes(prev => {
       const newNodes = [...prev];
       
       Object.entries(files).forEach(([path, content]) => {
         // Normalize path
         const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        console.log('[VFS] Processing file:', normalizedPath, 'content length:', content.length);
         
         // Check if file already exists
         const existingFile = newNodes.find(n => n.type === 'file' && n.path === normalizedPath);
@@ -1198,6 +1200,7 @@ export default ${componentName};`;
         }
       });
       
+      console.log('[VFS] After import, total nodes:', newNodes.length, 'files:', newNodes.filter(n => n.type === 'file').length);
       return newNodes;
     });
   }, []);

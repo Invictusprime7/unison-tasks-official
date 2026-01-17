@@ -36,7 +36,10 @@ import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 // Types
 // ============================================================================
 
-type PreviewBackend = 'docker' | 'html' | 'loading' | 'none';
+type PreviewBackend = 'docker' | 'local' | 'html' | 'loading' | 'none';
+
+// Local Vite server URL (for development without Docker)
+const LOCAL_PREVIEW_URL = import.meta.env.VITE_LOCAL_PREVIEW_URL || '';
 
 export interface VFSPreviewProps {
   /** VFS nodes for file content */
@@ -99,15 +102,18 @@ body {
 
 function nodesToFileMap(nodes: VirtualNode[]): Record<string, string> {
   const files: Record<string, string> = {};
+  console.log('[VFSPreview] nodesToFileMap called with', nodes.length, 'nodes');
   
   for (const node of nodes) {
     if (node.type === 'file') {
       const file = node as VirtualFile;
       const path = file.path || `/${file.name}`;
       files[path] = file.content;
+      console.log('[VFSPreview] Added file:', path, 'content length:', file.content?.length || 0);
     }
   }
   
+  console.log('[VFSPreview] nodesToFileMap result:', Object.keys(files));
   return files;
 }
 
@@ -116,44 +122,129 @@ function nodesToFileMap(nodes: VirtualNode[]): Record<string, string> {
  * Used when Docker is unavailable
  */
 function generateStaticHtmlPreview(files: Record<string, string>): string {
-  const appContent = files['/src/App.tsx'] || files['/App.tsx'] || '';
+  // Debug: Log all available file keys
+  const fileKeys = Object.keys(files);
+  console.log('[VFSPreview] Static preview files available:', fileKeys);
   
-  // Check if there's a standalone index.html
-  if (files['/index.html'] && !files['/index.html'].includes('src="/src/main.tsx"')) {
-    return files['/index.html'];
+  // FIRST: Check if there's a standalone index.html - use it directly
+  const indexHtml = files['/index.html'] || files['index.html'];
+  if (indexHtml) {
+    // If it's a complete HTML document (not just a Vite entry point), use it
+    if (!indexHtml.includes('src="/src/main.tsx"') && 
+        (indexHtml.includes('<!DOCTYPE') || indexHtml.includes('<html') || indexHtml.includes('<body'))) {
+      console.log('[VFSPreview] Using index.html directly');
+      return indexHtml;
+    }
+  }
+  
+  // Find main component file - try multiple common patterns
+  let appContent = '';
+  let foundPath = '';
+  const possibleMainFiles = [
+    '/src/App.tsx', '/App.tsx', 'src/App.tsx', 'App.tsx',
+    '/src/App.jsx', '/App.jsx', 'src/App.jsx', 'App.jsx',
+    '/src/Page.tsx', '/Page.tsx', 'src/Page.tsx', 'Page.tsx',
+    '/src/index.tsx', '/index.tsx', 'src/index.tsx', 'index.tsx',
+    '/src/Component.tsx', '/Component.tsx', 'Component.tsx',
+  ];
+  
+  for (const path of possibleMainFiles) {
+    if (files[path]) {
+      appContent = files[path];
+      foundPath = path;
+      console.log('[VFSPreview] Found main file:', path);
+      break;
+    }
+  }
+  
+  // If no main file found, try to find any .tsx or .jsx file
+  if (!appContent) {
+    for (const [path, content] of Object.entries(files)) {
+      if ((path.endsWith('.tsx') || path.endsWith('.jsx')) && content.includes('return')) {
+        appContent = content;
+        foundPath = path;
+        console.log('[VFSPreview] Using first component file:', path);
+        break;
+      }
+    }
   }
   
   // Extract content from React component
   let bodyContent = '';
   
+  console.log('[VFSPreview] Attempting to extract JSX from content, length:', appContent.length);
+  
   // Look for dangerouslySetInnerHTML pattern (templates)
-  const dangerousMatch = appContent.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*`([^`]*)`\s*\}\}/s);
+  const dangerousMatch = appContent.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*`([\s\S]*?)`\s*\}\}/s);
   if (dangerousMatch) {
     bodyContent = dangerousMatch[1];
+    console.log('[VFSPreview] Found dangerouslySetInnerHTML content');
   } else {
-    // Try to extract return statement JSX and convert to HTML
-    const returnMatch = appContent.match(/return\s*\(\s*([\s\S]*?)\s*\);?\s*\}[\s\n]*$/);
-    if (returnMatch) {
+    // Try multiple patterns to extract JSX return content
+    // Pattern 1: Arrow function component with return
+    let returnMatch = appContent.match(/=>\s*\{\s*return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+    
+    // Pattern 2: Regular function with return
+    if (!returnMatch || returnMatch[1].trim().length < 20) {
+      returnMatch = appContent.match(/function\s+\w+[^{]*\{\s*return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+    }
+    
+    // Pattern 3: Arrow function with implicit return (no braces)
+    if (!returnMatch || returnMatch[1].trim().length < 20) {
+      returnMatch = appContent.match(/=>\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*$/ms);
+    }
+    
+    // Pattern 4: Generic return statement
+    if (!returnMatch || returnMatch[1].trim().length < 20) {
+      returnMatch = appContent.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+    }
+    
+    // Pattern 5: Look for the main JSX block with multiline content (more greedy)
+    if (!returnMatch || returnMatch[1].trim().length < 20) {
+      returnMatch = appContent.match(/return\s*\(([\s\S]+)\)\s*;?\s*\}/s);
+    }
+    
+    console.log('[VFSPreview] Return match found:', !!returnMatch, 'content length:', returnMatch?.[1]?.length || 0);
+    
+    if (returnMatch && returnMatch[1]) {
       bodyContent = returnMatch[1]
         .replace(/className=/g, 'class=')
         .replace(/htmlFor=/g, 'for=')
-        .replace(/\{\/\*.*?\*\/\}/gs, '') // Remove JSX comments
-        .replace(/\{`([^`]*)`\}/g, '$1'); // Remove template literals
+        .replace(/\{'\/\*.*?\*\/\}/gs, '') // Remove JSX comments
+        .replace(/\{\/\*[\s\S]*?\*\/\}/g, '') // Remove multiline JSX comments
+        .replace(/\{`([^`]*)`\}/g, '$1') // Convert template literals
+        .replace(/\{"([^"]*?)"\}/g, '$1') // Convert string expressions
+        .replace(/\{'([^']*?)'\}/g, '$1') // Convert single-quoted string expressions
+        .replace(/<>([\s\S]*?)<\/>/g, '$1') // Remove React fragments
+        .replace(/<React\.Fragment>([\s\S]*?)<\/React\.Fragment>/g, '$1') // Remove React.Fragment
+        .replace(/onClick=\{[^}]*\}/g, '') // Remove onClick handlers
+        .replace(/onChange=\{[^}]*\}/g, '') // Remove onChange handlers
+        .replace(/onSubmit=\{[^}]*\}/g, '') // Remove onSubmit handlers
+        .replace(/\{[a-zA-Z_][a-zA-Z0-9_]*\}/g, '') // Remove simple variable interpolations
+        .replace(/\{[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z0-9_.]+\}/g, ''); // Remove property access
+        
+      console.log('[VFSPreview] Processed body content length:', bodyContent.length);
     }
   }
   
-  if (!bodyContent) {
+  // If we still don't have content, show a helpful preview placeholder
+  if (!bodyContent || bodyContent.trim().length < 20) {
+    const fileList = fileKeys.length > 0 
+      ? fileKeys.map(f => `<div style="color: #38bdf8; font-size: 11px; padding: 2px 0;">${f}</div>`).join('')
+      : '<div style="color: #f87171;">No files in VFS</div>';
+    
     bodyContent = `
-      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0f172a; color: white;">
-        <div style="text-align: center; max-width: 400px; padding: 40px;">
-          <div style="font-size: 48px; margin-bottom: 16px;">🐳</div>
-          <h2 style="margin: 0 0 12px 0; font-size: 24px;">Docker Preview Required</h2>
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white;">
+        <div style="text-align: center; max-width: 600px; padding: 40px;">
+          <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
+          <h2 style="margin: 0 0 12px 0; font-size: 24px;">Static Preview Mode</h2>
           <p style="margin: 0 0 20px 0; color: #94a3b8; font-size: 14px; line-height: 1.6;">
-            Start the Docker preview service for live React rendering with HMR.
+            ${appContent ? 'Template content detected but requires React to render properly.' : 'No component files found in the VFS.'}
           </p>
-          <p style="margin: 0; color: #64748b; font-size: 12px;">
-            Run: <code style="background: #1e293b; padding: 2px 8px; border-radius: 4px;">docker-compose up</code>
-          </p>
+          <div style="background: #1e293b; padding: 16px; border-radius: 8px; text-align: left; max-height: 200px; overflow-y: auto;">
+            <p style="margin: 0 0 8px 0; color: #64748b; font-size: 12px;">Files in VFS (${fileKeys.length}):</p>
+            ${fileList}
+          </div>
         </div>
       </div>
     `;
@@ -168,7 +259,7 @@ function generateStaticHtmlPreview(files: Record<string, string>): string {
   <script src="https://cdn.tailwindcss.com"></script>
   <style>${BASE_CSS}</style>
 </head>
-<body class="bg-slate-950 text-white">
+<body class="bg-white">
   ${bodyContent}
 </body>
 </html>`;
@@ -191,11 +282,12 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   onError,
   showBackendIndicator = true,
 }, ref) => {
-  // State
-  const [backend, setBackend] = useState<PreviewBackend>('loading');
+  // State - default to 'html' so preview works immediately
+  const [backend, setBackend] = useState<PreviewBackend>('html');
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [htmlPreviewSrc, setHtmlPreviewSrc] = useState<string | null>(null);
+  const startAttemptedRef = useRef(false);
   
   // Docker preview service
   const dockerService = usePreviewService();
@@ -203,16 +295,37 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   // Check if Docker gateway is configured
   const dockerConfigured = !!import.meta.env.VITE_PREVIEW_GATEWAY_URL;
   
-  // Convert nodes to files
+  // Check if local Vite server is configured
+  const localViteConfigured = !!LOCAL_PREVIEW_URL;
+  
+  // Convert nodes to files - ALWAYS recompute to ensure we have latest
   const files = useMemo(() => {
-    return propFiles || nodesToFileMap(nodes);
+    const nodeFiles = nodesToFileMap(nodes);
+    const result = { ...nodeFiles, ...propFiles }; // Merge both sources
+    console.log('[VFSPreview] Files computed:', Object.keys(result), 'nodeFiles:', Object.keys(nodeFiles), 'propFiles:', Object.keys(propFiles || {}));
+    return result;
   }, [nodes, propFiles]);
+  
+  // Debug effect to log when files change
+  useEffect(() => {
+    console.log('[VFSPreview] ========== FILES UPDATED ==========');
+    console.log('[VFSPreview] File count:', Object.keys(files).length);
+    Object.entries(files).forEach(([path, content]) => {
+      console.log(`[VFSPreview] File: ${path} (${content?.length || 0} chars)`);
+    });
+  }, [files]);
   
   // Generate HTML preview for fallback
   const htmlPreview = useMemo(() => {
+    console.log('[VFSPreview] ========== GENERATING HTML ==========');
+    console.log('[VFSPreview] Input files:', Object.keys(files));
     const html = generateStaticHtmlPreview(files);
+    console.log('[VFSPreview] Generated HTML length:', html.length);
+    console.log('[VFSPreview] HTML preview (first 500 chars):', html.substring(0, 500));
     const blob = new Blob([html], { type: 'text/html' });
-    return URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    console.log('[VFSPreview] Blob URL created:', url);
+    return url;
   }, [files]);
   
   // Cleanup blob URLs
@@ -228,33 +341,16 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     };
   }, [htmlPreview]);
   
-  // Initialize backend
+  // Initialize backend - simplified to always work with HTML first
   useEffect(() => {
-    if (dockerService.session?.status === 'running') {
-      setBackend('docker');
-      onReady?.();
-    } else if (dockerService.loading) {
-      setBackend('loading');
-    } else if (dockerConfigured && autoStart && !dockerService.session) {
-      // Auto-start Docker
-      setBackend('loading');
-      dockerService.startSession(nodes).then(() => {
-        setBackend('docker');
-        onReady?.();
-      }).catch((err) => {
-        console.warn('[VFSPreview] Docker failed, using HTML fallback:', err);
-        setBackend('html');
-        onError?.('Docker preview unavailable');
-      });
-    } else if (!dockerConfigured) {
-      // No Docker configured, use HTML
-      setBackend('html');
-    } else {
-      setBackend('html');
-    }
-  }, [dockerService.session, dockerService.loading, dockerConfigured, autoStart]);
+    // Docker is disabled for now, always use HTML
+    // This ensures preview always works
+    console.log('[VFSPreview] Initializing - using HTML backend');
+    setBackend('html');
+    onReady?.();
+  }, []);
   
-  // Sync file changes to Docker
+  // Sync file changes to Docker (if ever enabled)
   useEffect(() => {
     if (backend !== 'docker' || !dockerService.session || dockerService.session.status !== 'running') return;
     
@@ -302,6 +398,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const handleOpenInNewTab = useCallback(() => {
     if (backend === 'docker' && dockerService.session?.iframeUrl) {
       window.open(dockerService.session.iframeUrl, '_blank');
+    } else if (backend === 'local' && LOCAL_PREVIEW_URL) {
+      window.open(LOCAL_PREVIEW_URL, '_blank');
     } else {
       window.open(htmlPreview, '_blank');
     }
@@ -316,10 +414,14 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     openInNewTab: handleOpenInNewTab,
   }), [handleRestart, handleStartDocker, handleStopDocker, backend, handleOpenInNewTab]);
   
-  // Determine preview URL
-  const previewUrl = backend === 'docker' && dockerService.session?.iframeUrl
-    ? dockerService.session.iframeUrl
-    : htmlPreviewSrc || htmlPreview;
+  // Determine preview URL - ALWAYS use htmlPreview for static mode
+  const previewUrl = useMemo(() => {
+    const url = backend === 'docker' && dockerService.session?.iframeUrl
+      ? dockerService.session.iframeUrl
+      : htmlPreview; // Always use the generated HTML preview
+    console.log('[VFSPreview] Preview URL:', url ? url.substring(0, 50) + '...' : 'NONE', 'backend:', backend);
+    return url;
+  }, [backend, dockerService.session, htmlPreview]);
   
   return (
     <div className={cn('flex flex-col h-full bg-background rounded-lg overflow-hidden border border-white/10', className)}>
@@ -332,10 +434,12 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
               <div className={cn(
                 'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
                 backend === 'docker' && 'bg-green-500/20 text-green-400',
+                backend === 'local' && 'bg-blue-500/20 text-blue-400',
                 backend === 'html' && 'bg-amber-500/20 text-amber-400',
                 backend === 'loading' && 'bg-blue-500/20 text-blue-400',
               )}>
                 {backend === 'docker' && <><Server className="h-3 w-3" /> Docker HMR</>}
+                {backend === 'local' && <><Server className="h-3 w-3" /> Local Vite</>}
                 {backend === 'html' && <><FileCode className="h-3 w-3" /> Static</>}
                 {backend === 'loading' && <><Loader2 className="h-3 w-3 animate-spin" /> Starting...</>}
               </div>
@@ -349,6 +453,11 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
                 ) : (
                   <><WifiOff className="h-3 w-3 text-yellow-500" /> Connecting...</>
                 )}
+              </div>
+            )}
+            {backend === 'local' && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Wifi className="h-3 w-3 text-green-500" /> {LOCAL_PREVIEW_URL}
               </div>
             )}
           </div>
@@ -442,9 +551,10 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
           </div>
         )}
         
-        {/* Preview Iframe */}
-        {(backend === 'docker' || backend === 'html') && previewUrl && (
+        {/* Preview Iframe - key forces re-render when URL changes */}
+        {(backend === 'docker' || backend === 'html' || backend === 'local') && previewUrl && (
           <iframe
+            key={previewUrl}
             src={previewUrl}
             className="w-full h-full border-0 bg-white"
             title="VFS Preview"

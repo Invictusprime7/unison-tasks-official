@@ -1,489 +1,346 @@
 /**
- * Landing Page Templates
- * SaaS landing pages and product marketing templates
+ * Landing Page Templates - Full Pages
  */
 
 import { LayoutTemplate } from '../types';
 import { wrapInHtmlDoc } from '../utils';
 
+const landingExtras = (opts: {
+  brand: string;
+  accent: 'emerald' | 'blue' | 'cyan' | 'rose' | 'indigo' | 'slate';
+  cta: string;
+}) => {
+  const safeId = opts.brand.replace(/\s+/g, '-').toLowerCase();
+  const stickyKey = `landing-${safeId}-${opts.accent}`;
+  const gradient =
+    opts.accent === 'emerald'
+      ? 'from-emerald-500 to-cyan-500'
+      : opts.accent === 'cyan'
+        ? 'from-cyan-500 to-blue-600'
+        : opts.accent === 'blue'
+          ? 'from-blue-600 to-indigo-600'
+          : opts.accent === 'rose'
+            ? 'from-rose-500 to-fuchsia-500'
+            : opts.accent === 'indigo'
+              ? 'from-indigo-500 to-purple-600'
+              : 'from-slate-800 to-slate-600';
+
+  const pill =
+    opts.accent === 'emerald'
+      ? 'text-emerald-300 border-emerald-500/20 bg-emerald-500/10'
+      : opts.accent === 'cyan'
+        ? 'text-cyan-300 border-cyan-500/20 bg-cyan-500/10'
+        : opts.accent === 'blue'
+          ? 'text-blue-300 border-blue-500/20 bg-blue-500/10'
+          : opts.accent === 'rose'
+            ? 'text-rose-300 border-rose-500/20 bg-rose-500/10'
+            : opts.accent === 'indigo'
+              ? 'text-indigo-300 border-indigo-500/20 bg-indigo-500/10'
+              : 'text-slate-300 border-white/10 bg-white/5';
+
+  return `
+<section class="py-20 px-6 bg-white/5">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-end justify-between gap-6 mb-10">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold">Product tour</h2>
+        <p class="text-slate-400 mt-2">Clickable tabs you can wire to real content.</p>
+      </div>
+      <span class="hidden md:inline-flex px-3 py-1 rounded-full border ${pill} text-xs tracking-wider">TABS</span>
+    </div>
+
+    <div class="rounded-3xl border border-white/10 bg-slate-900/40 p-6" data-tabs>
+      <div class="flex flex-wrap gap-2">
+        <button class="px-4 py-2 rounded-xl border border-white/10 bg-white/10 text-sm font-semibold tw-focus" data-tab="overview">Overview</button>
+        <button class="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold tw-focus" data-tab="automation">Automation</button>
+        <button class="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold tw-focus" data-tab="security">Security</button>
+      </div>
+
+      <div class="mt-6">
+        <div data-tab-panel="overview" class="grid md:grid-cols-3 gap-6">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-6 md:-translate-y-1">
+            <div class="text-xs text-slate-500">Time-to-value</div>
+            <div class="text-3xl font-extrabold mt-1">15m</div>
+            <div class="text-sm text-slate-400">from signup to first win</div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div class="text-xs text-slate-500">Teams</div>
+            <div class="text-3xl font-extrabold mt-1">1–500</div>
+            <div class="text-sm text-slate-400">scales with permissions</div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-6 md:translate-y-1">
+            <div class="text-xs text-slate-500">Support</div>
+            <div class="text-3xl font-extrabold mt-1">24/7</div>
+            <div class="text-sm text-slate-400">human help when needed</div>
+          </div>
+        </div>
+        <div data-tab-panel="automation" class="hidden">
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h3 class="font-semibold">Automations that feel native</h3>
+              <p class="text-sm text-slate-400 mt-2">Trigger actions on events, schedule workflows, and route approvals without switching tools.</p>
+              <ul class="mt-4 space-y-2 text-sm text-slate-300">
+                <li>✓ Smart assignments</li>
+                <li>✓ Slack/Email notifications</li>
+                <li>✓ One-click runbooks</li>
+              </ul>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h3 class="font-semibold">Live demo form</h3>
+              <p class="text-sm text-slate-400 mt-2">This is a demo submit (no backend). It shows a toast.</p>
+              <div data-demo-form-host>
+                <form class="mt-4 grid sm:grid-cols-3 gap-3" data-demo-form>
+                  <input class="px-4 py-3 rounded-xl bg-slate-950/30 border border-white/10 outline-none" placeholder="Work email" type="email" required />
+                  <input class="px-4 py-3 rounded-xl bg-slate-950/30 border border-white/10 outline-none" placeholder="Company" type="text" />
+                  <button class="px-4 py-3 rounded-xl bg-gradient-to-r ${gradient} text-white font-bold">Request demo</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-tab-panel="security" class="hidden">
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div class="text-2xl">🔒</div>
+              <div class="font-semibold mt-3">SSO & SCIM</div>
+              <div class="text-sm text-slate-400 mt-1">Provision users automatically.</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-6 md:translate-y-1">
+              <div class="text-2xl">🧾</div>
+              <div class="font-semibold mt-3">Audit logs</div>
+              <div class="text-sm text-slate-400 mt-1">Every action, searchable.</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div class="text-2xl">🛡️</div>
+              <div class="font-semibold mt-3">SOC 2-ready</div>
+              <div class="text-sm text-slate-400 mt-1">Policies + controls included.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-20 px-6">
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-end justify-between gap-6 mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold">Billing options</h2>
+        <p class="text-slate-400 mt-2">Toggle monthly vs annual pricing.</p>
+      </div>
+      <div class="inline-flex items-center gap-3 text-sm text-slate-300" data-pricing>
+        <span>Monthly</span>
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" class="accent-white" data-pricing-switch />
+          <span class="text-slate-300">Annual</span>
+        </label>
+      </div>
+    </div>
+    <div class="grid md:grid-cols-3 gap-6" data-pricing>
+      <div class="rounded-2xl border border-white/10 bg-slate-900/50 p-7">
+        <div class="font-semibold">Starter</div>
+        <div class="mt-3 text-4xl font-extrabold" data-price-monthly>$0</div>
+        <div class="mt-3 text-4xl font-extrabold hidden" data-price-annual>$0</div>
+        <div class="text-sm text-slate-400">Best for trying it out.</div>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-slate-900/50 p-7 md:-translate-y-1">
+        <div class="font-semibold">Pro</div>
+        <div class="mt-3 text-4xl font-extrabold" data-price-monthly>$29</div>
+        <div class="mt-3 text-4xl font-extrabold hidden" data-price-annual>$290</div>
+        <div class="text-sm text-slate-400">For teams that ship weekly.</div>
+        <button class="mt-6 w-full px-4 py-3 rounded-xl bg-gradient-to-r ${gradient} font-bold">${opts.cta}</button>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-slate-900/50 p-7">
+        <div class="font-semibold">Enterprise</div>
+        <div class="mt-3 text-4xl font-extrabold">Custom</div>
+        <div class="text-sm text-slate-400">Security + support at scale.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-20 px-6 bg-white/5">
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-end justify-between gap-6 mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold">FAQ</h2>
+        <p class="text-slate-400 mt-2">Quick answers for common questions.</p>
+      </div>
+      <span class="hidden md:inline-flex px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs tracking-wider">ACCORDION</span>
+    </div>
+    <div class="space-y-3">
+      <details class="group rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+        <summary class="flex items-center justify-between gap-4 tw-focus"><span class="font-semibold">Can I cancel anytime?</span><span class="text-slate-400 group-open:rotate-45 transition">+</span></summary>
+        <div class="mt-3 text-sm text-slate-400">Yes—cancel from your dashboard. Your data stays available during your billing period.</div>
+      </details>
+      <details class="group rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+        <summary class="flex items-center justify-between gap-4 tw-focus"><span class="font-semibold">Do you support SSO?</span><span class="text-slate-400 group-open:rotate-45 transition">+</span></summary>
+        <div class="mt-3 text-sm text-slate-400">SSO is available on Enterprise plans. SCIM provisioning is included.</div>
+      </details>
+      <details class="group rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+        <summary class="flex items-center justify-between gap-4 tw-focus"><span class="font-semibold">Is there a free tier?</span><span class="text-slate-400 group-open:rotate-45 transition">+</span></summary>
+        <div class="mt-3 text-sm text-slate-400">Yes—use Starter for lightweight usage, or begin a trial on Pro.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<div class="fixed bottom-4 left-4 right-4 z-50" data-sticky data-sticky-key="${stickyKey}" aria-hidden="false">
+  <div class="relative max-w-6xl mx-auto rounded-2xl border border-white/10 bg-gradient-to-r ${gradient} px-5 py-4 shadow-2xl shadow-black/30">
+    <button type="button" aria-label="Hide sticky bar" class="absolute top-1.5 right-1.5 grid h-7 w-7 place-items-center rounded-full bg-white/15 text-white/90 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50" data-dismiss="closest" data-dismiss-key="${stickyKey}">
+      <span aria-hidden="true" class="text-sm leading-none">✕</span>
+    </button>
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <div class="text-xs tracking-widest text-white/80">LIVE CTA</div>
+        <div class="text-lg font-semibold">Try ${opts.brand} today</div>
+        <div class="text-sm text-white/80">Interactive sticky bar + toggle panel.</div>
+      </div>
+      <div class="flex gap-3">
+        <button class="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/20 border border-white/20 text-sm font-semibold tw-focus" data-toggle="#demo-landing-${safeId}">Details</button>
+        <button class="px-5 py-2 rounded-xl bg-white text-black text-sm font-bold tw-focus">${opts.cta}</button>
+      </div>
+    </div>
+    <div id="demo-landing-${safeId}" class="hidden mt-4 rounded-xl bg-black/15 border border-white/15 px-4 py-3 text-sm text-white/90" aria-hidden="true">
+      This panel is toggled via the shared template runtime. Hook it up to a calendar link, onboarding modal, or lead form.
+    </div>
+  </div>
+</div>
+`;
+};
+
 export const landingTemplates: LayoutTemplate[] = [
-  // LANDING PAGE - FULL VERSION (SaaS A)
   {
-    id: "landing-saas-a",
-    name: "SaaS Landing (Full)",
+    id: "landing-saas-modern",
+    name: "SaaS Modern",
     category: "landing",
-    description: "Complete SaaS page: Nav, Hero, Features, Testimonials, Pricing, CTA, Footer",
-    tags: ["saas", "hero", "features", "pricing", "complete"],
+    description: "Modern SaaS landing with gradient hero, features, pricing, testimonials",
+    tags: ["saas", "modern", "gradient", "full"],
     code: wrapInHtmlDoc(`
-<!-- NAVIGATION -->
-<nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-white/5">
-  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-    <a href="#" class="text-xl font-bold text-emerald-400">SaaSify</a>
-    <div class="hidden md:flex items-center gap-8">
-      <a href="#features" class="text-sm text-slate-300 hover:text-white transition">Features</a>
-      <a href="#pricing" class="text-sm text-slate-300 hover:text-white transition">Pricing</a>
-      <a href="#testimonials" class="text-sm text-slate-300 hover:text-white transition">Testimonials</a>
-      <a href="#contact" class="text-sm text-slate-300 hover:text-white transition">Contact</a>
-    </div>
-    <div class="flex items-center gap-3">
-      <button class="text-sm text-slate-300 hover:text-white">Log in</button>
-      <button class="px-4 py-2 bg-emerald-500 text-sm font-medium rounded-lg hover:bg-emerald-600 transition">Get Started</button>
-    </div>
-  </div>
-</nav>
+<nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-white/5"><div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between"><a href="#" class="text-xl font-bold text-emerald-400">SaaSify</a><div class="hidden md:flex items-center gap-8"><a href="#features" class="text-sm text-slate-300 hover:text-white">Features</a><a href="#pricing" class="text-sm text-slate-300 hover:text-white">Pricing</a><a href="#testimonials" class="text-sm text-slate-300 hover:text-white">Testimonials</a></div><div class="flex items-center gap-3"><button class="text-sm text-slate-300">Log in</button><button class="px-4 py-2 bg-emerald-500 text-sm font-medium rounded-lg">Get Started</button></div></div></nav>
 
-<!-- HERO SECTION -->
-<section class="pt-32 pb-20 px-6 relative overflow-hidden">
-  <div class="absolute inset-0 bg-gradient-to-br from-emerald-600/10 via-transparent to-cyan-600/10"></div>
-  <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10">
-    <div>
-      <span class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-sm text-emerald-400 mb-6">✨ New: AI-powered automation</span>
-      <h1 class="text-5xl md:text-6xl font-bold leading-tight mb-6">Launch your SaaS in <span class="text-emerald-400">minutes</span></h1>
-      <p class="text-xl text-slate-400 mb-8 leading-relaxed">The all-in-one platform to build, launch, and scale your software business. No coding required.</p>
-      <div class="flex flex-col sm:flex-row gap-4 mb-8">
-        <button class="px-8 py-4 bg-emerald-500 text-lg font-semibold rounded-xl hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/25">Start Free Trial</button>
-        <button class="px-8 py-4 border border-white/20 text-lg font-semibold rounded-xl hover:bg-white/5 transition flex items-center gap-2">▶ Watch Demo</button>
-      </div>
-      <div class="flex items-center gap-6 text-sm text-slate-500">
-        <span class="flex items-center gap-1">✓ No credit card</span>
-        <span class="flex items-center gap-1">✓ 14-day trial</span>
-        <span class="flex items-center gap-1">✓ Cancel anytime</span>
-      </div>
-    </div>
-    <div class="relative">
-      <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80" alt="Dashboard" class="rounded-2xl shadow-2xl border border-white/10"/>
-      <div class="absolute -bottom-6 -left-6 bg-slate-900 border border-white/10 rounded-xl p-4 shadow-xl">
-        <div class="flex items-center gap-3"><div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-xl">📈</div><div><p class="text-2xl font-bold">+247%</p><p class="text-xs text-slate-400">Revenue growth</p></div></div>
-      </div>
-    </div>
-  </div>
-</section>
+<section class="pt-32 pb-20 px-6 relative overflow-hidden"><div class="absolute inset-0 bg-gradient-to-br from-emerald-600/20 via-transparent to-cyan-600/20"></div><div class="max-w-6xl mx-auto text-center relative z-10"><span class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-sm text-emerald-400 mb-6">✨ New: AI-powered features</span><h1 class="text-5xl md:text-7xl font-bold leading-tight mb-6">Scale your business <span class="text-emerald-400">effortlessly</span></h1><p class="text-xl text-slate-400 mb-8 max-w-2xl mx-auto">The all-in-one platform for modern teams. Ship faster, collaborate better.</p><div class="flex flex-col sm:flex-row gap-4 justify-center mb-12"><button class="px-8 py-4 bg-emerald-500 font-semibold rounded-xl shadow-lg shadow-emerald-500/25">Start Free Trial</button><button class="px-8 py-4 border border-white/20 font-semibold rounded-xl">Watch Demo →</button></div><div class="flex justify-center gap-8 text-sm text-slate-500"><span>✓ No credit card</span><span>✓ 14-day trial</span><span>✓ Cancel anytime</span></div></div></section>
 
-<!-- LOGOS SECTION -->
-<section class="py-12 px-6 border-y border-white/5">
-  <div class="max-w-6xl mx-auto">
-    <p class="text-center text-sm text-slate-500 mb-8">Trusted by 10,000+ companies worldwide</p>
-    <div class="flex flex-wrap justify-center items-center gap-12 opacity-50">
-      <span class="text-2xl font-bold">Google</span><span class="text-2xl font-bold">Microsoft</span><span class="text-2xl font-bold">Stripe</span><span class="text-2xl font-bold">Shopify</span><span class="text-2xl font-bold">Slack</span>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6" id="features"><div class="max-w-6xl mx-auto"><div class="text-center mb-16"><span class="text-emerald-400 text-sm font-semibold uppercase tracking-wider">Features</span><h2 class="text-4xl font-bold mt-4 mb-6">Everything you need</h2></div><div class="grid md:grid-cols-3 gap-8"><div class="p-8 rounded-2xl bg-white/5 border border-white/10"><div class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-6">⚡</div><h3 class="text-xl font-semibold mb-3">Lightning Fast</h3><p class="text-slate-400">Built for speed with optimized infrastructure.</p></div><div class="p-8 rounded-2xl bg-white/5 border border-white/10"><div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6">🔒</div><h3 class="text-xl font-semibold mb-3">Enterprise Security</h3><p class="text-slate-400">Bank-grade encryption for your data.</p></div><div class="p-8 rounded-2xl bg-white/5 border border-white/10"><div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-6">📊</div><h3 class="text-xl font-semibold mb-3">Analytics</h3><p class="text-slate-400">Real-time insights and dashboards.</p></div></div></div></section>
 
-<!-- FEATURES SECTION -->
-<section id="features" class="py-24 px-6">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-16">
-      <span class="text-emerald-400 text-sm font-medium uppercase tracking-wider">Features</span>
-      <h2 class="text-4xl md:text-5xl font-bold mt-4 mb-6">Everything you need to succeed</h2>
-      <p class="text-xl text-slate-400 max-w-2xl mx-auto">Powerful tools designed to help you build, launch, and grow your SaaS business faster than ever.</p>
-    </div>
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-      <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-8 hover:border-emerald-500/30 transition group">
-        <div class="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-emerald-500/20 transition">⚡</div>
-        <h3 class="text-xl font-bold mb-3">Lightning Fast</h3>
-        <p class="text-slate-400">Optimized performance with global CDN. Your pages load in milliseconds.</p>
-      </div>
-      <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-8 hover:border-emerald-500/30 transition group">
-        <div class="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-500/20 transition">🔒</div>
-        <h3 class="text-xl font-bold mb-3">Enterprise Security</h3>
-        <p class="text-slate-400">SOC2 compliant with end-to-end encryption. Your data is always safe.</p>
-      </div>
-      <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-8 hover:border-emerald-500/30 transition group">
-        <div class="w-14 h-14 bg-purple-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-500/20 transition">🤖</div>
-        <h3 class="text-xl font-bold mb-3">AI Powered</h3>
-        <p class="text-slate-400">Smart automation handles repetitive tasks so you can focus on growth.</p>
-      </div>
-      <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-8 hover:border-emerald-500/30 transition group">
-        <div class="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-amber-500/20 transition">📊</div>
-        <h3 class="text-xl font-bold mb-3">Analytics Dashboard</h3>
-        <p class="text-slate-400">Real-time insights and reports to track your business performance.</p>
-      </div>
-      <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-8 hover:border-emerald-500/30 transition group">
-        <div class="w-14 h-14 bg-rose-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-rose-500/20 transition">🔗</div>
-        <h3 class="text-xl font-bold mb-3">Integrations</h3>
-        <p class="text-slate-400">Connect with 100+ tools including Slack, Stripe, Zapier, and more.</p>
-      </div>
-      <div class="bg-slate-900/50 border border-white/5 rounded-2xl p-8 hover:border-emerald-500/30 transition group">
-        <div class="w-14 h-14 bg-cyan-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-500/20 transition">🌍</div>
-        <h3 class="text-xl font-bold mb-3">Global Scale</h3>
-        <p class="text-slate-400">Multi-region deployment with 99.99% uptime SLA guaranteed.</p>
-      </div>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6 bg-white/5" id="pricing"><div class="max-w-5xl mx-auto"><div class="text-center mb-16"><h2 class="text-4xl font-bold mb-4">Simple pricing</h2></div><div class="grid md:grid-cols-3 gap-8"><div class="p-8 rounded-2xl bg-slate-900 border border-white/10"><h3 class="font-semibold mb-2">Starter</h3><div class="mb-6"><span class="text-4xl font-bold">$0</span><span class="text-slate-400">/mo</span></div><ul class="space-y-3 mb-8 text-sm text-slate-400"><li>✓ 3 projects</li><li>✓ 1GB storage</li></ul><button class="w-full py-3 border border-white/20 rounded-lg">Get Started</button></div><div class="p-8 rounded-2xl bg-gradient-to-b from-emerald-500/10 to-transparent border-2 border-emerald-500/50 relative"><span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-500 text-black text-xs font-bold rounded-full">POPULAR</span><h3 class="font-semibold mb-2">Pro</h3><div class="mb-6"><span class="text-4xl font-bold">$29</span><span class="text-slate-400">/mo</span></div><ul class="space-y-3 mb-8 text-sm"><li>✓ Unlimited projects</li><li>✓ 100GB storage</li></ul><button class="w-full py-3 bg-emerald-500 text-black rounded-lg font-semibold">Get Started</button></div><div class="p-8 rounded-2xl bg-slate-900 border border-white/10"><h3 class="font-semibold mb-2">Enterprise</h3><div class="mb-6"><span class="text-4xl font-bold">$99</span><span class="text-slate-400">/mo</span></div><ul class="space-y-3 mb-8 text-sm text-slate-400"><li>✓ Everything in Pro</li><li>✓ Unlimited storage</li></ul><button class="w-full py-3 border border-white/20 rounded-lg">Contact Sales</button></div></div></div></section>
 
-<!-- TESTIMONIALS -->
-<section id="testimonials" class="py-24 px-6 bg-slate-900/30">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-16">
-      <span class="text-emerald-400 text-sm font-medium uppercase tracking-wider">Testimonials</span>
-      <h2 class="text-4xl font-bold mt-4">Loved by thousands</h2>
-    </div>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-slate-900 border border-white/5 rounded-2xl p-8">
-        <div class="flex gap-1 mb-4 text-amber-400">★★★★★</div>
-        <p class="text-slate-300 mb-6">"This platform transformed our business. We went from idea to launch in just 2 weeks!"</p>
-        <div class="flex items-center gap-3"><div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-400 rounded-full"></div><div><p class="font-semibold">Sarah Johnson</p><p class="text-sm text-slate-500">CEO, TechStart</p></div></div>
-      </div>
-      <div class="bg-slate-900 border border-white/5 rounded-2xl p-8">
-        <div class="flex gap-1 mb-4 text-amber-400">★★★★★</div>
-        <p class="text-slate-300 mb-6">"The AI features are incredible. It feels like having an extra team member."</p>
-        <div class="flex items-center gap-3"><div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full"></div><div><p class="font-semibold">Mike Chen</p><p class="text-sm text-slate-500">Founder, Startup.io</p></div></div>
-      </div>
-      <div class="bg-slate-900 border border-white/5 rounded-2xl p-8">
-        <div class="flex gap-1 mb-4 text-amber-400">★★★★★</div>
-        <p class="text-slate-300 mb-6">"Best investment we made. ROI was visible within the first month."</p>
-        <div class="flex items-center gap-3"><div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full"></div><div><p class="font-semibold">Emily Davis</p><p class="text-sm text-slate-500">CTO, GrowthCo</p></div></div>
-      </div>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6" id="testimonials"><div class="max-w-6xl mx-auto"><h2 class="text-4xl font-bold text-center mb-16">Loved by thousands</h2><div class="grid md:grid-cols-3 gap-8"><div class="p-8 rounded-2xl bg-slate-900 border border-white/10"><div class="flex gap-1 mb-4 text-amber-400">★★★★★</div><p class="text-slate-300 mb-6">"This tool transformed how we work!"</p><div class="flex items-center gap-4"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80" alt="" class="w-10 h-10 rounded-full object-cover"/><div><p class="font-semibold text-sm">Sarah Johnson</p><p class="text-xs text-slate-500">CEO, TechCorp</p></div></div></div><div class="p-8 rounded-2xl bg-slate-900 border border-white/10"><div class="flex gap-1 mb-4 text-amber-400">★★★★★</div><p class="text-slate-300 mb-6">"Best investment we've made this year."</p><div class="flex items-center gap-4"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80" alt="" class="w-10 h-10 rounded-full object-cover"/><div><p class="font-semibold text-sm">Michael Chen</p><p class="text-xs text-slate-500">CTO, StartupXYZ</p></div></div></div><div class="p-8 rounded-2xl bg-slate-900 border border-white/10"><div class="flex gap-1 mb-4 text-amber-400">★★★★★</div><p class="text-slate-300 mb-6">"Amazing support. Highly recommend!"</p><div class="flex items-center gap-4"><img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80" alt="" class="w-10 h-10 rounded-full object-cover"/><div><p class="font-semibold text-sm">Emily Rodriguez</p><p class="text-xs text-slate-500">Product Lead</p></div></div></div></div></div></section>
 
-<!-- PRICING -->
-<section id="pricing" class="py-24 px-6">
-  <div class="max-w-5xl mx-auto">
-    <div class="text-center mb-16">
-      <span class="text-emerald-400 text-sm font-medium uppercase tracking-wider">Pricing</span>
-      <h2 class="text-4xl font-bold mt-4 mb-4">Simple, transparent pricing</h2>
-      <p class="text-slate-400">No hidden fees. Cancel anytime.</p>
-    </div>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-slate-900/50 border border-white/10 rounded-2xl p-8">
-        <h3 class="text-lg font-semibold mb-2">Starter</h3>
-        <div class="mb-6"><span class="text-4xl font-bold">$29</span><span class="text-slate-500">/month</span></div>
-        <ul class="space-y-3 mb-8 text-sm text-slate-400">
-          <li class="flex items-center gap-2">✓ Up to 1,000 users</li><li class="flex items-center gap-2">✓ Basic analytics</li><li class="flex items-center gap-2">✓ Email support</li><li class="flex items-center gap-2">✓ 5 team members</li>
-        </ul>
-        <button class="w-full py-3 border border-white/20 rounded-xl font-semibold hover:bg-white/5 transition">Get Started</button>
-      </div>
-      <div class="bg-gradient-to-b from-emerald-500/10 to-transparent border-2 border-emerald-500/50 rounded-2xl p-8 relative">
-        <span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-500 text-xs font-bold rounded-full">POPULAR</span>
-        <h3 class="text-lg font-semibold mb-2">Pro</h3>
-        <div class="mb-6"><span class="text-4xl font-bold">$79</span><span class="text-slate-500">/month</span></div>
-        <ul class="space-y-3 mb-8 text-sm text-slate-400">
-          <li class="flex items-center gap-2">✓ Unlimited users</li><li class="flex items-center gap-2">✓ Advanced analytics</li><li class="flex items-center gap-2">✓ Priority support</li><li class="flex items-center gap-2">✓ 25 team members</li><li class="flex items-center gap-2">✓ API access</li>
-        </ul>
-        <button class="w-full py-3 bg-emerald-500 rounded-xl font-semibold hover:bg-emerald-600 transition">Get Started</button>
-      </div>
-      <div class="bg-slate-900/50 border border-white/10 rounded-2xl p-8">
-        <h3 class="text-lg font-semibold mb-2">Enterprise</h3>
-        <div class="mb-6"><span class="text-4xl font-bold">Custom</span></div>
-        <ul class="space-y-3 mb-8 text-sm text-slate-400">
-          <li class="flex items-center gap-2">✓ Everything in Pro</li><li class="flex items-center gap-2">✓ Dedicated support</li><li class="flex items-center gap-2">✓ Custom integrations</li><li class="flex items-center gap-2">✓ SLA guarantee</li>
-        </ul>
-        <button class="w-full py-3 border border-white/20 rounded-xl font-semibold hover:bg-white/5 transition">Contact Sales</button>
-      </div>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6"><div class="max-w-4xl mx-auto rounded-3xl bg-gradient-to-r from-emerald-600 to-cyan-600 p-12 text-center"><h2 class="text-4xl font-bold mb-6">Ready to get started?</h2><p class="text-xl text-white/80 mb-8">Join thousands of teams using our platform.</p><button class="px-8 py-4 bg-white text-emerald-600 font-semibold rounded-xl">Start Free Trial</button></div></section>
 
-<!-- CTA SECTION -->
-<section class="py-24 px-6">
-  <div class="max-w-4xl mx-auto text-center bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-3xl p-12">
-    <h2 class="text-4xl font-bold mb-4">Ready to get started?</h2>
-    <p class="text-xl text-white/80 mb-8">Join 10,000+ companies already using our platform.</p>
-    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <button class="px-8 py-4 bg-white text-slate-900 rounded-xl font-semibold hover:bg-slate-100 transition">Start Free Trial</button>
-      <button class="px-8 py-4 border-2 border-white/30 rounded-xl font-semibold hover:bg-white/10 transition">Talk to Sales</button>
-    </div>
-  </div>
-</section>
+${landingExtras({ brand: 'SaaSify', accent: 'emerald', cta: 'Start Free Trial' })}
 
-<!-- FOOTER -->
-<footer class="py-16 px-6 border-t border-white/5">
-  <div class="max-w-6xl mx-auto">
-    <div class="grid md:grid-cols-4 gap-12 mb-12">
-      <div>
-        <h4 class="text-xl font-bold text-emerald-400 mb-4">SaaSify</h4>
-        <p class="text-sm text-slate-500">The all-in-one platform for modern SaaS businesses.</p>
-      </div>
-      <div>
-        <h5 class="font-semibold mb-4">Product</h5>
-        <ul class="space-y-2 text-sm text-slate-400"><li><a href="#" class="hover:text-white">Features</a></li><li><a href="#" class="hover:text-white">Pricing</a></li><li><a href="#" class="hover:text-white">Integrations</a></li><li><a href="#" class="hover:text-white">Changelog</a></li></ul>
-      </div>
-      <div>
-        <h5 class="font-semibold mb-4">Company</h5>
-        <ul class="space-y-2 text-sm text-slate-400"><li><a href="#" class="hover:text-white">About</a></li><li><a href="#" class="hover:text-white">Blog</a></li><li><a href="#" class="hover:text-white">Careers</a></li><li><a href="#" class="hover:text-white">Contact</a></li></ul>
-      </div>
-      <div>
-        <h5 class="font-semibold mb-4">Legal</h5>
-        <ul class="space-y-2 text-sm text-slate-400"><li><a href="#" class="hover:text-white">Privacy</a></li><li><a href="#" class="hover:text-white">Terms</a></li><li><a href="#" class="hover:text-white">Security</a></li></ul>
-      </div>
-    </div>
-    <div class="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-      <p class="text-sm text-slate-500">© 2025 SaaSify. All rights reserved.</p>
-      <div class="flex gap-4"><a href="#" class="text-slate-400 hover:text-white">Twitter</a><a href="#" class="text-slate-400 hover:text-white">LinkedIn</a><a href="#" class="text-slate-400 hover:text-white">GitHub</a></div>
-    </div>
-  </div>
-</footer>
-    `, "SaaS Landing Page"),
+<footer class="py-16 px-6 border-t border-white/5"><div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8"><span class="text-xl font-bold text-emerald-400">SaaSify</span><div class="flex gap-8 text-sm text-slate-400"><a href="#">Features</a><a href="#">Pricing</a><a href="#">About</a></div><p class="text-sm text-slate-500">© 2025 SaaSify. All rights reserved.</p></div></footer>
+    `, "SaaS Modern"),
   },
-  // LANDING PAGE - VERSION B
+
   {
-    id: "landing-saas-b",
-    name: "SaaS Landing (B)",
+    id: "landing-dark-elite",
+    name: "Dark Elite",
     category: "landing",
-    description: "Centered hero with gradient, stats, features, and full sections.",
-    tags: ["saas", "centered", "stats", "gradient", "full"],
+    description: "Premium dark landing with glassmorphism and waitlist",
+    tags: ["dark", "premium", "waitlist", "full"],
     code: wrapInHtmlDoc(`
-<!-- NAVIGATION -->
-<header class="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-slate-950/80 backdrop-blur-xl border-b border-white/5">
-  <div class="max-w-7xl mx-auto flex justify-between items-center">
-    <span class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">DevFlow</span>
-    <nav class="hidden md:flex gap-8 text-sm font-medium text-slate-300">
-      <a href="#features" class="hover:text-white transition">Features</a>
-      <a href="#integrations" class="hover:text-white transition">Integrations</a>
-      <a href="#pricing" class="hover:text-white transition">Pricing</a>
-      <a href="#testimonials" class="hover:text-white transition">Testimonials</a>
-    </nav>
-    <div class="flex items-center gap-4">
-      <a href="#" class="text-sm font-medium text-slate-300 hover:text-white">Sign In</a>
-      <button class="px-5 py-2 bg-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-700 transition">Start Free</button>
-    </div>
-  </div>
-</header>
+<nav class="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-xl border-b border-white/5"><div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between"><a href="#" class="text-xl font-bold">Nexus<span class="text-blue-500">.</span></a><div class="hidden md:flex items-center gap-8"><a href="#" class="text-sm text-slate-400 hover:text-white">Product</a><a href="#" class="text-sm text-slate-400 hover:text-white">Pricing</a><a href="#" class="text-sm text-slate-400 hover:text-white">Resources</a></div><div class="flex items-center gap-4"><button class="text-sm text-slate-400">Sign in</button><button class="px-4 py-2 bg-blue-600 text-sm font-medium rounded-lg">Start Free</button></div></div></nav>
 
-<!-- HERO -->
-<section class="relative pt-32 pb-20 px-6 text-center overflow-hidden">
-  <div class="absolute inset-0 bg-gradient-to-b from-blue-600/20 via-purple-600/10 to-transparent"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/20 rounded-full blur-3xl"></div>
-  <div class="relative max-w-4xl mx-auto">
-    <div class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-sm text-blue-400 mb-8">
-      <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-      Now with AI-powered code review
-    </div>
-    <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-blue-100 to-slate-400 bg-clip-text text-transparent leading-tight">Build faster,<br/>ship smarter</h1>
-    <p class="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto">The all-in-one platform for modern development teams to collaborate, build, and deploy with confidence.</p>
-    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-      <button class="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-600 transition shadow-lg shadow-blue-500/25">Get Started Free</button>
-      <button class="px-8 py-4 border border-white/20 rounded-xl font-semibold hover:bg-white/5 transition flex items-center justify-center gap-2">▶ Watch Demo</button>
-    </div>
-    <div class="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
-      <div class="p-4 bg-slate-900/50 rounded-xl border border-white/5"><p class="text-3xl font-bold text-blue-400">10K+</p><p class="text-sm text-slate-400">Active Users</p></div>
-      <div class="p-4 bg-slate-900/50 rounded-xl border border-white/5"><p class="text-3xl font-bold text-cyan-400">99.9%</p><p class="text-sm text-slate-400">Uptime SLA</p></div>
-      <div class="p-4 bg-slate-900/50 rounded-xl border border-white/5"><p class="text-3xl font-bold text-purple-400">50M+</p><p class="text-sm text-slate-400">API Calls/Day</p></div>
-    </div>
-  </div>
-</section>
+<section class="min-h-screen flex items-center justify-center px-6 pt-20 relative overflow-hidden"><div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[120px]"></div><div class="relative z-10 text-center max-w-4xl"><div class="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm mb-8"><span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>Now in public beta</div><h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight">The future of <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">productivity</span></h1><p class="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">AI-powered workspace that adapts to you. Automate the mundane.</p><div class="flex flex-col sm:flex-row gap-4 justify-center mb-8"><input type="email" placeholder="Enter your email" class="px-6 py-4 bg-white/5 border border-white/10 rounded-xl w-72 focus:border-blue-500 outline-none"/><button class="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 font-semibold rounded-xl">Join Waitlist</button></div><p class="text-sm text-slate-500">🎉 2,847 people already joined</p></div></section>
 
-<!-- LOGOS -->
-<section class="py-12 px-6 border-y border-white/5">
-  <div class="max-w-6xl mx-auto text-center">
-    <p class="text-sm text-slate-500 mb-8">Trusted by leading engineering teams worldwide</p>
-    <div class="flex flex-wrap justify-center items-center gap-12 opacity-50">
-      <span class="text-2xl font-bold">Stripe</span>
-      <span class="text-2xl font-bold">Vercel</span>
-      <span class="text-2xl font-bold">Linear</span>
-      <span class="text-2xl font-bold">Notion</span>
-      <span class="text-2xl font-bold">Figma</span>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6"><div class="max-w-6xl mx-auto"><div class="text-center mb-16"><h2 class="text-4xl font-bold">Built for modern workflows</h2></div><div class="grid md:grid-cols-4 gap-6"><div class="p-6 rounded-2xl bg-white/5 border border-white/10"><div class="text-3xl mb-4">🚀</div><h3 class="font-semibold mb-2">10x Faster</h3><p class="text-sm text-slate-400">Ship at unprecedented speed.</p></div><div class="p-6 rounded-2xl bg-white/5 border border-white/10"><div class="text-3xl mb-4">🤖</div><h3 class="font-semibold mb-2">AI-Native</h3><p class="text-sm text-slate-400">AI built at its core.</p></div><div class="p-6 rounded-2xl bg-white/5 border border-white/10"><div class="text-3xl mb-4">🔗</div><h3 class="font-semibold mb-2">100+ Integrations</h3><p class="text-sm text-slate-400">Connect your tools.</p></div><div class="p-6 rounded-2xl bg-white/5 border border-white/10"><div class="text-3xl mb-4">🛡️</div><h3 class="font-semibold mb-2">SOC 2</h3><p class="text-sm text-slate-400">Enterprise security.</p></div></div></div></section>
 
-<!-- FEATURES -->
-<section id="features" class="py-24 px-6">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-16">
-      <span class="text-blue-400 text-sm font-semibold tracking-wider uppercase">Features</span>
-      <h2 class="text-4xl md:text-5xl font-bold mt-4 mb-6">Everything you need to ship</h2>
-      <p class="text-xl text-slate-400 max-w-2xl mx-auto">Powerful tools designed for modern development workflows</p>
-    </div>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="p-8 bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-2xl border border-white/5 hover:border-blue-500/30 transition group">
-        <div class="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition">⚡</div>
-        <h3 class="text-xl font-bold mb-3">Lightning Fast CI/CD</h3>
-        <p class="text-slate-400">Deploy in seconds with our optimized build pipeline. Zero-config for most frameworks.</p>
-      </div>
-      <div class="p-8 bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-2xl border border-white/5 hover:border-cyan-500/30 transition group">
-        <div class="w-14 h-14 bg-cyan-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition">🔒</div>
-        <h3 class="text-xl font-bold mb-3">Enterprise Security</h3>
-        <p class="text-slate-400">SOC 2 compliant with SSO, RBAC, and audit logs. Your code is always protected.</p>
-      </div>
-      <div class="p-8 bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-2xl border border-white/5 hover:border-purple-500/30 transition group">
-        <div class="w-14 h-14 bg-purple-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition">🤖</div>
-        <h3 class="text-xl font-bold mb-3">AI Code Review</h3>
-        <p class="text-slate-400">Automated code reviews powered by AI. Catch bugs before they reach production.</p>
-      </div>
-      <div class="p-8 bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-2xl border border-white/5 hover:border-green-500/30 transition group">
-        <div class="w-14 h-14 bg-green-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition">📊</div>
-        <h3 class="text-xl font-bold mb-3">Real-time Analytics</h3>
-        <p class="text-slate-400">Monitor deployments, track errors, and analyze performance in real-time.</p>
-      </div>
-      <div class="p-8 bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-2xl border border-white/5 hover:border-orange-500/30 transition group">
-        <div class="w-14 h-14 bg-orange-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition">🌍</div>
-        <h3 class="text-xl font-bold mb-3">Global Edge Network</h3>
-        <p class="text-slate-400">Deploy to 200+ edge locations worldwide for blazing fast load times.</p>
-      </div>
-      <div class="p-8 bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-2xl border border-white/5 hover:border-pink-500/30 transition group">
-        <div class="w-14 h-14 bg-pink-500/10 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition">🔗</div>
-        <h3 class="text-xl font-bold mb-3">Seamless Integrations</h3>
-        <p class="text-slate-400">Connect with GitHub, GitLab, Slack, Jira, and 100+ other tools.</p>
-      </div>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6 bg-gradient-to-b from-transparent via-blue-950/20 to-transparent"><div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center"><div><h2 class="text-4xl font-bold mb-6">Everything in <span class="text-blue-400">one place</span></h2><p class="text-xl text-slate-400 mb-8">Powerful features that help you work smarter.</p><div class="space-y-6"><div class="flex gap-4"><div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center shrink-0">✓</div><div><h4 class="font-semibold mb-1">Smart Automation</h4><p class="text-sm text-slate-400">Automate repetitive tasks.</p></div></div><div class="flex gap-4"><div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center shrink-0">✓</div><div><h4 class="font-semibold mb-1">Real-time Collaboration</h4><p class="text-sm text-slate-400">Work together seamlessly.</p></div></div><div class="flex gap-4"><div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center shrink-0">✓</div><div><h4 class="font-semibold mb-1">Advanced Analytics</h4><p class="text-sm text-slate-400">Insights that drive decisions.</p></div></div></div></div><div class="bg-slate-900 rounded-2xl border border-white/10 p-4"><img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" alt="Dashboard" class="rounded-lg w-full"/></div></div></section>
 
-<!-- INTEGRATIONS -->
-<section id="integrations" class="py-24 px-6 bg-slate-900/50">
-  <div class="max-w-6xl mx-auto">
-    <div class="grid lg:grid-cols-2 gap-16 items-center">
-      <div>
-        <span class="text-cyan-400 text-sm font-semibold tracking-wider uppercase">Integrations</span>
-        <h2 class="text-4xl font-bold mt-4 mb-6">Works with your stack</h2>
-        <p class="text-xl text-slate-400 mb-8">Connect DevFlow with the tools you already use. One-click integrations, zero configuration.</p>
-        <ul class="space-y-4">
-          <li class="flex items-center gap-3"><span class="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-400">✓</span><span>GitHub, GitLab, Bitbucket sync</span></li>
-          <li class="flex items-center gap-3"><span class="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-400">✓</span><span>Slack & Discord notifications</span></li>
-          <li class="flex items-center gap-3"><span class="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-400">✓</span><span>Jira & Linear issue tracking</span></li>
-          <li class="flex items-center gap-3"><span class="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-400">✓</span><span>Datadog & PagerDuty alerts</span></li>
-        </ul>
-      </div>
-      <div class="grid grid-cols-3 gap-4">
-        <div class="aspect-square bg-slate-800 rounded-2xl flex items-center justify-center text-3xl hover:bg-slate-700 transition cursor-pointer">🐙</div>
-        <div class="aspect-square bg-slate-800 rounded-2xl flex items-center justify-center text-3xl hover:bg-slate-700 transition cursor-pointer">🦊</div>
-        <div class="aspect-square bg-slate-800 rounded-2xl flex items-center justify-center text-3xl hover:bg-slate-700 transition cursor-pointer">💬</div>
-        <div class="aspect-square bg-slate-800 rounded-2xl flex items-center justify-center text-3xl hover:bg-slate-700 transition cursor-pointer">📋</div>
-        <div class="aspect-square bg-slate-800 rounded-2xl flex items-center justify-center text-3xl hover:bg-slate-700 transition cursor-pointer">📊</div>
-        <div class="aspect-square bg-slate-800 rounded-2xl flex items-center justify-center text-3xl hover:bg-slate-700 transition cursor-pointer">🚨</div>
-      </div>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6"><div class="max-w-4xl mx-auto text-center"><h2 class="text-4xl font-bold mb-12">Trusted by leaders</h2><div class="flex flex-wrap justify-center gap-12 opacity-40 grayscale"><span class="text-2xl font-bold">VERCEL</span><span class="text-2xl font-bold">Stripe</span><span class="text-2xl font-bold">Linear</span><span class="text-2xl font-bold">Notion</span><span class="text-2xl font-bold">Figma</span></div></div></section>
 
-<!-- TESTIMONIALS -->
-<section id="testimonials" class="py-24 px-6">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-16">
-      <span class="text-purple-400 text-sm font-semibold tracking-wider uppercase">Testimonials</span>
-      <h2 class="text-4xl font-bold mt-4">Loved by developers</h2>
-    </div>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="p-8 bg-slate-900 rounded-2xl border border-white/5">
-        <div class="flex gap-1 text-yellow-400 mb-4">★★★★★</div>
-        <p class="text-slate-300 mb-6">"DevFlow cut our deployment time by 80%. The AI code review caught bugs we would have missed."</p>
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-blue-500 rounded-full"></div>
-          <div><p class="font-semibold">Sarah Chen</p><p class="text-sm text-slate-500">CTO at TechStartup</p></div>
-        </div>
-      </div>
-      <div class="p-8 bg-slate-900 rounded-2xl border border-white/5">
-        <div class="flex gap-1 text-yellow-400 mb-4">★★★★★</div>
-        <p class="text-slate-300 mb-6">"Finally, a CI/CD tool that just works. Our team onboarded in minutes, not days."</p>
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-green-500 rounded-full"></div>
-          <div><p class="font-semibold">Marcus Johnson</p><p class="text-sm text-slate-500">Lead Engineer at Scale</p></div>
-        </div>
-      </div>
-      <div class="p-8 bg-slate-900 rounded-2xl border border-white/5">
-        <div class="flex gap-1 text-yellow-400 mb-4">★★★★★</div>
-        <p class="text-slate-300 mb-6">"The edge network is incredible. Our app loads in under 100ms globally."</p>
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-purple-500 rounded-full"></div>
-          <div><p class="font-semibold">Emma Williams</p><p class="text-sm text-slate-500">Founder at AppCo</p></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+<section class="py-24 px-6"><div class="max-w-5xl mx-auto rounded-3xl bg-gradient-to-r from-blue-600 to-purple-600 p-12 md:p-16 text-center"><h2 class="text-4xl font-bold mb-6">Transform your workflow</h2><p class="text-xl text-white/80 mb-10">Start free. No credit card required.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><button class="px-8 py-4 bg-white text-blue-600 font-semibold rounded-xl">Start Free Trial</button><button class="px-8 py-4 border border-white/30 font-semibold rounded-xl">Book a Demo</button></div></div></section>
 
-<!-- PRICING -->
-<section id="pricing" class="py-24 px-6 bg-slate-900/50">
-  <div class="max-w-5xl mx-auto">
-    <div class="text-center mb-16">
-      <span class="text-green-400 text-sm font-semibold tracking-wider uppercase">Pricing</span>
-      <h2 class="text-4xl font-bold mt-4 mb-6">Simple, transparent pricing</h2>
-      <p class="text-xl text-slate-400">Start free, scale as you grow</p>
-    </div>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="p-8 bg-slate-800/50 rounded-2xl border border-white/5">
-        <h3 class="text-xl font-bold mb-2">Starter</h3>
-        <p class="text-slate-400 mb-6">For side projects</p>
-        <p class="text-4xl font-bold mb-6">$0<span class="text-lg font-normal text-slate-500">/mo</span></p>
-        <ul class="space-y-3 mb-8 text-sm">
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span>3 projects</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span>100 builds/mo</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span>Community support</li>
-        </ul>
-        <button class="w-full py-3 border border-white/20 rounded-lg font-semibold hover:bg-white/5 transition">Get Started</button>
-      </div>
-      <div class="p-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl relative">
-        <span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-yellow-400 text-black text-xs font-bold rounded-full">POPULAR</span>
-        <h3 class="text-xl font-bold mb-2">Pro</h3>
-        <p class="text-blue-200 mb-6">For growing teams</p>
-        <p class="text-4xl font-bold mb-6">$29<span class="text-lg font-normal text-blue-200">/mo</span></p>
-        <ul class="space-y-3 mb-8 text-sm">
-          <li class="flex items-center gap-2"><span class="text-green-300">✓</span>Unlimited projects</li>
-          <li class="flex items-center gap-2"><span class="text-green-300">✓</span>1000 builds/mo</li>
-          <li class="flex items-center gap-2"><span class="text-green-300">✓</span>AI code review</li>
-          <li class="flex items-center gap-2"><span class="text-green-300">✓</span>Priority support</li>
-        </ul>
-        <button class="w-full py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-slate-100 transition">Start Free Trial</button>
-      </div>
-      <div class="p-8 bg-slate-800/50 rounded-2xl border border-white/5">
-        <h3 class="text-xl font-bold mb-2">Enterprise</h3>
-        <p class="text-slate-400 mb-6">For large orgs</p>
-        <p class="text-4xl font-bold mb-6">Custom</p>
-        <ul class="space-y-3 mb-8 text-sm">
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span>Everything in Pro</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span>SSO & SAML</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span>SLA guarantee</li>
-          <li class="flex items-center gap-2"><span class="text-green-400">✓</span>Dedicated support</li>
-        </ul>
-        <button class="w-full py-3 border border-white/20 rounded-lg font-semibold hover:bg-white/5 transition">Contact Sales</button>
-      </div>
-    </div>
-  </div>
-</section>
+${landingExtras({ brand: 'Nexus', accent: 'blue', cta: 'Start Free' })}
 
-<!-- FAQ -->
-<section class="py-24 px-6">
-  <div class="max-w-3xl mx-auto">
-    <h2 class="text-4xl font-bold text-center mb-16">Frequently Asked Questions</h2>
-    <div class="space-y-4">
-      <details class="p-6 bg-slate-900 rounded-xl border border-white/5 group">
-        <summary class="font-semibold cursor-pointer list-none flex justify-between items-center">How does the free tier work?<span class="text-slate-500 group-open:rotate-180 transition">▼</span></summary>
-        <p class="mt-4 text-slate-400">The free tier includes 3 projects and 100 builds per month. No credit card required to start.</p>
-      </details>
-      <details class="p-6 bg-slate-900 rounded-xl border border-white/5 group">
-        <summary class="font-semibold cursor-pointer list-none flex justify-between items-center">Can I switch plans anytime?<span class="text-slate-500 group-open:rotate-180 transition">▼</span></summary>
-        <p class="mt-4 text-slate-400">Yes! You can upgrade, downgrade, or cancel at any time. Changes take effect immediately.</p>
-      </details>
-      <details class="p-6 bg-slate-900 rounded-xl border border-white/5 group">
-        <summary class="font-semibold cursor-pointer list-none flex justify-between items-center">What frameworks are supported?<span class="text-slate-500 group-open:rotate-180 transition">▼</span></summary>
-        <p class="mt-4 text-slate-400">We support all major frameworks: React, Next.js, Vue, Nuxt, Svelte, Astro, and more. Custom Dockerfiles also supported.</p>
-      </details>
-    </div>
-  </div>
-</section>
+<footer class="py-16 px-6 border-t border-white/5"><div class="max-w-6xl mx-auto grid md:grid-cols-4 gap-12"><div><span class="text-xl font-bold">Nexus<span class="text-blue-500">.</span></span><p class="text-sm text-slate-500 mt-4">The future of productivity.</p></div><div><h5 class="font-semibold mb-4 text-sm">Product</h5><ul class="space-y-2 text-sm text-slate-400"><li>Features</li><li>Pricing</li></ul></div><div><h5 class="font-semibold mb-4 text-sm">Company</h5><ul class="space-y-2 text-sm text-slate-400"><li>About</li><li>Blog</li></ul></div><div><h5 class="font-semibold mb-4 text-sm">Legal</h5><ul class="space-y-2 text-sm text-slate-400"><li>Privacy</li><li>Terms</li></ul></div></div></footer>
+    `, "Dark Elite"),
+  },
 
-<!-- CTA -->
-<section class="py-24 px-6">
-  <div class="max-w-4xl mx-auto text-center p-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl">
-    <h2 class="text-4xl md:text-5xl font-bold mb-6">Ready to ship faster?</h2>
-    <p class="text-xl text-white/80 mb-10">Join 10,000+ developers who deploy with confidence.</p>
-    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <button class="px-8 py-4 bg-white text-blue-600 rounded-xl font-semibold hover:bg-slate-100 transition">Get Started Free</button>
-      <button class="px-8 py-4 border-2 border-white rounded-xl font-semibold hover:bg-white/10 transition">Talk to Sales</button>
-    </div>
-  </div>
-</section>
+  {
+    id: "landing-minimal-app",
+    name: "Minimal App",
+    category: "landing",
+    description: "Clean minimal app landing with large typography",
+    tags: ["app", "minimal", "clean", "full"],
+    code: wrapInHtmlDoc(`
+<nav class="fixed top-0 left-0 right-0 z-50 px-6 py-6"><div class="max-w-5xl mx-auto flex items-center justify-between"><a href="#" class="text-xl font-bold">Pulse</a><div class="hidden md:flex items-center gap-8"><a href="#" class="text-sm text-slate-400 hover:text-white">Features</a><a href="#" class="text-sm text-slate-400 hover:text-white">Pricing</a><a href="#" class="text-sm text-slate-400 hover:text-white">About</a></div><button class="px-5 py-2 bg-white text-black text-sm font-medium rounded-full">Download</button></div></nav>
 
-<!-- FOOTER -->
-<footer class="py-16 px-6 border-t border-white/5">
-  <div class="max-w-6xl mx-auto grid md:grid-cols-5 gap-12 mb-12">
-    <div class="md:col-span-2">
-      <span class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">DevFlow</span>
-      <p class="text-slate-500 mt-4">The modern platform for development teams.</p>
-    </div>
-    <div><h5 class="font-semibold mb-4">Product</h5><ul class="space-y-2 text-sm text-slate-400"><li><a href="#">Features</a></li><li><a href="#">Pricing</a></li><li><a href="#">Changelog</a></li></ul></div>
-    <div><h5 class="font-semibold mb-4">Company</h5><ul class="space-y-2 text-sm text-slate-400"><li><a href="#">About</a></li><li><a href="#">Blog</a></li><li><a href="#">Careers</a></li></ul></div>
-    <div><h5 class="font-semibold mb-4">Legal</h5><ul class="space-y-2 text-sm text-slate-400"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li></ul></div>
-  </div>
-  <div class="max-w-6xl mx-auto pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
-    <p>© 2025 DevFlow. All rights reserved.</p>
-    <div class="flex gap-6"><a href="#">Twitter</a><a href="#">GitHub</a><a href="#">Discord</a></div>
-  </div>
-</footer>
-    `, "SaaS Landing B"),
+<section class="min-h-screen flex items-center justify-center px-6"><div class="max-w-3xl text-center"><h1 class="text-6xl md:text-8xl font-bold mb-8 tracking-tight">Focus.<br/><span class="text-slate-500">Flow.</span><br/><span class="text-slate-700">Finish.</span></h1><p class="text-xl text-slate-400 mb-12 max-w-xl mx-auto">The minimalist productivity app. No clutter, no distractions.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><button class="px-8 py-4 bg-white text-black font-semibold rounded-full">Download for Mac</button><button class="px-8 py-4 border border-white/20 font-semibold rounded-full">View on Web</button></div><p class="text-sm text-slate-500 mt-8">Also on iOS and Windows</p></div></section>
+
+<section class="py-32 px-6"><div class="max-w-5xl mx-auto"><div class="bg-slate-900 rounded-3xl border border-white/10 p-8"><img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&q=80" alt="App" class="rounded-2xl w-full"/></div></div></section>
+
+<section class="py-24 px-6"><div class="max-w-4xl mx-auto"><h2 class="text-4xl font-bold text-center mb-20">Why Pulse?</h2><div class="grid md:grid-cols-3 gap-16 text-center"><div><div class="text-5xl mb-6">🎯</div><h3 class="text-xl font-semibold mb-3">Stay Focused</h3><p class="text-slate-400">Block distractions and enter deep work mode.</p></div><div><div class="text-5xl mb-6">⚡</div><h3 class="text-xl font-semibold mb-3">Work Faster</h3><p class="text-slate-400">Keyboard-first design for flow state.</p></div><div><div class="text-5xl mb-6">📊</div><h3 class="text-xl font-semibold mb-3">Track Progress</h3><p class="text-slate-400">Beautiful productivity insights.</p></div></div></div></section>
+
+<section class="py-24 px-6 bg-white/5"><div class="max-w-4xl mx-auto"><h2 class="text-4xl font-bold text-center mb-16">Simple pricing</h2><div class="grid md:grid-cols-2 gap-8"><div class="p-10 rounded-3xl bg-slate-900 border border-white/10"><h3 class="text-xl font-semibold mb-2">Free</h3><p class="text-slate-400 mb-6">For personal use</p><div class="text-5xl font-bold mb-8">$0</div><ul class="space-y-4 mb-10 text-slate-300"><li>✓ Unlimited tasks</li><li>✓ Basic analytics</li><li>✓ 1 device</li></ul><button class="w-full py-4 border border-white/20 rounded-full font-semibold">Get Started</button></div><div class="p-10 rounded-3xl bg-white text-black"><h3 class="text-xl font-semibold mb-2">Pro</h3><p class="text-slate-600 mb-6">For power users</p><div class="text-5xl font-bold mb-8">$8<span class="text-lg text-slate-500">/mo</span></div><ul class="space-y-4 mb-10 text-slate-700"><li>✓ Everything in Free</li><li>✓ Advanced analytics</li><li>✓ Unlimited devices</li></ul><button class="w-full py-4 bg-black text-white rounded-full font-semibold">Start Trial</button></div></div></div></section>
+
+<section class="py-32 px-6"><div class="max-w-2xl mx-auto text-center"><h2 class="text-4xl font-bold mb-6">Ready to focus?</h2><p class="text-xl text-slate-400 mb-10">Join 50,000+ productive people.</p><button class="px-10 py-5 bg-white text-black font-semibold rounded-full text-lg">Download Free</button></div></section>
+
+${landingExtras({ brand: 'Pulse', accent: 'slate', cta: 'Download' })}
+
+<footer class="py-12 px-6 border-t border-white/5"><div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6"><span class="font-bold">Pulse</span><div class="flex gap-8 text-sm text-slate-400"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Twitter</a></div><p class="text-sm text-slate-500">© 2025 Pulse</p></div></footer>
+    `, "Minimal App"),
+  },
+
+  {
+    id: "landing-bold-startup",
+    name: "Bold Startup",
+    category: "landing",
+    description: "Bold startup landing with vibrant accent colors",
+    tags: ["startup", "bold", "vibrant", "full"],
+    code: wrapInHtmlDoc(`
+<nav class="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-slate-950/90 backdrop-blur-lg"><div class="max-w-7xl mx-auto flex items-center justify-between"><a href="#" class="text-2xl font-black text-rose-500">BOLT</a><div class="hidden md:flex items-center gap-6"><a href="#" class="text-sm font-medium hover:text-rose-400">Product</a><a href="#" class="text-sm font-medium hover:text-rose-400">Pricing</a><a href="#" class="text-sm font-medium hover:text-rose-400">Company</a></div><button class="px-5 py-2.5 bg-rose-500 text-sm font-bold rounded-lg">Get Started →</button></div></nav>
+
+<section class="pt-32 pb-20 px-6"><div class="max-w-7xl mx-auto"><div class="max-w-4xl"><span class="inline-block px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-full text-sm text-rose-400 font-medium mb-8">🚀 Backed by Y Combinator</span><h1 class="text-6xl md:text-8xl font-black leading-[0.9] mb-8">Move fast.<br/>Break<br/><span class="text-rose-500">nothing.</span></h1><p class="text-xl text-slate-400 max-w-2xl mb-12">The deployment platform that makes shipping safe. Deploy with confidence.</p><div class="flex flex-wrap gap-4"><button class="px-8 py-4 bg-rose-500 text-lg font-bold rounded-xl">Start Deploying</button><button class="px-8 py-4 text-lg font-bold rounded-xl border-2 border-white/20">See it in action →</button></div></div></div></section>
+
+<section class="py-16 px-6 border-y border-white/5"><div class="max-w-7xl mx-auto flex flex-wrap justify-center gap-16 opacity-40"><span class="text-xl font-bold">Stripe</span><span class="text-xl font-bold">Vercel</span><span class="text-xl font-bold">Linear</span><span class="text-xl font-bold">Notion</span><span class="text-xl font-bold">Supabase</span></div></section>
+
+<section class="py-24 px-6"><div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center"><div><img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&q=80" alt="Code" class="rounded-2xl"/></div><div><h2 class="text-4xl md:text-5xl font-black mb-6">Deploy in <span class="text-rose-500">seconds</span></h2><p class="text-xl text-slate-400 mb-8">Push to git. We handle the rest. Zero config.</p><div class="space-y-4"><div class="flex items-center gap-4"><div class="w-8 h-8 bg-rose-500/20 rounded-lg flex items-center justify-center text-rose-400">✓</div><span>Automatic previews for every PR</span></div><div class="flex items-center gap-4"><div class="w-8 h-8 bg-rose-500/20 rounded-lg flex items-center justify-center text-rose-400">✓</div><span>Instant rollbacks</span></div><div class="flex items-center gap-4"><div class="w-8 h-8 bg-rose-500/20 rounded-lg flex items-center justify-center text-rose-400">✓</div><span>Built-in CI/CD</span></div></div></div></div></section>
+
+<section class="py-24 px-6 bg-rose-500 text-black"><div class="max-w-4xl mx-auto text-center"><h2 class="text-4xl md:text-6xl font-black mb-6">Deploy 10x faster</h2><p class="text-xl mb-12 text-black/70">Join thousands shipping with confidence.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><button class="px-8 py-4 bg-black text-white font-bold rounded-xl">Start Free Trial</button><button class="px-8 py-4 bg-white text-black font-bold rounded-xl">Talk to Sales</button></div></div></section>
+
+<section class="py-24 px-6"><div class="max-w-5xl mx-auto"><h2 class="text-4xl font-black text-center mb-16">Pricing that scales</h2><div class="grid md:grid-cols-3 gap-8"><div class="p-8 rounded-2xl border border-white/10"><h3 class="font-bold text-lg mb-2">Hobby</h3><div class="text-4xl font-black mb-6">Free</div><ul class="space-y-3 text-sm text-slate-400 mb-8"><li>✓ 3 projects</li><li>✓ 100GB bandwidth</li></ul><button class="w-full py-3 border border-white/20 rounded-lg font-semibold">Get Started</button></div><div class="p-8 rounded-2xl bg-rose-500 text-black"><h3 class="font-bold text-lg mb-2">Pro</h3><div class="text-4xl font-black mb-6">$20<span class="text-lg font-normal">/mo</span></div><ul class="space-y-3 text-sm mb-8"><li>✓ Unlimited projects</li><li>✓ 1TB bandwidth</li></ul><button class="w-full py-3 bg-black text-white rounded-lg font-bold">Start Trial</button></div><div class="p-8 rounded-2xl border border-white/10"><h3 class="font-bold text-lg mb-2">Enterprise</h3><div class="text-4xl font-black mb-6">Custom</div><ul class="space-y-3 text-sm text-slate-400 mb-8"><li>✓ Unlimited everything</li><li>✓ SLA guarantee</li></ul><button class="w-full py-3 border border-white/20 rounded-lg font-semibold">Contact Us</button></div></div></div></section>
+
+${landingExtras({ brand: 'BOLT', accent: 'rose', cta: 'Start Deploying' })}
+
+<footer class="py-16 px-6 border-t border-white/5"><div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12"><div><span class="text-2xl font-black text-rose-500">BOLT</span><p class="text-sm text-slate-500 mt-2">Deploy with confidence.</p></div><div class="grid grid-cols-3 gap-16 text-sm"><div><h5 class="font-bold mb-4">Product</h5><ul class="space-y-2 text-slate-400"><li>Features</li><li>Pricing</li></ul></div><div><h5 class="font-bold mb-4">Company</h5><ul class="space-y-2 text-slate-400"><li>About</li><li>Blog</li></ul></div><div><h5 class="font-bold mb-4">Legal</h5><ul class="space-y-2 text-slate-400"><li>Privacy</li><li>Terms</li></ul></div></div></div></footer>
+    `, "Bold Startup"),
+  },
+
+  {
+    id: "landing-developer-api",
+    name: "Developer API",
+    category: "landing",
+    description: "Technical landing for developer tools with code examples",
+    tags: ["developer", "api", "technical", "full"],
+    code: wrapInHtmlDoc(`
+<nav class="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-slate-950/90 backdrop-blur-lg border-b border-white/5"><div class="max-w-7xl mx-auto flex items-center justify-between"><a href="#" class="text-xl font-mono font-bold text-cyan-400">&lt;DevAPI/&gt;</a><div class="hidden md:flex items-center gap-6"><a href="#" class="text-sm text-slate-400 font-mono">docs</a><a href="#" class="text-sm text-slate-400 font-mono">pricing</a><a href="#" class="text-sm text-slate-400 font-mono">github</a></div><div class="flex gap-3"><button class="px-4 py-2 text-sm font-mono text-slate-400">login</button><button class="px-4 py-2 bg-cyan-500 text-black text-sm font-mono font-bold rounded-lg">get api key</button></div></div></nav>
+
+<section class="pt-32 pb-24 px-6"><div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center"><div><span class="inline-block px-3 py-1 bg-cyan-500/10 border border-cyan-500/20 rounded text-xs text-cyan-400 font-mono mb-6">v2.0 released</span><h1 class="text-4xl md:text-6xl font-bold mb-6">Build faster with our <span class="text-cyan-400">powerful API</span></h1><p class="text-lg text-slate-400 mb-8">RESTful APIs developers love. Ship in minutes. SDKs for every language.</p><div class="flex gap-4 mb-8"><button class="px-6 py-3 bg-cyan-500 text-black font-mono font-bold rounded-lg">Start Building</button><button class="px-6 py-3 border border-white/20 font-mono rounded-lg">Read Docs</button></div><div class="flex gap-6 text-sm text-slate-500 font-mono"><span>npm i devapi</span><span>pip install devapi</span></div></div><div class="bg-slate-900 rounded-xl border border-white/10 p-4 font-mono text-sm"><div class="flex gap-2 mb-4"><div class="w-3 h-3 rounded-full bg-red-500"></div><div class="w-3 h-3 rounded-full bg-yellow-500"></div><div class="w-3 h-3 rounded-full bg-green-500"></div></div><pre class="text-slate-300"><code><span class="text-cyan-400">import</span> { DevAPI } <span class="text-cyan-400">from</span> <span class="text-green-400">'devapi'</span>;
+
+<span class="text-cyan-400">const</span> client = <span class="text-cyan-400">new</span> DevAPI({
+  apiKey: process.env.API_KEY
+});
+
+<span class="text-cyan-400">const</span> result = <span class="text-cyan-400">await</span> client.analyze({
+  data: myData
+});
+
+console.log(result);</code></pre></div></div></section>
+
+<section class="py-20 px-6 border-y border-white/5 bg-white/[0.02]"><div class="max-w-6xl mx-auto"><p class="text-center text-sm text-slate-500 mb-8 font-mono">Trusted by</p><div class="flex flex-wrap justify-center gap-12 opacity-40"><span class="text-xl font-bold">Stripe</span><span class="text-xl font-bold">Vercel</span><span class="text-xl font-bold">Supabase</span><span class="text-xl font-bold">Clerk</span></div></div></section>
+
+<section class="py-24 px-6"><div class="max-w-6xl mx-auto"><h2 class="text-3xl font-bold text-center mb-16">Everything you need</h2><div class="grid md:grid-cols-3 gap-8"><div class="p-6 rounded-xl border border-white/10"><div class="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center mb-4 text-cyan-400">⚡</div><h3 class="font-semibold mb-2">Blazing Fast</h3><p class="text-sm text-slate-400">P95 latency under 50ms.</p></div><div class="p-6 rounded-xl border border-white/10"><div class="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center mb-4 text-cyan-400">🔒</div><h3 class="font-semibold mb-2">Secure</h3><p class="text-sm text-slate-400">SOC 2 Type II compliant.</p></div><div class="p-6 rounded-xl border border-white/10"><div class="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center mb-4 text-cyan-400">📚</div><h3 class="font-semibold mb-2">Great Docs</h3><p class="text-sm text-slate-400">Comprehensive guides.</p></div><div class="p-6 rounded-xl border border-white/10"><div class="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center mb-4 text-cyan-400">🌍</div><h3 class="font-semibold mb-2">Global Edge</h3><p class="text-sm text-slate-400">50+ regions worldwide.</p></div><div class="p-6 rounded-xl border border-white/10"><div class="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center mb-4 text-cyan-400">📊</div><h3 class="font-semibold mb-2">Analytics</h3><p class="text-sm text-slate-400">Real-time usage dashboard.</p></div><div class="p-6 rounded-xl border border-white/10"><div class="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center mb-4 text-cyan-400">🔧</div><h3 class="font-semibold mb-2">SDKs</h3><p class="text-sm text-slate-400">JS, Python, Go, Ruby.</p></div></div></div></section>
+
+<section class="py-24 px-6 bg-cyan-500 text-black"><div class="max-w-3xl mx-auto text-center"><h2 class="text-4xl font-bold mb-6">Start building today</h2><p class="text-xl mb-10 text-black/70">10,000 API calls free every month.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><button class="px-8 py-4 bg-black text-white font-bold rounded-xl">Get Free API Key</button><button class="px-8 py-4 bg-white text-black font-bold rounded-xl">View Docs</button></div></div></section>
+
+${landingExtras({ brand: 'DevAPI', accent: 'cyan', cta: 'Get API Key' })}
+
+<footer class="py-16 px-6 border-t border-white/5"><div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12"><div><span class="text-xl font-mono font-bold text-cyan-400">&lt;DevAPI/&gt;</span><p class="text-sm text-slate-500 mt-2">APIs developers love.</p></div><div class="grid grid-cols-3 gap-16 text-sm font-mono"><div><h5 class="font-bold mb-4 text-slate-300">product</h5><ul class="space-y-2 text-slate-500"><li>docs</li><li>pricing</li></ul></div><div><h5 class="font-bold mb-4 text-slate-300">company</h5><ul class="space-y-2 text-slate-500"><li>about</li><li>blog</li></ul></div><div><h5 class="font-bold mb-4 text-slate-300">connect</h5><ul class="space-y-2 text-slate-500"><li>github</li><li>discord</li></ul></div></div></div></footer>
+    `, "Developer API"),
   },
 ];

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
-import { SimplePreview, type SimplePreviewHandle } from './SimplePreview';
+import { SimplePreview } from '@/components/SimplePreview';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
@@ -230,37 +230,49 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     // Skip if we're syncing from VFS to avoid loops
     if (syncingFromVFSRef.current) return;
     
-    // Only sync if previewCode has meaningful content and changed
+    // Sync if previewCode has content and changed
     if (previewCode && previewCode !== lastSyncedCodeRef.current) {
-      const isDefaultContent = previewCode.includes('AI-generated code will appear here');
-      if (!isDefaultContent) {
-        console.log('[WebBuilder] Syncing previewCode to VFS');
-        // Determine file type based on content
-        const isHTML = previewCode.trim().startsWith('<!DOCTYPE') || 
-                       previewCode.trim().startsWith('<html') ||
-                       previewCode.includes('<body');
-        const isTSX = previewCode.includes('import React') || 
-                      previewCode.includes('export default') ||
-                      previewCode.includes('const ') && previewCode.includes('return (');
-        
-        if (isHTML) {
-          // For HTML templates, sync to index.html
-          virtualFS.importFiles({
-            '/index.html': previewCode,
-          });
-        } else if (isTSX) {
-          // For React/TSX, sync to App.tsx
-          virtualFS.importFiles({
-            '/src/App.tsx': previewCode,
-          });
-        } else {
-          // Default to App.tsx for other code
-          virtualFS.importFiles({
-            '/src/App.tsx': previewCode,
-          });
-        }
-        lastSyncedCodeRef.current = previewCode;
+      console.log('[WebBuilder] Syncing previewCode to VFS, length:', previewCode.length);
+      // Determine file type based on content
+      const isHTML = previewCode.trim().startsWith('<!DOCTYPE') || 
+                     previewCode.trim().startsWith('<html') ||
+                     previewCode.includes('<body');
+      const isTSX = previewCode.includes('import React') || 
+                    previewCode.includes('export default') ||
+                    previewCode.includes('const ') && previewCode.includes('return (');
+      
+      console.log('[WebBuilder] Content type detection - isHTML:', isHTML, 'isTSX:', isTSX);
+      
+      if (isHTML) {
+        // For HTML templates, sync to index.html
+        console.log('[WebBuilder] Importing as /index.html');
+        virtualFS.importFiles({
+          '/index.html': previewCode,
+        });
+      } else if (isTSX) {
+        // For React/TSX, sync to App.tsx
+        console.log('[WebBuilder] Importing as /src/App.tsx');
+        virtualFS.importFiles({
+          '/src/App.tsx': previewCode,
+        });
+      } else {
+        // Default to index.html for simple HTML snippets
+        virtualFS.importFiles({
+          '/index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  ${previewCode}
+</body>
+</html>`,
+        });
       }
+      lastSyncedCodeRef.current = previewCode;
     }
   }, [previewCode, virtualFS]);
   
@@ -1619,17 +1631,19 @@ ${body.innerHTML}
               <TabsContent value="templates" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <LayoutTemplatesPanel
                   onSelectTemplate={(code, name) => {
-                    // Convert template to VFS-compatible React files
+                    console.log('[WebBuilder] ========== TEMPLATE SELECTED ==========');
+                    console.log('[WebBuilder] Template:', name, 'code length:', code.length);
+                    
+                    // Directly set the code - SimplePreview will render it
+                    setEditorCode(code);
+                    setPreviewCode(code);
+                    
+                    // Also import to VFS for code editor
                     const files = templateToVFSFiles(code, name);
                     virtualFS.importFiles(files);
                     
-                    // Also update legacy state for compatibility
-                    const appCode = files['/src/App.tsx'] || code;
-                    setEditorCode(appCode);
-                    setPreviewCode(appCode);
-                    
                     toast.success(`Loaded template: ${name}`, {
-                      description: 'Template imported to VFS preview'
+                      description: 'Template loaded into preview'
                     });
                   }}
                 />
@@ -1916,17 +1930,11 @@ ${body.innerHTML}
                   data-drop-zone="true"
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
-                  <VFSPreview 
-                    ref={livePreviewRef}
-                    nodes={virtualFS.nodes}
-                    files={virtualFS.getSandpackFiles()}
-                    activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
+                  {/* Use SimplePreview - directly renders previewCode */}
+                  <SimplePreview
+                    code={previewCode}
                     className="w-full h-full min-h-0 flex-1"
-                    showConsole={false}
-                    showToolbar={true}
-                    autoStart={true}
-                    onReady={() => console.log('[WebBuilder] Preview ready')}
-                    onError={(err) => console.warn('[WebBuilder] Preview error:', err)}
+                    showToolbar={false}
                   />
                 </div>
               </div>
@@ -2095,17 +2103,11 @@ export default function App() {
                     data-drop-zone="true"
                     className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
-                    <VFSPreview 
-                      nodes={virtualFS.nodes}
-                      files={virtualFS.getSandpackFiles()}
-                      activeFile={virtualFS.getActiveFile()?.path || '/src/App.tsx'}
+                    {/* Use SimplePreview - directly renders previewCode */}
+                    <SimplePreview
+                      code={previewCode}
                       className="w-full h-full min-h-0 flex-1"
-                      showConsole={true}
-                      showToolbar={true}
-                      autoStart={false}
-                      forceBackend="sandpack"
-                      onReady={() => console.log('[WebBuilder] Split preview ready')}
-                      onError={(err) => console.warn('[WebBuilder] Split preview error:', err)}
+                      showToolbar={false}
                     />
                   </div>
                 </div>
@@ -2396,9 +2398,20 @@ export default function App() {
         fabricCanvas={fabricCanvas}
         currentCode={previewCode}
         onCodeGenerated={(code) => {
-          console.log('[WebBuilder] Code generated from AI:', code.length, 'chars');
+          console.log('[WebBuilder] ========== AI CODE GENERATED ==========');
+          console.log('[WebBuilder] Code length:', code.length);
+          console.log('[WebBuilder] Code preview:', code.substring(0, 200));
+          
+          // Set the code - SimplePreview will render it directly
           setEditorCode(code);
           setPreviewCode(code);
+          
+          // Switch to canvas view to show the preview
+          setViewMode('canvas');
+          
+          toast.success('Code Generated!', {
+            description: 'Your AI-generated content is now in the preview'
+          });
         }}
         onSwitchToCanvasView={() => {
           setViewMode('canvas');

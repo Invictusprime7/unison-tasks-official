@@ -243,17 +243,39 @@ export class SessionManager {
       'tsconfig.json',
       'postcss.config.js',
       'tailwind.config.js',
+      'index.html',
     ];
+
+    const templateDir = path.join(process.cwd(), 'worker-template');
 
     for (const file of requiredFiles) {
       const filePath = `/${file}`;
-      if (!files[filePath]) {
-        const workerFile = path.join(process.cwd(), '..', 'worker', file);
+      if (!files[filePath] && !files[file]) {
+        // Look for template files in the gateway's worker-template directory
+        const workerFile = path.join(templateDir, file);
         try {
           const content = await fs.readFile(workerFile, 'utf-8');
           await fs.writeFile(path.join(workDir, file), content, 'utf-8');
         } catch {
           // File not found in worker, skip
+        }
+      }
+    }
+
+    // Copy src directory template files if not provided
+    const srcTemplateFiles = ['main.tsx', 'App.tsx', 'index.css'];
+    const srcDir = path.join(workDir, 'src');
+    await fs.mkdir(srcDir, { recursive: true });
+
+    for (const file of srcTemplateFiles) {
+      const filePath = `src/${file}`;
+      if (!files[filePath] && !files[`/src/${file}`]) {
+        const templateFile = path.join(templateDir, 'src', file);
+        try {
+          const content = await fs.readFile(templateFile, 'utf-8');
+          await fs.writeFile(path.join(srcDir, file), content, 'utf-8');
+        } catch {
+          // File not found, skip
         }
       }
     }
