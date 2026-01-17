@@ -2251,7 +2251,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       }
     },
     openInCodeSandbox: () => {
-      openInCodeSandbox(files, { title: projectId });
+      openInCodeSandbox(files);
     }
   }));
 

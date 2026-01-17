@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
+import { Database, Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 
-type Template = Database['public']['Tables']['templates']['Row'];
-type TemplateInsert = Database['public']['Tables']['templates']['Insert'];
-type TemplateUpdate = Database['public']['Tables']['templates']['Update'];
+type Template = Database['public']['Tables']['design_templates']['Row'];
+type TemplateInsert = Database['public']['Tables']['design_templates']['Insert'];
+type TemplateUpdate = Database['public']['Tables']['design_templates']['Update'];
 
-// Type definitions for backend features
+// Type definitions for backend features (stored in canvas_data JSON)
 export interface TemplateRedirect {
   id: string;
   path: string;
@@ -46,17 +46,47 @@ export interface TemplateBackendConfig {
   payment: TemplatePayment;
 }
 
-// Edge function API helper
-async function callTemplateBackend(action: string, params: Record<string, string> = {}, body?: any) {
-  const queryParams = new URLSearchParams({ action, ...params });
-  const { data, error } = await supabase.functions.invoke('template-backend', {
-    body: body ? JSON.stringify(body) : undefined,
-    method: body ? 'POST' : 'GET',
-  });
+// Extended canvas data that includes backend config
+interface ExtendedCanvasData {
+  // Design data
+  objects?: unknown[];
+  background?: string;
+  // Backend config stored in canvas_data
+  backendConfig?: TemplateBackendConfig;
+  [key: string]: unknown;
+}
 
-  // Handle the response from the edge function
-  if (error) throw error;
-  return data;
+// Helper to extract backend config from canvas_data
+function getBackendConfigFromCanvas(canvasData: Json): TemplateBackendConfig {
+  const data = canvasData as ExtendedCanvasData | null;
+  return data?.backendConfig || {
+    redirects: [],
+    scheduling: {},
+    requires_auth: false,
+    payment: { enabled: false },
+  };
+}
+
+// Helper to merge backend config into canvas_data
+function mergeBackendConfigIntoCanvas(
+  canvasData: Json,
+  config: Partial<TemplateBackendConfig>
+): Json {
+  const data = (canvasData as ExtendedCanvasData) || {};
+  const existingConfig = data.backendConfig || {
+    redirects: [],
+    scheduling: {},
+    requires_auth: false,
+    payment: { enabled: false },
+  };
+  
+  return {
+    ...data,
+    backendConfig: {
+      ...existingConfig,
+      ...config,
+    },
+  } as unknown as Json;
 }
 
 export function useTemplateBackend() {
@@ -70,9 +100,9 @@ export function useTemplateBackend() {
     setError(null);
     try {
       const { data, error: fetchError } = await supabase
-        .from('templates')
+        .from('design_templates')
         .select('*')
-        .eq('owner_id', userId)
+        .eq('user_id', userId)
         .order('updated_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -96,7 +126,7 @@ export function useTemplateBackend() {
     setError(null);
     try {
       const { data, error: insertError } = await supabase
-        .from('templates')
+        .from('design_templates')
         .insert(template)
         .select()
         .single();
@@ -126,7 +156,7 @@ export function useTemplateBackend() {
     setError(null);
     try {
       const { data, error: updateError } = await supabase
-        .from('templates')
+        .from('design_templates')
         .update(updates)
         .eq('id', id)
         .select()
@@ -157,7 +187,7 @@ export function useTemplateBackend() {
     setError(null);
     try {
       const { error: deleteError } = await supabase
-        .from('templates')
+        .from('design_templates')
         .delete()
         .eq('id', id);
 
@@ -180,54 +210,105 @@ export function useTemplateBackend() {
     }
   }, [toast]);
 
-  // Update template redirects
+  // Update template redirects (stored in canvas_data)
   const updateRedirects = useCallback(async (id: string, redirects: TemplateRedirect[]) => {
-    return updateTemplate(id, { redirects: redirects as any });
-  }, [updateTemplate]);
+    // First fetch the template to get current canvas_data
+    const { data: template, error: fetchError } = await supabase
+      .from('design_templates')
+      .select('canvas_data')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      toast({ title: 'Error', description: fetchError.message, variant: 'destructive' });
+      return null;
+    }
+    
+    const updatedCanvasData = mergeBackendConfigIntoCanvas(template.canvas_data, { redirects });
+    return updateTemplate(id, { canvas_data: updatedCanvasData });
+  }, [updateTemplate, toast]);
 
   // Update template scheduling
   const updateScheduling = useCallback(async (id: string, scheduling: TemplateScheduling) => {
-    return updateTemplate(id, { scheduling: scheduling as any });
-  }, [updateTemplate]);
+    const { data: template, error: fetchError } = await supabase
+      .from('design_templates')
+      .select('canvas_data')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      toast({ title: 'Error', description: fetchError.message, variant: 'destructive' });
+      return null;
+    }
+    
+    const updatedCanvasData = mergeBackendConfigIntoCanvas(template.canvas_data, { scheduling });
+    return updateTemplate(id, { canvas_data: updatedCanvasData });
+  }, [updateTemplate, toast]);
 
   // Update template authentication requirement
   const updateRequiresAuth = useCallback(async (id: string, requires_auth: boolean) => {
-    return updateTemplate(id, { requires_auth });
-  }, [updateTemplate]);
+    const { data: template, error: fetchError } = await supabase
+      .from('design_templates')
+      .select('canvas_data')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      toast({ title: 'Error', description: fetchError.message, variant: 'destructive' });
+      return null;
+    }
+    
+    const updatedCanvasData = mergeBackendConfigIntoCanvas(template.canvas_data, { requires_auth });
+    return updateTemplate(id, { canvas_data: updatedCanvasData });
+  }, [updateTemplate, toast]);
 
   // Update template payment configuration
   const updatePayment = useCallback(async (id: string, payment: TemplatePayment) => {
-    return updateTemplate(id, { payment: payment as any });
-  }, [updateTemplate]);
+    const { data: template, error: fetchError } = await supabase
+      .from('design_templates')
+      .select('canvas_data')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      toast({ title: 'Error', description: fetchError.message, variant: 'destructive' });
+      return null;
+    }
+    
+    const updatedCanvasData = mergeBackendConfigIntoCanvas(template.canvas_data, { payment });
+    return updateTemplate(id, { canvas_data: updatedCanvasData });
+  }, [updateTemplate, toast]);
 
   // Get full backend configuration for a template
   const getBackendConfig = useCallback((template: Template): TemplateBackendConfig => {
-    return {
-      redirects: (template.redirects as unknown as TemplateRedirect[] | null) || [],
-      scheduling: (template.scheduling as unknown as TemplateScheduling | null) || {},
-      requires_auth: template.requires_auth || false,
-      payment: (template.payment as unknown as TemplatePayment | null) || { enabled: false },
-    };
+    return getBackendConfigFromCanvas(template.canvas_data);
   }, []);
 
   // Update full backend configuration for a template
   const updateBackendConfig = useCallback(async (id: string, config: Partial<TemplateBackendConfig>) => {
-    const updates: TemplateUpdate = {};
-    if (config.redirects !== undefined) updates.redirects = config.redirects as any;
-    if (config.scheduling !== undefined) updates.scheduling = config.scheduling as any;
-    if (config.requires_auth !== undefined) updates.requires_auth = config.requires_auth;
-    if (config.payment !== undefined) updates.payment = config.payment as any;
-    return updateTemplate(id, updates);
-  }, [updateTemplate]);
+    const { data: template, error: fetchError } = await supabase
+      .from('design_templates')
+      .select('canvas_data')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      toast({ title: 'Error', description: fetchError.message, variant: 'destructive' });
+      return null;
+    }
+    
+    const updatedCanvasData = mergeBackendConfigIntoCanvas(template.canvas_data, config);
+    return updateTemplate(id, { canvas_data: updatedCanvasData });
+  }, [updateTemplate, toast]);
 
-  // Publish a template (set status to published)
+  // Publish a template (set is_public to true)
   const publishTemplate = useCallback(async (id: string) => {
-    return updateTemplate(id, { status: 'published' });
+    return updateTemplate(id, { is_public: true });
   }, [updateTemplate]);
 
-  // Archive a template
+  // Archive a template (set is_public to false)
   const archiveTemplate = useCallback(async (id: string) => {
-    return updateTemplate(id, { status: 'archived' });
+    return updateTemplate(id, { is_public: false });
   }, [updateTemplate]);
 
   // Duplicate a template
@@ -236,7 +317,7 @@ export function useTemplateBackend() {
     setError(null);
     try {
       const { data: original, error: fetchError } = await supabase
-        .from('templates')
+        .from('design_templates')
         .select('*')
         .eq('id', id)
         .single();
@@ -244,19 +325,16 @@ export function useTemplateBackend() {
       if (fetchError) throw fetchError;
 
       const duplicate: TemplateInsert = {
-        ...original,
-        id: undefined,
         name: newName || `${original.name} (Copy)`,
-        status: 'draft',
-        usage_count: 0,
-        download_count: 0,
-        like_count: 0,
-        created_at: undefined,
-        updated_at: undefined,
+        description: original.description,
+        canvas_data: original.canvas_data,
+        thumbnail_url: original.thumbnail_url,
+        is_public: false,
+        user_id: original.user_id,
       };
 
       const { data, error: insertError } = await supabase
-        .from('templates')
+        .from('design_templates')
         .insert(duplicate)
         .select()
         .single();
@@ -294,50 +372,60 @@ export function useTemplateBackend() {
     }
   }, []);
 
-  // Check if user has access to a template (via Edge Function)
+  // Process payment for a template (via Edge Function)
+  const createPaymentSession = useCallback(async (templateId: string, returnUrl: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('template-backend', {
+        body: { 
+          action: 'create-payment-session', 
+          templateId,
+          returnUrl,
+        },
+      });
+      if (error) throw error;
+      return data as { url: string; sessionId: string };
+    } catch (err: any) {
+      toast({
+        title: 'Error creating payment session',
+        description: err.message,
+        variant: 'destructive',
+      });
+      return null;
+    }
+  }, [toast]);
+
+  // Check template access (for auth-protected templates)
   const checkAccess = useCallback(async (templateId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('template-backend', {
         body: { action: 'check-access', templateId },
       });
       if (error) throw error;
-      return data as { access: boolean; reason?: string };
+      return data as { allowed: boolean; reason?: string };
     } catch (err: any) {
       console.error('Error checking access:', err);
-      return { access: false, reason: err.message };
+      return { allowed: false, reason: err.message };
     }
   }, []);
 
-  // Create a payment session for a template (via Edge Function)
-  const createPaymentSession = useCallback(async (templateId: string) => {
+  // Fetch public templates
+  const fetchPublicTemplates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke('template-backend', {
-        body: { action: 'create-payment-session', templateId },
-      });
-      if (error) throw error;
-      return data as { sessionId?: string; url?: string; error?: string };
-    } catch (err: any) {
-      console.error('Error creating payment session:', err);
-      toast({
-        title: 'Payment error',
-        description: err.message,
-        variant: 'destructive',
-      });
-      return { error: err.message };
-    }
-  }, [toast]);
+      const { data, error: fetchError } = await supabase
+        .from('design_templates')
+        .select('*')
+        .eq('is_public', true)
+        .order('updated_at', { ascending: false });
 
-  // Verify a payment session (via Edge Function)
-  const verifyPayment = useCallback(async (sessionId: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('template-backend', {
-        body: { action: 'verify-payment', sessionId },
-      });
-      if (error) throw error;
-      return data as { verified: boolean; templateId?: string; customerEmail?: string };
+      if (fetchError) throw fetchError;
+      return data as Template[];
     } catch (err: any) {
-      console.error('Error verifying payment:', err);
-      return { verified: false };
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -345,22 +433,21 @@ export function useTemplateBackend() {
     loading,
     error,
     fetchTemplates,
+    fetchPublicTemplates,
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    duplicateTemplate,
+    publishTemplate,
+    archiveTemplate,
     updateRedirects,
     updateScheduling,
     updateRequiresAuth,
     updatePayment,
     getBackendConfig,
     updateBackendConfig,
-    publishTemplate,
-    archiveTemplate,
-    duplicateTemplate,
-    // Edge function-based methods
     checkRedirect,
-    checkAccess,
     createPaymentSession,
-    verifyPayment,
+    checkAccess,
   };
 }
