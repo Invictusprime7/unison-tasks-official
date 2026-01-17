@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useWorkflowTrigger } from '@/hooks/useWorkflowTrigger';
+import { handleIntent, isValidIntent } from '@/runtime/intentRouter';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -8,6 +9,8 @@ interface WorkflowButtonProps {
   buttonId?: string;
   label: string;
   workflowId?: string;
+  intent?: string;
+  intentPayload?: Record<string, unknown>;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   className?: string;
@@ -21,6 +24,8 @@ export const WorkflowButton: React.FC<WorkflowButtonProps> = ({
   buttonId = 'workflow-button',
   label,
   workflowId,
+  intent,
+  intentPayload = {},
   variant = 'default',
   size = 'default',
   className,
@@ -35,13 +40,23 @@ export const WorkflowButton: React.FC<WorkflowButtonProps> = ({
   const handleClick = async () => {
     setLoading(true);
     try {
-      // Trigger workflow if configured
-      if (workflowId) {
+      // If intent is provided, use the intent router
+      if (intent && isValidIntent(intent)) {
+        const result = await handleIntent(intent, intentPayload);
+        if (result.success) {
+          toast.success(successMessage);
+        } else {
+          toast.error(result.error || 'Action failed');
+        }
+      } 
+      // Otherwise use workflow trigger
+      else if (workflowId) {
         await triggerButtonClick(buttonId, label, workflowId);
         toast.success(successMessage);
       } else {
         // Try to find matching workflows by event type
         await triggerButtonClick(buttonId, label);
+        toast.success(successMessage);
       }
 
       // Call custom onClick handler
@@ -49,7 +64,7 @@ export const WorkflowButton: React.FC<WorkflowButtonProps> = ({
         onClick();
       }
     } catch (error) {
-      console.error('Button workflow error:', error);
+      console.error('Button action error:', error);
       toast.error('Failed to process action');
     } finally {
       setLoading(false);
