@@ -59,14 +59,15 @@ ${p.code_snippet.substring(0, 300)}${p.code_snippet.length > 300 ? '...' : ''}
 \`\`\`
 `).join('\n---\n') : 'No learned patterns yet - but I will learn from every successful interaction!';
 
-    // Build edit mode context if we have current code
+    // Build edit mode context if we have current code - limit to 4000 chars to prevent token overflow
+    const maxCodeLength = 4000;
     const editModeContext = editMode && currentCode ? `
 🔄 **EDIT MODE ACTIVE - MODIFYING EXISTING TEMPLATE**
 You are editing an existing saved template. The user wants to MODIFY their existing code, NOT replace it entirely.
 
-**CURRENT TEMPLATE CODE:**
+**CURRENT TEMPLATE CODE (${currentCode.length > maxCodeLength ? 'truncated' : 'full'}):**
 \`\`\`html
-${currentCode.substring(0, 8000)}${currentCode.length > 8000 ? '\n... (truncated for context)' : ''}
+${currentCode.substring(0, maxCodeLength)}${currentCode.length > maxCodeLength ? '\n... (truncated for context)' : ''}
 \`\`\`
 
 ⚠️ **CRITICAL EDIT MODE RULES - MUST FOLLOW:**
@@ -911,6 +912,21 @@ Learn from every bug fix to become better at prevention!`
       }
     }
 
+    // Truncate messages to prevent exceeding token limits
+    // Keep only the last 6 messages (3 turns) plus the system message
+    const MAX_MESSAGES = 6;
+    const truncatedMessages = messages.length > MAX_MESSAGES 
+      ? messages.slice(-MAX_MESSAGES) 
+      : messages;
+    
+    // Also truncate individual message content if too long
+    const processedMessages = truncatedMessages.map((msg: { role: string; content: string }) => ({
+      role: msg.role,
+      content: msg.content.length > 15000 ? msg.content.substring(0, 15000) + '\n\n[Content truncated for token limit]' : msg.content
+    }));
+
+    console.log(`[AI-Code-Assistant] Processing ${processedMessages.length} messages (from ${messages.length} original)`);
+
     const body: Record<string, unknown> = {
       model: 'google/gemini-2.5-flash',
       messages: [
@@ -920,7 +936,7 @@ Learn from every bug fix to become better at prevention!`
 ${imageHtml}
 
 The image is already styled for the "${imagePlacement || 'top-left'}" position. Make sure to include it in a relative-positioned container.` : '') },
-        ...messages
+        ...processedMessages
       ],
     };
 
