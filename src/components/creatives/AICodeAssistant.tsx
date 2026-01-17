@@ -568,6 +568,140 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       // Check if editing a selected element
       const isEditingSelectedElement = selectedElement && isEditingElement;
       
+      // ========== BUILDER ACTIONS DETECTION ==========
+      // Detect if user wants to install packs or wire buttons
+      const detectBuilderAction = (message: string): { type: 'install_pack' | 'wire_button' | null; packs?: string[]; selector?: string; intent?: string } => {
+        const lowerMessage = message.toLowerCase();
+        
+        // Detect pack installation requests
+        const packKeywords = {
+          leads: ['leads pack', 'lead capture', 'contact form', 'newsletter', 'waitlist', 'lead generation'],
+          booking: ['booking pack', 'appointment', 'scheduler', 'calendar', 'book now', 'booking system'],
+          auth: ['auth pack', 'authentication', 'login', 'signup', 'sign in', 'sign up', 'user accounts'],
+        };
+        
+        const packsToInstall: string[] = [];
+        
+        for (const [pack, keywords] of Object.entries(packKeywords)) {
+          if (keywords.some(kw => lowerMessage.includes(kw))) {
+            packsToInstall.push(pack);
+          }
+        }
+        
+        // Check for explicit install/setup/add language
+        const isInstallRequest = lowerMessage.match(/\b(install|setup|set up|add|enable|configure|wire|connect)\b/);
+        
+        if (isInstallRequest && packsToInstall.length > 0) {
+          return { type: 'install_pack', packs: packsToInstall };
+        }
+        
+        // Detect button wiring requests
+        const wireMatch = lowerMessage.match(/wire\s+(the\s+)?([\w\s]+)\s+button/i);
+        if (wireMatch) {
+          const buttonName = wireMatch[2].trim();
+          // Infer intent from button name
+          let intent = 'contact.submit';
+          if (buttonName.match(/book|schedule|appointment/i)) intent = 'booking.create';
+          if (buttonName.match(/subscribe|newsletter/i)) intent = 'newsletter.subscribe';
+          if (buttonName.match(/join|waitlist/i)) intent = 'join.waitlist';
+          if (buttonName.match(/sign\s*up|register/i)) intent = 'auth.signup';
+          if (buttonName.match(/sign\s*in|login/i)) intent = 'auth.signin';
+          
+          return { type: 'wire_button', selector: `button:contains('${buttonName}')`, intent };
+        }
+        
+        return { type: null };
+      };
+      
+      const builderAction = detectBuilderAction(userMessage.content);
+      
+      // Handle builder actions (install packs / wire buttons)
+      if (builderAction.type) {
+        console.log('[AICodeAssistant] Builder action detected:', builderAction);
+        
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          const businessId = user?.id || 'anonymous';
+          
+          const actions: Array<{ type: string; pack?: string; selector?: string; intent?: string; payload?: object }> = [];
+          
+          if (builderAction.type === 'install_pack' && builderAction.packs) {
+            builderAction.packs.forEach(pack => {
+              actions.push({ type: 'install_pack', pack });
+            });
+          } else if (builderAction.type === 'wire_button') {
+            actions.push({
+              type: 'wire_button',
+              selector: builderAction.selector,
+              intent: builderAction.intent,
+              payload: {},
+            });
+          }
+          
+          const { data: builderResult, error: builderError } = await supabase.functions.invoke('builder-actions', {
+            body: {
+              projectId: 'current',
+              businessId,
+              actions,
+            },
+          });
+          
+          if (builderError) {
+            console.error('[AICodeAssistant] Builder action error:', builderError);
+          } else {
+            console.log('[AICodeAssistant] Builder action result:', builderResult);
+            
+            // Create a helpful response message
+            let responseContent = '';
+            if (builderAction.type === 'install_pack' && builderResult?.applied) {
+              responseContent = `✅ **Packs Installed Successfully!**\n\n`;
+              responseContent += `I've installed the following packs:\n`;
+              builderResult.applied.forEach((pack: string) => {
+                responseContent += `- **${pack}** pack\n`;
+              });
+              responseContent += `\n📋 **What's included:**\n`;
+              if (builderResult.applied.includes('leads')) {
+                responseContent += `- Contact form submissions saved to your CRM\n`;
+                responseContent += `- Newsletter signups captured\n`;
+                responseContent += `- Waitlist entries tracked\n`;
+              }
+              if (builderResult.applied.includes('booking')) {
+                responseContent += `- Appointment scheduling system\n`;
+                responseContent += `- Service & availability management\n`;
+                responseContent += `- Booking confirmations\n`;
+              }
+              if (builderResult.applied.includes('auth')) {
+                responseContent += `- User signup & login\n`;
+                responseContent += `- Session management\n`;
+                responseContent += `- Protected routes\n`;
+              }
+              responseContent += `\n🎯 **Next steps:**\nDrag a "LIVE" component from the Functional Blocks panel to add forms/buttons that connect to your backend.`;
+            } else if (builderAction.type === 'wire_button') {
+              responseContent = `✅ **Button Wired!**\n\n`;
+              responseContent += `The button will now trigger: \`${builderAction.intent}\`\n\n`;
+              responseContent += `When clicked, it will call the appropriate backend function.`;
+            }
+            
+            if (responseContent) {
+              const assistantMessage: Message = {
+                role: "assistant",
+                content: responseContent,
+                timestamp: new Date(),
+                hasCode: false,
+              };
+              setMessages((prev) => [...prev, assistantMessage]);
+              await saveMessage(assistantMessage);
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch (builderErr) {
+          console.error('[AICodeAssistant] Builder action failed:', builderErr);
+          // Fall through to regular AI handling
+        }
+      }
+      // ========== END BUILDER ACTIONS ==========
+      
       // Detect template action from user message
       const detectTemplateAction = (message: string): string | undefined => {
         const lowerMessage = message.toLowerCase();
