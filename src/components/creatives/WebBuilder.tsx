@@ -310,36 +310,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const initialCodeRef = useRef<string>(previewCode);
   
-  // Get referrer page name from location state or determine from history
-  const referrerPageName = (location.state as { from?: string })?.from || 
-    (window.history.length > 1 ? 'Previous Page' : 'Dashboard');
+  // Get system context from location state (from System Launcher)
+  const systemType = (location.state as { systemType?: string })?.systemType;
+  const systemName = (location.state as { systemName?: string })?.systemName;
+  const referrerPageName = systemName || 
+    (location.state as { from?: string })?.from || 
+    'System Launcher';
   
-  // Handle back navigation with unsaved changes warning
-  const handleBackNavigation = useCallback(() => {
-    const codeChanged = previewCode !== initialCodeRef.current;
-    
-    if (codeChanged && hasUnsavedChanges) {
-      const confirmLeave = window.confirm(
-        'You have unsaved changes. Are you sure you want to leave? Your draft will be auto-saved.'
-      );
-      if (confirmLeave) {
-        saveDraft(); // Save draft before leaving
-        // If no history, navigate to dashboard
-        if (window.history.length <= 1) {
-          navigate('/');
-        } else {
-          navigate(-1);
-        }
-      }
-    } else {
-      // If no history, navigate to dashboard
-      if (window.history.length <= 1) {
-        navigate('/');
-      } else {
-        navigate(-1);
-      }
-    }
-  }, [previewCode, hasUnsavedChanges, navigate]);
+  
   
   // Track changes to code
   useEffect(() => {
@@ -370,7 +348,23 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
   }, [previewCode, editorCode, templateFiles.currentTemplateId]);
   
-  // Set up auto-save interval
+  // Handle back navigation - go to home/launcher
+  const handleBackNavigation = useCallback(() => {
+    const codeChanged = previewCode !== initialCodeRef.current;
+    
+    if (codeChanged && hasUnsavedChanges) {
+      const confirmLeave = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave? Your draft will be auto-saved.'
+      );
+      if (confirmLeave) {
+        saveDraft();
+        navigate('/home');
+      }
+    } else {
+      navigate('/home');
+    }
+  }, [previewCode, hasUnsavedChanges, navigate, saveDraft]);
+
   useEffect(() => {
     autoSaveTimerRef.current = setInterval(saveDraft, AUTO_SAVE_INTERVAL);
     return () => {
