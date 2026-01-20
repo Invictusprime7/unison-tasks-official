@@ -282,7 +282,6 @@ function wrapHtmlSnippet(html: string): string {
 </body>
 </html>`;
 }
-}
 
 /**
  * Get HTML for empty state
