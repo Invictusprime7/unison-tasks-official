@@ -2,22 +2,28 @@
  * Layout Templates
  * 
  * This file re-exports from the organized templates folder structure.
- * Templates are now organized by industry type in:
- *   src/data/templates/
- *      landing/      - SaaS & landing page templates
- *      portfolio/    - Designer portfolio templates
- *      restaurant/   - Restaurant & dining templates
- *      ecommerce/    - Online store templates
- *      blog/         - Blog & content templates
- *      contractor/   - Construction & services templates
- *      agency/       - Creative agency templates
- *      startup/      - Product launch templates
+ * Templates are now organized by industry type and map to Business Systems:
+ *   
+ *   Business Systems → Template Categories:
+ *      booking     → restaurant, contractor
+ *      portfolio   → portfolio, agency  
+ *      store       → ecommerce
+ *      agency      → agency, startup
+ *      content     → blog, landing
+ *      saas        → landing, startup
  * 
  * @see src/data/templates/index.ts for the main aggregation
+ * @see src/data/templates/types.ts for Business System definitions
  */
 
 // Re-export everything from the templates folder
-export type { LayoutCategory, LayoutTemplate } from './templates';
+export type { 
+  LayoutCategory, 
+  LayoutTemplate,
+  BusinessSystemType,
+  BusinessSystem 
+} from './templates';
+
 export {
   // Utilities
   wrapInHtmlDoc,
@@ -37,7 +43,14 @@ export {
   
   // Helper functions
   getTemplatesByCategory,
+  getTemplatesBySystem,
   getTemplateById,
   searchTemplates,
   getAllCategories,
+  getAllSystems,
+  
+  // Business Systems
+  businessSystems,
+  getSystemById,
+  getTemplatesForSystem,
 } from './templates';

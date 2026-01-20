@@ -1,10 +1,17 @@
 /**
  * Layout Templates - Main Index
  * Re-exports all templates organized by industry type
+ * Templates now map to Business Systems for the activation loop
  */
 
 // Types
-export type { LayoutCategory, LayoutTemplate } from './types';
+export type { 
+  LayoutCategory, 
+  LayoutTemplate, 
+  BusinessSystemType, 
+  BusinessSystem 
+} from './types';
+export { businessSystems, getSystemById, getTemplatesForSystem } from './types';
 
 // Utilities
 export { wrapInHtmlDoc } from './utils';
@@ -28,7 +35,8 @@ import { blogTemplates } from './blog';
 import { contractorTemplates } from './contractor';
 import { agencyTemplates } from './agency';
 import { startupTemplates } from './startup';
-import type { LayoutCategory, LayoutTemplate } from './types';
+import type { LayoutCategory, LayoutTemplate, BusinessSystemType } from './types';
+import { businessSystems } from './types';
 
 /**
  * All layout templates aggregated from industry folders
@@ -49,6 +57,15 @@ export const layoutTemplates: LayoutTemplate[] = [
  */
 export const getTemplatesByCategory = (category: LayoutCategory): LayoutTemplate[] => {
   return layoutTemplates.filter(t => t.category === category);
+};
+
+/**
+ * Get templates for a business system type
+ */
+export const getTemplatesBySystem = (systemType: BusinessSystemType): LayoutTemplate[] => {
+  const system = businessSystems.find(s => s.id === systemType);
+  if (!system) return [];
+  return layoutTemplates.filter(t => system.templateCategories.includes(t.category));
 };
 
 /**
@@ -76,3 +93,8 @@ export const searchTemplates = (query: string): LayoutTemplate[] => {
 export const getAllCategories = (): LayoutCategory[] => {
   return Array.from(new Set(layoutTemplates.map(t => t.category)));
 };
+
+/**
+ * Get all business systems
+ */
+export const getAllSystems = () => businessSystems;

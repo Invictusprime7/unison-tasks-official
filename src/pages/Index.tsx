@@ -7,45 +7,39 @@ import { Badge } from "@/components/ui/badge";
 import { SubscriptionBadge } from "@/components/SubscriptionBadge";
 import { 
   CheckSquare, 
-  Users, 
   Zap, 
   Shield, 
   Sparkles, 
-  CalendarDays, 
   AlertCircle, 
-  Workflow, 
   LogOut,
   Check, 
   ArrowRight,
   Star,
-  Globe,
-  BarChart3,
-  Palette,
-  FileText,
+  Play,
+  Layers,
+  Workflow,
   Bot
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
+import { businessSystems } from "@/data/templates/types";
+import SystemLauncher from "@/components/onboarding/SystemLauncher";
 
 const pricingTiers = [
   {
     name: "Free",
     price: "$0",
     period: "forever",
-    description: "Perfect for trying out Unison Tasks",
+    description: "Launch your first business system",
     features: [
-      "1 project",
+      "1 live system",
       "10 AI generations/month",
-      "Basic templates",
+      "Pre-built templates",
       "Community support",
-      "1 team member"
+      "All core features"
     ],
-    limitations: [
-      "Limited storage (100MB)",
-      "No custom domains",
-      "Unison branding"
-    ],
-    cta: "Get Started Free",
+    limitations: [],
+    cta: "Start Free",
     popular: false,
     variant: "outline" as const
   },
@@ -53,16 +47,14 @@ const pricingTiers = [
     name: "Pro",
     price: "$29",
     period: "/month",
-    description: "For professionals and growing teams",
+    description: "Scale with unlimited systems",
     features: [
-      "Unlimited projects",
+      "Unlimited systems",
       "500 AI generations/month",
-      "All premium templates",
-      "Priority support",
-      "5 team members",
       "Custom domains",
-      "Remove branding",
+      "Priority support",
       "Advanced analytics",
+      "Remove branding",
       "API access"
     ],
     limitations: [],
@@ -74,17 +66,15 @@ const pricingTiers = [
     name: "Business",
     price: "$99",
     period: "/month",
-    description: "For agencies and large teams",
+    description: "For agencies and teams",
     features: [
       "Everything in Pro",
-      "Unlimited AI generations",
-      "White-label solution",
+      "Unlimited AI",
+      "White-label",
       "Dedicated support",
-      "Unlimited team members",
-      "SSO & advanced security",
-      "Custom integrations",
-      "SLA guarantee",
-      "Priority feature requests"
+      "Unlimited team",
+      "SSO & security",
+      "Custom integrations"
     ],
     limitations: [],
     cta: "Contact Sales",
@@ -93,57 +83,36 @@ const pricingTiers = [
   }
 ];
 
-const features = [
+const platformFeatures = [
   {
-    icon: Palette,
-    title: "AI Web Builder",
-    description: "Create stunning websites with AI-powered design assistance. Drag-and-drop components, templates, and one-click publishing."
+    icon: Layers,
+    title: "Ready-to-Run Systems",
+    description: "Not just templates. Complete business systems with booking, payments, and CRM pre-wired."
   },
   {
-    icon: Workflow,
-    title: "CRM & Workflows",
-    description: "Manage contacts, leads, and automate workflows with powerful triggers and actions. Connect forms, bookings, and payments."
+    icon: Zap,
+    title: "Buttons That Work",
+    description: "Every button knows what it does. Forms submit, carts update, bookings confirm—automatically."
   },
   {
     icon: Bot,
-    title: "AI Generations",
-    description: "Generate templates, images, copy, and code with state-of-the-art AI. Save hours of design and development time."
+    title: "AI That Understands Context",
+    description: "Generate pages, copy, and features that understand your business type and goals."
   },
   {
-    icon: Globe,
-    title: "One-Click Publish",
-    description: "Deploy your sites instantly to Netlify or Vercel. Custom domains, SSL certificates, and global CDN included."
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics & Insights",
-    description: "Track visitor behavior, form submissions, and conversion rates. Make data-driven decisions."
+    icon: Workflow,
+    title: "Built-in Automation",
+    description: "Lead capture, email notifications, and CRM updates happen without extra setup."
   },
   {
     icon: Shield,
-    title: "Enterprise Security",
-    description: "SOC 2 compliant infrastructure, SSO integration, role-based access control, and encrypted data storage."
-  }
-];
-
-const testimonials = [
-  {
-    quote: "Unison Tasks replaced 5 different tools for our agency. The AI builder is incredibly fast.",
-    author: "Sarah Chen",
-    role: "Founder, PixelPerfect Agency",
-    avatar: "SC"
+    title: "Enterprise-Ready",
+    description: "Secure infrastructure, custom domains, and SSO for growing teams."
   },
   {
-    quote: "We went from idea to live website in under 2 hours. The CRM integration is seamless.",
-    author: "Marcus Johnson",
-    role: "Marketing Director, TechFlow",
-    avatar: "MJ"
-  },
-  {
-    quote: "Best investment for our team. The workflow automation saves us 20+ hours per week.",
-    author: "Emily Rodriguez",
-    role: "Operations Lead, ScaleUp Inc",
-    avatar: "ER"
+    icon: Sparkles,
+    title: "One-Click Launch",
+    description: "From template to live website in minutes. No deployment headaches."
   }
 ];
 
@@ -152,6 +121,7 @@ const Index = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [launcherOpen, setLauncherOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -164,7 +134,7 @@ const Index = () => {
     });
 
     if (!isSupabaseConfigured) {
-      console.warn('⚠️ Supabase is not properly configured. Some features may not work.');
+      console.warn('⚠️ Backend is not properly configured. Some features may not work.');
     }
 
     return () => subscription.unsubscribe();
@@ -176,6 +146,15 @@ const Index = () => {
       title: "Signed out",
       description: "You have been successfully signed out.",
     });
+  };
+
+  const handleStartLauncher = () => {
+    if (user) {
+      setLauncherOpen(true);
+    } else {
+      // For non-authenticated users, still show launcher (they'll auth after)
+      setLauncherOpen(true);
+    }
   };
 
   if (isLoading) {
@@ -197,7 +176,7 @@ const Index = () => {
           <div className="container mx-auto flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <p className="text-sm">
-              <strong>Configuration Warning:</strong> Supabase environment variables are not properly set.
+              <strong>Configuration Warning:</strong> Backend environment variables are not properly set.
             </p>
           </div>
         </div>
@@ -211,9 +190,9 @@ const Index = () => {
             <span className="text-2xl font-bold text-foreground">Unison Tasks</span>
           </div>
           <div className="hidden md:flex items-center gap-6">
+            <a href="#systems" className="text-muted-foreground hover:text-foreground transition-colors">Systems</a>
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
           </div>
           <div className="flex items-center gap-3">
             {user && <SubscriptionBadge />}
@@ -232,8 +211,8 @@ const Index = () => {
                 <Button variant="ghost" onClick={() => navigate("/auth")}>
                   Sign In
                 </Button>
-                <Button onClick={() => navigate("/auth")}>
-                  Get Started
+                <Button onClick={handleStartLauncher}>
+                  Start Free
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </>
@@ -242,82 +221,121 @@ const Index = () => {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero Section - New Positioning */}
       <section className="container mx-auto px-4 py-20 md:py-32">
         <div className="text-center max-w-4xl mx-auto">
           <Badge variant="secondary" className="mb-6">
-            <Sparkles className="h-3 w-3 mr-1" />
-            Now with AI-powered web building
+            <Zap className="h-3 w-3 mr-1" />
+            Launch in minutes, not months
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground leading-tight">
-            Build, Manage & Scale
-            <span className="block text-primary">Your Digital Presence</span>
+            Launch-ready business systems
+            <span className="block text-primary">powered by AI</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            The all-in-one platform for creating websites, managing clients, and automating workflows. 
-            Powered by AI, designed for teams.
+            Not just templates. Complete business systems with booking, payments, and CRM—
+            all pre-wired and ready to run.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {user ? (
-              <Button size="lg" onClick={() => navigate("/creatives")} className="text-lg px-8">
-                Go to Web Builder
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            ) : (
-              <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            )}
-            <Button size="lg" variant="outline" onClick={() => navigate("/creatives")} className="text-lg px-8">
-              View Demo
+            <Button size="lg" onClick={handleStartLauncher} className="text-lg px-8 h-14">
+              <Play className="mr-2 h-5 w-5" />
+              {user ? "Launch a System" : "Start Free"}
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => navigate("/web-builder")} className="text-lg px-8 h-14">
+              Explore Builder
             </Button>
           </div>
           {!user && (
             <p className="mt-4 text-sm text-muted-foreground">
-              No credit card required · Free tier available
+              No credit card required · Launch your first system free
             </p>
           )}
         </div>
       </section>
 
-      {/* Quick Access Cards */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-          {[
-            { icon: Sparkles, title: "Web Builder", desc: "AI-powered design", path: "/creatives" },
-            { icon: Workflow, title: "CRM", desc: "Contacts & automation", path: "/crm" },
-            { icon: CalendarDays, title: "Planning", desc: "Tasks & scheduling", path: "/planning" },
-            { icon: FileText, title: "Files", desc: "Storage & sharing", path: "/files" }
-          ].map((item, i) => (
+      {/* Business Systems Grid */}
+      <section id="systems" className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4 text-foreground">Choose your business type</h2>
+          <p className="text-muted-foreground">Pick a system. Everything else is automatic.</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
+          {businessSystems.map((system) => (
             <Card 
-              key={i} 
-              className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 border-border/50"
-              onClick={() => navigate(item.path)}
+              key={system.id}
+              className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 border-border/50 group"
+              onClick={handleStartLauncher}
             >
               <CardContent className="pt-6 text-center">
-                <div className="bg-primary/10 w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <item.icon className="h-7 w-7 text-primary" />
+                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">
+                  {system.icon}
                 </div>
-                <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
+                <h3 className="font-semibold text-sm mb-1">{system.name}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-2">{system.tagline}</p>
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
 
+      {/* The Difference Section */}
+      <section className="bg-muted/30 py-20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <Badge variant="secondary" className="mb-4">Why Unison Tasks</Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
+                Templates are dead. Systems are alive.
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Other tools give you static pages. We give you running businesses.
+              </p>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Old Way */}
+              <Card className="border-destructive/30 bg-destructive/5">
+                <CardHeader>
+                  <CardTitle className="text-lg text-destructive">❌ Static Templates</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <p>• Buttons don't do anything</p>
+                  <p>• Forms need manual wiring</p>
+                  <p>• Payments require integration</p>
+                  <p>• Booking needs separate app</p>
+                  <p>• Weeks of development work</p>
+                </CardContent>
+              </Card>
+
+              {/* New Way */}
+              <Card className="border-primary/50 bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="text-lg text-primary">✓ Unison Systems</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <p>• Buttons pre-wired to actions</p>
+                  <p>• Forms auto-submit to CRM</p>
+                  <p>• Payments work out of box</p>
+                  <p>• Booking calendar included</p>
+                  <p>• Live in minutes</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section id="features" className="bg-muted/30 py-20">
+      <section id="features" className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything you need to succeed</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Everything is connected</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              From website creation to client management, we've got you covered.
+              No plugins. No integrations. Just launch.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {features.map((feature, i) => (
+            {platformFeatures.map((feature, i) => (
               <Card key={i} className="border-border/50 bg-background">
                 <CardHeader>
                   <div className="bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
@@ -335,12 +353,12 @@ const Index = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20">
+      <section id="pricing" className="bg-muted/30 py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, transparent pricing</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Simple pricing</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Start free, upgrade when you need more power.
+              Start free. Upgrade when you grow.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -377,46 +395,11 @@ const Index = () => {
                   <Button 
                     className="w-full" 
                     variant={tier.variant}
-                    onClick={() => navigate(user ? "/pricing" : "/auth")}
+                    onClick={handleStartLauncher}
                   >
                     {tier.cta}
                   </Button>
                 </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section id="testimonials" className="bg-muted/30 py-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Loved by teams worldwide</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              See what our customers have to say about Unison Tasks.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {testimonials.map((testimonial, i) => (
-              <Card key={i} className="border-border/50 bg-background">
-                <CardContent className="pt-6">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(5)].map((_, j) => (
-                      <Star key={j} className="h-4 w-4 fill-primary text-primary" />
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground mb-6 italic">"{testimonial.quote}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                      {testimonial.avatar}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{testimonial.author}</p>
-                      <p className="text-xs text-muted-foreground">{testimonial.role}</p>
-                    </div>
-                  </div>
-                </CardContent>
               </Card>
             ))}
           </div>
@@ -428,17 +411,18 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <Card className="max-w-4xl mx-auto bg-primary text-primary-foreground border-0">
             <CardContent className="py-12 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to transform your workflow?</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to launch?</h2>
               <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
-                Join thousands of teams using Unison Tasks to build faster and smarter.
+                Pick a business type. We'll handle the rest.
               </p>
               <Button 
                 size="lg" 
                 variant="secondary" 
-                onClick={() => navigate(user ? "/creatives" : "/auth")}
-                className="text-lg px-8"
+                onClick={handleStartLauncher}
+                className="text-lg px-8 h-14"
               >
-                {user ? "Go to Web Builder" : "Start Your Free Trial"}
+                <Zap className="mr-2 h-5 w-5" />
+                Launch Your System
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </CardContent>
@@ -458,14 +442,16 @@ const Index = () => {
               <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
               <a href="#" className="hover:text-foreground transition-colors">Terms</a>
               <a href="#" className="hover:text-foreground transition-colors">Support</a>
-              <a href="#" className="hover:text-foreground transition-colors">Contact</a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 Unison Tasks. All rights reserved.
+              © 2025 Unison Tasks. All rights reserved.
             </p>
           </div>
         </div>
       </footer>
+
+      {/* System Launcher Dialog */}
+      <SystemLauncher open={launcherOpen} onOpenChange={setLauncherOpen} />
     </div>
   );
 };
