@@ -224,7 +224,6 @@ function wrapHtmlSnippet(html: string): string {
       margin: 0;
       min-height: 100vh;
     }
-    /* Ensure proper icon placeholders */
     .icon-ArrowRight::before { content: '→'; }
     .icon-Play::before { content: '▶'; }
     .icon-Star::before { content: '★'; }
@@ -232,12 +231,57 @@ function wrapHtmlSnippet(html: string): string {
     .icon-Check::before { content: '✓'; }
     .icon-ChevronRight::before { content: '›'; }
     .icon-ChevronDown::before { content: '⌄'; }
+    /* Intent feedback styles */
+    .intent-loading { opacity: 0.7; pointer-events: none; }
+    .intent-success { animation: intent-pulse 0.3s; }
+    .intent-error { animation: intent-shake 0.3s; }
+    @keyframes intent-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+    @keyframes intent-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
   </style>
 </head>
 <body>
   ${html}
+  <script>
+  (function(){
+    const LABEL_INTENTS = {
+      'sign in':'auth.signin','log in':'auth.signin','login':'auth.signin',
+      'sign up':'auth.signup','register':'auth.signup','get started':'auth.signup',
+      'start free trial':'trial.start','free trial':'trial.start','try free':'trial.start',
+      'join waitlist':'join.waitlist','subscribe':'newsletter.subscribe',
+      'contact us':'contact.submit','get in touch':'contact.submit','send message':'contact.submit',
+      'add to cart':'cart.add','buy now':'checkout.start','shop now':'shop.browse',
+      'book now':'booking.create','reserve':'booking.create','reserve table':'booking.create',
+      'get quote':'quote.request','get free quote':'quote.request',
+      'watch demo':'demo.request','hire me':'project.inquire',
+      'order online':'order.online','view menu':'menu.view','call now':'call.now'
+    };
+    function inferIntent(t){if(!t)return null;const l=t.toLowerCase().trim();if(LABEL_INTENTS[l])return LABEL_INTENTS[l];for(const[k,v]of Object.entries(LABEL_INTENTS))if(l.includes(k))return v;return null;}
+    function collectPayload(el){const p={};Array.from(el.attributes).forEach(a=>{if(a.name.startsWith('data-')&&a.name!=='data-intent'){const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}}});const f=el.closest('form');if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});return p;}
+    document.addEventListener('click',function(e){
+      const el=e.target.closest('button,a,[role="button"],[data-intent]');if(!el)return;
+      const ia=el.getAttribute('data-intent');if(ia==='none'||ia==='ignore')return;
+      const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));if(!intent)return;
+      e.preventDefault();e.stopPropagation();
+      el.classList.add('intent-loading');el.disabled=true;
+      window.parent.postMessage({type:'INTENT_TRIGGER',intent:intent,payload:collectPayload(el)},'*');
+      setTimeout(()=>{el.classList.remove('intent-loading');el.classList.add('intent-success');el.disabled=false;setTimeout(()=>el.classList.remove('intent-success'),2000);},500);
+    },{capture:true});
+    document.addEventListener('submit',function(e){
+      const form=e.target;if(!form)return;
+      let intent=form.getAttribute('data-intent');
+      if(!intent){const btn=form.querySelector('button[type="submit"]');if(btn)intent=btn.getAttribute('data-intent')||inferIntent(btn.textContent);}
+      if(!intent){const id=(form.id||'').toLowerCase();if(id.includes('contact'))intent='contact.submit';else if(id.includes('newsletter'))intent='newsletter.subscribe';else if(id.includes('waitlist'))intent='join.waitlist';else if(id.includes('booking'))intent='booking.create';}
+      if(!intent)return;
+      e.preventDefault();const p={};new FormData(form).forEach((v,k)=>{if(typeof v==='string')p[k]=v});
+      window.parent.postMessage({type:'INTENT_TRIGGER',intent:intent,payload:p},'*');
+      form.reset();
+    },{capture:true});
+    console.log('[Intent] Global listener active');
+  })();
+  </script>
 </body>
 </html>`;
+}
 }
 
 /**
