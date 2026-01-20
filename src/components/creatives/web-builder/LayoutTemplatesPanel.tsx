@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, Search, Folder, ChevronRight } from 'lucide-react';
+import { Layout, Search, Folder, ChevronRight, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +15,7 @@ import {
   type LayoutCategory,
   type LayoutTemplate,
 } from '@/data/layoutTemplates';
+import { intentTestTemplate } from '@/data/templates/test/intentTestTemplate';
 
 interface LayoutTemplatesPanelProps {
   onSelectTemplate: (code: string, name: string) => void;
@@ -114,6 +115,33 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
       {/* Templates List */}
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
+          {/* Test Template - Always at top */}
+          <Card
+            className="group cursor-pointer hover:border-emerald-500/50 transition-all bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
+            onClick={() => {
+              onSelectTemplate(intentTestTemplate, 'Intent Listener Test');
+              toast.success('Loaded: Intent Listener Test - Click buttons to test auto-wiring!');
+            }}
+          >
+            <CardContent className="p-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap className="h-4 w-4 text-emerald-400" />
+                    <h4 className="text-sm font-medium truncate text-white">🎯 Intent Listener Test</h4>
+                    <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/30 text-emerald-300 border-emerald-500/50">
+                      TEST
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-white/60 line-clamp-2">
+                    Test template with buttons for all intent types. Verify auto-wiring works!
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+              </div>
+            </CardContent>
+          </Card>
+          
           {filteredTemplates.length === 0 ? (
             <div className="text-center py-8 text-white/40 text-sm">
               <Layout className="h-8 w-8 mx-auto mb-2 opacity-50" />

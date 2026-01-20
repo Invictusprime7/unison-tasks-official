@@ -48,6 +48,7 @@ import { EditorTabs } from "./code-editor/EditorTabs";
 import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
+import { handleIntent, IntentPayload } from "@/runtime/intentRouter";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
@@ -415,6 +416,40 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     } catch (error) {
       console.error('[AutoSave] Error restoring draft:', error);
     }
+  }, []);
+  
+  // Listen for INTENT_TRIGGER messages from iframe previews
+  useEffect(() => {
+    const handleIntentMessage = async (event: MessageEvent) => {
+      // Only handle intent trigger messages
+      if (event.data?.type !== 'INTENT_TRIGGER') return;
+      
+      const { intent, payload } = event.data;
+      console.log('[WebBuilder] Received intent from preview:', intent, payload);
+      
+      try {
+        const result = await handleIntent(intent, payload as IntentPayload);
+        
+        if (result.success) {
+          const resultData = result.data as Record<string, unknown> | undefined;
+          toast.success(`Intent "${intent}" executed`, {
+            description: (resultData?.message as string) || 'Action completed successfully',
+          });
+        } else {
+          toast.error(`Intent "${intent}" failed`, {
+            description: result.error || 'Unknown error',
+          });
+        }
+      } catch (error) {
+        console.error('[WebBuilder] Intent handler error:', error);
+        toast.error('Intent execution failed', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    };
+    
+    window.addEventListener('message', handleIntentMessage);
+    return () => window.removeEventListener('message', handleIntentMessage);
   }, []);
   
   // Clear draft when template is saved
