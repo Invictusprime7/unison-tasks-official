@@ -945,10 +945,41 @@ function isCompleteHTML(content: string): boolean {
  * Supports: Auth (sign in/up/login), Payment, Contact, Pricing, Dashboard, etc.
  */
 const SMART_NAVIGATION_SCRIPT = `
+<style>
+/* Intent Feedback Styles */
+.intent-loading {
+  opacity: 0.7 !important;
+  pointer-events: none !important;
+  position: relative !important;
+}
+.intent-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: intent-spin 0.8s linear infinite;
+}
+.intent-success {
+  animation: intent-pulse 0.5s ease-out !important;
+}
+@keyframes intent-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes intent-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  50% { transform: scale(1.02); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+</style>
 <script>
 (function() {
   'use strict';
-
   // ============================================================================
   // Dynamic State/Prop Bridge
   // ============================================================================
