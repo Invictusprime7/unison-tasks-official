@@ -14,6 +14,8 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { getDemoResponse, type BusinessSystemType } from "@/data/templates";
+
 
 export interface IntentPayload {
   businessId?: string;
@@ -262,6 +264,8 @@ async function handleWorkflowIntent(intent: string, payload: IntentPayload): Pro
 
 // Default businessId for templates (can be overridden by location state or template config)
 let defaultBusinessId: string | null = null;
+let currentSystemType: BusinessSystemType | null = null;
+let isDemoMode: boolean = false;
 
 /**
  * Set the default business ID for intent routing
@@ -280,10 +284,47 @@ export function getDefaultBusinessId(): string | null {
 }
 
 /**
+ * Set the current system type for demo mode responses
+ */
+export function setCurrentSystemType(systemType: BusinessSystemType | null): void {
+  currentSystemType = systemType;
+  console.log("[IntentRouter] System type set:", systemType);
+}
+
+/**
+ * Enable or disable demo mode
+ * In demo mode, intents return mocked success responses instead of calling backend
+ */
+export function setDemoMode(enabled: boolean): void {
+  isDemoMode = enabled;
+  console.log("[IntentRouter] Demo mode:", enabled ? "enabled" : "disabled");
+}
+
+/**
+ * Check if demo mode is active
+ */
+export function isDemoModeActive(): boolean {
+  return isDemoMode;
+}
+
+/**
  * Main intent handler - routes intents to appropriate handlers/functions
  */
 export async function handleIntent(intent: string, payload: IntentPayload): Promise<IntentResult> {
-  console.log("[IntentRouter] Handling intent:", intent, payload);
+  console.log("[IntentRouter] Handling intent:", intent, payload, { isDemoMode, currentSystemType });
+  
+  // Handle demo mode - return mocked responses
+  if (isDemoMode && currentSystemType) {
+    const demoResponse = getDemoResponse(currentSystemType, intent);
+    if (demoResponse) {
+      console.log("[IntentRouter] Demo mode response:", demoResponse);
+      return {
+        success: demoResponse.success,
+        data: demoResponse.data,
+        error: demoResponse.success ? undefined : demoResponse.message,
+      };
+    }
+  }
   
   // Inject default businessId if not provided
   if (!payload.businessId && defaultBusinessId) {

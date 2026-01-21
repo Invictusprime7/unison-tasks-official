@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Layout, Search, Folder, ChevronRight, Zap } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Layout, Search, Zap, ChevronRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -12,13 +13,18 @@ import {
   getTemplatesByCategory,
   searchTemplates,
   getAllCategories,
+  businessSystems,
+  getSystemContract,
   type LayoutCategory,
   type LayoutTemplate,
+  type BusinessSystemType,
 } from '@/data/layoutTemplates';
 import { intentTestTemplate } from '@/data/templates/test/intentTestTemplate';
+import { TemplateDetailCard } from '@/components/web-builder/TemplateDetailCard';
 
 interface LayoutTemplatesPanelProps {
-  onSelectTemplate: (code: string, name: string) => void;
+  onSelectTemplate: (code: string, name: string, systemType?: BusinessSystemType) => void;
+  onDemoTemplate?: (code: string, name: string, systemType?: BusinessSystemType) => void;
 }
 
 const categoryLabels: Record<LayoutCategory, string> = {
@@ -45,70 +51,189 @@ const categoryIcons: Record<LayoutCategory, string> = {
 
 export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
   onSelectTemplate,
+  onDemoTemplate,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<LayoutCategory | null>(null);
+  const [selectedSystem, setSelectedSystem] = useState<BusinessSystemType | null>(null);
+  const [viewMode, setViewMode] = useState<'systems' | 'categories'>('systems');
 
   const categories = getAllCategories();
-  const filteredTemplates = searchQuery
-    ? searchTemplates(searchQuery)
-    : selectedCategory
-    ? getTemplatesByCategory(selectedCategory)
-    : layoutTemplates;
+  
+  const filteredTemplates = useMemo(() => {
+    if (searchQuery) {
+      return searchTemplates(searchQuery);
+    }
+    if (selectedSystem) {
+      const system = businessSystems.find(s => s.id === selectedSystem);
+      if (system) {
+        return layoutTemplates.filter(t => system.templateCategories.includes(t.category));
+      }
+    }
+    if (selectedCategory) {
+      return getTemplatesByCategory(selectedCategory);
+    }
+    return layoutTemplates;
+  }, [searchQuery, selectedSystem, selectedCategory]);
 
   const handleTemplateClick = (template: LayoutTemplate) => {
-    onSelectTemplate(template.code, template.name);
+    const system = businessSystems.find(s => s.templateCategories.includes(template.category));
+    onSelectTemplate(template.code, template.name, system?.id);
     toast.success(`Loaded: ${template.name}`);
   };
 
+  const handleDemoClick = (template: LayoutTemplate) => {
+    const system = businessSystems.find(s => s.templateCategories.includes(template.category));
+    onDemoTemplate?.(template.code, template.name, system?.id);
+    toast.info(`Demo mode: ${template.name} - Interactions return mock responses`);
+  };
+
   return (
-    <div className="h-full flex flex-col bg-[#0f0d15]">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="p-3 border-b border-white/10">
-        <div className="flex items-center gap-2 mb-3">
-          <Layout className="h-4 w-4 text-blue-400" />
-          <h3 className="text-sm font-semibold text-white">Layout Templates</h3>
+      <div className="p-3 border-b border-border">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Layout className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold">Launch Library</h3>
+          </div>
+          {/* View Toggle */}
+          <div className="flex gap-1">
+            <Button
+              variant={viewMode === 'systems' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={() => {
+                setViewMode('systems');
+                setSelectedCategory(null);
+              }}
+            >
+              <Sparkles className="w-3 h-3 mr-1" />
+              Systems
+            </Button>
+            <Button
+              variant={viewMode === 'categories' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={() => {
+                setViewMode('categories');
+                setSelectedSystem(null);
+              }}
+            >
+              Categories
+            </Button>
+          </div>
         </div>
         
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-white/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input
             placeholder="Search templates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            className="pl-9 h-8 text-xs"
           />
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Systems or Categories Filter */}
       {!searchQuery && (
-        <div className="p-3 border-b border-white/10">
+        <div className="p-3 border-b border-border">
           <ScrollArea className="w-full">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={selectedCategory === null ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory(null)}
-                className="h-7 text-xs"
-              >
-                All
-              </Button>
-              {categories.map((category) => (
+            {viewMode === 'systems' ? (
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  key={category}
-                  variant={selectedCategory === category ? 'default' : 'outline'}
+                  variant={selectedSystem === null ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setSelectedCategory(category)}
+                  onClick={() => setSelectedSystem(null)}
                   className="h-7 text-xs"
                 >
-                  <span className="mr-1">{categoryIcons[category]}</span>
-                  {categoryLabels[category]}
+                  All Systems
                 </Button>
-              ))}
-            </div>
+                {businessSystems.map((system) => {
+                  const contract = getSystemContract(system.id);
+                  const intentCount = contract?.requiredIntents.length || 0;
+                  return (
+                    <Button
+                      key={system.id}
+                      variant={selectedSystem === system.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedSystem(system.id)}
+                      className="h-7 text-xs"
+                    >
+                      <span className="mr-1">{system.icon}</span>
+                      {system.name}
+                      <Badge variant="secondary" className="ml-1.5 text-[9px] px-1 py-0 h-4">
+                        {intentCount} intents
+                      </Badge>
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={selectedCategory === null ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedCategory(null)}
+                  className="h-7 text-xs"
+                >
+                  All
+                </Button>
+                {categories.map((category) => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category)}
+                    className="h-7 text-xs"
+                  >
+                    <span className="mr-1">{categoryIcons[category]}</span>
+                    {categoryLabels[category]}
+                  </Button>
+                ))}
+              </div>
+            )}
           </ScrollArea>
+        </div>
+      )}
+
+      {/* System Info Banner */}
+      {selectedSystem && (
+        <div className="p-3 border-b border-border bg-primary/5">
+          {(() => {
+            const system = businessSystems.find(s => s.id === selectedSystem);
+            const contract = getSystemContract(selectedSystem);
+            if (!system) return null;
+            return (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{system.icon}</span>
+                  <div>
+                    <h4 className="text-sm font-medium">{system.name}</h4>
+                    <p className="text-xs text-muted-foreground">{system.tagline}</p>
+                  </div>
+                </div>
+                {contract && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-xs text-muted-foreground">Pre-wired:</span>
+                    {contract.requiredIntents.slice(0, 3).map(intent => (
+                      <Badge key={intent} variant="secondary" className="text-[10px] px-1.5 py-0">
+                        <CheckCircle2 className="w-2.5 h-2.5 mr-0.5 text-primary" />
+                        {intent.split('.')[1]}
+                      </Badge>
+                    ))}
+                    {contract.requiredIntents.length > 3 && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        +{contract.requiredIntents.length - 3}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -117,7 +242,7 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
         <div className="p-3 space-y-2">
           {/* Test Template - Always at top */}
           <Card
-            className="group cursor-pointer hover:border-emerald-500/50 transition-all bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
+            className="group cursor-pointer hover:border-primary/50 transition-all bg-primary/10 border-primary/30 hover:bg-primary/20"
             onClick={() => {
               onSelectTemplate(intentTestTemplate, 'Intent Listener Test');
               toast.success('Loaded: Intent Listener Test - Click buttons to test auto-wiring!');
@@ -127,61 +252,35 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <Zap className="h-4 w-4 text-emerald-400" />
-                    <h4 className="text-sm font-medium truncate text-white">🎯 Intent Listener Test</h4>
-                    <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/30 text-emerald-300 border-emerald-500/50">
+                    <Zap className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-medium truncate">🎯 Intent Listener Test</h4>
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0">
                       TEST
                     </Badge>
                   </div>
-                  <p className="text-xs text-white/60 line-clamp-2">
+                  <p className="text-xs text-muted-foreground line-clamp-2">
                     Test template with buttons for all intent types. Verify auto-wiring works!
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <ChevronRight className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               </div>
             </CardContent>
           </Card>
           
           {filteredTemplates.length === 0 ? (
-            <div className="text-center py-8 text-white/40 text-sm">
+            <div className="text-center py-8 text-muted-foreground text-sm">
               <Layout className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No templates found</p>
             </div>
           ) : (
             filteredTemplates.map((template) => (
-              <Card
+              <TemplateDetailCard
                 key={template.id}
-                className="group cursor-pointer hover:border-blue-500/50 transition-all bg-white/5 border-white/10 hover:bg-white/10"
-                onClick={() => handleTemplateClick(template)}
-              >
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm">{categoryIcons[template.category]}</span>
-                        <h4 className="text-sm font-medium truncate text-white">{template.name}</h4>
-                      </div>
-                      <p className="text-xs text-white/60 line-clamp-2">
-                        {template.description}
-                      </p>
-                      {template.tags && template.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {template.tags.slice(0, 3).map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="text-[10px] px-1.5 py-0 bg-blue-500/20 text-blue-300 border-blue-500/30"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-white/40 group-hover:text-blue-400 shrink-0 mt-0.5 transition-colors" />
-                  </div>
-                </CardContent>
-              </Card>
+                template={template}
+                onSelect={handleTemplateClick}
+                onDemo={onDemoTemplate ? handleDemoClick : undefined}
+                showDemoButton={!!onDemoTemplate}
+              />
             ))
           )}
         </div>

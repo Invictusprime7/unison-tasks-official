@@ -21,7 +21,10 @@ export type {
   LayoutCategory, 
   LayoutTemplate,
   BusinessSystemType,
-  BusinessSystem 
+  BusinessSystem,
+  SystemContract,
+  PublishCheck,
+  DemoResponse
 } from './templates';
 
 export {
@@ -53,4 +56,10 @@ export {
   businessSystems,
   getSystemById,
   getTemplatesForSystem,
+  
+  // System Contracts (Phase 6)
+  systemContracts,
+  getSystemContract,
+  isRequiredIntent,
+  getDemoResponse,
 } from './templates';

@@ -13,6 +13,10 @@ export type {
 } from './types';
 export { businessSystems, getSystemById, getTemplatesForSystem } from './types';
 
+// Contracts (Phase 6)
+export type { SystemContract, PublishCheck, DemoResponse } from './contracts';
+export { systemContracts, getSystemContract, isRequiredIntent, getDemoResponse } from './contracts';
+
 // Utilities
 export { wrapInHtmlDoc } from './utils';
 
