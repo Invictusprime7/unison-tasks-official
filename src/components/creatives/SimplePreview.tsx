@@ -1662,43 +1662,138 @@ const SMART_NAVIGATION_SCRIPT = `
   }
   
   // ============================================================================
+  // Intent System Integration
+  // ============================================================================
+  const LABEL_INTENTS = {
+    'sign in': 'auth.signin', 'log in': 'auth.signin', 'login': 'auth.signin',
+    'sign up': 'auth.signup', 'register': 'auth.signup', 'get started': 'auth.signup', 'create account': 'auth.signup',
+    'sign out': 'auth.signout', 'log out': 'auth.signout', 'logout': 'auth.signout',
+    'start free trial': 'trial.start', 'start trial': 'trial.start', 'free trial': 'trial.start', 'try free': 'trial.start',
+    'join waitlist': 'join.waitlist', 'join the waitlist': 'join.waitlist',
+    'subscribe': 'newsletter.subscribe', 'get updates': 'newsletter.subscribe',
+    'contact': 'contact.submit', 'contact us': 'contact.submit', 'get in touch': 'contact.submit', 'send message': 'contact.submit',
+    'add to cart': 'cart.add', 'buy now': 'checkout.start', 'shop now': 'shop.browse', 'checkout': 'checkout.start', 'view cart': 'cart.view',
+    'book now': 'booking.create', 'reserve': 'booking.create', 'reserve table': 'booking.create', 'book service': 'booking.create',
+    'get quote': 'quote.request', 'get free quote': 'quote.request', 'request quote': 'quote.request', 'free estimate': 'quote.request',
+    'watch demo': 'demo.request', 'request demo': 'demo.request',
+    'hire me': 'project.inquire', 'start a project': 'project.start', 'view work': 'portfolio.view',
+    'order online': 'order.online', 'order now': 'order.online', 'view menu': 'menu.view',
+    'read more': 'content.read', 'call now': 'call.now', 'emergency': 'emergency.service',
+    'start your box': 'checkout.start', 'start my box': 'checkout.start', 'see plans': 'pricing.view'
+  };
+  
+  function inferIntent(text) {
+    if (!text) return null;
+    const lower = text.toLowerCase().trim();
+    if (LABEL_INTENTS[lower]) return LABEL_INTENTS[lower];
+    for (const key in LABEL_INTENTS) {
+      if (lower.includes(key) || key.includes(lower)) return LABEL_INTENTS[key];
+    }
+    return null;
+  }
+  
+  function collectPayload(el) {
+    const payload = {};
+    Array.from(el.attributes).forEach(function(attr) {
+      if (attr.name.startsWith('data-') && attr.name !== 'data-intent') {
+        const key = attr.name.replace('data-', '').replace(/-([a-z])/g, function(_, l) { return l.toUpperCase(); });
+        try { payload[key] = JSON.parse(attr.value); } catch(e) { payload[key] = attr.value; }
+      }
+    });
+    const form = el.closest('form');
+    if (form) {
+      new FormData(form).forEach(function(v, k) { if (typeof v === 'string') payload[k] = v; });
+    }
+    return payload;
+  }
+  
+  function triggerIntent(intent, payload, element) {
+    console.log('[Preview] Intent triggered:', intent, payload);
+    
+    // Add loading state
+    if (element) {
+      element.classList.add('intent-loading');
+      element.disabled = true;
+    }
+    
+    // Post message to parent window for handling
+    window.parent.postMessage({
+      type: 'INTENT_TRIGGER',
+      intent: intent,
+      payload: payload
+    }, '*');
+    
+    // Reset button state after short delay
+    if (element) {
+      setTimeout(function() {
+        element.classList.remove('intent-loading');
+        element.classList.add('intent-success');
+        element.disabled = false;
+        setTimeout(function() { element.classList.remove('intent-success'); }, 2000);
+      }, 500);
+    }
+  }
+  
+  // ============================================================================
   // Event Handlers
   // ============================================================================
   let theme = null;
   
-  // Intercept all link clicks
+  // Intercept all link and button clicks
   document.addEventListener('click', function(e) {
     const link = e.target.closest('a[href]');
-    const button = e.target.closest('button');
+    const button = e.target.closest('button, [role="button"], [data-intent]');
+    const el = link || button;
     
+    if (!el) return;
+    
+    // Check for explicit data-intent attribute
+    const intentAttr = el.getAttribute('data-intent');
+    if (intentAttr === 'none' || intentAttr === 'ignore') {
+      // Explicitly marked as no intent - allow default behavior or show overlay
+      if (link) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!theme) theme = extractTheme();
+        createRedirectOverlay(detectNavigationType(link, link.getAttribute('href')), theme, link.textContent.trim(), link.getAttribute('href'));
+      }
+      return;
+    }
+    
+    // Determine intent from attribute or text
+    const text = el.textContent ? el.textContent.trim() : '';
+    const intent = intentAttr || inferIntent(text) || inferIntent(el.getAttribute('aria-label'));
+    
+    if (intent) {
+      // Intent found - trigger it via parent window
+      e.preventDefault();
+      e.stopPropagation();
+      triggerIntent(intent, collectPayload(el), el);
+      return;
+    }
+    
+    // No intent - show themed overlay for navigation
     if (link) {
       e.preventDefault();
       e.stopPropagation();
       
       const href = link.getAttribute('href');
-      console.log('[Preview] Link clicked:', href);
+      console.log('[Preview] Link clicked (no intent):', href);
       
-      // Extract theme on first interaction
       if (!theme) theme = extractTheme();
-      
       const navType = detectNavigationType(link, href);
-      const text = link.textContent.trim();
-      
-      // Show themed redirect overlay
       createRedirectOverlay(navType, theme, text, href);
     } else if (button) {
       e.preventDefault();
       e.stopPropagation();
       
-      const text = button.textContent.trim().toLowerCase();
-      console.log('[Preview] Button clicked:', text);
+      console.log('[Preview] Button clicked (no intent):', text);
       
-      // Check if button should trigger a redirect page
       if (!theme) theme = extractTheme();
       const navType = detectNavigationType(button, '');
       
       if (navType.type !== 'page') {
-        createRedirectOverlay(navType, theme, button.textContent.trim(), '');
+        createRedirectOverlay(navType, theme, text, '');
       } else {
         // Just show visual feedback for generic buttons
         button.style.opacity = '0.7';
@@ -1707,19 +1802,45 @@ const SMART_NAVIGATION_SCRIPT = `
     }
   }, true);
   
-  // Prevent form submissions
+  // Handle form submissions with intent
   document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (!form) return;
+    
+    // Check for form intent
+    let intent = form.getAttribute('data-intent');
+    if (!intent) {
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) intent = btn.getAttribute('data-intent') || inferIntent(btn.textContent);
+    }
+    if (!intent) {
+      const id = (form.id || '').toLowerCase();
+      const cls = (form.className || '').toLowerCase();
+      if (id.includes('contact') || cls.includes('contact')) intent = 'contact.submit';
+      else if (id.includes('newsletter') || cls.includes('subscribe')) intent = 'newsletter.subscribe';
+      else if (id.includes('waitlist')) intent = 'join.waitlist';
+      else if (id.includes('booking') || id.includes('reservation')) intent = 'booking.create';
+    }
+    
+    if (intent) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const payload = {};
+      new FormData(form).forEach(function(v, k) { if (typeof v === 'string') payload[k] = v; });
+      
+      triggerIntent(intent, payload, form.querySelector('button[type="submit"]'));
+      return;
+    }
+    
+    // No intent - show fallback overlay
     e.preventDefault();
     e.stopPropagation();
-    console.log('[Preview] Form submit prevented');
+    console.log('[Preview] Form submit (no intent)');
     
-    // Show auth/contact page based on form context
     if (!theme) theme = extractTheme();
     
-    const form = e.target;
     const hasPassword = form.querySelector('input[type="password"]');
-    const hasEmail = form.querySelector('input[type="email"]');
-    
     let navType = NAV_PATTERNS.contact;
     if (hasPassword) {
       navType = NAV_PATTERNS.auth;
