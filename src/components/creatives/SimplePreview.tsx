@@ -87,7 +87,7 @@ export interface SimplePreviewHandle {
 // Constants
 // ============================================================================
 
-const SANDPACK_TIMEOUT_MS = 30000; // 30 seconds timeout for Sandpack
+const SANDPACK_TIMEOUT_MS = 12000; // 12 seconds timeout for Sandpack (reduced from 30s)
 
 // Common dependencies that are always available
 const BUNDLED_DEPENDENCIES = {
@@ -2114,19 +2114,19 @@ const HTMLFallbackPreview: React.FC<{
           </div>
         </div>
       ) : (
-        <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-amber-800">
+        <div className="bg-blue-50 border-b border-blue-200 px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-blue-800">
             <Globe className="w-4 h-4" />
-            <span className="text-xs font-medium">Static HTML Preview (Sandpack unavailable)</span>
+            <span className="text-xs font-medium">HTML Preview</span>
           </div>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={onRetry}
-            className="h-6 px-2 text-xs text-amber-700 hover:text-amber-900"
+            className="h-6 px-2 text-xs text-blue-700 hover:text-blue-900"
           >
             <RefreshCw className="w-3 h-3 mr-1" />
-            Retry Sandpack
+            Reload
           </Button>
         </div>
       )}
@@ -2459,13 +2459,20 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   }, [filesProp, code]);
   
   // Check if any file is a complete HTML document (not React)
+  // Also detect HTML content stored in .tsx/.jsx files (common from template imports)
   const hasPureHTML = useMemo(() => {
     const result = Object.entries(files).some(([path, content]) => {
-      const isHtml = path.endsWith('.html') || path.endsWith('.htm') || isCompleteHTML(content);
-      if (isHtml) {
-        console.log('[SimplePreview] Detected pure HTML in:', path);
+      // Explicit HTML file
+      if (path.endsWith('.html') || path.endsWith('.htm')) {
+        console.log('[SimplePreview] Detected HTML file:', path);
+        return true;
       }
-      return isHtml;
+      // Check if content starts with HTML doctype/html tag (even in .tsx files)
+      if (isCompleteHTML(content)) {
+        console.log('[SimplePreview] Detected HTML content in:', path);
+        return true;
+      }
+      return false;
     });
     console.log('[SimplePreview] hasPureHTML:', result, 'Files:', Object.keys(files));
     return result;
