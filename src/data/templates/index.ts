@@ -17,6 +17,10 @@ export { businessSystems, getSystemById, getTemplatesForSystem } from './types';
 export type { SystemContract, PublishCheck, DemoResponse } from './contracts';
 export { systemContracts, getSystemContract, isRequiredIntent, getDemoResponse } from './contracts';
 
+// Manifests (Phase 7 - Backend-First Templates)
+export type { TemplateManifest, ProvisioningStatus, TableRequirement, WorkflowRequirement, IntentRequirement } from './manifest';
+export { templateManifests, getTemplateManifest, getDefaultManifestForSystem, validateManifest, getRequiredTables, getRequiredIntents } from './manifest';
+
 // Utilities
 export { wrapInHtmlDoc } from './utils';
 
