@@ -48,6 +48,7 @@ import { EditorTabs } from "./code-editor/EditorTabs";
 import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
+import { setDefaultBusinessId } from "@/runtime/intentRouter";
 import { handleIntent, IntentPayload } from "@/runtime/intentRouter";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
@@ -313,9 +314,27 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Get system context from location state (from System Launcher)
   const systemType = (location.state as { systemType?: string })?.systemType;
   const systemName = (location.state as { systemName?: string })?.systemName;
+  const businessId = (location.state as { businessId?: string })?.businessId;
   const referrerPageName = systemName || 
     (location.state as { from?: string })?.from || 
     'System Launcher';
+  
+  // Set default businessId for intent routing
+  useEffect(() => {
+    // Generate a stable businessId based on systemType or use a default
+    const effectiveBusinessId = businessId || 
+      (systemType ? `${systemType}-${Date.now().toString(36)}` : null);
+    
+    if (effectiveBusinessId) {
+      setDefaultBusinessId(effectiveBusinessId);
+      console.log('[WebBuilder] Set default businessId for intents:', effectiveBusinessId);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      setDefaultBusinessId(null);
+    };
+  }, [businessId, systemType]);
   
   
   

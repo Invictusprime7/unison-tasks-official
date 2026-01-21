@@ -260,11 +260,42 @@ async function handleWorkflowIntent(intent: string, payload: IntentPayload): Pro
   }
 }
 
+// Default businessId for templates (can be overridden by location state or template config)
+let defaultBusinessId: string | null = null;
+
+/**
+ * Set the default business ID for intent routing
+ * Called from WebBuilder when loading a template with context
+ */
+export function setDefaultBusinessId(businessId: string | null): void {
+  defaultBusinessId = businessId;
+  console.log("[IntentRouter] Default businessId set:", businessId);
+}
+
+/**
+ * Get the current default business ID
+ */
+export function getDefaultBusinessId(): string | null {
+  return defaultBusinessId;
+}
+
 /**
  * Main intent handler - routes intents to appropriate handlers/functions
  */
 export async function handleIntent(intent: string, payload: IntentPayload): Promise<IntentResult> {
   console.log("[IntentRouter] Handling intent:", intent, payload);
+  
+  // Inject default businessId if not provided
+  if (!payload.businessId && defaultBusinessId) {
+    payload.businessId = defaultBusinessId;
+    console.log("[IntentRouter] Injected default businessId:", defaultBusinessId);
+  }
+  
+  // Generate a fallback businessId if still missing (for demo/preview mode)
+  if (!payload.businessId) {
+    payload.businessId = 'demo-' + Date.now().toString(36);
+    console.log("[IntentRouter] Using demo businessId:", payload.businessId);
+  }
   
   try {
     // Handle auth intents specially (no edge function needed)
