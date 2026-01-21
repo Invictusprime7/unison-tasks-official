@@ -936,8 +936,14 @@ const PreviewInner: React.FC<{
  * Check if content is a complete HTML document
  */
 function isCompleteHTML(content: string): boolean {
-  return content.trim().toLowerCase().startsWith('<!doctype html') || 
-         content.trim().toLowerCase().startsWith('<html');
+  const normalized = content.trim().toLowerCase();
+  // Treat as a full HTML document only when it's clearly a complete document.
+  // This avoids false-positives (e.g., snippets/fragments that start with <html>
+  // or string literals) which can incorrectly force HTML fallback and cause
+  // Sandpack to appear "unavailable".
+  if (normalized.startsWith('<!doctype html')) return true;
+  if (normalized.startsWith('<html') && normalized.includes('</html>')) return true;
+  return false;
 }
 
 /**
