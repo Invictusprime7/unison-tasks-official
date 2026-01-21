@@ -15,7 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   TemplateManifest, 
   ProvisioningStatus, 
-  getTemplateManifest, 
+  getTemplateManifest,
+  getManifestByPattern,
   getDefaultManifestForSystem,
   getRequiredTables,
   getRequiredIntents,
@@ -35,6 +36,23 @@ export interface ProvisioningResult {
 }
 
 /**
+ * Resolve manifest for a template - tries exact match, pattern match, then system default
+ */
+function resolveManifest(templateId: string | undefined, systemType: BusinessSystemType): TemplateManifest {
+  if (templateId) {
+    // Try exact match
+    const exact = getTemplateManifest(templateId);
+    if (exact) return exact;
+    
+    // Try pattern match
+    const pattern = getManifestByPattern(templateId);
+    if (pattern) return pattern;
+  }
+  
+  // Fall back to system default
+  return getDefaultManifestForSystem(systemType);
+}
+/**
  * Main provisioning function
  * Call this when user selects a template to use
  */
@@ -46,10 +64,8 @@ export async function provisionTemplate(
   const errors: string[] = [];
   const warnings: string[] = [];
   
-  // 1. Get or create manifest
-  const manifest = templateId 
-    ? getTemplateManifest(templateId) || getDefaultManifestForSystem(systemType)
-    : getDefaultManifestForSystem(systemType);
+  // 1. Resolve manifest using smart matching
+  const manifest = resolveManifest(templateId, systemType);
   
   console.log('[Provisioner] Starting provisioning for:', manifest.id, 'system:', systemType);
   
