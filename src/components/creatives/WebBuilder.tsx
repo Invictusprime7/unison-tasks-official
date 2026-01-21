@@ -1600,13 +1600,13 @@ ${body.innerHTML}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Elements Sidebar */}
         {!leftPanelCollapsed && (
-          <div className="w-80 bg-[#0f0d15] border-r border-purple-500/20 flex flex-col overflow-hidden">
+          <div className="w-80 bg-background border-r border-border/20 flex flex-col overflow-hidden">
             <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full justify-start rounded-none border-b border-purple-500/20 bg-[#1a1625] px-2 h-10 shrink-0">
-                <TabsTrigger value="elements" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Elements</TabsTrigger>
-                <TabsTrigger value="templates" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Templates</TabsTrigger>
-                <TabsTrigger value="functional" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Functional</TabsTrigger>
-                <TabsTrigger value="projects" className="text-xs text-purple-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white">Projects</TabsTrigger>
+              <TabsList className="w-full justify-start rounded-none border-b border-border/20 bg-card px-2 h-10 shrink-0">
+                <TabsTrigger value="elements" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Elements</TabsTrigger>
+                <TabsTrigger value="templates" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Templates</TabsTrigger>
+                <TabsTrigger value="functional" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Functional</TabsTrigger>
+                <TabsTrigger value="projects" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Projects</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
@@ -1754,7 +1754,7 @@ ${body.innerHTML}
               <span className="flex items-center gap-1">
                 Back
                 {hasUnsavedChanges && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" title="Unsaved changes" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" title="Unsaved changes" />
                 )}
               </span>
             </Button>
@@ -1879,8 +1879,8 @@ ${body.innerHTML}
                     </>
                   ) : (
                     <>
-                      <Cloud className="h-3 w-3 text-green-400" />
-                      <span className="text-green-400">Saved</span>
+                      <Cloud className="h-3 w-3 text-primary" />
+                      <span className="text-primary">Saved</span>
                     </>
                   )}
                 </div>
@@ -1958,7 +1958,7 @@ ${body.innerHTML}
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       "w-2 h-2 rounded-full",
-                      builderMode === 'select' ? "bg-emerald-500" : "bg-blue-500"
+                      builderMode === 'select' ? "bg-primary" : "bg-accent-foreground"
                     )} />
                     <span className="text-xs font-medium text-muted-foreground">
                       {builderMode === 'select' ? 'Select Mode - Click elements to edit' : 'Preview Mode - Test interactions'}
@@ -2171,7 +2171,7 @@ export default function App() {
                       <Button
                         size="sm"
                         onClick={() => setViewMode('canvas')}
-                        className="h-7 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        className="h-7 bg-primary hover:bg-primary/90"
                       >
                         <Eye className="w-3 h-3 mr-1" />
                         View in Canvas
