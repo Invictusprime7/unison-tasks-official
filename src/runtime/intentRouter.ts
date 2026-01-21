@@ -253,7 +253,7 @@ async function handleWorkflowIntent(intent: string, payload: IntentPayload): Pro
     
     window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: { ...payload, workflowResult: data } }));
     return { success: true, data };
-  } catch (err) {
+  } catch {
     // Fallback to local event
     window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: payload }));
     return { success: true, data: { handled: 'local', intent } };

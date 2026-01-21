@@ -48,8 +48,7 @@ import { EditorTabs } from "./code-editor/EditorTabs";
 import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
-import { setDefaultBusinessId } from "@/runtime/intentRouter";
-import { handleIntent, IntentPayload } from "@/runtime/intentRouter";
+import { setDefaultBusinessId, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
