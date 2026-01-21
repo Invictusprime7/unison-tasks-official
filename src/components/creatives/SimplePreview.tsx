@@ -1875,13 +1875,27 @@ const SMART_NAVIGATION_SCRIPT = `
     
     // Determine intent from attribute or text
     const text = el.textContent ? el.textContent.trim() : '';
-    const intent = intentAttr || inferIntent(text) || inferIntent(el.getAttribute('aria-label'));
+    const inferredIntent = intentAttr || inferIntent(text) || inferIntent(el.getAttribute('aria-label'));
+
+    // If it's a button-like element and we can't infer an intent, still open a generic pipeline
+    // so "random templates" always respond to clicks.
+    const isButtonLike = !!button || (!!anchor && !link);
+    const resolvedIntent = inferredIntent || (isButtonLike ? 'cta.click' : null);
     
-    if (intent) {
-      // Intent found - trigger it via parent window
+    if (resolvedIntent) {
+      // Intent found (or fallback) - trigger it via parent window
       e.preventDefault();
       e.stopPropagation();
-      triggerIntent(intent, collectPayload(el), el);
+
+      const href = link ? link.getAttribute('href') : null;
+      const basePayload = collectPayload(el);
+      const payload = Object.assign({}, basePayload, {
+        label: text,
+        href: href || undefined,
+        elementTag: (el.tagName || '').toLowerCase(),
+      });
+
+      triggerIntent(resolvedIntent, payload, el);
       return;
     }
     
@@ -1903,13 +1917,13 @@ const SMART_NAVIGATION_SCRIPT = `
       console.log('[Preview] Button clicked (no intent):', text);
       
       if (!theme) theme = extractTheme();
-      const navType = detectNavigationType(button, '');
+      const target = button || anchor;
+      const navType = detectNavigationType(target, '');
       
       if (navType.type !== 'page') {
         createRedirectOverlay(navType, theme, text, '');
       } else {
         // Just show visual feedback for generic buttons
-        const target = button || anchor;
         if (target) {
           target.style.opacity = '0.7';
           setTimeout(function() { target.style.opacity = '1'; }, 150);
