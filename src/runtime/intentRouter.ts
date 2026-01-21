@@ -334,8 +334,9 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
   
   // Generate a fallback businessId if still missing (for demo/preview mode)
   if (!payload.businessId) {
-    payload.businessId = 'demo-' + Date.now().toString(36);
-    console.log("[IntentRouter] Using demo businessId:", payload.businessId);
+    // IMPORTANT: must be a UUID because backend tables commonly type business_id as uuid
+    payload.businessId = crypto.randomUUID();
+    console.log("[IntentRouter] Generated fallback businessId:", payload.businessId);
   }
   
   try {
