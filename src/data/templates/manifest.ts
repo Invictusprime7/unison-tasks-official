@@ -110,83 +110,999 @@ export interface ProvisioningStatus {
 }
 
 // ============================================================================
+// SHARED TABLE DEFINITIONS
+// ============================================================================
+
+const BOOKING_TABLES: TableRequirement[] = [
+  {
+    name: 'services',
+    description: 'Available services for booking',
+    columns: ['id', 'business_id', 'name', 'duration_minutes', 'price_cents', 'description', 'is_active'],
+    critical: true,
+  },
+  {
+    name: 'availability_slots',
+    description: 'Available time slots',
+    columns: ['id', 'business_id', 'service_id', 'starts_at', 'ends_at', 'is_booked'],
+    critical: true,
+  },
+  {
+    name: 'bookings',
+    description: 'Customer bookings',
+    columns: ['id', 'business_id', 'service_id', 'customer_name', 'customer_email', 'booking_date', 'booking_time', 'status'],
+    critical: true,
+  },
+];
+
+const LEAD_TABLES: TableRequirement[] = [
+  {
+    name: 'leads',
+    description: 'Contact form submissions',
+    columns: ['id', 'business_id', 'name', 'email', 'phone', 'message', 'source'],
+    critical: true,
+  },
+];
+
+const CRM_TABLES: TableRequirement[] = [
+  {
+    name: 'crm_contacts',
+    description: 'Client contact database',
+    columns: ['id', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'company', 'tags'],
+    critical: false,
+  },
+  {
+    name: 'crm_leads',
+    description: 'Sales pipeline',
+    columns: ['id', 'user_id', 'contact_id', 'title', 'status', 'value', 'source'],
+    critical: false,
+  },
+];
+
+const ECOMMERCE_TABLES: TableRequirement[] = [
+  {
+    name: 'products',
+    description: 'Product catalog',
+    columns: ['id', 'business_id', 'name', 'description', 'price_cents', 'image_url', 'stock_quantity', 'is_active'],
+    critical: true,
+  },
+  {
+    name: 'cart_items',
+    description: 'Shopping cart',
+    columns: ['id', 'session_id', 'user_id', 'product_id', 'quantity'],
+    critical: true,
+  },
+  {
+    name: 'orders',
+    description: 'Customer orders',
+    columns: ['id', 'session_id', 'user_id', 'customer_email', 'items', 'subtotal', 'total', 'status'],
+    critical: true,
+  },
+];
+
+// ============================================================================
+// SHARED WORKFLOW DEFINITIONS
+// ============================================================================
+
+const BOOKING_WORKFLOWS: WorkflowRequirement[] = [
+  {
+    id: 'booking-confirmation',
+    name: 'Booking Confirmation',
+    triggerType: 'booking_created',
+    description: 'Send confirmation when booking is made',
+    requiredSteps: ['create_activity', 'send_email'],
+  },
+  {
+    id: 'booking-reminder',
+    name: 'Booking Reminder',
+    triggerType: 'scheduled',
+    description: 'Send reminder 24h before appointment',
+    requiredSteps: ['send_email'],
+  },
+];
+
+const LEAD_WORKFLOWS: WorkflowRequirement[] = [
+  {
+    id: 'lead-notification',
+    name: 'New Lead Notification',
+    triggerType: 'form_submit',
+    description: 'Notify owner of new inquiry',
+    requiredSteps: ['send_email', 'create_activity'],
+  },
+];
+
+const ORDER_WORKFLOWS: WorkflowRequirement[] = [
+  {
+    id: 'order-confirmation',
+    name: 'Order Confirmation',
+    triggerType: 'payment_completed',
+    description: 'Send order confirmation after payment',
+    requiredSteps: ['send_email', 'create_activity'],
+  },
+];
+
+// ============================================================================
+// SHARED INTENT DEFINITIONS
+// ============================================================================
+
+const BOOKING_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'booking.create',
+    label: 'Book Appointment',
+    handler: 'create-booking',
+    outcome: 'New booking in system + confirmation',
+  },
+  {
+    intent: 'reservation.submit',
+    label: 'Reserve',
+    handler: 'create-booking',
+    outcome: 'Reservation confirmed',
+  },
+  {
+    intent: 'reservation.start',
+    label: 'Start Reservation',
+    handler: 'create-booking',
+    outcome: 'Begin reservation flow',
+  },
+];
+
+const CONTACT_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'contact.submit',
+    label: 'Contact Us',
+    handler: 'create-lead',
+    outcome: 'Lead captured in CRM',
+  },
+  {
+    intent: 'contact.sales',
+    label: 'Contact Sales',
+    handler: 'create-lead',
+    outcome: 'Sales inquiry captured',
+  },
+];
+
+const NEWSLETTER_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'newsletter.subscribe',
+    label: 'Subscribe',
+    handler: 'create-lead',
+    outcome: 'Subscriber added to list',
+  },
+];
+
+const AUTH_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'auth.login',
+    label: 'Log In',
+    handler: 'auth-login',
+    outcome: 'User authenticated',
+  },
+  {
+    intent: 'auth.signup',
+    label: 'Sign Up',
+    handler: 'auth-signup',
+    outcome: 'New account created',
+  },
+];
+
+const TRIAL_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'trial.start',
+    label: 'Start Free Trial',
+    handler: 'create-lead',
+    outcome: 'Trial account initiated',
+  },
+  {
+    intent: 'demo.request',
+    label: 'Request Demo',
+    handler: 'create-booking',
+    outcome: 'Demo scheduled',
+  },
+];
+
+const PRICING_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'pricing.select',
+    label: 'Select Plan',
+    handler: 'checkout-start',
+    outcome: 'Checkout initiated',
+  },
+];
+
+const ECOMMERCE_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'cart.add',
+    label: 'Add to Cart',
+    handler: 'cart-add',
+    outcome: 'Product added to cart',
+  },
+  {
+    intent: 'cart.view',
+    label: 'View Cart',
+    handler: 'cart-view',
+    outcome: 'Display cart contents',
+  },
+  {
+    intent: 'checkout.start',
+    label: 'Checkout',
+    handler: 'checkout-start',
+    outcome: 'Begin checkout flow',
+  },
+];
+
+const QUOTE_INTENTS: IntentRequirement[] = [
+  {
+    intent: 'quote.request',
+    label: 'Request Quote',
+    handler: 'create-lead',
+    outcome: 'Quote request submitted',
+  },
+];
+
+// ============================================================================
+// SHARED ROLE DEFINITIONS
+// ============================================================================
+
+const OWNER_ROLE: RoleRequirement = {
+  role: 'owner',
+  permissions: ['manage_all', 'view_analytics', 'manage_team'],
+  description: 'Business owner with full access',
+};
+
+const STAFF_ROLE: RoleRequirement = {
+  role: 'staff',
+  permissions: ['view_bookings', 'update_status'],
+  description: 'Staff member with limited access',
+};
+
+// ============================================================================
 // TEMPLATE MANIFESTS - Each template declares its backend requirements
 // ============================================================================
 
 export const templateManifests: Record<string, TemplateManifest> = {
-  // ----- BOOKING SYSTEM TEMPLATES -----
+  
+  // =========================================================================
+  // RESTAURANT TEMPLATES
+  // =========================================================================
+  
+  'restaurant-fine-dining': {
+    id: 'restaurant-fine-dining',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE, STAFF_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'restaurant_guests',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Restaurant Guests',
+      stages: ['New Reservation', 'Confirmed', 'Seated', 'Completed', 'VIP'],
+      defaultStage: 'New Reservation',
+    },
+    businessOutcome: 'Table reservations with confirmation and guest management',
+  },
+
+  'restaurant-casual': {
+    id: 'restaurant-casual',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Casual dining reservations and online ordering',
+  },
+
+  'restaurant-cafe': {
+    id: 'restaurant-cafe',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Coffee shop orders and event bookings',
+  },
+
+  'restaurant-bar': {
+    id: 'restaurant-bar',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Bar reservations and event bookings',
+  },
+
+  'restaurant-food-truck': {
+    id: 'restaurant-food-truck',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Food truck location updates and catering inquiries',
+  },
+
+  // =========================================================================
+  // LANDING / SAAS TEMPLATES
+  // =========================================================================
+
+  'landing-saas-modern': {
+    id: 'landing-saas-modern',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...TRIAL_INTENTS, ...PRICING_INTENTS, ...CONTACT_INTENTS, ...AUTH_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'saas_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'SaaS Pipeline',
+      stages: ['Trial', 'Activated', 'Paying', 'At Risk', 'Churned'],
+      defaultStage: 'Trial',
+    },
+    businessOutcome: 'SaaS trial signups with automated onboarding',
+  },
+
+  'landing-agency': {
+    id: 'landing-agency',
+    version: '1.0.0',
+    systemType: 'agency',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'agency_leads',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Agency Leads',
+      stages: ['New Lead', 'Qualified', 'Proposal', 'Won', 'Lost'],
+      defaultStage: 'New Lead',
+    },
+    businessOutcome: 'Agency lead generation with sales pipeline',
+  },
+
+  'landing-app': {
+    id: 'landing-app',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS, ...TRIAL_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'App waitlist and beta signups',
+  },
+
+  'landing-product': {
+    id: 'landing-product',
+    version: '1.0.0',
+    systemType: 'store',
+    tables: [...LEAD_TABLES, ...ECOMMERCE_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...ORDER_WORKFLOWS],
+    intents: [...ECOMMERCE_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Product launch with pre-orders',
+  },
+
+  'landing-event': {
+    id: 'landing-event',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Event registrations with confirmations',
+  },
+
+  // =========================================================================
+  // STARTUP TEMPLATES
+  // =========================================================================
+
+  'startup-saas': {
+    id: 'startup-saas',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...TRIAL_INTENTS, ...PRICING_INTENTS, ...CONTACT_INTENTS, ...AUTH_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'startup_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Startup Pipeline',
+      stages: ['Signup', 'Onboarding', 'Active', 'Expansion', 'Churned'],
+      defaultStage: 'Signup',
+    },
+    businessOutcome: 'SaaS trials and subscription management',
+  },
+
+  'startup-mobile': {
+    id: 'startup-mobile',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS, ...TRIAL_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Mobile app downloads and beta signups',
+  },
+
+  'startup-ai': {
+    id: 'startup-ai',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...TRIAL_INTENTS, ...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'AI product demos and enterprise inquiries',
+  },
+
+  'startup-devtool': {
+    id: 'startup-devtool',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...TRIAL_INTENTS, ...AUTH_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Developer tool signups and documentation access',
+  },
+
+  'startup-fintech': {
+    id: 'startup-fintech',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...TRIAL_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'fintech_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Financial product signups with compliance flow',
+  },
+
+  // =========================================================================
+  // PORTFOLIO TEMPLATES
+  // =========================================================================
+
+  'portfolio-creative': {
+    id: 'portfolio-creative',
+    version: '1.0.0',
+    systemType: 'portfolio',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'client_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Client Pipeline',
+      stages: ['Inquiry', 'Proposal', 'Negotiating', 'Won', 'Completed'],
+      defaultStage: 'Inquiry',
+    },
+    businessOutcome: 'Client inquiries and project management',
+  },
+
+  'portfolio-developer': {
+    id: 'portfolio-developer',
+    version: '1.0.0',
+    systemType: 'portfolio',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Developer portfolio with project inquiries',
+  },
+
+  'portfolio-photographer': {
+    id: 'portfolio-photographer',
+    version: '1.0.0',
+    systemType: 'portfolio',
+    tables: [...LEAD_TABLES, ...BOOKING_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...BOOKING_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'photo_clients',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Photo Clients',
+      stages: ['Inquiry', 'Consultation', 'Booked', 'Delivered', 'Completed'],
+      defaultStage: 'Inquiry',
+    },
+    businessOutcome: 'Photography booking and client gallery delivery',
+  },
+
+  'portfolio-minimal': {
+    id: 'portfolio-minimal',
+    version: '1.0.0',
+    systemType: 'portfolio',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Minimal portfolio with contact capture',
+  },
+
+  'portfolio-studio': {
+    id: 'portfolio-studio',
+    version: '1.0.0',
+    systemType: 'agency',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'studio_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Design studio leads and project pipeline',
+  },
+
+  // =========================================================================
+  // E-COMMERCE TEMPLATES
+  // =========================================================================
+
+  'ecommerce-fashion': {
+    id: 'ecommerce-fashion',
+    version: '1.0.0',
+    systemType: 'store',
+    tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES],
+    workflows: [...ORDER_WORKFLOWS, ...LEAD_WORKFLOWS],
+    intents: [...ECOMMERCE_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Fashion store with cart, checkout, and order management',
+  },
+
+  'ecommerce-electronics': {
+    id: 'ecommerce-electronics',
+    version: '1.0.0',
+    systemType: 'store',
+    tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES],
+    workflows: [...ORDER_WORKFLOWS],
+    intents: [...ECOMMERCE_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Electronics store with product catalog and orders',
+  },
+
+  'ecommerce-minimal': {
+    id: 'ecommerce-minimal',
+    version: '1.0.0',
+    systemType: 'store',
+    tables: [...ECOMMERCE_TABLES],
+    workflows: [...ORDER_WORKFLOWS],
+    intents: [...ECOMMERCE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Minimal store with essential e-commerce flow',
+  },
+
+  'ecommerce-subscription': {
+    id: 'ecommerce-subscription',
+    version: '1.0.0',
+    systemType: 'store',
+    tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES],
+    workflows: [...ORDER_WORKFLOWS, ...LEAD_WORKFLOWS],
+    intents: [...ECOMMERCE_INTENTS, ...NEWSLETTER_INTENTS, ...PRICING_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Subscription box with recurring billing',
+  },
+
+  'ecommerce-marketplace': {
+    id: 'ecommerce-marketplace',
+    version: '1.0.0',
+    systemType: 'store',
+    tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...ORDER_WORKFLOWS, ...LEAD_WORKFLOWS],
+    intents: [...ECOMMERCE_INTENTS, ...CONTACT_INTENTS, ...AUTH_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Multi-vendor marketplace with seller management',
+  },
+
+  // =========================================================================
+  // BLOG / CONTENT TEMPLATES
+  // =========================================================================
+
+  'blog-tech': {
+    id: 'blog-tech',
+    version: '1.0.0',
+    systemType: 'content',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Tech blog with newsletter signups',
+  },
+
+  'blog-lifestyle': {
+    id: 'blog-lifestyle',
+    version: '1.0.0',
+    systemType: 'content',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Lifestyle blog with subscriber growth',
+  },
+
+  'blog-magazine': {
+    id: 'blog-magazine',
+    version: '1.0.0',
+    systemType: 'content',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Digital magazine with subscription management',
+  },
+
+  'blog-personal': {
+    id: 'blog-personal',
+    version: '1.0.0',
+    systemType: 'content',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Personal blog with reader engagement',
+  },
+
+  'blog-news': {
+    id: 'blog-news',
+    version: '1.0.0',
+    systemType: 'content',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'News portal with breaking news alerts',
+  },
+
+  // =========================================================================
+  // CONTRACTOR TEMPLATES
+  // =========================================================================
+
+  'contractor-construction': {
+    id: 'contractor-construction',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...LEAD_TABLES, ...BOOKING_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...BOOKING_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'construction_leads',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Construction Leads',
+      stages: ['Inquiry', 'Site Visit', 'Quote Sent', 'Negotiating', 'Won', 'In Progress', 'Completed'],
+      defaultStage: 'Inquiry',
+    },
+    businessOutcome: 'Construction quotes and project scheduling',
+  },
+
+  'contractor-plumbing': {
+    id: 'contractor-plumbing',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...LEAD_TABLES, ...BOOKING_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...BOOKING_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Plumbing service calls and appointment scheduling',
+  },
+
+  'contractor-electrical': {
+    id: 'contractor-electrical',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...LEAD_TABLES, ...BOOKING_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...BOOKING_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Electrical service bookings and estimates',
+  },
+
+  'contractor-landscaping': {
+    id: 'contractor-landscaping',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...LEAD_TABLES, ...BOOKING_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...BOOKING_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Landscaping quotes and seasonal scheduling',
+  },
+
+  'contractor-handyman': {
+    id: 'contractor-handyman',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...LEAD_TABLES, ...BOOKING_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...BOOKING_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Handyman service requests and job scheduling',
+  },
+
+  // =========================================================================
+  // AGENCY TEMPLATES
+  // =========================================================================
+
+  'agency-marketing': {
+    id: 'agency-marketing',
+    version: '1.0.0',
+    systemType: 'agency',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'marketing_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Marketing Pipeline',
+      stages: ['Lead', 'Discovery Call', 'Proposal', 'Negotiation', 'Closed'],
+      defaultStage: 'Lead',
+    },
+    businessOutcome: 'Marketing agency lead generation and client onboarding',
+  },
+
+  'agency-creative': {
+    id: 'agency-creative',
+    version: '1.0.0',
+    systemType: 'agency',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'creative_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Creative agency portfolio and project inquiries',
+  },
+
+  'agency-consulting': {
+    id: 'agency-consulting',
+    version: '1.0.0',
+    systemType: 'agency',
+    tables: [...LEAD_TABLES, ...CRM_TABLES, ...BOOKING_TABLES],
+    workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...TRIAL_INTENTS, ...BOOKING_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'consulting_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Consulting Pipeline',
+      stages: ['Inquiry', 'Discovery', 'Proposal', 'Engagement', 'Delivery'],
+      defaultStage: 'Inquiry',
+    },
+    businessOutcome: 'Consulting engagement booking and project delivery',
+  },
+
+  'agency-digital': {
+    id: 'agency-digital',
+    version: '1.0.0',
+    systemType: 'agency',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'digital_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Digital agency leads and retainer management',
+  },
+
+  'agency-design': {
+    id: 'agency-design',
+    version: '1.0.0',
+    systemType: 'agency',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'design_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Design studio project inquiries and client management',
+  },
+
+  // =========================================================================
+  // FALLBACK MANIFESTS (for generic template matching)
+  // =========================================================================
+
   'salon-booking': {
     id: 'salon-booking',
     version: '1.0.0',
     systemType: 'booking',
-    tables: [
-      {
-        name: 'services',
-        description: 'Available services for booking',
-        columns: ['id', 'business_id', 'name', 'duration_minutes', 'price_cents', 'description', 'is_active'],
-        critical: true,
-      },
-      {
-        name: 'availability_slots',
-        description: 'Available time slots',
-        columns: ['id', 'business_id', 'service_id', 'starts_at', 'ends_at', 'is_booked'],
-        critical: true,
-      },
-      {
-        name: 'bookings',
-        description: 'Customer bookings',
-        columns: ['id', 'business_id', 'service_id', 'customer_name', 'customer_email', 'booking_date', 'booking_time', 'status'],
-        critical: true,
-      },
-      {
-        name: 'leads',
-        description: 'Contact form submissions',
-        columns: ['id', 'business_id', 'name', 'email', 'phone', 'message', 'source'],
-        critical: false,
-      },
-    ],
-    workflows: [
-      {
-        id: 'booking-confirmation',
-        name: 'Booking Confirmation',
-        triggerType: 'booking_created',
-        description: 'Send confirmation when booking is made',
-        requiredSteps: ['create_activity', 'send_email'],
-      },
-      {
-        id: 'booking-reminder',
-        name: 'Booking Reminder',
-        triggerType: 'scheduled',
-        description: 'Send reminder 24h before appointment',
-        requiredSteps: ['send_email'],
-      },
-    ],
-    intents: [
-      {
-        intent: 'booking.create',
-        label: 'Book Appointment',
-        handler: 'create-booking',
-        outcome: 'New booking in system + confirmation',
-      },
-      {
-        intent: 'contact.submit',
-        label: 'Contact Us',
-        handler: 'create-lead',
-        outcome: 'Lead captured in CRM',
-      },
-    ],
-    roles: [
-      {
-        role: 'owner',
-        permissions: ['manage_services', 'view_bookings', 'manage_availability', 'view_analytics'],
-        description: 'Business owner with full access',
-      },
-      {
-        role: 'staff',
-        permissions: ['view_bookings', 'update_booking_status'],
-        description: 'Staff member with limited access',
-      },
-    ],
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE, STAFF_ROLE],
     defaults: {
       workflowsEnabled: true,
       crmPipeline: 'salon_clients',
@@ -198,126 +1114,17 @@ export const templateManifests: Record<string, TemplateManifest> = {
       stages: ['New Lead', 'Contacted', 'Booked', 'Completed', 'Repeat Client'],
       defaultStage: 'New Lead',
     },
-    businessOutcome: 'Automated appointment booking with confirmation and reminders',
+    businessOutcome: 'Salon appointment booking with confirmation and reminders',
   },
 
-  'restaurant-booking': {
-    id: 'restaurant-booking',
-    version: '1.0.0',
-    systemType: 'booking',
-    tables: [
-      {
-        name: 'services',
-        description: 'Table/seating options',
-        columns: ['id', 'business_id', 'name', 'duration_minutes', 'description', 'is_active'],
-        critical: true,
-      },
-      {
-        name: 'availability_slots',
-        description: 'Available reservation times',
-        columns: ['id', 'business_id', 'starts_at', 'ends_at', 'is_booked'],
-        critical: true,
-      },
-      {
-        name: 'bookings',
-        description: 'Table reservations',
-        columns: ['id', 'business_id', 'customer_name', 'customer_email', 'customer_phone', 'booking_date', 'booking_time', 'notes', 'status'],
-        critical: true,
-      },
-    ],
-    workflows: [
-      {
-        id: 'reservation-confirmation',
-        name: 'Reservation Confirmation',
-        triggerType: 'booking_created',
-        description: 'Confirm reservation immediately',
-        requiredSteps: ['send_email'],
-      },
-    ],
-    intents: [
-      {
-        intent: 'reservation.submit',
-        label: 'Reserve Table',
-        handler: 'create-booking',
-        outcome: 'Table reserved with confirmation',
-      },
-      {
-        intent: 'contact.submit',
-        label: 'Contact Restaurant',
-        handler: 'create-lead',
-        outcome: 'Inquiry captured',
-      },
-    ],
-    roles: [
-      {
-        role: 'owner',
-        permissions: ['manage_reservations', 'view_analytics'],
-        description: 'Restaurant owner',
-      },
-    ],
-    defaults: {
-      workflowsEnabled: true,
-      notificationsEnabled: true,
-      analyticsEnabled: true,
-    },
-    businessOutcome: 'Online table reservations with instant confirmation',
-  },
-
-  // ----- PORTFOLIO SYSTEM TEMPLATES -----
   'creator-portfolio': {
     id: 'creator-portfolio',
     version: '1.0.0',
     systemType: 'portfolio',
-    tables: [
-      {
-        name: 'leads',
-        description: 'Client inquiries',
-        columns: ['id', 'business_id', 'name', 'email', 'phone', 'message', 'source'],
-        critical: true,
-      },
-      {
-        name: 'crm_contacts',
-        description: 'Client contact database',
-        columns: ['id', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'company', 'tags'],
-        critical: false,
-      },
-    ],
-    workflows: [
-      {
-        id: 'inquiry-response',
-        name: 'Inquiry Auto-Response',
-        triggerType: 'form_submit',
-        description: 'Acknowledge client inquiry immediately',
-        requiredSteps: ['send_email', 'create_activity'],
-      },
-    ],
-    intents: [
-      {
-        intent: 'contact.submit',
-        label: 'Get in Touch',
-        handler: 'create-lead',
-        outcome: 'Client inquiry captured',
-      },
-      {
-        intent: 'project.inquire',
-        label: 'Project Inquiry',
-        handler: 'create-lead',
-        outcome: 'Project request logged',
-      },
-      {
-        intent: 'quote.request',
-        label: 'Request Quote',
-        handler: 'create-lead',
-        outcome: 'Quote request in CRM',
-      },
-    ],
-    roles: [
-      {
-        role: 'owner',
-        permissions: ['view_inquiries', 'manage_portfolio', 'view_analytics'],
-        description: 'Portfolio owner',
-      },
-    ],
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
       crmPipeline: 'client_pipeline',
@@ -329,77 +1136,17 @@ export const templateManifests: Record<string, TemplateManifest> = {
       stages: ['Inquiry', 'Proposal Sent', 'Negotiating', 'Won', 'Lost'],
       defaultStage: 'Inquiry',
     },
-    businessOutcome: 'Client inquiry capture with CRM pipeline',
+    businessOutcome: 'Creator portfolio with client inquiry capture',
   },
 
-  // ----- STORE SYSTEM TEMPLATES -----
   'ecommerce-store': {
     id: 'ecommerce-store',
     version: '1.0.0',
     systemType: 'store',
-    tables: [
-      {
-        name: 'products',
-        description: 'Product catalog',
-        columns: ['id', 'business_id', 'name', 'description', 'price_cents', 'image_url', 'stock_quantity', 'is_active'],
-        critical: true,
-      },
-      {
-        name: 'cart_items',
-        description: 'Shopping cart',
-        columns: ['id', 'session_id', 'user_id', 'product_id', 'quantity'],
-        critical: true,
-      },
-      {
-        name: 'orders',
-        description: 'Customer orders',
-        columns: ['id', 'session_id', 'user_id', 'customer_email', 'items', 'subtotal', 'total', 'status'],
-        critical: true,
-      },
-    ],
-    workflows: [
-      {
-        id: 'order-confirmation',
-        name: 'Order Confirmation',
-        triggerType: 'payment_completed',
-        description: 'Send order confirmation after payment',
-        requiredSteps: ['send_email', 'create_activity'],
-      },
-      {
-        id: 'abandoned-cart',
-        name: 'Abandoned Cart Recovery',
-        triggerType: 'scheduled',
-        description: 'Email customers with abandoned carts',
-        requiredSteps: ['send_email'],
-      },
-    ],
-    intents: [
-      {
-        intent: 'cart.add',
-        label: 'Add to Cart',
-        handler: 'cart-add',
-        outcome: 'Product added to cart',
-      },
-      {
-        intent: 'cart.view',
-        label: 'View Cart',
-        handler: 'cart-view',
-        outcome: 'Display cart contents',
-      },
-      {
-        intent: 'checkout.start',
-        label: 'Checkout',
-        handler: 'checkout-start',
-        outcome: 'Begin checkout flow',
-      },
-    ],
-    roles: [
-      {
-        role: 'owner',
-        permissions: ['manage_products', 'view_orders', 'manage_inventory', 'view_analytics'],
-        description: 'Store owner',
-      },
-    ],
+    tables: [...ECOMMERCE_TABLES],
+    workflows: [...ORDER_WORKFLOWS],
+    intents: [...ECOMMERCE_INTENTS],
+    roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
       notificationsEnabled: true,
@@ -408,79 +1155,14 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Online store with cart, checkout, and order management',
   },
 
-  // ----- AGENCY SYSTEM TEMPLATES -----
   'agency-services': {
     id: 'agency-services',
     version: '1.0.0',
     systemType: 'agency',
-    tables: [
-      {
-        name: 'leads',
-        description: 'Sales inquiries',
-        columns: ['id', 'business_id', 'name', 'email', 'phone', 'message', 'source'],
-        critical: true,
-      },
-      {
-        name: 'crm_leads',
-        description: 'Sales pipeline',
-        columns: ['id', 'user_id', 'contact_id', 'title', 'status', 'value', 'source'],
-        critical: true,
-      },
-      {
-        name: 'crm_contacts',
-        description: 'Client database',
-        columns: ['id', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'company'],
-        critical: true,
-      },
-    ],
-    workflows: [
-      {
-        id: 'lead-qualification',
-        name: 'Lead Qualification',
-        triggerType: 'form_submit',
-        description: 'Score and route new leads',
-        requiredSteps: ['create_contact', 'create_lead', 'create_activity'],
-      },
-      {
-        id: 'demo-booked',
-        name: 'Demo Scheduled',
-        triggerType: 'booking_created',
-        description: 'Prep for demo after booking',
-        requiredSteps: ['send_email', 'create_activity'],
-      },
-    ],
-    intents: [
-      {
-        intent: 'contact.sales',
-        label: 'Contact Sales',
-        handler: 'create-lead',
-        outcome: 'Sales lead captured',
-      },
-      {
-        intent: 'demo.request',
-        label: 'Book Demo',
-        handler: 'create-booking',
-        outcome: 'Demo scheduled',
-      },
-      {
-        intent: 'quote.request',
-        label: 'Request Quote',
-        handler: 'create-lead',
-        outcome: 'Quote request in pipeline',
-      },
-    ],
-    roles: [
-      {
-        role: 'owner',
-        permissions: ['manage_leads', 'view_analytics', 'manage_team'],
-        description: 'Agency owner',
-      },
-      {
-        role: 'sales',
-        permissions: ['view_leads', 'update_lead_status', 'create_activities'],
-        description: 'Sales team member',
-      },
-    ],
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...TRIAL_INTENTS, ...QUOTE_INTENTS],
+    roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
       crmPipeline: 'agency_sales',
@@ -489,131 +1171,36 @@ export const templateManifests: Record<string, TemplateManifest> = {
     },
     crmPipeline: {
       name: 'Agency Sales Pipeline',
-      stages: ['New Lead', 'Qualified', 'Demo Scheduled', 'Proposal Sent', 'Negotiating', 'Closed Won', 'Closed Lost'],
+      stages: ['New Lead', 'Qualified', 'Demo Scheduled', 'Proposal Sent', 'Closed Won', 'Closed Lost'],
       defaultStage: 'New Lead',
     },
-    businessOutcome: 'Lead generation with sales pipeline and demo scheduling',
+    businessOutcome: 'Agency lead generation with sales pipeline',
   },
 
-  // ----- CONTENT/BLOG SYSTEM TEMPLATES -----
   'content-blog': {
     id: 'content-blog',
     version: '1.0.0',
     systemType: 'content',
-    tables: [
-      {
-        name: 'leads',
-        description: 'Newsletter subscribers',
-        columns: ['id', 'business_id', 'name', 'email', 'source'],
-        critical: true,
-      },
-    ],
-    workflows: [
-      {
-        id: 'welcome-email',
-        name: 'Welcome Email',
-        triggerType: 'form_submit',
-        description: 'Send welcome email to new subscribers',
-        requiredSteps: ['send_email'],
-      },
-    ],
-    intents: [
-      {
-        intent: 'newsletter.subscribe',
-        label: 'Subscribe',
-        handler: 'create-lead',
-        outcome: 'Subscriber added to list',
-      },
-      {
-        intent: 'contact.submit',
-        label: 'Contact',
-        handler: 'create-lead',
-        outcome: 'Message received',
-      },
-    ],
-    roles: [
-      {
-        role: 'owner',
-        permissions: ['manage_content', 'view_subscribers', 'view_analytics'],
-        description: 'Content owner',
-      },
-    ],
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
       notificationsEnabled: true,
       analyticsEnabled: true,
     },
-    businessOutcome: 'Newsletter signup with automated welcome sequence',
+    businessOutcome: 'Content blog with newsletter signups',
   },
 
-  // ----- SAAS SYSTEM TEMPLATES -----
   'saas-landing': {
     id: 'saas-landing',
     version: '1.0.0',
     systemType: 'saas',
-    tables: [
-      {
-        name: 'leads',
-        description: 'Trial signups and demo requests',
-        columns: ['id', 'business_id', 'name', 'email', 'source', 'metadata'],
-        critical: true,
-      },
-      {
-        name: 'user_subscriptions',
-        description: 'Subscription management',
-        columns: ['id', 'user_id', 'plan', 'status', 'stripe_subscription_id'],
-        critical: true,
-      },
-    ],
-    workflows: [
-      {
-        id: 'trial-welcome',
-        name: 'Trial Welcome Sequence',
-        triggerType: 'form_submit',
-        description: 'Onboard new trial users',
-        requiredSteps: ['send_email', 'create_activity'],
-      },
-      {
-        id: 'trial-expiring',
-        name: 'Trial Expiring',
-        triggerType: 'scheduled',
-        description: 'Notify users before trial ends',
-        requiredSteps: ['send_email'],
-      },
-    ],
-    intents: [
-      {
-        intent: 'trial.start',
-        label: 'Start Free Trial',
-        handler: 'create-lead',
-        outcome: 'Trial account created',
-      },
-      {
-        intent: 'demo.request',
-        label: 'Book Demo',
-        handler: 'create-booking',
-        outcome: 'Demo scheduled',
-      },
-      {
-        intent: 'pricing.select',
-        label: 'Select Plan',
-        handler: 'checkout-start',
-        outcome: 'Checkout initiated',
-      },
-      {
-        intent: 'newsletter.subscribe',
-        label: 'Subscribe',
-        handler: 'create-lead',
-        outcome: 'Added to mailing list',
-      },
-    ],
-    roles: [
-      {
-        role: 'owner',
-        permissions: ['manage_subscriptions', 'view_analytics', 'manage_team'],
-        description: 'SaaS owner',
-      },
-    ],
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...TRIAL_INTENTS, ...PRICING_INTENTS, ...NEWSLETTER_INTENTS, ...AUTH_INTENTS],
+    roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
       crmPipeline: 'saas_pipeline',
@@ -629,11 +1216,32 @@ export const templateManifests: Record<string, TemplateManifest> = {
   },
 };
 
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 /**
  * Get manifest for a template ID
  */
 export function getTemplateManifest(templateId: string): TemplateManifest | undefined {
   return templateManifests[templateId];
+}
+
+/**
+ * Get manifest by fuzzy matching template ID
+ * Useful when template IDs don't exactly match manifest keys
+ */
+export function getManifestByPattern(templateId: string): TemplateManifest | undefined {
+  // Exact match first
+  if (templateManifests[templateId]) {
+    return templateManifests[templateId];
+  }
+  
+  // Try prefix matching (e.g., "restaurant-" matches any restaurant template)
+  const prefix = templateId.split('-')[0];
+  const matchingKey = Object.keys(templateManifests).find(key => key.startsWith(prefix));
+  
+  return matchingKey ? templateManifests[matchingKey] : undefined;
 }
 
 /**
@@ -684,7 +1292,6 @@ export function validateManifest(manifest: TemplateManifest): { valid: boolean; 
 
 /**
  * Check if all required tables exist for a manifest
- * This would query Supabase to verify table existence
  */
 export function getRequiredTables(manifest: TemplateManifest): string[] {
   return manifest.tables.filter(t => t.critical).map(t => t.name);
@@ -695,4 +1302,25 @@ export function getRequiredTables(manifest: TemplateManifest): string[] {
  */
 export function getRequiredIntents(manifest: TemplateManifest): string[] {
   return manifest.intents.map(i => i.intent);
+}
+
+/**
+ * Get manifest stats for UI display
+ */
+export function getManifestStats(manifest: TemplateManifest): {
+  tableCount: number;
+  workflowCount: number;
+  intentCount: number;
+  hasCRM: boolean;
+  hasBooking: boolean;
+  hasEcommerce: boolean;
+} {
+  return {
+    tableCount: manifest.tables.length,
+    workflowCount: manifest.workflows.length,
+    intentCount: manifest.intents.length,
+    hasCRM: manifest.crmPipeline !== undefined,
+    hasBooking: manifest.tables.some(t => t.name === 'bookings'),
+    hasEcommerce: manifest.tables.some(t => t.name === 'products' || t.name === 'orders'),
+  };
 }

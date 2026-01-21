@@ -1,6 +1,6 @@
 /**
  * SystemHealthPanel
- * Shows intent status and publish readiness for the current system
+ * Shows intent status, manifest info, and publish readiness for the current system
  */
 
 import React, { useMemo } from 'react';
@@ -11,7 +11,10 @@ import {
   Activity, 
   Zap,
   Shield,
-  ChevronRight
+  ChevronRight,
+  Database,
+  Workflow,
+  Users
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +28,11 @@ import {
   type SystemContract,
   type PublishCheck 
 } from '@/data/templates/contracts';
+import {
+  getDefaultManifestForSystem,
+  getManifestStats,
+  type TemplateManifest
+} from '@/data/templates/manifest';
 import { isValidIntent } from '@/runtime/intentRouter';
 import type { BusinessSystemType } from '@/data/templates/types';
 
@@ -45,6 +53,7 @@ interface SystemHealthPanelProps {
 const intentLabels: Record<string, string> = {
   'booking.create': 'Create Booking',
   'reservation.submit': 'Submit Reservation',
+  'reservation.start': 'Start Reservation',
   'contact.submit': 'Contact Form',
   'contact.sales': 'Sales Inquiry',
   'project.inquire': 'Project Inquiry',
@@ -56,6 +65,8 @@ const intentLabels: Record<string, string> = {
   'trial.start': 'Start Trial',
   'pricing.select': 'Select Pricing',
   'newsletter.subscribe': 'Newsletter Signup',
+  'auth.login': 'Login',
+  'auth.signup': 'Sign Up',
 };
 
 export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
@@ -67,6 +78,15 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
   const contract = useMemo(() => {
     return systemType ? getSystemContract(systemType) : undefined;
   }, [systemType]);
+
+  // Get manifest for backend info
+  const manifest = useMemo((): TemplateManifest | null => {
+    return systemType ? getDefaultManifestForSystem(systemType) : null;
+  }, [systemType]);
+
+  const manifestStats = useMemo(() => {
+    return manifest ? getManifestStats(manifest) : null;
+  }, [manifest]);
 
   const intentStatuses = useMemo((): IntentStatus[] => {
     if (!contract) return [];
@@ -162,6 +182,42 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
           </div>
           <Progress value={healthScore} className="h-2" />
         </div>
+
+        {/* Backend Resources (from Manifest) */}
+        {manifestStats && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+              <Database className="w-4 h-4 text-primary mb-1" />
+              <span className="text-xs font-medium">{manifestStats.tableCount}</span>
+              <span className="text-[10px] text-muted-foreground">Tables</span>
+            </div>
+            <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+              <Workflow className="w-4 h-4 text-primary mb-1" />
+              <span className="text-xs font-medium">{manifestStats.workflowCount}</span>
+              <span className="text-[10px] text-muted-foreground">Workflows</span>
+            </div>
+            <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+              <Zap className="w-4 h-4 text-primary mb-1" />
+              <span className="text-xs font-medium">{manifestStats.intentCount}</span>
+              <span className="text-[10px] text-muted-foreground">Intents</span>
+            </div>
+          </div>
+        )}
+
+        {/* System Capabilities */}
+        {manifestStats && (
+          <div className="flex flex-wrap gap-1.5">
+            {manifestStats.hasBooking && (
+              <Badge variant="outline" className="text-[10px]">📅 Booking</Badge>
+            )}
+            {manifestStats.hasEcommerce && (
+              <Badge variant="outline" className="text-[10px]">🛒 E-commerce</Badge>
+            )}
+            {manifestStats.hasCRM && (
+              <Badge variant="outline" className="text-[10px]">👥 CRM Pipeline</Badge>
+            )}
+          </div>
+        )}
 
         {/* Required Intents Status */}
         <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
