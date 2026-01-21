@@ -373,13 +373,33 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
       enrichedPayload.source = enrichedPayload.source || LEAD_SOURCE_MAP[intent];
     }
     
-    // Add action type for booking intents
+    // Add action type and transform field names for booking intents
     if (intent === 'booking.cancel') {
       enrichedPayload.action = 'cancel';
     } else if (intent === 'booking.reschedule') {
       enrichedPayload.action = 'reschedule';
     } else if (intent === 'booking.create' || intent === 'calendar.book' || intent === 'consultation.book') {
       enrichedPayload.action = 'create';
+      
+      // Transform pipeline field names to edge function expected format
+      if (enrichedPayload.name && !enrichedPayload.customerName) {
+        enrichedPayload.customerName = enrichedPayload.name;
+      }
+      if (enrichedPayload.email && !enrichedPayload.customerEmail) {
+        enrichedPayload.customerEmail = enrichedPayload.email;
+      }
+      if (enrichedPayload.phone && !enrichedPayload.customerPhone) {
+        enrichedPayload.customerPhone = enrichedPayload.phone;
+      }
+      // Combine date + time into startsAt ISO string
+      if (enrichedPayload.date && enrichedPayload.time && !enrichedPayload.startsAt) {
+        const dateStr = enrichedPayload.date as string;
+        const timeStr = enrichedPayload.time as string;
+        enrichedPayload.startsAt = new Date(`${dateStr}T${timeStr}:00`).toISOString();
+      }
+      if (enrichedPayload.service && !enrichedPayload.serviceName) {
+        enrichedPayload.serviceName = enrichedPayload.service;
+      }
     }
     
     // Call the edge function
