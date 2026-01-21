@@ -51,6 +51,20 @@ import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 
+function getOrCreatePreviewBusinessId(systemType?: string): string {
+  const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+    return id;
+  } catch {
+    // Fallback when localStorage is unavailable
+    return crypto.randomUUID();
+  }
+}
+
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
   id?: string;
@@ -325,9 +339,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Set default businessId for intent routing
   useEffect(() => {
-    // Generate a stable businessId based on systemType or use a default
-    const effectiveBusinessId = businessId || 
-      (systemType ? `${systemType}-${Date.now().toString(36)}` : null);
+    // Use a UUID so backend tables that store business_id as UUID don't fail
+    const effectiveBusinessId = businessId || getOrCreatePreviewBusinessId(systemType);
     
     if (effectiveBusinessId) {
       setDefaultBusinessId(effectiveBusinessId);

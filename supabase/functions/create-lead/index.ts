@@ -16,6 +16,10 @@ interface LeadPayload {
   metadata?: Record<string, unknown>;
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -42,6 +46,14 @@ serve(async (req) => {
     if (!businessId) {
       return new Response(
         JSON.stringify({ success: false, error: "Business ID is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate businessId format early to avoid DB 22P02 errors
+    if (!isUuid(businessId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid business ID" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
