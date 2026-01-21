@@ -1662,32 +1662,104 @@ const SMART_NAVIGATION_SCRIPT = `
   }
   
   // ============================================================================
-  // Intent System Integration
+  // Intent System Integration - Comprehensive Label → Intent Mapping
   // ============================================================================
   const LABEL_INTENTS = {
-    'sign in': 'auth.signin', 'log in': 'auth.signin', 'login': 'auth.signin',
+    // AUTH
+    'sign in': 'auth.signin', 'log in': 'auth.signin', 'login': 'auth.signin', 'member login': 'auth.signin',
     'sign up': 'auth.signup', 'register': 'auth.signup', 'get started': 'auth.signup', 'create account': 'auth.signup',
+    'join now': 'auth.signup', 'sign up free': 'auth.signup', 'start now': 'auth.signup', 'join free': 'auth.signup',
     'sign out': 'auth.signout', 'log out': 'auth.signout', 'logout': 'auth.signout',
+    
+    // TRIALS & DEMOS
     'start free trial': 'trial.start', 'start trial': 'trial.start', 'free trial': 'trial.start', 'try free': 'trial.start',
-    'join waitlist': 'join.waitlist', 'join the waitlist': 'join.waitlist',
-    'subscribe': 'newsletter.subscribe', 'get updates': 'newsletter.subscribe',
+    'try it free': 'trial.start', 'try for free': 'trial.start', 'get free trial': 'trial.start', 'begin trial': 'trial.start',
+    'watch demo': 'demo.request', 'request demo': 'demo.request', 'see demo': 'demo.request', 'book demo': 'demo.request',
+    'schedule demo': 'demo.request', 'get demo': 'demo.request', 'view demo': 'demo.request',
+    
+    // WAITLIST & BETA
+    'join waitlist': 'join.waitlist', 'join the waitlist': 'join.waitlist', 'get early access': 'join.waitlist',
+    'early access': 'join.waitlist', 'notify me': 'join.waitlist', 'coming soon': 'join.waitlist',
+    'join beta': 'beta.apply', 'beta access': 'beta.apply', 'apply for beta': 'beta.apply',
+    
+    // NEWSLETTER & SUBSCRIBE
+    'subscribe': 'newsletter.subscribe', 'get updates': 'newsletter.subscribe', 'join newsletter': 'newsletter.subscribe',
+    'stay updated': 'newsletter.subscribe', 'get notified': 'newsletter.subscribe', 'keep me posted': 'newsletter.subscribe',
+    'sign up for updates': 'newsletter.subscribe', 'subscribe now': 'newsletter.subscribe',
+    
+    // CONTACT & INQUIRY
     'contact': 'contact.submit', 'contact us': 'contact.submit', 'get in touch': 'contact.submit', 'send message': 'contact.submit',
-    'add to cart': 'cart.add', 'buy now': 'checkout.start', 'shop now': 'shop.browse', 'checkout': 'checkout.start', 'view cart': 'cart.view',
+    'reach out': 'contact.submit', 'talk to us': 'contact.submit', 'message us': 'contact.submit', 'let\\'s talk': 'contact.submit',
+    'contact sales': 'sales.contact', 'talk to sales': 'sales.contact', 'speak to sales': 'sales.contact',
+    
+    // E-COMMERCE
+    'add to cart': 'cart.add', 'add to bag': 'cart.add', 'add item': 'cart.add',
+    'buy now': 'checkout.start', 'purchase': 'checkout.start', 'buy': 'checkout.start', 'order': 'checkout.start',
+    'shop now': 'shop.browse', 'browse shop': 'shop.browse', 'explore shop': 'shop.browse', 'view products': 'shop.browse',
+    'checkout': 'checkout.start', 'proceed to checkout': 'checkout.start', 'complete purchase': 'checkout.start',
+    'view cart': 'cart.view', 'see cart': 'cart.view', 'my cart': 'cart.view', 'shopping cart': 'cart.view',
+    'add to wishlist': 'wishlist.add', 'save for later': 'wishlist.add', 'save item': 'wishlist.add',
+    'start your box': 'checkout.start', 'start my box': 'checkout.start', 'build your box': 'checkout.start',
+    'customize box': 'checkout.start', 'choose plan': 'checkout.start', 'select plan': 'checkout.start',
+    
+    // BOOKING & RESERVATION
     'book now': 'booking.create', 'reserve': 'booking.create', 'reserve table': 'booking.create', 'book service': 'booking.create',
+    'make reservation': 'booking.create', 'book appointment': 'booking.create', 'schedule now': 'booking.create',
+    'reserve now': 'booking.create', 'book a table': 'booking.create', 'table for': 'booking.create',
+    'book a call': 'calendar.book', 'schedule call': 'calendar.book', 'book meeting': 'calendar.book',
+    'book consultation': 'consultation.book', 'free consultation': 'consultation.book', 'schedule consultation': 'consultation.book',
+    
+    // QUOTES & ESTIMATES
     'get quote': 'quote.request', 'get free quote': 'quote.request', 'request quote': 'quote.request', 'free estimate': 'quote.request',
-    'watch demo': 'demo.request', 'request demo': 'demo.request',
-    'hire me': 'project.inquire', 'start a project': 'project.start', 'view work': 'portfolio.view',
-    'order online': 'order.online', 'order now': 'order.online', 'view menu': 'menu.view',
-    'read more': 'content.read', 'call now': 'call.now', 'emergency': 'emergency.service',
-    'start your box': 'checkout.start', 'start my box': 'checkout.start', 'see plans': 'pricing.view'
+    'get estimate': 'quote.request', 'request estimate': 'quote.request', 'free quote': 'quote.request',
+    'get pricing': 'quote.request', 'request pricing': 'quote.request',
+    
+    // PORTFOLIO & PROJECTS
+    'hire me': 'project.inquire', 'work with me': 'project.inquire', 'hire us': 'project.inquire',
+    'start a project': 'project.start', 'start project': 'project.start', 'new project': 'project.start',
+    'view work': 'portfolio.view', 'see work': 'portfolio.view', 'our work': 'portfolio.view', 'view portfolio': 'portfolio.view',
+    'case study': 'case.study', 'view case study': 'case.study', 'read case study': 'case.study',
+    'download resume': 'resume.download', 'download cv': 'resume.download', 'get resume': 'resume.download',
+    
+    // RESTAURANT & FOOD
+    'order online': 'order.online', 'order now': 'order.online', 'order food': 'order.online', 'place order': 'order.online',
+    'order pickup': 'order.pickup', 'pickup order': 'order.pickup', 'curbside pickup': 'order.pickup',
+    'order delivery': 'order.delivery', 'get delivery': 'order.delivery', 'deliver to me': 'order.delivery',
+    'view menu': 'menu.view', 'see menu': 'menu.view', 'our menu': 'menu.view', 'browse menu': 'menu.view',
+    'gift card': 'gift.purchase', 'buy gift card': 'gift.purchase', 'gift cards': 'gift.purchase',
+    'private event': 'event.inquire', 'book event': 'event.inquire', 'host event': 'event.inquire',
+    
+    // CONTENT & BLOG
+    'read more': 'content.read', 'continue reading': 'content.read', 'read article': 'content.read', 'learn more': 'content.read',
+    'share': 'content.share', 'share article': 'content.share', 'share post': 'content.share',
+    'bookmark': 'content.bookmark', 'save article': 'content.bookmark', 'save post': 'content.bookmark',
+    'follow': 'author.follow', 'follow author': 'author.follow', 'follow writer': 'author.follow',
+    
+    // CONTRACTOR & EMERGENCY
+    'call now': 'call.now', 'call us': 'call.now', 'phone us': 'call.now', 'give us a call': 'call.now',
+    'emergency': 'emergency.service', 'emergency service': 'emergency.service', '24/7 service': 'emergency.service',
+    'urgent help': 'emergency.service', 'need help now': 'emergency.service',
+    
+    // NAVIGATION & PRICING
+    'see plans': 'pricing.view', 'view plans': 'pricing.view', 'pricing': 'pricing.view', 'our plans': 'pricing.view',
+    'compare plans': 'pricing.view', 'see pricing': 'pricing.view', 'view pricing': 'pricing.view'
   };
   
   function inferIntent(text) {
     if (!text) return null;
-    const lower = text.toLowerCase().trim();
+    const lower = text.toLowerCase().trim().replace(/[^a-z0-9\\s]/g, '');
+    // Exact match first
     if (LABEL_INTENTS[lower]) return LABEL_INTENTS[lower];
+    // Partial match - check if label contains any key or key contains label
     for (const key in LABEL_INTENTS) {
-      if (lower.includes(key) || key.includes(lower)) return LABEL_INTENTS[key];
+      const cleanKey = key.replace(/[^a-z0-9\\s]/g, '');
+      if (lower.includes(cleanKey) || cleanKey.includes(lower)) return LABEL_INTENTS[key];
+    }
+    // Word-based matching for compound phrases
+    const words = lower.split(/\\s+/);
+    for (const key in LABEL_INTENTS) {
+      const keyWords = key.split(/\\s+/);
+      if (keyWords.every(kw => words.includes(kw))) return LABEL_INTENTS[key];
     }
     return null;
   }
