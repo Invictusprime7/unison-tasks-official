@@ -199,7 +199,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                   </div>
 
                   {/* Template Grid */}
-                  <ScrollArea className="flex-1 p-6">
+                  <ScrollArea className="flex-1 max-h-[50vh] p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {systemTemplates.map((template) => (
                         <motion.div
