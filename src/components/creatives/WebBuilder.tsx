@@ -49,6 +49,7 @@ import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, handleIntent, IntentPayload } from "@/runtime/intentRouter";
+import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
@@ -187,6 +188,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [aiGeneratedFiles, setAIGeneratedFiles] = useState<Set<string>>(new Set());
   const [recentlyChangedFiles, setRecentlyChangedFiles] = useState<Set<string>>(new Set());
   const originalFileContents = useRef<Map<string, string>>(new Map());
+  
+  // Intent Pipeline Overlay state
+  const [pipelineOverlayOpen, setPipelineOverlayOpen] = useState(false);
+  const [pipelineConfig, setPipelineConfig] = useState<PipelineConfig | null>(null);
   
   // Track file modifications for UI indicators
   const trackFileModification = useCallback((fileId: string, content: string) => {
@@ -432,32 +437,16 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Listen for INTENT_TRIGGER messages from iframe previews
   useEffect(() => {
-    const handleIntentMessage = async (event: MessageEvent) => {
+    const handleIntentMessage = (event: MessageEvent) => {
       // Only handle intent trigger messages
       if (event.data?.type !== 'INTENT_TRIGGER') return;
       
       const { intent, payload } = event.data;
       console.log('[WebBuilder] Received intent from preview:', intent, payload);
       
-      try {
-        const result = await handleIntent(intent, payload as IntentPayload);
-        
-        if (result.success) {
-          const resultData = result.data as Record<string, unknown> | undefined;
-          toast.success(`Intent "${intent}" executed`, {
-            description: (resultData?.message as string) || 'Action completed successfully',
-          });
-        } else {
-          toast.error(`Intent "${intent}" failed`, {
-            description: result.error || 'Unknown error',
-          });
-        }
-      } catch (error) {
-        console.error('[WebBuilder] Intent handler error:', error);
-        toast.error('Intent execution failed', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
+      // Open the pipeline overlay instead of immediately executing
+      setPipelineConfig({ intent, payload: payload as IntentPayload });
+      setPipelineOverlayOpen(true);
     };
     
     window.addEventListener('message', handleIntentMessage);
@@ -2572,6 +2561,20 @@ export default function App() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Intent Pipeline Overlay - Shows dynamic form when buttons are clicked */}
+      <IntentPipelineOverlay
+        isOpen={pipelineOverlayOpen}
+        onClose={() => {
+          setPipelineOverlayOpen(false);
+          setPipelineConfig(null);
+        }}
+        config={pipelineConfig}
+        onSuccess={(data) => {
+          console.log('[WebBuilder] Pipeline success:', data);
+          toast.success('Action completed successfully');
+        }}
+      />
     </div>
   );
 };
