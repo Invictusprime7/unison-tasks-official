@@ -67,10 +67,10 @@ function codeToHtml(code: string): string {
   
   const trimmedCode = code.trim();
   
-  // Case 1: Already a complete HTML document - use as-is
+  // Case 1: Already a complete HTML document - inject intent listener before </body>
   if (trimmedCode.startsWith('<!DOCTYPE') || trimmedCode.startsWith('<html')) {
-    console.log('[SimplePreview] Code is complete HTML document - using directly');
-    return code;
+    console.log('[SimplePreview] Code is complete HTML document - injecting intent listener');
+    return injectIntentListener(code);
   }
   
   // Case 2: Vanilla HTML/JS (AI-generated format) - wrap without JSX conversion
@@ -94,6 +94,131 @@ function codeToHtml(code: string): string {
   // Case 4: Plain HTML snippet - wrap it
   console.log('[SimplePreview] Wrapping HTML snippet');
   return wrapHtmlSnippet(code);
+}
+
+/**
+ * Inject intent listener script into existing HTML document
+ */
+function injectIntentListener(html: string): string {
+  const intentListenerScript = `
+  <script>
+  (function(){
+    const LABEL_INTENTS = {
+      // AUTH
+      'sign in':'auth.signin','log in':'auth.signin','login':'auth.signin','member login':'auth.signin',
+      'sign up':'auth.signup','register':'auth.signup','get started':'auth.signup','create account':'auth.signup',
+      'join now':'auth.signup','sign up free':'auth.signup','start now':'auth.signup','join free':'auth.signup',
+      // TRIALS & DEMOS
+      'start free trial':'trial.start','free trial':'trial.start','try free':'trial.start','try it free':'trial.start',
+      'watch demo':'demo.request','request demo':'demo.request','book demo':'demo.request','schedule demo':'demo.request',
+      // NEWSLETTER & WAITLIST
+      'subscribe':'newsletter.subscribe','get updates':'newsletter.subscribe','join newsletter':'newsletter.subscribe',
+      'join waitlist':'join.waitlist','join the waitlist':'join.waitlist','get early access':'join.waitlist',
+      // CONTACT
+      'contact':'contact.submit','contact us':'contact.submit','get in touch':'contact.submit','send message':'contact.submit',
+      'reach out':'contact.submit','talk to us':'contact.submit',"let's talk":'contact.submit',
+      'contact sales':'sales.contact','talk to sales':'sales.contact',
+      // E-COMMERCE
+      'add to cart':'cart.add','add to bag':'cart.add','buy now':'checkout.start','purchase':'checkout.start',
+      'shop now':'shop.browse','checkout':'checkout.start','view cart':'cart.view',
+      // BOOKING
+      'book now':'booking.create','reserve':'booking.create','reserve table':'booking.create','book appointment':'booking.create',
+      'make reservation':'booking.create','schedule now':'booking.create','book a table':'booking.create',
+      'book a call':'calendar.book','schedule call':'calendar.book','book consultation':'consultation.book',
+      // QUOTES
+      'get quote':'quote.request','get free quote':'quote.request','request quote':'quote.request','free estimate':'quote.request',
+      // PORTFOLIO
+      'hire me':'project.inquire','work with me':'project.inquire','start a project':'project.start',
+      'view work':'portfolio.view','view portfolio':'portfolio.view',
+      // RESTAURANT
+      'order online':'order.online','order now':'order.online','view menu':'menu.view','call now':'call.now',
+      'order pickup':'order.pickup','order delivery':'order.delivery'
+    };
+    
+    function inferIntent(t){
+      if(!t)return null;
+      const l=t.toLowerCase().trim().replace(/[^a-z0-9\\s]/g,'');
+      if(LABEL_INTENTS[l])return LABEL_INTENTS[l];
+      for(const[k,v]of Object.entries(LABEL_INTENTS)){
+        const ck=k.replace(/[^a-z0-9\\s]/g,'');
+        if(l.includes(ck)||ck.includes(l))return v;
+      }
+      return null;
+    }
+    
+    function collectPayload(el){
+      const p={};
+      Array.from(el.attributes).forEach(a=>{
+        if(a.name.startsWith('data-')&&a.name!=='data-intent'){
+          const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
+          try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}
+        }
+      });
+      const f=el.closest('form');
+      if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});
+      return p;
+    }
+    
+    document.addEventListener('click',function(e){
+      const el=e.target.closest('button,a,[role="button"],[data-intent]');
+      if(!el)return;
+      const ia=el.getAttribute('data-intent');
+      if(ia==='none'||ia==='ignore')return;
+      const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));
+      if(!intent)return;
+      e.preventDefault();e.stopPropagation();
+      el.classList.add('intent-loading');
+      if(el.disabled!==undefined)el.disabled=true;
+      console.log('[Intent] Triggering:',intent);
+      window.parent.postMessage({type:'INTENT_TRIGGER',intent:intent,payload:collectPayload(el)},'*');
+      setTimeout(()=>{
+        el.classList.remove('intent-loading');
+        el.classList.add('intent-success');
+        if(el.disabled!==undefined)el.disabled=false;
+        setTimeout(()=>el.classList.remove('intent-success'),2000);
+      },300);
+    },{capture:true});
+    
+    document.addEventListener('submit',function(e){
+      const form=e.target;if(!form||form.tagName!=='FORM')return;
+      let intent=form.getAttribute('data-intent');
+      if(!intent){
+        const btn=form.querySelector('button[type="submit"],button:not([type])');
+        if(btn)intent=btn.getAttribute('data-intent')||inferIntent(btn.textContent);
+      }
+      if(!intent){
+        const id=(form.id||'').toLowerCase();
+        if(id.includes('contact'))intent='contact.submit';
+        else if(id.includes('newsletter')||id.includes('subscribe'))intent='newsletter.subscribe';
+        else if(id.includes('waitlist'))intent='join.waitlist';
+        else if(id.includes('booking')||id.includes('reservation'))intent='booking.create';
+        else if(id.includes('quote'))intent='quote.request';
+      }
+      if(!intent)return;
+      e.preventDefault();
+      const p={};new FormData(form).forEach((v,k)=>{if(typeof v==='string')p[k]=v});
+      console.log('[Intent] Form submit:',intent);
+      window.parent.postMessage({type:'INTENT_TRIGGER',intent:intent,payload:p},'*');
+      form.reset();
+    },{capture:true});
+    
+    console.log('[Intent] Global listener active');
+  })();
+  </script>
+  <style>
+    .intent-loading{opacity:0.6;pointer-events:none;cursor:wait}
+    .intent-success{animation:intent-pulse 0.3s}
+    @keyframes intent-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+  </style>`;
+  
+  // Try to inject before </body>, or before </html>, or at the end
+  if (html.includes('</body>')) {
+    return html.replace('</body>', intentListenerScript + '\n</body>');
+  } else if (html.includes('</html>')) {
+    return html.replace('</html>', intentListenerScript + '\n</html>');
+  } else {
+    return html + intentListenerScript;
+  }
 }
 
 /**
