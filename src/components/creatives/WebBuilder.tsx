@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
-import { SimplePreview } from '@/components/SimplePreview';
+import { SimplePreview } from './SimplePreview';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";

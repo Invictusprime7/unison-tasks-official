@@ -47,7 +47,9 @@ type PreviewMode = 'runtime' | 'sandpack' | 'codesandbox' | 'html' | 'loading';
 
 interface SimplePreviewProps {
   /** Files from VirtualFileSystem - Record<path, content> */
-  files: Record<string, string>;
+  files?: Record<string, string>;
+  /** Single code string (for backward compatibility with WebBuilder) */
+  code?: string;
   /** Project ID for preview session */
   projectId?: string;
   /** Active file path for initial focus */
@@ -62,6 +64,8 @@ interface SimplePreviewProps {
   showConsole?: boolean;
   /** Show file navigator in preview */
   showNavigator?: boolean;
+  /** Show toolbar (for code-only mode) */
+  showToolbar?: boolean;
   /** Force a specific preview mode */
   forceMode?: 'runtime' | 'sandpack' | 'codesandbox' | 'html';
   /** Disable runtime mode (use Sandpack as primary). Sandpack is the recommended default - it provides browser-based HMR without needing a backend. */
@@ -2386,7 +2390,8 @@ const RuntimePreview: React.FC<{
 // ============================================================================
 
 export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>(({
-  files,
+  files: filesProp,
+  code,
   projectId = 'default',
   activeFile = '/src/App.tsx',
   className,
@@ -2394,12 +2399,33 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   onError,
   showConsole = false,
   showNavigator = false,
+  showToolbar = false,
   forceMode,
   disableRuntime = true, // Default to Sandpack until ECS backend is deployed
   enableRuntime = false, // Set to true to enable runtime mode
   useCodeSandbox = false, // Use CodeSandbox cloud instead of local Sandpack
 }, ref) => {
   const [key, setKey] = useState(0);
+  
+  // Convert code prop to files format if provided (backward compatibility)
+  const files = useMemo<Record<string, string>>(() => {
+    if (filesProp && Object.keys(filesProp).length > 0) {
+      return filesProp;
+    }
+    if (code) {
+      // Determine file type based on content
+      const trimmed = code.trim();
+      if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<HTML')) {
+        return { '/index.html': code };
+      }
+      if (code.includes('import React') || code.includes('export default')) {
+        return { '/src/App.tsx': code };
+      }
+      // Default to HTML
+      return { '/index.html': code };
+    }
+    return { '/src/App.tsx': DEFAULT_APP };
+  }, [filesProp, code]);
   
   // Check if any file is a complete HTML document (not React)
   const hasPureHTML = useMemo(() => {
