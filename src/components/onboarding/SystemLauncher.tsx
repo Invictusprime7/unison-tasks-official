@@ -5,9 +5,11 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowRight, ArrowLeft, Check, Sparkles, Zap, Layout, Eye } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Zap, Layout, Eye, Database, Workflow, Shield } from "lucide-react";
 import { businessSystems, type BusinessSystemType, type LayoutTemplate } from "@/data/templates/types";
 import { getTemplatesByCategory } from "@/data/templates";
+import { getTemplateManifest, getDefaultManifestForSystem } from "@/data/templates/manifest";
+import { quickProvision } from "@/services/templateProvisioner";
 import { cn } from "@/lib/utils";
 
 interface SystemLauncherProps {
@@ -29,6 +31,12 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     return system.templateCategories.flatMap(cat => getTemplatesByCategory(cat));
   }, [selectedSystem]);
 
+  // Get manifest for selected template to show backend info
+  const selectedManifest = useMemo(() => {
+    if (!selectedTemplate || !selectedSystem) return null;
+    return getTemplateManifest(selectedTemplate.id) || getDefaultManifestForSystem(selectedSystem);
+  }, [selectedTemplate, selectedSystem]);
+
   const handleSystemSelect = (systemId: BusinessSystemType) => {
     setSelectedSystem(systemId);
     setSelectedTemplate(null);
@@ -45,7 +53,11 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     const system = businessSystems.find(s => s.id === selectedSystem);
     if (!system) return;
 
-    // Navigate to web builder with selected template and system context
+    // Auto-provision the template backend
+    const { businessId, manifest } = quickProvision(selectedSystem);
+    console.log('[SystemLauncher] Provisioned template:', manifest.id, 'businessId:', businessId);
+
+    // Navigate to web builder with selected template, system context, AND provisioning data
     navigate("/web-builder", {
       state: {
         generatedCode: selectedTemplate.code,
@@ -53,6 +65,10 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
         systemType: selectedSystem,
         systemName: system.name,
         preloadedIntents: system.intents,
+        // NEW: Provisioning data
+        businessId,
+        manifestId: manifest.id,
+        isProvisioned: true,
       },
     });
     
@@ -296,10 +312,24 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                         )}
                       </div>
                       
-                      {/* Pre-wired intents hint */}
-                      <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        <span>Auto-wired: {selectedSystemData.intents.slice(0, 2).join(", ")}</span>
+                      {/* Backend features hint */}
+                      <div className="hidden lg:flex items-center gap-4 text-xs text-muted-foreground">
+                        {selectedManifest && (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <Database className="h-3 w-3 text-primary" />
+                              <span>{selectedManifest.tables.length} tables</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Workflow className="h-3 w-3 text-primary" />
+                              <span>{selectedManifest.workflows.length} workflows</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Shield className="h-3 w-3 text-primary" />
+                              <span>{selectedManifest.intents.length} intents</span>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       {/* Launch button */}
