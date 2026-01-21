@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
-import { SimplePreview, SimplePreviewHandle } from './SimplePreview';
+import { SimplePreview } from '@/components/SimplePreview';
+import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
@@ -24,7 +25,7 @@ import { ExportDialog } from "./design-studio/ExportDialog";
 import { PerformancePanel } from "./web-builder/PerformancePanel";
 import { DirectEditToolbar } from "./web-builder/DirectEditToolbar";
 import { ArrangementTools } from "./web-builder/ArrangementTools";
-// SecureIframePreview removed - consolidated into SimplePreview
+import { SecureIframePreview } from "@/components/SecureIframePreview";
 import { useTemplateState } from "@/hooks/useTemplateState";
 import { sanitizeHTML } from "@/utils/htmlSanitizer";
 import { webBlocks } from "./web-builder/webBlocks";
@@ -173,7 +174,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
-  const livePreviewRef = useRef<SimplePreviewHandle | null>(null);
+  const livePreviewRef = useRef<VFSPreviewHandle | null>(null);
   
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
@@ -2382,13 +2383,16 @@ export default function App() {
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
-            <SimplePreview
-              code={`<!DOCTYPE html>
-<html><head><style>${templateState.css}</style></head><body>${sanitizeHTML(templateState.html)}</body></html>`}
-              className="w-full h-full"
-              onError={(errorMsg) => {
-                console.error('[Preview Error]:', errorMsg);
-                toast.error('Preview error: ' + errorMsg);
+            <SecureIframePreview
+              html={sanitizeHTML(templateState.html)}
+              css={templateState.css}
+              className="w-full h-full border border-white/10 rounded bg-white"
+              onConsole={(type, args) => {
+                console.log(`[Preview ${type}]:`, ...args);
+              }}
+              onError={(error) => {
+                console.error('[Preview Error]:', error);
+                toast.error('Preview error: ' + error.message);
               }}
             />
           </div>

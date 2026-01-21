@@ -47,9 +47,7 @@ type PreviewMode = 'runtime' | 'sandpack' | 'codesandbox' | 'html' | 'loading';
 
 interface SimplePreviewProps {
   /** Files from VirtualFileSystem - Record<path, content> */
-  files?: Record<string, string>;
-  /** Single code string (for backward compatibility with WebBuilder) */
-  code?: string;
+  files: Record<string, string>;
   /** Project ID for preview session */
   projectId?: string;
   /** Active file path for initial focus */
@@ -64,8 +62,6 @@ interface SimplePreviewProps {
   showConsole?: boolean;
   /** Show file navigator in preview */
   showNavigator?: boolean;
-  /** Show toolbar (for code-only mode) */
-  showToolbar?: boolean;
   /** Force a specific preview mode */
   forceMode?: 'runtime' | 'sandpack' | 'codesandbox' | 'html';
   /** Disable runtime mode (use Sandpack as primary). Sandpack is the recommended default - it provides browser-based HMR without needing a backend. */
@@ -87,7 +83,7 @@ export interface SimplePreviewHandle {
 // Constants
 // ============================================================================
 
-const SANDPACK_TIMEOUT_MS = 12000; // 12 seconds timeout for Sandpack (reduced from 30s)
+const SANDPACK_TIMEOUT_MS = 30000; // 30 seconds timeout for Sandpack
 
 // Common dependencies that are always available
 const BUNDLED_DEPENDENCIES = {
@@ -936,14 +932,8 @@ const PreviewInner: React.FC<{
  * Check if content is a complete HTML document
  */
 function isCompleteHTML(content: string): boolean {
-  const normalized = content.trim().toLowerCase();
-  // Treat as a full HTML document only when it's clearly a complete document.
-  // This avoids false-positives (e.g., snippets/fragments that start with <html>
-  // or string literals) which can incorrectly force HTML fallback and cause
-  // Sandpack to appear "unavailable".
-  if (normalized.startsWith('<!doctype html')) return true;
-  if (normalized.startsWith('<html') && normalized.includes('</html>')) return true;
-  return false;
+  return content.trim().toLowerCase().startsWith('<!doctype html') || 
+         content.trim().toLowerCase().startsWith('<html');
 }
 
 /**
@@ -951,41 +941,10 @@ function isCompleteHTML(content: string): boolean {
  * Supports: Auth (sign in/up/login), Payment, Contact, Pricing, Dashboard, etc.
  */
 const SMART_NAVIGATION_SCRIPT = `
-<style>
-/* Intent Feedback Styles */
-.intent-loading {
-  opacity: 0.7 !important;
-  pointer-events: none !important;
-  position: relative !important;
-}
-.intent-loading::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: intent-spin 0.8s linear infinite;
-}
-.intent-success {
-  animation: intent-pulse 0.5s ease-out !important;
-}
-@keyframes intent-spin {
-  to { transform: rotate(360deg); }
-}
-@keyframes intent-pulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
-  50% { transform: scale(1.02); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-}
-</style>
 <script>
 (function() {
   'use strict';
+
   // ============================================================================
   // Dynamic State/Prop Bridge
   // ============================================================================
@@ -1829,10 +1788,12 @@ const SMART_NAVIGATION_SCRIPT = `
       element.disabled = true;
     }
     
-    // Post message to parent/top window for handling (some embed chains require top)
-    const msg = { type: 'INTENT_TRIGGER', intent: intent, payload: payload };
-    try { window.parent && window.parent.postMessage(msg, '*'); } catch (_) {}
-    try { window.top && window.top !== window.parent && window.top.postMessage(msg, '*'); } catch (_) {}
+    // Post message to parent window for handling
+    window.parent.postMessage({
+      type: 'INTENT_TRIGGER',
+      intent: intent,
+      payload: payload
+    }, '*');
     
     // Reset button state after short delay
     if (element) {
@@ -1850,13 +1811,11 @@ const SMART_NAVIGATION_SCRIPT = `
   // ============================================================================
   let theme = null;
   
-  // Intercept all link and button clicks (including "button-like" anchors)
+  // Intercept all link and button clicks
   document.addEventListener('click', function(e) {
-    // Some templates use <a class="btn"> without href. We still want those to trigger intents.
-    const anchor = e.target.closest('a');
-    const link = anchor && anchor.getAttribute('href') ? anchor : null;
-    const button = e.target.closest('button, [role="button"], [data-intent], input[type="button"], input[type="submit"]');
-    const el = (link || button || anchor);
+    const link = e.target.closest('a[href]');
+    const button = e.target.closest('button, [role="button"], [data-intent]');
+    const el = link || button;
     
     if (!el) return;
     
@@ -1875,27 +1834,13 @@ const SMART_NAVIGATION_SCRIPT = `
     
     // Determine intent from attribute or text
     const text = el.textContent ? el.textContent.trim() : '';
-    const inferredIntent = intentAttr || inferIntent(text) || inferIntent(el.getAttribute('aria-label'));
-
-    // If it's a button-like element and we can't infer an intent, still open a generic pipeline
-    // so "random templates" always respond to clicks.
-    const isButtonLike = !!button || (!!anchor && !link);
-    const resolvedIntent = inferredIntent || (isButtonLike ? 'cta.click' : null);
+    const intent = intentAttr || inferIntent(text) || inferIntent(el.getAttribute('aria-label'));
     
-    if (resolvedIntent) {
-      // Intent found (or fallback) - trigger it via parent window
+    if (intent) {
+      // Intent found - trigger it via parent window
       e.preventDefault();
       e.stopPropagation();
-
-      const href = link ? link.getAttribute('href') : null;
-      const basePayload = collectPayload(el);
-      const payload = Object.assign({}, basePayload, {
-        label: text,
-        href: href || undefined,
-        elementTag: (el.tagName || '').toLowerCase(),
-      });
-
-      triggerIntent(resolvedIntent, payload, el);
+      triggerIntent(intent, collectPayload(el), el);
       return;
     }
     
@@ -1910,24 +1855,21 @@ const SMART_NAVIGATION_SCRIPT = `
       if (!theme) theme = extractTheme();
       const navType = detectNavigationType(link, href);
       createRedirectOverlay(navType, theme, text, href);
-    } else if (button || anchor) {
+    } else if (button) {
       e.preventDefault();
       e.stopPropagation();
       
       console.log('[Preview] Button clicked (no intent):', text);
       
       if (!theme) theme = extractTheme();
-      const target = button || anchor;
-      const navType = detectNavigationType(target, '');
+      const navType = detectNavigationType(button, '');
       
       if (navType.type !== 'page') {
         createRedirectOverlay(navType, theme, text, '');
       } else {
         // Just show visual feedback for generic buttons
-        if (target) {
-          target.style.opacity = '0.7';
-          setTimeout(function() { target.style.opacity = '1'; }, 150);
-        }
+        button.style.opacity = '0.7';
+        setTimeout(function() { button.style.opacity = '1'; }, 150);
       }
     }
   }, true);
@@ -2137,19 +2079,19 @@ const HTMLFallbackPreview: React.FC<{
           </div>
         </div>
       ) : (
-        <div className="bg-blue-50 border-b border-blue-200 px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-blue-800">
+        <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-amber-800">
             <Globe className="w-4 h-4" />
-            <span className="text-xs font-medium">HTML Preview</span>
+            <span className="text-xs font-medium">Static HTML Preview (Sandpack unavailable)</span>
           </div>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={onRetry}
-            className="h-6 px-2 text-xs text-blue-700 hover:text-blue-900"
+            className="h-6 px-2 text-xs text-amber-700 hover:text-amber-900"
           >
             <RefreshCw className="w-3 h-3 mr-1" />
-            Reload
+            Retry Sandpack
           </Button>
         </div>
       )}
@@ -2444,8 +2386,7 @@ const RuntimePreview: React.FC<{
 // ============================================================================
 
 export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>(({
-  files: filesProp,
-  code,
+  files,
   projectId = 'default',
   activeFile = '/src/App.tsx',
   className,
@@ -2453,7 +2394,6 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   onError,
   showConsole = false,
   showNavigator = false,
-  showToolbar = false,
   forceMode,
   disableRuntime = true, // Default to Sandpack until ECS backend is deployed
   enableRuntime = false, // Set to true to enable runtime mode
@@ -2461,41 +2401,14 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
 }, ref) => {
   const [key, setKey] = useState(0);
   
-  // Convert code prop to files format if provided (backward compatibility)
-  const files = useMemo<Record<string, string>>(() => {
-    if (filesProp && Object.keys(filesProp).length > 0) {
-      return filesProp;
-    }
-    if (code) {
-      // Determine file type based on content
-      const trimmed = code.trim();
-      if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.startsWith('<HTML')) {
-        return { '/index.html': code };
-      }
-      if (code.includes('import React') || code.includes('export default')) {
-        return { '/src/App.tsx': code };
-      }
-      // Default to HTML
-      return { '/index.html': code };
-    }
-    return { '/src/App.tsx': DEFAULT_APP };
-  }, [filesProp, code]);
-  
   // Check if any file is a complete HTML document (not React)
-  // Also detect HTML content stored in .tsx/.jsx files (common from template imports)
   const hasPureHTML = useMemo(() => {
     const result = Object.entries(files).some(([path, content]) => {
-      // Explicit HTML file
-      if (path.endsWith('.html') || path.endsWith('.htm')) {
-        console.log('[SimplePreview] Detected HTML file:', path);
-        return true;
+      const isHtml = path.endsWith('.html') || path.endsWith('.htm') || isCompleteHTML(content);
+      if (isHtml) {
+        console.log('[SimplePreview] Detected pure HTML in:', path);
       }
-      // Check if content starts with HTML doctype/html tag (even in .tsx files)
-      if (isCompleteHTML(content)) {
-        console.log('[SimplePreview] Detected HTML content in:', path);
-        return true;
-      }
-      return false;
+      return isHtml;
     });
     console.log('[SimplePreview] hasPureHTML:', result, 'Files:', Object.keys(files));
     return result;
