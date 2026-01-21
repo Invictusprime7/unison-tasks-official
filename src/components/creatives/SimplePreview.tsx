@@ -1829,12 +1829,10 @@ const SMART_NAVIGATION_SCRIPT = `
       element.disabled = true;
     }
     
-    // Post message to parent window for handling
-    window.parent.postMessage({
-      type: 'INTENT_TRIGGER',
-      intent: intent,
-      payload: payload
-    }, '*');
+    // Post message to parent/top window for handling (some embed chains require top)
+    const msg = { type: 'INTENT_TRIGGER', intent: intent, payload: payload };
+    try { window.parent && window.parent.postMessage(msg, '*'); } catch (_) {}
+    try { window.top && window.top !== window.parent && window.top.postMessage(msg, '*'); } catch (_) {}
     
     // Reset button state after short delay
     if (element) {
@@ -1852,11 +1850,13 @@ const SMART_NAVIGATION_SCRIPT = `
   // ============================================================================
   let theme = null;
   
-  // Intercept all link and button clicks
+  // Intercept all link and button clicks (including "button-like" anchors)
   document.addEventListener('click', function(e) {
-    const link = e.target.closest('a[href]');
-    const button = e.target.closest('button, [role="button"], [data-intent]');
-    const el = link || button;
+    // Some templates use <a class="btn"> without href. We still want those to trigger intents.
+    const anchor = e.target.closest('a');
+    const link = anchor && anchor.getAttribute('href') ? anchor : null;
+    const button = e.target.closest('button, [role="button"], [data-intent], input[type="button"], input[type="submit"]');
+    const el = (link || button || anchor);
     
     if (!el) return;
     
@@ -1896,7 +1896,7 @@ const SMART_NAVIGATION_SCRIPT = `
       if (!theme) theme = extractTheme();
       const navType = detectNavigationType(link, href);
       createRedirectOverlay(navType, theme, text, href);
-    } else if (button) {
+    } else if (button || anchor) {
       e.preventDefault();
       e.stopPropagation();
       
@@ -1909,8 +1909,11 @@ const SMART_NAVIGATION_SCRIPT = `
         createRedirectOverlay(navType, theme, text, '');
       } else {
         // Just show visual feedback for generic buttons
-        button.style.opacity = '0.7';
-        setTimeout(function() { button.style.opacity = '1'; }, 150);
+        const target = button || anchor;
+        if (target) {
+          target.style.opacity = '0.7';
+          setTimeout(function() { target.style.opacity = '1'; }, 150);
+        }
       }
     }
   }, true);
