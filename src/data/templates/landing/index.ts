@@ -31,7 +31,7 @@ export const landingTemplates: LayoutTemplate[] = [
       <a href="#pricing" class="hover:text-white">Pricing</a>
     </nav>
     <div class="flex items-center gap-3">
-      <button class="text-sm text-slate-300 hover:text-white" data-ut-cta="cta.nav" data-ut-intent="demo.request" data-ut-label="Book a demo" data-intent="demo.request">Book a demo</button>
+      <button class="text-sm text-slate-300 hover:text-white" data-ut-cta="cta.nav" data-ut-intent="demo.request" data-ut-label="Book a demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Book a demo</button>
       <button class="px-4 py-2 rounded-full bg-white text-black text-sm font-bold" data-ut-cta="cta.nav" data-ut-intent="trial.start" data-ut-label="Start trial" data-intent="trial.start">Start trial</button>
     </div>
   </div>
@@ -57,7 +57,7 @@ export const landingTemplates: LayoutTemplate[] = [
         </p>
         <div class="mt-8 flex flex-col sm:flex-row gap-3">
           <button class="px-6 py-3 rounded-2xl bg-amber-300 text-black font-extrabold" data-ut-cta="cta.hero" data-ut-intent="trial.start" data-ut-label="Start free trial" data-intent="trial.start">Start free trial</button>
-          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="demo.request" data-ut-label="Watch demo" data-intent="demo.request">Watch demo</button>
+          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="demo.request" data-ut-label="Watch demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Watch demo</button>
         </div>
         <div class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
           <span>✓ No card</span>
@@ -96,7 +96,7 @@ export const landingTemplates: LayoutTemplate[] = [
       <div class="lg:col-span-4">
         <h2 class="text-2xl md:text-3xl font-black">Manifesto</h2>
         <p class="mt-3 text-slate-400">Three principles that keep your landing page honest.</p>
-        <button class="mt-6 px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.1" data-ut-intent="demo.request" data-ut-label="Get a walkthrough" data-intent="demo.request">Get a walkthrough</button>
+        <button class="mt-6 px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.1" data-ut-intent="demo.request" data-ut-label="Get a walkthrough" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Get a walkthrough</button>
       </div>
       <div class="lg:col-span-8 grid md:grid-cols-3 gap-4">
         <article class="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -157,7 +157,7 @@ export const landingTemplates: LayoutTemplate[] = [
           <h2 class="text-3xl md:text-4xl font-black">Pricing</h2>
           <p class="mt-2 text-slate-400">Three tiers, editorial layout, intent-wired CTAs.</p>
         </div>
-        <button class="px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.2" data-ut-intent="demo.request" data-ut-label="Compare plans" data-intent="demo.request">Compare plans</button>
+        <button class="px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.2" data-ut-intent="demo.request" data-ut-label="Compare plans" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Compare plans</button>
       </div>
       <div class="mt-10 grid lg:grid-cols-3 gap-5">
         <article class="rounded-3xl border border-white/10 bg-white/5 p-7">
@@ -176,7 +176,7 @@ export const landingTemplates: LayoutTemplate[] = [
           <div class="text-xs tracking-widest text-slate-500">ENTERPRISE</div>
           <div class="mt-3 text-4xl font-black">Custom</div>
           <p class="mt-2 text-sm text-slate-400">Security + support.</p>
-          <button class="mt-6 w-full px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.4" data-ut-intent="demo.request" data-ut-label="Book demo" data-intent="demo.request">Book demo</button>
+           <button class="mt-6 w-full px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.4" data-ut-intent="demo.request" data-ut-label="Book demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Book demo</button>
         </article>
       </div>
     </div>
@@ -200,7 +200,7 @@ export const landingTemplates: LayoutTemplate[] = [
         <div class="mt-3 grid gap-2">
           <a href="#manifesto" class="hover:text-slate-300">Manifesto</a>
           <a href="#pricing" class="hover:text-slate-300">Pricing</a>
-          <a href="#" class="hover:text-slate-300" data-ut-cta="cta.footer" data-ut-intent="demo.request" data-ut-label="Request demo" data-intent="demo.request">Request demo</a>
+          <a href="#" class="hover:text-slate-300" data-ut-cta="cta.footer" data-ut-intent="demo.request" data-ut-label="Request demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Request demo</a>
         </div>
       </div>
     </div>
@@ -249,7 +249,7 @@ export const landingTemplates: LayoutTemplate[] = [
         </p>
         <div class="mt-8 flex flex-col sm:flex-row gap-3">
           <button class="px-6 py-3 rounded-2xl bg-white text-black font-extrabold" data-ut-cta="cta.hero" data-ut-intent="contact.sales" data-ut-label="Talk to sales" data-intent="contact.sales">Talk to sales</button>
-          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="demo.request" data-ut-label="Book a demo" data-intent="demo.request">Book a demo</button>
+          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="demo.request" data-ut-label="Book a demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Book a demo</button>
         </div>
       </div>
       <aside class="lg:col-span-4">
@@ -278,7 +278,7 @@ export const landingTemplates: LayoutTemplate[] = [
           <h2 class="text-3xl md:text-4xl font-black">Work (selected)</h2>
           <p class="mt-2 text-slate-400">Three case headlines. Three outcomes.</p>
         </div>
-        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.1" data-ut-intent="demo.request" data-ut-label="See a walkthrough" data-intent="demo.request">See a walkthrough</button>
+        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.1" data-ut-intent="demo.request" data-ut-label="See a walkthrough" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">See a walkthrough</button>
       </div>
       <div class="mt-10 grid lg:grid-cols-12 gap-5">
         <article class="lg:col-span-7 rounded-3xl border border-white/10 bg-slate-950/40 p-7">
