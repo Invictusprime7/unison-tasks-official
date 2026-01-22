@@ -65,6 +65,26 @@ interface PipelineField {
 // Get pipeline configuration based on intent
 function getPipelineConfig(intent: string): { title: string; description: string; steps: PipelineStep[] } {
   const pack = getIntentPack(intent);
+
+  // SUBSCRIBE / WAITLIST: keep this ultra-light (email only)
+  if (intent === 'newsletter.subscribe' || intent === 'join.waitlist') {
+    return {
+      title: intent === 'newsletter.subscribe' ? 'Subscribe' : 'Join the Waitlist',
+      description: intent === 'newsletter.subscribe'
+        ? 'Get updates in your inbox.'
+        : 'Get early access when we launch.',
+      steps: [
+        {
+          id: 'email',
+          title: 'Your Email',
+          icon: <Mail className="w-5 h-5" />,
+          fields: [
+            { name: 'email', label: 'Email Address', type: 'email', placeholder: 'you@example.com', required: true },
+          ],
+        },
+      ],
+    };
+  }
   
   // BOOKING PIPELINES
   if (pack === 'booking' || intent.includes('booking') || intent.includes('calendar') || intent.includes('consultation')) {
