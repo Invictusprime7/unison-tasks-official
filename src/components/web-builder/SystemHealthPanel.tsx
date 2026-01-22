@@ -46,6 +46,8 @@ interface IntentStatus {
 interface SystemHealthPanelProps {
   systemType: BusinessSystemType | null;
   preloadedIntents?: string[];
+  /** Detected CTA slots in the current template DOM (data-ut-cta values) */
+  templateSlots?: string[];
   onPublishCheck?: () => void;
   className?: string;
 }
@@ -72,6 +74,7 @@ const intentLabels: Record<string, string> = {
 export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
   systemType,
   preloadedIntents = [],
+  templateSlots = [],
   onPublishCheck,
   className,
 }) => {
@@ -118,6 +121,14 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
     return { total: required.length, met: wired.length };
   }, [intentStatuses]);
 
+  const slotCoverage = useMemo(() => {
+    if (!contract) return { total: 0, met: 0, missing: [] as string[] };
+    const requiredSlots = contract.requiredSlots || [];
+    const present = new Set(templateSlots);
+    const missing = requiredSlots.filter(s => !present.has(s));
+    return { total: requiredSlots.length, met: requiredSlots.length - missing.length, missing };
+  }, [contract, templateSlots]);
+
   if (!systemType || !contract) {
     return (
       <Card className={cn("bg-card border-border", className)}>
@@ -151,7 +162,10 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
     }
   };
 
-  const isPublishReady = requiredMet.met === requiredMet.total && healthScore >= 80;
+  const isPublishReady =
+    requiredMet.met === requiredMet.total &&
+    healthScore >= 80 &&
+    slotCoverage.met === slotCoverage.total;
 
   return (
     <Card className={cn("bg-card border-border", className)}>
@@ -233,6 +247,29 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
           </span>
         </div>
 
+        {/* CTA Slot Coverage */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            <span className="text-sm">CTA Slots</span>
+          </div>
+          <span
+            className={cn(
+              "text-sm font-medium",
+              slotCoverage.met === slotCoverage.total ? 'text-primary' : 'text-destructive'
+            )}
+          >
+            {slotCoverage.met}/{slotCoverage.total}
+          </span>
+        </div>
+
+        {slotCoverage.missing.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            Missing: {slotCoverage.missing.slice(0, 4).join(', ')}
+            {slotCoverage.missing.length > 4 ? ` +${slotCoverage.missing.length - 4}` : ''}
+          </div>
+        )}
+
         <Separator />
 
         {/* Intent List */}
@@ -291,7 +328,7 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
           disabled={!isPublishReady}
           onClick={onPublishCheck}
         >
-          {isPublishReady ? 'Run Publish Checks' : 'Complete Required Intents'}
+          {isPublishReady ? 'Run Publish Checks' : 'Complete CTA Wiring'}
           <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </CardContent>
