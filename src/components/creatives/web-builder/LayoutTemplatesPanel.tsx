@@ -58,6 +58,12 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
   const [selectedSystem, setSelectedSystem] = useState<BusinessSystemType | null>(null);
   const [viewMode, setViewMode] = useState<'systems' | 'categories'>('systems');
 
+  const featuredEditorialLanding = useMemo(() => {
+    return layoutTemplates
+      .filter((t) => t.category === 'landing' && (t.tags || []).includes('editorial'))
+      .slice(0, 3);
+  }, []);
+
   const categories = getAllCategories();
   
   const filteredTemplates = useMemo(() => {
@@ -240,6 +246,42 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
       {/* Templates List */}
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
+          {/* Featured: Editorial Landing */}
+          {!searchQuery && !selectedSystem && !selectedCategory && featuredEditorialLanding.length > 0 && (
+            <Card className="border-border/60 bg-card/50">
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                        Featured
+                      </Badge>
+                      <h4 className="text-sm font-semibold truncate">Editorial Landing</h4>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      3 unique editorial starts (SaaS / Agency / Content) with standardized CTA + intent wiring.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0 text-[10px] px-2 py-0.5">
+                    Landing
+                  </Badge>
+                </div>
+
+                <div className="mt-3 grid gap-2">
+                  {featuredEditorialLanding.map((template) => (
+                    <TemplateDetailCard
+                      key={template.id}
+                      template={template}
+                      onSelect={handleTemplateClick}
+                      onDemo={onDemoTemplate ? handleDemoClick : undefined}
+                      showDemoButton={!!onDemoTemplate}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Test Template - Always at top */}
           <Card
             className="group cursor-pointer hover:border-primary/50 transition-all bg-primary/10 border-primary/30 hover:bg-primary/20"
