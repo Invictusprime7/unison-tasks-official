@@ -50,6 +50,8 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
+import { DemoIntentOverlay, type DemoIntentOverlayConfig } from "./web-builder/DemoIntentOverlay";
+import { decideIntentUx } from "@/runtime/intentUx";
 import SystemHealthPanel from "@/components/web-builder/SystemHealthPanel";
 import type { BusinessSystemType } from "@/data/templates/types";
 import { normalizeTemplateForCtaContract, type TemplateCtaAnalysis } from "@/utils/ctaContract";
@@ -209,6 +211,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Intent Pipeline Overlay state
   const [pipelineOverlayOpen, setPipelineOverlayOpen] = useState(false);
   const [pipelineConfig, setPipelineConfig] = useState<PipelineConfig | null>(null);
+
+  // Demo Overlay state
+  const [demoOverlayOpen, setDemoOverlayOpen] = useState(false);
+  const [demoConfig, setDemoConfig] = useState<DemoIntentOverlayConfig | null>(null);
   
   // Track file modifications for UI indicators
   const trackFileModification = useCallback((fileId: string, content: string) => {
@@ -475,9 +481,43 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       
       const { intent, payload } = event.data;
       console.log('[WebBuilder] Received intent from preview:', intent, payload);
-      
-      // Open the pipeline overlay instead of immediately executing
-      setPipelineConfig({ intent, payload: payload as IntentPayload });
+
+      const decision = decideIntentUx(intent, payload as Record<string, unknown> | undefined);
+
+      if (decision.mode === 'demo') {
+        setDemoConfig({
+          intent,
+          label: (payload as any)?.utLabel || (payload as any)?.label || 'Watch demo',
+          url: decision.demoUrl,
+        });
+        setDemoOverlayOpen(true);
+        return;
+      }
+
+      if (decision.mode === 'autorun') {
+        const toastLabel = decision.toastLabel || 'Action';
+        toast(`${toastLabel} running…`);
+        void (async () => {
+          try {
+            const res = await handleIntent(intent, payload as IntentPayload);
+            if (res.success) {
+              toast.success(`${toastLabel} complete`);
+            } else {
+              toast.error(res.error || `${toastLabel} failed`);
+            }
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Unknown error';
+            toast.error(msg);
+          }
+        })();
+        return;
+      }
+
+      // Default: open pipeline UI
+      setPipelineConfig({
+        intent: decision.pipelineIntent || intent,
+        payload: payload as IntentPayload,
+      });
       setPipelineOverlayOpen(true);
     };
     
@@ -2630,6 +2670,16 @@ export default function App() {
           console.log('[WebBuilder] Pipeline success:', data);
           toast.success('Action completed successfully');
         }}
+      />
+
+      {/* Demo Overlay - Video/presentation intent UI */}
+      <DemoIntentOverlay
+        isOpen={demoOverlayOpen}
+        onClose={() => {
+          setDemoOverlayOpen(false);
+          setDemoConfig(null);
+        }}
+        config={demoConfig}
       />
     </div>
   );
