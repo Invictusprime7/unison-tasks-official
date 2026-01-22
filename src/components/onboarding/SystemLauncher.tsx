@@ -22,6 +22,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const [selectedSystem, setSelectedSystem] = useState<BusinessSystemType | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate | null>(null);
   const [step, setStep] = useState<"select" | "templates">("select");
+  const [templateFilter, setTemplateFilter] = useState<'all' | 'editorial'>('all');
 
   // Get templates for the selected system
   const systemTemplates = useMemo(() => {
@@ -30,6 +31,15 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     if (!system) return [];
     return system.templateCategories.flatMap(cat => getTemplatesByCategory(cat));
   }, [selectedSystem]);
+
+  const editorialTemplates = useMemo(() => {
+    return systemTemplates.filter((t) => (t.tags || []).includes('editorial'));
+  }, [systemTemplates]);
+
+  const visibleTemplates = useMemo(() => {
+    if (templateFilter === 'editorial') return editorialTemplates;
+    return systemTemplates;
+  }, [templateFilter, editorialTemplates, systemTemplates]);
 
   // Get manifest for selected template to show backend info
   const selectedManifest = useMemo(() => {
@@ -40,6 +50,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const handleSystemSelect = (systemId: BusinessSystemType) => {
     setSelectedSystem(systemId);
     setSelectedTemplate(null);
+    setTemplateFilter('all');
     setStep("templates");
   };
 
@@ -87,6 +98,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
       setStep("select");
       setSelectedSystem(null);
       setSelectedTemplate(null);
+      setTemplateFilter('all');
     }
   };
 
@@ -212,12 +224,119 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Quick filters */}
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={templateFilter === 'all' ? 'default' : 'outline'}
+                        onClick={() => setTemplateFilter('all')}
+                        className="h-7 text-xs"
+                      >
+                        All
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={templateFilter === 'editorial' ? 'default' : 'outline'}
+                        onClick={() => setTemplateFilter('editorial')}
+                        className="h-7 text-xs"
+                        disabled={editorialTemplates.length === 0}
+                      >
+                        Editorial (new)
+                        <Badge variant="secondary" className="ml-2 text-[10px] px-1 py-0 h-4">
+                          {editorialTemplates.length}
+                        </Badge>
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Template Grid */}
                   <ScrollArea className="flex-1 max-h-[50vh] p-6">
+                    {/* Featured Editorial row (only when browsing All) */}
+                    {templateFilter === 'all' && editorialTemplates.length > 0 && (
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px]">
+                              Featured
+                            </Badge>
+                            <h3 className="text-sm font-semibold text-foreground">
+                              Editorial starters
+                            </h3>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => setTemplateFilter('editorial')}
+                          >
+                            View all
+                            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {editorialTemplates.slice(0, 3).map((template) => (
+                            <motion.div
+                              key={template.id}
+                              whileHover={{ scale: 1.02, y: -2 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handleTemplateSelect(template)}
+                              className={cn(
+                                "relative rounded-xl border-2 overflow-hidden cursor-pointer transition-all",
+                                "bg-card hover:shadow-lg",
+                                selectedTemplate?.id === template.id
+                                  ? "border-primary ring-2 ring-primary/20"
+                                  : "border-border hover:border-primary/50"
+                              )}
+                            >
+                              <div className="aspect-video bg-muted/50 relative overflow-hidden">
+                                <div className="absolute inset-0 p-2 overflow-hidden">
+                                  <div
+                                    className="w-full h-full rounded bg-white transform scale-[0.25] origin-top-left"
+                                    style={{ width: '400%', height: '400%', pointerEvents: 'none' }}
+                                    dangerouslySetInnerHTML={{
+                                      __html: template.code.replace(/<script[\s\S]*?<\/script>/gi, ''),
+                                    }}
+                                  />
+                                </div>
+                                <div className="absolute inset-0 bg-primary/0 hover:bg-primary/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                                  <Eye className="h-6 w-6 text-primary" />
+                                </div>
+                              </div>
+                              <div className="p-4">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <h3 className="font-semibold text-sm text-foreground line-clamp-1">
+                                    {template.name}
+                                  </h3>
+                                  {selectedTemplate?.id === template.id && (
+                                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+                                      <Check className="h-3 w-3 text-primary-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                                  {template.description}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-[10px] px-2 py-0">
+                                    {categoryLabels[template.category] || template.category}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-[10px] px-2 py-0 text-muted-foreground">
+                                    editorial
+                                  </Badge>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {systemTemplates.map((template) => (
+                      {visibleTemplates.map((template) => (
                         <motion.div
                           key={template.id}
                           whileHover={{ scale: 1.02, y: -2 }}
