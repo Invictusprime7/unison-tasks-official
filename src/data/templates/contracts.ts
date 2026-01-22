@@ -9,6 +9,11 @@ export interface SystemContract {
   systemType: BusinessSystemType;
   name: string;
   requiredIntents: string[];
+  /**
+   * Required CTA slots that must exist in the template DOM for publish readiness.
+   * Slots are enforced via data-ut-cta attributes (e.g. "cta.primary").
+   */
+  requiredSlots: string[];
   requiredData: string[];
   recommendedIntegrations: string[];
   publishChecks: PublishCheck[];
@@ -40,6 +45,7 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       'reservation.submit',
       'contact.submit',
     ],
+    requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
     requiredData: [
       'business_name',
       'business_email',
@@ -93,6 +99,7 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       'project.inquire',
       'quote.request',
     ],
+    requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
     requiredData: [
       'creator_name',
       'portfolio_items',
@@ -146,6 +153,7 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       'cart.view',
       'checkout.start',
     ],
+    requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
     requiredData: [
       'store_name',
       'products',
@@ -199,6 +207,7 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       'demo.request',
       'quote.request',
     ],
+    requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
     requiredData: [
       'agency_name',
       'services',
@@ -251,6 +260,7 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       'newsletter.subscribe',
       'contact.submit',
     ],
+    requiredSlots: ['cta.primary', 'cta.footer'],
     requiredData: [
       'site_name',
       'author_name',
@@ -300,6 +310,7 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       'demo.request',
       'newsletter.subscribe',
     ],
+    requiredSlots: ['cta.primary', 'cta.secondary', 'cta.nav', 'cta.footer'],
     requiredData: [
       'product_name',
       'pricing_tiers',

@@ -50,6 +50,9 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
+import SystemHealthPanel from "@/components/web-builder/SystemHealthPanel";
+import type { BusinessSystemType } from "@/data/templates/types";
+import { normalizeTemplateForCtaContract, type TemplateCtaAnalysis } from "@/utils/ctaContract";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -336,6 +339,16 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const referrerPageName = systemName || 
     (location.state as { from?: string })?.from || 
     'System Launcher';
+
+  // System/Template readiness state (used by Health tab)
+  const [activeSystemType, setActiveSystemType] = useState<BusinessSystemType | null>(
+    (systemType as BusinessSystemType) || null
+  );
+  const [templateCtaAnalysis, setTemplateCtaAnalysis] = useState<TemplateCtaAnalysis>({
+    intents: [],
+    slots: [],
+    hadUtAttributes: false,
+  });
   
   // Set default businessId for intent routing
   useEffect(() => {
@@ -352,6 +365,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setDefaultBusinessId(null);
     };
   }, [businessId, systemType]);
+
+  const handleRunPublishChecks = useCallback(() => {
+    toast.success('Publish checks passed (UI gate only)', {
+      description: 'Next: run real backend verification before publish.'
+    });
+  }, []);
   
   
   
@@ -1609,6 +1628,7 @@ ${body.innerHTML}
                 <TabsTrigger value="templates" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Templates</TabsTrigger>
                 <TabsTrigger value="functional" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Functional</TabsTrigger>
                 <TabsTrigger value="projects" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Projects</TabsTrigger>
+                <TabsTrigger value="health" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Health</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
@@ -1679,16 +1699,26 @@ ${body.innerHTML}
               </TabsContent>
               <TabsContent value="templates" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <LayoutTemplatesPanel
-                  onSelectTemplate={(code, name) => {
+                  onSelectTemplate={(code, name, selectedSystemType) => {
                     console.log('[WebBuilder] ========== TEMPLATE SELECTED ==========');
                     console.log('[WebBuilder] Template:', name, 'code length:', code.length);
+
+                    const effectiveSystemType = (selectedSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
+                    setActiveSystemType(effectiveSystemType);
+
+                    // Normalize + auto-migrate CTAs into the slot/intent contract
+                    const normalized = normalizeTemplateForCtaContract({
+                      code,
+                      systemType: effectiveSystemType,
+                    });
+                    setTemplateCtaAnalysis(normalized.analysis);
                     
                     // Directly set the code - SimplePreview will render it
-                    setEditorCode(code);
-                    setPreviewCode(code);
+                    setEditorCode(normalized.code);
+                    setPreviewCode(normalized.code);
                     
                     // Also import to VFS for code editor
-                    const files = templateToVFSFiles(code, name);
+                    const files = templateToVFSFiles(normalized.code, name);
                     virtualFS.importFiles(files);
                     
                     toast.success(`Loaded template: ${name}`, {
@@ -1696,6 +1726,19 @@ ${body.innerHTML}
                     });
                   }}
                 />
+              </TabsContent>
+
+              <TabsContent value="health" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-3">
+                    <SystemHealthPanel
+                      systemType={activeSystemType}
+                      preloadedIntents={templateCtaAnalysis.intents}
+                      templateSlots={templateCtaAnalysis.slots}
+                      onPublishCheck={handleRunPublishChecks}
+                    />
+                  </div>
+                </ScrollArea>
               </TabsContent>
               <TabsContent value="functional" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <FunctionalBlocksPanel 
