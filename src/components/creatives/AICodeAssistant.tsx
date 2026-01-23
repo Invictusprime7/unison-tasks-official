@@ -1061,7 +1061,20 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                     await saveMessage(assistantMessage);
 
                     setTimeout(() => {
-                      void handleSend({ overrideInput: followUpPrompt, skipBuilderActions: true });
+                      const continuationPrompt = [
+                        "Packs are installed. Continue by generating a FULLY RESPONSIVE, multi-section e-commerce landing page template and wire it to the built-in backend intents.",
+                        "\n\nOUTPUT REQUIREMENTS:",
+                        "- Output ONE complete HTML document in a single ```html``` code block.",
+                        "- Use Tailwind classes with the design system tokens (bg-background, text-foreground, bg-card, text-muted-foreground, border-border, bg-primary, text-primary-foreground). Avoid hardcoded colors.",
+                        "- Include: header/nav with auth CTAs (data-ut-intent=auth.signin/auth.signup/auth.signout), product search + filter UI, featured categories, product grid, floating cart, and a checkout section.",
+                        "- Add-to-cart buttons must be wired: data-ut-intent=cart.add (also include data-intent=cart.add for compatibility) and include data-product-id, data-product-name, data-price.",
+                        "- Cart/checkout CTAs: data-ut-intent=cart.view and data-ut-intent=checkout.start.",
+                        "- Use CTA slots where appropriate: data-ut-cta=cta.nav, cta.primary, cta.hero, cta.footer and set data-ut-label.",
+                        "- Do NOT say you cannot build a backend; assume the backend is available via the platform.",
+                        "\n\nUSER REQUEST:\n" + followUpPrompt,
+                      ].join("\n");
+
+                      void handleSend({ overrideInput: continuationPrompt, skipBuilderActions: true });
                     }, 0);
                   }
                 } catch (err) {
