@@ -9,7 +9,28 @@ export interface SelectedElementData {
   attributes: Record<string, string>;
   selector: string;
   xpath: string;
+  html: string;
+  section?: string;
 }
+
+const inferSectionLabel = (element: HTMLElement): string | undefined => {
+  const sectionEl = element.closest('section');
+  if (!sectionEl) return undefined;
+
+  const explicit =
+    sectionEl.getAttribute('data-ut-section') ||
+    sectionEl.getAttribute('data-section') ||
+    sectionEl.getAttribute('aria-label') ||
+    sectionEl.id;
+  if (explicit) return explicit;
+
+  // Try to infer from the first heading inside the section
+  const heading = sectionEl.querySelector('h1,h2,h3');
+  const txt = heading?.textContent?.trim();
+  if (txt) return txt.slice(0, 80);
+
+  return undefined;
+};
 
 /**
  * Extract all computed styles from an element
@@ -133,6 +154,8 @@ export const getSelectedElementData = (element: HTMLElement): SelectedElementDat
     attributes: extractElementAttributes(element),
     selector: generateSelector(element),
     xpath: generateXPath(element),
+    html: element.outerHTML,
+    section: inferSectionLabel(element),
   };
 };
 
