@@ -9,7 +9,8 @@ import { ArrowRight, ArrowLeft, Check, Zap, Layout, Eye, Database, Workflow, Shi
 import { businessSystems, type BusinessSystemType, type LayoutTemplate } from "@/data/templates/types";
 import { getTemplatesByCategory } from "@/data/templates";
 import { getTemplateManifest, getDefaultManifestForSystem } from "@/data/templates/manifest";
-import { quickProvision } from "@/services/templateProvisioner";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface SystemLauncherProps {
@@ -23,6 +24,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate | null>(null);
   const [step, setStep] = useState<"select" | "templates">("select");
   const [templateFilter, setTemplateFilter] = useState<'all' | 'editorial'>('all');
+  const [isLaunching, setIsLaunching] = useState(false);
 
   // Get templates for the selected system
   const systemTemplates = useMemo(() => {
@@ -58,33 +60,61 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     setSelectedTemplate(template);
   };
 
-  const handleLaunch = () => {
+  const handleLaunch = async () => {
     if (!selectedSystem || !selectedTemplate) return;
-    
-    const system = businessSystems.find(s => s.id === selectedSystem);
+
+    const system = businessSystems.find((s) => s.id === selectedSystem);
     if (!system) return;
 
-    // Auto-provision the template backend
-    const { businessId, manifest } = quickProvision(selectedSystem);
-    console.log('[SystemLauncher] Provisioned template:', manifest.id, 'businessId:', businessId);
+    setIsLaunching(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error("Please sign in to install this system");
+        navigate("/auth");
+        return;
+      }
 
-    // Navigate to web builder with selected template, system context, AND provisioning data
-    navigate("/web-builder", {
-      state: {
-        generatedCode: selectedTemplate.code,
-        templateName: selectedTemplate.name,
-        systemType: selectedSystem,
-        systemName: system.name,
-        preloadedIntents: system.intents,
-        // NEW: Provisioning data
-        businessId,
-        manifestId: manifest.id,
-        isProvisioned: true,
-      },
-    });
-    
-    onOpenChange(false);
-    resetState();
+      const manifest = getTemplateManifest(selectedTemplate.id) || getDefaultManifestForSystem(selectedSystem);
+
+      const { data, error } = await supabase.functions.invoke("install-system", {
+        body: {
+          systemType: selectedSystem,
+          templateId: selectedTemplate.id,
+          templateName: selectedTemplate.name,
+          businessName: `${system.name} Business`,
+        },
+      });
+
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || "Install failed");
+      }
+
+      const businessId = data.data.businessId as string;
+      console.log("[SystemLauncher] Installed system:", selectedSystem, "businessId:", businessId);
+
+      navigate("/web-builder", {
+        state: {
+          generatedCode: selectedTemplate.code,
+          templateName: selectedTemplate.name,
+          systemType: selectedSystem,
+          systemName: system.name,
+          preloadedIntents: system.intents,
+          businessId,
+          manifestId: manifest.id,
+          isProvisioned: true,
+        },
+      });
+
+      onOpenChange(false);
+      resetState();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Install failed";
+      console.error("[SystemLauncher] install error", e);
+      toast.error(msg);
+    } finally {
+      setIsLaunching(false);
+    }
   };
 
   const resetState = () => {
@@ -455,11 +485,11 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                       <Button
                         size="lg"
                         onClick={handleLaunch}
-                        disabled={!selectedTemplate}
+                        disabled={!selectedTemplate || isLaunching}
                         className="min-w-[180px]"
                       >
                         <Zap className="mr-2 h-4 w-4" />
-                        Start Building
+                        {isLaunching ? "Installing…" : "Start Building"}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </div>

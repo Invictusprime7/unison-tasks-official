@@ -55,6 +55,7 @@ import { decideIntentUx } from "@/runtime/intentUx";
 import SystemHealthPanel from "@/components/web-builder/SystemHealthPanel";
 import type { BusinessSystemType } from "@/data/templates/types";
 import { normalizeTemplateForCtaContract, type TemplateCtaAnalysis } from "@/utils/ctaContract";
+import { supabase } from "@/integrations/supabase/client";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -355,6 +356,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     slots: [],
     hadUtAttributes: false,
   });
+
+  const [backendInstalled, setBackendInstalled] = useState(false);
   
   // Set default businessId for intent routing
   useEffect(() => {
@@ -369,6 +372,44 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     // Cleanup on unmount
     return () => {
       setDefaultBusinessId(null);
+    };
+  }, [businessId, systemType]);
+
+  // Production readiness signal: check if this businessId has been installed
+  useEffect(() => {
+    const effectiveBusinessId = businessId || getOrCreatePreviewBusinessId(systemType);
+    let cancelled = false;
+
+    async function checkInstalled() {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          if (!cancelled) setBackendInstalled(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("business_installs" as any)
+          .select("id")
+          .eq("business_id", effectiveBusinessId)
+          .limit(1);
+
+        if (error) {
+          console.warn("[WebBuilder] business_installs check failed", error);
+          if (!cancelled) setBackendInstalled(false);
+          return;
+        }
+
+        if (!cancelled) setBackendInstalled((data?.length ?? 0) > 0);
+      } catch (e) {
+        console.warn("[WebBuilder] backendInstalled check error", e);
+        if (!cancelled) setBackendInstalled(false);
+      }
+    }
+
+    checkInstalled();
+    return () => {
+      cancelled = true;
     };
   }, [businessId, systemType]);
 
@@ -1775,6 +1816,7 @@ ${body.innerHTML}
                       systemType={activeSystemType}
                       preloadedIntents={templateCtaAnalysis.intents}
                       templateSlots={templateCtaAnalysis.slots}
+                      backendInstalled={backendInstalled}
                       onPublishCheck={handleRunPublishChecks}
                     />
                   </div>
