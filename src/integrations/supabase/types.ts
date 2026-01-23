@@ -301,6 +301,8 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          notification_email: string | null
+          notification_phone: string | null
           owner_id: string
           updated_at: string
         }
@@ -308,6 +310,8 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          notification_email?: string | null
+          notification_phone?: string | null
           owner_id: string
           updated_at?: string
         }
@@ -315,6 +319,8 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          notification_email?: string | null
+          notification_phone?: string | null
           owner_id?: string
           updated_at?: string
         }
