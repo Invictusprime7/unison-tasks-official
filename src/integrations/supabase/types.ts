@@ -242,6 +242,30 @@ export type Database = {
           },
         ]
       }
+      business_design_preferences: {
+        Row: {
+          business_id: string
+          created_at: string
+          design_preset: string | null
+          template_category: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          design_preset?: string | null
+          template_category?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          design_preset?: string | null
+          template_category?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_installs: {
         Row: {
           business_id: string
