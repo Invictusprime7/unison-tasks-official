@@ -15,6 +15,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getDemoResponse, type BusinessSystemType } from "@/data/templates";
+import { CORE_INTENTS, type CoreIntent, isCoreIntent } from "@/runtime/coreIntents";
 
 
 export interface IntentPayload {
@@ -28,108 +29,65 @@ export type IntentResult = {
   error?: string;
 };
 
-// Intent to Edge Function mapping - comprehensive for all template types
-const INTENT_FUNCTION_MAP: Record<string, string> = {
-  // ============================================
-  // LEADS PACK - Contact forms, newsletters, waitlists
-  // ============================================
+type BackendHandler = 'create-lead' | 'create-booking';
+
+// Locked: CoreIntent -> authoritative backend handler
+const BACKEND_HANDLERS: Record<CoreIntent, BackendHandler> = {
   'contact.submit': 'create-lead',
   'newsletter.subscribe': 'create-lead',
-  'join.waitlist': 'create-lead',
-  'beta.apply': 'create-lead',
-  
-  // ============================================
-  // BOOKING PACK - Reservations, appointments, services
-  // ============================================
-  'booking.create': 'create-booking',
-  'booking.cancel': 'create-booking',
-  'booking.reschedule': 'create-booking',
-  'calendar.book': 'create-booking',
-  
-  // ============================================
-  // AUTH PACK - Authentication
-  // ============================================
-  'auth.signup': 'supabase-auth',
-  'auth.signin': 'supabase-auth',
-  'auth.signout': 'supabase-auth',
-  
-  // ============================================
-  // SALES & DEMOS
-  // ============================================
-  'trial.start': 'create-lead',
-  'demo.request': 'create-lead',
-  'sales.contact': 'create-lead',
   'quote.request': 'create-lead',
-  'project.start': 'create-lead',
-  'project.inquire': 'create-lead',
-  'consultation.book': 'create-booking',
-  
-  // ============================================
-  // E-COMMERCE
-  // ============================================
-  'cart.add': 'workflow-trigger',
-  'cart.view': 'navigation',
-  'checkout.start': 'workflow-trigger',
-  'wishlist.add': 'workflow-trigger',
-  'product.compare': 'workflow-trigger',
-  'notify.restock': 'create-lead',
-  'shop.browse': 'navigation',
-  
-  // ============================================
-  // RESTAURANT
-  // ============================================
-  'order.online': 'workflow-trigger',
-  'order.pickup': 'workflow-trigger',
-  'order.delivery': 'workflow-trigger',
-  'menu.view': 'navigation',
-  'gift.purchase': 'workflow-trigger',
-  'event.inquire': 'create-lead',
-  
-  // ============================================
-  // CONTENT & BLOG
-  // ============================================
-  'content.read': 'navigation',
-  'content.share': 'workflow-trigger',
-  'content.bookmark': 'workflow-trigger',
-  'author.follow': 'workflow-trigger',
-  'comment.submit': 'workflow-trigger',
-  
-  // ============================================
-  // CONTRACTOR/SERVICE
-  // ============================================
-  'emergency.service': 'create-lead',
-  'call.now': 'navigation',
-  
-  // ============================================
-  // PORTFOLIO/AGENCY
-  // ============================================
-  'portfolio.view': 'navigation',
-  'case.study': 'navigation',
-  'resume.download': 'workflow-trigger',
-  
-  // ============================================
-  // NAVIGATION & DASHBOARD
-  // ============================================
-  'dashboard.open': 'navigation',
-  'pricing.view': 'navigation',
+  'booking.create': 'create-booking',
 };
 
-// Lead source mappings for different intents
-const LEAD_SOURCE_MAP: Record<string, string> = {
+const LEAD_SOURCE_MAP: Record<CoreIntent, string> = {
   'contact.submit': 'contact_form',
   'newsletter.subscribe': 'newsletter',
-  'join.waitlist': 'waitlist',
-  'beta.apply': 'beta_application',
-  'trial.start': 'trial_signup',
-  'demo.request': 'demo_request',
-  'sales.contact': 'sales_inquiry',
   'quote.request': 'quote_request',
-  'project.start': 'project_brief',
-  'project.inquire': 'project_inquiry',
-  'emergency.service': 'emergency_request',
-  'event.inquire': 'event_inquiry',
-  'notify.restock': 'restock_notification',
+  // booking.create is not a lead source
+  'booking.create': 'booking',
 };
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function assertBusinessId(payload: IntentPayload): { ok: true; businessId: string } | { ok: false; error: string } {
+  const businessId = typeof payload.businessId === 'string' ? payload.businessId : '';
+  if (!businessId) return { ok: false as const, error: 'Missing businessId (this site is not configured for a business yet).' };
+  if (!isUuid(businessId)) return { ok: false as const, error: 'Invalid businessId.' };
+  return { ok: true as const, businessId };
+}
+
+function normalizeLeadPayload(intent: CoreIntent, payload: IntentPayload) {
+  // Basic contact fields may come from various form names
+  const email = String(payload.email ?? payload.customerEmail ?? '').trim();
+  const name = String(payload.name ?? payload.fullName ?? payload.customerName ?? '').trim() || undefined;
+  const phone = String(payload.phone ?? payload.customerPhone ?? '').trim() || undefined;
+  const message = String(payload.message ?? payload.notes ?? '').trim() || undefined;
+
+  const now = new Date().toISOString();
+  const page = typeof window !== 'undefined' ? window.location.href : undefined;
+
+  const metadata = {
+    intent,
+    timestamp: now,
+    page,
+    templateId: typeof payload.templateId === 'string' ? payload.templateId : undefined,
+    source: payload._source ?? undefined,
+  };
+
+  return {
+    // create-lead expects these keys
+    businessId: payload.businessId,
+    intent,
+    source: payload.source || LEAD_SOURCE_MAP[intent],
+    email,
+    name,
+    phone,
+    message,
+    metadata,
+  };
+}
 
 /**
  * Handle authentication intents using Supabase Auth directly
@@ -331,81 +289,50 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     payload.businessId = defaultBusinessId;
     console.log("[IntentRouter] Injected default businessId:", defaultBusinessId);
   }
-  
-  // Generate a fallback businessId if still missing (for demo/preview mode)
-  if (!payload.businessId) {
-    // IMPORTANT: must be a UUID because backend tables commonly type business_id as uuid
-    payload.businessId = crypto.randomUUID();
-    console.log("[IntentRouter] Generated fallback businessId:", payload.businessId);
+
+  // Locked surface
+  if (!isCoreIntent(intent)) {
+    console.warn('[IntentRouter] Unsupported intent (not in CoreIntent):', intent);
+    return { success: false, error: `Unsupported intent: ${intent}` };
   }
+
+  // Production safety: require real businessId for execution
+  const biz = assertBusinessId(payload);
+  if (!biz.ok) return { success: false, error: ('error' in biz ? biz.error : 'Invalid businessId') };
   
   try {
-    // Handle auth intents specially (no edge function needed)
-    if (intent.startsWith("auth.")) {
-      return await handleAuthIntent(intent, payload);
+    const handler = BACKEND_HANDLERS[intent];
+
+    // Normalize payload per intent, then call authoritative backend handler.
+    let body: Record<string, unknown> = { ...payload };
+    if (intent === 'contact.submit' || intent === 'newsletter.subscribe' || intent === 'quote.request') {
+      body = normalizeLeadPayload(intent, payload);
     }
-    
-    // Get the edge function to call
-    const functionName = INTENT_FUNCTION_MAP[intent];
-    
-    if (!functionName) {
-      console.warn("[IntentRouter] Unknown intent:", intent);
-      // Emit as custom event for potential local handling
-      window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: payload }));
-      return { success: true, data: { handled: 'event', intent } };
+
+    if (intent === 'booking.create') {
+      body = {
+        ...payload,
+        businessId: payload.businessId,
+        action: 'create',
+        // Transform pipeline field names to edge function expected format
+        customerName: (payload.customerName || payload.name) ?? undefined,
+        customerEmail: (payload.customerEmail || payload.email) ?? undefined,
+        customerPhone: (payload.customerPhone || payload.phone) ?? undefined,
+        startsAt:
+          payload.startsAt ||
+          (payload.date && payload.time ? new Date(`${payload.date}T${payload.time}:00`).toISOString() : undefined),
+        serviceName: (payload.serviceName || payload.service) ?? undefined,
+        metadata: {
+          intent,
+          timestamp: new Date().toISOString(),
+          page: typeof window !== 'undefined' ? window.location.href : undefined,
+          templateId: typeof payload.templateId === 'string' ? payload.templateId : undefined,
+          source: payload._source ?? undefined,
+        },
+      };
     }
-    
-    // Handle navigation intents
-    if (functionName === 'navigation') {
-      return handleNavigationIntent(intent, payload);
-    }
-    
-    // Handle workflow trigger intents
-    if (functionName === 'workflow-trigger') {
-      return await handleWorkflowIntent(intent, payload);
-    }
-    
-    // Enrich payload based on intent type
-    let enrichedPayload = { ...payload };
-    
-    // Add source for lead intents
-    if (LEAD_SOURCE_MAP[intent]) {
-      enrichedPayload.source = enrichedPayload.source || LEAD_SOURCE_MAP[intent];
-    }
-    
-    // Add action type and transform field names for booking intents
-    if (intent === 'booking.cancel') {
-      enrichedPayload.action = 'cancel';
-    } else if (intent === 'booking.reschedule') {
-      enrichedPayload.action = 'reschedule';
-    } else if (intent === 'booking.create' || intent === 'calendar.book' || intent === 'consultation.book') {
-      enrichedPayload.action = 'create';
-      
-      // Transform pipeline field names to edge function expected format
-      if (enrichedPayload.name && !enrichedPayload.customerName) {
-        enrichedPayload.customerName = enrichedPayload.name;
-      }
-      if (enrichedPayload.email && !enrichedPayload.customerEmail) {
-        enrichedPayload.customerEmail = enrichedPayload.email;
-      }
-      if (enrichedPayload.phone && !enrichedPayload.customerPhone) {
-        enrichedPayload.customerPhone = enrichedPayload.phone;
-      }
-      // Combine date + time into startsAt ISO string
-      if (enrichedPayload.date && enrichedPayload.time && !enrichedPayload.startsAt) {
-        const dateStr = enrichedPayload.date as string;
-        const timeStr = enrichedPayload.time as string;
-        enrichedPayload.startsAt = new Date(`${dateStr}T${timeStr}:00`).toISOString();
-      }
-      if (enrichedPayload.service && !enrichedPayload.serviceName) {
-        enrichedPayload.serviceName = enrichedPayload.service;
-      }
-    }
-    
-    // Call the edge function
-    const { data, error } = await supabase.functions.invoke(functionName, {
-      body: enrichedPayload,
-    });
+
+    const { data, error } = await supabase.functions.invoke(handler, { body });
     
     if (error) {
       console.error("[IntentRouter] Edge function error:", error);
@@ -434,45 +361,30 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
  * Get all available intents (for AI assistant)
  */
 export function getAvailableIntents(): string[] {
-  return Object.keys(INTENT_FUNCTION_MAP);
+  return [...CORE_INTENTS];
 }
 
 /**
  * Check if an intent exists
  */
 export function isValidIntent(intent: string): boolean {
-  return intent in INTENT_FUNCTION_MAP || intent.startsWith('custom.');
+  return isCoreIntent(intent);
+}
+
+/**
+ * True if this intent has a registered backend handler.
+ * Used for publish gating.
+ */
+export function hasBackendHandler(intent: string): boolean {
+  return isCoreIntent(intent) && !!BACKEND_HANDLERS[intent];
 }
 
 /**
  * Get the pack name for an intent
  */
 export function getIntentPack(intent: string): string | null {
-  if (intent.startsWith('contact.') || intent.startsWith('newsletter.') || intent.startsWith('join.') ||
-      intent.startsWith('demo.') || intent.startsWith('quote.') || intent.startsWith('project.') ||
-      intent.startsWith('sales.') || intent.startsWith('beta.') || intent.startsWith('trial.') ||
-      intent.startsWith('emergency.') || intent.startsWith('event.') || intent.startsWith('notify.')) {
-    return 'leads';
-  }
-  if (intent.startsWith('booking.') || intent.startsWith('calendar.') || intent.startsWith('consultation.')) {
-    return 'booking';
-  }
-  if (intent.startsWith('auth.') || intent === 'dashboard.open') {
-    return 'auth';
-  }
-  if (intent.startsWith('cart.') || intent.startsWith('checkout.') || intent.startsWith('wishlist.') ||
-      intent.startsWith('shop.') || intent.startsWith('product.')) {
-    return 'ecommerce';
-  }
-  if (intent.startsWith('order.') || intent.startsWith('menu.') || intent.startsWith('gift.')) {
-    return 'restaurant';
-  }
-  if (intent.startsWith('content.') || intent.startsWith('author.') || intent.startsWith('comment.')) {
-    return 'content';
-  }
-  if (intent.startsWith('portfolio.') || intent.startsWith('case.') || intent.startsWith('resume.')) {
-    return 'portfolio';
-  }
+  if (intent === 'booking.create') return 'booking';
+  if (intent === 'newsletter.subscribe' || intent === 'contact.submit' || intent === 'quote.request') return 'leads';
   return null;
 }
 
@@ -480,22 +392,13 @@ export function getIntentPack(intent: string): string | null {
  * Get the function name for an intent
  */
 export function getIntentFunction(intent: string): string | null {
-  return INTENT_FUNCTION_MAP[intent] || null;
+  if (!isCoreIntent(intent)) return null;
+  return BACKEND_HANDLERS[intent] || null;
 }
 
 // Export for use in templates and AI assistant
 export const AVAILABLE_INTENTS = getAvailableIntents();
 export const INTENT_PACKS = {
-  leads: [
-    'contact.submit', 'newsletter.subscribe', 'join.waitlist', 'beta.apply',
-    'trial.start', 'demo.request', 'sales.contact', 'quote.request',
-    'project.start', 'project.inquire', 'emergency.service', 'event.inquire', 'notify.restock'
-  ],
-  booking: ['booking.create', 'booking.cancel', 'booking.reschedule', 'calendar.book', 'consultation.book'],
-  auth: ['auth.signup', 'auth.signin', 'auth.signout', 'dashboard.open'],
-  ecommerce: ['cart.add', 'cart.view', 'checkout.start', 'wishlist.add', 'product.compare', 'shop.browse'],
-  restaurant: ['order.online', 'order.pickup', 'order.delivery', 'menu.view', 'gift.purchase'],
-  content: ['content.read', 'content.share', 'content.bookmark', 'author.follow', 'comment.submit'],
-  portfolio: ['portfolio.view', 'case.study', 'resume.download'],
-  navigation: ['pricing.view', 'call.now'],
+  leads: ['contact.submit', 'newsletter.subscribe', 'quote.request'],
+  booking: ['booking.create'],
 };

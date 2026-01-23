@@ -385,16 +385,11 @@ async function handleFormSubmit(e: SubmitEvent, config: GlobalListenerConfig): P
     
     if (formId.includes('contact') || formClass.includes('contact')) {
       intent = 'contact.submit';
-    } else if (formId.includes('newsletter') || formClass.includes('newsletter') || formClass.includes('subscribe')) {
+    } else if (formId.includes('newsletter') || formClass.includes('newsletter') || formClass.includes('subscribe') || formId.includes('waitlist') || formClass.includes('waitlist')) {
+      // Locked intent surface: waitlist/beta/etc map to newsletter.subscribe
       intent = 'newsletter.subscribe';
-    } else if (formId.includes('waitlist') || formClass.includes('waitlist')) {
-      intent = 'join.waitlist';
     } else if (formId.includes('booking') || formClass.includes('booking') || formId.includes('reservation')) {
       intent = 'booking.create';
-    } else if (formId.includes('login') || formClass.includes('login') || formId.includes('signin')) {
-      intent = 'auth.signin';
-    } else if (formId.includes('signup') || formClass.includes('signup') || formId.includes('register')) {
-      intent = 'auth.signup';
     } else if (formId.includes('quote') || formClass.includes('quote')) {
       intent = 'quote.request';
     }
@@ -607,20 +602,19 @@ export function generateIntentListenerScript(config: GlobalListenerConfig = {}):
   
   // Label to intent mapping
   const LABEL_INTENTS = {
-    'sign in': 'auth.signin', 'log in': 'auth.signin', 'login': 'auth.signin',
-    'sign up': 'auth.signup', 'register': 'auth.signup', 'get started': 'auth.signup', 'create account': 'auth.signup',
-    'sign out': 'auth.signout', 'log out': 'auth.signout', 'logout': 'auth.signout',
-    'start free trial': 'trial.start', 'start trial': 'trial.start', 'free trial': 'trial.start', 'try free': 'trial.start',
-    'join waitlist': 'join.waitlist', 'join the waitlist': 'join.waitlist',
-    'subscribe': 'newsletter.subscribe', 'get updates': 'newsletter.subscribe',
-    'contact': 'contact.submit', 'contact us': 'contact.submit', 'get in touch': 'contact.submit', 'send message': 'contact.submit',
-    'add to cart': 'cart.add', 'buy now': 'checkout.start', 'shop now': 'shop.browse', 'checkout': 'checkout.start', 'view cart': 'cart.view',
-    'book now': 'booking.create', 'reserve': 'booking.create', 'reserve table': 'booking.create', 'book service': 'booking.create',
-    'get quote': 'quote.request', 'get free quote': 'quote.request', 'request quote': 'quote.request', 'free estimate': 'quote.request',
-    'watch demo': 'demo.request', 'request demo': 'demo.request',
-    'hire me': 'project.inquire', 'start a project': 'project.start', 'view work': 'portfolio.view',
-    'order online': 'order.online', 'order now': 'order.online', 'view menu': 'menu.view',
-    'read more': 'content.read', 'call now': 'call.now', 'emergency': 'emergency.service'
+    'subscribe': 'newsletter.subscribe',
+    'get updates': 'newsletter.subscribe',
+    'join waitlist': 'newsletter.subscribe',
+    'contact': 'contact.submit',
+    'contact us': 'contact.submit',
+    'get in touch': 'contact.submit',
+    'send message': 'contact.submit',
+    'book now': 'booking.create',
+    'reserve': 'booking.create',
+    'reserve table': 'booking.create',
+    'get quote': 'quote.request',
+    'request quote': 'quote.request',
+    'free estimate': 'quote.request'
   };
   
   function inferIntent(text) {
@@ -705,10 +699,10 @@ export function generateIntentListenerScript(config: GlobalListenerConfig = {}):
     if (!intent) {
       const id = (form.id || '').toLowerCase();
       const cls = (form.className || '').toLowerCase();
-      if (id.includes('contact') || cls.includes('contact')) intent = 'contact.submit';
-      else if (id.includes('newsletter') || cls.includes('subscribe')) intent = 'newsletter.subscribe';
-      else if (id.includes('waitlist')) intent = 'join.waitlist';
-      else if (id.includes('booking') || id.includes('reservation')) intent = 'booking.create';
+       if (id.includes('contact') || cls.includes('contact')) intent = 'contact.submit';
+       else if (id.includes('newsletter') || cls.includes('subscribe') || id.includes('waitlist')) intent = 'newsletter.subscribe';
+       else if (id.includes('booking') || id.includes('reservation')) intent = 'booking.create';
+       else if (id.includes('quote')) intent = 'quote.request';
     }
     
     if (!intent) return;

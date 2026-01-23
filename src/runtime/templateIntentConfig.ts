@@ -534,6 +534,29 @@ export const TEMPLATE_CTA_CONFIGS: TemplateCTAConfig[] = [
   }
 ];
 
+// ---------------------------------------------------------------------------
+// Locked CoreIntent mapping helpers
+// Templates may ONLY emit these.
+// ---------------------------------------------------------------------------
+
+type CoreIntent = 'contact.submit' | 'newsletter.subscribe' | 'booking.create' | 'quote.request';
+
+function mapToCoreIntent(labelLower: string, category?: TemplateCategory): CoreIntent | null {
+  // Booking first
+  if (/\b(book|booking|reserve|reservation|schedule)\b/.test(labelLower)) return 'booking.create';
+  // Quote
+  if (/\b(quote|estimate|pricing\s*quote)\b/.test(labelLower)) return 'quote.request';
+  // Newsletter / updates
+  if (/\b(subscribe|newsletter|updates|waitlist|early\s*access|beta)\b/.test(labelLower)) return 'newsletter.subscribe';
+  // Contact
+  if (/\b(contact|get\s*in\s*touch|message|talk)\b/.test(labelLower)) return 'contact.submit';
+
+  // Category fallbacks
+  if (category === 'restaurant') return 'booking.create';
+  if (category === 'contractor') return 'quote.request';
+  return null;
+}
+
 /**
  * Get CTA config for a specific template category
  */
@@ -577,130 +600,14 @@ export function getAllTemplateIntents(): string[] {
 export function matchLabelToIntent(label: string, category?: TemplateCategory): IntentConfig | null {
   const labelLower = label.toLowerCase().trim();
   
-  // Common label → intent mappings
-  const labelMappings: Record<string, string> = {
-    // Auth
-    'sign in': 'auth.signin',
-    'log in': 'auth.signin',
-    'login': 'auth.signin',
-    'sign up': 'auth.signup',
-    'register': 'auth.signup',
-    'get started': 'auth.signup',
-    'create account': 'auth.signup',
-    'sign out': 'auth.signout',
-    'log out': 'auth.signout',
-    'logout': 'auth.signout',
-    
-    // Trials & Signups
-    'start free trial': 'trial.start',
-    'start trial': 'trial.start',
-    'free trial': 'trial.start',
-    'try free': 'trial.start',
-    'try for free': 'trial.start',
-    'get started free': 'trial.start',
-    
-    // Waitlist & Newsletter
-    'join waitlist': 'join.waitlist',
-    'join the waitlist': 'join.waitlist',
-    'subscribe': 'newsletter.subscribe',
-    'get updates': 'newsletter.subscribe',
-    'sign up for updates': 'newsletter.subscribe',
-    
-    // Contact
-    'contact': 'contact.submit',
-    'contact us': 'contact.submit',
-    'get in touch': 'contact.submit',
-    'send message': 'contact.submit',
-    'let\'s talk': 'contact.submit',
-    
-    // E-commerce
-    'add to cart': 'cart.add',
-    'buy now': 'checkout.start',
-    'shop now': 'shop.browse',
-    'checkout': 'checkout.start',
-    'view cart': 'cart.view',
-    
-    // Booking
-    'book now': 'booking.create',
-    'reserve': 'booking.create',
-    'reserve table': 'booking.create',
-    'make reservation': 'booking.create',
-    'book service': 'booking.create',
-    'schedule': 'booking.create',
-    'book a call': 'calendar.book',
-    'schedule a call': 'calendar.book',
-    
-    // Quotes & Sales
-    'get quote': 'quote.request',
-    'get free quote': 'quote.request',
-    'request quote': 'quote.request',
-    'free estimate': 'quote.request',
-    'contact sales': 'sales.contact',
-    'talk to sales': 'sales.contact',
-    
-    // Demo
-    'watch demo': 'demo.request',
-    'request demo': 'demo.request',
-    'see demo': 'demo.request',
-    'view demo': 'demo.request',
-    
-    // Portfolio/Agency
-    'hire me': 'project.inquire',
-    'start a project': 'project.start',
-    'view work': 'portfolio.view',
-    'our work': 'portfolio.view',
-    'view portfolio': 'portfolio.view',
-    
-    // Restaurant
-    'order online': 'order.online',
-    'order now': 'order.online',
-    'order pickup': 'order.pickup',
-    'order delivery': 'order.delivery',
-    'view menu': 'menu.view',
-    
-    // Content
-    'read more': 'content.read',
-    'read article': 'content.read',
-    'share': 'content.share',
-    
-    // Emergency
-    'emergency': 'emergency.service',
-    'call now': 'call.now',
-  };
-  
-  // Try direct match first
-  if (labelMappings[labelLower]) {
-    const intent = labelMappings[labelLower];
-    
-    // If category provided, try to find in category config
-    if (category) {
-      const config = getCTAConfigForCategory(category);
-      if (config) {
-        const allCTAs = [...config.primaryCTAs, ...config.secondaryCTAs, ...config.formIntents];
-        const found = allCTAs.find(cta => cta.intent === intent);
-        if (found) return found;
-      }
-    }
-    
-    // Return basic config
+  const core = mapToCoreIntent(labelLower, category);
+  if (core) {
     return {
-      intent,
+      intent: core,
       label,
       description: `Action for: ${label}`,
       successMessage: 'Action completed!'
     };
-  }
-  
-  // Try partial match
-  for (const [key, intent] of Object.entries(labelMappings)) {
-    if (labelLower.includes(key) || key.includes(labelLower)) {
-      return {
-        intent,
-        label,
-        description: `Action for: ${label}`,
-        successMessage: 'Action completed!'
-      };
-    }
   }
   
   return null;
@@ -722,22 +629,14 @@ export function analyzeTemplateForCTAs(
   
   // Check for common CTA patterns in HTML
   const patterns = [
-    { pattern: /reserve|reservation|book/i, intents: ['booking.create'] },
-    { pattern: /cart|shop|buy|purchase/i, intents: ['cart.add', 'checkout.start'] },
-    { pattern: /subscribe|newsletter|updates/i, intents: ['newsletter.subscribe'] },
-    { pattern: /waitlist|early access/i, intents: ['join.waitlist'] },
-    { pattern: /trial|try free/i, intents: ['trial.start'] },
-    { pattern: /contact|get in touch|message/i, intents: ['contact.submit'] },
+    { pattern: /reserve|reservation|book|schedule/i, intents: ['booking.create'] },
+    { pattern: /subscribe|newsletter|updates|waitlist|early access|beta/i, intents: ['newsletter.subscribe'] },
+    { pattern: /contact|get in touch|message|talk/i, intents: ['contact.submit'] },
     { pattern: /quote|estimate/i, intents: ['quote.request'] },
-    { pattern: /demo/i, intents: ['demo.request'] },
-    { pattern: /sign\s*(in|up)|log\s*(in|out)/i, intents: ['auth.signin', 'auth.signup'] },
-    { pattern: /hire|project/i, intents: ['project.inquire', 'project.start'] },
-    { pattern: /order|delivery|pickup/i, intents: ['order.online'] },
-    { pattern: /menu/i, intents: ['menu.view'] },
-    { pattern: /emergency|urgent/i, intents: ['emergency.service'] },
   ];
   
-  const allCTAs = [...config.primaryCTAs, ...config.secondaryCTAs, ...config.formIntents];
+  const allCTAs = [...config.primaryCTAs, ...config.secondaryCTAs, ...config.formIntents]
+    .filter((cta) => ['contact.submit','newsletter.subscribe','booking.create','quote.request'].includes(cta.intent));
   
   patterns.forEach(({ pattern, intents }) => {
     if (pattern.test(html)) {
