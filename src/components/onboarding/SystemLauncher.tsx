@@ -18,6 +18,8 @@ import { getTemplateManifest, getDefaultManifestForSystem } from "@/data/templat
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AICodeAssistant } from "@/components/creatives/AICodeAssistant";
+import { buildPageStructureContext } from "@/utils/pageStructureContext";
 
 interface SystemLauncherProps {
   open: boolean;
@@ -30,6 +32,11 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate | null>(null);
   const [step, setStep] = useState<"select" | "templates">("select");
   const [isLaunching, setIsLaunching] = useState(false);
+
+  // Pre-launch edits (AI patch plan) live here until the user opens the full builder.
+  const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [editedTemplateCode, setEditedTemplateCode] = useState<string | null>(null);
+  const [editedTemplateFiles, setEditedTemplateFiles] = useState<Record<string, string> | null>(null);
 
   const isNewTemplate = (t: LayoutTemplate) => {
     const tags = t.tags || [];
@@ -61,6 +68,8 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
 
   const handleTemplateSelect = (template: LayoutTemplate) => {
     setSelectedTemplate(template);
+    setEditedTemplateCode(null);
+    setEditedTemplateFiles(null);
   };
 
   const handleLaunch = async () => {
@@ -96,9 +105,12 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
       const businessId = data.data.businessId as string;
       console.log("[SystemLauncher] Installed system:", selectedSystem, "businessId:", businessId);
 
-      navigate("/web-builder", {
+       const effectiveCode = editedTemplateCode ?? selectedTemplate.code;
+
+       navigate("/web-builder", {
         state: {
-          generatedCode: selectedTemplate.code,
+           generatedCode: effectiveCode,
+           vfsFiles: editedTemplateFiles,
           templateName: selectedTemplate.name,
           systemType: selectedSystem,
           systemName: system.name,
@@ -124,6 +136,9 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     setStep("select");
     setSelectedSystem(null);
     setSelectedTemplate(null);
+    setAiEditOpen(false);
+    setEditedTemplateCode(null);
+    setEditedTemplateFiles(null);
   };
 
   const handleBack = () => {
@@ -131,12 +146,17 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
       setStep("select");
       setSelectedSystem(null);
       setSelectedTemplate(null);
+      setAiEditOpen(false);
+      setEditedTemplateCode(null);
+      setEditedTemplateFiles(null);
     }
   };
 
   const selectedSystemData = selectedSystem 
     ? businessSystems.find(s => s.id === selectedSystem) 
     : null;
+
+  const effectiveTemplateCode = selectedTemplate ? (editedTemplateCode ?? selectedTemplate.code) : null;
 
   // Category display names
   const categoryLabels: Record<string, string> = {
@@ -291,7 +311,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                           <div className="aspect-video bg-muted/50 relative overflow-hidden">
                             {/* Mini preview of template code */}
                             <div className="absolute inset-0 p-2 overflow-hidden">
-                              <div 
+                               <div 
                                 className="w-full h-full rounded bg-white transform scale-[0.25] origin-top-left"
                                 style={{ 
                                   width: '400%', 
@@ -299,7 +319,8 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                                   pointerEvents: 'none'
                                 }}
                                 dangerouslySetInnerHTML={{ 
-                                  __html: template.code.replace(/<script[\s\S]*?<\/script>/gi, '') 
+                                   __html: (template.id === selectedTemplate?.id ? (effectiveTemplateCode ?? template.code) : template.code)
+                                     .replace(/<script[\s\S]*?<\/script>/gi, '') 
                                 }}
                               />
                             </div>
@@ -389,16 +410,27 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                       </div>
 
                       {/* Launch button */}
-                      <Button
-                        size="lg"
-                        onClick={handleLaunch}
-                        disabled={!selectedTemplate || isLaunching}
-                        className="min-w-[180px]"
-                      >
-                        <Zap className="mr-2 h-4 w-4" />
-                        {isLaunching ? "Installing…" : "Start Building"}
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          onClick={() => setAiEditOpen(true)}
+                          disabled={!selectedTemplate}
+                        >
+                          <Zap className="mr-2 h-4 w-4" />
+                          AI edit
+                        </Button>
+                        <Button
+                          size="lg"
+                          onClick={handleLaunch}
+                          disabled={!selectedTemplate || isLaunching}
+                          className="min-w-[180px]"
+                        >
+                          <Zap className="mr-2 h-4 w-4" />
+                          {isLaunching ? "Installing…" : "Start Building"}
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -406,6 +438,41 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* AI edit surface (pre-builder) */}
+        <Dialog open={aiEditOpen} onOpenChange={setAiEditOpen}>
+          <DialogContent className="max-w-5xl">
+            <DialogHeader>
+              <DialogTitle>AI edit: {selectedTemplate?.name}</DialogTitle>
+              <DialogDescription>
+                Propose a multi-file patch plan and apply it before opening the full builder.
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedTemplate && selectedSystem ? (
+              <AICodeAssistant
+                currentCode={effectiveTemplateCode ?? selectedTemplate.code}
+                systemType={selectedSystem}
+                templateName={selectedTemplate.name}
+                pageStructureContext={buildPageStructureContext(effectiveTemplateCode ?? selectedTemplate.code)}
+                backendStateContext={selectedManifest ? `- tables: ${selectedManifest.tables.length}\n- workflows: ${selectedManifest.workflows.length}\n- intents: ${selectedManifest.intents.length}` : null}
+                businessDataContext={"- (not installed yet; business data will be available after install)"}
+                onCodeGenerated={(code) => {
+                  setEditedTemplateCode(code);
+                  setEditedTemplateFiles(null);
+                }}
+                onFilesPatch={(files) => {
+                  setEditedTemplateFiles(files);
+                  const entry = files["/index.html"] || files["/src/App.tsx"] || files["/App.tsx"];
+                  if (entry) setEditedTemplateCode(entry);
+                  return true;
+                }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Select a template first.</p>
+            )}
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

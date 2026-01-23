@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ import SystemHealthPanel from "@/components/web-builder/SystemHealthPanel";
 import type { BusinessSystemType } from "@/data/templates/types";
 import { normalizeTemplateForCtaContract, type TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { supabase } from "@/integrations/supabase/client";
+import { buildPageStructureContext } from "@/utils/pageStructureContext";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -178,6 +179,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [saveProjectName, setSaveProjectName] = useState("");
   const [saveProjectDescription, setSaveProjectDescription] = useState("");
   const [currentTemplateName, setCurrentTemplateName] = useState<string | null>(null);
+  const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
+  const [currentManifestId, setCurrentManifestId] = useState<string | null>(
+    ((location.state as { manifestId?: string })?.manifestId as string) || null
+  );
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
@@ -382,6 +387,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const systemType = (location.state as { systemType?: string })?.systemType;
   const systemName = (location.state as { systemName?: string })?.systemName;
   const businessId = (location.state as { businessId?: string })?.businessId;
+  const manifestIdFromState = (location.state as { manifestId?: string })?.manifestId;
   const referrerPageName = systemName || 
     (location.state as { from?: string })?.from || 
     'System Launcher';
@@ -397,6 +403,60 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   });
 
   const [backendInstalled, setBackendInstalled] = useState(false);
+
+  // AI context (page structure + backend state + business data)
+  const pageStructureContext = useMemo(() => buildPageStructureContext(previewCode), [previewCode]);
+  const backendStateContext = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(`- backendInstalled: ${backendInstalled ? "yes" : "no"}`);
+    if (activeSystemType) lines.push(`- systemType: ${activeSystemType}`);
+    if (currentTemplateId) lines.push(`- templateId: ${currentTemplateId}`);
+    if (manifestIdFromState || currentManifestId) lines.push(`- manifestId: ${manifestIdFromState || currentManifestId}`);
+    if (businessId) lines.push(`- businessId: ${businessId}`);
+    return lines.join("\n");
+  }, [backendInstalled, activeSystemType, currentTemplateId, manifestIdFromState, currentManifestId, businessId]);
+
+  const [businessDataContext, setBusinessDataContext] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBusinessData() {
+      if (!businessId) {
+        if (!cancelled) setBusinessDataContext(null);
+        return;
+      }
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          if (!cancelled) setBusinessDataContext(null);
+          return;
+        }
+
+        const { data: biz, error } = await supabase
+          .from("businesses" as any)
+          .select("id,name")
+          .eq("id", businessId)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        const lines: string[] = [];
+        if (biz?.name) lines.push(`- businessName: ${biz.name}`);
+        if (biz?.id) lines.push(`- businessId: ${biz.id}`);
+
+        if (!cancelled) setBusinessDataContext(lines.length ? lines.join("\n") : null);
+      } catch (e) {
+        console.warn("[WebBuilder] Failed to load business data", e);
+        if (!cancelled) setBusinessDataContext(null);
+      }
+    }
+
+    loadBusinessData();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
   
   // Set default businessId for intent routing
   useEffect(() => {
@@ -625,9 +685,23 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   // Load template from navigation state (from Web Design Kit)
   useEffect(() => {
+    // If a pre-built VFS plan was passed (e.g. from System Launcher AI edits), import it first.
+    if (location.state?.vfsFiles) {
+      const vfsFiles = (location.state as { vfsFiles?: Record<string, string> })?.vfsFiles;
+      if (vfsFiles && Object.keys(vfsFiles).length > 0) {
+        virtualFS.importFiles(vfsFiles);
+        const entry = vfsFiles["/index.html"] || vfsFiles["/src/App.tsx"] || vfsFiles["/App.tsx"];
+        if (entry) {
+          setEditorCode(entry);
+          setPreviewCode(entry);
+        }
+      }
+    }
+
     if (location.state?.generatedCode) {
       const { generatedCode, templateName, aesthetic } = location.state;
       console.log('[WebBuilder] Loading template code from Web Design Kit:', templateName);
+      if (templateName) setCurrentTemplateName(templateName);
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
       setViewMode('code'); // Start in code view to show the template in CodeMirror
@@ -1828,12 +1902,15 @@ ${body.innerHTML}
               </TabsContent>
               <TabsContent value="templates" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <LayoutTemplatesPanel
-                  onSelectTemplate={(code, name, selectedSystemType) => {
+                  onSelectTemplate={(code, name, selectedSystemType, templateId) => {
                     console.log('[WebBuilder] ========== TEMPLATE SELECTED ==========');
                     console.log('[WebBuilder] Template:', name, 'code length:', code.length);
 
                     const effectiveSystemType = (selectedSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
                     setActiveSystemType(effectiveSystemType);
+                    setCurrentTemplateName(name);
+                    setCurrentTemplateId(templateId || null);
+                    if (manifestIdFromState) setCurrentManifestId(manifestIdFromState);
 
                     // Normalize + auto-migrate CTAs into the slot/intent contract
                     const normalized = normalizeTemplateForCtaContract({
@@ -2663,6 +2740,9 @@ export default function App() {
         systemType={activeSystemType}
         templateName={currentTemplateName}
         templateCtaAnalysis={templateCtaAnalysis}
+        pageStructureContext={pageStructureContext}
+        backendStateContext={backendStateContext}
+        businessDataContext={businessDataContext}
         selectedElement={
           selectedHTMLElement?.selector && selectedHTMLElement?.html
             ? {
@@ -2698,6 +2778,21 @@ export default function App() {
           toast.success('Code Generated!', {
             description: 'Your AI-generated content is now in the preview'
           });
+        }}
+        onFilesPatch={(files) => {
+          if (!files || Object.keys(files).length === 0) return false;
+
+          virtualFS.importFiles(files);
+
+          const entry = files["/index.html"] || files["/src/App.tsx"] || files["/App.tsx"];
+          if (entry) {
+            setEditorCode(entry);
+            setPreviewCode(entry);
+          }
+
+          setViewMode('canvas');
+          toast.success('Files updated', { description: 'Approved patch plan applied to project files' });
+          return true;
         }}
         onSwitchToCanvasView={() => {
           setViewMode('canvas');

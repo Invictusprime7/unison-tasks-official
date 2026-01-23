@@ -23,8 +23,18 @@ import { intentTestTemplate } from '@/data/templates/test/intentTestTemplate';
 import { TemplateDetailCard } from '@/components/web-builder/TemplateDetailCard';
 
 interface LayoutTemplatesPanelProps {
-  onSelectTemplate: (code: string, name: string, systemType?: BusinessSystemType) => void;
-  onDemoTemplate?: (code: string, name: string, systemType?: BusinessSystemType) => void;
+  onSelectTemplate: (
+    code: string,
+    name: string,
+    systemType?: BusinessSystemType,
+    templateId?: string
+  ) => void;
+  onDemoTemplate?: (
+    code: string,
+    name: string,
+    systemType?: BusinessSystemType,
+    templateId?: string
+  ) => void;
 }
 
 const categoryLabels: Record<LayoutCategory, string> = {
@@ -84,13 +94,13 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
 
   const handleTemplateClick = (template: LayoutTemplate) => {
     const system = businessSystems.find(s => s.templateCategories.includes(template.category));
-    onSelectTemplate(template.code, template.name, system?.id);
+    onSelectTemplate(template.code, template.name, system?.id, template.id);
     toast.success(`Loaded: ${template.name}`);
   };
 
   const handleDemoClick = (template: LayoutTemplate) => {
     const system = businessSystems.find(s => s.templateCategories.includes(template.category));
-    onDemoTemplate?.(template.code, template.name, system?.id);
+    onDemoTemplate?.(template.code, template.name, system?.id, template.id);
     toast.info(`Demo mode: ${template.name} - Interactions return mock responses`);
   };
 
