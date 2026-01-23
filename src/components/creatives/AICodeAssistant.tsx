@@ -47,6 +47,9 @@ import {
 import { FileDropZone, DroppedFile } from "./web-builder/FileDropZone";
 import { useAIFileAnalysis } from "@/hooks/useAIFileAnalysis";
 import { rewriteDemoEmbeds } from "@/utils/demoEmbedRewriter";
+import type { BusinessSystemType } from "@/data/templates/types";
+import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
+import { buildWebBuilderAIContext } from "@/utils/aiAssistantContext";
 
 interface Message {
   role: "user" | "assistant";
@@ -237,6 +240,9 @@ interface AICodeAssistantProps {
   onCodeGenerated?: (code: string) => void;
   onSwitchToCanvasView?: () => void;
   currentCode?: string; // Current template code for editing existing templates
+  systemType?: BusinessSystemType | null;
+  templateName?: string | null;
+  templateCtaAnalysis?: TemplateCtaAnalysis;
   selectedElement?: {
     html: string;
     selector: string;
@@ -251,6 +257,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   onCodeGenerated,
   onSwitchToCanvasView,
   currentCode,
+  systemType,
+  templateName,
+  templateCtaAnalysis,
   selectedElement,
   onElementUpdate,
 }) => {
@@ -270,6 +279,22 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [demoEmbedDialogOpen, setDemoEmbedDialogOpen] = useState(false);
   const [demoEmbedUrl, setDemoEmbedUrl] = useState("");
   const [supademoEmbedUrl, setSupademoEmbedUrl] = useState("");
+
+  // Governance: proposed changes require explicit approval
+  const [pendingCodeApplyOpen, setPendingCodeApplyOpen] = useState(false);
+  const [pendingCode, setPendingCode] = useState<string>("");
+  const [pendingElementSelector, setPendingElementSelector] = useState<string | null>(null);
+
+  const [builderActionConfirmOpen, setBuilderActionConfirmOpen] = useState(false);
+  const [pendingBuilderActions, setPendingBuilderActions] = useState<
+    | null
+    | {
+        type: "install_pack" | "wire_button";
+        packs?: string[];
+        selector?: string;
+        intent?: string;
+      }
+  >(null);
   const { analyzing, analyzeAndGenerate } = useAIFileAnalysis();
   const [currentTheme, setCurrentTheme] = useState<AITheme>(() => {
     const savedThemeId = localStorage.getItem("ai-assistant-theme");
@@ -663,90 +688,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       
       const builderAction = detectBuilderAction(userMessage.content);
       
-      // Handle builder actions (install packs / wire buttons)
+      // Handle builder actions (install packs / wire buttons) - propose+approve
       if (builderAction.type) {
         console.log('[AICodeAssistant] Builder action detected:', builderAction);
-        
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          const businessId = user?.id || 'anonymous';
-          
-          const actions: Array<{ type: string; pack?: string; selector?: string; intent?: string; payload?: object }> = [];
-          
-          if (builderAction.type === 'install_pack' && builderAction.packs) {
-            builderAction.packs.forEach(pack => {
-              actions.push({ type: 'install_pack', pack });
-            });
-          } else if (builderAction.type === 'wire_button') {
-            actions.push({
-              type: 'wire_button',
-              selector: builderAction.selector,
-              intent: builderAction.intent,
-              payload: {},
-            });
-          }
-          
-          const { data: builderResult, error: builderError } = await supabase.functions.invoke('builder-actions', {
-            body: {
-              projectId: 'current',
-              businessId,
-              actions,
-            },
-          });
-          
-          if (builderError) {
-            console.error('[AICodeAssistant] Builder action error:', builderError);
-          } else {
-            console.log('[AICodeAssistant] Builder action result:', builderResult);
-            
-            // Create a helpful response message
-            let responseContent = '';
-            if (builderAction.type === 'install_pack' && builderResult?.applied) {
-              responseContent = `✅ **Packs Installed Successfully!**\n\n`;
-              responseContent += `I've installed the following packs:\n`;
-              builderResult.applied.forEach((pack: string) => {
-                responseContent += `- **${pack}** pack\n`;
-              });
-              responseContent += `\n📋 **What's included:**\n`;
-              if (builderResult.applied.includes('leads')) {
-                responseContent += `- Contact form submissions saved to your CRM\n`;
-                responseContent += `- Newsletter signups captured\n`;
-                responseContent += `- Waitlist entries tracked\n`;
-              }
-              if (builderResult.applied.includes('booking')) {
-                responseContent += `- Appointment scheduling system\n`;
-                responseContent += `- Service & availability management\n`;
-                responseContent += `- Booking confirmations\n`;
-              }
-              if (builderResult.applied.includes('auth')) {
-                responseContent += `- User signup & login\n`;
-                responseContent += `- Session management\n`;
-                responseContent += `- Protected routes\n`;
-              }
-              responseContent += `\n🎯 **Next steps:**\nDrag a "LIVE" component from the Functional Blocks panel to add forms/buttons that connect to your backend.`;
-            } else if (builderAction.type === 'wire_button') {
-              responseContent = `✅ **Button Wired!**\n\n`;
-              responseContent += `The button will now trigger: \`${builderAction.intent}\`\n\n`;
-              responseContent += `When clicked, it will call the appropriate backend function.`;
-            }
-            
-            if (responseContent) {
-              const assistantMessage: Message = {
-                role: "assistant",
-                content: responseContent,
-                timestamp: new Date(),
-                hasCode: false,
-              };
-              setMessages((prev) => [...prev, assistantMessage]);
-              await saveMessage(assistantMessage);
-              setIsLoading(false);
-              return;
-            }
-          }
-        } catch (builderErr) {
-          console.error('[AICodeAssistant] Builder action failed:', builderErr);
-          // Fall through to regular AI handling
-        }
+
+        setPendingBuilderActions(builderAction as any);
+        setBuilderActionConfirmOpen(true);
+        setIsLoading(false);
+        return;
       }
       // ========== END BUILDER ACTIONS ==========
       
@@ -785,6 +734,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         }
       }
       
+      // Backend + template awareness context (Web Builder only)
+      const backendContext = buildWebBuilderAIContext({
+        systemType: systemType ?? null,
+        templateName: templateName ?? null,
+        ctaAnalysis: templateCtaAnalysis ?? null,
+      });
+
       // Enhanced context for element editing
       let enhancedPrompt = userMessage.content;
       
@@ -810,9 +766,12 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           
         enhancedPrompt = `I need help fixing rendering/error issues in my code. Here's the current code:\n\n\`\`\`html\n${truncatedCode}\n\`\`\`\n\nIssue: ${userMessage.content}\n\nPlease analyze the code, identify the issue, and provide a fixed version with explanation.${slotContext}`;
         console.log('[AICodeAssistant] Debug mode: Enhanced prompt created with code context');
-      } else if (slotContext && mode === "code") {
-        enhancedPrompt = `${userMessage.content}${slotContext}`;
+      } else if (mode === "code") {
+        enhancedPrompt = `${userMessage.content}${slotContext}${backendContext}`;
         console.log('[AICodeAssistant] Code mode: Added slot context for AI with taste');
+      } else {
+        // Design/review modes still benefit from system context
+        enhancedPrompt = `${userMessage.content}${backendContext}`;
       }
       
       console.log('[AICodeAssistant] Sending request - Mode:', mode, 'Template Action:', templateAction, 'Debug Mode:', mode === "debug");
@@ -904,16 +863,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           // Handle element editing vs full code generation
           if (isEditingSelectedElement && onElementUpdate && selectedElement) {
             console.log('[AICodeAssistant] Updating selected element with new HTML');
-            onElementUpdate(selectedElement.selector, extractedCode);
-            toast({
-              title: "Element updated",
-              description: `${selectedElement.section || 'Section'} has been modified`,
-            });
-            setIsEditingElement(false);
+            setPendingElementSelector(selectedElement.selector);
+            setPendingCode(extractedCode);
+            setPendingCodeApplyOpen(true);
           } else if (onCodeGenerated) {
             console.log('[AICodeAssistant] Extracted HTML/CSS code with vanilla JavaScript allowed');
             console.log('[AICodeAssistant] Code length:', extractedCode.length, 'characters');
-            onCodeGenerated(extractedCode);
+            setPendingElementSelector(null);
+            setPendingCode(extractedCode);
+            setPendingCodeApplyOpen(true);
           }
         }
       }
@@ -983,6 +941,149 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
   return (
     <>
+      {/* Confirm builder actions (packs / wiring) */}
+      <Dialog open={builderActionConfirmOpen} onOpenChange={setBuilderActionConfirmOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Apply backend change?</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm">
+            {pendingBuilderActions?.type === "install_pack" && (
+              <div>
+                <div className="font-medium">Install packs</div>
+                <div className="text-muted-foreground">
+                  {(pendingBuilderActions.packs || []).join(", ") || "(none)"}
+                </div>
+              </div>
+            )}
+            {pendingBuilderActions?.type === "wire_button" && (
+              <div>
+                <div className="font-medium">Wire button</div>
+                <div className="text-muted-foreground">Selector: {pendingBuilderActions.selector}</div>
+                <div className="text-muted-foreground">Intent: {pendingBuilderActions.intent}</div>
+              </div>
+            )}
+            <div className="text-muted-foreground">
+              You approve each backend action before it runs.
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBuilderActionConfirmOpen(false);
+                setPendingBuilderActions(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!pendingBuilderActions?.type) return;
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  const businessId = user?.id || "anonymous";
+
+                  const actions: Array<{ type: string; pack?: string; selector?: string; intent?: string; payload?: object }> = [];
+                  if (pendingBuilderActions.type === "install_pack" && pendingBuilderActions.packs) {
+                    pendingBuilderActions.packs.forEach((pack) => actions.push({ type: "install_pack", pack }));
+                  }
+                  if (pendingBuilderActions.type === "wire_button") {
+                    actions.push({
+                      type: "wire_button",
+                      selector: pendingBuilderActions.selector,
+                      intent: pendingBuilderActions.intent,
+                      payload: {},
+                    });
+                  }
+
+                  const { data: builderResult, error: builderError } = await supabase.functions.invoke("builder-actions", {
+                    body: { projectId: "current", businessId, actions },
+                  });
+
+                  if (builderError) throw builderError;
+
+                  let responseContent = "";
+                  if (pendingBuilderActions.type === "install_pack" && builderResult?.applied) {
+                    responseContent = `✅ **Packs Installed Successfully!**\n\n`;
+                    responseContent += `Installed:\n`;
+                    builderResult.applied.forEach((pack: string) => (responseContent += `- **${pack}** pack\n`));
+                  }
+                  if (pendingBuilderActions.type === "wire_button") {
+                    responseContent = `✅ **Button Wired!**\n\nIntent: \`${pendingBuilderActions.intent}\``;
+                  }
+
+                  if (responseContent) {
+                    const assistantMessage: Message = {
+                      role: "assistant",
+                      content: responseContent,
+                      timestamp: new Date(),
+                      hasCode: false,
+                    };
+                    setMessages((prev) => [...prev, assistantMessage]);
+                    await saveMessage(assistantMessage);
+                  }
+
+                  setBuilderActionConfirmOpen(false);
+                  setPendingBuilderActions(null);
+                } catch (err) {
+                  console.error("[AICodeAssistant] Builder action apply failed:", err);
+                  toast({
+                    title: "Backend action failed",
+                    description: err instanceof Error ? err.message : String(err),
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve code/HTML changes before applying */}
+      <Dialog open={pendingCodeApplyOpen} onOpenChange={setPendingCodeApplyOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Review & apply changes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Changes are staged. Click Apply to write them into the current template.
+            </p>
+            <Textarea
+              value={pendingCode}
+              onChange={(e) => setPendingCode(e.target.value)}
+              className="min-h-[420px] font-mono text-xs"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setPendingCodeApplyOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingCode.trim()) return;
+                if (pendingElementSelector && onElementUpdate) {
+                  onElementUpdate(pendingElementSelector, pendingCode);
+                  toast({ title: "Element updated", description: "Approved changes applied." });
+                  setIsEditingElement(false);
+                } else if (onCodeGenerated) {
+                  onCodeGenerated(pendingCode);
+                  toast({ title: "Template updated", description: "Approved changes applied." });
+                }
+                setPendingCodeApplyOpen(false);
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Floating AI Button */}
       {!isExpanded && (
         <button
