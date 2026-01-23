@@ -208,6 +208,7 @@ serve(async (req) => {
         source: source || "web_form",
         notes: message || null,
         value: null,
+        metadata: metadata || {},
       });
     } catch (e) {
       console.warn("[create-lead] CRM create/update failed", e);

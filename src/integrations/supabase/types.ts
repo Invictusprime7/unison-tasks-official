@@ -818,6 +818,7 @@ export type Database = {
           email: string | null
           id: string
           intent: string | null
+          metadata: Json
           name: string | null
           notes: string | null
           source: string | null
@@ -834,6 +835,7 @@ export type Database = {
           email?: string | null
           id?: string
           intent?: string | null
+          metadata?: Json
           name?: string | null
           notes?: string | null
           source?: string | null
@@ -850,6 +852,7 @@ export type Database = {
           email?: string | null
           id?: string
           intent?: string | null
+          metadata?: Json
           name?: string | null
           notes?: string | null
           source?: string | null

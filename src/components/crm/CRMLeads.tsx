@@ -38,9 +38,16 @@ interface Lead {
   value: number | null;
   source: string | null;
   notes: string | null;
+  business_id?: string | null;
+  metadata?: any;
   contact_id: string | null;
   created_at: string;
 }
+
+type BusinessRow = {
+  id: string;
+  name: string;
+};
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-100 text-blue-700",
@@ -56,6 +63,8 @@ export function CRMLeads() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [formData, setFormData] = useState({
@@ -67,15 +76,43 @@ export function CRMLeads() {
   });
 
   useEffect(() => {
-    fetchLeads();
+    loadBusinesses();
   }, []);
+
+  useEffect(() => {
+    fetchLeads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBusinessId]);
+
+  async function loadBusinesses() {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) return;
+
+      const { data, error } = await supabase
+        .from('businesses' as any)
+        .select('id,name')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setBusinesses((data || []) as BusinessRow[]);
+    } catch (e) {
+      console.warn('[CRMLeads] Failed to load businesses', e);
+    }
+  }
 
   async function fetchLeads() {
     try {
-      const { data, error } = await supabase
-        .from("crm_leads")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let q = supabase
+        .from('crm_leads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (selectedBusinessId !== 'all') {
+        q = q.eq('business_id', selectedBusinessId);
+      }
+
+      const { data, error } = await q;
 
       if (error) throw error;
       setLeads(data || []);
@@ -234,6 +271,20 @@ export function CRMLeads() {
               <SelectItem value="proposal">Proposal</SelectItem>
               <SelectItem value="won">Won</SelectItem>
               <SelectItem value="lost">Lost</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedBusinessId} onValueChange={setSelectedBusinessId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Business" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All businesses</SelectItem>
+              {businesses.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
