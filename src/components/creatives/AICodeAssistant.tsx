@@ -24,6 +24,7 @@ import {
   Paperclip,
   Image,
   X,
+  Play,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -45,6 +46,7 @@ import {
 } from "@/services/imageSlotService";
 import { FileDropZone, DroppedFile } from "./web-builder/FileDropZone";
 import { useAIFileAnalysis } from "@/hooks/useAIFileAnalysis";
+import { rewriteDemoEmbeds } from "@/utils/demoEmbedRewriter";
 
 interface Message {
   role: "user" | "assistant";
@@ -265,6 +267,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [showFileZone, setShowFileZone] = useState(false);
+  const [demoEmbedDialogOpen, setDemoEmbedDialogOpen] = useState(false);
+  const [demoEmbedUrl, setDemoEmbedUrl] = useState("");
+  const [supademoEmbedUrl, setSupademoEmbedUrl] = useState("");
   const { analyzing, analyzeAndGenerate } = useAIFileAnalysis();
   const [currentTheme, setCurrentTheme] = useState<AITheme>(() => {
     const savedThemeId = localStorage.getItem("ai-assistant-theme");
@@ -467,6 +472,49 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       description: "Code copied successfully",
     });
   };
+
+  const applyDemoEmbedToCurrentTemplate = useCallback(() => {
+    if (!currentCode || currentCode.trim().length < 50) {
+      toast({
+        title: "No template loaded",
+        description: "Load a template in the preview first, then set the demo embed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isHtml = /<!doctype|<html[\s>]|<body[\s>]/i.test(currentCode);
+    if (!isHtml) {
+      toast({
+        title: "Demo embed rewrite supports HTML templates",
+        description: "Switch to an HTML template (index.html) before applying a demo embed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const result = rewriteDemoEmbeds(currentCode, {
+      demoUrl: demoEmbedUrl,
+      supademoUrl: supademoEmbedUrl,
+      rewriteIframes: true,
+    });
+
+    if (!result.changed) {
+      toast({
+        title: "Nothing to update",
+        description: "No demo CTAs/embeds found, or the URL is unchanged.",
+      });
+      return;
+    }
+
+    onCodeGenerated?.(result.html);
+    toast({
+      title: "Demo embed updated",
+      description: "Demo CTAs now carry data-demo-url / data-supademo-url.",
+    });
+
+    setDemoEmbedDialogOpen(false);
+  }, [currentCode, demoEmbedUrl, supademoEmbedUrl, onCodeGenerated, toast]);
 
   const handleFilesDropped = useCallback((files: DroppedFile[]) => {
     setDroppedFiles(prev => [...prev, ...files]);
@@ -1305,6 +1353,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                 <Button
                   variant="ghost"
                   size="icon"
+                  onClick={() => setDemoEmbedDialogOpen(true)}
+                  className={cn(
+                    "h-11 w-11 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+                  )}
+                  title="Set demo embed (data-demo-url / data-supademo-url)"
+                >
+                  <Play className="w-4 h-4 text-white/70" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowFileZone(!showFileZone)}
                   className={cn(
                     "h-11 w-11 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10",
@@ -1378,6 +1437,53 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                   wordWrap: "on",
                 }}
               />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={demoEmbedDialogOpen} onOpenChange={setDemoEmbedDialogOpen}>
+        <DialogContent className="max-w-lg border border-white/20 bg-black/95">
+          <DialogHeader>
+            <DialogTitle className="text-white">Set demo embed</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs text-white/70">Demo URL (preferred)</label>
+              <input
+                value={demoEmbedUrl}
+                onChange={(e) => setDemoEmbedUrl(e.target.value)}
+                placeholder="https://... (YouTube embed, Supademo embed, etc.)"
+                className="w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-white/70">Supademo URL (optional)</label>
+              <input
+                value={supademoEmbedUrl}
+                onChange={(e) => setSupademoEmbedUrl(e.target.value)}
+                placeholder="https://supademo.com/..."
+                className="w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20"
+              />
+            </div>
+
+            <div className="text-xs text-white/50 leading-relaxed">
+              This updates demo CTAs by writing <code className="text-white/70">data-demo-url</code> / <code className="text-white/70">data-supademo-url</code>
+              onto buttons/links wired to <code className="text-white/70">demo.request</code>.
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" onClick={() => setDemoEmbedDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={applyDemoEmbedToCurrentTemplate}
+                className={cn(`bg-gradient-to-br ${currentTheme.gradient.button} hover:opacity-90 transition-opacity`)}
+              >
+                Apply
+              </Button>
             </div>
           </div>
         </DialogContent>
