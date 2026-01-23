@@ -2,6 +2,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Enforce global dark theme (dark premium) across the whole app
+document.documentElement.classList.add('dark');
+
 // Add global error handler
 window.addEventListener('error', (event) => {
   console.error('Global error:', event.error);

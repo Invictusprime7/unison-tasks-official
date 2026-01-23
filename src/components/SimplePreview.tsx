@@ -158,6 +158,40 @@ function injectIntentListener(html: string): string {
       if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});
       return p;
     }
+
+    function normalizeText(t){
+      return (t||'').replace(/\s+/g,' ').trim();
+    }
+
+    function shouldOpenResearch(el){
+      // Context-intelligent research overlay:
+      // - intercept real links with meaningful text
+      // - avoid anchors/mailto/tel/javascript
+      // - allow opt-out via data-intent=ignore/none
+      try{
+        const tag = (el.tagName||'').toLowerCase();
+        const href = tag==='a' ? (el.getAttribute('href')||'') : '';
+        const txt = normalizeText(el.textContent || el.getAttribute('aria-label') || '');
+        if(!href) return false;
+        if(!txt || txt.length < 12) return false;
+        if(href.startsWith('#')) return false;
+        if(href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return false;
+        return true;
+      }catch{return false;}
+    }
+
+    function postResearch(el){
+      const href = el.getAttribute('href') || '';
+      const query = normalizeText(el.textContent || el.getAttribute('aria-label') || href);
+      const payload = {
+        query,
+        href,
+        // extra context (helpful but optional)
+        pageTitle: document.title,
+        selection: query,
+      };
+      window.parent.postMessage({ type: 'RESEARCH_OPEN', payload }, '*');
+    }
     
     document.addEventListener('click',function(e){
       const el=e.target.closest('button,a,[role="button"],[data-intent]');
@@ -165,7 +199,14 @@ function injectIntentListener(html: string): string {
       const ia=el.getAttribute('data-intent');
       if(ia==='none'||ia==='ignore')return;
       const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));
-      if(!intent)return;
+      if(!intent){
+        // If it's a meaningful link, open research overlay instead of navigating.
+        if(shouldOpenResearch(el)){
+          e.preventDefault();e.stopPropagation();
+          postResearch(el);
+        }
+        return;
+      }
       e.preventDefault();e.stopPropagation();
       el.classList.add('intent-loading');
       if(el.disabled!==undefined)el.disabled=true;
@@ -382,10 +423,35 @@ function wrapHtmlSnippet(html: string): string {
     };
     function inferIntent(t){if(!t)return null;const l=t.toLowerCase().trim();if(LABEL_INTENTS[l])return LABEL_INTENTS[l];for(const[k,v]of Object.entries(LABEL_INTENTS))if(l.includes(k))return v;return null;}
     function collectPayload(el){const p={};Array.from(el.attributes).forEach(a=>{if(a.name.startsWith('data-')&&a.name!=='data-intent'){const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}}});const f=el.closest('form');if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});return p;}
+    function normalizeText(t){return (t||'').replace(/\s+/g,' ').trim();}
+    function shouldOpenResearch(el){
+      try{
+        const tag=(el.tagName||'').toLowerCase();
+        const href=tag==='a'?(el.getAttribute('href')||''):'';
+        const txt=normalizeText(el.textContent||el.getAttribute('aria-label')||'');
+        if(!href)return false;
+        if(!txt||txt.length<12)return false;
+        if(href.startsWith('#'))return false;
+        if(href.startsWith('mailto:')||href.startsWith('tel:')||href.startsWith('javascript:'))return false;
+        return true;
+      }catch{return false;}
+    }
+    function postResearch(el){
+      const href=el.getAttribute('href')||'';
+      const query=normalizeText(el.textContent||el.getAttribute('aria-label')||href);
+      window.parent.postMessage({type:'RESEARCH_OPEN',payload:{query,href,pageTitle:document.title,selection:query}},'*');
+    }
     document.addEventListener('click',function(e){
       const el=e.target.closest('button,a,[role="button"],[data-intent]');if(!el)return;
       const ia=el.getAttribute('data-intent');if(ia==='none'||ia==='ignore')return;
-      const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));if(!intent)return;
+      const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));
+      if(!intent){
+        if(shouldOpenResearch(el)){
+          e.preventDefault();e.stopPropagation();
+          postResearch(el);
+        }
+        return;
+      }
       e.preventDefault();e.stopPropagation();
       el.classList.add('intent-loading');el.disabled=true;
       window.parent.postMessage({type:'INTENT_TRIGGER',intent:intent,payload:collectPayload(el)},'*');
