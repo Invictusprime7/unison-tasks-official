@@ -94,6 +94,31 @@ function shouldIgnoreElement(el: HTMLElement): boolean {
   return false;
 }
 
+/**
+ * Decide whether we should infer an intent from the element's label text.
+ *
+ * Important: inference is intentionally conservative to avoid turning UI selectors
+ * (filters, tabs, time slot pickers, etc.) into conversion actions.
+ */
+function shouldInferIntentFromElement(el: HTMLElement): boolean {
+  // If it is explicitly wired, no need to infer.
+  if (el.getAttribute('data-ut-intent') || el.getAttribute('data-intent')) return false;
+
+  // Only infer for explicit CTA-marked elements.
+  if (el.hasAttribute('data-ut-cta')) return true;
+
+  // Anchors are often navigation CTAs.
+  if (el.tagName === 'A') return true;
+
+  // Submit buttons are typically conversion actions.
+  if (el.tagName === 'BUTTON') {
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    if (type === 'submit') return true;
+  }
+
+  return false;
+}
+
 // ============================================================================
 // Payload Collection
 // ============================================================================
@@ -255,8 +280,10 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
   let intent = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
   
   if (!intent) {
-    const text = el.textContent || el.getAttribute('aria-label') || '';
-    intent = inferIntentFromText(text, config.category);
+    if (shouldInferIntentFromElement(el)) {
+      const text = el.textContent || el.getAttribute('aria-label') || '';
+      intent = inferIntentFromText(text, config.category);
+    }
   }
   
   if (!intent) {
