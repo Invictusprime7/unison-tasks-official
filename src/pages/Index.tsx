@@ -23,6 +23,7 @@ import {
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { businessSystems } from "@/data/templates/types";
+import { getTemplatesByCategory, type LayoutTemplate } from "@/data/templates";
 import SystemLauncher from "@/components/onboarding/SystemLauncher";
 
 const pricingTiers = [
@@ -157,6 +158,17 @@ const Index = () => {
     }
   };
 
+  const isNewTemplate = (t: LayoutTemplate) => {
+    const tags = t.tags || [];
+    return tags.includes("editorial") || /data-ut-(cta|intent)\s*=/.test(t.code);
+  };
+
+  const launchableSystems = businessSystems.filter((system) =>
+    system.templateCategories
+      .flatMap((cat) => getTemplatesByCategory(cat))
+      .some(isNewTemplate)
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -222,19 +234,26 @@ const Index = () => {
       </nav>
 
       {/* Hero Section - New Positioning */}
-      <section className="container mx-auto px-4 py-20 md:py-32">
-        <div className="text-center max-w-4xl mx-auto">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/40" />
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mt-24 h-72 rounded-[2rem] bg-primary/10 blur-3xl" />
+          </div>
+        </div>
+        <div className="relative container mx-auto px-4 py-20 md:py-32">
+          <div className="text-center max-w-4xl mx-auto animate-fade-in">
           <Badge variant="secondary" className="mb-6">
             <Zap className="h-3 w-3 mr-1" />
-            Launch in minutes, not months
+            Installable systems · real backend included
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground leading-tight">
             Launch-ready business systems
-            <span className="block text-primary">powered by AI</span>
+            <span className="block text-primary">that ship with working logic</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Not just templates. Complete business systems with booking, payments, and CRM—
-            all pre-wired and ready to run.
+            Pick a system, choose a contract-ready starter, and we’ll install the backend packs
+            (data, workflows, intents) automatically.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={handleStartLauncher} className="text-lg px-8 h-14">
@@ -247,9 +266,10 @@ const Index = () => {
           </div>
           {!user && (
             <p className="mt-4 text-sm text-muted-foreground">
-              No credit card required · Launch your first system free
+              No credit card required · You’ll sign in when you install
             </p>
           )}
+          </div>
         </div>
       </section>
 
@@ -257,10 +277,10 @@ const Index = () => {
       <section id="systems" className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-4 text-foreground">Choose your business type</h2>
-          <p className="text-muted-foreground">Pick a system. Everything else is automatic.</p>
+          <p className="text-muted-foreground">These systems have contract-ready starters available now.</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
-          {businessSystems.map((system) => (
+          {launchableSystems.map((system) => (
             <Card 
               key={system.id}
               className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 border-border/50 group"
@@ -317,7 +337,7 @@ const Index = () => {
                   <p>• Forms auto-submit to CRM</p>
                   <p>• Payments work out of box</p>
                   <p>• Booking calendar included</p>
-                  <p>• Live in minutes</p>
+                  <p>• Backend packs installed automatically</p>
                 </CardContent>
               </Card>
             </div>
