@@ -48,6 +48,8 @@ interface SystemHealthPanelProps {
   preloadedIntents?: string[];
   /** Detected CTA slots in the current template DOM (data-ut-cta values) */
   templateSlots?: string[];
+  /** True when the backend installer has been run for the current businessId */
+  backendInstalled?: boolean;
   onPublishCheck?: () => void;
   className?: string;
 }
@@ -75,6 +77,7 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
   systemType,
   preloadedIntents = [],
   templateSlots = [],
+  backendInstalled = false,
   onPublishCheck,
   className,
 }) => {
@@ -165,7 +168,8 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
   const isPublishReady =
     requiredMet.met === requiredMet.total &&
     healthScore >= 80 &&
-    slotCoverage.met === slotCoverage.total;
+    slotCoverage.met === slotCoverage.total &&
+    backendInstalled;
 
   return (
     <Card className={cn("bg-card border-border", className)}>
@@ -182,7 +186,7 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
               isPublishReady && "bg-primary text-primary-foreground"
             )}
           >
-            {isPublishReady ? 'Ready to Publish' : 'Not Ready'}
+            {isPublishReady ? 'Ready to Publish' : backendInstalled ? 'Not Ready' : 'Backend Not Installed'}
           </Badge>
         </div>
       </CardHeader>
@@ -328,7 +332,7 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
           disabled={!isPublishReady}
           onClick={onPublishCheck}
         >
-          {isPublishReady ? 'Run Publish Checks' : 'Complete CTA Wiring'}
+          {isPublishReady ? 'Run Publish Checks' : backendInstalled ? 'Complete CTA Wiring' : 'Install Backend Packs'}
           <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </CardContent>
