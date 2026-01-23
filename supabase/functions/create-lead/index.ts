@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,67 @@ interface LeadPayload {
   source?: string;
   message?: string;
   metadata?: Record<string, unknown>;
+}
+
+type BusinessSettings = {
+  id: string;
+  name: string;
+  notification_email: string | null;
+};
+
+function safeEmail(email: unknown): string | null {
+  if (typeof email !== "string") return null;
+  const trimmed = email.trim();
+  if (!trimmed) return null;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(trimmed) ? trimmed : null;
+}
+
+function splitName(fullName?: string): { first: string | null; last: string | null } {
+  const raw = (fullName || "").trim();
+  if (!raw) return { first: null, last: null };
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return { first: parts[0].slice(0, 120), last: null };
+  return {
+    first: parts[0].slice(0, 120),
+    last: parts.slice(1).join(" ").slice(0, 120),
+  };
+}
+
+async function loadBusinessSettings(supabase: any, businessId: string): Promise<BusinessSettings | null> {
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id,name,notification_email")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[create-lead] failed to load business settings", error);
+    return null;
+  }
+  if (!data?.id) return null;
+  return data as BusinessSettings;
+}
+
+async function sendEmailSafe(params: {
+  to: string;
+  subject: string;
+  html: string;
+  replyTo?: string | null;
+}) {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    console.warn("[create-lead] RESEND_API_KEY missing; skipping email");
+    return;
+  }
+  const resend = new Resend(apiKey);
+  await resend.emails.send({
+    from: "Unison Tasks <onboarding@resend.dev>",
+    to: [params.to],
+    subject: params.subject,
+    html: params.html,
+    reply_to: params.replyTo || undefined,
+  } as any);
 }
 
 function isUuid(value: string): boolean {
@@ -88,6 +150,110 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: "Failed to submit form" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Also create/update CRM entities (best-effort)
+    try {
+      const normalizedEmail = email.toLowerCase();
+      const { first, last } = splitName(name);
+
+      // Upsert contact by email (no unique constraint guaranteed; we take first match)
+      const { data: existingContact } = await supabase
+        .from("crm_contacts")
+        .select("id")
+        .eq("email", normalizedEmail)
+        .limit(1)
+        .maybeSingle();
+
+      let contactId: string | null = existingContact?.id ?? null;
+      if (contactId) {
+        await supabase
+          .from("crm_contacts")
+          .update({
+            first_name: first,
+            last_name: last,
+            phone: phone || null,
+            source: source || "web_form",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", contactId);
+      } else {
+        const { data: createdContact } = await supabase
+          .from("crm_contacts")
+          .insert({
+            email: normalizedEmail,
+            first_name: first,
+            last_name: last,
+            phone: phone || null,
+            source: source || "web_form",
+          })
+          .select("id")
+          .single();
+        contactId = createdContact?.id ?? null;
+      }
+
+      const leadTitle = name?.trim()
+        ? `${name.trim()} (${email})`
+        : email;
+
+      await supabase.from("crm_leads").insert({
+        contact_id: contactId,
+        title: leadTitle,
+        status: "new",
+        source: source || "web_form",
+        notes: message || null,
+        value: null,
+      });
+    } catch (e) {
+      console.warn("[create-lead] CRM create/update failed", e);
+    }
+
+    // Notifications (best-effort)
+    try {
+      const biz = await loadBusinessSettings(supabase, businessId);
+      const internalTo = safeEmail(biz?.notification_email ?? null);
+
+      // Customer confirmation (only if intent looks like newsletter/waitlist)
+      const sourceStr = (source || "web_form").toLowerCase();
+      const shouldConfirmCustomer =
+        sourceStr.includes("newsletter") ||
+        sourceStr.includes("waitlist") ||
+        sourceStr.includes("beta");
+
+      if (shouldConfirmCustomer) {
+        await sendEmailSafe({
+          to: email,
+          subject: "You’re subscribed",
+          html: `
+            <div>
+              <h1>Thanks for signing up</h1>
+              <p>You’re on the list. We’ll be in touch soon.</p>
+            </div>
+          `,
+          replyTo: internalTo,
+        });
+      }
+
+      if (internalTo) {
+        await sendEmailSafe({
+          to: internalTo,
+          subject: "New lead captured",
+          html: `
+            <div>
+              <h1>New lead</h1>
+              <p><strong>Business:</strong> ${biz?.name ?? businessId}</p>
+              <p><strong>Email:</strong> ${email}</p>
+              ${name ? `<p><strong>Name:</strong> ${name}</p>` : ""}
+              ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ""}
+              <p><strong>Source:</strong> ${source || "web_form"}</p>
+              ${message ? `<p><strong>Message:</strong><br/>${message}</p>` : ""}
+            </div>
+          `,
+          replyTo: internalTo,
+        });
+      }
+    } catch (e) {
+      console.warn("[create-lead] email notification failed", e);
     }
 
     // Optionally trigger workflows (check for active workflows)
