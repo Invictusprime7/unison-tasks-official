@@ -2676,11 +2676,12 @@ export default function App() {
           const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
           if (!res.ok) {
             toast.error('Section redesign currently supports HTML templates only (not React/TSX).');
-            return;
+            return false;
           }
           setEditorCode(res.code);
           setPreviewCode(res.code);
           toast.success('Section redesigned');
+          return true;
         }}
         onCodeGenerated={(code) => {
           console.log('[WebBuilder] ========== AI CODE GENERATED ==========');
