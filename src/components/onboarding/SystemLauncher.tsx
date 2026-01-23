@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowRight, ArrowLeft, Check, Zap, Layout, Eye, Database, Workflow, Shield } from "lucide-react";
-import { businessSystems, type BusinessSystemType, type LayoutTemplate } from "@/data/templates/types";
+import { businessSystems, type BusinessSystemType, type LayoutTemplate, type LayoutCategory } from "@/data/templates/types";
 import { getTemplatesByCategory } from "@/data/templates";
 import { getTemplateManifest, getDefaultManifestForSystem } from "@/data/templates/manifest";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AICodeAssistant } from "@/components/creatives/AICodeAssistant";
 import { buildPageStructureContext } from "@/utils/pageStructureContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SystemLauncherProps {
   open: boolean;
@@ -32,6 +33,24 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate | null>(null);
   const [step, setStep] = useState<"select" | "templates">("select");
   const [isLaunching, setIsLaunching] = useState(false);
+
+  // Web Design Kit integration (launcher-level)
+  const [categoryFilter, setCategoryFilter] = useState<LayoutCategory | "all">("all");
+  const [designPreset, setDesignPreset] = useState<string>("none");
+
+  const designPresets = useMemo(
+    () => [
+      { id: "none", label: "No preset" },
+      { id: "editorial", label: "Editorial" },
+      { id: "minimal", label: "Minimal" },
+      { id: "luxury", label: "Luxury" },
+      { id: "playful", label: "Playful" },
+      { id: "retro", label: "Retro" },
+      { id: "cyberpunk", label: "Cyberpunk" },
+      { id: "glass", label: "Glass" },
+    ],
+    []
+  );
 
   // Pre-launch edits (AI patch plan) live here until the user opens the full builder.
   const [aiEditOpen, setAiEditOpen] = useState(false);
@@ -52,7 +71,16 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     return system.templateCategories.flatMap(cat => getTemplatesByCategory(cat)).filter(isNewTemplate);
   }, [selectedSystem]);
 
-  const visibleTemplates = systemTemplates;
+  const availableCategories = useMemo(() => {
+    const cats = new Set<LayoutCategory>();
+    systemTemplates.forEach((t) => cats.add(t.category));
+    return Array.from(cats);
+  }, [systemTemplates]);
+
+  const visibleTemplates = useMemo(() => {
+    if (categoryFilter === "all") return systemTemplates;
+    return systemTemplates.filter((t) => t.category === categoryFilter);
+  }, [systemTemplates, categoryFilter]);
 
   // Get manifest for selected template to show backend info
   const selectedManifest = useMemo(() => {
@@ -63,6 +91,8 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const handleSystemSelect = (systemId: BusinessSystemType) => {
     setSelectedSystem(systemId);
     setSelectedTemplate(null);
+    setCategoryFilter("all");
+    setDesignPreset("none");
     setStep("templates");
   };
 
@@ -89,12 +119,48 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
 
       const manifest = getTemplateManifest(selectedTemplate.id) || getDefaultManifestForSystem(selectedSystem);
 
+      // Optional: restyle the template before install + builder navigation
+      let effectiveCode = editedTemplateCode ?? selectedTemplate.code;
+      const shouldRestyle = designPreset && designPreset !== "none";
+      if (shouldRestyle && !editedTemplateFiles) {
+        try {
+          toast("Applying design preset…", { description: designPreset });
+          const { data: aiData, error: aiError } = await supabase.functions.invoke("ai-code-assistant", {
+            body: {
+              messages: [
+                {
+                  role: "user",
+                  content:
+                    `Restyle this existing system template to the design preset "${designPreset}".\n` +
+                    `Rules:\n` +
+                    `- Preserve layout/sections and all functionality\n` +
+                    `- DO NOT remove or rename any data-ut-intent / data-intent / data-ut-cta attributes\n` +
+                    `- If the template includes form inputs (email/phone/name), keep them and improve styling\n` +
+                    `- Output ONLY the full updated HTML (no markdown).`,
+                },
+              ],
+              mode: "design",
+              currentCode: effectiveCode.length > 20_000 ? effectiveCode.slice(0, 20_000) : effectiveCode,
+              editMode: true,
+              templateAction: "restyle-system-template",
+            },
+          });
+          if (!aiError && aiData?.content) {
+            effectiveCode = aiData.content;
+          }
+        } catch (e) {
+          console.warn("[SystemLauncher] design preset restyle failed", e);
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke("install-system", {
         body: {
           systemType: selectedSystem,
           templateId: selectedTemplate.id,
           templateName: selectedTemplate.name,
           businessName: `${system.name} Business`,
+          templateCategory: selectedTemplate.category,
+          designPreset: shouldRestyle ? designPreset : null,
         },
       });
 
@@ -105,13 +171,14 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
       const businessId = data.data.businessId as string;
       console.log("[SystemLauncher] Installed system:", selectedSystem, "businessId:", businessId);
 
-       const effectiveCode = editedTemplateCode ?? selectedTemplate.code;
-
        navigate("/web-builder", {
         state: {
            generatedCode: effectiveCode,
            vfsFiles: editedTemplateFiles,
           templateName: selectedTemplate.name,
+          aesthetic: shouldRestyle ? designPreset : undefined,
+          designPreset: shouldRestyle ? designPreset : undefined,
+          templateCategory: selectedTemplate.category,
           systemType: selectedSystem,
           systemName: system.name,
           preloadedIntents: system.intents,
@@ -139,6 +206,8 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     setAiEditOpen(false);
     setEditedTemplateCode(null);
     setEditedTemplateFiles(null);
+    setCategoryFilter("all");
+    setDesignPreset("none");
   };
 
   const handleBack = () => {
@@ -149,6 +218,8 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
       setAiEditOpen(false);
       setEditedTemplateCode(null);
       setEditedTemplateFiles(null);
+      setCategoryFilter("all");
+      setDesignPreset("none");
     }
   };
 
@@ -292,6 +363,38 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
 
                   {/* Template Grid */}
                   <ScrollArea className="flex-1 max-h-[50vh] p-6">
+                    {/* Category filter (selected inline per template card, but applied globally) */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
+                      <div className="text-sm text-muted-foreground">
+                        Filter by category (optional)
+                      </div>
+                      <div className="w-full sm:w-[260px]">
+                        <Select
+                          value={categoryFilter}
+                          onValueChange={(v) => {
+                            const next = v as LayoutCategory | "all";
+                            setCategoryFilter(next);
+                            // If current selection becomes hidden, clear it.
+                            if (selectedTemplate && next !== "all" && selectedTemplate.category !== next) {
+                              setSelectedTemplate(null);
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="All categories" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All categories</SelectItem>
+                            {availableCategories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {categoryLabels[cat] || cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {visibleTemplates.map((template) => (
                         <motion.div
@@ -359,6 +462,28 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                                 </Badge>
                               ))}
                             </div>
+
+                            {/* Inline Web Design Kit preset selection (only for the active template card) */}
+                            {selectedTemplate?.id === template.id && (
+                              <div className="mt-3 grid gap-2">
+                                <div className="text-xs text-muted-foreground">Design preset</div>
+                                <Select value={designPreset} onValueChange={(v) => setDesignPreset(v)}>
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Choose a preset" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {designPresets.map((p) => (
+                                      <SelectItem key={p.id} value={p.id}>
+                                        {p.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Preset is applied during launch (restyles this template, keeps intents).
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       ))}
