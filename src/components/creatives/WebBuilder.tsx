@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { 
@@ -179,6 +180,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [saveProjectName, setSaveProjectName] = useState("");
   const [saveProjectDescription, setSaveProjectDescription] = useState("");
   const [currentTemplateName, setCurrentTemplateName] = useState<string | null>(null);
+  const [currentDesignPreset, setCurrentDesignPreset] = useState<string | null>(
+    ((location.state as { designPreset?: string })?.designPreset as string) ||
+      ((location.state as { aesthetic?: string })?.aesthetic as string) ||
+      null
+  );
+  const [currentTemplateCategory, setCurrentTemplateCategory] = useState<string | null>(
+    ((location.state as { templateCategory?: string })?.templateCategory as string) || null
+  );
   const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
   const [currentManifestId, setCurrentManifestId] = useState<string | null>(
     ((location.state as { manifestId?: string })?.manifestId as string) || null
@@ -418,6 +427,41 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   const [businessDataContext, setBusinessDataContext] = useState<string | null>(null);
 
+  // Load persisted launcher design preferences (if not already in navigation state)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPrefs() {
+      if (!businessId) return;
+      // If we already have a preset from navigation state, don't override it.
+      if (currentDesignPreset) return;
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) return;
+
+        const { data, error } = await supabase
+          .from("business_design_preferences" as any)
+          .select("template_category,design_preset")
+          .eq("business_id", businessId)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!cancelled) {
+          if (data?.design_preset) setCurrentDesignPreset(String(data.design_preset));
+          if (data?.template_category) setCurrentTemplateCategory(String(data.template_category));
+        }
+      } catch (e) {
+        console.warn("[WebBuilder] Failed to load business design preferences", e);
+      }
+    }
+
+    loadPrefs();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId, currentDesignPreset]);
+
   useEffect(() => {
     let cancelled = false;
     async function loadBusinessData() {
@@ -444,6 +488,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         const lines: string[] = [];
         if (biz?.name) lines.push(`- businessName: ${biz.name}`);
         if (biz?.id) lines.push(`- businessId: ${biz.id}`);
+        if (currentTemplateCategory) lines.push(`- templateCategory: ${currentTemplateCategory}`);
+        if (currentDesignPreset) lines.push(`- designPreset: ${currentDesignPreset}`);
 
         if (!cancelled) setBusinessDataContext(lines.length ? lines.join("\n") : null);
       } catch (e) {
@@ -456,7 +502,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     return () => {
       cancelled = true;
     };
-  }, [businessId]);
+  }, [businessId, currentDesignPreset, currentTemplateCategory]);
   
   // Set default businessId for intent routing
   useEffect(() => {
@@ -2104,9 +2150,16 @@ ${body.innerHTML}
             <div className="flex items-center gap-1 border-l border-white/10 pl-4">
               {/* Current template indicator */}
               {currentTemplateName && (
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 rounded text-xs text-primary mr-2">
-                  <Cloud className="h-3 w-3" />
-                  <span className="max-w-[120px] truncate">{currentTemplateName}</span>
+                <div className="flex items-center gap-2 mr-2">
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 rounded text-xs text-primary">
+                    <Cloud className="h-3 w-3" />
+                    <span className="max-w-[120px] truncate">{currentTemplateName}</span>
+                  </div>
+                  {currentDesignPreset && (
+                    <Badge variant="secondary" className="h-6 px-2 text-[10px]">
+                      {currentDesignPreset}
+                    </Badge>
+                  )}
                 </div>
               )}
               

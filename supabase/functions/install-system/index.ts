@@ -19,6 +19,8 @@ interface InstallRequest {
   templateId?: string;
   templateName?: string;
   businessName?: string;
+  templateCategory?: string;
+  designPreset?: string;
 }
 
 function json(status: number, body: unknown) {
@@ -141,6 +143,26 @@ serve(async (req) => {
     if (installError) {
       console.error("[install-system] record install failed", installError);
       return json(500, { success: false, error: "Failed to record install" });
+    }
+
+    // 3b) Persist launcher design preferences (optional)
+    if (body.templateCategory || body.designPreset) {
+      const { error: prefsError } = await admin
+        .from("business_design_preferences")
+        .upsert(
+          {
+            business_id: businessId,
+            template_category: body.templateCategory ?? null,
+            design_preset: body.designPreset ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "business_id" },
+        );
+
+      if (prefsError) {
+        // Non-fatal: system install should still succeed.
+        console.error("[install-system] upsert business_design_preferences failed", prefsError);
+      }
     }
 
     // 4) Seed minimal demo data (real tables, real writes)
