@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { SimplePreview } from '@/components/SimplePreview';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
+import { LiveHTMLPreview, type LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
@@ -113,6 +114,8 @@ interface SelectedElement {
   };
   attributes?: Record<string, string>;
   selector?: string;
+  html?: string;
+  section?: string;
 }
 
 // Define types for Fabric objects with their specific properties
@@ -196,6 +199,37 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const livePreviewRef = useRef<VFSPreviewHandle | null>(null);
+  const liveHtmlPreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
+
+  const applyElementHtmlUpdate = useCallback((code: string, selector: string, newHtml: string) => {
+    try {
+      const trimmed = (code || '').trim();
+      const isDoc = trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html');
+      // This targeted replace is only safe for HTML templates.
+      if (!trimmed.startsWith('<') || trimmed.includes('export default') || trimmed.includes('import React')) {
+        return { ok: false as const, code };
+      }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+      const target = doc.querySelector(selector);
+      if (!target) return { ok: false as const, code };
+
+      // Replace outerHTML via DOM manipulation
+      const container = doc.createElement('div');
+      container.innerHTML = newHtml;
+      const replacement = container.firstElementChild as Element | null;
+      if (!replacement) return { ok: false as const, code };
+      target.replaceWith(replacement);
+
+      const next = isDoc
+        ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`
+        : doc.body.innerHTML;
+      return { ok: true as const, code: next };
+    } catch {
+      return { ok: false as const, code };
+    }
+  }, []);
   
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
@@ -2118,12 +2152,33 @@ ${body.innerHTML}
                   data-drop-zone="true"
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
-                  {/* Use SimplePreview - directly renders previewCode */}
-                  <SimplePreview
-                    code={previewCode}
-                    className="w-full h-full min-h-0 flex-1"
-                    showToolbar={false}
-                  />
+                  {/* Select mode: enable element/section selection for AI redesign */}
+                  {builderMode === 'select' ? (
+                    <LiveHTMLPreview
+                      ref={liveHtmlPreviewRef}
+                      code={previewCode}
+                      className="w-full h-full min-h-0 flex-1"
+                      enableSelection
+                      isInteractiveMode={false}
+                      onElementSelect={(el) => {
+                        setSelectedHTMLElement({
+                          tagName: el.tagName,
+                          textContent: el.textContent,
+                          styles: el.styles,
+                          attributes: el.attributes,
+                          selector: el.selector,
+                          html: el.html,
+                          section: el.section,
+                        });
+                      }}
+                    />
+                  ) : (
+                    <SimplePreview
+                      code={previewCode}
+                      className="w-full h-full min-h-0 flex-1"
+                      showToolbar={false}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -2291,12 +2346,32 @@ export default function App() {
                     data-drop-zone="true"
                     className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
-                    {/* Use SimplePreview - directly renders previewCode */}
-                    <SimplePreview
-                      code={previewCode}
-                      className="w-full h-full min-h-0 flex-1"
-                      showToolbar={false}
-                    />
+                    {builderMode === 'select' ? (
+                      <LiveHTMLPreview
+                        ref={liveHtmlPreviewRef}
+                        code={previewCode}
+                        className="w-full h-full min-h-0 flex-1"
+                        enableSelection
+                        isInteractiveMode={false}
+                        onElementSelect={(el) => {
+                          setSelectedHTMLElement({
+                            tagName: el.tagName,
+                            textContent: el.textContent,
+                            styles: el.styles,
+                            attributes: el.attributes,
+                            selector: el.selector,
+                            html: el.html,
+                            section: el.section,
+                          });
+                        }}
+                      />
+                    ) : (
+                      <SimplePreview
+                        code={previewCode}
+                        className="w-full h-full min-h-0 flex-1"
+                        showToolbar={false}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -2588,6 +2663,25 @@ export default function App() {
         systemType={activeSystemType}
         templateName={currentTemplateName}
         templateCtaAnalysis={templateCtaAnalysis}
+        selectedElement={
+          selectedHTMLElement?.selector && selectedHTMLElement?.html
+            ? {
+                selector: selectedHTMLElement.selector,
+                html: selectedHTMLElement.html,
+                section: selectedHTMLElement.section,
+              }
+            : undefined
+        }
+        onElementUpdate={(selector, newHtml) => {
+          const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
+          if (!res.ok) {
+            toast.error('Section redesign currently supports HTML templates only (not React/TSX).');
+            return;
+          }
+          setEditorCode(res.code);
+          setPreviewCode(res.code);
+          toast.success('Section redesigned');
+        }}
         onCodeGenerated={(code) => {
           console.log('[WebBuilder] ========== AI CODE GENERATED ==========');
           console.log('[WebBuilder] Code length:', code.length);
