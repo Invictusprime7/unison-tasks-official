@@ -816,6 +816,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       
       console.log('[AICodeAssistant] Sending request - Mode:', mode, 'Template Action:', templateAction, 'Debug Mode:', mode === "debug");
 
+      // The backend function enforces a hard 10k limit per message content. Keep a buffer.
+      const MAX_MESSAGE_CHARS = 9_000;
+      const clamp = (value: string) =>
+        value.length > MAX_MESSAGE_CHARS
+          ? value.slice(0, MAX_MESSAGE_CHARS) + "\n\n[Truncated to fit request limits]"
+          : value;
+
       // Mitigate transient network failures (which surface as FunctionsFetchError/TypeError: Failed to fetch)
       // and avoid sending extremely large payloads.
       const maxCurrentCodeChars = 20_000;
@@ -831,8 +838,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           const result = await supabase.functions.invoke('ai-code-assistant', {
             body: {
               messages: messages
-                .map((m) => ({ role: m.role, content: m.content }))
-                .concat([{ role: userMessage.role, content: enhancedPrompt }]),
+                // Prevent body validation errors (content > 10,000 chars)
+                .map((m) => ({ role: m.role, content: clamp(String(m.content ?? '')) }))
+                .concat([{ role: userMessage.role, content: clamp(enhancedPrompt) }]),
               mode,
               currentCode: currentCodeForRequest,
               editMode: hasExistingTemplate || mode === "debug",

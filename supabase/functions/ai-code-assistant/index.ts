@@ -22,12 +22,20 @@ serve(async (req: Request) => {
   }
 
   try {
+    const messageContentSchema = z.union([
+      // Standard text-only chat
+      z.string().min(1).max(10_000),
+      // Multimodal content (e.g. [{ type: 'text', text: '...' }, { type: 'image_url', ... }])
+      // We intentionally keep this permissive because the AI gateway supports these objects.
+      z.array(z.unknown()).min(1).max(50),
+    ]);
+
     const bodySchema = z.object({
       messages: z
         .array(
           z.object({
             role: z.enum(["user", "assistant", "system"]),
-            content: z.string().min(1).max(10_000),
+            content: messageContentSchema,
           })
         )
         .min(1)
@@ -46,7 +54,11 @@ serve(async (req: Request) => {
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return new Response(
-        JSON.stringify({ error: "Invalid request body" }),
+        JSON.stringify({
+          error: "Invalid request body",
+          // Keep details small but helpful for debugging.
+          details: parsed.error.issues.slice(0, 10).map((i) => ({ path: i.path, message: i.message })),
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -968,8 +980,28 @@ Learn from every bug fix to become better at prevention!`
 
     const systemPrompt = systemPrompts[mode as keyof typeof systemPrompts] || systemPrompts.code;
 
+    const extractTextContent = (content: unknown): string => {
+      if (typeof content === 'string') return content;
+      if (Array.isArray(content)) {
+        // Try to extract any text parts (OpenAI/Gemini style).
+        const textParts = content
+          .map((p: any) => {
+            if (!p || typeof p !== 'object') return '';
+            if (typeof p.text === 'string') return p.text;
+            // Some formats may use { type: 'text', text: '...' }
+            if (p.type === 'text' && typeof p.text === 'string') return p.text;
+            return '';
+          })
+          .filter(Boolean);
+        return textParts.join('\n').trim();
+      }
+      return '';
+    };
+
     // Check if user wants to generate an image
-    const userPrompt = messages[messages.length - 1]?.content?.toLowerCase() || '';
+    const lastMessageContent = messages[messages.length - 1]?.content;
+    const userPromptText = extractTextContent(lastMessageContent);
+    const userPrompt = userPromptText.toLowerCase();
     const imageKeywords = ['generate image', 'create image', 'add image', 'brand logo', 'logo', 'add photo', 'insert image', 'place image'];
     const shouldGenerateImage = generateImage || imageKeywords.some(kw => userPrompt.includes(kw));
     
@@ -1055,10 +1087,19 @@ Learn from every bug fix to become better at prevention!`
       : messages;
     
     // Also truncate individual message content if too long
-    const processedMessages = truncatedMessages.map((msg: { role: string; content: string }) => ({
-      role: msg.role,
-      content: msg.content.length > 15000 ? msg.content.substring(0, 15000) + '\n\n[Content truncated for token limit]' : msg.content
-    }));
+    const processedMessages = truncatedMessages.map((msg: { role: string; content: unknown }) => {
+      const content = msg.content;
+      if (typeof content === 'string') {
+        return {
+          role: msg.role,
+          content: content.length > 15000
+            ? content.substring(0, 15000) + '\n\n[Content truncated for token limit]'
+            : content,
+        };
+      }
+      // Multimodal arrays should be forwarded as-is.
+      return { role: msg.role, content };
+    });
 
     console.log(`[AI-Code-Assistant] Processing ${processedMessages.length} messages (from ${messages.length} original)`);
 
@@ -1106,7 +1147,7 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     const content = data.choices?.[0]?.message?.content || '';
 
     // Save learning session (async, don't wait)
-    const originalUserPrompt = messages[messages.length - 1]?.content || '';
+    const originalUserPrompt = extractTextContent(messages[messages.length - 1]?.content);
     if (savePattern && originalUserPrompt) {
       supabase.from('ai_learning_sessions').insert({
         session_type: mode === 'code' ? 'code_generation' : mode === 'design' ? 'design_review' : 'code_review',
