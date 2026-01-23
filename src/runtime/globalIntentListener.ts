@@ -4,7 +4,7 @@
  * Provides automatic button-to-intent wiring without requiring custom components.
  * Attaches a single click listener that:
  * 1. Detects clicks on buttons and anchors
- * 2. Reads data-intent attribute OR infers intent from label text
+ * 2. Reads data-ut-intent (preferred) / data-intent (legacy) OR infers intent from label text
  * 3. Collects payload from data-* attributes and form context
  * 4. Routes to the intent handler
  * 
@@ -73,7 +73,7 @@ function inferIntentFromText(text: string, category?: TemplateCategory): string 
  * Check if element should be ignored (has data-intent="none" or similar)
  */
 function shouldIgnoreElement(el: HTMLElement): boolean {
-  const intent = el.getAttribute('data-intent');
+  const intent = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
   if (intent === 'none' || intent === 'ignore' || intent === 'false') {
     return true;
   }
@@ -104,9 +104,14 @@ function shouldIgnoreElement(el: HTMLElement): boolean {
 function collectDataAttributes(el: HTMLElement): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   
-  // Get all data attributes except data-intent
+  // Get all data attributes except intent control attributes
   Array.from(el.attributes).forEach(attr => {
-    if (attr.name.startsWith('data-') && attr.name !== 'data-intent' && attr.name !== 'data-no-intent') {
+    if (
+      attr.name.startsWith('data-') &&
+      attr.name !== 'data-intent' &&
+      attr.name !== 'data-ut-intent' &&
+      attr.name !== 'data-no-intent'
+    ) {
       // Convert data-product-id to productId
       const key = attr.name
         .replace('data-', '')
@@ -234,7 +239,7 @@ function showError(el: HTMLElement): void {
  */
 async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise<void> {
   // Find the nearest button or anchor
-  const el = (e.target as HTMLElement).closest('button, a, [role="button"], [data-intent]') as HTMLElement | null;
+  const el = (e.target as HTMLElement).closest('button, a, [role="button"], [data-ut-intent], [data-intent]') as HTMLElement | null;
   
   if (!el) return;
   
@@ -246,8 +251,8 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
     return;
   }
   
-  // Get intent - prefer explicit data-intent, fallback to inference
-  let intent = el.getAttribute('data-intent');
+  // Get intent - prefer explicit data-ut-intent, fallback to legacy data-intent, then inference
+  let intent = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
   
   if (!intent) {
     const text = el.textContent || el.getAttribute('aria-label') || '';
@@ -331,13 +336,13 @@ async function handleFormSubmit(e: SubmitEvent, config: GlobalListenerConfig): P
   if (!form) return;
   
   // Get intent from form
-  let intent = form.getAttribute('data-intent');
+  let intent = form.getAttribute('data-ut-intent') || form.getAttribute('data-intent');
   
   // If no form intent, check submit button
   if (!intent) {
     const submitButton = form.querySelector('button[type="submit"], input[type="submit"]') as HTMLElement;
     if (submitButton) {
-      intent = submitButton.getAttribute('data-intent');
+      intent = submitButton.getAttribute('data-ut-intent') || submitButton.getAttribute('data-intent');
       if (!intent) {
         const text = submitButton.textContent || submitButton.getAttribute('value') || '';
         intent = inferIntentFromText(text, config.category);
@@ -604,7 +609,7 @@ export function generateIntentListenerScript(config: GlobalListenerConfig = {}):
   function collectPayload(el) {
     const payload = {};
     Array.from(el.attributes).forEach(attr => {
-      if (attr.name.startsWith('data-') && attr.name !== 'data-intent') {
+      if (attr.name.startsWith('data-') && attr.name !== 'data-intent' && attr.name !== 'data-ut-intent') {
         const key = attr.name.replace('data-', '').replace(/-([a-z])/g, (_, l) => l.toUpperCase());
         try { payload[key] = JSON.parse(attr.value); } catch { payload[key] = attr.value; }
       }
@@ -632,10 +637,10 @@ export function generateIntentListenerScript(config: GlobalListenerConfig = {}):
   }
   
   document.addEventListener('click', async function(e) {
-    const el = e.target.closest('button, a, [role="button"], [data-intent]');
+    const el = e.target.closest('button, a, [role="button"], [data-ut-intent], [data-intent]');
     if (!el) return;
     
-    const intentAttr = el.getAttribute('data-intent');
+    const intentAttr = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
     if (intentAttr === 'none' || intentAttr === 'ignore') return;
     
     let intent = intentAttr || inferIntent(el.textContent || el.getAttribute('aria-label'));
@@ -665,10 +670,10 @@ export function generateIntentListenerScript(config: GlobalListenerConfig = {}):
     const form = e.target;
     if (!form) return;
     
-    let intent = form.getAttribute('data-intent');
+    let intent = form.getAttribute('data-ut-intent') || form.getAttribute('data-intent');
     if (!intent) {
       const btn = form.querySelector('button[type="submit"]');
-      if (btn) intent = btn.getAttribute('data-intent') || inferIntent(btn.textContent);
+      if (btn) intent = btn.getAttribute('data-ut-intent') || btn.getAttribute('data-intent') || inferIntent(btn.textContent);
     }
     if (!intent) {
       const id = (form.id || '').toLowerCase();

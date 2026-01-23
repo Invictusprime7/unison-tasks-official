@@ -146,10 +146,10 @@ function injectIntentListener(html: string): string {
       return null;
     }
     
-    function collectPayload(el){
+     function collectPayload(el){
       const p={};
       Array.from(el.attributes).forEach(a=>{
-        if(a.name.startsWith('data-')&&a.name!=='data-intent'){
+         if(a.name.startsWith('data-')&&a.name!=='data-intent'&&a.name!=='data-ut-intent'){
           const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
           try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}
         }
@@ -193,10 +193,10 @@ function injectIntentListener(html: string): string {
       window.parent.postMessage({ type: 'RESEARCH_OPEN', payload }, '*');
     }
     
-    document.addEventListener('click',function(e){
-      const el=e.target.closest('button,a,[role="button"],[data-intent]');
+     document.addEventListener('click',function(e){
+       const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');
       if(!el)return;
-      const ia=el.getAttribute('data-intent');
+       const ia=el.getAttribute('data-ut-intent')||el.getAttribute('data-intent');
       if(ia==='none'||ia==='ignore')return;
       const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));
       if(!intent){
@@ -220,12 +220,12 @@ function injectIntentListener(html: string): string {
       },300);
     },{capture:true});
     
-    document.addEventListener('submit',function(e){
+     document.addEventListener('submit',function(e){
       const form=e.target;if(!form||form.tagName!=='FORM')return;
-      let intent=form.getAttribute('data-intent');
+       let intent=form.getAttribute('data-ut-intent')||form.getAttribute('data-intent');
       if(!intent){
         const btn=form.querySelector('button[type="submit"],button:not([type])');
-        if(btn)intent=btn.getAttribute('data-intent')||inferIntent(btn.textContent);
+         if(btn)intent=btn.getAttribute('data-ut-intent')||btn.getAttribute('data-intent')||inferIntent(btn.textContent);
       }
       if(!intent){
         const id=(form.id||'').toLowerCase();
@@ -422,7 +422,7 @@ function wrapHtmlSnippet(html: string): string {
       'order online':'order.online','view menu':'menu.view','call now':'call.now'
     };
     function inferIntent(t){if(!t)return null;const l=t.toLowerCase().trim();if(LABEL_INTENTS[l])return LABEL_INTENTS[l];for(const[k,v]of Object.entries(LABEL_INTENTS))if(l.includes(k))return v;return null;}
-    function collectPayload(el){const p={};Array.from(el.attributes).forEach(a=>{if(a.name.startsWith('data-')&&a.name!=='data-intent'){const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}}});const f=el.closest('form');if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});return p;}
+    function collectPayload(el){const p={};Array.from(el.attributes).forEach(a=>{if(a.name.startsWith('data-')&&a.name!=='data-intent'&&a.name!=='data-ut-intent'){const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}}});const f=el.closest('form');if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});return p;}
     function normalizeText(t){return (t||'').replace(/\s+/g,' ').trim();}
     function shouldOpenResearch(el){
       try{
@@ -442,8 +442,8 @@ function wrapHtmlSnippet(html: string): string {
       window.parent.postMessage({type:'RESEARCH_OPEN',payload:{query,href,pageTitle:document.title,selection:query}},'*');
     }
     document.addEventListener('click',function(e){
-      const el=e.target.closest('button,a,[role="button"],[data-intent]');if(!el)return;
-      const ia=el.getAttribute('data-intent');if(ia==='none'||ia==='ignore')return;
+      const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');if(!el)return;
+      const ia=el.getAttribute('data-ut-intent')||el.getAttribute('data-intent');if(ia==='none'||ia==='ignore')return;
       const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));
       if(!intent){
         if(shouldOpenResearch(el)){
@@ -459,8 +459,8 @@ function wrapHtmlSnippet(html: string): string {
     },{capture:true});
     document.addEventListener('submit',function(e){
       const form=e.target;if(!form)return;
-      let intent=form.getAttribute('data-intent');
-      if(!intent){const btn=form.querySelector('button[type="submit"]');if(btn)intent=btn.getAttribute('data-intent')||inferIntent(btn.textContent);}
+      let intent=form.getAttribute('data-ut-intent')||form.getAttribute('data-intent');
+      if(!intent){const btn=form.querySelector('button[type="submit"]');if(btn)intent=btn.getAttribute('data-ut-intent')||btn.getAttribute('data-intent')||inferIntent(btn.textContent);}
       if(!intent){const id=(form.id||'').toLowerCase();if(id.includes('contact'))intent='contact.submit';else if(id.includes('newsletter'))intent='newsletter.subscribe';else if(id.includes('waitlist'))intent='join.waitlist';else if(id.includes('booking'))intent='booking.create';}
       if(!intent)return;
       e.preventDefault();const p={};new FormData(form).forEach((v,k)=>{if(typeof v==='string')p[k]=v});
