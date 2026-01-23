@@ -213,4 +213,292 @@ ${contractorExtras({ brand: 'FixIt Pro', accent: 'orange', headline: 'Book your 
 <footer class="py-12 px-6 border-t border-white/5"><div class="max-w-6xl mx-auto flex justify-between items-center"><span class="font-bold text-orange-500">FixIt Pro</span><p class="text-sm text-slate-500">Insured & Background Checked</p></div></footer>
     `, "General Handyman"),
   },
+
+  // Contract-ready booking templates (appear in System Launcher)
+  {
+    id: "services-salon-appointments",
+    name: "Salon Appointments",
+    category: "contractor",
+    description: "Service business template with appointment booking + lead capture wiring",
+    tags: ["editorial", "booking", "services", "appointments"],
+    code: wrapInHtmlDoc(`
+<nav class="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-slate-950/80 backdrop-blur-lg border-b border-white/10" data-ut-section="nav">
+  <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+    <a href="#" class="text-lg font-semibold tracking-wide">Velvet Studio</a>
+    <div class="hidden md:flex items-center gap-6 text-sm text-slate-300">
+      <a href="#services" class="hover:text-white" data-ut-cta="cta.nav">Services</a>
+      <a href="#team" class="hover:text-white" data-ut-cta="cta.nav">Team</a>
+      <a href="#faq" class="hover:text-white" data-ut-cta="cta.nav">FAQ</a>
+    </div>
+    <button class="px-5 py-2 rounded-xl bg-white text-black font-semibold" data-ut-cta="cta.nav" data-ut-intent="booking.create" data-ut-label="Book appointment">Book</button>
+  </div>
+</nav>
+
+<header class="pt-28 pb-16 px-6" data-ut-section="hero">
+  <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+    <div>
+      <p class="text-xs tracking-[0.2em] text-slate-400">APPOINTMENTS • COLOR • CUT • STYLE</p>
+      <h1 class="mt-3 text-5xl md:text-6xl font-bold">Book a look you’ll love.</h1>
+      <p class="mt-6 text-lg text-slate-300 max-w-xl">A modern studio for hair, color, and event styling—appointments available 7 days a week.</p>
+      <div class="mt-8 flex flex-col sm:flex-row gap-3">
+        <button class="px-7 py-4 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 text-black font-extrabold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book now">Book now</button>
+        <button class="px-7 py-4 rounded-2xl border border-white/15 bg-white/5 text-white font-semibold" data-ut-cta="cta.secondary" data-ut-intent="contact.submit" data-ut-label="Ask a question">Ask a question</button>
+      </div>
+      <div class="mt-10 grid grid-cols-3 gap-4 text-sm">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div class="text-slate-400">Avg. response</div>
+          <div class="mt-1 font-semibold">Under 1 hour</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div class="text-slate-400">Rating</div>
+          <div class="mt-1 font-semibold">4.9 / 5</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div class="text-slate-400">Walk-ins</div>
+          <div class="mt-1 font-semibold">Limited</div>
+        </div>
+      </div>
+    </div>
+    <div class="relative">
+      <div class="absolute -inset-6 bg-gradient-to-tr from-rose-500/20 to-purple-500/10 blur-2xl rounded-full"></div>
+      <div class="relative rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-400 tracking-widest">NEXT AVAILABLE</div>
+            <div class="mt-1 text-xl font-bold">Today • 3:30 PM</div>
+          </div>
+          <div class="text-2xl">✂️</div>
+        </div>
+        <div class="mt-5 grid grid-cols-2 gap-3">
+          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book haircut" data-ut-cta="cta.primary">Haircut</button>
+          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book color" data-ut-cta="cta.primary">Color</button>
+          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book blowout" data-ut-cta="cta.primary">Blowout</button>
+          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book event style" data-ut-cta="cta.primary">Event Style</button>
+        </div>
+        <p class="mt-4 text-xs text-slate-400">Tip: these cards can map to real services and availability once connected.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="py-16 px-6 bg-white/5" id="services" data-ut-section="services">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-end justify-between gap-6">
+      <div>
+        <h2 class="text-3xl md:text-4xl font-bold">Signature services</h2>
+        <p class="mt-2 text-slate-400">Clear pricing, quick booking, real-time confirmation.</p>
+      </div>
+      <button class="hidden md:inline-flex px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book a service">Book a service</button>
+    </div>
+    <div class="mt-10 grid md:grid-cols-3 gap-6">
+      <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+        <div class="text-xs tracking-widest text-slate-500">POPULAR</div>
+        <div class="mt-2 text-xl font-semibold">Cut + Style</div>
+        <div class="mt-1 text-sm text-slate-400">45–60 min • from $75</div>
+        <button class="mt-5 w-full px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book Cut + Style">Book</button>
+      </div>
+      <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+        <div class="text-xs tracking-widest text-slate-500">COLOR</div>
+        <div class="mt-2 text-xl font-semibold">Full Color</div>
+        <div class="mt-1 text-sm text-slate-400">90–120 min • from $160</div>
+        <button class="mt-5 w-full px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book Full Color">Book</button>
+      </div>
+      <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+        <div class="text-xs tracking-widest text-slate-500">EVENTS</div>
+        <div class="mt-2 text-xl font-semibold">Event Styling</div>
+        <div class="mt-1 text-sm text-slate-400">60–75 min • from $120</div>
+        <button class="mt-5 w-full px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book Event Styling">Book</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-16 px-6" id="team" data-ut-section="team">
+  <div class="max-w-6xl mx-auto">
+    <h2 class="text-3xl md:text-4xl font-bold">Meet the team</h2>
+    <p class="mt-2 text-slate-400">Choose a stylist on booking (mapped in payload later).</p>
+    <div class="mt-10 grid md:grid-cols-3 gap-6">
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div class="text-2xl">🖤</div>
+        <div class="mt-3 font-semibold">Ava</div>
+        <div class="text-sm text-slate-400">Color + balayage</div>
+      </div>
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div class="text-2xl">✨</div>
+        <div class="mt-3 font-semibold">Mina</div>
+        <div class="text-sm text-slate-400">Cuts + styling</div>
+      </div>
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div class="text-2xl">🌙</div>
+        <div class="mt-3 font-semibold">Noah</div>
+        <div class="text-sm text-slate-400">Event looks</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-16 px-6 bg-white/5" id="faq" data-ut-section="faq">
+  <div class="max-w-5xl mx-auto">
+    <h2 class="text-3xl md:text-4xl font-bold">FAQ</h2>
+    <div class="mt-8 space-y-3">
+      <details class="group rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+        <summary class="flex items-center justify-between gap-4 tw-focus"><span class="font-semibold">What’s your cancellation policy?</span><span class="text-slate-400 group-open:rotate-45 transition">+</span></summary>
+        <div class="mt-3 text-sm text-slate-400">Reschedule up to 24 hours before your appointment.</div>
+      </details>
+      <details class="group rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+        <summary class="flex items-center justify-between gap-4 tw-focus"><span class="font-semibold">Do you take walk-ins?</span><span class="text-slate-400 group-open:rotate-45 transition">+</span></summary>
+        <div class="mt-3 text-sm text-slate-400">Limited walk-ins. Booking online is the fastest way to secure a slot.</div>
+      </details>
+      <details class="group rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+        <summary class="flex items-center justify-between gap-4 tw-focus"><span class="font-semibold">Can I request a stylist?</span><span class="text-slate-400 group-open:rotate-45 transition">+</span></summary>
+        <div class="mt-3 text-sm text-slate-400">Yes—leave a note and we’ll confirm availability.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="py-16 px-6" data-ut-section="lead">
+  <div class="max-w-6xl mx-auto rounded-3xl border border-white/10 bg-slate-900/50 p-8 md:p-10">
+    <div class="grid lg:grid-cols-2 gap-10 items-start">
+      <div>
+        <h2 class="text-3xl font-bold">Get last-minute openings</h2>
+        <p class="mt-2 text-slate-400">Join the list for cancellations and same-day slots.</p>
+      </div>
+      <form class="grid sm:grid-cols-3 gap-3" data-ut-intent="newsletter.subscribe">
+        <input class="px-4 py-3 rounded-2xl bg-slate-950/40 border border-white/10 outline-none" placeholder="Email" type="email" name="email" required />
+        <input class="px-4 py-3 rounded-2xl bg-slate-950/40 border border-white/10 outline-none" placeholder="Name" type="text" name="name" />
+        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.footer" data-ut-intent="newsletter.subscribe" data-ut-label="Join newsletter">Join</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer class="py-12 px-6 border-t border-white/5" data-ut-section="footer">
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+    <div>
+      <div class="font-semibold">Velvet Studio</div>
+      <div class="text-sm text-slate-500">Downtown • Open daily</div>
+    </div>
+    <div class="flex gap-3">
+      <button class="px-5 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold" data-ut-cta="cta.footer" data-ut-intent="contact.submit" data-ut-label="Contact">Contact</button>
+      <button class="px-5 py-2 rounded-xl bg-white text-black text-sm font-bold" data-ut-cta="cta.footer" data-ut-intent="booking.create" data-ut-label="Book">Book</button>
+    </div>
+  </div>
+</footer>
+    `, "Salon Appointments"),
+  },
+
+  {
+    id: "services-consulting-booking",
+    name: "Consulting Sessions",
+    category: "contractor",
+    description: "Service business template for 1:1 sessions with booking + newsletter wiring",
+    tags: ["editorial", "booking", "services", "consulting"],
+    code: wrapInHtmlDoc(`
+<nav class="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-slate-950/80 backdrop-blur-lg border-b border-white/10" data-ut-section="nav">
+  <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+    <a href="#" class="text-lg font-semibold">Northstar Consulting</a>
+    <div class="hidden md:flex items-center gap-6 text-sm text-slate-300">
+      <a href="#offer" class="hover:text-white" data-ut-cta="cta.nav">Offer</a>
+      <a href="#process" class="hover:text-white" data-ut-cta="cta.nav">Process</a>
+      <a href="#proof" class="hover:text-white" data-ut-cta="cta.nav">Proof</a>
+    </div>
+    <button class="px-5 py-2 rounded-xl bg-white text-black font-semibold" data-ut-cta="cta.nav" data-ut-intent="booking.create" data-ut-label="Book a call">Book a call</button>
+  </div>
+</nav>
+
+<header class="pt-28 pb-16 px-6" data-ut-section="hero">
+  <div class="max-w-6xl mx-auto">
+    <div class="max-w-3xl">
+      <p class="text-xs tracking-[0.2em] text-slate-400">STRATEGY • OPERATIONS • SYSTEMS</p>
+      <h1 class="mt-3 text-5xl md:text-6xl font-bold">Turn “busy” into a clean operating system.</h1>
+      <p class="mt-6 text-lg text-slate-300">Book a session to map your funnel, fix handoffs, and implement a repeatable process in 14 days.</p>
+      <div class="mt-8 flex flex-col sm:flex-row gap-3">
+        <button class="px-7 py-4 rounded-2xl bg-gradient-to-r from-emerald-400 to-lime-400 text-black font-extrabold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book strategy session">Book strategy session</button>
+        <button class="px-7 py-4 rounded-2xl border border-white/15 bg-white/5 text-white font-semibold" data-ut-cta="cta.secondary" data-ut-intent="contact.submit" data-ut-label="Ask about fit">Ask about fit</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="py-16 px-6 bg-white/5" id="offer" data-ut-section="offer">
+  <div class="max-w-6xl mx-auto grid lg:grid-cols-3 gap-6">
+    <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+      <div class="text-xs tracking-widest text-slate-500">SESSION</div>
+      <div class="mt-2 text-xl font-semibold">90-min Strategy Call</div>
+      <div class="mt-1 text-sm text-slate-400">Audit + plan + next steps.</div>
+      <button class="mt-5 w-full px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book 90-min Strategy Call">Book</button>
+    </div>
+    <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+      <div class="text-xs tracking-widest text-slate-500">SPRINT</div>
+      <div class="mt-2 text-xl font-semibold">14-Day Implementation</div>
+      <div class="mt-1 text-sm text-slate-400">Build & ship the workflow.</div>
+      <button class="mt-5 w-full px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book implementation kickoff">Book</button>
+    </div>
+    <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+      <div class="text-xs tracking-widest text-slate-500">SUPPORT</div>
+      <div class="mt-2 text-xl font-semibold">Monthly Advisory</div>
+      <div class="mt-1 text-sm text-slate-400">Ongoing optimization.</div>
+      <button class="mt-5 w-full px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold" data-ut-cta="cta.primary" data-ut-intent="booking.create" data-ut-label="Book advisory intro">Book</button>
+    </div>
+  </div>
+</section>
+
+<section class="py-16 px-6" id="process" data-ut-section="process">
+  <div class="max-w-6xl mx-auto">
+    <h2 class="text-3xl md:text-4xl font-bold">Process</h2>
+    <div class="mt-10 grid md:grid-cols-3 gap-6">
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-6"><div class="text-xs tracking-widest text-slate-500">1</div><div class="mt-2 font-semibold">Diagnose</div><div class="text-sm text-slate-400">Find bottlenecks and wasted motion.</div></div>
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-6"><div class="text-xs tracking-widest text-slate-500">2</div><div class="mt-2 font-semibold">Design</div><div class="text-sm text-slate-400">Define a workflow your team will actually use.</div></div>
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-6"><div class="text-xs tracking-widest text-slate-500">3</div><div class="mt-2 font-semibold">Deploy</div><div class="text-sm text-slate-400">Implement with training + checklists.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="py-16 px-6 bg-white/5" id="proof" data-ut-section="proof">
+  <div class="max-w-6xl mx-auto">
+    <h2 class="text-3xl md:text-4xl font-bold">Proof</h2>
+    <div class="mt-10 grid md:grid-cols-2 gap-6">
+      <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+        <div class="text-sm text-slate-300">“We cut lead response time from 2 days to under 2 hours.”</div>
+        <div class="mt-4 text-xs text-slate-500">Ops Lead • B2B Services</div>
+      </div>
+      <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6">
+        <div class="text-sm text-slate-300">“Our booking flow now converts and routes to the right inbox.”</div>
+        <div class="mt-4 text-xs text-slate-500">Founder • Agency</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-16 px-6" data-ut-section="lead">
+  <div class="max-w-6xl mx-auto rounded-3xl border border-white/10 bg-slate-900/50 p-8 md:p-10">
+    <div class="grid lg:grid-cols-2 gap-10 items-start">
+      <div>
+        <h2 class="text-3xl font-bold">Get the weekly teardown</h2>
+        <p class="mt-2 text-slate-400">Short emails. Real systems. No fluff.</p>
+      </div>
+      <form class="grid sm:grid-cols-3 gap-3" data-ut-intent="newsletter.subscribe">
+        <input class="px-4 py-3 rounded-2xl bg-slate-950/40 border border-white/10 outline-none" placeholder="Email" type="email" name="email" required />
+        <input class="px-4 py-3 rounded-2xl bg-slate-950/40 border border-white/10 outline-none" placeholder="Company" type="text" name="company" />
+        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.footer" data-ut-intent="newsletter.subscribe" data-ut-label="Subscribe">Subscribe</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer class="py-12 px-6 border-t border-white/5" data-ut-section="footer">
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+    <div>
+      <div class="font-semibold">Northstar Consulting</div>
+      <div class="text-sm text-slate-500">Systems for service businesses</div>
+    </div>
+    <div class="flex gap-3">
+      <button class="px-5 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold" data-ut-cta="cta.footer" data-ut-intent="contact.submit" data-ut-label="Contact">Contact</button>
+      <button class="px-5 py-2 rounded-xl bg-white text-black text-sm font-bold" data-ut-cta="cta.footer" data-ut-intent="booking.create" data-ut-label="Book">Book</button>
+    </div>
+  </div>
+</footer>
+    `, "Consulting Sessions"),
+  },
 ];
