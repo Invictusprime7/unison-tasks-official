@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +35,31 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     
-    const body: BookingPayload = await req.json();
+    const bookingSchema = z.object({
+      action: z.enum(['create', 'cancel', 'reschedule']).default('create'),
+      businessId: z.string().uuid(),
+      serviceId: z.string().uuid().optional(),
+      slotId: z.string().uuid().optional(),
+      bookingId: z.string().uuid().optional(),
+      customerName: z.string().trim().min(1).max(120).default(''),
+      customerEmail: z.string().trim().email().max(255).default(''),
+      customerPhone: z.string().trim().max(40).optional(),
+      startsAt: z.string().trim().max(64).optional(),
+      endsAt: z.string().trim().max(64).optional(),
+      notes: z.string().trim().max(2000).optional(),
+      newStartsAt: z.string().trim().max(64).optional(),
+      newEndsAt: z.string().trim().max(64).optional(),
+    });
+
+    const parsed = bookingSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const body = parsed.data as BookingPayload;
     const action = body.action || 'create';
 
     switch (action) {

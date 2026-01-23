@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 interface CodePattern {
   pattern_type: string;
@@ -21,7 +22,47 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, mode, savePattern = true, generateImage = false, imagePlacement, currentCode, editMode = false, debugMode = false, templateAction, templateAnalysis } = await req.json();
+    const bodySchema = z.object({
+      messages: z
+        .array(
+          z.object({
+            role: z.enum(["user", "assistant", "system"]),
+            content: z.string().min(1).max(10_000),
+          })
+        )
+        .min(1)
+        .max(50),
+      mode: z.string().max(20).optional(),
+      savePattern: z.boolean().optional(),
+      generateImage: z.boolean().optional(),
+      imagePlacement: z.string().max(40).optional(),
+      currentCode: z.string().max(50_000).optional(),
+      editMode: z.boolean().optional(),
+      debugMode: z.boolean().optional(),
+      templateAction: z.string().max(50).optional(),
+      templateAnalysis: z.string().max(20_000).optional(),
+    });
+
+    const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const {
+      messages,
+      mode,
+      savePattern = true,
+      generateImage = false,
+      imagePlacement,
+      currentCode,
+      editMode = false,
+      debugMode = false,
+      templateAction,
+      templateAnalysis,
+    } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {

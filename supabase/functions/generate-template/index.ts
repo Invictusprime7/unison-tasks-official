@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +12,21 @@ serve(async (req) => {
   }
 
   try {
-    const { templateName, aesthetic, source } = await req.json();
+    const bodySchema = z.object({
+      templateName: z.string().trim().min(1).max(100),
+      aesthetic: z.string().trim().min(1).max(80),
+      source: z.string().trim().min(1).max(80),
+    });
+
+    const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { templateName, aesthetic, source } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -95,7 +110,7 @@ Return ONLY the complete HTML code with embedded CSS, nothing else. Make it prod
     }
 
     const data = await response.json();
-    const generatedCode = data.choices[0].message.content;
+    const generatedCode = String(data?.choices?.[0]?.message?.content ?? '').slice(0, 500_000);
 
     return new Response(
       JSON.stringify({ 

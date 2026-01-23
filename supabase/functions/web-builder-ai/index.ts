@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,21 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, canvasState, action } = await req.json();
+    const bodySchema = z.object({
+      prompt: z.string().trim().min(1).max(10_000),
+      canvasState: z.unknown().optional(),
+      action: z.string().trim().max(100).optional(),
+    });
+
+    const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { prompt, canvasState, action } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -129,7 +144,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown, no explanations outside the JSON
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = String(data?.choices?.[0]?.message?.content ?? "").slice(0, 250_000);
     
     let aiResponse;
     try {
