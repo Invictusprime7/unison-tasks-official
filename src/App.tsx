@@ -9,6 +9,7 @@ import { Suspense, lazy } from "react";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import WebBuilderPage from "./pages/WebBuilderPage";
 
 // Dynamic imports for heavy pages
 const Pricing = lazy(() => import("./pages/Pricing"));
@@ -21,7 +22,6 @@ const Files = lazy(() => import("./pages/Files"));
 const Creatives = lazy(() => import("./pages/Creatives"));
 const TaskPlanning = lazy(() => import("./pages/TaskPlanning"));
 const DesignStudioPage = lazy(() => import("./pages/DesignStudioPage"));
-const WebBuilderPage = lazy(() => import("./pages/WebBuilderPage"));
 const AIPageGenerator = lazy(() => import("./components/creatives/AIPageGenerator").then(m => ({ default: m.AIPageGenerator })));
 const CRMDashboard = lazy(() => import("./pages/CRMDashboard"));
 
