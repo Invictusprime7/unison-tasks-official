@@ -107,6 +107,11 @@ const App = () => (
                 <BusinessSettings />
               </Suspense>
             } />
+            <Route path="/dashboard/leads" element={
+              <Suspense fallback={<PageLoader />}>
+                <CRMDashboard initialView="leads" />
+              </Suspense>
+            } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

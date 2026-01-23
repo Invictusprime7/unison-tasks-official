@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ProjectsList } from "@/components/ProjectsList";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
 import { SubscriptionBadge } from "@/components/SubscriptionBadge";
-import { LogOut, Plus, CheckSquare } from "lucide-react";
+import { LogOut, Plus, CheckSquare, Inbox } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -74,6 +74,10 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-4">
             <SubscriptionBadge />
+            <Button variant="outline" onClick={() => navigate("/dashboard/leads")}>
+              <Inbox className="h-4 w-4 mr-2" />
+              Leads
+            </Button>
             <Button onClick={handleCreateProject}>
               <Plus className="h-4 w-4 mr-2" />
               New Project

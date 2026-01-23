@@ -196,7 +196,12 @@ serve(async (req) => {
         ? `${name.trim()} (${email})`
         : email;
 
+      // NEW: Write to crm_leads with business_id, email, name, intent
       await supabase.from("crm_leads").insert({
+        business_id: businessId,
+        email: normalizedEmail,
+        name: name?.trim() || null,
+        intent: source || "lead_capture",
         contact_id: contactId,
         title: leadTitle,
         status: "new",

@@ -36,8 +36,12 @@ const navItems = [
   { id: "forms" as CRMView, label: "Form Submissions", icon: FileText },
 ];
 
-export default function CRMDashboard() {
-  const [activeView, setActiveView] = useState<CRMView>("overview");
+interface CRMDashboardProps {
+  initialView?: CRMView;
+}
+
+export default function CRMDashboard({ initialView = "overview" }: CRMDashboardProps) {
+  const [activeView, setActiveView] = useState<CRMView>(initialView);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const renderContent = () => {
