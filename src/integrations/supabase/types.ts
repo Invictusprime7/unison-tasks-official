@@ -242,6 +242,84 @@ export type Database = {
           },
         ]
       }
+      business_installs: {
+        Row: {
+          business_id: string
+          id: string
+          installed_at: string
+          installed_by: string | null
+          packs: string[]
+          status: string
+          system_type: string
+        }
+        Insert: {
+          business_id: string
+          id?: string
+          installed_at?: string
+          installed_by?: string | null
+          packs?: string[]
+          status?: string
+          system_type: string
+        }
+        Update: {
+          business_id?: string
+          id?: string
+          installed_at?: string
+          installed_by?: string | null
+          packs?: string[]
+          status?: string
+          system_type?: string
+        }
+        Relationships: []
+      }
+      business_members: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      businesses: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string | null
@@ -1173,6 +1251,36 @@ export type Database = {
         }
         Relationships: []
       }
+      intent_bindings: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          handler: string
+          id: string
+          intent: string
+          payload_defaults: Json
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          handler: string
+          id?: string
+          intent: string
+          payload_defaults?: Json
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          handler?: string
+          id?: string
+          intent?: string
+          payload_defaults?: Json
+        }
+        Relationships: []
+      }
       layers: {
         Row: {
           adjustments: Json | null
@@ -1267,6 +1375,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          business_id: string | null
           created_at: string | null
           currency: string | null
           customer_email: string
@@ -1286,6 +1395,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          business_id?: string | null
           created_at?: string | null
           currency?: string | null
           customer_email: string
@@ -1305,6 +1415,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          business_id?: string | null
           created_at?: string | null
           currency?: string | null
           customer_email?: string
@@ -1400,6 +1511,7 @@ export type Database = {
       }
       products: {
         Row: {
+          business_id: string | null
           category: string | null
           created_at: string | null
           currency: string | null
@@ -1415,6 +1527,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          business_id?: string | null
           category?: string | null
           created_at?: string | null
           currency?: string | null
@@ -1430,6 +1543,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          business_id?: string | null
           category?: string | null
           created_at?: string | null
           currency?: string | null
@@ -1623,6 +1737,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_packs: {
+        Row: {
+          created_at: string
+          id: string
+          manifest: Json
+          name: string
+          required_intents: string[]
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          manifest?: Json
+          name: string
+          required_intents?: string[]
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manifest?: Json
+          name?: string
+          required_intents?: string[]
+          version?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {
@@ -1853,6 +1994,7 @@ export type Database = {
         Args: { pattern_id: string }
         Returns: undefined
       }
+      is_business_member: { Args: { _business_id: string }; Returns: boolean }
       validate_file_share_token: {
         Args: { _file_id: string; _token: string }
         Returns: boolean
