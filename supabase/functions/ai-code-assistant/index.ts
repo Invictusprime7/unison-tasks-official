@@ -259,6 +259,9 @@ IMPORTANT PLATFORM CAPABILITY (DO NOT CONTRADICT THIS):
 WIRING RULES (CRITICAL):
 - Use data-ut-intent for actions (also keep data-intent for compatibility).
 - Use data-ut-cta + data-ut-label on key CTAs (cta.nav, cta.hero, cta.primary, cta.footer).
+- IMPORTANT: Do NOT wire every button. UI selectors (tabs, filters, time slots, service pickers, accordions, carousels) MUST NOT trigger intents.
+  - For selector buttons, add: data-no-intent
+  - Only add data-ut-intent on real conversion CTAs ("Book", "Submit", "Buy", "Join", "Request quote", etc.)
 - For e-commerce: use intents like cart.add, cart.view, checkout.start.
 - For auth: use intents like auth.signup, auth.signin, auth.signout.
 

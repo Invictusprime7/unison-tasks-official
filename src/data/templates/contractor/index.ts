@@ -270,10 +270,10 @@ ${contractorExtras({ brand: 'FixIt Pro', accent: 'orange', headline: 'Book your 
           <div class="text-2xl">✂️</div>
         </div>
         <div class="mt-5 grid grid-cols-2 gap-3">
-          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book haircut" data-ut-cta="cta.primary">Haircut</button>
-          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book color" data-ut-cta="cta.primary">Color</button>
-          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book blowout" data-ut-cta="cta.primary">Blowout</button>
-          <button class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-ut-intent="booking.create" data-ut-label="Book event style" data-ut-cta="cta.primary">Event Style</button>
+          <button type="button" class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-no-intent data-service="haircut">Haircut</button>
+          <button type="button" class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-no-intent data-service="color">Color</button>
+          <button type="button" class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-no-intent data-service="blowout">Blowout</button>
+          <button type="button" class="px-4 py-3 rounded-2xl border border-white/10 bg-white/10 text-sm font-semibold" data-no-intent data-service="event-style">Event Style</button>
         </div>
         <p class="mt-4 text-xs text-slate-400">Tip: these cards can map to real services and availability once connected.</p>
       </div>

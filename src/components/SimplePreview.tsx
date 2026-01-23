@@ -145,6 +145,20 @@ function injectIntentListener(html: string): string {
       }
       return null;
     }
+
+    function shouldInferIntentFromElement(el){
+      // Explicit wiring always wins; inference is only for true CTAs.
+      if(el.getAttribute('data-ut-intent')||el.getAttribute('data-intent'))return false;
+      if(el.hasAttribute('data-no-intent'))return false;
+      if(el.hasAttribute('data-ut-cta'))return true;
+      const tag=(el.tagName||'').toLowerCase();
+      if(tag==='a')return true;
+      if(tag==='button'){
+        const type=(el.getAttribute('type')||'').toLowerCase();
+        if(type==='submit')return true;
+      }
+      return false;
+    }
     
      function collectPayload(el){
       const p={};
@@ -198,7 +212,8 @@ function injectIntentListener(html: string): string {
       if(!el)return;
        const ia=el.getAttribute('data-ut-intent')||el.getAttribute('data-intent');
       if(ia==='none'||ia==='ignore')return;
-      const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));
+      if(el.hasAttribute('data-no-intent'))return;
+      const intent=ia||(shouldInferIntentFromElement(el)?inferIntent(el.textContent||el.getAttribute('aria-label')):null);
       if(!intent){
         // If it's a meaningful link, open research overlay instead of navigating.
         if(shouldOpenResearch(el)){
@@ -422,6 +437,18 @@ function wrapHtmlSnippet(html: string): string {
       'order online':'order.online','view menu':'menu.view','call now':'call.now'
     };
     function inferIntent(t){if(!t)return null;const l=t.toLowerCase().trim();if(LABEL_INTENTS[l])return LABEL_INTENTS[l];for(const[k,v]of Object.entries(LABEL_INTENTS))if(l.includes(k))return v;return null;}
+    function shouldInferIntentFromElement(el){
+      if(el.getAttribute('data-ut-intent')||el.getAttribute('data-intent'))return false;
+      if(el.hasAttribute('data-no-intent'))return false;
+      if(el.hasAttribute('data-ut-cta'))return true;
+      const tag=(el.tagName||'').toLowerCase();
+      if(tag==='a')return true;
+      if(tag==='button'){
+        const type=(el.getAttribute('type')||'').toLowerCase();
+        if(type==='submit')return true;
+      }
+      return false;
+    }
     function collectPayload(el){const p={};Array.from(el.attributes).forEach(a=>{if(a.name.startsWith('data-')&&a.name!=='data-intent'&&a.name!=='data-ut-intent'){const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}}});const f=el.closest('form');if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});return p;}
     function normalizeText(t){return (t||'').replace(/\s+/g,' ').trim();}
     function shouldOpenResearch(el){
@@ -444,7 +471,8 @@ function wrapHtmlSnippet(html: string): string {
     document.addEventListener('click',function(e){
       const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');if(!el)return;
       const ia=el.getAttribute('data-ut-intent')||el.getAttribute('data-intent');if(ia==='none'||ia==='ignore')return;
-      const intent=ia||inferIntent(el.textContent||el.getAttribute('aria-label'));
+      if(el.hasAttribute('data-no-intent'))return;
+      const intent=ia||(shouldInferIntentFromElement(el)?inferIntent(el.textContent||el.getAttribute('aria-label')):null);
       if(!intent){
         if(shouldOpenResearch(el)){
           e.preventDefault();e.stopPropagation();
