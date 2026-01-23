@@ -248,7 +248,8 @@ interface AICodeAssistantProps {
     selector: string;
     section?: string;
   }; // Selected element from preview for targeted editing
-  onElementUpdate?: (selector: string, newHtml: string) => void;
+  /** Return true when the update was applied successfully. */
+  onElementUpdate?: (selector: string, newHtml: string) => boolean;
 }
 
 export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
@@ -1117,7 +1118,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               onClick={() => {
                 if (!pendingCode.trim()) return;
                 if (pendingElementSelector && onElementUpdate) {
-                  onElementUpdate(pendingElementSelector, pendingCode);
+                  const ok = onElementUpdate(pendingElementSelector, pendingCode);
+                  if (!ok) {
+                    toast({
+                      title: "Couldn't apply update",
+                      description:
+                        "The selected section couldn't be matched in the current code. Re-select the section, then try again.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
                   toast({ title: "Element updated", description: "Approved changes applied." });
                   setIsEditingElement(false);
                 } else if (onCodeGenerated) {
