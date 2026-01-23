@@ -815,19 +815,53 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       }
       
       console.log('[AICodeAssistant] Sending request - Mode:', mode, 'Template Action:', templateAction, 'Debug Mode:', mode === "debug");
-      
-      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
-        body: {
-          messages: messages
-            .map((m) => ({ role: m.role, content: m.content }))
-            .concat([{ role: userMessage.role, content: enhancedPrompt }]),
-          mode,
-          currentCode: hasExistingTemplate ? currentCode : undefined,
-          editMode: hasExistingTemplate || mode === "debug",
-          debugMode: mode === "debug",
-          templateAction,
+
+      // Mitigate transient network failures (which surface as FunctionsFetchError/TypeError: Failed to fetch)
+      // and avoid sending extremely large payloads.
+      const maxCurrentCodeChars = 20_000;
+      const currentCodeForRequest = hasExistingTemplate
+        ? (currentCode.length > maxCurrentCodeChars
+            ? currentCode.slice(0, maxCurrentCodeChars) + "\n<!-- truncated for request size -->"
+            : currentCode)
+        : undefined;
+
+      const invokeWithRetry = async () => {
+        const maxAttempts = 3;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          const result = await supabase.functions.invoke('ai-code-assistant', {
+            body: {
+              messages: messages
+                .map((m) => ({ role: m.role, content: m.content }))
+                .concat([{ role: userMessage.role, content: enhancedPrompt }]),
+              mode,
+              currentCode: currentCodeForRequest,
+              editMode: hasExistingTemplate || mode === "debug",
+              debugMode: mode === "debug",
+              templateAction,
+            },
+          });
+
+          // Retry only for fetch/network-type errors.
+          if (!result.error) return result;
+
+          const err: any = result.error;
+          const isFetchError =
+            err?.name === 'FunctionsFetchError' ||
+            String(err?.message || '').includes('Failed to send a request to the Edge Function') ||
+            String(err?.message || '').includes('Failed to fetch');
+
+          if (!isFetchError || attempt === maxAttempts) return result;
+
+          const backoffMs = 400 * attempt;
+          console.warn(`[AICodeAssistant] Network error invoking function (attempt ${attempt}/${maxAttempts}). Retrying in ${backoffMs}ms...`, err);
+          await new Promise((r) => setTimeout(r, backoffMs));
         }
-      });
+
+        // Unreachable, but satisfies TS.
+        return { data: null, error: new Error('Failed to invoke function') } as any;
+      };
+
+      const { data, error } = await invokeWithRetry();
 
       console.log('[AICodeAssistant] Response received:', { hasData: !!data, hasError: !!error });
 
