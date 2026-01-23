@@ -392,13 +392,27 @@ export const IntentPipelineOverlay: React.FC<IntentPipelineOverlayProps> = ({
       setSelectedDate(undefined);
     }
   }, [config]);
-  
-  if (!config) return null;
-  
-  const pipelineConfig = getPipelineConfig(config.intent);
-  const currentStepConfig = pipelineConfig.steps[currentStep];
-  const isLastStep = currentStep === pipelineConfig.steps.length - 1;
+
+  // Compute pipeline even during the transient render where `config` is null,
+  // so hooks below always run in a consistent order.
+  const pipelineConfig = config
+    ? getPipelineConfig(config.intent)
+    : { title: '', description: '', steps: [] as PipelineStep[] };
+  // Guard against transient renders where `currentStep` is still pointing at a
+  // previous pipeline's step index (React state updates are async).
+  const steps = pipelineConfig.steps;
+  const activeStep = steps.length === 0 ? 0 : Math.min(Math.max(currentStep, 0), steps.length - 1);
+  const currentStepConfig = steps[activeStep];
+  const isLastStep = steps.length === 0 ? true : activeStep === steps.length - 1;
   const isDemoMode = isDemoModeActive();
+
+  // If we had to clamp, sync state so UI (step indicator/back button) stays consistent.
+  useEffect(() => {
+    if (activeStep !== currentStep) setCurrentStep(activeStep);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep]);
+
+  if (!config) return null;
   
   const handleFieldChange = (name: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -595,16 +609,16 @@ export const IntentPipelineOverlay: React.FC<IntentPipelineOverlayProps> = ({
         </DialogHeader>
         
         {/* Step Indicator */}
-        {pipelineConfig.steps.length > 1 && (
+        {steps.length > 1 && (
           <div className="flex items-center gap-2 px-2">
-            {pipelineConfig.steps.map((step, idx) => (
+            {steps.map((step, idx) => (
               <React.Fragment key={step.id}>
                 <div 
                   className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors",
-                    idx === currentStep 
+                    idx === activeStep 
                       ? "bg-primary text-primary-foreground" 
-                      : idx < currentStep 
+                      : idx < activeStep 
                         ? "bg-primary/20 text-primary"
                         : "bg-muted text-muted-foreground"
                   )}
@@ -612,7 +626,7 @@ export const IntentPipelineOverlay: React.FC<IntentPipelineOverlayProps> = ({
                   {step.icon}
                   <span className="hidden sm:inline">{step.title}</span>
                 </div>
-                {idx < pipelineConfig.steps.length - 1 && (
+                {idx < steps.length - 1 && (
                   <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 )}
               </React.Fragment>
@@ -622,23 +636,31 @@ export const IntentPipelineOverlay: React.FC<IntentPipelineOverlayProps> = ({
         
         {/* Form Fields */}
         <div className="space-y-4 py-4">
-          <h4 className="font-medium flex items-center gap-2">
-            {currentStepConfig.icon}
-            {currentStepConfig.title}
-          </h4>
-          
-          <div className="space-y-4">
-            {currentStepConfig.fields.map(renderField)}
-          </div>
+          {currentStepConfig ? (
+            <>
+              <h4 className="font-medium flex items-center gap-2">
+                {currentStepConfig.icon}
+                {currentStepConfig.title}
+              </h4>
+              
+              <div className="space-y-4">
+                {currentStepConfig.fields.map(renderField)}
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              This action is not configured yet.
+            </div>
+          )}
         </div>
         
         {/* Actions */}
         <div className="flex justify-between pt-4 border-t border-border">
           <Button
             variant="ghost"
-            onClick={currentStep > 0 ? handleBack : onClose}
+            onClick={activeStep > 0 ? handleBack : onClose}
           >
-            {currentStep > 0 ? 'Back' : 'Cancel'}
+            {activeStep > 0 ? 'Back' : 'Cancel'}
           </Button>
           
           <Button onClick={handleNext} disabled={isSubmitting}>
