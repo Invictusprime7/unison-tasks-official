@@ -12,8 +12,11 @@ export function buildWebBuilderAIContext(opts: {
   systemType: BusinessSystemType | null;
   templateName?: string | null;
   ctaAnalysis?: TemplateCtaAnalysis | null;
+  pageStructure?: string | null;
+  backendState?: string | null;
+  businessData?: string | null;
 }): string {
-  const { systemType, templateName, ctaAnalysis } = opts;
+  const { systemType, templateName, ctaAnalysis, pageStructure, backendState, businessData } = opts;
 
   const lines: string[] = [];
   lines.push("\n\n=== WEB BUILDER BACKEND CONTEXT (builder-author; propose+approve) ===");
@@ -46,6 +49,21 @@ export function buildWebBuilderAIContext(opts: {
     lines.push(`- Had UT attributes already: ${ctaAnalysis.hadUtAttributes ? "yes" : "no"}`);
   }
 
+  if (pageStructure) {
+    lines.push("\nPage structure:");
+    lines.push(pageStructure);
+  }
+
+  if (backendState) {
+    lines.push("\nBackend state:");
+    lines.push(backendState);
+  }
+
+  if (businessData) {
+    lines.push("\nBusiness data:");
+    lines.push(businessData);
+  }
+
   // Keep this short: these are the intents the runtime can actually execute.
   const availableIntents = getAvailableIntents();
   lines.push("\nRuntime intent registry (executable):");
@@ -55,6 +73,7 @@ export function buildWebBuilderAIContext(opts: {
   lines.push("- Prefer editing existing template HTML in-place (broad UI edits allowed).");
   lines.push("- CTAs should use data-ut-cta + data-ut-intent + data-ut-label (also keep data-intent for compatibility).");
   lines.push("- Backend changes are allowed only as a PROPOSED plan; user approves before execution.");
+  lines.push("- If you propose multi-file changes, output them as <file path=\"/path\">...content...</file> blocks (no markdown).");
 
   return lines.join("\n");
 }

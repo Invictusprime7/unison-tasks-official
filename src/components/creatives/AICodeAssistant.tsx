@@ -50,6 +50,7 @@ import { rewriteDemoEmbeds } from "@/utils/demoEmbedRewriter";
 import type { BusinessSystemType } from "@/data/templates/types";
 import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { buildWebBuilderAIContext } from "@/utils/aiAssistantContext";
+import { parseAIFileTags } from "@/utils/aiFileTags";
 
 interface Message {
   role: "user" | "assistant";
@@ -238,11 +239,16 @@ interface AICodeAssistantProps {
   className?: string;
   fabricCanvas?: FabricCanvas | null;
   onCodeGenerated?: (code: string) => void;
+  /** Apply a multi-file patch plan (preferred for full context-aware edits). Return true if applied. */
+  onFilesPatch?: (files: Record<string, string>) => boolean;
   onSwitchToCanvasView?: () => void;
   currentCode?: string; // Current template code for editing existing templates
   systemType?: BusinessSystemType | null;
   templateName?: string | null;
   templateCtaAnalysis?: TemplateCtaAnalysis;
+  pageStructureContext?: string | null;
+  backendStateContext?: string | null;
+  businessDataContext?: string | null;
   selectedElement?: {
     html: string;
     selector: string;
@@ -256,11 +262,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   className,
   fabricCanvas,
   onCodeGenerated,
+  onFilesPatch,
   onSwitchToCanvasView,
   currentCode,
   systemType,
   templateName,
   templateCtaAnalysis,
+  pageStructureContext,
+  backendStateContext,
+  businessDataContext,
   selectedElement,
   onElementUpdate,
 }) => {
@@ -285,6 +295,10 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [pendingCodeApplyOpen, setPendingCodeApplyOpen] = useState(false);
   const [pendingCode, setPendingCode] = useState<string>("");
   const [pendingElementSelector, setPendingElementSelector] = useState<string | null>(null);
+
+  const [pendingFilesApplyOpen, setPendingFilesApplyOpen] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<Record<string, string> | null>(null);
+  const [activePendingFilePath, setActivePendingFilePath] = useState<string | null>(null);
 
   const [builderActionConfirmOpen, setBuilderActionConfirmOpen] = useState(false);
   const [pendingBuilderActions, setPendingBuilderActions] = useState<
@@ -755,6 +769,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         systemType: systemType ?? null,
         templateName: templateName ?? null,
         ctaAnalysis: templateCtaAnalysis ?? null,
+        pageStructure: pageStructureContext ?? null,
+        backendState: backendStateContext ?? null,
+        businessData: businessDataContext ?? null,
       });
 
       // Enhanced context for element editing
@@ -783,7 +800,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         enhancedPrompt = `I need help fixing rendering/error issues in my code. Here's the current code:\n\n\`\`\`html\n${truncatedCode}\n\`\`\`\n\nIssue: ${userMessage.content}\n\nPlease analyze the code, identify the issue, and provide a fixed version with explanation.${slotContext}`;
         console.log('[AICodeAssistant] Debug mode: Enhanced prompt created with code context');
       } else if (mode === "code") {
-        enhancedPrompt = `${userMessage.content}${slotContext}${backendContext}`;
+        // Encourage file patch plans for non-trivial edits.
+        const patchPlanHint =
+          "\n\nOUTPUT FORMAT PREFERENCE:\n" +
+          "- For multi-file or structural changes, output ONLY <file path=\"...\">...</file> blocks (no markdown).\n" +
+          "- For single-file full-template changes, you may output one ```html``` or ```tsx``` block.\n" +
+          "- For selected-element edits, return ONLY the modified HTML for that element (no wrappers).\n";
+
+        enhancedPrompt = `${userMessage.content}${slotContext}${backendContext}${patchPlanHint}`;
         console.log('[AICodeAssistant] Code mode: Added slot context for AI with taste');
       } else {
         // Design/review modes still benefit from system context
@@ -844,10 +868,18 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       }
       
       console.log('[AICodeAssistant] AI response received:', assistantContent.substring(0, 200) + '...');
+
+      // 1) Prefer <file> patch plans when present.
+      const filePlan = parseAIFileTags(assistantContent);
+      if (filePlan && Object.keys(filePlan).length > 0) {
+        setPendingFiles(filePlan);
+        setActivePendingFilePath(Object.keys(filePlan)[0] || null);
+        setPendingFilesApplyOpen(true);
+      }
       
       const hasCode = assistantContent.includes("```");
 
-      if (hasCode && onCodeGenerated) {
+      if (!filePlan && hasCode && onCodeGenerated) {
         // Try to match code blocks with language specifiers
         let codeMatch = assistantContent.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
         
@@ -1136,6 +1168,90 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                   toast({ title: "Template updated", description: "Approved changes applied." });
                 }
                 setPendingCodeApplyOpen(false);
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve multi-file patch plan before applying */}
+      <Dialog open={pendingFilesApplyOpen} onOpenChange={setPendingFilesApplyOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Review & apply file changes</DialogTitle>
+          </DialogHeader>
+
+          {!pendingFiles ? (
+            <p className="text-sm text-muted-foreground">No file changes staged.</p>
+          ) : (
+            <div className="grid grid-cols-12 gap-3">
+              <div className="col-span-4">
+                <p className="text-xs text-muted-foreground mb-2">Files</p>
+                <div className="space-y-1 max-h-[420px] overflow-auto border border-border rounded-md p-2">
+                  {Object.keys(pendingFiles).map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      variant={activePendingFilePath === p ? "default" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start text-xs"
+                      onClick={() => setActivePendingFilePath(p)}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="col-span-8">
+                <p className="text-xs text-muted-foreground mb-2">Content</p>
+                <Textarea
+                  value={activePendingFilePath ? pendingFiles[activePendingFilePath] ?? "" : ""}
+                  onChange={(e) => {
+                    if (!activePendingFilePath) return;
+                    const next = { ...pendingFiles, [activePendingFilePath]: e.target.value };
+                    setPendingFiles(next);
+                  }}
+                  className="min-h-[420px] font-mono text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setPendingFilesApplyOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingFiles || Object.keys(pendingFiles).length === 0) return;
+
+                const ok = onFilesPatch ? onFilesPatch(pendingFiles) : false;
+                if (!ok && onCodeGenerated) {
+                  // Fallback: if caller didn't provide file patch handling, try best-effort
+                  // by applying main entry file if present.
+                  const entry =
+                    pendingFiles["/index.html"] ||
+                    pendingFiles["/src/App.tsx"] ||
+                    pendingFiles["/App.tsx"];
+                  if (entry) {
+                    onCodeGenerated(entry);
+                  }
+                }
+
+                if (!ok && !onCodeGenerated) {
+                  toast({
+                    title: "Couldn't apply file plan",
+                    description: "No file patch handler is configured in this editor surface.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                toast({ title: "Files updated", description: "Approved changes applied." });
+                setPendingFilesApplyOpen(false);
               }}
             >
               Apply
