@@ -788,9 +788,13 @@ export type Database = {
       }
       crm_leads: {
         Row: {
+          business_id: string | null
           contact_id: string | null
           created_at: string | null
+          email: string | null
           id: string
+          intent: string | null
+          name: string | null
           notes: string | null
           source: string | null
           status: string | null
@@ -800,21 +804,29 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          business_id?: string | null
           contact_id?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
+          intent?: string | null
+          name?: string | null
           notes?: string | null
           source?: string | null
           status?: string | null
-          title: string
+          title?: string
           updated_at?: string | null
           user_id?: string | null
           value?: number | null
         }
         Update: {
+          business_id?: string | null
           contact_id?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
+          intent?: string | null
+          name?: string | null
           notes?: string | null
           source?: string | null
           status?: string | null
