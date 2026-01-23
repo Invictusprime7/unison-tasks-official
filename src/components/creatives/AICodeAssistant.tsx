@@ -579,21 +579,26 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     }
   };
 
-  const handleSend = async () => {
-    const hasFiles = droppedFiles.length > 0;
-    if ((!input.trim() && !hasFiles) || isLoading || analyzing) return;
+  const [postInstallPrompt, setPostInstallPrompt] = useState<string | null>(null);
+
+  const handleSend = async (opts?: { overrideInput?: string; skipBuilderActions?: boolean }) => {
+    const content = (opts?.overrideInput ?? input).trim();
+    const hasFiles = !opts?.overrideInput && droppedFiles.length > 0;
+    if ((!content && !hasFiles) || isLoading || analyzing) return;
 
     const userMessage: Message = {
       role: "user",
-      content: input || (hasFiles ? 'Analyze these files and create a design' : ''),
+      content: content || (hasFiles ? "Analyze these files and create a design" : ""),
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    const userInput = input;
-    const filesToProcess = [...droppedFiles];
-    setInput("");
-    setDroppedFiles([]);
+    const userInput = content;
+    const filesToProcess = hasFiles ? [...droppedFiles] : [];
+    if (!opts?.overrideInput) {
+      setInput("");
+      setDroppedFiles([]);
+    }
     setIsLoading(true);
 
     // If files are attached, use file analysis first
@@ -686,11 +691,21 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         return { type: null };
       };
       
-      const builderAction = detectBuilderAction(userMessage.content);
+      const builderAction = opts?.skipBuilderActions ? { type: null } : detectBuilderAction(userMessage.content);
       
       // Handle builder actions (install packs / wire buttons) - propose+approve
       if (builderAction.type) {
         console.log('[AICodeAssistant] Builder action detected:', builderAction);
+
+        // If this is a "build the whole thing" style request, store the original prompt
+        // so we can continue with template generation after the user approves pack install.
+        const isFullBuildRequest = /\b(build|create|generate|make)\b/i.test(userMessage.content) &&
+          /\b(landing page|page|website|store|ecommerce|shop|checkout|cart)\b/i.test(userMessage.content);
+        if (builderAction.type === 'install_pack' && isFullBuildRequest) {
+          setPostInstallPrompt(userMessage.content);
+        } else {
+          setPostInstallPrompt(null);
+        }
 
         setPendingBuilderActions(builderAction as any);
         setBuilderActionConfirmOpen(true);
@@ -983,6 +998,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               onClick={async () => {
                 if (!pendingBuilderActions?.type) return;
                 try {
+                  const followUpPrompt = pendingBuilderActions.type === "install_pack" ? postInstallPrompt : null;
+
                   const { data: { user } } = await supabase.auth.getUser();
                   const businessId = user?.id || "anonymous";
 
@@ -1028,6 +1045,25 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
                   setBuilderActionConfirmOpen(false);
                   setPendingBuilderActions(null);
+
+                  // Continue with the original "build the whole thing" request after packs install.
+                  // We skip builder-action detection to avoid looping on the same keywords.
+                  if (followUpPrompt) {
+                    setPostInstallPrompt(null);
+
+                    const assistantMessage: Message = {
+                      role: "assistant",
+                      content: "🧩 Packs are installed — continuing by generating the responsive template and wiring it to the backend actions…",
+                      timestamp: new Date(),
+                      hasCode: false,
+                    };
+                    setMessages((prev) => [...prev, assistantMessage]);
+                    await saveMessage(assistantMessage);
+
+                    setTimeout(() => {
+                      void handleSend({ overrideInput: followUpPrompt, skipBuilderActions: true });
+                    }, 0);
+                  }
                 } catch (err) {
                   console.error("[AICodeAssistant] Builder action apply failed:", err);
                   toast({
@@ -1494,7 +1530,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                     className="min-h-[44px] max-h-[120px] bg-white/5 border-white/10 focus:border-white/20 rounded-lg resize-none text-sm text-white placeholder:text-white/40"
                   />
                 <Button
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={(isLoading || analyzing) || (!input.trim() && droppedFiles.length === 0)}
                   className={cn(
                     "h-11 w-11 rounded-lg",
