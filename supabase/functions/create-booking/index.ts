@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,56 @@ interface BookingPayload {
   notes?: string;
   newStartsAt?: string;
   newEndsAt?: string;
+}
+
+type BusinessSettings = {
+  id: string;
+  name: string;
+  notification_email: string | null;
+};
+
+function safeEmail(email: unknown): string | null {
+  if (typeof email !== "string") return null;
+  const trimmed = email.trim();
+  if (!trimmed) return null;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(trimmed) ? trimmed : null;
+}
+
+async function loadBusinessSettings(supabase: any, businessId: string): Promise<BusinessSettings | null> {
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id,name,notification_email")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[create-booking] failed to load business settings", error);
+    return null;
+  }
+  if (!data?.id) return null;
+  return data as BusinessSettings;
+}
+
+async function sendEmailSafe(params: {
+  to: string;
+  subject: string;
+  html: string;
+  replyTo?: string | null;
+}) {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    console.warn("[create-booking] RESEND_API_KEY missing; skipping email");
+    return;
+  }
+  const resend = new Resend(apiKey);
+  await resend.emails.send({
+    from: "Unison Tasks <onboarding@resend.dev>",
+    to: [params.to],
+    subject: params.subject,
+    html: params.html,
+    reply_to: params.replyTo || undefined,
+  } as any);
 }
 
 serve(async (req) => {
@@ -200,6 +251,56 @@ async function handleCreateBooking(supabase: any, body: BookingPayload) {
       JSON.stringify({ success: false, error: "Failed to create booking" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+  }
+
+  // Notifications (best-effort; do not fail booking on email errors)
+  try {
+    const biz = await loadBusinessSettings(supabase, businessId);
+    const internalTo = safeEmail(biz?.notification_email ?? null);
+
+    const when = `${bookingStartsAt.toLocaleDateString()} ${bookingStartsAt.toLocaleTimeString()}`;
+    const customerSubject = `Booking confirmed: ${serviceName}`;
+    const customerHtml = `
+      <div>
+        <h1>Booking confirmed</h1>
+        <p>Hi ${customerName},</p>
+        <p>Your <strong>${serviceName}</strong> is confirmed for <strong>${when}</strong>.</p>
+        <p>If you need to reschedule, reply to this email.</p>
+      </div>
+    `;
+
+    await sendEmailSafe({
+      to: customerEmail,
+      subject: customerSubject,
+      html: customerHtml,
+      replyTo: internalTo,
+    });
+
+    if (internalTo) {
+      const internalSubject = `New booking: ${serviceName}`;
+      const internalHtml = `
+        <div>
+          <h1>New booking received</h1>
+          <p><strong>Business:</strong> ${biz?.name ?? businessId}</p>
+          <p><strong>Service:</strong> ${serviceName}</p>
+          <p><strong>When:</strong> ${when}</p>
+          <hr />
+          <p><strong>Customer:</strong> ${customerName}</p>
+          <p><strong>Email:</strong> ${customerEmail}</p>
+          ${customerPhone ? `<p><strong>Phone:</strong> ${customerPhone}</p>` : ""}
+          ${notes ? `<p><strong>Notes:</strong><br/>${String(notes)}</p>` : ""}
+        </div>
+      `;
+
+      await sendEmailSafe({
+        to: internalTo,
+        subject: internalSubject,
+        html: internalHtml,
+        replyTo: internalTo,
+      });
+    }
+  } catch (e) {
+    console.warn("[create-booking] email notification failed", e);
   }
 
   return new Response(

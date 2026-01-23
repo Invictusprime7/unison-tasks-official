@@ -109,16 +109,18 @@ export default function CRMDashboard() {
 
         {/* Footer */}
         <div className="p-2 border-t border-border">
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full justify-start",
-              !sidebarOpen && "justify-center px-2"
-            )}
-          >
-            <Settings className={cn("h-4 w-4", sidebarOpen && "mr-2")} />
-            {sidebarOpen && <span>Settings</span>}
-          </Button>
+          <Link to="/business-settings" className="block">
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                !sidebarOpen && "justify-center px-2"
+              )}
+            >
+              <Settings className={cn("h-4 w-4", sidebarOpen && "mr-2")} />
+              {sidebarOpen && <span>Settings</span>}
+            </Button>
+          </Link>
         </div>
       </aside>
 
