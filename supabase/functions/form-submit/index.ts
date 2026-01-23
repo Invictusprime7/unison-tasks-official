@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,10 +16,45 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await req.json();
-    const { formId, formName, data, sourceUrl } = body;
+    const bodySchema = z.object({
+      formId: z.string().trim().min(1).max(200),
+      formName: z.string().trim().max(200).optional(),
+      sourceUrl: z.string().trim().max(2048).optional(),
+      data: z.record(z.unknown()).default({}),
+    });
 
-    console.log("Form submission received:", { formId, formName, data });
+    const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { formId, formName, data: rawData, sourceUrl } = parsed.data;
+
+    const sanitizeString = (v: string) =>
+      v
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
+        .slice(0, 5000);
+
+    const sanitizeRecord = (obj: Record<string, unknown>) => {
+      const out: Record<string, unknown> = {};
+      const entries = Object.entries(obj).slice(0, 50);
+      for (const [k, v] of entries) {
+        const key = String(k).slice(0, 100);
+        if (typeof v === "string") out[key] = sanitizeString(v);
+        else if (typeof v === "number" || typeof v === "boolean" || v === null) out[key] = v;
+        else if (Array.isArray(v)) out[key] = v.slice(0, 20);
+        else out[key] = "[unsupported]";
+      }
+      return out;
+    };
+
+    const data = sanitizeRecord(rawData);
+
+    console.log("Form submission received:", { formId, formName, keys: Object.keys(data).length });
 
     // Get client info
     const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
@@ -47,9 +83,18 @@ Deno.serve(async (req) => {
 
     // Auto-create or update contact if email is present
     let contactId = null;
-    const email = data.email || data.Email || data.EMAIL;
+    const email = (data as any).email || (data as any).Email || (data as any).EMAIL;
     
-    if (email) {
+    const getStr = (key: string): string | undefined => {
+      const v = (data as any)[key];
+      return typeof v === "string" ? v : undefined;
+    };
+    const nameFromFull = (full?: string) => {
+      const parts = (full || "").trim().split(/\s+/).filter(Boolean);
+      return { first: parts[0], last: parts.slice(1).join(" ") };
+    };
+
+    if (typeof email === "string" && email.length > 0) {
       // Check if contact exists
       const { data: existingContact } = await supabase
         .from("crm_contacts")
@@ -62,18 +107,17 @@ Deno.serve(async (req) => {
         
         // Update contact with new data
         const updates: any = { updated_at: new Date().toISOString() };
-        if (data.firstName || data.first_name || data.name) {
-          updates.first_name = data.firstName || data.first_name || data.name?.split(" ")[0];
-        }
-        if (data.lastName || data.last_name || data.name) {
-          updates.last_name = data.lastName || data.last_name || data.name?.split(" ").slice(1).join(" ");
-        }
-        if (data.phone || data.Phone) {
-          updates.phone = data.phone || data.Phone;
-        }
-        if (data.company || data.Company) {
-          updates.company = data.company || data.Company;
-        }
+
+        const fullName = getStr("name");
+        const firstName = getStr("firstName") || getStr("first_name") || nameFromFull(fullName).first;
+        const lastName = getStr("lastName") || getStr("last_name") || nameFromFull(fullName).last;
+        const phone = getStr("phone") || getStr("Phone");
+        const company = getStr("company") || getStr("Company");
+
+        if (firstName) updates.first_name = firstName.slice(0, 120);
+        if (lastName) updates.last_name = lastName.slice(0, 120);
+        if (phone) updates.phone = phone.slice(0, 40);
+        if (company) updates.company = company.slice(0, 120);
 
         await supabase
           .from("crm_contacts")
@@ -85,12 +129,12 @@ Deno.serve(async (req) => {
           .from("crm_contacts")
           .insert({
             email: email.toLowerCase(),
-            first_name: data.firstName || data.first_name || data.name?.split(" ")[0],
-            last_name: data.lastName || data.last_name || data.name?.split(" ").slice(1).join(" "),
-            phone: data.phone || data.Phone,
-            company: data.company || data.Company,
+            first_name: (getStr("firstName") || getStr("first_name") || nameFromFull(getStr("name")).first || "").slice(0, 120) || null,
+            last_name: (getStr("lastName") || getStr("last_name") || nameFromFull(getStr("name")).last || "").slice(0, 120) || null,
+            phone: (getStr("phone") || getStr("Phone") || "").slice(0, 40) || null,
+            company: (getStr("company") || getStr("Company") || "").slice(0, 120) || null,
             source: `form:${formId}`,
-            custom_fields: { form_submission_id: submission.id, original_data: data },
+             custom_fields: { form_submission_id: submission.id, original_data: data },
           })
           .select()
           .single();
@@ -131,7 +175,7 @@ Deno.serve(async (req) => {
             form_name: formName,
             submission_id: submission.id,
             contact_id: contactId,
-            form_data: data,
+             form_data: data,
           },
         })
         .select()
@@ -150,7 +194,7 @@ Deno.serve(async (req) => {
         // Inject form data into action config
         const actionConfig = {
           ...step.config,
-          _formData: data,
+           _formData: data,
           _contactId: contactId,
           _submissionId: submission.id,
         };
@@ -196,7 +240,7 @@ Deno.serve(async (req) => {
           await supabase.from("crm_activities").insert({
             activity_type: "note",
             title: `Form submission: ${formName || formId}`,
-            description: `Contact submitted form with data: ${JSON.stringify(data)}`,
+             description: `Contact submitted form with data keys: ${Object.keys(data).join(", ")}`,
             contact_id: contactId,
           });
         }
