@@ -2529,6 +2529,9 @@ export default function App() {
       <AICodeAssistant
         fabricCanvas={fabricCanvas}
         currentCode={previewCode}
+        systemType={activeSystemType}
+        templateName={currentTemplateName}
+        templateCtaAnalysis={templateCtaAnalysis}
         onCodeGenerated={(code) => {
           console.log('[WebBuilder] ========== AI CODE GENERATED ==========');
           console.log('[WebBuilder] Code length:', code.length);
