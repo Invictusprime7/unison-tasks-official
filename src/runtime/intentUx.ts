@@ -22,7 +22,88 @@ const waitlistPayloadSchema = newsletterPayloadSchema;
 
 const pricingSelectSchema = z.object({}).passthrough();
 
+// ---------------------------------------------------------------------------
+// Minimal payload requirements (used to decide: autorun vs pipeline)
+// ---------------------------------------------------------------------------
+
+const emailSchema = z.string().trim().email();
+
+const authSignInSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1),
+});
+
+const authSignUpSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1),
+  // Templates may supply `name` or `fullName`; either is acceptable.
+  name: z.string().min(1).optional(),
+  fullName: z.string().min(1).optional(),
+}).refine((v) => !!(v.name || v.fullName), {
+  message: "name/fullName required",
+  path: ["name"],
+});
+
+const bookingSchema = z.object({
+  // collected by pipeline as name/email/date/time; router maps to customerName/customerEmail/startsAt
+  name: z.string().min(1).optional(),
+  customerName: z.string().min(1).optional(),
+  email: emailSchema.optional(),
+  customerEmail: emailSchema.optional(),
+  date: z.string().min(4).optional(),
+  time: z.string().min(3).optional(),
+  startsAt: z.string().min(8).optional(),
+}).refine((v) => !!(v.name || v.customerName), { message: "name required" })
+  .refine((v) => !!(v.email || v.customerEmail), { message: "email required" })
+  .refine((v) => !!(v.startsAt || (v.date && v.time)), { message: "date+time required" });
+
+const leadSchema = z.object({
+  email: emailSchema.optional(),
+  customerEmail: emailSchema.optional(),
+  name: z.string().min(1).optional(),
+}).refine((v) => !!(v.email || v.customerEmail), { message: "email required" });
+
+const cartAddSchema = z.object({
+  productId: z.string().min(1).optional(),
+  product_id: z.string().min(1).optional(),
+  sku: z.string().min(1).optional(),
+}).refine((v) => !!(v.productId || v.product_id || v.sku), { message: "product id required" });
+
+const checkoutSchema = z.object({
+  // allow either snake or camel; templates vary
+  name: z.string().min(1).optional(),
+  email: emailSchema.optional(),
+  address: z.string().min(3).optional(),
+  paymentMethod: z.string().min(1).optional(),
+}).refine((v) => !!v.name, { message: "name required" })
+  .refine((v) => !!v.email, { message: "email required" })
+  .refine((v) => !!v.address, { message: "address required" })
+  .refine((v) => !!v.paymentMethod, { message: "payment method required" });
+
 const DEMO_INTENTS = new Set(["demo.request", "demo.watch"]);
+
+// Intents that may require user input; if missing, open pipeline.
+const REQUIRED_PAYLOAD_BY_INTENT: Record<string, z.ZodTypeAny> = {
+  // Auth
+  "auth.signin": authSignInSchema,
+  "auth.signup": authSignUpSchema,
+
+  // Booking
+  "booking.create": bookingSchema,
+  "calendar.book": bookingSchema,
+  "consultation.book": bookingSchema,
+
+  // Leads / Contact
+  "contact.submit": leadSchema,
+  "sales.contact": leadSchema,
+  "quote.request": leadSchema,
+  "project.inquire": leadSchema,
+  "project.start": leadSchema,
+
+  // Ecommerce
+  "cart.add": cartAddSchema,
+  "checkout.start": checkoutSchema,
+};
 
 /**
  * Hybrid decision:
@@ -73,6 +154,13 @@ export function decideIntentUx(intent: string, payload: Record<string, unknown> 
     return { mode: ok ? "autorun" : "autorun", toastLabel: "Pricing" };
   }
 
-  // Default: pipeline (collect missing data / show use-case UI)
-  return { mode: "pipeline" };
+  // 5) For known intents with required fields: pipeline only when missing.
+  const schema = REQUIRED_PAYLOAD_BY_INTENT[intent];
+  if (schema) {
+    const ok = schema.safeParse(p).success;
+    return { mode: ok ? "autorun" : "pipeline" };
+  }
+
+  // Default: autorun (avoid showing an overlay for every button).
+  return { mode: "autorun" };
 }
