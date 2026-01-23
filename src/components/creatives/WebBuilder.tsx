@@ -51,6 +51,7 @@ import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 import { DemoIntentOverlay, type DemoIntentOverlayConfig } from "./web-builder/DemoIntentOverlay";
+import { ResearchOverlay, type ResearchOverlayPayload } from "./web-builder/ResearchOverlay";
 import { decideIntentUx } from "@/runtime/intentUx";
 import SystemHealthPanel from "@/components/web-builder/SystemHealthPanel";
 import type { BusinessSystemType } from "@/data/templates/types";
@@ -216,6 +217,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Demo Overlay state
   const [demoOverlayOpen, setDemoOverlayOpen] = useState(false);
   const [demoConfig, setDemoConfig] = useState<DemoIntentOverlayConfig | null>(null);
+
+  // Research Overlay state (contextual web research from preview clicks)
+  const [researchOverlayOpen, setResearchOverlayOpen] = useState(false);
+  const [researchPayload, setResearchPayload] = useState<ResearchOverlayPayload | null>(null);
   
   // Track file modifications for UI indicators
   const trackFileModification = useCallback((fileId: string, content: string) => {
@@ -517,6 +522,15 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Listen for INTENT_TRIGGER messages from iframe previews
   useEffect(() => {
     const handleIntentMessage = (event: MessageEvent) => {
+      // Research overlay messages (context intelligence)
+      if (event.data?.type === 'RESEARCH_OPEN') {
+        const payload = event.data?.payload as ResearchOverlayPayload | undefined;
+        if (!payload?.query) return;
+        setResearchPayload(payload);
+        setResearchOverlayOpen(true);
+        return;
+      }
+
       // Only handle intent trigger messages
       if (event.data?.type !== 'INTENT_TRIGGER') return;
       
@@ -2725,6 +2739,16 @@ export default function App() {
           setDemoConfig(null);
         }}
         config={demoConfig}
+      />
+
+      {/* Research Overlay - contextual web research from clicked headlines/links */}
+      <ResearchOverlay
+        isOpen={researchOverlayOpen}
+        onClose={() => {
+          setResearchOverlayOpen(false);
+          setResearchPayload(null);
+        }}
+        payload={researchPayload}
       />
     </div>
   );
