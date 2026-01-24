@@ -57,18 +57,13 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const [editedTemplateCode, setEditedTemplateCode] = useState<string | null>(null);
   const [editedTemplateFiles, setEditedTemplateFiles] = useState<Record<string, string> | null>(null);
 
-  const isNewTemplate = (t: LayoutTemplate) => {
-    const tags = t.tags || [];
-    // "new" = contract-ready (data-ut-*) templates; editorial is the current curated marker.
-    return tags.includes("editorial") || /data-ut-(cta|intent)\s*=/.test(t.code);
-  };
-
+  // All templates are now production-ready with CoreIntent wiring
   // Get templates for the selected system
   const systemTemplates = useMemo(() => {
     if (!selectedSystem) return [];
     const system = businessSystems.find(s => s.id === selectedSystem);
     if (!system) return [];
-    return system.templateCategories.flatMap(cat => getTemplatesByCategory(cat)).filter(isNewTemplate);
+    return system.templateCategories.flatMap(cat => getTemplatesByCategory(cat));
   }, [selectedSystem]);
 
   const availableCategories = useMemo(() => {
@@ -276,14 +271,9 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                 </p>
               </div>
 
-              {/* System Grid (only systems that have new/contract-ready templates) */}
+              {/* System Grid - all systems now have wired templates */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {businessSystems
-                  .filter((system) =>
-                    system.templateCategories
-                      .flatMap((cat) => getTemplatesByCategory(cat))
-                      .some(isNewTemplate)
-                  )
                   .map((system) => (
                   <motion.button
                     key={system.id}
