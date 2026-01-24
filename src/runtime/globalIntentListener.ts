@@ -11,7 +11,8 @@
  * This allows existing templates to work without any modifications.
  */
 
-import { handleIntent, IntentPayload, isValidIntent } from './intentRouter';
+import { handleIntent, IntentPayload } from './intentRouter';
+import { isCoreIntent } from '@/coreIntents';
 import { matchLabelToIntent, TemplateCategory } from './templateIntentConfig';
 
 // ============================================================================
@@ -293,10 +294,10 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
     return;
   }
   
-  // Validate intent exists
-  if (!isValidIntent(intent)) {
+  // Validate intent exists (non-core = preview-only)
+  if (!isCoreIntent(intent)) {
     if (config.debug) {
-      console.log('[GlobalIntent] Invalid intent:', intent);
+      console.log('[GlobalIntent] Unsupported (non-core) intent:', intent);
     }
     // Still emit custom event for potential local handling
     window.dispatchEvent(new CustomEvent(`intent:${intent}`, { 
@@ -395,7 +396,7 @@ async function handleFormSubmit(e: SubmitEvent, config: GlobalListenerConfig): P
     }
   }
   
-  if (!intent || !isValidIntent(intent)) {
+  if (!intent || !isCoreIntent(intent)) {
     if (config.debug) {
       console.log('[GlobalIntent] No valid intent for form:', form);
     }

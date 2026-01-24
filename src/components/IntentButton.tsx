@@ -4,7 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { handleIntent, IntentPayload, isValidIntent } from '@/runtime/intentRouter';
+import { handleIntent, IntentPayload } from '@/runtime/intentRouter';
+import { isCoreIntent } from '@/coreIntents';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,8 +43,8 @@ export function IntentButton({
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handleClick = async () => {
-    if (!isValidIntent(intent)) {
-      const error = `Invalid intent: ${intent}`;
+    if (!isCoreIntent(intent)) {
+      const error = `This action is preview-only (unsupported intent): ${intent}`;
       console.error(error);
       if (showToast) toast.error(error);
       onError?.(error);
@@ -98,10 +99,10 @@ export function IntentButton({
       return <Loader2 className="mr-2 h-4 w-4 animate-spin" />;
     }
     if (status === 'success') {
-      return <CheckCircle className="mr-2 h-4 w-4 text-green-500" />;
+      return <CheckCircle className="mr-2 h-4 w-4 text-primary" />;
     }
     if (status === 'error') {
-      return <AlertCircle className="mr-2 h-4 w-4 text-red-500" />;
+      return <AlertCircle className="mr-2 h-4 w-4 text-destructive" />;
     }
     return null;
   };

@@ -2,7 +2,7 @@ import type { BusinessSystemType } from "@/data/templates/types";
 import { getSystemContract } from "@/data/templates/contracts";
 import { getDefaultManifestForSystem, getManifestStats } from "@/data/templates/manifest";
 import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
-import { getAvailableIntents } from "@/runtime/intentRouter";
+import { CORE_INTENTS } from "@/coreIntents";
 
 /**
  * Builds a compact “backend awareness” context string for the AI assistant.
@@ -64,8 +64,8 @@ export function buildWebBuilderAIContext(opts: {
     lines.push(businessData);
   }
 
-  // Keep this short: these are the intents the runtime can actually execute.
-  const availableIntents = getAvailableIntents();
+  // Authoritative, production-supported intent surface.
+  const availableIntents = [...CORE_INTENTS];
   lines.push("\nRuntime intent registry (executable):");
   lines.push(availableIntents.join(", "));
 
