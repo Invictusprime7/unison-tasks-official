@@ -181,56 +181,64 @@ ${templateAction === 'restyle' ? `User wants to RESTYLE the template visually.
 - Change colors, fonts, spacing as requested
 - Maintain layout and structure
 - Ensure consistent styling across all sections` : ''}
-${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - TYPOGRAPHY & COLOR CHANGES ONLY**
+${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - VISUAL THEME ONLY, PRESERVE ALL CONTENT**
 
-You are applying a design preset to modify ONLY the typography and color theme of this template.
+You are applying a design preset to modify ONLY the visual appearance of this template.
 
-⚠️ **ABSOLUTELY CRITICAL RULES - VIOLATING THESE WILL BREAK THE TEMPLATE:**
+⚠️ **CRITICAL: PRESERVE ALL TEMPLATE CONTENT & CONTEXT**
+The template's business context, content, and purpose must remain EXACTLY the same:
+- If it's a RESTAURANT template: Keep all menu items, food names, prices, descriptions, cuisine context
+- If it's a PORTFOLIO template: Keep all project names, descriptions, skill lists, work examples
+- If it's a BOOKING template: Keep all service names, appointment types, scheduling context
+- If it's an ECOMMERCE template: Keep all product names, prices, descriptions, categories
+- If it's a BLOG template: Keep all article titles, excerpts, author names, dates
+- If it's a STARTUP template: Keep all feature descriptions, value propositions, team bios
+- ALL text content, headings, paragraphs, lists, labels, placeholders must stay identical
 
-✅ **YOU MUST CHANGE (typography and colors ONLY):**
-- Font families (e.g., font-sans → font-serif, add Google Fonts)
+✅ **YOU MUST ONLY CHANGE (visual styling):**
+- Font families (e.g., font-sans → font-serif, add Google Fonts via class)
 - Font sizes (text-sm, text-lg, text-xl, etc.)
 - Font weights (font-normal, font-medium, font-bold, font-extrabold)
-- Text colors (text-gray-900 → text-slate-800, etc.)
-- Background colors (bg-white → bg-slate-50, bg-gray-900, etc.)
-- Border colors (border-gray-200 → border-slate-300, etc.)
-- Accent/primary colors for buttons and links
-- Gradient color values
-- Text decoration and letter spacing
+- Text colors (text-gray-900 → text-slate-800, text-cyan-400, etc.)
+- Background colors (bg-white → bg-slate-900, bg-gradient-to-r, etc.)
+- Border colors and styles (border-gray-200 → border-pink-500, border-2)
+- Accent/primary colors for buttons, links, and highlights
+- Gradient colors and directions
+- Shadow effects (shadow-sm → shadow-xl, shadow-cyan-500/50)
+- Text decoration, letter spacing, uppercase/lowercase styling
+- Hover/focus color states
 
-🚫 **YOU MUST NOT CHANGE (these BREAK the template):**
+🚫 **YOU MUST NEVER CHANGE:**
+- ANY text content, headings, descriptions, labels, or placeholder text
+- Business-specific terms (menu items, service names, product names)
 - Layout structure (flex, grid, columns, rows)
 - Section order or arrangement
 - Hero formations or section compositions
 - Grid layouts (grid-cols-2, grid-cols-3, etc.)
-- Spacing between sections (py-16, mb-8, gap-4, etc.)
+- Spacing between sections (py-16, mb-8, gap-4)
 - Padding and margin values
-- Width and height values (w-full, max-w-4xl, h-screen)
-- Position values (absolute, relative, fixed, sticky)
-- Images, icons, logos, or any visual assets (src, alt, class for sizing)
+- Width and height values
+- Position values
+- Images, icons, logos, or any visual assets
 - Button positions, sizes, or container layouts
 - Form structures and input placements
 - Navigation structure
 - ANY data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes
 - Form inputs, interactive element functionality
-- JavaScript code
 - HTML structure or element hierarchy
 
-📋 **PRESET THEME GUIDELINES:**
-- **Editorial**: Use serif fonts (Georgia, Playfair Display), muted earth tones, elegant subdued palette
-- **Minimal**: Clean sans-serif (Inter, Helvetica), monochromatic black/white/gray, maximum contrast
-- **Luxury**: Premium serif + thin sans (Didot, Futura), deep blacks, gold/champagne accents
-- **Playful**: Rounded fonts (Nunito, Quicksand), bright vibrant colors, warm cheerful palette
-- **Retro**: Vintage fonts (Courier, Roboto Slab), muted pastels, sepia/cream backgrounds
-- **Cyberpunk**: Tech fonts (Orbitron, Share Tech), neon colors on dark backgrounds, electric blue/pink/purple
-- **Glass**: Modern sans-serif, frosted glass effects via backdrop-blur, cool translucent colors
-- **Corporate**: Professional fonts (Open Sans, Roboto), business blues/grays, trustworthy conservative palette
+📋 **PRESET THEME VISUAL GUIDELINES:**
+- **Editorial**: Serif fonts (Georgia, Playfair Display), muted earth tones (amber, stone, warm gray), elegant cream/beige backgrounds
+- **Minimal**: Clean sans-serif (Inter, Helvetica), strict monochrome black/white/gray, sharp contrast, no decoration
+- **Luxury**: Premium serif + thin sans (Didot, Futura), deep blacks (#0a0a0a), gold/champagne accents (#d4af37)
+- **Playful**: Rounded fonts (Nunito, Quicksand), bright saturated colors (pink, orange, teal), warm backgrounds
+- **Retro**: Vintage fonts (Courier, Roboto Slab), muted pastels, sepia/cream backgrounds, subtle textures
+- **Cyberpunk**: Tech fonts (Orbitron, Share Tech Mono), dark backgrounds (#0f0f23), neon accents (cyan-400, pink-500, purple-500), glowing shadows
+- **Glass**: Modern sans-serif, backdrop-blur effects, translucent backgrounds (bg-white/10), cool blue/purple tints
+- **Corporate**: Professional fonts (Open Sans, Roboto), navy blues (#1e3a5f), trustworthy grays, clean conservative palette
 
-🎯 **OUTPUT REQUIREMENTS:**
-1. Return the COMPLETE HTML document with ONLY typography and color changes applied
-2. Every single structural element must remain exactly in place
-3. Every data attribute must remain untouched
-4. No explanation, no markdown - just the raw HTML output` : ''}
+🎯 **OUTPUT:**
+Return the COMPLETE HTML with visual theme applied. Keep every word of content identical. No markdown, no explanation.` : ''}
 ` : '';
 
     const editModeContext = editMode && currentCode ? `
