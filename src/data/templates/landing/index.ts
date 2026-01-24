@@ -31,8 +31,8 @@ export const landingTemplates: LayoutTemplate[] = [
       <a href="#pricing" class="hover:text-white">Pricing</a>
     </nav>
     <div class="flex items-center gap-3">
-      <button class="text-sm text-slate-300 hover:text-white" data-ut-cta="cta.nav" data-ut-intent="demo.request" data-ut-label="Book a demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Book a demo</button>
-      <button class="px-4 py-2 rounded-full bg-white text-black text-sm font-bold" data-ut-cta="cta.nav" data-ut-intent="trial.start" data-ut-label="Start trial" data-intent="trial.start">Start trial</button>
+      <button class="text-sm text-slate-300 hover:text-white" data-ut-cta="cta.nav" data-ut-intent="contact.submit" data-ut-label="Book a demo" data-intent="contact.submit">Book a demo</button>
+      <button class="px-4 py-2 rounded-full bg-white text-black text-sm font-bold" data-ut-cta="cta.nav" data-ut-intent="contact.submit" data-ut-label="Start trial" data-intent="contact.submit">Start trial</button>
     </div>
   </div>
 </header>
@@ -56,8 +56,8 @@ export const landingTemplates: LayoutTemplate[] = [
           Ledger turns feature lists into narrative: proof, pricing, and calls-to-action that behave like a system.
         </p>
         <div class="mt-8 flex flex-col sm:flex-row gap-3">
-          <button class="px-6 py-3 rounded-2xl bg-amber-300 text-black font-extrabold" data-ut-cta="cta.hero" data-ut-intent="trial.start" data-ut-label="Start free trial" data-intent="trial.start">Start free trial</button>
-          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="demo.request" data-ut-label="Watch demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Watch demo</button>
+          <button class="px-6 py-3 rounded-2xl bg-amber-300 text-black font-extrabold" data-ut-cta="cta.hero" data-ut-intent="contact.submit" data-ut-label="Start free trial" data-intent="contact.submit">Start free trial</button>
+          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="contact.submit" data-ut-label="Watch demo" data-intent="contact.submit">Watch demo</button>
         </div>
         <div class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
           <span>✓ No card</span>
@@ -83,7 +83,7 @@ export const landingTemplates: LayoutTemplate[] = [
             <div class="col-span-2 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
               <div class="text-xs text-slate-500">Default pipeline</div>
               <div class="mt-2 text-sm text-slate-300">Trial → Pricing → Demo → Newsletter</div>
-              <button class="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white text-black text-sm font-bold" data-ut-cta="cta.primary" data-ut-intent="pricing.select" data-ut-label="View pricing" data-intent="pricing.select">View pricing</button>
+              <button class="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white text-black text-sm font-bold" data-ut-cta="cta.primary" data-ut-intent="contact.submit" data-ut-label="View pricing" data-intent="contact.submit">View pricing</button>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export const landingTemplates: LayoutTemplate[] = [
       <div class="lg:col-span-4">
         <h2 class="text-2xl md:text-3xl font-black">Manifesto</h2>
         <p class="mt-3 text-slate-400">Three principles that keep your landing page honest.</p>
-        <button class="mt-6 px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.1" data-ut-intent="demo.request" data-ut-label="Get a walkthrough" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Get a walkthrough</button>
+        <button class="mt-6 px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.1" data-ut-intent="contact.submit" data-ut-label="Get a walkthrough" data-intent="contact.submit">Get a walkthrough</button>
       </div>
       <div class="lg:col-span-8 grid md:grid-cols-3 gap-4">
         <article class="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -142,7 +142,7 @@ export const landingTemplates: LayoutTemplate[] = [
           <h3 class="mt-3 text-xl font-black">Try the workflow.</h3>
           <p class="mt-2 text-sm text-slate-400">This slot is perfect for your primary offer.</p>
           <div class="mt-5 flex flex-col gap-3">
-            <button class="w-full px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.primary" data-ut-intent="trial.start" data-ut-label="Start trial" data-intent="trial.start">Start trial</button>
+            <button class="w-full px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.primary" data-ut-intent="contact.submit" data-ut-label="Start trial" data-intent="contact.submit">Start trial</button>
             <button class="w-full px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.secondary" data-ut-intent="newsletter.subscribe" data-ut-label="Get updates" data-intent="newsletter.subscribe">Get updates</button>
           </div>
         </div>
@@ -157,26 +157,26 @@ export const landingTemplates: LayoutTemplate[] = [
           <h2 class="text-3xl md:text-4xl font-black">Pricing</h2>
           <p class="mt-2 text-slate-400">Three tiers, editorial layout, intent-wired CTAs.</p>
         </div>
-        <button class="px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.2" data-ut-intent="demo.request" data-ut-label="Compare plans" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Compare plans</button>
+        <button class="px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.section.2" data-ut-intent="contact.submit" data-ut-label="Compare plans" data-intent="contact.submit">Compare plans</button>
       </div>
       <div class="mt-10 grid lg:grid-cols-3 gap-5">
         <article class="rounded-3xl border border-white/10 bg-white/5 p-7">
           <div class="text-xs tracking-widest text-slate-500">STARTER</div>
           <div class="mt-3 text-4xl font-black">$0</div>
           <p class="mt-2 text-sm text-slate-400">Ship the basics.</p>
-          <button class="mt-6 w-full px-5 py-3 rounded-2xl border border-white/15 bg-slate-950/40 font-semibold" data-ut-cta="cta.section.3" data-ut-intent="pricing.select" data-ut-label="Choose Starter" data-intent="pricing.select" data-plan="starter">Choose Starter</button>
+          <button class="mt-6 w-full px-5 py-3 rounded-2xl border border-white/15 bg-slate-950/40 font-semibold" data-ut-cta="cta.section.3" data-ut-intent="contact.submit" data-ut-label="Choose Starter" data-intent="contact.submit" data-plan="starter">Choose Starter</button>
         </article>
         <article class="rounded-3xl border-2 border-amber-300/60 bg-amber-300/10 p-7">
           <div class="text-xs tracking-widest text-amber-200">PRO</div>
           <div class="mt-3 text-4xl font-black">$49</div>
           <p class="mt-2 text-sm text-slate-200">For teams that publish weekly.</p>
-          <button class="mt-6 w-full px-5 py-3 rounded-2xl bg-amber-300 text-black font-extrabold" data-ut-cta="cta.primary" data-ut-intent="pricing.select" data-ut-label="Choose Pro" data-intent="pricing.select" data-plan="pro">Choose Pro</button>
+          <button class="mt-6 w-full px-5 py-3 rounded-2xl bg-amber-300 text-black font-extrabold" data-ut-cta="cta.primary" data-ut-intent="contact.submit" data-ut-label="Choose Pro" data-intent="contact.submit" data-plan="pro">Choose Pro</button>
         </article>
         <article class="rounded-3xl border border-white/10 bg-white/5 p-7">
           <div class="text-xs tracking-widest text-slate-500">ENTERPRISE</div>
           <div class="mt-3 text-4xl font-black">Custom</div>
           <p class="mt-2 text-sm text-slate-400">Security + support.</p>
-           <button class="mt-6 w-full px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.4" data-ut-intent="demo.request" data-ut-label="Book demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Book demo</button>
+           <button class="mt-6 w-full px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.4" data-ut-intent="contact.submit" data-ut-label="Book demo" data-intent="contact.submit">Book demo</button>
         </article>
       </div>
     </div>
@@ -200,7 +200,7 @@ export const landingTemplates: LayoutTemplate[] = [
         <div class="mt-3 grid gap-2">
           <a href="#manifesto" class="hover:text-slate-300">Manifesto</a>
           <a href="#pricing" class="hover:text-slate-300">Pricing</a>
-          <a href="#" class="hover:text-slate-300" data-ut-cta="cta.footer" data-ut-intent="demo.request" data-ut-label="Request demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Request demo</a>
+          <a href="#" class="hover:text-slate-300" data-ut-cta="cta.footer" data-ut-intent="contact.submit" data-ut-label="Request demo" data-intent="contact.submit">Request demo</a>
         </div>
       </div>
     </div>
@@ -228,7 +228,7 @@ export const landingTemplates: LayoutTemplate[] = [
     </nav>
     <div class="flex items-center gap-3">
       <button class="text-sm text-slate-300 hover:text-white" data-ut-cta="cta.nav" data-ut-intent="quote.request" data-ut-label="Request a quote" data-intent="quote.request">Request a quote</button>
-      <button class="px-4 py-2 rounded-full bg-white text-black text-sm font-bold" data-ut-cta="cta.nav" data-ut-intent="contact.sales" data-ut-label="Talk to sales" data-intent="contact.sales">Talk to sales</button>
+      <button class="px-4 py-2 rounded-full bg-white text-black text-sm font-bold" data-ut-cta="cta.nav" data-ut-intent="contact.submit" data-ut-label="Talk to sales" data-intent="contact.submit">Talk to sales</button>
     </div>
   </div>
 </header>
@@ -248,8 +248,8 @@ export const landingTemplates: LayoutTemplate[] = [
           Atelier is a sales-first landing with pre-wired intents for inquiries, demos, and quotes.
         </p>
         <div class="mt-8 flex flex-col sm:flex-row gap-3">
-          <button class="px-6 py-3 rounded-2xl bg-white text-black font-extrabold" data-ut-cta="cta.hero" data-ut-intent="contact.sales" data-ut-label="Talk to sales" data-intent="contact.sales">Talk to sales</button>
-          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="demo.request" data-ut-label="Book a demo" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">Book a demo</button>
+          <button class="px-6 py-3 rounded-2xl bg-white text-black font-extrabold" data-ut-cta="cta.hero" data-ut-intent="contact.submit" data-ut-label="Talk to sales" data-intent="contact.submit">Talk to sales</button>
+          <button class="px-6 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.hero" data-ut-intent="contact.submit" data-ut-label="Book a demo" data-intent="contact.submit">Book a demo</button>
         </div>
       </div>
       <aside class="lg:col-span-4">
@@ -278,7 +278,7 @@ export const landingTemplates: LayoutTemplate[] = [
           <h2 class="text-3xl md:text-4xl font-black">Work (selected)</h2>
           <p class="mt-2 text-slate-400">Three case headlines. Three outcomes.</p>
         </div>
-        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.1" data-ut-intent="demo.request" data-ut-label="See a walkthrough" data-intent="demo.request" data-demo-url="https://www.youtube.com/embed/dQw4w9WgXcQ">See a walkthrough</button>
+        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.1" data-ut-intent="contact.submit" data-ut-label="See a walkthrough" data-intent="contact.submit">See a walkthrough</button>
       </div>
       <div class="mt-10 grid lg:grid-cols-12 gap-5">
         <article class="lg:col-span-7 rounded-3xl border border-white/10 bg-slate-950/40 p-7">
@@ -298,7 +298,7 @@ export const landingTemplates: LayoutTemplate[] = [
               <h3 class="text-2xl font-black">A pipeline you can read.</h3>
               <p class="mt-2 text-slate-400">Editorial layouts that convert like a system.</p>
             </div>
-            <button class="px-6 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.2" data-ut-intent="contact.sales" data-ut-label="Start a project" data-intent="contact.sales">Start a project</button>
+            <button class="px-6 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.section.2" data-ut-intent="contact.submit" data-ut-label="Start a project" data-intent="contact.submit">Start a project</button>
           </div>
         </article>
       </div>
@@ -322,7 +322,7 @@ export const landingTemplates: LayoutTemplate[] = [
           <div class="text-xs tracking-widest text-slate-500">OFFER 02</div>
           <h3 class="mt-3 text-xl font-black">Sales funnel rebuild</h3>
           <p class="mt-2 text-sm text-slate-400">Intents + slots mapped to the pipeline.</p>
-          <button class="mt-5 px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.primary" data-ut-intent="contact.sales" data-ut-label="Talk to sales" data-intent="contact.sales">Talk to sales</button>
+          <button class="mt-5 px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.primary" data-ut-intent="contact.submit" data-ut-label="Talk to sales" data-intent="contact.submit">Talk to sales</button>
         </div>
       </div>
     </div>
@@ -359,8 +359,8 @@ export const landingTemplates: LayoutTemplate[] = [
         <p class="mt-2 text-sm text-slate-500">© 2026 Atelier. Built for conversions.</p>
       </div>
       <div class="flex gap-4">
-        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.footer" data-ut-intent="contact.sales" data-ut-label="Talk to sales" data-intent="contact.sales">Talk to sales</button>
-        <button class="px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.footer" data-ut-intent="demo.request" data-ut-label="Book demo" data-intent="demo.request">Book demo</button>
+        <button class="px-5 py-3 rounded-2xl bg-white text-black font-bold" data-ut-cta="cta.footer" data-ut-intent="contact.submit" data-ut-label="Talk to sales" data-intent="contact.submit">Talk to sales</button>
+        <button class="px-5 py-3 rounded-2xl border border-white/15 bg-white/5 font-semibold" data-ut-cta="cta.footer" data-ut-intent="contact.submit" data-ut-label="Book demo" data-intent="contact.submit">Book demo</button>
       </div>
     </div>
   </footer>
