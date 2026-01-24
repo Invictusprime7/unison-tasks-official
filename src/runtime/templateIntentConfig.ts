@@ -5,6 +5,8 @@
  * This provides intelligent end-to-end button wiring based on template type
  */
 
+import type { CoreIntent } from '@/coreIntents';
+
 export type TemplateCategory = 
   | 'landing' 
   | 'portfolio' 
@@ -539,8 +541,6 @@ export const TEMPLATE_CTA_CONFIGS: TemplateCTAConfig[] = [
 // Templates may ONLY emit these.
 // ---------------------------------------------------------------------------
 
-type CoreIntent = 'contact.submit' | 'newsletter.subscribe' | 'booking.create' | 'quote.request';
-
 function mapToCoreIntent(labelLower: string, category?: TemplateCategory): CoreIntent | null {
   // Booking first
   if (/\b(book|booking|reserve|reservation|schedule)\b/.test(labelLower)) return 'booking.create';
@@ -636,7 +636,7 @@ export function analyzeTemplateForCTAs(
   ];
   
   const allCTAs = [...config.primaryCTAs, ...config.secondaryCTAs, ...config.formIntents]
-    .filter((cta) => ['contact.submit','newsletter.subscribe','booking.create','quote.request'].includes(cta.intent));
+    .filter((cta) => ['contact.submit', 'newsletter.subscribe', 'booking.create', 'quote.request'].includes(cta.intent));
   
   patterns.forEach(({ pattern, intents }) => {
     if (pattern.test(html)) {

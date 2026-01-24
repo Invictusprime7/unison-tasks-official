@@ -6,7 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { handleIntent, isValidIntent } from '@/runtime/intentRouter';
+import { handleIntent } from '@/runtime/intentRouter';
+import { isCoreIntent } from '@/coreIntents';
 import { matchLabelToIntent, TemplateCategory } from '@/runtime/templateIntentConfig';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
@@ -65,10 +66,11 @@ export const TemplateIntentButton: React.FC<TemplateIntentButtonProps> = ({
       return;
     }
 
-    if (!isValidIntent(resolvedIntent)) {
-      console.warn('[TemplateIntentButton] Invalid intent:', resolvedIntent);
-      if (showToast) toast.error(`Unknown action: ${resolvedIntent}`);
-      onError?.(`Unknown action: ${resolvedIntent}`);
+    if (!isCoreIntent(resolvedIntent)) {
+      console.warn('[TemplateIntentButton] Unsupported (non-core) intent:', resolvedIntent);
+      const msg = 'This action is preview-only and cannot be published yet.';
+      if (showToast) toast.error(msg);
+      onError?.(msg);
       return;
     }
 
@@ -116,10 +118,10 @@ export const TemplateIntentButton: React.FC<TemplateIntentButtonProps> = ({
       return <Loader2 className="w-4 h-4 mr-2 animate-spin" />;
     }
     if (status === 'success') {
-      return <CheckCircle className="w-4 h-4 mr-2 text-green-500" />;
+      return <CheckCircle className="w-4 h-4 mr-2 text-primary" />;
     }
     if (status === 'error') {
-      return <AlertCircle className="w-4 h-4 mr-2 text-red-500" />;
+      return <AlertCircle className="w-4 h-4 mr-2 text-destructive" />;
     }
     if (icon) {
       return <span className="mr-2">{icon}</span>;

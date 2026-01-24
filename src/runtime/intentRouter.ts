@@ -15,7 +15,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getDemoResponse, type BusinessSystemType } from "@/data/templates";
-import { CORE_INTENTS, type CoreIntent, isCoreIntent } from "@/runtime/coreIntents";
+import { CORE_INTENTS, type CoreIntent, isCoreIntent } from "@/coreIntents";
 
 
 export interface IntentPayload {
@@ -25,6 +25,8 @@ export interface IntentPayload {
 
 export type IntentResult = {
   success: boolean;
+  status?: "ok" | "unsupported";
+  message?: string;
   data?: unknown;
   error?: string;
 };
@@ -290,10 +292,12 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     console.log("[IntentRouter] Injected default businessId:", defaultBusinessId);
   }
 
-  // Locked surface
+  // Locked surface (authoritative).
+  // Non-core intents may still exist in templates, but they are preview-only and cannot persist/publish.
   if (!isCoreIntent(intent)) {
-    console.warn('[IntentRouter] Unsupported intent (not in CoreIntent):', intent);
-    return { success: false, error: `Unsupported intent: ${intent}` };
+    const message = "This intent is not production-supported yet";
+    console.warn("[IntentRouter] Unsupported intent (not CoreIntent):", intent);
+    return { success: false, status: "unsupported", message, error: message };
   }
 
   // Production safety: require real businessId for execution

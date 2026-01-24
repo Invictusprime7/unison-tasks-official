@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useWorkflowTrigger } from '@/hooks/useWorkflowTrigger';
-import { handleIntent, isValidIntent } from '@/runtime/intentRouter';
+import { handleIntent } from '@/runtime/intentRouter';
+import { isCoreIntent } from '@/coreIntents';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -41,7 +42,7 @@ export const WorkflowButton: React.FC<WorkflowButtonProps> = ({
     setLoading(true);
     try {
       // If intent is provided, use the intent router
-      if (intent && isValidIntent(intent)) {
+      if (intent && isCoreIntent(intent)) {
         const result = await handleIntent(intent, intentPayload);
         if (result.success) {
           toast.success(successMessage);

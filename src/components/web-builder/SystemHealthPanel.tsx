@@ -33,7 +33,8 @@ import {
   getManifestStats,
   type TemplateManifest
 } from '@/data/templates/manifest';
-import { isValidIntent } from '@/runtime/intentRouter';
+import { isCoreIntent } from '@/coreIntents';
+import { hasBackendHandler } from '@/runtime/intentRouter';
 import type { BusinessSystemType } from '@/data/templates/types';
 
 interface IntentStatus {
@@ -56,21 +57,9 @@ interface SystemHealthPanelProps {
 
 const intentLabels: Record<string, string> = {
   'booking.create': 'Create Booking',
-  'reservation.submit': 'Submit Reservation',
-  'reservation.start': 'Start Reservation',
   'contact.submit': 'Contact Form',
-  'contact.sales': 'Sales Inquiry',
-  'project.inquire': 'Project Inquiry',
   'quote.request': 'Quote Request',
-  'cart.add': 'Add to Cart',
-  'cart.view': 'View Cart',
-  'checkout.start': 'Start Checkout',
-  'demo.request': 'Request Demo',
-  'trial.start': 'Start Trial',
-  'pricing.select': 'Select Pricing',
   'newsletter.subscribe': 'Newsletter Signup',
-  'auth.login': 'Login',
-  'auth.signup': 'Sign Up',
 };
 
 export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
@@ -100,7 +89,7 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
     const allIntents = [...new Set([...contract.requiredIntents, ...preloadedIntents])];
     
     return allIntents.map(intent => {
-      const isWired = isValidIntent(intent);
+      const isWired = isCoreIntent(intent) && hasBackendHandler(intent);
       const isRequired = contract.requiredIntents.includes(intent);
       
       return {
