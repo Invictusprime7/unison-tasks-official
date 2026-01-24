@@ -181,6 +181,56 @@ ${templateAction === 'restyle' ? `User wants to RESTYLE the template visually.
 - Change colors, fonts, spacing as requested
 - Maintain layout and structure
 - Ensure consistent styling across all sections` : ''}
+${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - TYPOGRAPHY & COLOR CHANGES ONLY**
+
+You are applying a design preset to modify ONLY the typography and color theme of this template.
+
+⚠️ **ABSOLUTELY CRITICAL RULES - VIOLATING THESE WILL BREAK THE TEMPLATE:**
+
+✅ **YOU MUST CHANGE (typography and colors ONLY):**
+- Font families (e.g., font-sans → font-serif, add Google Fonts)
+- Font sizes (text-sm, text-lg, text-xl, etc.)
+- Font weights (font-normal, font-medium, font-bold, font-extrabold)
+- Text colors (text-gray-900 → text-slate-800, etc.)
+- Background colors (bg-white → bg-slate-50, bg-gray-900, etc.)
+- Border colors (border-gray-200 → border-slate-300, etc.)
+- Accent/primary colors for buttons and links
+- Gradient color values
+- Text decoration and letter spacing
+
+🚫 **YOU MUST NOT CHANGE (these BREAK the template):**
+- Layout structure (flex, grid, columns, rows)
+- Section order or arrangement
+- Hero formations or section compositions
+- Grid layouts (grid-cols-2, grid-cols-3, etc.)
+- Spacing between sections (py-16, mb-8, gap-4, etc.)
+- Padding and margin values
+- Width and height values (w-full, max-w-4xl, h-screen)
+- Position values (absolute, relative, fixed, sticky)
+- Images, icons, logos, or any visual assets (src, alt, class for sizing)
+- Button positions, sizes, or container layouts
+- Form structures and input placements
+- Navigation structure
+- ANY data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes
+- Form inputs, interactive element functionality
+- JavaScript code
+- HTML structure or element hierarchy
+
+📋 **PRESET THEME GUIDELINES:**
+- **Editorial**: Use serif fonts (Georgia, Playfair Display), muted earth tones, elegant subdued palette
+- **Minimal**: Clean sans-serif (Inter, Helvetica), monochromatic black/white/gray, maximum contrast
+- **Luxury**: Premium serif + thin sans (Didot, Futura), deep blacks, gold/champagne accents
+- **Playful**: Rounded fonts (Nunito, Quicksand), bright vibrant colors, warm cheerful palette
+- **Retro**: Vintage fonts (Courier, Roboto Slab), muted pastels, sepia/cream backgrounds
+- **Cyberpunk**: Tech fonts (Orbitron, Share Tech), neon colors on dark backgrounds, electric blue/pink/purple
+- **Glass**: Modern sans-serif, frosted glass effects via backdrop-blur, cool translucent colors
+- **Corporate**: Professional fonts (Open Sans, Roboto), business blues/grays, trustworthy conservative palette
+
+🎯 **OUTPUT REQUIREMENTS:**
+1. Return the COMPLETE HTML document with ONLY typography and color changes applied
+2. Every single structural element must remain exactly in place
+3. Every data attribute must remain untouched
+4. No explanation, no markdown - just the raw HTML output` : ''}
 ` : '';
 
     const editModeContext = editMode && currentCode ? `
