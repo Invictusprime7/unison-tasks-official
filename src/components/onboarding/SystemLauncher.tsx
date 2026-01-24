@@ -116,8 +116,9 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
 
       // Optional: restyle the template before install + builder navigation
       let effectiveCode = editedTemplateCode ?? selectedTemplate.code;
-      const shouldRestyle = designPreset && designPreset !== "none";
-      if (shouldRestyle && !editedTemplateFiles) {
+      // Design presets only modify typography and thematic styling - NOT structure or assets
+      const shouldApplyPreset = designPreset && designPreset !== "none";
+      if (shouldApplyPreset && !editedTemplateFiles) {
         try {
           toast("Applying design preset…", { description: designPreset });
           const { data: aiData, error: aiError } = await supabase.functions.invoke("ai-code-assistant", {
@@ -126,25 +127,34 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                 {
                   role: "user",
                   content:
-                    `Restyle this existing system template to the design preset "${designPreset}".\n` +
-                    `Rules:\n` +
-                    `- Preserve layout/sections and all functionality\n` +
-                    `- DO NOT remove or rename any data-ut-intent / data-intent / data-ut-cta attributes\n` +
-                    `- If the template includes form inputs (email/phone/name), keep them and improve styling\n` +
-                    `- Output ONLY the full updated HTML (no markdown).`,
+                    `Apply the "${designPreset}" typography and color theme to this template.\n\n` +
+                    `STRICT RULES - You must follow these exactly:\n` +
+                    `1. ONLY modify: font families, font sizes, font weights, colors, color schemes, text styling\n` +
+                    `2. DO NOT change: layout structure, section order, hero formations, grid layouts, spacing between sections\n` +
+                    `3. DO NOT change: images, icons, logos, or any visual assets\n` +
+                    `4. DO NOT change: button positions, form placements, navigation structure\n` +
+                    `5. PRESERVE ALL: data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes exactly as-is\n` +
+                    `6. PRESERVE ALL: form inputs, interactive elements, and their functionality\n\n` +
+                    `Theme Guidelines for "${designPreset}":\n` +
+                    `- Editorial: Serif headings, refined typography, muted elegant colors\n` +
+                    `- Minimal: Clean sans-serif, monochromatic, high contrast\n` +
+                    `- Bold: Strong typography weights, vibrant accent colors\n` +
+                    `- Playful: Rounded fonts, bright cheerful colors\n` +
+                    `- Corporate: Professional fonts, business-appropriate blues/grays\n\n` +
+                    `Output ONLY the complete updated HTML. No markdown, no explanations.`,
                 },
               ],
               mode: "design",
               currentCode: effectiveCode.length > 20_000 ? effectiveCode.slice(0, 20_000) : effectiveCode,
               editMode: true,
-              templateAction: "restyle-system-template",
+              templateAction: "apply-design-preset",
             },
           });
           if (!aiError && aiData?.content) {
             effectiveCode = aiData.content;
           }
         } catch (e) {
-          console.warn("[SystemLauncher] design preset restyle failed", e);
+          console.warn("[SystemLauncher] design preset application failed", e);
         }
       }
 
@@ -155,7 +165,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
           templateName: selectedTemplate.name,
           businessName: `${system.name} Business`,
           templateCategory: selectedTemplate.category,
-          designPreset: shouldRestyle ? designPreset : null,
+          designPreset: shouldApplyPreset ? designPreset : null,
         },
       });
 
@@ -171,8 +181,8 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
            generatedCode: effectiveCode,
            vfsFiles: editedTemplateFiles,
           templateName: selectedTemplate.name,
-          aesthetic: shouldRestyle ? designPreset : undefined,
-          designPreset: shouldRestyle ? designPreset : undefined,
+          aesthetic: shouldApplyPreset ? designPreset : undefined,
+          designPreset: shouldApplyPreset ? designPreset : undefined,
           templateCategory: selectedTemplate.category,
           systemType: selectedSystem,
           systemName: system.name,
