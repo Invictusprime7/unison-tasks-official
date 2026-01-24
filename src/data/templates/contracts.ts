@@ -1,14 +1,21 @@
 /**
  * System Contracts
  * Defines what makes each business system "launchable" and production-ready
+ * 
+ * IMPORTANT: All intents MUST be from coreIntents.ts:
+ * - contact.submit
+ * - newsletter.subscribe  
+ * - booking.create
+ * - quote.request
  */
 
 import type { BusinessSystemType } from './types';
+import type { CoreIntent } from '@/coreIntents';
 
 export interface SystemContract {
   systemType: BusinessSystemType;
   name: string;
-  requiredIntents: string[];
+  requiredIntents: CoreIntent[];
   /**
    * Required CTA slots that must exist in the template DOM for publish readiness.
    * Slots are enforced via data-ut-cta attributes (e.g. "cta.primary").
@@ -17,7 +24,7 @@ export interface SystemContract {
   requiredData: string[];
   recommendedIntegrations: string[];
   publishChecks: PublishCheck[];
-  demoResponses: Record<string, DemoResponse>;
+  demoResponses: Record<CoreIntent, DemoResponse>;
 }
 
 export interface PublishCheck {
@@ -35,6 +42,7 @@ export interface DemoResponse {
 
 /**
  * Contract definitions for each business system
+ * All use ONLY CoreIntents: contact.submit, newsletter.subscribe, booking.create, quote.request
  */
 export const systemContracts: Record<BusinessSystemType, SystemContract> = {
   booking: {
@@ -42,7 +50,6 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
     name: 'Booking Business',
     requiredIntents: [
       'booking.create',
-      'reservation.submit',
       'contact.submit',
     ],
     requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
@@ -78,15 +85,20 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         message: '✅ Appointment booked for Tuesday at 2:00 PM',
         data: { confirmationId: 'DEMO-12345', date: '2024-01-15', time: '14:00' },
       },
-      'reservation.submit': {
-        success: true,
-        message: '✅ Reservation confirmed for 4 guests',
-        data: { reservationId: 'RES-67890', partySize: 4 },
-      },
       'contact.submit': {
         success: true,
         message: '✅ Message received! We\'ll respond within 24 hours',
         data: { ticketId: 'TKT-11111' },
+      },
+      'newsletter.subscribe': {
+        success: true,
+        message: '✅ Subscribed to updates!',
+        data: { subscriberId: 'SUB-BOOK-1' },
+      },
+      'quote.request': {
+        success: true,
+        message: '✅ Quote request submitted',
+        data: { quoteId: 'QT-BOOK-1' },
       },
     },
   },
@@ -96,7 +108,6 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
     name: 'Portfolio + Clients',
     requiredIntents: [
       'contact.submit',
-      'project.inquire',
       'quote.request',
     ],
     requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
@@ -132,15 +143,20 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         message: '✅ Inquiry sent! You\'ll hear back soon',
         data: { inquiryId: 'INQ-22222' },
       },
-      'project.inquire': {
-        success: true,
-        message: '✅ Project inquiry received',
-        data: { projectId: 'PRJ-33333' },
-      },
       'quote.request': {
         success: true,
         message: '✅ Quote request submitted',
         data: { quoteId: 'QT-44444' },
+      },
+      'booking.create': {
+        success: true,
+        message: '✅ Consultation booked',
+        data: { bookingId: 'BOOK-PORT-1' },
+      },
+      'newsletter.subscribe': {
+        success: true,
+        message: '✅ Subscribed to updates!',
+        data: { subscriberId: 'SUB-PORT-1' },
       },
     },
   },
@@ -149,9 +165,8 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
     systemType: 'store',
     name: 'Online Store',
     requiredIntents: [
-      'cart.add',
-      'cart.view',
-      'checkout.start',
+      'newsletter.subscribe',
+      'contact.submit',
     ],
     requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
     requiredData: [
@@ -181,20 +196,25 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       },
     ],
     demoResponses: {
-      'cart.add': {
+      'newsletter.subscribe': {
         success: true,
-        message: '✅ Added to cart',
-        data: { cartItemCount: 1, cartTotal: 29.99 },
+        message: '✅ Subscribed! Get early access to sales',
+        data: { subscriberId: 'SUB-STORE-1' },
       },
-      'cart.view': {
+      'contact.submit': {
         success: true,
-        message: 'Your cart (1 item)',
-        data: { items: [{ name: 'Demo Product', price: 29.99, qty: 1 }] },
+        message: '✅ Support request received',
+        data: { ticketId: 'TKT-STORE-1' },
       },
-      'checkout.start': {
+      'booking.create': {
         success: true,
-        message: '✅ Checkout initiated',
-        data: { checkoutUrl: '/checkout', orderId: 'ORD-55555' },
+        message: '✅ Pickup scheduled',
+        data: { bookingId: 'BOOK-STORE-1' },
+      },
+      'quote.request': {
+        success: true,
+        message: '✅ Bulk order quote requested',
+        data: { quoteId: 'QT-STORE-1' },
       },
     },
   },
@@ -203,8 +223,7 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
     systemType: 'agency',
     name: 'Agency & Services',
     requiredIntents: [
-      'contact.sales',
-      'demo.request',
+      'contact.submit',
       'quote.request',
     ],
     requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
@@ -235,20 +254,25 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       },
     ],
     demoResponses: {
-      'contact.sales': {
+      'contact.submit': {
         success: true,
-        message: '✅ Sales inquiry received! Our team will reach out',
+        message: '✅ Inquiry received! Our team will reach out',
         data: { leadId: 'LEAD-66666' },
-      },
-      'demo.request': {
-        success: true,
-        message: '✅ Demo scheduled for next week',
-        data: { demoId: 'DEMO-77777' },
       },
       'quote.request': {
         success: true,
         message: '✅ Custom quote request submitted',
         data: { quoteId: 'QT-88888' },
+      },
+      'booking.create': {
+        success: true,
+        message: '✅ Discovery call scheduled',
+        data: { bookingId: 'BOOK-AGENCY-1' },
+      },
+      'newsletter.subscribe': {
+        success: true,
+        message: '✅ Subscribed to agency updates!',
+        data: { subscriberId: 'SUB-AGENCY-1' },
       },
     },
   },
@@ -298,6 +322,16 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         message: '✅ Message received!',
         data: { ticketId: 'TKT-00000' },
       },
+      'booking.create': {
+        success: true,
+        message: '✅ Interview scheduled',
+        data: { bookingId: 'BOOK-CONTENT-1' },
+      },
+      'quote.request': {
+        success: true,
+        message: '✅ Sponsorship inquiry received',
+        data: { quoteId: 'QT-CONTENT-1' },
+      },
     },
   },
 
@@ -305,10 +339,8 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
     systemType: 'saas',
     name: 'SaaS & Startup',
     requiredIntents: [
-      'trial.start',
-      'pricing.select',
-      'demo.request',
       'newsletter.subscribe',
+      'contact.submit',
     ],
     requiredSlots: ['cta.primary', 'cta.secondary', 'cta.nav', 'cta.footer'],
     requiredData: [
@@ -338,25 +370,25 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
       },
     ],
     demoResponses: {
-      'trial.start': {
-        success: true,
-        message: '✅ 14-day free trial started!',
-        data: { userId: 'USR-TRIAL-1', trialEnds: '2024-01-29' },
-      },
-      'pricing.select': {
-        success: true,
-        message: '✅ Pro plan selected',
-        data: { plan: 'pro', price: 49 },
-      },
-      'demo.request': {
-        success: true,
-        message: '✅ Demo booked! Check your email',
-        data: { demoId: 'DEMO-SAAS-1' },
-      },
       'newsletter.subscribe': {
         success: true,
-        message: '✅ You\'re on the list!',
+        message: '✅ You\'re on the waitlist!',
         data: { subscriberId: 'SUB-SAAS-1' },
+      },
+      'contact.submit': {
+        success: true,
+        message: '✅ Sales inquiry received',
+        data: { leadId: 'LEAD-SAAS-1' },
+      },
+      'booking.create': {
+        success: true,
+        message: '✅ Demo scheduled!',
+        data: { bookingId: 'BOOK-SAAS-1' },
+      },
+      'quote.request': {
+        success: true,
+        message: '✅ Enterprise quote requested',
+        data: { quoteId: 'QT-SAAS-1' },
       },
     },
   },
@@ -374,7 +406,7 @@ export const getSystemContract = (systemType: BusinessSystemType): SystemContrac
  */
 export const isRequiredIntent = (systemType: BusinessSystemType, intent: string): boolean => {
   const contract = systemContracts[systemType];
-  return contract?.requiredIntents.includes(intent) ?? false;
+  return contract?.requiredIntents.includes(intent as CoreIntent) ?? false;
 };
 
 /**
@@ -382,5 +414,5 @@ export const isRequiredIntent = (systemType: BusinessSystemType, intent: string)
  */
 export const getDemoResponse = (systemType: BusinessSystemType, intent: string): DemoResponse | undefined => {
   const contract = systemContracts[systemType];
-  return contract?.demoResponses[intent];
+  return contract?.demoResponses[intent as CoreIntent];
 };

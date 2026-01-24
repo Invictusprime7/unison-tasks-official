@@ -49,6 +49,7 @@ export interface LayoutTemplate {
 }
 
 // Business Systems Configuration
+// All intents use ONLY CoreIntents: contact.submit, newsletter.subscribe, booking.create, quote.request
 export const businessSystems: BusinessSystem[] = [
   {
     id: "booking",
@@ -59,7 +60,7 @@ export const businessSystems: BusinessSystem[] = [
     color: "bg-blue-500",
     templateCategories: ["restaurant", "contractor"],
     features: ["Online booking", "Calendar sync", "Lead capture", "Email notifications", "Payment collection"],
-    intents: ["reservation.submit", "booking.create", "quote.request", "contact.submit"]
+    intents: ["booking.create", "contact.submit", "quote.request", "newsletter.subscribe"]
   },
   {
     id: "portfolio",
@@ -70,7 +71,7 @@ export const businessSystems: BusinessSystem[] = [
     color: "bg-purple-500",
     templateCategories: ["portfolio", "agency"],
     features: ["Project gallery", "Client inquiries", "Testimonials", "Case studies", "Contact forms"],
-    intents: ["project.inquire", "contact.submit", "quote.request"]
+    intents: ["contact.submit", "quote.request", "newsletter.subscribe"]
   },
   {
     id: "store",
@@ -81,7 +82,7 @@ export const businessSystems: BusinessSystem[] = [
     color: "bg-green-500",
     templateCategories: ["ecommerce"],
     features: ["Product catalog", "Shopping cart", "Checkout flow", "Order management", "Inventory tracking"],
-    intents: ["cart.add", "cart.view", "checkout.start", "shop.browse"]
+    intents: ["newsletter.subscribe", "contact.submit"]
   },
   {
     id: "agency",
@@ -92,7 +93,7 @@ export const businessSystems: BusinessSystem[] = [
     color: "bg-orange-500",
     templateCategories: ["agency", "startup"],
     features: ["Service pages", "Lead capture", "Case studies", "Team profiles", "CRM integration"],
-    intents: ["contact.sales", "demo.request", "trial.start", "quote.request"]
+    intents: ["contact.submit", "quote.request", "booking.create"]
   },
   {
     id: "content",
@@ -114,7 +115,7 @@ export const businessSystems: BusinessSystem[] = [
     color: "bg-indigo-500",
     templateCategories: ["landing", "startup"],
     features: ["Hero sections", "Feature grids", "Pricing tables", "Testimonials", "CTA optimization"],
-    intents: ["trial.start", "pricing.select", "demo.request", "newsletter.subscribe"]
+    intents: ["newsletter.subscribe", "contact.submit", "booking.create"]
   }
 ];
 

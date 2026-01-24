@@ -89,8 +89,9 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
     const allIntents = [...new Set([...contract.requiredIntents, ...preloadedIntents])];
     
     return allIntents.map(intent => {
-      const isWired = isCoreIntent(intent) && hasBackendHandler(intent);
-      const isRequired = contract.requiredIntents.includes(intent);
+      const isCore = isCoreIntent(intent);
+      const isWired = isCore && hasBackendHandler(intent as any);
+      const isRequired = contract.requiredIntents.includes(intent as any);
       
       return {
         intent,

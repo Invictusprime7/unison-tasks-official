@@ -5,6 +5,12 @@
  * Templates without manifests are "demos" - not production systems.
  * 
  * This is the key differentiator: templates ARE executable systems.
+ * 
+ * IMPORTANT: All intents MUST be from coreIntents.ts:
+ * - contact.submit
+ * - newsletter.subscribe  
+ * - booking.create
+ * - quote.request
  */
 
 import type { BusinessSystemType } from './types';
@@ -33,10 +39,10 @@ export interface WorkflowRequirement {
 }
 
 /**
- * Intent binding requirement
+ * Intent binding requirement - MUST use CoreIntent values only
  */
 export interface IntentRequirement {
-  intent: string;
+  intent: 'contact.submit' | 'newsletter.subscribe' | 'booking.create' | 'quote.request';
   label: string;
   handler: string;
   /** What happens when this intent fires */
@@ -153,7 +159,7 @@ const CRM_TABLES: TableRequirement[] = [
   {
     name: 'crm_leads',
     description: 'Sales pipeline',
-    columns: ['id', 'user_id', 'contact_id', 'title', 'status', 'value', 'source'],
+    columns: ['id', 'user_id', 'contact_id', 'title', 'status', 'value', 'source', 'metadata'],
     critical: false,
   },
 ];
@@ -221,7 +227,7 @@ const ORDER_WORKFLOWS: WorkflowRequirement[] = [
 ];
 
 // ============================================================================
-// SHARED INTENT DEFINITIONS
+// SHARED INTENT DEFINITIONS - USING ONLY CORE INTENTS
 // ============================================================================
 
 const BOOKING_INTENTS: IntentRequirement[] = [
@@ -230,18 +236,6 @@ const BOOKING_INTENTS: IntentRequirement[] = [
     label: 'Book Appointment',
     handler: 'create-booking',
     outcome: 'New booking in system + confirmation',
-  },
-  {
-    intent: 'reservation.submit',
-    label: 'Reserve',
-    handler: 'create-booking',
-    outcome: 'Reservation confirmed',
-  },
-  {
-    intent: 'reservation.start',
-    label: 'Start Reservation',
-    handler: 'create-booking',
-    outcome: 'Begin reservation flow',
   },
 ];
 
@@ -252,12 +246,6 @@ const CONTACT_INTENTS: IntentRequirement[] = [
     handler: 'create-lead',
     outcome: 'Lead captured in CRM',
   },
-  {
-    intent: 'contact.sales',
-    label: 'Contact Sales',
-    handler: 'create-lead',
-    outcome: 'Sales inquiry captured',
-  },
 ];
 
 const NEWSLETTER_INTENTS: IntentRequirement[] = [
@@ -266,66 +254,6 @@ const NEWSLETTER_INTENTS: IntentRequirement[] = [
     label: 'Subscribe',
     handler: 'create-lead',
     outcome: 'Subscriber added to list',
-  },
-];
-
-const AUTH_INTENTS: IntentRequirement[] = [
-  {
-    intent: 'auth.login',
-    label: 'Log In',
-    handler: 'auth-login',
-    outcome: 'User authenticated',
-  },
-  {
-    intent: 'auth.signup',
-    label: 'Sign Up',
-    handler: 'auth-signup',
-    outcome: 'New account created',
-  },
-];
-
-const TRIAL_INTENTS: IntentRequirement[] = [
-  {
-    intent: 'trial.start',
-    label: 'Start Free Trial',
-    handler: 'create-lead',
-    outcome: 'Trial account initiated',
-  },
-  {
-    intent: 'demo.request',
-    label: 'Request Demo',
-    handler: 'create-booking',
-    outcome: 'Demo scheduled',
-  },
-];
-
-const PRICING_INTENTS: IntentRequirement[] = [
-  {
-    intent: 'pricing.select',
-    label: 'Select Plan',
-    handler: 'checkout-start',
-    outcome: 'Checkout initiated',
-  },
-];
-
-const ECOMMERCE_INTENTS: IntentRequirement[] = [
-  {
-    intent: 'cart.add',
-    label: 'Add to Cart',
-    handler: 'cart-add',
-    outcome: 'Product added to cart',
-  },
-  {
-    intent: 'cart.view',
-    label: 'View Cart',
-    handler: 'cart-view',
-    outcome: 'Display cart contents',
-  },
-  {
-    intent: 'checkout.start',
-    label: 'Checkout',
-    handler: 'checkout-start',
-    outcome: 'Begin checkout flow',
   },
 ];
 
@@ -402,40 +330,8 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Casual dining reservations and online ordering',
   },
 
-  'restaurant-cafe': {
-    id: 'restaurant-cafe',
-    version: '1.0.0',
-    systemType: 'booking',
-    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
-    workflows: [...LEAD_WORKFLOWS],
-    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
-    roles: [OWNER_ROLE],
-    defaults: {
-      workflowsEnabled: true,
-      notificationsEnabled: true,
-      analyticsEnabled: true,
-    },
-    businessOutcome: 'Coffee shop orders and event bookings',
-  },
-
-  'restaurant-bar': {
-    id: 'restaurant-bar',
-    version: '1.0.0',
-    systemType: 'booking',
-    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
-    workflows: [...BOOKING_WORKFLOWS],
-    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS],
-    roles: [OWNER_ROLE],
-    defaults: {
-      workflowsEnabled: true,
-      notificationsEnabled: true,
-      analyticsEnabled: true,
-    },
-    businessOutcome: 'Bar reservations and event bookings',
-  },
-
-  'restaurant-food-truck': {
-    id: 'restaurant-food-truck',
+  'restaurant-coffee-shop': {
+    id: 'restaurant-coffee-shop',
     version: '1.0.0',
     systemType: 'booking',
     tables: [...LEAD_TABLES],
@@ -447,20 +343,52 @@ export const templateManifests: Record<string, TemplateManifest> = {
       notificationsEnabled: true,
       analyticsEnabled: true,
     },
-    businessOutcome: 'Food truck location updates and catering inquiries',
+    businessOutcome: 'Coffee shop orders and event bookings',
+  },
+
+  'restaurant-pizzeria': {
+    id: 'restaurant-pizzeria',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Pizzeria orders and reservations',
+  },
+
+  'restaurant-sushi': {
+    id: 'restaurant-sushi',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Sushi restaurant reservations and omakase bookings',
   },
 
   // =========================================================================
   // LANDING / SAAS TEMPLATES
   // =========================================================================
 
-  'landing-saas-modern': {
-    id: 'landing-saas-modern',
+  'landing-editorial-ledger-saas': {
+    id: 'landing-editorial-ledger-saas',
     version: '1.0.0',
     systemType: 'saas',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...TRIAL_INTENTS, ...PRICING_INTENTS, ...CONTACT_INTENTS, ...AUTH_INTENTS],
+    intents: [...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -476,13 +404,13 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'SaaS trial signups with automated onboarding',
   },
 
-  'landing-agency': {
-    id: 'landing-agency',
+  'landing-editorial-atelier-agency': {
+    id: 'landing-editorial-atelier-agency',
     version: '1.0.0',
     systemType: 'agency',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -498,52 +426,20 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Agency lead generation with sales pipeline',
   },
 
-  'landing-app': {
-    id: 'landing-app',
+  'landing-editorial-sunday-letter': {
+    id: 'landing-editorial-sunday-letter',
     version: '1.0.0',
-    systemType: 'saas',
+    systemType: 'content',
     tables: [...LEAD_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...NEWSLETTER_INTENTS, ...TRIAL_INTENTS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
       notificationsEnabled: true,
       analyticsEnabled: true,
     },
-    businessOutcome: 'App waitlist and beta signups',
-  },
-
-  'landing-product': {
-    id: 'landing-product',
-    version: '1.0.0',
-    systemType: 'store',
-    tables: [...LEAD_TABLES, ...ECOMMERCE_TABLES],
-    workflows: [...LEAD_WORKFLOWS, ...ORDER_WORKFLOWS],
-    intents: [...ECOMMERCE_INTENTS, ...NEWSLETTER_INTENTS],
-    roles: [OWNER_ROLE],
-    defaults: {
-      workflowsEnabled: true,
-      notificationsEnabled: true,
-      analyticsEnabled: true,
-    },
-    businessOutcome: 'Product launch with pre-orders',
-  },
-
-  'landing-event': {
-    id: 'landing-event',
-    version: '1.0.0',
-    systemType: 'booking',
-    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
-    workflows: [...BOOKING_WORKFLOWS],
-    intents: [...BOOKING_INTENTS, ...NEWSLETTER_INTENTS],
-    roles: [OWNER_ROLE],
-    defaults: {
-      workflowsEnabled: true,
-      notificationsEnabled: true,
-      analyticsEnabled: true,
-    },
-    businessOutcome: 'Event registrations with confirmations',
+    businessOutcome: 'Newsletter subscriptions and content engagement',
   },
 
   // =========================================================================
@@ -556,7 +452,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'saas',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...TRIAL_INTENTS, ...PRICING_INTENTS, ...CONTACT_INTENTS, ...AUTH_INTENTS],
+    intents: [...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -578,7 +474,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'saas',
     tables: [...LEAD_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...NEWSLETTER_INTENTS, ...TRIAL_INTENTS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -594,7 +490,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'saas',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...TRIAL_INTENTS, ...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
+    intents: [...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -604,29 +500,13 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'AI product demos and enterprise inquiries',
   },
 
-  'startup-devtool': {
-    id: 'startup-devtool',
-    version: '1.0.0',
-    systemType: 'saas',
-    tables: [...LEAD_TABLES],
-    workflows: [...LEAD_WORKFLOWS],
-    intents: [...TRIAL_INTENTS, ...AUTH_INTENTS, ...NEWSLETTER_INTENTS],
-    roles: [OWNER_ROLE],
-    defaults: {
-      workflowsEnabled: true,
-      notificationsEnabled: true,
-      analyticsEnabled: true,
-    },
-    businessOutcome: 'Developer tool signups and documentation access',
-  },
-
   'startup-fintech': {
     id: 'startup-fintech',
     version: '1.0.0',
     systemType: 'saas',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...TRIAL_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    intents: [...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -637,12 +517,28 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Financial product signups with compliance flow',
   },
 
+  'startup-healthtech': {
+    id: 'startup-healthtech',
+    version: '1.0.0',
+    systemType: 'saas',
+    tables: [...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS, ...NEWSLETTER_INTENTS, ...BOOKING_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Healthcare platform signups and demo scheduling',
+  },
+
   // =========================================================================
   // PORTFOLIO TEMPLATES
   // =========================================================================
 
-  'portfolio-creative': {
-    id: 'portfolio-creative',
+  'portfolio-creative-dark': {
+    id: 'portfolio-creative-dark',
     version: '1.0.0',
     systemType: 'portfolio',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
@@ -663,6 +559,22 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Client inquiries and project management',
   },
 
+  'portfolio-minimal-light': {
+    id: 'portfolio-minimal-light',
+    version: '1.0.0',
+    systemType: 'portfolio',
+    tables: [...LEAD_TABLES],
+    workflows: [...LEAD_WORKFLOWS],
+    intents: [...CONTACT_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    businessOutcome: 'Minimal portfolio with contact capture',
+  },
+
   'portfolio-developer': {
     id: 'portfolio-developer',
     version: '1.0.0',
@@ -679,8 +591,8 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Developer portfolio with project inquiries',
   },
 
-  'portfolio-photographer': {
-    id: 'portfolio-photographer',
+  'portfolio-photography': {
+    id: 'portfolio-photography',
     version: '1.0.0',
     systemType: 'portfolio',
     tables: [...LEAD_TABLES, ...BOOKING_TABLES],
@@ -701,37 +613,21 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Photography booking and client gallery delivery',
   },
 
-  'portfolio-minimal': {
-    id: 'portfolio-minimal',
-    version: '1.0.0',
-    systemType: 'portfolio',
-    tables: [...LEAD_TABLES],
-    workflows: [...LEAD_WORKFLOWS],
-    intents: [...CONTACT_INTENTS],
-    roles: [OWNER_ROLE],
-    defaults: {
-      workflowsEnabled: true,
-      notificationsEnabled: true,
-      analyticsEnabled: true,
-    },
-    businessOutcome: 'Minimal portfolio with contact capture',
-  },
-
-  'portfolio-studio': {
-    id: 'portfolio-studio',
+  'portfolio-agency-bold': {
+    id: 'portfolio-agency-bold',
     version: '1.0.0',
     systemType: 'agency',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
-      crmPipeline: 'studio_pipeline',
+      crmPipeline: 'agency_pipeline',
       notificationsEnabled: true,
       analyticsEnabled: true,
     },
-    businessOutcome: 'Design studio leads and project pipeline',
+    businessOutcome: 'Bold agency portfolio with project pipeline',
   },
 
   // =========================================================================
@@ -744,7 +640,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'store',
     tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES],
     workflows: [...ORDER_WORKFLOWS, ...LEAD_WORKFLOWS],
-    intents: [...ECOMMERCE_INTENTS, ...NEWSLETTER_INTENTS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -760,7 +656,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'store',
     tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES],
     workflows: [...ORDER_WORKFLOWS],
-    intents: [...ECOMMERCE_INTENTS, ...CONTACT_INTENTS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -776,7 +672,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'store',
     tables: [...ECOMMERCE_TABLES],
     workflows: [...ORDER_WORKFLOWS],
-    intents: [...ECOMMERCE_INTENTS],
+    intents: [...NEWSLETTER_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -792,7 +688,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'store',
     tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES],
     workflows: [...ORDER_WORKFLOWS, ...LEAD_WORKFLOWS],
-    intents: [...ECOMMERCE_INTENTS, ...NEWSLETTER_INTENTS, ...PRICING_INTENTS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -808,7 +704,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'store',
     tables: [...ECOMMERCE_TABLES, ...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...ORDER_WORKFLOWS, ...LEAD_WORKFLOWS],
-    intents: [...ECOMMERCE_INTENTS, ...CONTACT_INTENTS, ...AUTH_INTENTS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -928,8 +824,8 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Construction quotes and project scheduling',
   },
 
-  'contractor-plumbing': {
-    id: 'contractor-plumbing',
+  'contractor-plumber': {
+    id: 'contractor-plumber',
     version: '1.0.0',
     systemType: 'booking',
     tables: [...LEAD_TABLES, ...BOOKING_TABLES],
@@ -944,8 +840,8 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Plumbing service calls and appointment scheduling',
   },
 
-  'contractor-electrical': {
-    id: 'contractor-electrical',
+  'contractor-electrician': {
+    id: 'contractor-electrician',
     version: '1.0.0',
     systemType: 'booking',
     tables: [...LEAD_TABLES, ...BOOKING_TABLES],
@@ -992,6 +888,50 @@ export const templateManifests: Record<string, TemplateManifest> = {
     businessOutcome: 'Handyman service requests and job scheduling',
   },
 
+  'services-salon-appointments': {
+    id: 'services-salon-appointments',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES],
+    workflows: [...BOOKING_WORKFLOWS, ...LEAD_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE, STAFF_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'salon_clients',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Salon Clients',
+      stages: ['New Lead', 'Contacted', 'Booked', 'Completed', 'Repeat Client'],
+      defaultStage: 'New Lead',
+    },
+    businessOutcome: 'Salon appointment booking with confirmation and reminders',
+  },
+
+  'services-consulting-booking': {
+    id: 'services-consulting-booking',
+    version: '1.0.0',
+    systemType: 'booking',
+    tables: [...BOOKING_TABLES, ...LEAD_TABLES, ...CRM_TABLES],
+    workflows: [...BOOKING_WORKFLOWS, ...LEAD_WORKFLOWS],
+    intents: [...BOOKING_INTENTS, ...CONTACT_INTENTS, ...NEWSLETTER_INTENTS],
+    roles: [OWNER_ROLE],
+    defaults: {
+      workflowsEnabled: true,
+      crmPipeline: 'consulting_pipeline',
+      notificationsEnabled: true,
+      analyticsEnabled: true,
+    },
+    crmPipeline: {
+      name: 'Consulting Pipeline',
+      stages: ['Inquiry', 'Discovery', 'Proposal', 'Engagement', 'Delivery'],
+      defaultStage: 'Inquiry',
+    },
+    businessOutcome: 'Consulting session booking with follow-up',
+  },
+
   // =========================================================================
   // AGENCY TEMPLATES
   // =========================================================================
@@ -1002,7 +942,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'agency',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -1041,7 +981,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'agency',
     tables: [...LEAD_TABLES, ...CRM_TABLES, ...BOOKING_TABLES],
     workflows: [...LEAD_WORKFLOWS, ...BOOKING_WORKFLOWS],
-    intents: [...CONTACT_INTENTS, ...TRIAL_INTENTS, ...BOOKING_INTENTS],
+    intents: [...CONTACT_INTENTS, ...BOOKING_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -1063,7 +1003,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'agency',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS, ...TRIAL_INTENTS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -1145,7 +1085,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'store',
     tables: [...ECOMMERCE_TABLES],
     workflows: [...ORDER_WORKFLOWS],
-    intents: [...ECOMMERCE_INTENTS],
+    intents: [...NEWSLETTER_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -1161,7 +1101,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'agency',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...CONTACT_INTENTS, ...TRIAL_INTENTS, ...QUOTE_INTENTS],
+    intents: [...CONTACT_INTENTS, ...QUOTE_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
@@ -1199,7 +1139,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
     systemType: 'saas',
     tables: [...LEAD_TABLES, ...CRM_TABLES],
     workflows: [...LEAD_WORKFLOWS],
-    intents: [...TRIAL_INTENTS, ...PRICING_INTENTS, ...NEWSLETTER_INTENTS, ...AUTH_INTENTS],
+    intents: [...NEWSLETTER_INTENTS, ...CONTACT_INTENTS],
     roles: [OWNER_ROLE],
     defaults: {
       workflowsEnabled: true,
