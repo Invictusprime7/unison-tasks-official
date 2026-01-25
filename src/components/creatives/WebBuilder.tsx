@@ -392,11 +392,156 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const initialCodeRef = useRef<string>(previewCode);
   
-  // Get system context from location state (from System Launcher)
+  // Get full cloud context from location state (from CloudProjects or System Launcher)
+  const projectId = (location.state as { projectId?: string })?.projectId;
   const systemType = (location.state as { systemType?: string })?.systemType;
   const systemName = (location.state as { systemName?: string })?.systemName;
   const businessId = (location.state as { businessId?: string })?.businessId;
   const manifestIdFromState = (location.state as { manifestId?: string })?.manifestId;
+  const projectSlug = (location.state as { projectSlug?: string })?.projectSlug;
+  const projectNameFromState = (location.state as { projectName?: string })?.projectName;
+  const publishStatusFromState = (location.state as { publishStatus?: string })?.publishStatus;
+  const customDomainFromState = (location.state as { customDomain?: string })?.customDomain;
+  
+  // Cloud state: project settings, entitlements, installed packs
+  const [cloudState, setCloudState] = useState<{
+    project: {
+      id: string | null;
+      name: string | null;
+      slug: string | null;
+      publishStatus: string | null;
+      customDomain: string | null;
+      settings: Record<string, any>;
+    };
+    business: {
+      id: string | null;
+      name: string | null;
+      notificationEmail: string | null;
+      timezone: string | null;
+      brandColor: string | null;
+    };
+    entitlements: Record<string, { limit?: number; enabled?: boolean }>;
+    installedPacks: string[];
+    isLoaded: boolean;
+  }>({
+    project: {
+      id: projectId || null,
+      name: projectNameFromState || null,
+      slug: projectSlug || null,
+      publishStatus: publishStatusFromState || null,
+      customDomain: customDomainFromState || null,
+      settings: {},
+    },
+    business: {
+      id: businessId || null,
+      name: null,
+      notificationEmail: null,
+      timezone: 'UTC',
+      brandColor: null,
+    },
+    entitlements: {},
+    installedPacks: [],
+    isLoaded: false,
+  });
+  
+  // Load full cloud state when project/business context is available
+  useEffect(() => {
+    let cancelled = false;
+    
+    async function loadCloudState() {
+      if (!businessId) {
+        // No business context - running in preview/demo mode
+        if (!cancelled) {
+          setCloudState(prev => ({ ...prev, isLoaded: true }));
+        }
+        return;
+      }
+      
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          if (!cancelled) setCloudState(prev => ({ ...prev, isLoaded: true }));
+          return;
+        }
+        
+        // Load business settings
+        // Type cast to handle dynamic table that may not be in generated types yet
+        const { data: bizData } = await supabase
+          .from('businesses' as any)
+          .select('id, name, notification_email, timezone, brand_color, settings')
+          .eq('id', businessId)
+          .maybeSingle() as { data: { id: string; name: string; notification_email: string | null; timezone: string | null; brand_color: string | null; settings: any } | null };
+        
+        // Load project settings if we have a projectId
+        let projectData: { id: string; name: string; slug: string | null; publish_status: string | null; custom_domain: string | null; settings: any } | null = null;
+        if (projectId) {
+          const { data } = await supabase
+            .from('projects')
+            .select('id, name, slug, publish_status, custom_domain, settings')
+            .eq('id', projectId)
+            .maybeSingle() as { data: typeof projectData };
+          projectData = data;
+        }
+        
+        // Load entitlements
+        const { data: entitlementsData } = await supabase
+          .from('entitlements' as any)
+          .select('key, value')
+          .eq('business_id', businessId) as { data: { key: string; value: any }[] | null };
+        
+        // Load installed packs
+        const { data: packsData } = await supabase
+          .from('installed_packs' as any)
+          .select('pack_id')
+          .eq('business_id', businessId)
+          .eq('status', 'active') as { data: { pack_id: string }[] | null };
+        
+        if (!cancelled) {
+          const entitlements: Record<string, { limit?: number; enabled?: boolean }> = {};
+          (entitlementsData || []).forEach((e) => {
+            entitlements[e.key] = typeof e.value === 'string' ? JSON.parse(e.value) : e.value;
+          });
+          
+          setCloudState({
+            project: {
+              id: projectData?.id || projectId || null,
+              name: projectData?.name || projectNameFromState || null,
+              slug: projectData?.slug || projectSlug || null,
+              publishStatus: projectData?.publish_status || publishStatusFromState || null,
+              customDomain: projectData?.custom_domain || customDomainFromState || null,
+              settings: projectData?.settings || {},
+            },
+            business: {
+              id: bizData?.id || businessId || null,
+              name: bizData?.name || null,
+              notificationEmail: bizData?.notification_email || null,
+              timezone: bizData?.timezone || 'UTC',
+              brandColor: bizData?.brand_color || null,
+            },
+            entitlements,
+            installedPacks: (packsData || []).map((p: any) => p.pack_id),
+            isLoaded: true,
+          });
+          
+          console.log('[WebBuilder] Cloud state loaded:', {
+            businessId,
+            projectId,
+            entitlementsCount: Object.keys(entitlements).length,
+            installedPacks: (packsData || []).map((p: any) => p.pack_id),
+          });
+        }
+      } catch (error) {
+        console.warn('[WebBuilder] Failed to load cloud state:', error);
+        if (!cancelled) {
+          setCloudState(prev => ({ ...prev, isLoaded: true }));
+        }
+      }
+    }
+    
+    loadCloudState();
+    return () => { cancelled = true; };
+  }, [businessId, projectId]);
+  
   const referrerPageName = systemName || 
     (location.state as { from?: string })?.from || 
     'System Launcher';

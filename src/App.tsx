@@ -25,6 +25,7 @@ const DesignStudioPage = lazy(() => import("./pages/DesignStudioPage"));
 const AIPageGenerator = lazy(() => import("./components/creatives/AIPageGenerator").then(m => ({ default: m.AIPageGenerator })));
 const CRMDashboard = lazy(() => import("./pages/CRMDashboard"));
 const BusinessSettings = lazy(() => import("./pages/BusinessSettings"));
+const CloudDashboard = lazy(() => import("./pages/CloudDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,11 @@ const App = () => (
             <Route path="/dashboard/leads" element={
               <Suspense fallback={<PageLoader />}>
                 <CRMDashboard initialView="leads" />
+              </Suspense>
+            } />
+            <Route path="/cloud" element={
+              <Suspense fallback={<PageLoader />}>
+                <CloudDashboard />
               </Suspense>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

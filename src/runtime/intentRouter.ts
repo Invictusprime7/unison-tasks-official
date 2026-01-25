@@ -224,8 +224,10 @@ async function handleWorkflowIntent(intent: string, payload: IntentPayload): Pro
 
 // Default businessId for templates (can be overridden by location state or template config)
 let defaultBusinessId: string | null = null;
+let defaultProjectId: string | null = null;
 let currentSystemType: BusinessSystemType | null = null;
 let isDemoMode: boolean = false;
+let useUnifiedRouter: boolean = true; // Use the new intent-router Edge Function
 
 /**
  * Set the default business ID for intent routing
@@ -237,10 +239,25 @@ export function setDefaultBusinessId(businessId: string | null): void {
 }
 
 /**
+ * Set the default project ID for intent routing
+ */
+export function setDefaultProjectId(projectId: string | null): void {
+  defaultProjectId = projectId;
+  console.log("[IntentRouter] Default projectId set:", projectId);
+}
+
+/**
  * Get the current default business ID
  */
 export function getDefaultBusinessId(): string | null {
   return defaultBusinessId;
+}
+
+/**
+ * Get the current default project ID
+ */
+export function getDefaultProjectId(): string | null {
+  return defaultProjectId;
 }
 
 /**
@@ -269,9 +286,12 @@ export function isDemoModeActive(): boolean {
 
 /**
  * Main intent handler - routes intents to appropriate handlers/functions
+ * 
+ * All CoreIntents are routed through the unified intent-router Edge Function
+ * which handles CRM persistence, notifications, and analytics.
  */
 export async function handleIntent(intent: string, payload: IntentPayload): Promise<IntentResult> {
-  console.log("[IntentRouter] Handling intent:", intent, payload, { isDemoMode, currentSystemType });
+  console.log("[IntentRouter] Handling intent:", intent, payload, { isDemoMode, currentSystemType, useUnifiedRouter });
   
   // Handle demo mode - return mocked responses
   if (isDemoMode && currentSystemType) {
@@ -292,6 +312,12 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     console.log("[IntentRouter] Injected default businessId:", defaultBusinessId);
   }
 
+  // Inject default projectId if not provided
+  if (!payload.projectId && defaultProjectId) {
+    payload.projectId = defaultProjectId;
+    console.log("[IntentRouter] Injected default projectId:", defaultProjectId);
+  }
+
   // Locked surface (authoritative).
   // Non-core intents may still exist in templates, but they are preview-only and cannot persist/publish.
   if (!isCoreIntent(intent)) {
@@ -305,6 +331,52 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
   if (!biz.ok) return { success: false, error: ('error' in biz ? biz.error : 'Invalid businessId') };
   
   try {
+    // Determine source context
+    const source = isDemoMode ? 'preview' : 'published';
+    const sourceUrl = typeof window !== 'undefined' ? window.location.href : undefined;
+
+    // ========================================================================
+    // UNIFIED INTENT ROUTER - Single backend entrypoint for all CoreIntents
+    // ========================================================================
+    // This is the canonical execution surface that:
+    // - Validates businessId and CoreIntent
+    // - Persists CRM records (leads, contacts, etc.)
+    // - Sends notifications using business settings
+    // - Records analytics
+    if (useUnifiedRouter) {
+      console.log("[IntentRouter] Using unified intent-router Edge Function");
+      
+      const routerPayload = {
+        intent,
+        businessId: biz.businessId,
+        projectId: (payload.projectId as string) || defaultProjectId || undefined,
+        data: payload,
+        source,
+        sourceUrl,
+        visitorId: (payload.visitorId as string) || undefined,
+      };
+      
+      const { data, error } = await supabase.functions.invoke('intent-router', {
+        body: routerPayload,
+      });
+      
+      if (error) {
+        console.error("[IntentRouter] Unified router error:", error);
+        // Fall back to legacy handlers if unified router fails
+        console.log("[IntentRouter] Falling back to legacy handlers...");
+      } else {
+        // Unified router returns { success, message, data, error }
+        if (data && typeof data === 'object') {
+          console.log("[IntentRouter] Unified router success:", data);
+          return data as IntentResult;
+        }
+        return { success: true, data };
+      }
+    }
+
+    // ========================================================================
+    // LEGACY HANDLERS (fallback)
+    // ========================================================================
     const handler = BACKEND_HANDLERS[intent];
 
     // Normalize payload per intent, then call authoritative backend handler.

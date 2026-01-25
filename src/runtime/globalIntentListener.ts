@@ -12,7 +12,7 @@
  */
 
 import { handleIntent, IntentPayload } from './intentRouter';
-import { isCoreIntent } from '@/coreIntents';
+import { isCoreIntent, isNavIntent } from '@/coreIntents';
 import { matchLabelToIntent, TemplateCategory } from './templateIntentConfig';
 
 // ============================================================================
@@ -34,6 +34,8 @@ export interface GlobalListenerConfig {
   onIntentTriggered?: (intent: string, payload: IntentPayload, result: unknown) => void;
   /** Callback when intent fails */
   onIntentError?: (intent: string, error: string) => void;
+  /** Callback when navigation intent is triggered (for preview mode routing) */
+  onNavigate?: (type: 'goto' | 'external' | 'anchor', target: string) => void;
   /** Show visual feedback (loading states, toasts) */
   showFeedback?: boolean;
   /** Debug mode - logs all clicks */
@@ -84,15 +86,129 @@ function shouldIgnoreElement(el: HTMLElement): boolean {
     return true;
   }
   
-  // Ignore navigation links that are external or download
+  // Check for nav intents - these should NOT be ignored even if they have href
+  const explicitIntent = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
+  if (explicitIntent?.startsWith('nav.')) {
+    return false; // Never ignore explicit nav intents
+  }
+  
+  // Ignore navigation links that are external or download (unless they have nav intent)
   if (el.tagName === 'A') {
     const href = el.getAttribute('href');
+    // Allow links with data-ut-path, data-ut-url, data-ut-anchor (nav intent markers)
+    if (el.hasAttribute('data-ut-path') || el.hasAttribute('data-ut-url') || el.hasAttribute('data-ut-anchor')) {
+      return false;
+    }
     if (href?.startsWith('http') || href?.startsWith('//') || el.hasAttribute('download')) {
       return true;
     }
   }
   
   return false;
+}
+
+/**
+ * Detect navigation intent from element attributes
+ * Returns { intent, target } if nav intent found, null otherwise
+ */
+function detectNavIntent(el: HTMLElement): { intent: string; target: string } | null {
+  const explicitIntent = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
+  
+  // Explicit nav intent with payload attributes
+  if (explicitIntent === 'nav.goto') {
+    const path = el.getAttribute('data-ut-path') || el.getAttribute('href') || '/';
+    return { intent: 'nav.goto', target: path };
+  }
+  if (explicitIntent === 'nav.external') {
+    const url = el.getAttribute('data-ut-url') || el.getAttribute('href') || '';
+    return { intent: 'nav.external', target: url };
+  }
+  if (explicitIntent === 'nav.anchor') {
+    const anchor = el.getAttribute('data-ut-anchor') || el.getAttribute('href') || '';
+    return { intent: 'nav.anchor', target: anchor };
+  }
+  
+  // Infer nav intent from data attributes (without explicit intent)
+  if (el.hasAttribute('data-ut-path')) {
+    return { intent: 'nav.goto', target: el.getAttribute('data-ut-path')! };
+  }
+  if (el.hasAttribute('data-ut-url')) {
+    return { intent: 'nav.external', target: el.getAttribute('data-ut-url')! };
+  }
+  if (el.hasAttribute('data-ut-anchor')) {
+    return { intent: 'nav.anchor', target: el.getAttribute('data-ut-anchor')! };
+  }
+  
+  // Infer from href for anchor elements
+  if (el.tagName === 'A') {
+    const href = el.getAttribute('href');
+    if (href) {
+      // Anchor scroll
+      if (href.startsWith('#')) {
+        return { intent: 'nav.anchor', target: href };
+      }
+      // External link
+      if (href.startsWith('http') || href.startsWith('//')) {
+        return { intent: 'nav.external', target: href };
+      }
+      // Internal route (starts with / but not //)
+      if (href.startsWith('/') && !href.startsWith('//')) {
+        return { intent: 'nav.goto', target: href };
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Handle navigation intent execution
+ */
+function executeNavIntent(
+  intent: string, 
+  target: string, 
+  config: GlobalListenerConfig
+): void {
+  if (config.debug) {
+    console.log('[GlobalIntent] Navigation:', intent, target);
+  }
+  
+  switch (intent) {
+    case 'nav.goto':
+      // Notify parent/handler about internal navigation
+      if (config.onNavigate) {
+        config.onNavigate('goto', target);
+      } else {
+        // Default: use window location for published sites
+        window.location.href = target;
+      }
+      break;
+      
+    case 'nav.external':
+      // Open external URLs in new tab
+      if (config.onNavigate) {
+        config.onNavigate('external', target);
+      } else {
+        window.open(target, '_blank', 'noopener,noreferrer');
+      }
+      break;
+      
+    case 'nav.anchor':
+      // Smooth scroll to anchor
+      if (config.onNavigate) {
+        config.onNavigate('anchor', target);
+      } else {
+        const anchorId = target.startsWith('#') ? target.slice(1) : target;
+        const element = document.getElementById(anchorId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          // Fallback: try hash navigation
+          window.location.hash = target;
+        }
+      }
+      break;
+  }
 }
 
 /**
@@ -274,6 +390,15 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
     if (config.debug) {
       console.log('[GlobalIntent] Ignoring element:', el);
     }
+    return;
+  }
+  
+  // PRIORITY: Check for navigation intents first
+  const navIntent = detectNavIntent(el);
+  if (navIntent) {
+    e.preventDefault();
+    e.stopPropagation();
+    executeNavIntent(navIntent.intent, navIntent.target, config);
     return;
   }
   

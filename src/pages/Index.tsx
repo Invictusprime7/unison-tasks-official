@@ -18,7 +18,8 @@ import {
   Play,
   Layers,
   Workflow,
-  Bot
+  Bot,
+  Cloud
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -208,6 +209,14 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-3">
             {user && <SubscriptionBadge />}
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/cloud")} 
+              className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/20"
+            >
+              <Cloud className="h-4 w-4 mr-2 text-blue-500" />
+              Cloud
+            </Button>
             {user ? (
               <>
                 <Button variant="ghost" onClick={() => navigate("/dashboard")}>

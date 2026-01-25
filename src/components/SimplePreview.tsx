@@ -206,6 +206,47 @@ function injectIntentListener(html: string): string {
       };
       window.parent.postMessage({ type: 'RESEARCH_OPEN', payload }, '*');
     }
+
+    // Navigation intent detection
+    function detectNavIntent(el){
+      const ia = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
+      
+      // Explicit nav intent with payload attributes
+      if(ia === 'nav.goto'){
+        const path = el.getAttribute('data-ut-path') || el.getAttribute('href') || '/';
+        return { intent: 'nav.goto', target: path };
+      }
+      if(ia === 'nav.external'){
+        const url = el.getAttribute('data-ut-url') || el.getAttribute('href') || '';
+        return { intent: 'nav.external', target: url };
+      }
+      if(ia === 'nav.anchor'){
+        const anchor = el.getAttribute('data-ut-anchor') || el.getAttribute('href') || '';
+        return { intent: 'nav.anchor', target: anchor };
+      }
+      
+      // Infer from data attributes
+      if(el.hasAttribute('data-ut-path')){
+        return { intent: 'nav.goto', target: el.getAttribute('data-ut-path') };
+      }
+      if(el.hasAttribute('data-ut-url')){
+        return { intent: 'nav.external', target: el.getAttribute('data-ut-url') };
+      }
+      if(el.hasAttribute('data-ut-anchor')){
+        return { intent: 'nav.anchor', target: el.getAttribute('data-ut-anchor') };
+      }
+      
+      return null;
+    }
+
+    function executeNavIntent(intent, target){
+      console.log('[Intent] Navigation:', intent, target);
+      window.parent.postMessage({
+        type: 'NAV_INTENT',
+        intent: intent,
+        target: target
+      }, '*');
+    }
     
      document.addEventListener('click',function(e){
        const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');
@@ -213,6 +254,15 @@ function injectIntentListener(html: string): string {
        const ia=el.getAttribute('data-ut-intent')||el.getAttribute('data-intent');
       if(ia==='none'||ia==='ignore')return;
       if(el.hasAttribute('data-no-intent'))return;
+      
+      // PRIORITY: Check for navigation intents first
+      const navIntent = detectNavIntent(el);
+      if(navIntent){
+        e.preventDefault();e.stopPropagation();
+        executeNavIntent(navIntent.intent, navIntent.target);
+        return;
+      }
+      
       const intent=ia||(shouldInferIntentFromElement(el)?inferIntent(el.textContent||el.getAttribute('aria-label')):null);
       if(!intent){
         // If it's a meaningful link, open research overlay instead of navigating.
