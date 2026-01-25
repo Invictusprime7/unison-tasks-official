@@ -22,6 +22,8 @@ import {
 import { intentTestTemplate } from '@/data/templates/test/intentTestTemplate';
 import { TemplateDetailCard } from '@/components/web-builder/TemplateDetailCard';
 
+type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
+
 interface LayoutTemplatesPanelProps {
   onSelectTemplate: (
     code: string,
@@ -35,6 +37,7 @@ interface LayoutTemplatesPanelProps {
     systemType?: BusinessSystemType,
     templateId?: string
   ) => void;
+  previewDevice?: PreviewDevice;
 }
 
 const categoryLabels: Record<LayoutCategory, string> = {
@@ -62,6 +65,7 @@ const categoryIcons: Record<LayoutCategory, string> = {
 export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
   onSelectTemplate,
   onDemoTemplate,
+  previewDevice = 'desktop',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<LayoutCategory | null>(null);

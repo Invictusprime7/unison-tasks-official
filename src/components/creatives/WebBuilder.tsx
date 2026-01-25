@@ -2179,100 +2179,110 @@ ${body.innerHTML}
 
         {/* Center Canvas Area */}
         <div className="flex-1 flex flex-col bg-[#0a0a0a] relative">
-          {/* Floating Dock for Templates, Projects, Cloud */}
-          <FloatingDock
-            onSelectTemplate={handleSelectTemplate}
-            onLoadTemplate={handleLoadTemplate}
-            onSaveTemplate={handleSaveTemplate}
-            currentCode={previewCode}
-            cloudState={cloudState}
-            onNavigateToCloud={() => navigate('/cloud')}
-          />
-          {/* Device & Mode Controls */}
-          <div className="h-12 border-b border-white/10 flex items-center px-4 gap-4">
-            {/* Back Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBackNavigation}
-              className="text-white/70 hover:text-white h-8 px-2 border-r border-white/10 pr-4"
-              title={`Go back to ${referrerPageName}${hasUnsavedChanges ? ' (unsaved changes will be auto-saved)' : ''} - Alt+←`}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              <span className="flex items-center gap-1">
-                Back
-                {hasUnsavedChanges && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" title="Unsaved changes" />
-                )}
-              </span>
-            </Button>
-            
-            {/* Device Breakpoints */}
-            <div className="flex items-center gap-1 border-r border-white/10 pr-4">
+          {/* Unified Topbar with Dock */}
+          <div className="h-12 border-b border-white/10 flex items-center px-4 gap-2">
+            {/* Left Section: Back Button & Device Breakpoints */}
+            <div className="flex items-center gap-2">
               <Button
-                variant={device === "desktop" ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => setDevice("desktop")}
-                className="h-8 w-8 text-white/70 hover:text-white"
-                title="Desktop"
+                variant="ghost"
+                size="sm"
+                onClick={handleBackNavigation}
+                className="text-white/70 hover:text-white h-8 px-2"
+                title={`Go back to ${referrerPageName}${hasUnsavedChanges ? ' (unsaved changes will be auto-saved)' : ''} - Alt+←`}
               >
-                <Monitor className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                <span className="flex items-center gap-1">
+                  Back
+                  {hasUnsavedChanges && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" title="Unsaved changes" />
+                  )}
+                </span>
               </Button>
-              <Button
-                variant={device === "tablet" ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => setDevice("tablet")}
-                className="h-8 w-8 text-white/70 hover:text-white"
-                title="Tablet"
-              >
-                <Tablet className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={device === "mobile" ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => setDevice("mobile")}
-                className="h-8 w-8 text-white/70 hover:text-white"
-                title="Mobile"
-              >
-                <Smartphone className="h-4 w-4" />
-              </Button>
+              
+              <div className="h-5 w-px bg-white/10" />
+              
+              {/* Device Breakpoints */}
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant={device === "desktop" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setDevice("desktop")}
+                  className="h-7 w-7 text-white/70 hover:text-white"
+                  title="Desktop"
+                >
+                  <Monitor className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant={device === "tablet" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setDevice("tablet")}
+                  className="h-7 w-7 text-white/70 hover:text-white"
+                  title="Tablet"
+                >
+                  <Tablet className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant={device === "mobile" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setDevice("mobile")}
+                  className="h-7 w-7 text-white/70 hover:text-white"
+                  title="Mobile"
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
-              <Button
-                variant={viewMode === "canvas" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("canvas")}
-                className="text-white/70 hover:text-white h-7 px-2"
-              >
-                <Square className="h-3.5 w-3.5 mr-1" />
-                Canvas
-              </Button>
-              <Button
-                variant={viewMode === "code" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("code")}
-                className="text-white/70 hover:text-white h-7 px-2"
-              >
-                <FileCode className="h-3.5 w-3.5 mr-1" />
-                Code
-              </Button>
-              <Button
-                variant={viewMode === "split" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("split")}
-                className="text-white/70 hover:text-white h-7 px-2"
-              >
-                <Layout className="h-3.5 w-3.5 mr-1" />
-                Split
-              </Button>
+            {/* Center Section: Floating Dock */}
+            <div className="flex-1 flex justify-center">
+              <FloatingDock
+                onSelectTemplate={handleSelectTemplate}
+                onLoadTemplate={handleLoadTemplate}
+                onSaveTemplate={handleSaveTemplate}
+                currentCode={previewCode}
+                cloudState={cloudState}
+                onNavigateToCloud={() => navigate('/cloud')}
+              />
             </div>
 
-            {/* Spacer */}
-            <div className="flex-1" />
+            {/* Right Section: View Mode & Actions */}
+            <div className="flex items-center gap-2">
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-0.5 bg-white/5 rounded-lg p-0.5">
+                <Button
+                  variant={viewMode === "canvas" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("canvas")}
+                  className="text-white/70 hover:text-white h-7 px-2"
+                >
+                  <Square className="h-3.5 w-3.5 mr-1" />
+                  Canvas
+                </Button>
+                <Button
+                  variant={viewMode === "code" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("code")}
+                  className="text-white/70 hover:text-white h-7 px-2"
+                >
+                  <FileCode className="h-3.5 w-3.5 mr-1" />
+                  Code
+                </Button>
+                <Button
+                  variant={viewMode === "split" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("split")}
+                  className="text-white/70 hover:text-white h-7 px-2"
+                >
+                  <Layout className="h-3.5 w-3.5 mr-1" />
+                  Split
+                </Button>
+              </div>
+            </div>
+          </div>
 
-            {/* Simple Mode Toggle */}
+          {/* Secondary Toolbar - Mode & Actions */}
+          <div className="h-10 border-b border-white/10 flex items-center justify-between px-4 bg-white/[0.02]">
+            {/* Left: Mode Toggle */}
             <SimpleModeToggle
               currentMode={builderMode}
               onModeChange={(mode) => {
@@ -2296,37 +2306,26 @@ ${body.innerHTML}
               }}
             />
 
-            {/* Actions */}
-            <div className="flex items-center gap-1 border-l border-white/10 pl-4">
-              {/* Current template indicator */}
-              {currentTemplateName && (
-                <div className="flex items-center gap-2 mr-2">
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 rounded text-xs text-primary">
-                    <Cloud className="h-3 w-3" />
-                    <span className="max-w-[120px] truncate">{currentTemplateName}</span>
-                  </div>
-                  {currentDesignPreset && (
-                    <Badge variant="secondary" className="h-6 px-2 text-[10px]">
-                      {currentDesignPreset}
-                    </Badge>
-                  )}
+            {/* Center: Template Info */}
+            {currentTemplateName && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 rounded text-xs text-primary">
+                  <Cloud className="h-3 w-3" />
+                  <span className="max-w-[150px] truncate">{currentTemplateName}</span>
                 </div>
-              )}
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSaveProjectDialogOpen(true)}
-                className="h-8 text-white/70 hover:text-white hover:bg-white/10 px-2"
-                title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
-              >
-                <Save className="h-4 w-4 mr-1" />
-                <span className="text-xs">{currentTemplateName ? 'Update' : 'Save'}</span>
-              </Button>
-              
+                {currentDesignPreset && (
+                  <Badge variant="secondary" className="h-5 px-2 text-[10px]">
+                    {currentDesignPreset}
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2">
               {/* Auto-save status indicator */}
               {autoSaveStatus !== 'idle' && (
-                <div className="flex items-center gap-1 text-xs text-white/50 ml-1">
+                <div className="flex items-center gap-1 text-xs text-white/50">
                   {autoSaveStatus === 'saving' ? (
                     <>
                       <div className="animate-spin h-3 w-3 border border-white/30 border-t-white/70 rounded-full" />
@@ -2343,14 +2342,26 @@ ${body.innerHTML}
               
               <Button
                 variant="ghost"
+                size="sm"
+                onClick={() => setSaveProjectDialogOpen(true)}
+                className="h-7 text-white/70 hover:text-white hover:bg-white/10 px-2"
+                title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
+              >
+                <Save className="h-3.5 w-3.5 mr-1" />
+                <span className="text-xs">{currentTemplateName ? 'Update' : 'Save'}</span>
+              </Button>
+              
+              <Button
+                variant="ghost"
                 size="icon"
                 onClick={handleClearCanvas}
-                className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/10"
                 title="Clear Canvas"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
-              <span className="text-xs text-white/40 ml-2">{getCanvasWidth()}×{getCanvasHeight()}</span>
+              
+              <span className="text-xs text-white/40">{getCanvasWidth()}×{getCanvasHeight()}</span>
             </div>
           </div>
 
