@@ -41,7 +41,7 @@ const ACTION_INTENTS = [
   "contact.email",
   "cta.primary",
   "cta.secondary",
-  "booking.request",
+  "booking.create",  // Synced with src/coreIntents.ts
   "quote.request",
   "newsletter.subscribe",
   "lead.capture",
@@ -535,7 +535,7 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
         result = await handleNewsletterSubscribe(supabase, payload.businessId, payload.projectId, payload.data);
         break;
       
-      case "booking.request":
+      case "booking.create":
         result = await handleBookingRequest(supabase, payload.businessId, payload.projectId, payload.data);
         break;
       
