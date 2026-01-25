@@ -38,6 +38,7 @@ interface LayoutTemplatesPanelProps {
     templateId?: string
   ) => void;
   previewDevice?: PreviewDevice;
+  previewWidth?: string;
 }
 
 const categoryLabels: Record<LayoutCategory, string> = {
@@ -66,6 +67,7 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
   onSelectTemplate,
   onDemoTemplate,
   previewDevice = 'desktop',
+  previewWidth = '100%',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<LayoutCategory | null>(null);
@@ -289,6 +291,7 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
                       onSelect={handleTemplateClick}
                       onDemo={onDemoTemplate ? handleDemoClick : undefined}
                       showDemoButton={!!onDemoTemplate}
+                      previewDevice={previewDevice}
                     />
                   ))}
                 </div>
@@ -336,6 +339,7 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
                 onSelect={handleTemplateClick}
                 onDemo={onDemoTemplate ? handleDemoClick : undefined}
                 showDemoButton={!!onDemoTemplate}
+                previewDevice={previewDevice}
               />
             ))
           )}

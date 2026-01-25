@@ -1,6 +1,6 @@
 /**
  * TemplateDetailCard
- * Rich template preview with system info, features, and demo button
+ * Rich template preview with device-responsive thumbnail, system info, and actions
  */
 
 import React from 'react';
@@ -19,6 +19,9 @@ import { cn } from '@/lib/utils';
 import type { LayoutTemplate, BusinessSystemType } from '@/data/templates/types';
 import { getSystemContract } from '@/data/templates/contracts';
 import { businessSystems } from '@/data/templates/types';
+import { TemplatePreviewThumbnail } from '@/components/creatives/web-builder/TemplatePreviewThumbnail';
+
+type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
 
 interface TemplateDetailCardProps {
   template: LayoutTemplate;
@@ -26,6 +29,7 @@ interface TemplateDetailCardProps {
   onDemo?: (template: LayoutTemplate) => void;
   isSelected?: boolean;
   showDemoButton?: boolean;
+  previewDevice?: PreviewDevice;
 }
 
 export const TemplateDetailCard: React.FC<TemplateDetailCardProps> = ({
@@ -34,6 +38,7 @@ export const TemplateDetailCard: React.FC<TemplateDetailCardProps> = ({
   onDemo,
   isSelected,
   showDemoButton = true,
+  previewDevice = 'desktop',
 }) => {
   // Find the system this template belongs to
   const system = businessSystems.find(s => 
@@ -51,6 +56,15 @@ export const TemplateDetailCard: React.FC<TemplateDetailCardProps> = ({
       onClick={() => onSelect(template)}
     >
       <CardContent className="p-4 space-y-3">
+        {/* Live Preview Thumbnail */}
+        <div className="flex justify-center">
+          <TemplatePreviewThumbnail 
+            html={template.code}
+            device={previewDevice}
+            className="shadow-sm"
+          />
+        </div>
+
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -88,49 +102,29 @@ export const TemplateDetailCard: React.FC<TemplateDetailCardProps> = ({
           </div>
         )}
 
-        {/* Features Preview */}
+        {/* Features Preview - collapsed for cleaner UI */}
         {contract && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Zap className="w-3 h-3" />
-              <span>Pre-wired intents:</span>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {contract.requiredIntents.slice(0, 3).map((intent) => (
-                <Badge 
-                  key={intent} 
-                  variant="secondary" 
-                  className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary"
-                >
-                  {intent.split('.')[1]}
-                </Badge>
-              ))}
-              {contract.requiredIntents.length > 3 && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  +{contract.requiredIntents.length - 3} more
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* What you get */}
-        {system && (
-          <div className="pt-2 border-t border-border/50">
-            <p className="text-xs text-muted-foreground mb-1.5">What you get:</p>
-            <ul className="space-y-1">
-              {system.features.slice(0, 3).map((feature) => (
-                <li key={feature} className="flex items-center gap-1.5 text-xs">
-                  <Check className="w-3 h-3 text-primary shrink-0" />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="flex items-center gap-1 flex-wrap">
+            <Zap className="w-3 h-3 text-primary" />
+            {contract.requiredIntents.slice(0, 3).map((intent) => (
+              <Badge 
+                key={intent} 
+                variant="secondary" 
+                className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary"
+              >
+                {intent.split('.')[1]}
+              </Badge>
+            ))}
+            {contract.requiredIntents.length > 3 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                +{contract.requiredIntents.length - 3}
+              </Badge>
+            )}
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-2">
+        <div className="flex items-center gap-2 pt-1">
           <Button 
             size="sm" 
             className="flex-1 h-8"

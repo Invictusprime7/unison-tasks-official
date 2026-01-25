@@ -28,6 +28,7 @@ type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
 
 interface FloatingDockProps {
   onSelectTemplate: (code: string, name: string, systemType?: BusinessSystemType, templateId?: string) => void;
+  onDemoTemplate?: (code: string, name: string, systemType?: BusinessSystemType, templateId?: string) => void;
   onLoadTemplate: (template: SavedTemplate) => void;
   onSaveTemplate: (name: string, description: string, isPublic?: boolean) => Promise<void>;
   currentCode: string;
@@ -42,14 +43,15 @@ interface FloatingDockProps {
 
 type DockPanel = "templates" | "projects" | "cloud" | null;
 
-const DEVICE_SIZES = {
-  desktop: { width: '100%', maxWidth: '100%' },
-  tablet: { width: '768px', maxWidth: '768px' },
-  mobile: { width: '375px', maxWidth: '375px' },
+const DEVICE_WIDTHS: Record<PreviewDevice, string> = {
+  desktop: '100%',
+  tablet: '768px',
+  mobile: '375px',
 };
 
 export const FloatingDock = ({
   onSelectTemplate,
+  onDemoTemplate,
   onLoadTemplate,
   onSaveTemplate,
   currentCode,
@@ -104,7 +106,7 @@ export const FloatingDock = ({
 
       {/* Expandable Panel - positioned absolutely below the dock */}
       {activePanel && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 w-[480px] max-h-[70vh] bg-card/98 backdrop-blur-lg border border-border/40 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 w-[520px] max-h-[70vh] bg-card/98 backdrop-blur-lg border border-border/40 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Panel Header with Device Toggle */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 bg-muted/30">
             <span className="text-sm font-medium text-foreground">
@@ -154,8 +156,10 @@ export const FloatingDock = ({
           <ScrollArea className="h-[calc(70vh-48px)]">
             {activePanel === "templates" && (
               <LayoutTemplatesPanel 
-                onSelectTemplate={onSelectTemplate} 
+                onSelectTemplate={onSelectTemplate}
+                onDemoTemplate={onDemoTemplate}
                 previewDevice={previewDevice}
+                previewWidth={DEVICE_WIDTHS[previewDevice]}
               />
             )}
             {activePanel === "projects" && (
