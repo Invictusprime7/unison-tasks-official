@@ -2472,6 +2472,7 @@ ${body.innerHTML}
                       code={previewCode}
                       className="w-full h-full min-h-0 flex-1"
                       showToolbar={false}
+                      device={device}
                     />
                   )}
                 </div>

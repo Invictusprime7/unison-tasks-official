@@ -17,6 +17,8 @@ export interface SimplePreviewProps {
   className?: string;
   /** Show toolbar */
   showToolbar?: boolean;
+  /** Device breakpoint for responsive preview */
+  device?: 'desktop' | 'tablet' | 'mobile';
 }
 
 /**
@@ -579,6 +581,7 @@ export const SimplePreview: React.FC<SimplePreviewProps> = ({
   code,
   className,
   showToolbar = true,
+  device = 'desktop',
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
@@ -655,8 +658,15 @@ export const SimplePreview: React.FC<SimplePreviewProps> = ({
         </div>
       )}
       
-      {/* Preview Iframe */}
-      <div className="flex-1 relative min-h-0">
+      {/* Preview Iframe - Device Responsive Container */}
+      <div className="flex-1 relative min-h-0 flex items-start justify-center bg-zinc-100">
+        <div 
+          className="h-full bg-white shadow-lg transition-all duration-300"
+          style={{
+            width: device === 'mobile' ? '375px' : device === 'tablet' ? '768px' : '100%',
+            maxWidth: '100%',
+          }}
+        >
         <iframe
           ref={iframeRef}
           key={previewUrl}
@@ -665,6 +675,7 @@ export const SimplePreview: React.FC<SimplePreviewProps> = ({
           title="Code Preview"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
         />
+        </div>
       </div>
     </div>
   );
