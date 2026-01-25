@@ -149,36 +149,49 @@ async function getEmailProvider(supabase: any, businessId: string) {
   return null;
 }
 
-// Send notification email using configured provider
+// Send notification email using Resend
 async function sendNotificationEmail(
-  supabase: any,
-  businessId: string,
   to: string,
   subject: string,
-  html: string
+  html: string,
+  replyTo?: string | null
 ): Promise<boolean> {
-  const emailConfig = await getEmailProvider(supabase, businessId);
+  const apiKey = Deno.env.get("RESEND_API_KEY");
   
-  if (!emailConfig || !emailConfig.configured) {
-    console.log("[intent-router] No email provider configured, skipping notification");
+  if (!apiKey) {
+    console.warn("[intent-router] RESEND_API_KEY not configured, skipping email");
     return false;
   }
   
-  // TODO: Integrate with actual email providers (Resend, SendGrid, Postmark)
-  // For now, log the email that would be sent
-  console.log("[intent-router] Would send email:", {
-    provider: emailConfig.provider,
-    to,
-    subject,
-    htmlLength: html.length,
-  });
-  
-  // In production, call the appropriate email API:
-  // - Resend: https://api.resend.com/emails
-  // - SendGrid: https://api.sendgrid.com/v3/mail/send
-  // - Postmark: https://api.postmarkapp.com/email
-  
-  return true;
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Notifications <onboarding@resend.dev>",
+        to: [to],
+        subject,
+        html,
+        reply_to: replyTo || undefined,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[intent-router] Resend API error:", response.status, errorText);
+      return false;
+    }
+    
+    const result = await response.json();
+    console.log("[intent-router] Email sent successfully:", result.id);
+    return true;
+  } catch (error) {
+    console.error("[intent-router] Failed to send email:", error);
+    return false;
+  }
 }
 
 // Create a CRM lead record
@@ -310,11 +323,10 @@ async function handleContactSubmit(
     `;
     
     await sendNotificationEmail(
-      supabase,
-      businessId,
       bizSettings.notification_email,
       subject,
-      html
+      html,
+      data.email // reply to the submitter
     );
   }
   
@@ -428,7 +440,7 @@ async function handleBookingRequest(
       <p><strong>Notes:</strong> ${data.notes || data.message || "None"}</p>
     `;
     
-    await sendNotificationEmail(supabase, businessId, bizSettings.notification_email, subject, html);
+    await sendNotificationEmail(bizSettings.notification_email, subject, html, data.email);
   }
   
   return {
@@ -465,7 +477,7 @@ async function handleQuoteRequest(
       <p>${data.details || data.message || data.requirements || "No details provided"}</p>
     `;
     
-    await sendNotificationEmail(supabase, businessId, bizSettings.notification_email, subject, html);
+    await sendNotificationEmail(bizSettings.notification_email, subject, html, data.email);
   }
   
   return {
