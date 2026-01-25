@@ -20,9 +20,22 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Core Intents that are allowed in production
-// Non-core intents are "draft/preview only"
-const CORE_INTENTS = [
+// Navigation intents - client-side only, no backend persistence
+const NAV_INTENTS = [
+  "nav.goto",
+  "nav.anchor",
+  "nav.external",
+] as const;
+
+// Payment intents - create checkout sessions
+const PAY_INTENTS = [
+  "pay.checkout",
+  "pay.success",
+  "pay.cancel",
+] as const;
+
+// Action intents - CRM persistence + notifications
+const ACTION_INTENTS = [
   "contact.submit",
   "contact.call",
   "contact.email",
@@ -34,7 +47,17 @@ const CORE_INTENTS = [
   "lead.capture",
 ] as const;
 
+// Core Intents that are allowed in production
+const CORE_INTENTS = [
+  ...NAV_INTENTS,
+  ...PAY_INTENTS,
+  ...ACTION_INTENTS,
+] as const;
+
 type CoreIntent = typeof CORE_INTENTS[number];
+type NavIntent = typeof NAV_INTENTS[number];
+type PayIntent = typeof PAY_INTENTS[number];
+type ActionIntent = typeof ACTION_INTENTS[number];
 
 interface IntentPayload {
   intent: string;

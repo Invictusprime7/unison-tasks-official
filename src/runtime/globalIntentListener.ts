@@ -12,7 +12,7 @@
  */
 
 import { handleIntent, IntentPayload } from './intentRouter';
-import { isCoreIntent, isNavIntent } from '@/coreIntents';
+import { isCoreIntent, isNavIntent, isPayIntent } from '@/coreIntents';
 import { matchLabelToIntent, TemplateCategory } from './templateIntentConfig';
 
 // ============================================================================
@@ -156,6 +156,50 @@ function detectNavIntent(el: HTMLElement): { intent: string; target: string } | 
         return { intent: 'nav.goto', target: href };
       }
     }
+  }
+  
+  return null;
+}
+
+/**
+ * Detect payment intent from element attributes
+ * Returns { intent, payload } if pay intent found, null otherwise
+ */
+function detectPayIntent(el: HTMLElement): { intent: string; payload: Record<string, unknown> } | null {
+  const explicitIntent = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
+  
+  // Explicit pay.checkout intent
+  if (explicitIntent === 'pay.checkout') {
+    const priceId = el.getAttribute('data-ut-price_id') || el.getAttribute('data-ut-priceid') || el.getAttribute('data-price-id');
+    const plan = el.getAttribute('data-ut-plan');
+    return { 
+      intent: 'pay.checkout', 
+      payload: { 
+        priceId: priceId || undefined, 
+        plan: plan || undefined 
+      } 
+    };
+  }
+  
+  if (explicitIntent === 'pay.success') {
+    return { intent: 'pay.success', payload: {} };
+  }
+  
+  if (explicitIntent === 'pay.cancel') {
+    return { intent: 'pay.cancel', payload: {} };
+  }
+  
+  // Infer pay intent from data attributes (without explicit intent)
+  if (el.hasAttribute('data-ut-price_id') || el.hasAttribute('data-ut-priceid') || el.hasAttribute('data-price-id')) {
+    const priceId = el.getAttribute('data-ut-price_id') || el.getAttribute('data-ut-priceid') || el.getAttribute('data-price-id');
+    const plan = el.getAttribute('data-ut-plan');
+    return { 
+      intent: 'pay.checkout', 
+      payload: { 
+        priceId: priceId || undefined, 
+        plan: plan || undefined 
+      } 
+    };
   }
   
   return null;
