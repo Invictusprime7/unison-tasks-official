@@ -42,6 +42,7 @@ import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
 import { ProjectsPanel } from "./web-builder/ProjectsPanel";
 import { LayoutTemplatesPanel } from "./web-builder/LayoutTemplatesPanel";
+import { FloatingDock } from "./web-builder/FloatingDock";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useVirtualFileSystem, VirtualFile } from "@/hooks/useVirtualFileSystem";
@@ -1090,6 +1091,42 @@ ${html}
     });
   }, [templateFiles, integrateCSSIntoHTML]);
 
+  // Handle template selection from LayoutTemplatesPanel (used by FloatingDock)
+  const handleSelectTemplate = useCallback((
+    code: string,
+    name: string,
+    selectedSystemType?: BusinessSystemType,
+    templateId?: string
+  ) => {
+    console.log('[WebBuilder] ========== TEMPLATE SELECTED ==========');
+    console.log('[WebBuilder] Template:', name, 'code length:', code.length);
+
+    const effectiveSystemType = (selectedSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
+    setActiveSystemType(effectiveSystemType);
+    setCurrentTemplateName(name);
+    setCurrentTemplateId(templateId || null);
+    if (manifestIdFromState) setCurrentManifestId(manifestIdFromState);
+
+    // Normalize + auto-migrate CTAs into the slot/intent contract
+    const normalized = normalizeTemplateForCtaContract({
+      code,
+      systemType: effectiveSystemType,
+    });
+    setTemplateCtaAnalysis(normalized.analysis);
+    
+    // Directly set the code - SimplePreview will render it
+    setEditorCode(normalized.code);
+    setPreviewCode(normalized.code);
+    
+    // Also import to VFS for code editor
+    const files = templateToVFSFiles(normalized.code, name);
+    virtualFS.importFiles(files);
+    
+    toast.success(`Loaded template: ${name}`, {
+      description: 'Template loaded into preview'
+    });
+  }, [systemType, manifestIdFromState, virtualFS]);
+
   // Handle saving current template
   const handleSaveTemplate = useCallback(async (
     name: string,
@@ -2020,13 +2057,7 @@ ${body.innerHTML}
             <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
               <TabsList className="w-full justify-start rounded-none border-b border-border/20 bg-card px-2 h-10 shrink-0">
                 <TabsTrigger value="elements" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Elements</TabsTrigger>
-                <TabsTrigger value="templates" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Templates</TabsTrigger>
                 <TabsTrigger value="functional" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Functional</TabsTrigger>
-                <TabsTrigger value="projects" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Projects</TabsTrigger>
-                <TabsTrigger value="cloud" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Cloud className="h-3 w-3 mr-1" />
-                  Cloud
-                </TabsTrigger>
                 <TabsTrigger value="health" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Health</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
@@ -2096,53 +2127,7 @@ ${body.innerHTML}
               }}
             />
               </TabsContent>
-              <TabsContent value="templates" className="flex-1 m-0 min-h-0 overflow-hidden">
-                <LayoutTemplatesPanel
-                  onSelectTemplate={(code, name, selectedSystemType, templateId) => {
-                    console.log('[WebBuilder] ========== TEMPLATE SELECTED ==========');
-                    console.log('[WebBuilder] Template:', name, 'code length:', code.length);
 
-                    const effectiveSystemType = (selectedSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
-                    setActiveSystemType(effectiveSystemType);
-                    setCurrentTemplateName(name);
-                    setCurrentTemplateId(templateId || null);
-                    if (manifestIdFromState) setCurrentManifestId(manifestIdFromState);
-
-                    // Normalize + auto-migrate CTAs into the slot/intent contract
-                    const normalized = normalizeTemplateForCtaContract({
-                      code,
-                      systemType: effectiveSystemType,
-                    });
-                    setTemplateCtaAnalysis(normalized.analysis);
-                    
-                    // Directly set the code - SimplePreview will render it
-                    setEditorCode(normalized.code);
-                    setPreviewCode(normalized.code);
-                    
-                    // Also import to VFS for code editor
-                    const files = templateToVFSFiles(normalized.code, name);
-                    virtualFS.importFiles(files);
-                    
-                    toast.success(`Loaded template: ${name}`, {
-                      description: 'Template loaded into preview'
-                    });
-                  }}
-                />
-              </TabsContent>
-
-              <TabsContent value="health" className="flex-1 m-0 min-h-0 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="p-3">
-                    <SystemHealthPanel
-                      systemType={activeSystemType}
-                      preloadedIntents={templateCtaAnalysis.intents}
-                      templateSlots={templateCtaAnalysis.slots}
-                      backendInstalled={backendInstalled}
-                      onPublishCheck={handleRunPublishChecks}
-                    />
-                  </div>
-                </ScrollArea>
-              </TabsContent>
               <TabsContent value="functional" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <FunctionalBlocksPanel 
                   onInsertBlock={(html) => {
@@ -2162,19 +2147,18 @@ ${body.innerHTML}
                   }}
                 />
               </TabsContent>
-              <TabsContent value="projects" className="flex-1 m-0 min-h-0 overflow-hidden">
-                <ProjectsPanel
-                  onLoadTemplate={handleLoadTemplate}
-                  onSaveTemplate={handleSaveTemplate}
-                  currentCode={previewCode}
-                />
-              </TabsContent>
-              <TabsContent value="cloud" className="flex-1 m-0 min-h-0 overflow-hidden">
-                <CloudPanel
-                  businessId={cloudState.business.id}
-                  businessName={cloudState.business.name}
-                  onNavigateToCloud={() => navigate('/cloud')}
-                />
+              <TabsContent value="health" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-3">
+                    <SystemHealthPanel
+                      systemType={activeSystemType}
+                      preloadedIntents={templateCtaAnalysis.intents}
+                      templateSlots={templateCtaAnalysis.slots}
+                      backendInstalled={backendInstalled}
+                      onPublishCheck={handleRunPublishChecks}
+                    />
+                  </div>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </div>
@@ -2194,7 +2178,16 @@ ${body.innerHTML}
         </div>
 
         {/* Center Canvas Area */}
-        <div className="flex-1 flex flex-col bg-[#0a0a0a]">
+        <div className="flex-1 flex flex-col bg-[#0a0a0a] relative">
+          {/* Floating Dock for Templates, Projects, Cloud */}
+          <FloatingDock
+            onSelectTemplate={handleSelectTemplate}
+            onLoadTemplate={handleLoadTemplate}
+            onSaveTemplate={handleSaveTemplate}
+            currentCode={previewCode}
+            cloudState={cloudState}
+            onNavigateToCloud={() => navigate('/cloud')}
+          />
           {/* Device & Mode Controls */}
           <div className="h-12 border-b border-white/10 flex items-center px-4 gap-4">
             {/* Back Button */}
