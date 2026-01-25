@@ -15,37 +15,52 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getDemoResponse, type BusinessSystemType } from "@/data/templates";
-import { CORE_INTENTS, type CoreIntent, isCoreIntent } from "@/coreIntents";
+import { 
+  CORE_INTENTS, 
+  type CoreIntent, 
+  type ActionIntent,
+  type NavIntent,
+  type PayIntent,
+  isCoreIntent,
+  isNavIntent,
+  isPayIntent,
+  isActionIntent,
+} from "@/coreIntents";
 
 
 export interface IntentPayload {
   businessId?: string;
+  path?: string;      // nav.goto
+  anchor?: string;    // nav.anchor
+  url?: string;       // nav.external
+  priceId?: string;   // pay.checkout
+  plan?: string;      // pay.checkout
   [key: string]: unknown;
 }
 
 export type IntentResult = {
   success: boolean;
-  status?: "ok" | "unsupported";
+  status?: "ok" | "unsupported" | "redirect" | "navigate";
   message?: string;
   data?: unknown;
   error?: string;
+  redirectUrl?: string;
 };
 
-type BackendHandler = 'create-lead' | 'create-booking';
+type BackendHandler = 'create-lead' | 'create-booking' | 'create-checkout';
 
-// Locked: CoreIntent -> authoritative backend handler
-const BACKEND_HANDLERS: Record<CoreIntent, BackendHandler> = {
+// Locked: ActionIntent -> authoritative backend handler
+const ACTION_HANDLERS: Record<ActionIntent, BackendHandler> = {
   'contact.submit': 'create-lead',
   'newsletter.subscribe': 'create-lead',
   'quote.request': 'create-lead',
   'booking.create': 'create-booking',
 };
 
-const LEAD_SOURCE_MAP: Record<CoreIntent, string> = {
+const LEAD_SOURCE_MAP: Record<ActionIntent, string> = {
   'contact.submit': 'contact_form',
   'newsletter.subscribe': 'newsletter',
   'quote.request': 'quote_request',
-  // booking.create is not a lead source
   'booking.create': 'booking',
 };
 
@@ -284,23 +299,275 @@ export function isDemoModeActive(): boolean {
   return isDemoMode;
 }
 
+// ============================================================================
+// PAGE MAP - Project page registry for multi-page navigation
+// ============================================================================
+interface PageMapEntry {
+  slug: string;
+  title: string;
+  templateId?: string;
+  isHome?: boolean;
+}
+
+let currentPageMap: PageMapEntry[] = [];
+let currentPath: string = '/';
+
+/**
+ * Set the page map for navigation resolution
+ */
+export function setPageMap(pages: PageMapEntry[]): void {
+  currentPageMap = pages;
+  console.log("[IntentRouter] Page map set:", pages);
+}
+
+/**
+ * Get the current page map
+ */
+export function getPageMap(): PageMapEntry[] {
+  return currentPageMap;
+}
+
+/**
+ * Set current path (for preview router state)
+ */
+export function setCurrentPath(path: string): void {
+  currentPath = path;
+  console.log("[IntentRouter] Current path:", path);
+}
+
+/**
+ * Get current path
+ */
+export function getCurrentPath(): string {
+  return currentPath;
+}
+
+// ============================================================================
+// NAVIGATION INTENT HANDLERS (Client-side, no backend needed)
+// ============================================================================
+
+/**
+ * Handle nav.goto - Internal route navigation
+ */
+function handleNavGoto(payload: IntentPayload): IntentResult {
+  const path = payload.path as string;
+  if (!path) {
+    return { success: false, error: "nav.goto requires a 'path' payload" };
+  }
+  
+  // In preview mode: update preview router state
+  // In published mode: navigate to real route
+  const page = currentPageMap.find(p => p.slug === path);
+  
+  if (page || path.startsWith('/')) {
+    setCurrentPath(path);
+    
+    // Emit navigation event for preview router
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('intent:nav.goto', { 
+        detail: { path, page } 
+      }));
+    }
+    
+    return { 
+      success: true, 
+      status: 'navigate',
+      message: `Navigating to ${path}`,
+      data: { path, page }
+    };
+  }
+  
+  return { success: false, error: `Page not found: ${path}` };
+}
+
+/**
+ * Handle nav.anchor - Scroll to anchor within page
+ */
+function handleNavAnchor(payload: IntentPayload): IntentResult {
+  const anchor = payload.anchor as string;
+  if (!anchor) {
+    return { success: false, error: "nav.anchor requires an 'anchor' payload" };
+  }
+  
+  const targetId = anchor.startsWith('#') ? anchor.slice(1) : anchor;
+  
+  if (typeof window !== 'undefined') {
+    const element = document.getElementById(targetId) || 
+                    document.querySelector(`[data-section="${targetId}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      return { 
+        success: true, 
+        status: 'navigate',
+        message: `Scrolled to ${anchor}`,
+        data: { anchor }
+      };
+    }
+  }
+  
+  // Emit event even if element not found (preview might handle differently)
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('intent:nav.anchor', { 
+      detail: { anchor } 
+    }));
+  }
+  
+  return { 
+    success: true, 
+    status: 'navigate',
+    message: `Anchor navigation to ${anchor}`,
+    data: { anchor }
+  };
+}
+
+/**
+ * Handle nav.external - Open external URL
+ */
+function handleNavExternal(payload: IntentPayload): IntentResult {
+  const url = payload.url as string;
+  if (!url) {
+    return { success: false, error: "nav.external requires a 'url' payload" };
+  }
+  
+  if (typeof window !== 'undefined') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+  
+  return { 
+    success: true, 
+    status: 'redirect',
+    message: `Opening ${url}`,
+    data: { url }
+  };
+}
+
+// ============================================================================
+// PAYMENT INTENT HANDLERS (Backend creates checkout session)
+// ============================================================================
+
+/**
+ * Handle pay.checkout - Begin checkout flow
+ * Creates a Stripe checkout session via backend and returns redirect URL
+ */
+async function handlePayCheckout(payload: IntentPayload, businessId: string): Promise<IntentResult> {
+  const priceId = payload.priceId as string;
+  const plan = payload.plan as string;
+  
+  if (!priceId && !plan) {
+    return { success: false, error: "pay.checkout requires 'priceId' or 'plan' payload" };
+  }
+  
+  try {
+    // Call backend to create checkout session
+    const { data, error } = await supabase.functions.invoke('create-checkout', {
+      body: {
+        businessId,
+        priceId,
+        plan,
+        successUrl: `${window.location.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/payment/cancel`,
+        metadata: {
+          source: window.location.href,
+          timestamp: new Date().toISOString(),
+        },
+      },
+    });
+    
+    if (error) throw error;
+    
+    if (data?.url) {
+      // Redirect to checkout
+      window.location.href = data.url;
+      return { 
+        success: true, 
+        status: 'redirect',
+        message: 'Redirecting to checkout...',
+        redirectUrl: data.url,
+        data
+      };
+    }
+    
+    return { success: true, data };
+  } catch (err: any) {
+    console.error('[IntentRouter] Checkout error:', err);
+    return { 
+      success: false, 
+      error: err.message || 'Failed to create checkout session'
+    };
+  }
+}
+
+/**
+ * Handle pay.success - Payment success handler
+ */
+function handlePaySuccess(payload: IntentPayload): IntentResult {
+  const sessionId = payload.sessionId as string;
+  
+  // Emit success event for UI to handle
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('intent:pay.success', { 
+      detail: { sessionId } 
+    }));
+  }
+  
+  return { 
+    success: true, 
+    message: 'Payment successful!',
+    data: { sessionId }
+  };
+}
+
+/**
+ * Handle pay.cancel - Payment cancelled handler
+ */
+function handlePayCancel(payload: IntentPayload): IntentResult {
+  // Emit cancel event for UI to handle
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('intent:pay.cancel', { 
+      detail: payload 
+    }));
+  }
+  
+  return { 
+    success: true, 
+    message: 'Payment cancelled',
+    data: {}
+  };
+}
+
 /**
  * Main intent handler - routes intents to appropriate handlers/functions
  * 
- * All CoreIntents are routed through the unified intent-router Edge Function
- * which handles CRM persistence, notifications, and analytics.
+ * - NAV intents: Client-side routing (no backend)
+ * - PAY intents: Backend checkout session creation + redirect
+ * - ACTION intents: CRM persistence + notifications via unified router
  */
 export async function handleIntent(intent: string, payload: IntentPayload): Promise<IntentResult> {
   console.log("[IntentRouter] Handling intent:", intent, payload, { isDemoMode, currentSystemType, useUnifiedRouter });
   
-  // Handle demo mode - return mocked responses
-  if (isDemoMode && currentSystemType) {
+  // ========================================================================
+  // NAVIGATION INTENTS - Handled client-side (no backend needed)
+  // ========================================================================
+  if (isNavIntent(intent)) {
+    switch (intent) {
+      case 'nav.goto':
+        return handleNavGoto(payload);
+      case 'nav.anchor':
+        return handleNavAnchor(payload);
+      case 'nav.external':
+        return handleNavExternal(payload);
+    }
+  }
+  
+  // Handle demo mode - return mocked responses for action intents
+  if (isDemoMode && currentSystemType && isActionIntent(intent)) {
     const demoResponse = getDemoResponse(currentSystemType, intent);
     if (demoResponse) {
       console.log("[IntentRouter] Demo mode response:", demoResponse);
       return {
         success: demoResponse.success,
         data: demoResponse.data,
+        message: demoResponse.message,
         error: demoResponse.success ? undefined : demoResponse.message,
       };
     }
@@ -326,9 +593,23 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     return { success: false, status: "unsupported", message, error: message };
   }
 
-  // Production safety: require real businessId for execution
+  // Production safety: require real businessId for action/pay intents
   const biz = assertBusinessId(payload);
   if (!biz.ok) return { success: false, error: ('error' in biz ? biz.error : 'Invalid businessId') };
+  
+  // ========================================================================
+  // PAYMENT INTENTS - Backend creates checkout session
+  // ========================================================================
+  if (isPayIntent(intent)) {
+    switch (intent) {
+      case 'pay.checkout':
+        return handlePayCheckout(payload, biz.businessId);
+      case 'pay.success':
+        return handlePaySuccess(payload);
+      case 'pay.cancel':
+        return handlePayCancel(payload);
+    }
+  }
   
   try {
     // Determine source context
@@ -375,9 +656,13 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     }
 
     // ========================================================================
-    // LEGACY HANDLERS (fallback)
+    // LEGACY HANDLERS (fallback for action intents only)
     // ========================================================================
-    const handler = BACKEND_HANDLERS[intent];
+    if (!isActionIntent(intent)) {
+      return { success: false, error: `Intent ${intent} not handled by legacy router` };
+    }
+    
+    const handler = ACTION_HANDLERS[intent];
 
     // Normalize payload per intent, then call authoritative backend handler.
     let body: Record<string, unknown> = { ...payload };
@@ -452,7 +737,7 @@ export function isValidIntent(intent: string): boolean {
  * Used for publish gating.
  */
 export function hasBackendHandler(intent: string): boolean {
-  return isCoreIntent(intent) && !!BACKEND_HANDLERS[intent];
+  return isActionIntent(intent) && !!ACTION_HANDLERS[intent];
 }
 
 /**
@@ -461,6 +746,7 @@ export function hasBackendHandler(intent: string): boolean {
 export function getIntentPack(intent: string): string | null {
   if (intent === 'booking.create') return 'booking';
   if (intent === 'newsletter.subscribe' || intent === 'contact.submit' || intent === 'quote.request') return 'leads';
+  if (isPayIntent(intent)) return 'payments';
   return null;
 }
 
@@ -468,8 +754,8 @@ export function getIntentPack(intent: string): string | null {
  * Get the function name for an intent
  */
 export function getIntentFunction(intent: string): string | null {
-  if (!isCoreIntent(intent)) return null;
-  return BACKEND_HANDLERS[intent] || null;
+  if (!isActionIntent(intent)) return null;
+  return ACTION_HANDLERS[intent] || null;
 }
 
 // Export for use in templates and AI assistant
@@ -477,4 +763,6 @@ export const AVAILABLE_INTENTS = getAvailableIntents();
 export const INTENT_PACKS = {
   leads: ['contact.submit', 'newsletter.subscribe', 'quote.request'],
   booking: ['booking.create'],
+  payments: ['pay.checkout', 'pay.success', 'pay.cancel'],
+  navigation: ['nav.goto', 'nav.anchor', 'nav.external'],
 };

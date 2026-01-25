@@ -2,20 +2,22 @@
  * System Contracts
  * Defines what makes each business system "launchable" and production-ready
  * 
- * IMPORTANT: All intents MUST be from coreIntents.ts:
+ * IMPORTANT: All intents MUST be from coreIntents.ts (ActionIntent subset):
  * - contact.submit
  * - newsletter.subscribe  
  * - booking.create
  * - quote.request
+ * 
+ * Nav/Pay intents are handled by the client-side router, not here.
  */
 
 import type { BusinessSystemType } from './types';
-import type { CoreIntent } from '@/coreIntents';
+import type { ActionIntent } from '@/coreIntents';
 
 export interface SystemContract {
   systemType: BusinessSystemType;
   name: string;
-  requiredIntents: CoreIntent[];
+  requiredIntents: ActionIntent[];
   /**
    * Required CTA slots that must exist in the template DOM for publish readiness.
    * Slots are enforced via data-ut-cta attributes (e.g. "cta.primary").
@@ -24,7 +26,8 @@ export interface SystemContract {
   requiredData: string[];
   recommendedIntegrations: string[];
   publishChecks: PublishCheck[];
-  demoResponses: Record<CoreIntent, DemoResponse>;
+  /** Demo responses for ACTION intents only (nav/pay are client-side) */
+  demoResponses: Record<ActionIntent, DemoResponse>;
 }
 
 export interface PublishCheck {
@@ -42,7 +45,7 @@ export interface DemoResponse {
 
 /**
  * Contract definitions for each business system
- * All use ONLY CoreIntents: contact.submit, newsletter.subscribe, booking.create, quote.request
+ * All use ONLY ActionIntents: contact.submit, newsletter.subscribe, booking.create, quote.request
  */
 export const systemContracts: Record<BusinessSystemType, SystemContract> = {
   booking: {
@@ -406,7 +409,7 @@ export const getSystemContract = (systemType: BusinessSystemType): SystemContrac
  */
 export const isRequiredIntent = (systemType: BusinessSystemType, intent: string): boolean => {
   const contract = systemContracts[systemType];
-  return contract?.requiredIntents.includes(intent as CoreIntent) ?? false;
+  return contract?.requiredIntents.includes(intent as ActionIntent) ?? false;
 };
 
 /**
@@ -414,5 +417,5 @@ export const isRequiredIntent = (systemType: BusinessSystemType, intent: string)
  */
 export const getDemoResponse = (systemType: BusinessSystemType, intent: string): DemoResponse | undefined => {
   const contract = systemContracts[systemType];
-  return contract?.demoResponses[intent as CoreIntent];
+  return contract?.demoResponses[intent as ActionIntent];
 };
