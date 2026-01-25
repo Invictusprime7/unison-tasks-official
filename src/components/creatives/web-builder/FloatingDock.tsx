@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Cloud, FolderOpen, Layout, X } from "lucide-react";
+import { Cloud, FolderOpen, Layout, X, Monitor, Tablet, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LayoutTemplatesPanel } from "./LayoutTemplatesPanel";
 import { ProjectsPanel } from "./ProjectsPanel";
@@ -24,6 +24,8 @@ interface SavedTemplate {
   thumbnail_url: string | null;
 }
 
+type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
+
 interface FloatingDockProps {
   onSelectTemplate: (code: string, name: string, systemType?: BusinessSystemType, templateId?: string) => void;
   onLoadTemplate: (template: SavedTemplate) => void;
@@ -40,6 +42,12 @@ interface FloatingDockProps {
 
 type DockPanel = "templates" | "projects" | "cloud" | null;
 
+const DEVICE_SIZES = {
+  desktop: { width: '100%', maxWidth: '100%' },
+  tablet: { width: '768px', maxWidth: '768px' },
+  mobile: { width: '375px', maxWidth: '375px' },
+};
+
 export const FloatingDock = ({
   onSelectTemplate,
   onLoadTemplate,
@@ -49,6 +57,7 @@ export const FloatingDock = ({
   onNavigateToCloud,
 }: FloatingDockProps) => {
   const [activePanel, setActivePanel] = useState<DockPanel>(null);
+  const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('desktop');
 
   const togglePanel = (panel: DockPanel) => {
     setActivePanel(activePanel === panel ? null : panel);
@@ -60,10 +69,16 @@ export const FloatingDock = ({
     { id: "cloud" as const, label: "Cloud", icon: Cloud },
   ];
 
+  const deviceOptions = [
+    { id: 'desktop' as const, icon: Monitor, label: 'Desktop' },
+    { id: 'tablet' as const, icon: Tablet, label: 'Tablet' },
+    { id: 'mobile' as const, icon: Smartphone, label: 'Mobile' },
+  ];
+
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
-      {/* Dock Bar */}
-      <div className="flex items-center gap-1 px-2 py-1.5 bg-card/95 backdrop-blur-md border border-border/40 rounded-full shadow-lg">
+    <div className="relative">
+      {/* Dock Bar - inline within the topbar */}
+      <div className="flex items-center gap-1 px-2 py-1 bg-card/80 backdrop-blur-md border border-border/40 rounded-full">
         {dockItems.map((item) => {
           const Icon = item.icon;
           const isActive = activePanel === item.id;
@@ -74,7 +89,7 @@ export const FloatingDock = ({
               size="sm"
               onClick={() => togglePanel(item.id)}
               className={cn(
-                "h-8 px-3 rounded-full text-xs font-medium transition-all duration-200",
+                "h-7 px-3 rounded-full text-xs font-medium transition-all duration-200",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -87,28 +102,61 @@ export const FloatingDock = ({
         })}
       </div>
 
-      {/* Expandable Panel */}
+      {/* Expandable Panel - positioned absolutely below the dock */}
       {activePanel && (
-        <div className="mt-2 w-[400px] max-h-[60vh] bg-card/98 backdrop-blur-lg border border-border/40 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* Panel Header */}
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 w-[480px] max-h-[70vh] bg-card/98 backdrop-blur-lg border border-border/40 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Panel Header with Device Toggle */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 bg-muted/30">
             <span className="text-sm font-medium text-foreground">
               {dockItems.find((d) => d.id === activePanel)?.label}
             </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setActivePanel(null)}
-              className="h-6 w-6 rounded-full hover:bg-accent"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+            
+            <div className="flex items-center gap-2">
+              {/* Device Toggle for Templates */}
+              {activePanel === "templates" && (
+                <div className="flex items-center gap-0.5 p-0.5 bg-background/50 rounded-full border border-border/30">
+                  {deviceOptions.map((device) => {
+                    const DeviceIcon = device.icon;
+                    const isActiveDevice = previewDevice === device.id;
+                    return (
+                      <Button
+                        key={device.id}
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewDevice(device.id)}
+                        className={cn(
+                          "h-6 w-6 rounded-full transition-all",
+                          isActiveDevice
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        title={device.label}
+                      >
+                        <DeviceIcon className="h-3 w-3" />
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setActivePanel(null)}
+                className="h-6 w-6 rounded-full hover:bg-accent"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
 
           {/* Panel Content */}
-          <ScrollArea className="h-[calc(60vh-48px)]">
+          <ScrollArea className="h-[calc(70vh-48px)]">
             {activePanel === "templates" && (
-              <LayoutTemplatesPanel onSelectTemplate={onSelectTemplate} />
+              <LayoutTemplatesPanel 
+                onSelectTemplate={onSelectTemplate} 
+                previewDevice={previewDevice}
+              />
             )}
             {activePanel === "projects" && (
               <ProjectsPanel
