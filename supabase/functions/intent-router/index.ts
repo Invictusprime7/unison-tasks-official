@@ -402,51 +402,139 @@ async function handleBookingRequest(
   projectId: string | undefined,
   data: Record<string, any>
 ): Promise<IntentResult> {
-  // 1. Create lead record with booking context
-  const lead = await createLead(supabase, businessId, projectId, {
-    ...data,
-    source: "booking_request",
-  });
+  // Extract and normalize customer contact info
+  const customerName = data.name || data.customerName || data.fullName || "";
+  const customerEmail = data.email || data.customerEmail || "";
+  const customerPhone = data.phone || data.customerPhone || data.phoneNumber || null;
+  const serviceName = data.service || data.serviceName || data.serviceType || "Appointment";
+  const notes = data.notes || data.message || null;
   
-  // 2. Try to create booking record if table exists
-  try {
-    await supabase.from("bookings").insert({
-      business_id: businessId,
-      project_id: projectId || null,
-      lead_id: lead.id,
-      preferred_date: data.preferredDate || data.date || null,
-      preferred_time: data.preferredTime || data.time || null,
-      service: data.service || data.serviceType || null,
-      notes: data.notes || data.message || null,
-      status: "pending",
-      created_at: new Date().toISOString(),
-    });
-  } catch (e) {
-    console.log("[intent-router] Bookings table not available");
+  // Parse date/time - handle various input formats
+  const dateInput = data.date || data.preferredDate || data.bookingDate;
+  const timeInput = data.time || data.preferredTime || data.bookingTime || "09:00";
+  
+  // Create booking date and time
+  let bookingDate: string;
+  let bookingTime: string;
+  let startsAt: string | null = null;
+  
+  if (dateInput) {
+    const parsedDate = new Date(dateInput);
+    if (!isNaN(parsedDate.getTime())) {
+      bookingDate = parsedDate.toISOString().split('T')[0];
+      bookingTime = timeInput || "09:00:00";
+      
+      // Create full timestamp for starts_at
+      const [hours, minutes] = bookingTime.split(':');
+      parsedDate.setHours(parseInt(hours) || 9, parseInt(minutes) || 0, 0, 0);
+      startsAt = parsedDate.toISOString();
+    } else {
+      bookingDate = new Date().toISOString().split('T')[0];
+      bookingTime = timeInput || "09:00:00";
+    }
+  } else {
+    bookingDate = new Date().toISOString().split('T')[0];
+    bookingTime = timeInput || "09:00:00";
   }
   
-  // 3. Send notification
+  // 1. Create lead record with booking context
+  const lead = await createLead(supabase, businessId, projectId, {
+    email: customerEmail,
+    name: customerName,
+    phone: customerPhone,
+    source: "booking_request",
+    message: notes,
+  });
+  
+  // 2. Create booking record with correct schema columns
+  let bookingId: string | null = null;
+  const bookingData = {
+    business_id: businessId,
+    customer_name: customerName,
+    customer_email: customerEmail,
+    customer_phone: customerPhone,
+    service_name: serviceName,
+    booking_date: bookingDate,
+    booking_time: bookingTime,
+    starts_at: startsAt,
+    duration_minutes: data.duration || 60,
+    notes: notes,
+    status: "pending",
+    metadata: {
+      leadId: lead.id,
+      projectId: projectId || null,
+      rawData: data,
+    },
+  };
+  
+  const { data: booking, error: bookingError } = await supabase
+    .from("bookings")
+    .insert(bookingData)
+    .select("id")
+    .single();
+  
+  if (bookingError) {
+    console.warn("[intent-router] Booking insert failed:", bookingError.message);
+  } else {
+    bookingId = booking?.id;
+    console.log("[intent-router] Booking created:", bookingId);
+  }
+  
+  // 3. Send notification email to business owner
   const bizSettings = await loadBusinessSettings(supabase, businessId);
   if (bizSettings?.notification_email) {
-    const subject = `New Booking Request${bizSettings.name ? ` - ${bizSettings.name}` : ""}`;
+    const subject = `New Booking: ${serviceName}${bizSettings.name ? ` - ${bizSettings.name}` : ""}`;
     const html = `
-      <h2>New Booking Request</h2>
-      <p><strong>Name:</strong> ${data.name || "Not provided"}</p>
-      <p><strong>Email:</strong> ${data.email || "Not provided"}</p>
-      <p><strong>Phone:</strong> ${data.phone || "Not provided"}</p>
-      <p><strong>Preferred Date:</strong> ${data.preferredDate || data.date || "Not specified"}</p>
-      <p><strong>Preferred Time:</strong> ${data.preferredTime || data.time || "Not specified"}</p>
-      <p><strong>Service:</strong> ${data.service || "Not specified"}</p>
-      <p><strong>Notes:</strong> ${data.notes || data.message || "None"}</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333; border-bottom: 2px solid #4f46e5; padding-bottom: 10px;">
+          New Booking Request
+        </h2>
+        
+        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #4f46e5;">Customer Details</h3>
+          <p><strong>Name:</strong> ${customerName || "Not provided"}</p>
+          <p><strong>Email:</strong> <a href="mailto:${customerEmail}">${customerEmail || "Not provided"}</a></p>
+          <p><strong>Phone:</strong> ${customerPhone ? `<a href="tel:${customerPhone}">${customerPhone}</a>` : "Not provided"}</p>
+        </div>
+        
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #16a34a;">Appointment Details</h3>
+          <p><strong>Service:</strong> ${serviceName}</p>
+          <p><strong>Date:</strong> ${bookingDate}</p>
+          <p><strong>Time:</strong> ${bookingTime}</p>
+          ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ""}
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <p style="color: #6b7280; font-size: 12px;">
+          ${bookingId ? `Booking ID: ${bookingId} | ` : ""}Lead ID: ${lead.id}<br/>
+          Reply to this email to contact the customer directly.
+        </p>
+      </div>
     `;
     
-    await sendNotificationEmail(bizSettings.notification_email, subject, html, data.email);
+    const emailSent = await sendNotificationEmail(
+      bizSettings.notification_email,
+      subject,
+      html,
+      customerEmail // Allow reply-to customer
+    );
+    
+    console.log("[intent-router] Booking notification email sent:", emailSent);
+  } else {
+    console.warn("[intent-router] No notification_email configured for business:", businessId);
   }
   
   return {
     success: true,
-    message: "Booking request received! We'll confirm your appointment soon.",
-    data: { leadId: lead.id },
+    message: "Booking confirmed! We'll send you a confirmation shortly.",
+    data: { 
+      leadId: lead.id,
+      bookingId: bookingId,
+      customerEmail: customerEmail,
+      date: bookingDate,
+      time: bookingTime,
+    },
   };
 }
 
