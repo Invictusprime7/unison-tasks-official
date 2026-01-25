@@ -188,50 +188,68 @@ async function createLead(
   projectId: string | undefined,
   data: Record<string, any>
 ) {
-  const leadData = {
+  // First try the 'leads' table (simpler schema)
+  const leadsData = {
     business_id: businessId,
-    project_id: projectId || null,
-    // Standard CRM fields
-    email: data.email || null,
+    email: data.email || "",
     name: data.name || data.fullName || null,
-    first_name: data.firstName || data.first_name || null,
-    last_name: data.lastName || data.last_name || null,
     phone: data.phone || data.phoneNumber || null,
-    company: data.company || data.organization || null,
     message: data.message || data.notes || null,
-    // Source tracking
     source: data.source || "website",
-    source_url: data.sourceUrl || null,
-    // Status
-    status: "new",
-    // Raw payload for extensibility
-    raw_data: data,
-    created_at: new Date().toISOString(),
+    metadata: {
+      projectId: projectId || null,
+      firstName: data.firstName || data.first_name || null,
+      lastName: data.lastName || data.last_name || null,
+      company: data.company || data.organization || null,
+      sourceUrl: data.sourceUrl || null,
+      rawData: data,
+    },
   };
   
   const { data: lead, error } = await supabase
     .from("leads")
-    .insert(leadData)
+    .insert(leadsData)
     .select()
     .single();
   
-  if (error) {
-    // Table might not exist - try crm_leads
-    const { data: crmLead, error: crmError } = await supabase
-      .from("crm_leads")
-      .insert(leadData)
-      .select()
-      .single();
-    
-    if (crmError) {
-      console.error("[intent-router] Failed to create lead:", crmError);
-      throw new Error("Failed to save lead");
-    }
-    
-    return crmLead;
+  if (!error) {
+    return lead;
   }
   
-  return lead;
+  console.log("[intent-router] leads insert failed, trying crm_leads:", error.message);
+  
+  // Fallback to crm_leads table (different schema)
+  const crmLeadsData = {
+    business_id: businessId,
+    email: data.email || null,
+    name: data.name || data.fullName || null,
+    status: "new",
+    source: data.source || "website",
+    notes: data.message || data.notes || null,
+    intent: data.intent || null,
+    metadata: {
+      projectId: projectId || null,
+      phone: data.phone || data.phoneNumber || null,
+      firstName: data.firstName || data.first_name || null,
+      lastName: data.lastName || data.last_name || null,
+      company: data.company || data.organization || null,
+      sourceUrl: data.sourceUrl || null,
+      rawData: data,
+    },
+  };
+  
+  const { data: crmLead, error: crmError } = await supabase
+    .from("crm_leads")
+    .insert(crmLeadsData)
+    .select()
+    .single();
+  
+  if (crmError) {
+    console.error("[intent-router] Failed to create lead:", crmError);
+    throw new Error("Failed to save lead");
+  }
+  
+  return crmLead;
 }
 
 // Record intent execution for audit/analytics
