@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Users, Settings, Trash2, ExternalLink, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, Plus, Users, Settings, Trash2, ExternalLink, Loader2, Paintbrush } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ interface Business {
 }
 
 export function CloudBusinesses({ userId }: CloudBusinessesProps) {
+  const navigate = useNavigate();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -59,6 +61,15 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  const openInBuilder = (business: Business) => {
+    navigate('/web-builder', {
+      state: {
+        businessId: business.id,
+        systemName: business.name,
+      }
+    });
+  };
 
   useEffect(() => {
     if (userId) {
@@ -317,13 +328,20 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
                   </div>
                   <div className="flex gap-2">
                     <Button 
-                      variant="outline" 
+                      variant="default" 
                       size="sm" 
                       className="flex-1"
+                      onClick={() => openInBuilder(business)}
+                    >
+                      <Paintbrush className="h-4 w-4 mr-2" />
+                      Open in Builder
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
                       onClick={() => openManageDialog(business)}
                     >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Manage
+                      <Settings className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="ghost" 
