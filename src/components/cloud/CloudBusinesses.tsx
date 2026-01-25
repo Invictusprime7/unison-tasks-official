@@ -54,6 +54,8 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
   const [editSlug, setEditSlug] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editIndustry, setEditIndustry] = useState('');
+  const [editNotificationEmail, setEditNotificationEmail] = useState('');
+  const [editNotificationPhone, setEditNotificationPhone] = useState('');
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -160,6 +162,8 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
     setEditSlug(business.slug || '');
     setEditWebsite(business.website || '');
     setEditIndustry(business.industry || '');
+    setEditNotificationEmail(business.notification_email || '');
+    setEditNotificationPhone(business.notification_phone || '');
     setManageOpen(true);
   };
 
@@ -172,9 +176,8 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
         .from('businesses')
         .update({
           name: editName,
-          slug: editSlug || editName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-          website: editWebsite || null,
-          industry: editIndustry || null,
+          notification_email: editNotificationEmail.trim() || null,
+          notification_phone: editNotificationPhone.trim() || null,
         })
         .eq('id', selectedBusiness.id)
         .select()
@@ -350,11 +353,49 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
               Update your business settings and information.
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-slate-800/50">
+          <Tabs defaultValue="notifications" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-slate-800/50">
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="team">Team</TabsTrigger>
             </TabsList>
+            <TabsContent value="notifications" className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="editNotificationEmail">Notification Email</Label>
+                <Input
+                  id="editNotificationEmail"
+                  type="email"
+                  value={editNotificationEmail}
+                  onChange={(e) => setEditNotificationEmail(e.target.value)}
+                  placeholder="bookings@yourdomain.com"
+                  className="bg-slate-800/50"
+                />
+                <p className="text-xs text-slate-400">
+                  New leads, bookings, and form submissions will be sent here.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editNotificationPhone">Notification Phone (optional)</Label>
+                <Input
+                  id="editNotificationPhone"
+                  type="tel"
+                  value={editNotificationPhone}
+                  onChange={(e) => setEditNotificationPhone(e.target.value)}
+                  placeholder="+1 555 123 4567"
+                  className="bg-slate-800/50"
+                />
+                <p className="text-xs text-slate-400">
+                  SMS alerts for urgent notifications (requires Twilio setup).
+                </p>
+              </div>
+              {selectedBusiness && !selectedBusiness.notification_email && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <p className="text-sm text-amber-400">
+                    ⚠️ No notification email configured. Email alerts for new bookings and leads won't be sent.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
             <TabsContent value="general" className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="editName">Business Name</Label>
@@ -363,36 +404,6 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="My Agency"
-                  className="bg-slate-800/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editSlug">URL Slug</Label>
-                <Input
-                  id="editSlug"
-                  value={editSlug}
-                  onChange={(e) => setEditSlug(e.target.value)}
-                  placeholder="my-agency"
-                  className="bg-slate-800/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editWebsite">Website</Label>
-                <Input
-                  id="editWebsite"
-                  value={editWebsite}
-                  onChange={(e) => setEditWebsite(e.target.value)}
-                  placeholder="https://example.com"
-                  className="bg-slate-800/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editIndustry">Industry</Label>
-                <Input
-                  id="editIndustry"
-                  value={editIndustry}
-                  onChange={(e) => setEditIndustry(e.target.value)}
-                  placeholder="Technology, Marketing, etc."
                   className="bg-slate-800/50"
                 />
               </div>
