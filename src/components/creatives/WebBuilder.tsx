@@ -2237,6 +2237,10 @@ ${body.innerHTML}
             <div className="flex-1 flex justify-center">
               <FloatingDock
                 onSelectTemplate={handleSelectTemplate}
+                onDemoTemplate={(code, name, systemType, templateId) => {
+                  handleSelectTemplate(code, name, systemType, templateId);
+                  toast.info(`Demo mode: ${name} - Interactions return mock responses`);
+                }}
                 onLoadTemplate={handleLoadTemplate}
                 onSaveTemplate={handleSaveTemplate}
                 currentCode={previewCode}
