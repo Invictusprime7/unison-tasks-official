@@ -95,15 +95,32 @@ function getSupabaseAdmin() {
 
 // Load business settings for notification dispatch
 async function loadBusinessSettings(supabase: any, businessId: string) {
+  // Only query columns that exist in the businesses table
   const { data, error } = await supabase
     .from("businesses")
-    .select("name, notification_email, notification_phone, timezone, settings")
+    .select("id, name, notification_email, notification_phone, owner_id")
     .eq("id", businessId)
     .maybeSingle();
   
   if (error) {
     console.error("[intent-router] Failed to load business settings:", error);
     return null;
+  }
+  
+  // If no notification_email is set, try to get the owner's email from auth
+  if (data && !data.notification_email && data.owner_id) {
+    console.log("[intent-router] No notification_email, checking owner profile...");
+    // Try to get owner's email from profiles or auth metadata
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", data.owner_id)
+      .maybeSingle();
+    
+    if (profile?.email) {
+      data.notification_email = profile.email;
+      console.log("[intent-router] Using owner profile email:", profile.email);
+    }
   }
   
   return data;
@@ -300,34 +317,63 @@ async function handleContactSubmit(
   projectId: string | undefined,
   data: Record<string, any>
 ): Promise<IntentResult> {
+  const customerEmail = data.email || data.customerEmail || "";
+  const customerName = data.name || data.firstName || data.customerName || "";
+  
   // 1. Create lead record
   const lead = await createLead(supabase, businessId, projectId, data);
   
   // 2. Load business settings for notification
   const bizSettings = await loadBusinessSettings(supabase, businessId);
+  const notificationEmail = bizSettings?.notification_email;
+  const businessName = bizSettings?.name || "Your Business";
   
   // 3. Send notification email to business owner
-  if (bizSettings?.notification_email) {
-    const subject = `New Contact Form Submission${bizSettings.name ? ` - ${bizSettings.name}` : ""}`;
+  if (notificationEmail) {
+    const subject = `New Contact: ${customerName || customerEmail} - ${businessName}`;
     const html = `
-      <h2>New Contact Form Submission</h2>
-      <p><strong>Name:</strong> ${data.name || data.firstName || "Not provided"}</p>
-      <p><strong>Email:</strong> ${data.email || "Not provided"}</p>
-      <p><strong>Phone:</strong> ${data.phone || "Not provided"}</p>
-      <p><strong>Message:</strong></p>
-      <p>${data.message || "No message"}</p>
-      <hr />
-      <p style="color: #666; font-size: 12px;">
-        Submitted via your website. Lead ID: ${lead.id}
-      </p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333; border-bottom: 2px solid #4f46e5; padding-bottom: 10px;">
+          New Contact Form Submission
+        </h2>
+        
+        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Name:</strong> ${customerName || "Not provided"}</p>
+          <p><strong>Email:</strong> <a href="mailto:${customerEmail}">${customerEmail || "Not provided"}</a></p>
+          <p><strong>Phone:</strong> ${data.phone ? `<a href="tel:${data.phone}">${data.phone}</a>` : "Not provided"}</p>
+        </div>
+        
+        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Message</h3>
+          <p>${data.message || "No message provided"}</p>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <p style="color: #6b7280; font-size: 12px;">
+          Lead ID: ${lead.id}<br/>
+          Reply to this email to contact them directly.
+        </p>
+      </div>
     `;
     
-    await sendNotificationEmail(
-      bizSettings.notification_email,
-      subject,
-      html,
-      data.email // reply to the submitter
-    );
+    await sendNotificationEmail(notificationEmail, subject, html, customerEmail);
+    console.log("[intent-router] Contact notification sent to:", notificationEmail);
+  } else {
+    console.warn("[intent-router] No notification_email for business:", businessId);
+  }
+  
+  // 4. Send confirmation to customer
+  if (customerEmail) {
+    const customerSubject = `Thanks for reaching out to ${businessName}`;
+    const customerHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">We received your message!</h2>
+        <p>Hi ${customerName || "there"},</p>
+        <p>Thank you for contacting ${businessName}. We've received your message and will get back to you as soon as possible.</p>
+        <p style="color: #6b7280; font-size: 14px;">Reference: ${lead.id}</p>
+      </div>
+    `;
+    await sendNotificationEmail(customerEmail, customerSubject, customerHtml, notificationEmail || undefined);
   }
   
   return {
@@ -480,10 +526,17 @@ async function handleBookingRequest(
     console.log("[intent-router] Booking created:", bookingId);
   }
   
-  // 3. Send notification email to business owner
+  // 3. Send notification email
   const bizSettings = await loadBusinessSettings(supabase, businessId);
-  if (bizSettings?.notification_email) {
-    const subject = `New Booking: ${serviceName}${bizSettings.name ? ` - ${bizSettings.name}` : ""}`;
+  let emailSent = false;
+  
+  // Determine notification target - use business email if available, otherwise use form email as fallback
+  const notificationEmail = bizSettings?.notification_email;
+  const businessName = bizSettings?.name || "Your Business";
+  
+  if (notificationEmail) {
+    // Send to business owner
+    const subject = `New Booking: ${serviceName} - ${businessName}`;
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333; border-bottom: 2px solid #4f46e5; padding-bottom: 10px;">
@@ -513,16 +566,53 @@ async function handleBookingRequest(
       </div>
     `;
     
-    const emailSent = await sendNotificationEmail(
-      bizSettings.notification_email,
+    emailSent = await sendNotificationEmail(
+      notificationEmail,
       subject,
       html,
-      customerEmail // Allow reply-to customer
+      customerEmail
     );
-    
-    console.log("[intent-router] Booking notification email sent:", emailSent);
+    console.log("[intent-router] Business notification email sent:", emailSent);
   } else {
     console.warn("[intent-router] No notification_email configured for business:", businessId);
+  }
+  
+  // Also send confirmation to customer if we have their email
+  if (customerEmail) {
+    const customerSubject = `Booking Confirmation: ${serviceName}`;
+    const customerHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333; border-bottom: 2px solid #16a34a; padding-bottom: 10px;">
+          Booking Confirmed!
+        </h2>
+        
+        <p>Hi ${customerName || "there"},</p>
+        <p>Thank you for booking with ${businessName}. Here are your appointment details:</p>
+        
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Service:</strong> ${serviceName}</p>
+          <p><strong>Date:</strong> ${bookingDate}</p>
+          <p><strong>Time:</strong> ${bookingTime}</p>
+          ${notes ? `<p><strong>Your Notes:</strong> ${notes}</p>` : ""}
+        </div>
+        
+        <p>We'll be in touch if we need to confirm or adjust your appointment.</p>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <p style="color: #6b7280; font-size: 12px;">
+          ${bookingId ? `Reference: ${bookingId}` : ""}<br/>
+          If you need to make changes, please reply to this email.
+        </p>
+      </div>
+    `;
+    
+    const customerEmailSent = await sendNotificationEmail(
+      customerEmail,
+      customerSubject,
+      customerHtml,
+      notificationEmail || undefined
+    );
+    console.log("[intent-router] Customer confirmation email sent:", customerEmailSent);
   }
   
   return {
@@ -545,27 +635,72 @@ async function handleQuoteRequest(
   projectId: string | undefined,
   data: Record<string, any>
 ): Promise<IntentResult> {
+  const customerEmail = data.email || data.customerEmail || "";
+  const customerName = data.name || data.customerName || "";
+  const customerPhone = data.phone || data.customerPhone || null;
+  
   // Create lead with quote context
   const lead = await createLead(supabase, businessId, projectId, {
-    ...data,
+    email: customerEmail,
+    name: customerName,
+    phone: customerPhone,
+    message: data.details || data.message || data.requirements || null,
     source: "quote_request",
   });
   
-  // Send notification
+  // Load business settings
   const bizSettings = await loadBusinessSettings(supabase, businessId);
-  if (bizSettings?.notification_email) {
-    const subject = `New Quote Request${bizSettings.name ? ` - ${bizSettings.name}` : ""}`;
+  const notificationEmail = bizSettings?.notification_email;
+  const businessName = bizSettings?.name || "Your Business";
+  
+  // Send notification to business
+  if (notificationEmail) {
+    const subject = `New Quote Request - ${businessName}`;
     const html = `
-      <h2>New Quote Request</h2>
-      <p><strong>Name:</strong> ${data.name || "Not provided"}</p>
-      <p><strong>Email:</strong> ${data.email || "Not provided"}</p>
-      <p><strong>Phone:</strong> ${data.phone || "Not provided"}</p>
-      <p><strong>Company:</strong> ${data.company || "Not provided"}</p>
-      <p><strong>Details:</strong></p>
-      <p>${data.details || data.message || data.requirements || "No details provided"}</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333; border-bottom: 2px solid #f59e0b; padding-bottom: 10px;">
+          New Quote Request
+        </h2>
+        
+        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #4f46e5;">Customer Details</h3>
+          <p><strong>Name:</strong> ${customerName || "Not provided"}</p>
+          <p><strong>Email:</strong> <a href="mailto:${customerEmail}">${customerEmail || "Not provided"}</a></p>
+          <p><strong>Phone:</strong> ${customerPhone ? `<a href="tel:${customerPhone}">${customerPhone}</a>` : "Not provided"}</p>
+          <p><strong>Company:</strong> ${data.company || "Not provided"}</p>
+        </div>
+        
+        <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #92400e;">Quote Details</h3>
+          <p>${data.details || data.message || data.requirements || "No details provided"}</p>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <p style="color: #6b7280; font-size: 12px;">
+          Lead ID: ${lead.id}<br/>
+          Reply to this email to contact them directly.
+        </p>
+      </div>
     `;
     
-    await sendNotificationEmail(bizSettings.notification_email, subject, html, data.email);
+    await sendNotificationEmail(notificationEmail, subject, html, customerEmail);
+    console.log("[intent-router] Quote notification sent to:", notificationEmail);
+  } else {
+    console.warn("[intent-router] No notification_email for business:", businessId);
+  }
+  
+  // Send confirmation to customer
+  if (customerEmail) {
+    const customerSubject = `Quote Request Received - ${businessName}`;
+    const customerHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">We've received your quote request!</h2>
+        <p>Hi ${customerName || "there"},</p>
+        <p>Thank you for reaching out to ${businessName}. We've received your quote request and will get back to you with a personalized quote as soon as possible.</p>
+        <p style="color: #6b7280; font-size: 14px;">Reference: ${lead.id}</p>
+      </div>
+    `;
+    await sendNotificationEmail(customerEmail, customerSubject, customerHtml, notificationEmail || undefined);
   }
   
   return {
