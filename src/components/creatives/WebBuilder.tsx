@@ -12,6 +12,7 @@ import {
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
   FolderOpen, Cloud, CloudOff
 } from "lucide-react";
+import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { SimplePreview } from '@/components/SimplePreview';
@@ -2022,6 +2023,10 @@ ${body.innerHTML}
                 <TabsTrigger value="templates" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Templates</TabsTrigger>
                 <TabsTrigger value="functional" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Functional</TabsTrigger>
                 <TabsTrigger value="projects" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Projects</TabsTrigger>
+                <TabsTrigger value="cloud" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Cloud className="h-3 w-3 mr-1" />
+                  Cloud
+                </TabsTrigger>
                 <TabsTrigger value="health" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Health</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
@@ -2162,6 +2167,13 @@ ${body.innerHTML}
                   onLoadTemplate={handleLoadTemplate}
                   onSaveTemplate={handleSaveTemplate}
                   currentCode={previewCode}
+                />
+              </TabsContent>
+              <TabsContent value="cloud" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <CloudPanel
+                  businessId={cloudState.business.id}
+                  businessName={cloudState.business.name}
+                  onNavigateToCloud={() => navigate('/cloud')}
                 />
               </TabsContent>
             </Tabs>
