@@ -12,7 +12,8 @@ export type LayoutCategory =
   | "blog"
   | "contractor"
   | "agency"
-  | "startup";
+  | "startup"
+  | "salon";  // Added for beauty/spa industry
 
 // NEW: Business System Types
 export type BusinessSystemType =
@@ -58,7 +59,7 @@ export const businessSystems: BusinessSystem[] = [
     description: "Perfect for restaurants, salons, contractors, and service businesses. Includes calendar, appointments, and lead capture.",
     icon: "📅",
     color: "bg-blue-500",
-    templateCategories: ["restaurant", "contractor"],
+    templateCategories: ["restaurant", "contractor", "salon"],
     features: ["Online booking", "Calendar sync", "Lead capture", "Email notifications", "Payment collection"],
     intents: ["booking.create", "contact.submit", "quote.request", "newsletter.subscribe"]
   },

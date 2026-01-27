@@ -21,10 +21,74 @@ export { systemContracts, getSystemContract, isRequiredIntent, getDemoResponse }
 export type { TemplateManifest, ProvisioningStatus, TableRequirement, WorkflowRequirement, IntentRequirement } from './manifest';
 export { templateManifests, getTemplateManifest, getDefaultManifestForSystem, validateManifest, getRequiredTables, getRequiredIntents } from './manifest';
 
+// Industry Profiles (Phase 8 - Industry Differentiation)
+export type { 
+  IndustryType, 
+  IndustryProfile, 
+  SectionType, 
+  ConversionObject, 
+  ConversionObjectType,
+  IndustryThemePreset 
+} from './industryProfiles';
+export { 
+  industryProfiles, 
+  getIndustryProfile, 
+  isSectionAllowed, 
+  isSectionExclusive,
+  isIntentAllowed,
+  getLayoutGrammar,
+  getConversionObject,
+  getThemePreset,
+  industryToSystemType,
+  getIndustriesForSystem
+} from './industryProfiles';
+
+// Industry Validator
+export type { ValidationResult, ValidationIssue, TemplateForValidation } from './industryValidator';
+export { 
+  validateTemplate, 
+  canAddSection, 
+  canUseIntent, 
+  getSuggestedSections,
+  getCorrectIntentForCta 
+} from './industryValidator';
+
+// Industry Theme System
+export type { ThemeTokens, IndustryTheme, ImageryGuidance, ColorMoodPalette } from './industryTheme';
+export {
+  generateThemeTokens,
+  generateIndustryTheme,
+  generateCssString,
+  getImageryGuidance,
+  getColorMoodPalette,
+  getSectionStyles,
+  getCardStyles,
+  getButtonStyles
+} from './industryTheme';
+
+// Industry Prompt Generator (AI Integration)
+export type { IndustryPromptContext, GeneratedPrompt } from './industryPromptGenerator';
+export {
+  generateIndustryPrompt,
+  generateSectionPrompt,
+  generateValidationPrompt,
+  generateAutoFixPrompt,
+  generateSectionSuggestionPrompt
+} from './industryPromptGenerator';
+
 // Utilities
 export { wrapInHtmlDoc } from './utils';
 
-// Industry Templates
+// Advanced CSS System
+export { 
+  ADVANCED_CSS, 
+  INDUSTRY_COLOR_PALETTES, 
+  generateIndustryCss,
+  SCROLL_REVEAL_SCRIPT,
+  INTERACTIVE_SCRIPT 
+} from './advancedCss';
+
+// Industry Templates (Standard)
 export { landingTemplates } from './landing';
 export { portfolioTemplates } from './portfolio';
 export { restaurantTemplates } from './restaurant';
@@ -33,6 +97,15 @@ export { blogTemplates } from './blog';
 export { contractorTemplates } from './contractor';
 export { agencyTemplates } from './agency';
 export { startupTemplates } from './startup';
+
+// Industry Templates (Premium)
+export { premiumRestaurantTemplates } from './restaurant/premium';
+export { salonTemplates } from './salon';
+export { premiumAgencyTemplates } from './agency/premium';
+export { premiumEcommerceTemplates } from './ecommerce/premium';
+export { premiumContractorTemplates } from './contractor/premium';
+export { medicalTemplates } from './medical';
+export { saasTemplates } from './saas';
 
 // Import all templates for aggregation
 import { landingTemplates } from './landing';
@@ -43,13 +116,24 @@ import { blogTemplates } from './blog';
 import { contractorTemplates } from './contractor';
 import { agencyTemplates } from './agency';
 import { startupTemplates } from './startup';
+
+// Premium templates
+import { premiumRestaurantTemplates } from './restaurant/premium';
+import { salonTemplates } from './salon';
+import { premiumAgencyTemplates } from './agency/premium';
+import { premiumEcommerceTemplates } from './ecommerce/premium';
+import { premiumContractorTemplates } from './contractor/premium';
+import { medicalTemplates } from './medical';
+import { saasTemplates } from './saas';
 import type { LayoutCategory, LayoutTemplate, BusinessSystemType } from './types';
 import { businessSystems } from './types';
 
 /**
  * All layout templates aggregated from industry folders
+ * Includes both standard and premium templates
  */
 export const layoutTemplates: LayoutTemplate[] = [
+  // Standard templates
   ...landingTemplates,
   ...portfolioTemplates,
   ...restaurantTemplates,
@@ -58,6 +142,14 @@ export const layoutTemplates: LayoutTemplate[] = [
   ...contractorTemplates,
   ...agencyTemplates,
   ...startupTemplates,
+  // Premium templates
+  ...premiumRestaurantTemplates,
+  ...salonTemplates,
+  ...premiumAgencyTemplates,
+  ...premiumEcommerceTemplates,
+  ...premiumContractorTemplates,
+  ...medicalTemplates,
+  ...saasTemplates,
 ];
 
 /**
