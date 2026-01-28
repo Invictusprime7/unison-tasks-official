@@ -112,6 +112,68 @@ Deno.serve(async (req) => {
       }
     }
 
+    // =========================================================================
+    // Process new automation system jobs (automation_jobs table)
+    // =========================================================================
+    const { data: automationJobs, error: autoJobError } = await supabase
+      .from("automation_jobs")
+      .select("id, run_id, node_id")
+      .eq("status", "queued")
+      .lte("execute_at", now.toISOString())
+      .limit(100);
+
+    if (!autoJobError && automationJobs?.length) {
+      console.log(`Found ${automationJobs.length} automation jobs to process`);
+      
+      // Group by run_id
+      const runIds = [...new Set(automationJobs.map(j => j.run_id))];
+      
+      for (const runId of runIds) {
+        const job = automationJobs.find(j => j.run_id === runId);
+        if (job) {
+          console.log(`Resuming automation run: ${runId} from node: ${job.node_id}`);
+          
+          // Mark job as processing
+          await supabase
+            .from("automation_jobs")
+            .update({ status: "processing" })
+            .eq("id", job.id);
+          
+          // Resume the automation run
+          await supabase.functions.invoke("automation-runtime", {
+            body: { runId, resumeFromNodeId: job.node_id },
+          });
+          
+          // Mark job as completed
+          await supabase
+            .from("automation_jobs")
+            .update({ status: "completed", processed_at: now.toISOString() })
+            .eq("id", job.id);
+        }
+      }
+    }
+
+    // =========================================================================
+    // Resume paused automation runs that are due
+    // =========================================================================
+    const { data: pausedRuns, error: pausedError } = await supabase
+      .from("automation_runs")
+      .select("id, current_node_id")
+      .eq("status", "paused")
+      .lte("paused_until", now.toISOString())
+      .limit(50);
+
+    if (!pausedError && pausedRuns?.length) {
+      console.log(`Found ${pausedRuns.length} paused automation runs to resume`);
+      
+      for (const run of pausedRuns) {
+        console.log(`Resuming paused run: ${run.id}`);
+        await supabase.functions.invoke("automation-runtime", {
+          body: { runId: run.id, resumeFromNodeId: run.current_node_id },
+        });
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

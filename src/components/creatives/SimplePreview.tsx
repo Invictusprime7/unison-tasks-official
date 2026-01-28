@@ -1844,7 +1844,7 @@ const SMART_NAVIGATION_SCRIPT = `
       return;
     }
     
-    // No intent - show themed overlay for navigation
+    // No intent - handle navigation for links, run button automations for buttons
     if (link) {
       e.preventDefault();
       e.stopPropagation();
@@ -1852,25 +1852,52 @@ const SMART_NAVIGATION_SCRIPT = `
       const href = link.getAttribute('href');
       console.log('[Preview] Link clicked (no intent):', href);
       
+      // Check for internal navigation patterns
+      if (href && (href.startsWith('#') || href.startsWith('/'))) {
+        // Internal navigation - try to scroll to anchor or handle as page nav
+        if (href.startsWith('#')) {
+          const target = document.querySelector(href);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+            return;
+          }
+        }
+        // Page navigation - trigger nav intent
+        triggerIntent('nav.goto', { path: href, text: text }, link);
+        return;
+      }
+      
+      // External links - open in new tab or trigger external nav intent
+      if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+        triggerIntent('nav.external', { url: href, text: text }, link);
+        return;
+      }
+      
+      // Fallback: show overlay for complex navigation
       if (!theme) theme = extractTheme();
       const navType = detectNavigationType(link, href);
       createRedirectOverlay(navType, theme, text, href);
     } else if (button) {
+      // BUTTONS: No overlay - fire automation event or show visual feedback
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('[Preview] Button clicked (no intent):', text);
+      console.log('[Preview] Button clicked - triggering automation:', text);
       
-      if (!theme) theme = extractTheme();
-      const navType = detectNavigationType(button, '');
+      // Infer intent from button context/text for automation routing
+      const buttonId = button.id || button.getAttribute('data-button-id') || '';
+      const buttonType = button.getAttribute('type') || 'button';
+      const ariaLabel = button.getAttribute('aria-label') || '';
       
-      if (navType.type !== 'page') {
-        createRedirectOverlay(navType, theme, text, '');
-      } else {
-        // Just show visual feedback for generic buttons
-        button.style.opacity = '0.7';
-        setTimeout(function() { button.style.opacity = '1'; }, 150);
-      }
+      // Fire a generic button automation event that the automation engine can route
+      triggerIntent('button.click', {
+        buttonId: buttonId,
+        buttonLabel: text,
+        buttonType: buttonType,
+        ariaLabel: ariaLabel,
+        classList: button.className || '',
+        timestamp: new Date().toISOString()
+      }, button);
     }
   }, true);
   
@@ -1905,20 +1932,42 @@ const SMART_NAVIGATION_SCRIPT = `
       return;
     }
     
-    // No intent - show fallback overlay
+    // No explicit intent - infer from form and fire automation event (no overlay)
     e.preventDefault();
     e.stopPropagation();
-    console.log('[Preview] Form submit (no intent)');
     
-    if (!theme) theme = extractTheme();
+    console.log('[Preview] Form submit - triggering automation');
     
+    // Collect form data
+    const payload = {};
+    new FormData(form).forEach(function(v, k) { if (typeof v === 'string') payload[k] = v; });
+    
+    // Determine form type from structure
+    const hasEmail = form.querySelector('input[type="email"]');
+    const hasPhone = form.querySelector('input[type="tel"]');
     const hasPassword = form.querySelector('input[type="password"]');
-    let navType = NAV_PATTERNS.contact;
+    const hasDate = form.querySelector('input[type="date"], input[type="datetime-local"]');
+    
+    let formIntent = 'form.submit'; // Default generic form intent
+    
     if (hasPassword) {
-      navType = NAV_PATTERNS.auth;
+      formIntent = 'auth.login';
+    } else if (hasDate && (hasEmail || hasPhone)) {
+      formIntent = 'booking.create';
+    } else if (hasEmail && !hasPhone) {
+      formIntent = 'newsletter.subscribe';
+    } else if (hasEmail || hasPhone) {
+      formIntent = 'contact.submit';
     }
     
-    createRedirectOverlay(navType, theme, 'Form Submitted', '');
+    // Fire the automation intent
+    triggerIntent(formIntent, {
+      ...payload,
+      formId: form.id || '',
+      formName: form.getAttribute('name') || form.getAttribute('aria-label') || '',
+      formAction: form.getAttribute('action') || '',
+      timestamp: new Date().toISOString()
+    }, form.querySelector('button[type="submit"]'));
   }, true);
   
   console.log('[Preview] Smart navigation system initialized');

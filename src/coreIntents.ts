@@ -9,6 +9,7 @@
  * - NAV_INTENTS: Client-side routing (no backend needed)
  * - PAY_INTENTS: Payment redirects (backend creates checkout session)
  * - ACTION_INTENTS: Business workflows (CRM, notifications, etc.)
+ * - AUTOMATION_INTENTS: Event-driven automation triggers
  */
 
 // Navigation intents - handle routing within projects (CLIENT-SIDE)
@@ -31,6 +32,29 @@ export const ACTION_INTENTS = [
   'newsletter.subscribe',
   'booking.create',
   'quote.request',
+  'lead.capture',
+] as const;
+
+// Automation intents - event-driven workflow triggers
+export const AUTOMATION_INTENTS = [
+  'button.click',     // Generic button automation trigger
+  'form.submit',      // Generic form automation trigger  
+  'auth.login',       // Auth form submission
+  'auth.register',    // Registration form
+  'cart.add',         // Add to cart
+  'cart.checkout',    // Begin checkout
+  'cart.abandoned',   // Cart abandonment (timer-based)
+  'booking.confirmed', // Booking confirmed
+  'booking.reminder',  // Booking reminder trigger
+  'booking.cancelled', // Booking cancelled
+  'booking.noshow',    // No-show event
+  'order.created',     // Order placed
+  'order.shipped',     // Order shipped
+  'order.delivered',   // Order delivered
+  'deal.won',          // Deal closed won
+  'deal.lost',         // Deal closed lost
+  'proposal.sent',     // Proposal sent to prospect
+  'job.completed',     // Job/service completed
 ] as const;
 
 // Combined core intents
@@ -38,11 +62,13 @@ export const CORE_INTENTS = [
   ...NAV_INTENTS,
   ...PAY_INTENTS,
   ...ACTION_INTENTS,
+  ...AUTOMATION_INTENTS,
 ] as const;
 
 export type NavIntent = (typeof NAV_INTENTS)[number];
 export type PayIntent = (typeof PAY_INTENTS)[number];
 export type ActionIntent = (typeof ACTION_INTENTS)[number];
+export type AutomationIntent = (typeof AUTOMATION_INTENTS)[number];
 export type CoreIntent = (typeof CORE_INTENTS)[number];
 
 export function isCoreIntent(intent: string): intent is CoreIntent {
@@ -59,4 +85,8 @@ export function isPayIntent(intent: string): intent is PayIntent {
 
 export function isActionIntent(intent: string): intent is ActionIntent {
   return (ACTION_INTENTS as readonly string[]).includes(intent);
+}
+
+export function isAutomationIntent(intent: string): intent is AutomationIntent {
+  return (AUTOMATION_INTENTS as readonly string[]).includes(intent);
 }

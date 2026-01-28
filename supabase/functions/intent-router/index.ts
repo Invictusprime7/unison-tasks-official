@@ -47,17 +47,41 @@ const ACTION_INTENTS = [
   "lead.capture",
 ] as const;
 
+// Automation intents - event-driven workflow triggers
+const AUTOMATION_INTENTS = [
+  "button.click",
+  "form.submit",
+  "auth.login",
+  "auth.register",
+  "cart.add",
+  "cart.checkout",
+  "cart.abandoned",
+  "booking.confirmed",
+  "booking.reminder",
+  "booking.cancelled",
+  "booking.noshow",
+  "order.created",
+  "order.shipped",
+  "order.delivered",
+  "deal.won",
+  "deal.lost",
+  "proposal.sent",
+  "job.completed",
+] as const;
+
 // Core Intents that are allowed in production
 const CORE_INTENTS = [
   ...NAV_INTENTS,
   ...PAY_INTENTS,
   ...ACTION_INTENTS,
+  ...AUTOMATION_INTENTS,
 ] as const;
 
 type CoreIntent = typeof CORE_INTENTS[number];
 type NavIntent = typeof NAV_INTENTS[number];
 type PayIntent = typeof PAY_INTENTS[number];
 type ActionIntent = typeof ACTION_INTENTS[number];
+type AutomationIntent = typeof AUTOMATION_INTENTS[number];
 
 interface IntentPayload {
   intent: string;
@@ -746,6 +770,59 @@ async function handleCTA(
   };
 }
 
+// Handle button.click intent - generic button automation trigger
+async function handleButtonClick(
+  supabase: any,
+  businessId: string,
+  projectId: string | undefined,
+  data: Record<string, any>
+): Promise<IntentResult> {
+  const buttonId = data.buttonId || data.button_id || "";
+  const buttonLabel = data.buttonLabel || data.button_label || "";
+  const buttonType = data.buttonType || data.button_type || "button";
+  
+  // Record the button click for analytics
+  await supabase.from("button_clicks").insert({
+    business_id: businessId,
+    project_id: projectId || null,
+    button_id: buttonId,
+    button_label: buttonLabel,
+    button_type: buttonType,
+    button_class: data.classList || null,
+    aria_label: data.ariaLabel || null,
+    visitor_id: data.visitorId || null,
+    metadata: data,
+    created_at: new Date().toISOString(),
+  }).catch((err: any) => {
+    // Table might not exist - that's okay, log and continue
+    console.log("[intent-router] button_clicks table not available:", err.message);
+  });
+  
+  // If button has contact data, create a lead
+  if (data.email || data.phone || data.name) {
+    try {
+      const lead = await createLead(supabase, businessId, projectId, {
+        ...data,
+        source: `button_${buttonId || buttonLabel || 'click'}`,
+      });
+      return {
+        success: true,
+        message: "Button action processed",
+        data: { buttonId, buttonLabel, leadId: lead?.id },
+      };
+    } catch (err) {
+      console.warn("[intent-router] Lead creation from button failed:", err);
+    }
+  }
+  
+  // Button click recorded - automation engine will handle workflows
+  return {
+    success: true,
+    message: "Button action recorded",
+    data: { buttonId, buttonLabel, buttonType },
+  };
+}
+
 // Main intent router
 async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
   const supabase = getSupabaseAdmin();
@@ -811,6 +888,22 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
         result = { success: true, message: "Intent recorded" };
         break;
       
+      case "button.click":
+        // Generic button click - route to automation engine
+        result = await handleButtonClick(supabase, payload.businessId, payload.projectId, payload.data);
+        break;
+      
+      case "form.submit":
+        // Generic form submission - treat as lead capture
+        result = await handleContactSubmit(supabase, payload.businessId, payload.projectId, payload.data);
+        break;
+      
+      case "auth.login":
+      case "auth.register":
+        // Auth intents - record but don't process (handled by auth system)
+        result = { success: true, message: "Auth intent recorded", data: { handled: false } };
+        break;
+      
       default:
         // Unknown intent - record as generic lead if it has contact info
         if (payload.data.email || payload.data.phone) {
@@ -833,7 +926,51 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
   const durationMs = Date.now() - startTime;
   await recordIntentExecution(supabase, payload, result, durationMs);
   
+  // Trigger automation event for workflow processing
+  if (result.success) {
+    try {
+      await triggerAutomationEvent(supabase, payload, result);
+    } catch (autoErr) {
+      console.warn("[intent-router] Automation trigger failed (non-blocking):", autoErr);
+    }
+  }
+  
   return result;
+}
+
+// Trigger automation event for workflow processing
+async function triggerAutomationEvent(
+  supabase: any,
+  payload: IntentPayload,
+  result: IntentResult
+) {
+  // Create automation event for the intent
+  const dedupeKey = `${payload.businessId}:${payload.intent}:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+  
+  // Fire the automation event
+  const { error } = await supabase.functions.invoke("automation-event", {
+    body: {
+      businessId: payload.businessId,
+      intent: payload.intent,
+      payload: {
+        ...payload.data,
+        projectId: payload.projectId,
+        source: payload.source,
+        sourceUrl: payload.sourceUrl,
+        visitorId: payload.visitorId,
+        intentResult: result.data,
+      },
+      dedupeKey,
+      source: payload.source || "template",
+      sourceUrl: payload.sourceUrl,
+    },
+  });
+  
+  if (error) {
+    console.warn("[intent-router] Failed to trigger automation event:", error);
+  } else {
+    console.log("[intent-router] Automation event triggered for:", payload.intent);
+  }
 }
 
 // HTTP server

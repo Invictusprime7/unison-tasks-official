@@ -10,4 +10,5 @@ export { CloudProjects } from './CloudProjects';
 export { CloudAssets } from './CloudAssets';
 export { CloudEmail } from './CloudEmail';
 export { CloudIntegrations } from './CloudIntegrations';
+export { CloudAutomations } from './CloudAutomations';
 export { EntitlementGate } from './EntitlementGate';
