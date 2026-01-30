@@ -89,6 +89,86 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_events: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          dedupe_key: string | null
+          id: string
+          intent: string
+          payload: Json | null
+          processed_at: string | null
+          status: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          dedupe_key?: string | null
+          id?: string
+          intent: string
+          payload?: Json | null
+          processed_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          dedupe_key?: string | null
+          id?: string
+          intent?: string
+          payload?: Json | null
+          processed_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_recipe_packs: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          industry: string
+          is_published: boolean | null
+          name: string
+          pack_id: string
+          recipes: Json | null
+          tier: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          industry: string
+          is_published?: boolean | null
+          name: string
+          pack_id?: string
+          recipes?: Json | null
+          tier?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          industry?: string
+          is_published?: boolean | null
+          name?: string
+          pack_id?: string
+          recipes?: Json | null
+          tier?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       availability_slots: {
         Row: {
           business_id: string
@@ -242,6 +322,86 @@ export type Database = {
           },
         ]
       }
+      business_automation_settings: {
+        Row: {
+          automations_enabled: boolean | null
+          business_days: number[] | null
+          business_hours_enabled: boolean | null
+          business_hours_end: string | null
+          business_hours_start: string | null
+          business_id: string
+          created_at: string | null
+          dedupe_window_minutes: number | null
+          default_sender_email: string | null
+          default_sender_name: string | null
+          default_sender_phone: string | null
+          honor_stop_keywords: boolean | null
+          id: string
+          max_messages_per_contact_per_day: number | null
+          quiet_hours_enabled: boolean | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          require_consent_for_email: boolean | null
+          require_consent_for_sms: boolean | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          automations_enabled?: boolean | null
+          business_days?: number[] | null
+          business_hours_enabled?: boolean | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          business_id: string
+          created_at?: string | null
+          dedupe_window_minutes?: number | null
+          default_sender_email?: string | null
+          default_sender_name?: string | null
+          default_sender_phone?: string | null
+          honor_stop_keywords?: boolean | null
+          id?: string
+          max_messages_per_contact_per_day?: number | null
+          quiet_hours_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          require_consent_for_email?: boolean | null
+          require_consent_for_sms?: boolean | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          automations_enabled?: boolean | null
+          business_days?: number[] | null
+          business_hours_enabled?: boolean | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          business_id?: string
+          created_at?: string | null
+          dedupe_window_minutes?: number | null
+          default_sender_email?: string | null
+          default_sender_name?: string | null
+          default_sender_phone?: string | null
+          honor_stop_keywords?: boolean | null
+          id?: string
+          max_messages_per_contact_per_day?: number | null
+          quiet_hours_enabled?: boolean | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          require_consent_for_email?: boolean | null
+          require_consent_for_sms?: boolean | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_automation_settings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_design_preferences: {
         Row: {
           business_id: string
@@ -319,6 +479,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      business_recipe_toggles: {
+        Row: {
+          business_id: string
+          custom_config: Json | null
+          enabled: boolean | null
+          id: string
+          recipe_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          business_id: string
+          custom_config?: Json | null
+          enabled?: boolean | null
+          id?: string
+          recipe_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string
+          custom_config?: Json | null
+          enabled?: boolean | null
+          id?: string
+          recipe_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_recipe_toggles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       businesses: {
         Row: {
@@ -1295,6 +1490,45 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      installed_recipe_packs: {
+        Row: {
+          business_id: string
+          enabled: boolean | null
+          id: string
+          installed_at: string | null
+          pack_id: string
+        }
+        Insert: {
+          business_id: string
+          enabled?: boolean | null
+          id?: string
+          installed_at?: string | null
+          pack_id: string
+        }
+        Update: {
+          business_id?: string
+          enabled?: boolean | null
+          id?: string
+          installed_at?: string | null
+          pack_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installed_recipe_packs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installed_recipe_packs_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "automation_recipe_packs"
+            referencedColumns: ["pack_id"]
+          },
+        ]
       }
       intent_bindings: {
         Row: {
