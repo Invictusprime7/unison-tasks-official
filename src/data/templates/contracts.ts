@@ -103,6 +103,11 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         message: '✅ Quote request submitted',
         data: { quoteId: 'QT-BOOK-1' },
       },
+      'lead.capture': {
+        success: true,
+        message: '✅ Thank you! We\'ll be in touch soon',
+        data: { leadId: 'LEAD-BOOK-1' },
+      },
     },
   },
 
@@ -160,6 +165,11 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         success: true,
         message: '✅ Subscribed to updates!',
         data: { subscriberId: 'SUB-PORT-1' },
+      },
+      'lead.capture': {
+        success: true,
+        message: '✅ Thank you for your interest!',
+        data: { leadId: 'LEAD-PORT-1' },
       },
     },
   },
@@ -219,6 +229,11 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         message: '✅ Bulk order quote requested',
         data: { quoteId: 'QT-STORE-1' },
       },
+      'lead.capture': {
+        success: true,
+        message: '✅ Thank you! We\'ll notify you of deals',
+        data: { leadId: 'LEAD-STORE-1' },
+      },
     },
   },
 
@@ -276,6 +291,11 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         success: true,
         message: '✅ Subscribed to agency updates!',
         data: { subscriberId: 'SUB-AGENCY-1' },
+      },
+      'lead.capture': {
+        success: true,
+        message: '✅ Thank you! A strategist will contact you',
+        data: { leadId: 'LEAD-AGENCY-1' },
       },
     },
   },
@@ -335,6 +355,11 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         message: '✅ Sponsorship inquiry received',
         data: { quoteId: 'QT-CONTENT-1' },
       },
+      'lead.capture': {
+        success: true,
+        message: '✅ Thanks for reaching out!',
+        data: { leadId: 'LEAD-CONTENT-1' },
+      },
     },
   },
 
@@ -392,6 +417,11 @@ export const systemContracts: Record<BusinessSystemType, SystemContract> = {
         success: true,
         message: '✅ Enterprise quote requested',
         data: { quoteId: 'QT-SAAS-1' },
+      },
+      'lead.capture': {
+        success: true,
+        message: '✅ Thanks! We\'ll reach out shortly',
+        data: { leadId: 'LEAD-SAAS-2' },
       },
     },
   },

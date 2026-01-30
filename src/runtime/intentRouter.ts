@@ -54,6 +54,7 @@ const ACTION_HANDLERS: Record<ActionIntent, BackendHandler> = {
   'contact.submit': 'create-lead',
   'newsletter.subscribe': 'create-lead',
   'quote.request': 'create-lead',
+  'lead.capture': 'create-lead',
   'booking.create': 'create-booking',
 };
 
@@ -61,6 +62,7 @@ const LEAD_SOURCE_MAP: Record<ActionIntent, string> = {
   'contact.submit': 'contact_form',
   'newsletter.subscribe': 'newsletter',
   'quote.request': 'quote_request',
+  'lead.capture': 'lead_capture',
   'booking.create': 'booking',
 };
 
