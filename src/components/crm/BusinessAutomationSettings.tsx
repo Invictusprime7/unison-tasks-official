@@ -237,7 +237,48 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
   }
 
   async function installPack(packId: string) {
+    const pack = recipePacks.find(p => p.pack_id === packId);
+    if (!pack) {
+      toast.error("Pack not found");
+      return;
+    }
+
     try {
+      setSaving(true);
+      
+      // Map industry to system type for install-system
+      const industryToSystemType: Record<string, string> = {
+        salon: 'booking',
+        restaurant: 'booking',
+        contractor: 'booking',
+        agency: 'agency',
+        startup: 'saas',
+        ecommerce: 'store',
+        blog: 'content',
+        landing: 'content',
+        portfolio: 'portfolio',
+        general: 'agency',
+      };
+      
+      const systemType = industryToSystemType[pack.industry] || 'agency';
+      
+      // Call install-system to properly set up all dependencies
+      const { data: installData, error: installError } = await supabase.functions.invoke('install-system', {
+        body: {
+          systemType,
+          businessName: pack.name,
+          templateCategory: pack.industry,
+        }
+      });
+      
+      if (installError) {
+        console.error("Error calling install-system:", installError);
+        // Fallback to simple pack install
+      } else {
+        console.log("System installed:", installData);
+      }
+      
+      // Install the recipe pack
       const { error } = await supabase
         .from("installed_recipe_packs")
         .upsert({
@@ -249,11 +290,32 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
 
       if (error) throw error;
 
+      // Enable all recipes in the pack by default
+      if (pack.recipes?.length > 0) {
+        const recipeInserts = pack.recipes.map(recipe => ({
+          business_id: businessId,
+          recipe_id: recipe.id,
+          enabled: true,
+          updated_at: new Date().toISOString(),
+        }));
+        
+        await supabase
+          .from("business_recipe_toggles")
+          .upsert(recipeInserts);
+        
+        // Update local state
+        const newToggles: Record<string, boolean> = {};
+        pack.recipes.forEach(r => { newToggles[r.id] = true; });
+        setRecipeToggles(prev => ({ ...prev, ...newToggles }));
+      }
+
       setInstalledPacks((prev) => [...prev, packId]);
-      toast.success("Recipe pack installed");
+      toast.success(`${pack.name} installed with all dependencies`);
     } catch (err) {
       console.error("Error installing pack:", err);
       toast.error("Failed to install pack");
+    } finally {
+      setSaving(false);
     }
   }
 
