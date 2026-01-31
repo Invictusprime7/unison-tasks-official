@@ -21,6 +21,7 @@ interface InstallRequest {
   businessName?: string;
   templateCategory?: string;
   designPreset?: string;
+  businessId?: string; // Use existing business if provided
 }
 
 function json(status: number, body: unknown) {
@@ -105,28 +106,52 @@ serve(async (req) => {
     if (!systemType) return json(400, { success: false, error: "systemType is required" });
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
+    
+    let businessId: string;
+    let businessCreated = false;
 
-    // 1) Create a business owned by the user
-    const businessName = body.businessName || body.templateName || "New Business";
-    const { data: business, error: businessError } = await admin
-      .from("businesses")
-      .insert({ owner_id: userId, name: businessName })
-      .select("id")
-      .single();
+    // 1) Use existing business if provided, otherwise create new one
+    if (body.businessId) {
+      // Verify the user is a member of this business
+      const { data: membership, error: membershipError } = await admin
+        .from("business_members")
+        .select("id")
+        .eq("business_id", body.businessId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      if (membershipError || !membership) {
+        console.error("[install-system] user not member of business", membershipError);
+        return json(403, { success: false, error: "You are not a member of this business" });
+      }
+      
+      businessId = body.businessId;
+      console.log("[install-system] Using existing business:", businessId);
+    } else {
+      // Create a new business
+      const businessName = body.businessName || body.templateName || "New Business";
+      const { data: business, error: businessError } = await admin
+        .from("businesses")
+        .insert({ owner_id: userId, name: businessName })
+        .select("id")
+        .single();
 
-    if (businessError || !business?.id) {
-      console.error("[install-system] create business failed", businessError);
-      return json(500, { success: false, error: "Failed to create business" });
-    }
-    const businessId = business.id as string;
+      if (businessError || !business?.id) {
+        console.error("[install-system] create business failed", businessError);
+        return json(500, { success: false, error: "Failed to create business" });
+      }
+      businessId = business.id as string;
+      businessCreated = true;
+      console.log("[install-system] Created new business:", businessId);
 
-    // 2) Add owner membership
-    const { error: memberError } = await admin
-      .from("business_members")
-      .insert({ business_id: businessId, user_id: userId, role: "owner" });
-    if (memberError) {
-      console.error("[install-system] create membership failed", memberError);
-      // Non-fatal if duplicate, but we don't have a unique violation check here.
+      // 2) Add owner membership for new businesses
+      const { error: memberError } = await admin
+        .from("business_members")
+        .insert({ business_id: businessId, user_id: userId, role: "owner" });
+      if (memberError) {
+        console.error("[install-system] create membership failed", memberError);
+        // Non-fatal if duplicate
+      }
     }
 
     // 3) Record install
@@ -198,9 +223,11 @@ serve(async (req) => {
       success: true,
       data: {
         businessId,
+        businessCreated,
         packs,
         systemType,
         templateId: body.templateId || null,
+        intentsRegistered: bindings.length,
       },
     });
   } catch (e) {
