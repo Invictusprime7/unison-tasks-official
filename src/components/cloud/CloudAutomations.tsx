@@ -206,6 +206,11 @@ export function CloudAutomations({ userId }: CloudAutomationsProps) {
   const [recipePacks, setRecipePacks] = useState<RecipePack[]>([]);
   const [recentRuns, setRecentRuns] = useState<AutomationRun[]>([]);
   const [editingSettings, setEditingSettings] = useState<AutomationSettings | null>(null);
+  const [installingPackId, setInstallingPackId] = useState<string | null>(null);
+  const [lastInstall, setLastInstall] = useState<
+    | { pack: RecipePack; result: any; installedAt: string; businessId: string }
+    | null
+  >(null);
 
   useEffect(() => {
     loadBusinesses();
@@ -217,6 +222,94 @@ export function CloudAutomations({ userId }: CloudAutomationsProps) {
       loadBusinessAutomationData(selectedBusiness.id);
     }
   }, [selectedBusiness]);
+
+  const mapIndustryToSystemType = (industry: string): string => {
+    const industryToSystemType: Record<string, string> = {
+      salon: 'booking',
+      restaurant: 'booking',
+      contractor: 'booking',
+      agency: 'agency',
+      startup: 'saas',
+      ecommerce: 'store',
+      blog: 'content',
+      landing: 'content',
+      portfolio: 'portfolio',
+      general: 'agency',
+      healthcare: 'booking',
+      realestate: 'agency',
+      fitness: 'booking',
+      other: 'agency',
+    };
+    return industryToSystemType[industry] || 'agency';
+  };
+
+  const installRecipePack = async (pack: RecipePack) => {
+    if (!selectedBusiness) {
+      toast.error('Select a business first');
+      return;
+    }
+
+    try {
+      setInstallingPackId(pack.pack_id);
+      setLastInstall(null);
+
+      const systemType = mapIndustryToSystemType(pack.industry);
+      console.log('[CloudAutomations] Installing pack', {
+        packId: pack.pack_id,
+        systemType,
+        businessId: selectedBusiness.id,
+      });
+
+      const { data: installData, error: installError } = await supabase.functions.invoke('install-system', {
+        body: {
+          systemType,
+          businessId: selectedBusiness.id,
+          businessName: selectedBusiness.name,
+          templateCategory: pack.industry,
+        },
+      });
+
+      if (installError) {
+        console.error('[CloudAutomations] install-system failed', installError);
+        toast.error(`Install failed: ${installError.message}`);
+        return;
+      }
+
+      // Optional bookkeeping for UI (non-fatal if blocked by RLS)
+      try {
+        await supabase
+          .from('installed_recipe_packs')
+          .upsert({
+            business_id: selectedBusiness.id,
+            pack_id: pack.pack_id,
+            enabled: true,
+            installed_at: new Date().toISOString(),
+          });
+      } catch (e) {
+        console.warn('[CloudAutomations] Could not upsert installed_recipe_packs (non-fatal)', e);
+      }
+
+      const resultData = installData?.data || installData;
+      setLastInstall({
+        pack,
+        result: resultData,
+        installedAt: new Date().toISOString(),
+        businessId: selectedBusiness.id,
+      });
+
+      toast.success(
+        `${pack.name} installed: ${(resultData?.packs || []).length} backend packs, ${resultData?.intentsRegistered || 0} intents registered.`
+      );
+
+      // Refresh history panel data for this business (best-effort)
+      await loadBusinessAutomationData(selectedBusiness.id);
+    } catch (e) {
+      console.error('[CloudAutomations] installRecipePack error', e);
+      toast.error(`Install failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    } finally {
+      setInstallingPackId(null);
+    }
+  };
 
   const loadRecipePacks = async () => {
     try {
@@ -719,6 +812,35 @@ export function CloudAutomations({ userId }: CloudAutomationsProps) {
               )}
             </div>
 
+            {selectedBusiness && lastInstall && (
+              <Card className="bg-white/[0.02] border border-white/10">
+                <CardContent className="py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 font-medium">
+                        <CheckCircle2 className="h-4 w-4 text-green-400" />
+                        <span className="truncate">Installed {lastInstall.pack.name}</span>
+                      </div>
+                      <div className="mt-1 text-sm text-slate-400 space-y-1">
+                        <div>
+                          Business: <span className="text-slate-300">{selectedBusiness.name}</span>
+                        </div>
+                        <div>
+                          Backend packs: <span className="text-slate-300">{(lastInstall.result?.packs || []).join(', ') || '(none)'}</span>
+                        </div>
+                        <div>
+                          Intents registered: <span className="text-slate-300">{lastInstall.result?.intentsRegistered || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setLastInstall(null)}>
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {recipePacks.length === 0 ? (
                 <Card className="col-span-full bg-white/[0.02] border-white/5">
@@ -768,13 +890,21 @@ export function CloudAutomations({ userId }: CloudAutomationsProps) {
                           <Button 
                             size="sm" 
                             variant={selectedBusiness ? "default" : "ghost"}
-                            disabled={!selectedBusiness}
+                            disabled={!selectedBusiness || installingPackId !== null}
                             className={selectedBusiness ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" : ""}
+                            onClick={() => {
+                              if (!selectedBusiness) return;
+                              installRecipePack(pack);
+                            }}
                           >
                             {selectedBusiness ? (
                               <>
-                                <Zap className="h-4 w-4 mr-1" />
-                                Install Pack
+                                {installingPackId === pack.pack_id ? (
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Zap className="h-4 w-4 mr-1" />
+                                )}
+                                {installingPackId === pack.pack_id ? 'Installing…' : 'Install Pack'}
                               </>
                             ) : (
                               <>
