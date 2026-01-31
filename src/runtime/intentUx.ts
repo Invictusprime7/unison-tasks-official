@@ -1,13 +1,21 @@
 import { z } from "zod";
+import { 
+  getPipelineConfig, 
+  isAuthIntent, 
+  determinePipelineAction,
+  type PipelineMode 
+} from './intentPipeline';
+import type { CoreIntent } from '@/coreIntents';
+import type { TemplateCategory } from './templateIntentConfig';
 
 // ============================================================================
 // OVERLAY CONTROL FLAG
 // Set to true to enable overlay UIs (demo, pipeline forms)
 // Set to false to dismiss all overlays and run intents automatically
 // ============================================================================
-const ENABLE_OVERLAYS = false;
+export const ENABLE_OVERLAYS = false;
 
-export type IntentUxMode = "demo" | "pipeline" | "autorun";
+export type IntentUxMode = "demo" | "pipeline" | "autorun" | "redirect" | "confirm" | "modal";
 
 export interface IntentUxDecision {
   mode: IntentUxMode;
@@ -120,14 +128,58 @@ const REQUIRED_PAYLOAD_BY_INTENT: Record<string, z.ZodTypeAny> = {
  * NOTE: When ENABLE_OVERLAYS is false, all intents return autorun mode.
  * This dismisses all overlay UIs and runs intents directly.
  */
-export function decideIntentUx(intent: string, payload: Record<string, unknown> | null | undefined): IntentUxDecision {
+export function decideIntentUx(
+  intent: string, 
+  payload: Record<string, unknown> | null | undefined,
+  options?: {
+    hasFormContext?: boolean;
+    category?: TemplateCategory;
+  }
+): IntentUxDecision {
   const p = payload ?? {};
+  const hasFormContext = options?.hasFormContext ?? false;
+  const category = options?.category;
 
   // =========================================================================
-  // OVERLAY BYPASS: When disabled, always autorun (no overlays)
+  // FORM CONTEXT: When triggered from a form, always autorun
+  // =========================================================================
+  if (hasFormContext) {
+    return { mode: "autorun" };
+  }
+
+  // =========================================================================
+  // OVERLAY BYPASS: When disabled, use pipeline config for redirects/confirms
   // =========================================================================
   if (!ENABLE_OVERLAYS) {
-    // Still compute toast labels for user feedback
+    // Check if this is an auth intent - those should use modal
+    if (isAuthIntent(intent)) {
+      return { mode: "modal", toastLabel: "Auth" };
+    }
+    
+    // Use pipeline config to determine behavior
+    try {
+      const action = determinePipelineAction(intent as CoreIntent, false, category);
+      
+      switch (action.action) {
+        case 'redirect':
+          return { mode: "redirect", toastLabel: action.target };
+        case 'confirm':
+          return { mode: "confirm" };
+        case 'scroll':
+          return { mode: "autorun", toastLabel: "Scroll to form" };
+        case 'modal':
+          return { mode: "modal", toastLabel: action.target };
+        case 'execute':
+        default:
+          // Get toast label from pipeline config
+          const config = getPipelineConfig(intent as CoreIntent, category);
+          return { mode: "autorun", toastLabel: config.successMessage };
+      }
+    } catch {
+      // Intent not in CoreIntent, fall through to legacy logic
+    }
+    
+    // Legacy toast labels for non-core intents
     if (DEMO_INTENTS.has(intent)) {
       return { mode: "autorun", toastLabel: "Demo" };
     }
@@ -200,4 +252,20 @@ export function decideIntentUx(intent: string, payload: Record<string, unknown> 
 
   // Default: autorun (avoid showing an overlay for every button).
   return { mode: "autorun" };
+}
+
+/**
+ * Map UX mode to pipeline mode for consistency
+ */
+export function uxModeToPipelineMode(uxMode: IntentUxMode): PipelineMode {
+  switch (uxMode) {
+    case 'redirect': return 'redirect';
+    case 'confirm': return 'confirm';
+    case 'modal': return 'modal';
+    case 'demo':
+    case 'pipeline':
+    case 'autorun':
+    default:
+      return 'autorun';
+  }
 }
