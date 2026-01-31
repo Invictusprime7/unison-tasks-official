@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+// ============================================================================
+// OVERLAY CONTROL FLAG
+// Set to true to enable overlay UIs (demo, pipeline forms)
+// Set to false to dismiss all overlays and run intents automatically
+// ============================================================================
+const ENABLE_OVERLAYS = false;
+
 export type IntentUxMode = "demo" | "pipeline" | "autorun";
 
 export interface IntentUxDecision {
@@ -109,9 +116,39 @@ const REQUIRED_PAYLOAD_BY_INTENT: Record<string, z.ZodTypeAny> = {
  * Hybrid decision:
  * - Per-intent defaults (demo/auth/etc)
  * - Auto-run if payload already has required fields (for automatable intents)
+ * 
+ * NOTE: When ENABLE_OVERLAYS is false, all intents return autorun mode.
+ * This dismisses all overlay UIs and runs intents directly.
  */
 export function decideIntentUx(intent: string, payload: Record<string, unknown> | null | undefined): IntentUxDecision {
   const p = payload ?? {};
+
+  // =========================================================================
+  // OVERLAY BYPASS: When disabled, always autorun (no overlays)
+  // =========================================================================
+  if (!ENABLE_OVERLAYS) {
+    // Still compute toast labels for user feedback
+    if (DEMO_INTENTS.has(intent)) {
+      return { mode: "autorun", toastLabel: "Demo" };
+    }
+    if (intent === "trial.start") {
+      return { mode: "autorun", toastLabel: "Trial" };
+    }
+    if (intent === "newsletter.subscribe") {
+      return { mode: "autorun", toastLabel: "Subscription" };
+    }
+    if (intent === "join.waitlist") {
+      return { mode: "autorun", toastLabel: "Waitlist" };
+    }
+    if (intent === "pricing.select") {
+      return { mode: "autorun", toastLabel: "Pricing" };
+    }
+    return { mode: "autorun" };
+  }
+
+  // =========================================================================
+  // OVERLAY MODE (when ENABLE_OVERLAYS = true)
+  // =========================================================================
 
   // 1) Demo intents always open a demo viewer.
   if (DEMO_INTENTS.has(intent)) {
