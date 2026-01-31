@@ -541,20 +541,212 @@ export const TEMPLATE_CTA_CONFIGS: TemplateCTAConfig[] = [
 // Templates may ONLY emit these.
 // ---------------------------------------------------------------------------
 
-function mapToCoreIntent(labelLower: string, category?: TemplateCategory): CoreIntent | null {
-  // Booking first
-  if (/\b(book|booking|reserve|reservation|schedule)\b/.test(labelLower)) return 'booking.create';
-  // Quote
-  if (/\b(quote|estimate|pricing\s*quote)\b/.test(labelLower)) return 'quote.request';
-  // Newsletter / updates
-  if (/\b(subscribe|newsletter|updates|waitlist|early\s*access|beta)\b/.test(labelLower)) return 'newsletter.subscribe';
-  // Contact
-  if (/\b(contact|get\s*in\s*touch|message|talk)\b/.test(labelLower)) return 'contact.submit';
+/**
+ * FORM LABEL SYNONYMS
+ * Maps common button labels to their corresponding CoreIntent
+ * Organized by intent type with synonymous phrases
+ */
+const FORM_LABEL_PATTERNS: Array<{
+  intent: CoreIntent;
+  patterns: RegExp[];
+  successMessage: string;
+}> = [
+  // ============================================
+  // BOOKING INTENTS - Appointment/Reservation
+  // ============================================
+  {
+    intent: 'booking.create',
+    patterns: [
+      /^book(\s+now)?$/i,
+      /^reserve(\s+now)?$/i,
+      /^schedule(\s+now)?$/i,
+      /^make\s+(a\s+)?reservation$/i,
+      /^request\s+appointment$/i,
+      /^book\s+(an?\s+)?appointment$/i,
+      /^schedule\s+(an?\s+)?appointment$/i,
+      /^reserve\s+(a\s+)?table$/i,
+      /^book\s+(a\s+)?table$/i,
+      /^book\s+(a\s+)?session$/i,
+      /^schedule\s+(a\s+)?session$/i,
+      /^book\s+(a\s+)?service$/i,
+      /^schedule\s+(a\s+)?service$/i,
+      /^book\s+(a\s+)?consultation$/i,
+      /^schedule\s+(a\s+)?consultation$/i,
+      /^book\s+(a\s+)?call$/i,
+      /^schedule\s+(a\s+)?call$/i,
+      /^request\s+(a\s+)?booking$/i,
+      /^confirm\s+booking$/i,
+      /^confirm\s+reservation$/i,
+      /^book\s+this$/i,
+      /^reserve\s+this$/i,
+      /^get\s+booked$/i,
+    ],
+    successMessage: 'Booking confirmed!'
+  },
+  
+  // ============================================
+  // QUOTE INTENTS - Estimates/Pricing requests
+  // ============================================
+  {
+    intent: 'quote.request',
+    patterns: [
+      /^get\s+(a\s+)?(free\s+)?quote$/i,
+      /^request\s+(a\s+)?(free\s+)?quote$/i,
+      /^get\s+(a\s+)?(free\s+)?estimate$/i,
+      /^request\s+(a\s+)?(free\s+)?estimate$/i,
+      /^get\s+pricing$/i,
+      /^request\s+pricing$/i,
+      /^get\s+(a\s+)?bid$/i,
+      /^request\s+(a\s+)?bid$/i,
+      /^submit\s+for\s+quote$/i,
+      /^get\s+started$/i, // Contractor context
+      /^start\s+project$/i, // Contractor context
+      /^request\s+consultation$/i,
+      /^free\s+consultation$/i,
+      /^get\s+assessment$/i,
+      /^request\s+assessment$/i,
+    ],
+    successMessage: 'Quote request submitted!'
+  },
+  
+  // ============================================
+  // CONTACT INTENTS - General contact/message
+  // ============================================
+  {
+    intent: 'contact.submit',
+    patterns: [
+      /^send(\s+message)?$/i,
+      /^submit(\s+message)?$/i,
+      /^contact(\s+us)?$/i,
+      /^get\s+in\s+touch$/i,
+      /^reach\s+out$/i,
+      /^send\s+inquiry$/i,
+      /^submit\s+inquiry$/i,
+      /^send\s+request$/i,
+      /^submit\s+request$/i,
+      /^let'?s\s+talk$/i,
+      /^talk\s+to\s+us$/i,
+      /^message\s+us$/i,
+      /^drop\s+(us\s+)?(a\s+)?line$/i,
+      /^say\s+hello$/i,
+      /^connect$/i,
+      /^enquire(\s+now)?$/i,
+      /^inquire(\s+now)?$/i,
+      /^ask\s+(a\s+)?question$/i,
+      /^send\s+feedback$/i,
+      /^submit\s+feedback$/i,
+    ],
+    successMessage: 'Message sent!'
+  },
+  
+  // ============================================
+  // NEWSLETTER INTENTS - Subscription/Updates
+  // ============================================
+  {
+    intent: 'newsletter.subscribe',
+    patterns: [
+      /^subscribe$/i,
+      /^sign\s+up$/i,
+      /^join$/i,
+      /^join\s+(the\s+)?list$/i,
+      /^join\s+(the\s+)?waitlist$/i,
+      /^get\s+updates$/i,
+      /^get\s+notified$/i,
+      /^notify\s+me$/i,
+      /^keep\s+me\s+updated$/i,
+      /^stay\s+updated$/i,
+      /^stay\s+informed$/i,
+      /^subscribe\s+now$/i,
+      /^sign\s+me\s+up$/i,
+      /^get\s+early\s+access$/i,
+      /^join\s+beta$/i,
+      /^apply\s+for\s+beta$/i,
+      /^request\s+access$/i,
+      /^get\s+access$/i,
+      /^register\s+interest$/i,
+      /^express\s+interest$/i,
+      /^i'?m\s+interested$/i,
+      /^count\s+me\s+in$/i,
+    ],
+    successMessage: 'You\'re subscribed!'
+  },
+  
+  // ============================================
+  // LEAD CAPTURE - Generic form submissions
+  // ============================================
+  {
+    intent: 'lead.capture',
+    patterns: [
+      /^submit$/i,
+      /^send$/i,
+      /^request$/i,
+      /^apply$/i,
+      /^register$/i,
+      /^complete$/i,
+      /^finish$/i,
+      /^done$/i,
+      /^continue$/i,
+      /^next$/i, // Multi-step forms
+      /^proceed$/i,
+      /^confirm$/i,
+      /^claim$/i,
+      /^download$/i, // Lead magnets
+      /^get\s+it$/i,
+      /^grab\s+it$/i,
+      /^yes,?\s+please$/i,
+      /^i\s+want\s+(this|in)$/i,
+    ],
+    successMessage: 'Submitted successfully!'
+  },
+];
 
-  // Category fallbacks
-  if (category === 'restaurant') return 'booking.create';
-  if (category === 'contractor') return 'quote.request';
+/**
+ * INDUSTRY-SPECIFIC FALLBACKS
+ * When no pattern matches, fall back based on template category
+ */
+const INDUSTRY_FALLBACK_INTENTS: Record<TemplateCategory, CoreIntent> = {
+  restaurant: 'booking.create',
+  contractor: 'quote.request',
+  agency: 'contact.submit',
+  portfolio: 'contact.submit',
+  ecommerce: 'lead.capture',
+  blog: 'newsletter.subscribe',
+  landing: 'newsletter.subscribe',
+  startup: 'newsletter.subscribe',
+};
+
+
+/**
+ * Maps a form button label to a CoreIntent
+ * Uses pattern matching with synonymous phrases
+ */
+function mapToCoreIntent(labelLower: string, category?: TemplateCategory): CoreIntent | null {
+  // Normalize the label
+  const normalized = labelLower.trim().replace(/[!.?]+$/, '');
+  
+  // Try each pattern group
+  for (const group of FORM_LABEL_PATTERNS) {
+    for (const pattern of group.patterns) {
+      if (pattern.test(normalized)) {
+        return group.intent;
+      }
+    }
+  }
+  
+  // Industry-specific fallback
+  if (category && INDUSTRY_FALLBACK_INTENTS[category]) {
+    return INDUSTRY_FALLBACK_INTENTS[category];
+  }
+  
   return null;
+}
+
+/**
+ * Get success message for a given intent
+ */
+export function getIntentSuccessMessage(intent: CoreIntent): string {
+  const group = FORM_LABEL_PATTERNS.find(g => g.intent === intent);
+  return group?.successMessage || 'Action completed!';
 }
 
 /**
@@ -596,6 +788,7 @@ export function getAllTemplateIntents(): string[] {
 
 /**
  * Match a button label to its most likely intent
+ * Uses comprehensive synonym matching with industry context
  */
 export function matchLabelToIntent(label: string, category?: TemplateCategory): IntentConfig | null {
   const labelLower = label.toLowerCase().trim();
@@ -605,12 +798,20 @@ export function matchLabelToIntent(label: string, category?: TemplateCategory): 
     return {
       intent: core,
       label,
-      description: `Action for: ${label}`,
-      successMessage: 'Action completed!'
+      description: `Form action: ${label}`,
+      successMessage: getIntentSuccessMessage(core)
     };
   }
   
   return null;
+}
+
+/**
+ * Determine if a label represents a form submission action
+ */
+export function isFormSubmitLabel(label: string): boolean {
+  const labelLower = label.toLowerCase().trim();
+  return mapToCoreIntent(labelLower) !== null;
 }
 
 /**
@@ -621,7 +822,6 @@ export function analyzeTemplateForCTAs(
   category: TemplateCategory
 ): IntentConfig[] {
   const recommendations: IntentConfig[] = [];
-  const htmlLower = html.toLowerCase();
   
   // Get category config
   const config = getCTAConfigForCategory(category);
@@ -636,7 +836,7 @@ export function analyzeTemplateForCTAs(
   ];
   
   const allCTAs = [...config.primaryCTAs, ...config.secondaryCTAs, ...config.formIntents]
-    .filter((cta) => ['contact.submit', 'newsletter.subscribe', 'booking.create', 'quote.request'].includes(cta.intent));
+    .filter((cta) => ['contact.submit', 'newsletter.subscribe', 'booking.create', 'quote.request', 'lead.capture'].includes(cta.intent));
   
   patterns.forEach(({ pattern, intents }) => {
     if (pattern.test(html)) {
