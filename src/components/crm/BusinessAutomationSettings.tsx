@@ -115,6 +115,8 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
   const [installedPacks, setInstalledPacks] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [installingPackId, setInstallingPackId] = useState<string | null>(null);
+  const [installResult, setInstallResult] = useState<{ packId: string; data: any } | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -245,6 +247,8 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
 
     try {
       setSaving(true);
+      setInstallingPackId(packId);
+      setInstallResult(null);
       
       // Map industry to system type for install-system
       const industryToSystemType: Record<string, string> = {
@@ -262,23 +266,30 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
       
       const systemType = industryToSystemType[pack.industry] || 'agency';
       
+      console.log("[installPack] Starting installation for pack:", packId, "system:", systemType);
+      
       // Call install-system to properly set up all dependencies
       const { data: installData, error: installError } = await supabase.functions.invoke('install-system', {
         body: {
           systemType,
+          businessId, // Pass the existing businessId
           businessName: pack.name,
           templateCategory: pack.industry,
         }
       });
       
       if (installError) {
-        console.error("Error calling install-system:", installError);
-        // Fallback to simple pack install
-      } else {
-        console.log("System installed:", installData);
+        console.error("[installPack] Error calling install-system:", installError);
+        toast.error(`Installation failed: ${installError.message}`);
+        return;
       }
       
-      // Install the recipe pack
+      console.log("[installPack] System installed successfully:", installData);
+      
+      // Store the result for display
+      setInstallResult({ packId, data: installData });
+      
+      // Install the recipe pack record
       const { error } = await supabase
         .from("installed_recipe_packs")
         .upsert({
@@ -288,7 +299,10 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
           installed_at: new Date().toISOString(),
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[installPack] Error saving pack record:", error);
+        // Non-fatal - the system is installed even if this fails
+      }
 
       // Enable all recipes in the pack by default
       if (pack.recipes?.length > 0) {
@@ -310,12 +324,18 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
       }
 
       setInstalledPacks((prev) => [...prev, packId]);
-      toast.success(`${pack.name} installed with all dependencies`);
+      
+      // Show success with details
+      const resultData = installData?.data || installData;
+      toast.success(
+        `${pack.name} installed! ${resultData?.packs?.length || 0} backend packs, ${resultData?.intentsRegistered || 0} intents registered.`
+      );
     } catch (err) {
-      console.error("Error installing pack:", err);
-      toast.error("Failed to install pack");
+      console.error("[installPack] Error:", err);
+      toast.error(`Failed to install pack: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
+      setInstallingPackId(null);
     }
   }
 
@@ -399,6 +419,35 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
 
         {/* Recipe Packs Tab */}
         <TabsContent value="recipes" className="space-y-4 mt-4">
+          {/* Installation Result Banner */}
+          {installResult && (
+            <Card className="border-green-500/50 bg-green-500/5">
+              <CardContent className="py-4">
+                <div className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-green-500 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-medium text-green-700 dark:text-green-400">
+                      Pack Installed Successfully
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1 space-y-1">
+                      <div>• Business ID: <code className="bg-muted px-1 rounded text-xs">{installResult.data?.data?.businessId || installResult.data?.businessId}</code></div>
+                      <div>• Backend packs: {(installResult.data?.data?.packs || installResult.data?.packs || []).join(', ')}</div>
+                      <div>• Intents registered: {installResult.data?.data?.intentsRegistered || installResult.data?.intentsRegistered || 0}</div>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setInstallResult(null)}
+                    className="text-muted-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           {relevantPacks.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -433,9 +482,22 @@ export function BusinessAutomationSettings({ businessId, businessIndustry }: Bus
                         Disable
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={() => installPack(pack.pack_id)}>
-                        <Check className="w-4 h-4 mr-1" />
-                        Install
+                      <Button 
+                        size="sm" 
+                        onClick={() => installPack(pack.pack_id)}
+                        disabled={installingPackId !== null}
+                      >
+                        {installingPackId === pack.pack_id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            Installing...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 mr-1" />
+                            Install
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
