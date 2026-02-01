@@ -355,6 +355,29 @@ function injectIntentListener(html: string): string {
       }catch{}
       return false;
     }
+
+    // Allow the parent (builder) to request an in-iframe booking scroll.
+    function respondCommandResult(evt, command, requestId, handled){
+      try{
+        const msg = { type: 'INTENT_COMMAND_RESULT', command: command, requestId: requestId, handled: !!handled };
+        if(evt && evt.source && evt.source.postMessage){
+          evt.source.postMessage(msg, '*');
+        } else {
+          window.parent.postMessage(msg, '*');
+        }
+      }catch{}
+    }
+
+    window.addEventListener('message', function(evt){
+      try{
+        const d = evt && evt.data;
+        if(!d || d.type !== 'INTENT_COMMAND') return;
+        if(d.command === 'booking.scroll'){
+          const handled = tryHandleBookingScroll(null);
+          respondCommandResult(evt, 'booking.scroll', d.requestId, handled);
+        }
+      }catch{}
+    });
     
      document.addEventListener('click',function(e){
        const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');
@@ -640,6 +663,85 @@ function wrapHtmlSnippet(html: string): string {
       const query=normalizeText(el.textContent||el.getAttribute('aria-label')||href);
       window.parent.postMessage({type:'RESEARCH_OPEN',payload:{query,href,pageTitle:document.title,selection:query}},'*');
     }
+
+    // Booking UX: if a booking form/section already exists on the page,
+    // scroll to it inside the preview instead of notifying the parent.
+    function scrollToNode(node){
+      try{
+        if(!node) return;
+        node.scrollIntoView({ behavior: 'auto', block: 'center' });
+        setTimeout(function(){
+          const input = node.querySelector && node.querySelector('input:not([type="hidden"]), textarea, select');
+          if(input && input.focus) input.focus();
+        }, 50);
+      }catch{}
+    }
+
+    function findBookingTarget(){
+      const selectors=[
+        'form[data-ut-intent="booking.create"]','form[data-intent="booking.create"]','form[data-booking]','[data-booking-form]',
+        '#booking-form','#reservation-form','#appointment-form','.booking-form','.reservation-form','.appointment-form',
+        '#booking','#book','#schedule','#appointment','#reservation',
+        '[id*="booking" i]','[class*="booking" i]','[id*="reservation" i]','[class*="reservation" i]',
+        '[id*="appointment" i]','[class*="appointment" i]','[id*="schedule" i]','[class*="schedule" i]',
+      ];
+      for(const sel of selectors){
+        try{
+          const node=document.querySelector(sel);
+          if(node && node.querySelector && node.querySelector('input,select,textarea,button[type="submit"],button')) return node;
+        }catch{}
+      }
+      try{
+        const forms=Array.from(document.querySelectorAll('form'));
+        for(const f of forms){
+          const hasDate=f.querySelector('input[type="date"], [name*="date" i], [id*="date" i]');
+          const hasTime=f.querySelector('input[type="time"], [name*="time" i], [id*="time" i]');
+          const hasEmail=f.querySelector('input[type="email"], [name*="email" i], [id*="email" i]');
+          const hasName=f.querySelector('[name*="name" i], [id*="name" i]');
+          if((hasDate && hasTime) || (hasEmail && (hasDate || hasTime)) || (hasName && hasEmail)) return f;
+        }
+      }catch{}
+      return null;
+    }
+
+    function tryHandleBookingScroll(sourceEl){
+      try{
+        if(sourceEl && sourceEl.closest && sourceEl.closest('form')) return false;
+        const tag=(sourceEl && sourceEl.tagName ? sourceEl.tagName : '').toLowerCase();
+        if(tag==='a'){
+          const href=sourceEl.getAttribute('href')||'';
+          if(href && href.startsWith('#') && href.length>1){
+            const hashTarget=document.querySelector(href);
+            if(hashTarget){scrollToNode(hashTarget);return true;}
+          }
+        }
+        const node=findBookingTarget();
+        if(node){scrollToNode(node);return true;}
+      }catch{}
+      return false;
+    }
+
+    function respondCommandResult(evt, command, requestId, handled){
+      try{
+        const msg={type:'INTENT_COMMAND_RESULT',command:command,requestId:requestId,handled:!!handled};
+        if(evt && evt.source && evt.source.postMessage){
+          evt.source.postMessage(msg,'*');
+        } else {
+          window.parent.postMessage(msg,'*');
+        }
+      }catch{}
+    }
+
+    window.addEventListener('message', function(evt){
+      try{
+        const d=evt && evt.data;
+        if(!d || d.type!=='INTENT_COMMAND') return;
+        if(d.command==='booking.scroll'){
+          const handled=tryHandleBookingScroll(null);
+          respondCommandResult(evt,'booking.scroll',d.requestId,handled);
+        }
+      }catch{}
+    });
     document.addEventListener('click',function(e){
       const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');if(!el)return;
       const ia=el.getAttribute('data-ut-intent')||el.getAttribute('data-intent');if(ia==='none'||ia==='ignore')return;
@@ -652,6 +754,17 @@ function wrapHtmlSnippet(html: string): string {
         }
         return;
       }
+
+      if(intent==='booking.create'){
+        const handled=tryHandleBookingScroll(el);
+        if(handled){
+          e.preventDefault();e.stopPropagation();
+          el.classList.add('intent-success');
+          setTimeout(()=>el.classList.remove('intent-success'),2000);
+          return;
+        }
+      }
+
       e.preventDefault();e.stopPropagation();
       el.classList.add('intent-loading');el.disabled=true;
       window.parent.postMessage({type:'INTENT_TRIGGER',intent:intent,payload:collectPayload(el)},'*');
