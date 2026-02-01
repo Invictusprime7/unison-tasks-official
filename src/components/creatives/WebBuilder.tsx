@@ -824,43 +824,84 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       const { intent, payload } = event.data;
       console.log('[WebBuilder] Received intent from preview:', intent, payload);
 
+      // Never open overlays for preview click actions (these are disruptive in the builder).
+      // Instead: autorun, open demo in a new tab, or ask the iframe to scroll to an on-page form.
+      // Close overlays proactively (we don't want them for preview click actions).
+      setPipelineOverlayOpen(false);
+      setPipelineConfig(null);
+      setDemoOverlayOpen(false);
+      setDemoConfig(null);
+
       const decision = decideIntentUx(intent, payload as Record<string, unknown> | undefined);
 
-      if (decision.mode === 'demo') {
-        setDemoConfig({
-          intent,
-          label: (payload as any)?.utLabel || (payload as any)?.label || 'Watch demo',
-          url: decision.demoUrl,
-        });
-        setDemoOverlayOpen(true);
-        return;
-      }
-
-      if (decision.mode === 'autorun') {
-        const toastLabel = decision.toastLabel || 'Action';
-        toast(`${toastLabel} running…`);
+      // Booking: always prefer scrolling within the preview iframe.
+      if (intent === 'booking.create') {
         void (async () => {
-          try {
-            const res = await handleIntent(intent, payload as IntentPayload);
-            if (res.success) {
-              toast.success(`${toastLabel} complete`);
-            } else {
-              toast.error(res.error || `${toastLabel} failed`);
-            }
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Unknown error';
-            toast.error(msg);
+          const source = (event.source && typeof (event.source as any).postMessage === 'function')
+            ? (event.source as Window)
+            : null;
+
+          if (!source) {
+            toast('Scroll to booking form');
+            return;
+          }
+
+          const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+          const handled = await new Promise<boolean>((resolve) => {
+            const timeout = window.setTimeout(() => {
+              window.removeEventListener('message', onResult);
+              resolve(false);
+            }, 250);
+
+            const onResult = (evt: MessageEvent) => {
+              if (evt.data?.type !== 'INTENT_COMMAND_RESULT') return;
+              if (evt.data?.command !== 'booking.scroll') return;
+              if (evt.data?.requestId !== requestId) return;
+              window.clearTimeout(timeout);
+              window.removeEventListener('message', onResult);
+              resolve(!!evt.data?.handled);
+            };
+
+            window.addEventListener('message', onResult);
+            source.postMessage({ type: 'INTENT_COMMAND', command: 'booking.scroll', requestId }, '*');
+          });
+
+          if (!handled) {
+            toast('No booking form found on this page');
           }
         })();
         return;
       }
 
-      // Default: open pipeline UI
-      setPipelineConfig({
-        intent: decision.pipelineIntent || intent,
-        payload: payload as IntentPayload,
-      });
-      setPipelineOverlayOpen(true);
+      // Demo intents: open in new tab (no overlay).
+      if (decision.mode === 'demo') {
+        const url = decision.demoUrl || (payload as any)?.demoUrl || (payload as any)?.supademoUrl;
+        if (typeof url === 'string' && url.trim().length > 0) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+          toast('Opening demo…');
+        } else {
+          toast('Demo requested');
+        }
+        return;
+      }
+
+      // Default: autorun everything else (no pipeline UI).
+      const toastLabel = decision.toastLabel || 'Action';
+      toast(`${toastLabel} running…`);
+      void (async () => {
+        try {
+          const res = await handleIntent(intent, payload as IntentPayload);
+          if (res.success) {
+            toast.success(`${toastLabel} complete`);
+          } else {
+            toast.error(res.error || `${toastLabel} failed`);
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Unknown error';
+          toast.error(msg);
+        }
+      })();
     };
     
     window.addEventListener('message', handleIntentMessage);
