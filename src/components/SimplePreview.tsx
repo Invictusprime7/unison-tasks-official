@@ -249,6 +249,112 @@ function injectIntentListener(html: string): string {
         target: target
       }, '*');
     }
+
+    // -----------------------------------------------------------------------
+    // Booking UX: if a booking form/section already exists on the page,
+    // scroll to it inside the preview instead of notifying the parent app.
+    // This prevents the WebBuilder from opening its pipeline overlay.
+    // -----------------------------------------------------------------------
+
+    function scrollToNode(node){
+      try{
+        if(!node) return;
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(function(){
+          const input = node.querySelector && node.querySelector('input:not([type="hidden"]), textarea, select');
+          if(input && input.focus) input.focus();
+        }, 450);
+      }catch{}
+    }
+
+    function findBookingTarget(){
+      const selectors = [
+        // Explicit forms
+        'form[data-ut-intent="booking.create"]',
+        'form[data-intent="booking.create"]',
+        'form[data-booking]',
+        '[data-booking-form]',
+        '#booking-form',
+        '#reservation-form',
+        '#appointment-form',
+        '.booking-form',
+        '.reservation-form',
+        '.appointment-form',
+
+        // Common sections/anchors
+        '#booking',
+        '#book',
+        '#schedule',
+        '#appointment',
+        '#reservation',
+        // Any container hinting booking/reservation (guarded by input check below)
+        '[id*="booking" i]',
+        '[class*="booking" i]',
+        '[id*="reservation" i]',
+        '[class*="reservation" i]',
+        '[id*="appointment" i]',
+        '[class*="appointment" i]',
+        '[id*="schedule" i]',
+        '[class*="schedule" i]',
+        'section[id*="booking"]',
+        'section[id*="book"]',
+        'section[id*="reserv"]',
+        'section[id*="appoint"]',
+        'section[id*="schedule"]',
+      ];
+
+      for(const sel of selectors){
+        try{
+          const node = document.querySelector(sel);
+          if(node && node.querySelector && node.querySelector('input,select,textarea,button[type="submit"],button')){
+            return node;
+          }
+        }catch{}
+      }
+
+      // Heuristic: any form that looks like a booking widget
+      try{
+        const forms = Array.from(document.querySelectorAll('form'));
+        for(const f of forms){
+          const hasDate = f.querySelector('input[type="date"], [name*="date" i], [id*="date" i]');
+          const hasTime = f.querySelector('input[type="time"], [name*="time" i], [id*="time" i]');
+          const hasEmail = f.querySelector('input[type="email"], [name*="email" i], [id*="email" i]');
+          const hasName = f.querySelector('[name*="name" i], [id*="name" i]');
+          if((hasDate && hasTime) || (hasEmail && (hasDate || hasTime)) || (hasName && hasEmail)){
+            return f;
+          }
+        }
+      }catch{}
+
+      return null;
+    }
+
+    function tryHandleBookingScroll(sourceEl){
+      try{
+        // Only for CTAs outside forms; form submit should still run the intent.
+        if(sourceEl && sourceEl.closest && sourceEl.closest('form')) return false;
+
+        // If the CTA is an anchor pointing to an on-page hash, prefer that.
+        const tag = (sourceEl.tagName || '').toLowerCase();
+        if(tag === 'a'){
+          const href = sourceEl.getAttribute('href') || '';
+          if(href && href.startsWith('#') && href.length > 1){
+            const hashTarget = document.querySelector(href);
+            if(hashTarget){
+              scrollToNode(hashTarget);
+              return true;
+            }
+          }
+        }
+
+        const node = findBookingTarget();
+        if(node){
+          scrollToNode(node);
+          return true;
+        }
+      }catch{}
+      return false;
+    }
     
      document.addEventListener('click',function(e){
        const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');
@@ -274,6 +380,20 @@ function injectIntentListener(html: string): string {
         }
         return;
       }
+
+       // Booking intent: scroll to the on-page booking form/section if present.
+       // (This is the behavior you asked for: "If there is a form present on the page, redirect straight to the form".)
+       if(intent === 'booking.create'){
+         const handled = tryHandleBookingScroll(el);
+         if(handled){
+           e.preventDefault();e.stopPropagation();
+           // quick success pulse for feedback
+           el.classList.add('intent-success');
+           setTimeout(()=>el.classList.remove('intent-success'),2000);
+           return;
+         }
+       }
+
       e.preventDefault();e.stopPropagation();
       el.classList.add('intent-loading');
       if(el.disabled!==undefined)el.disabled=true;
