@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.research]
 verify_jwt = false
+
+[functions.plugin-event-ingest]
+verify_jwt = false
+
+[functions.agent-runner]
+verify_jwt = false
