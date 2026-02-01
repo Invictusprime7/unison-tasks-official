@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_agent_registry: {
+        Row: {
+          allowed_tools: Json
+          created_at: string
+          default_config: Json
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          system_prompt: string
+          tier: Database["public"]["Enums"]["agent_tier"]
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          allowed_tools?: Json
+          created_at?: string
+          default_config?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          system_prompt: string
+          tier?: Database["public"]["Enums"]["agent_tier"]
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          allowed_tools?: Json
+          created_at?: string
+          default_config?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          system_prompt?: string
+          tier?: Database["public"]["Enums"]["agent_tier"]
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       ai_code_patterns: {
         Row: {
           code_snippet: string
@@ -49,6 +94,73 @@ export type Database = {
           usage_count?: number | null
         }
         Relationships: []
+      }
+      ai_events: {
+        Row: {
+          business_id: string
+          claimed_run_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          intent: string
+          locked_at: string | null
+          locked_by: string | null
+          payload: Json
+          plugin_instance_id: string | null
+          processed_at: string | null
+          status: Database["public"]["Enums"]["agent_event_status"]
+        }
+        Insert: {
+          business_id: string
+          claimed_run_id?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          intent: string
+          locked_at?: string | null
+          locked_by?: string | null
+          payload?: Json
+          plugin_instance_id?: string | null
+          processed_at?: string | null
+          status?: Database["public"]["Enums"]["agent_event_status"]
+        }
+        Update: {
+          business_id?: string
+          claimed_run_id?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          intent?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          payload?: Json
+          plugin_instance_id?: string | null
+          processed_at?: string | null
+          status?: Database["public"]["Enums"]["agent_event_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_events_claimed_run_fk"
+            columns: ["claimed_run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_events_plugin_instance_id_fkey"
+            columns: ["plugin_instance_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plugin_instances"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_learning_sessions: {
         Row: {
@@ -88,6 +200,169 @@ export type Database = {
           was_successful?: boolean | null
         }
         Relationships: []
+      }
+      ai_plugin_instances: {
+        Row: {
+          agent_id: string
+          business_id: string
+          config: Json
+          created_at: string
+          id: string
+          is_enabled: boolean
+          placement_key: string
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          business_id: string
+          config?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          placement_key?: string
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          business_id?: string
+          config?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          placement_key?: string
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_plugin_instances_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_registry"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_plugin_instances_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_plugin_instances_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_plugin_state: {
+        Row: {
+          created_at: string
+          id: string
+          plugin_instance_id: string
+          state: Json
+          state_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plugin_instance_id: string
+          state?: Json
+          state_key?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plugin_instance_id?: string
+          state?: Json
+          state_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_plugin_state_plugin_instance_id_fkey"
+            columns: ["plugin_instance_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plugin_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_runs: {
+        Row: {
+          business_id: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          event_id: string | null
+          id: string
+          input_payload: Json
+          latency_ms: number | null
+          output_payload: Json | null
+          plugin_instance_id: string | null
+          status: Database["public"]["Enums"]["agent_event_status"]
+          tokens_used: number | null
+          tool_calls: Json | null
+        }
+        Insert: {
+          business_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_id?: string | null
+          id?: string
+          input_payload?: Json
+          latency_ms?: number | null
+          output_payload?: Json | null
+          plugin_instance_id?: string | null
+          status?: Database["public"]["Enums"]["agent_event_status"]
+          tokens_used?: number | null
+          tool_calls?: Json | null
+        }
+        Update: {
+          business_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_id?: string | null
+          id?: string
+          input_payload?: Json
+          latency_ms?: number | null
+          output_payload?: Json | null
+          plugin_instance_id?: string | null
+          status?: Database["public"]["Enums"]["agent_event_status"]
+          tokens_used?: number | null
+          tool_calls?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_runs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "ai_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_plugin_instance_id_fkey"
+            columns: ["plugin_instance_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plugin_instances"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       automation_events: {
         Row: {
@@ -2280,6 +2555,13 @@ export type Database = {
       }
     }
     Enums: {
+      agent_event_status:
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "cancelled"
+      agent_tier: "free" | "pro" | "enterprise"
       blend_mode:
         | "normal"
         | "multiply"
@@ -2423,6 +2705,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agent_event_status: [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+      agent_tier: ["free", "pro", "enterprise"],
       blend_mode: [
         "normal",
         "multiply",
