@@ -259,11 +259,11 @@ function injectIntentListener(html: string): string {
     function scrollToNode(node){
       try{
         if(!node) return;
-        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        node.scrollIntoView({ behavior: 'auto', block: 'center' });
         setTimeout(function(){
           const input = node.querySelector && node.querySelector('input:not([type="hidden"]), textarea, select');
           if(input && input.focus) input.focus();
-        }, 450);
+        }, 50);
       }catch{}
     }
 
