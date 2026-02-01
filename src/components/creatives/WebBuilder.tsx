@@ -40,6 +40,7 @@ import { InteractiveModeHelp } from "./web-builder/InteractiveModeHelp";
 import { TemplateFileManager } from "./web-builder/TemplateFileManager";
 import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
+import { AIPluginsPanel } from "./web-builder/AIPluginsPanel";
 import { ProjectsPanel } from "./web-builder/ProjectsPanel";
 import { LayoutTemplatesPanel } from "./web-builder/LayoutTemplatesPanel";
 import { FloatingDock } from "./web-builder/FloatingDock";
@@ -2099,6 +2100,7 @@ ${body.innerHTML}
               <TabsList className="w-full justify-start rounded-none border-b border-border/20 bg-card px-2 h-10 shrink-0">
                 <TabsTrigger value="elements" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Elements</TabsTrigger>
                 <TabsTrigger value="functional" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Functional</TabsTrigger>
+                <TabsTrigger value="ai-plugins" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">AI Plugins</TabsTrigger>
                 <TabsTrigger value="health" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Health</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
@@ -2186,6 +2188,12 @@ ${body.innerHTML}
                     
                     toast.success('Functional block added to VFS');
                   }}
+                />
+              </TabsContent>
+              <TabsContent value="ai-plugins" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <AIPluginsPanel 
+                  businessId={businessId}
+                  pluginInstanceId={cloudState.installedPacks?.[0]}
                 />
               </TabsContent>
               <TabsContent value="health" className="flex-1 m-0 min-h-0 overflow-hidden">
