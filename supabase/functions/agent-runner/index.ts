@@ -121,7 +121,7 @@ async function callLLM(
     throw new Error('LLM service not configured')
   }
 
-  const response = await fetch('https://api.lovable.dev/api/v1/chat', {
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -134,6 +134,7 @@ async function callLLM(
         { role: 'user', content: JSON.stringify(userPayload, null, 2) },
       ],
       response_format: { type: 'json_object' },
+      temperature: 0.7,
     }),
   })
 
