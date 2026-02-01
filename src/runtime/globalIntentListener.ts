@@ -12,8 +12,14 @@
  */
 
 import { handleIntent, IntentPayload } from './intentRouter';
-import { isCoreIntent, isNavIntent, isPayIntent } from '@/coreIntents';
+import { isCoreIntent, isNavIntent, isPayIntent, type CoreIntent } from '@/coreIntents';
 import { matchLabelToIntent, TemplateCategory } from './templateIntentConfig';
+import { 
+  findFormForIntent, 
+  scrollToForm, 
+  determinePipelineAction, 
+  getPipelineConfig 
+} from './intentPipeline';
 
 // ============================================================================
 // Types
@@ -486,6 +492,71 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
   // Collect payload
   const payload = collectPayload(el, config);
   
+  // Check if we're inside a form context
+  const form = el.closest('form');
+  const hasFormContext = !!form;
+  
+  // =========================================================================
+  // PIPELINE-AWARE ROUTING
+  // Determine the correct action based on pipeline config
+  // =========================================================================
+  try {
+    const action = determinePipelineAction(intent as CoreIntent, hasFormContext, config.category);
+    
+    if (config.debug) {
+      console.log('[GlobalIntent] Pipeline action:', action);
+    }
+    
+    switch (action.action) {
+      case 'scroll': {
+        // Try to scroll to form on page
+        const scrolled = scrollToForm(intent);
+        if (scrolled) {
+          showSuccess(el);
+          return;
+        }
+        // Fall through to redirect if scroll failed
+      }
+      // falls through
+      
+      case 'redirect': {
+        // Redirect to target page
+        const target = action.target || '/';
+        if (config.onNavigate) {
+          config.onNavigate('goto', target);
+        } else {
+          // Pass intent context via URL params
+          const url = new URL(target, window.location.origin);
+          url.searchParams.set('intent', intent);
+          if (payload.service) url.searchParams.set('service', String(payload.service));
+          if (payload.serviceId) url.searchParams.set('serviceId', String(payload.serviceId));
+          window.location.href = url.toString();
+        }
+        return;
+      }
+      
+      case 'modal':
+      case 'confirm': {
+        // Dispatch to pipeline provider for modal/confirm handling
+        window.dispatchEvent(new CustomEvent('pipeline:execute', {
+          detail: { intent, payload }
+        }));
+        return;
+      }
+      
+      case 'execute':
+      default:
+        // Continue to execute directly below
+        break;
+    }
+  } catch {
+    // Intent not in CoreIntent registry, fall through to direct execution
+  }
+  
+  // =========================================================================
+  // DIRECT EXECUTION (autorun mode or fallback)
+  // =========================================================================
+  
   // Show loading feedback
   let clearLoading: (() => void) | null = null;
   if (config.showFeedback !== false) {
@@ -502,6 +573,18 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
     if (result.success) {
       if (config.showFeedback !== false) {
         showSuccess(el);
+      }
+      // Show success toast from pipeline config
+      try {
+        const pipelineConfig = getPipelineConfig(intent as CoreIntent, config.category);
+        if (pipelineConfig.successMessage) {
+          // Dispatch toast event for any listener
+          window.dispatchEvent(new CustomEvent('intent:success', {
+            detail: { intent, message: pipelineConfig.successMessage }
+          }));
+        }
+      } catch {
+        // Not a core intent, no toast
       }
       config.onIntentTriggered?.(intent, payload, result.data);
     } else {
