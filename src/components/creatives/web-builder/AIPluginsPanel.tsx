@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Zap, RefreshCw, Send, Bot, Sparkles, Activity } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Brain, Zap, Bot, Sparkles, Activity, AlertCircle } from "lucide-react";
 import { PluginStateDisplay } from "@/components/ai-agent/PluginStateDisplay";
 import { AIEventTrigger } from "@/components/ai-agent/AIEventTrigger";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AIPluginsPanelProps {
   businessId?: string;
@@ -16,6 +16,9 @@ interface AIPluginsPanelProps {
 
 export const AIPluginsPanel = ({ businessId, pluginInstanceId }: AIPluginsPanelProps) => {
   const [activeTab, setActiveTab] = useState<"state" | "trigger">("state");
+
+  // Check if we have a valid business context
+  const hasBusinessContext = Boolean(businessId);
 
   return (
     <div className="h-full flex flex-col bg-card">
@@ -31,6 +34,17 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId }: AIPluginsPanelP
           Embed AI agents in templates for lead scoring, booking, and automation.
         </p>
       </div>
+
+      {!hasBusinessContext && (
+        <div className="p-3 shrink-0">
+          <Alert variant="default" className="bg-muted/50 border-dashed">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Load a project from Cloud to enable AI plugin testing. Currently in preview mode.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "state" | "trigger")} className="flex-1 flex flex-col min-h-0">
         <TabsList className="mx-2 mt-2 h-8 shrink-0 bg-muted/50">
@@ -101,10 +115,24 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId }: AIPluginsPanelP
         <TabsContent value="trigger" className="flex-1 m-0 min-h-0">
           <ScrollArea className="h-full">
             <div className="p-3">
-              <AIEventTrigger 
-                businessId={businessId}
-                pluginInstanceId={pluginInstanceId}
-              />
+              {hasBusinessContext ? (
+                <AIEventTrigger 
+                  businessId={businessId!}
+                  pluginInstanceId={pluginInstanceId}
+                />
+              ) : (
+                <Card className="bg-muted/30 border-dashed">
+                  <CardContent className="p-4 text-center">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Business context required
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      Open a project from Cloud Dashboard to test AI event triggers with a real business ID.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
