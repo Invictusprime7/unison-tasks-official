@@ -63,6 +63,8 @@ import type { BusinessSystemType } from "@/data/templates/types";
 import { normalizeTemplateForCtaContract, type TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { supabase } from "@/integrations/supabase/client";
 import { buildPageStructureContext } from "@/utils/pageStructureContext";
+import { AIActivityPanel } from "@/components/ai-agent/AIActivityPanel";
+import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -712,6 +714,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     });
   }, []);
   
+  // AI Activity Monitor - tracks all agent events for this business
+  const aiActivity = useAIActivityMonitor({
+    businessId: cloudState.business.id || undefined,
+    maxEvents: 20,
+  });
   
   
   // Track changes to code
@@ -2298,7 +2305,7 @@ ${body.innerHTML}
               />
             </div>
 
-            {/* Right Section: View Mode & Actions */}
+            {/* Right Section: View Mode & AI Activity */}
             <div className="flex items-center gap-2">
               {/* View Mode Toggle */}
               <div className="flex items-center gap-0.5 bg-white/5 rounded-lg p-0.5">
@@ -2330,6 +2337,22 @@ ${body.innerHTML}
                   Split
                 </Button>
               </div>
+              
+              {/* AI Activity Indicator & Panel */}
+              <div className="h-5 w-px bg-white/10" />
+              <AIActivityPanel
+                events={aiActivity.events}
+                activityState={aiActivity.activityState}
+                attentionCount={aiActivity.attentionCount}
+                isLoading={aiActivity.isLoading}
+                onViewDetails={() => {
+                  // Navigate to AI plugins tab in sidebar
+                  setLeftPanelCollapsed(false);
+                  toast.info('View AI plugin details in the sidebar', {
+                    description: 'Go to AI Plugins tab for full analysis',
+                  });
+                }}
+              />
             </div>
           </div>
 
