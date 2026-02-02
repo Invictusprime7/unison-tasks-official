@@ -5,7 +5,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
-// Tool registry - maps tool IDs to handlers
+// =============================================================================
+// Types
+// =============================================================================
+
 // deno-lint-ignore no-explicit-any
 type ToolHandler = (payload: Record<string, unknown>, context: ToolContext) => Promise<Record<string, unknown>>
 
@@ -16,78 +19,354 @@ interface ToolContext {
   pluginInstanceId: string | null
 }
 
-const toolHandlers: Record<string, ToolHandler> = {
-  'crm.lead.create': async (payload, context) => {
-    const { data, error } = await context.supabase
-      .from('crm_leads')
+interface ToolResult {
+  tool: string
+  success: boolean
+  result?: Record<string, unknown>
+  error?: string
+}
+
+// =============================================================================
+// Tool Handlers
+// =============================================================================
+
+// --- CRM Tools ---
+
+const crmLeadCreate: ToolHandler = async (payload, context) => {
+  const { data, error } = await context.supabase
+    .from('crm_leads')
+    .insert({
+      business_id: context.businessId,
+      name: payload.name as string,
+      email: payload.email as string,
+      title: `Lead: ${payload.name || payload.email}`,
+      metadata: { score: payload.score, source: 'ai_agent' },
+      status: 'new',
+      intent: (payload.intent as string) || 'contact.submit',
+    })
+    .select('id')
+    .single()
+
+  if (error) throw new Error(`Failed to create lead: ${error.message}`)
+  console.log('[agent-runner] crm.lead.create:', data.id)
+  return { leadId: data.id, success: true }
+}
+
+const pipelineStageSet: ToolHandler = async (payload, context) => {
+  if (!payload.leadId) {
+    throw new Error('leadId is required for pipeline.stage.set')
+  }
+
+  const { error } = await context.supabase
+    .from('crm_leads')
+    .update({ status: payload.stage as string })
+    .eq('id', payload.leadId)
+    .eq('business_id', context.businessId)
+
+  if (error) throw new Error(`Failed to update pipeline stage: ${error.message}`)
+  console.log('[agent-runner] pipeline.stage.set:', payload.leadId, '->', payload.stage)
+  return { updated: true, stage: payload.stage }
+}
+
+// --- Notification Tools ---
+
+const notifyTeam: ToolHandler = async (payload, context) => {
+  const { data: business } = await context.supabase
+    .from('businesses')
+    .select('notification_email, owner_id')
+    .eq('id', context.businessId)
+    .single()
+
+  const notifyEmail = business?.notification_email
+
+  console.log('[agent-runner] notify.team:', {
+    to: notifyEmail || 'owner',
+    message: payload.message,
+    priority: payload.priority || 'normal',
+  })
+
+  // TODO: Integrate with Resend for actual email delivery
+  return { notified: true, channel: 'email' }
+}
+
+// --- State Tools ---
+
+const statePatch: ToolHandler = async (payload, context) => {
+  if (!context.pluginInstanceId) {
+    console.log('[agent-runner] state.patch skipped - no plugin instance')
+    return { patched: false, reason: 'no_plugin_instance' }
+  }
+
+  const stateKey = (payload.key as string) || 'agent_state'
+  const patch = payload.patch as Record<string, unknown>
+
+  const { data: existing } = await context.supabase
+    .from('ai_plugin_state')
+    .select('state')
+    .eq('plugin_instance_id', context.pluginInstanceId)
+    .eq('state_key', stateKey)
+    .single()
+
+  const currentState = existing?.state || {}
+  const newState = { ...currentState, ...patch, _lastPatchedAt: new Date().toISOString() }
+
+  const { error } = await context.supabase
+    .from('ai_plugin_state')
+    .upsert(
+      {
+        plugin_instance_id: context.pluginInstanceId,
+        state_key: stateKey,
+        state: newState,
+      },
+      { onConflict: 'plugin_instance_id,state_key' }
+    )
+
+  if (error) throw new Error(`Failed to patch state: ${error.message}`)
+  console.log('[agent-runner] state.patch:', stateKey, Object.keys(patch))
+  return { patched: true, stateKey }
+}
+
+// --- Calendar Tools (Phase 2 - Booking Agent) ---
+
+const calendarCheck: ToolHandler = async (payload, context) => {
+  const { date, service_id, duration_minutes } = payload
+  
+  const requestedDate = new Date(date as string)
+  const startOfDay = new Date(requestedDate)
+  startOfDay.setHours(0, 0, 0, 0)
+  const endOfDay = new Date(requestedDate)
+  endOfDay.setHours(23, 59, 59, 999)
+
+  let query = context.supabase
+    .from('availability_slots')
+    .select('id, starts_at, ends_at, service_id, is_booked')
+    .eq('business_id', context.businessId)
+    .eq('is_booked', false)
+    .gte('starts_at', startOfDay.toISOString())
+    .lte('starts_at', endOfDay.toISOString())
+    .order('starts_at', { ascending: true })
+
+  if (service_id) {
+    query = query.eq('service_id', service_id)
+  }
+
+  const { data: slots, error } = await query
+
+  if (error) throw new Error(`Failed to check calendar: ${error.message}`)
+
+  const requestedDuration = (duration_minutes as number) || 30
+  // deno-lint-ignore no-explicit-any
+  const availableSlots = (slots || []).filter((slot: any) => {
+    const slotStart = new Date(slot.starts_at)
+    const slotEnd = new Date(slot.ends_at)
+    const slotDuration = (slotEnd.getTime() - slotStart.getTime()) / (1000 * 60)
+    return slotDuration >= requestedDuration
+  })
+
+  // deno-lint-ignore no-explicit-any
+  const formattedSlots = availableSlots.map((slot: any) => {
+    const start = new Date(slot.starts_at)
+    return {
+      id: slot.id,
+      time: start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      starts_at: slot.starts_at,
+      ends_at: slot.ends_at,
+    }
+  })
+
+  console.log('[agent-runner] calendar.check:', { date, slotsFound: formattedSlots.length })
+
+  return {
+    available: formattedSlots.length > 0,
+    slots: formattedSlots,
+    date: date as string,
+    message: formattedSlots.length > 0 
+      ? `Found ${formattedSlots.length} available slots`
+      : 'No available slots for this date',
+  }
+}
+
+const calendarBook: ToolHandler = async (payload, context) => {
+  const {
+    slot_id,
+    customer_name,
+    customer_email,
+    customer_phone,
+    service_name,
+    notes,
+    date,
+    time,
+    duration_minutes,
+  } = payload
+
+  if (slot_id) {
+    // Verify slot exists and is available
+    const { data: slot, error: slotError } = await context.supabase
+      .from('availability_slots')
+      .select('*')
+      .eq('id', slot_id)
+      .eq('business_id', context.businessId)
+      .eq('is_booked', false)
+      .single()
+
+    if (slotError || !slot) {
+      throw new Error('Slot not available or not found')
+    }
+
+    // Mark slot as booked
+    const { error: updateError } = await context.supabase
+      .from('availability_slots')
+      .update({ is_booked: true })
+      .eq('id', slot_id)
+
+    if (updateError) throw new Error(`Failed to reserve slot: ${updateError.message}`)
+
+    const slotStart = new Date(slot.starts_at)
+    const slotEnd = new Date(slot.ends_at)
+    const bookingDuration = (slotEnd.getTime() - slotStart.getTime()) / (1000 * 60)
+
+    const { data: booking, error: bookingError } = await context.supabase
+      .from('bookings')
       .insert({
         business_id: context.businessId,
-        name: payload.name as string,
-        email: payload.email as string,
-        title: `Lead: ${payload.name || payload.email}`,
-        metadata: { score: payload.score, source: 'ai_agent' },
-        status: 'new',
-        intent: payload.intent as string || 'contact.submit',
+        service_id: slot.service_id,
+        service_name: (service_name as string) || 'Appointment',
+        customer_name: customer_name as string,
+        customer_email: customer_email as string,
+        customer_phone: customer_phone as string,
+        booking_date: slotStart.toISOString().split('T')[0],
+        booking_time: slotStart.toTimeString().slice(0, 5),
+        duration_minutes: bookingDuration,
+        starts_at: slot.starts_at,
+        ends_at: slot.ends_at,
+        status: 'confirmed',
+        notes: notes as string,
+        metadata: { source: 'ai_agent', slot_id },
       })
       .select('id')
       .single()
 
-    if (error) throw new Error(`Failed to create lead: ${error.message}`)
-    console.log('[agent-runner] Created lead:', data.id)
-    return { leadId: data.id, success: true }
-  },
+    if (bookingError) throw new Error(`Failed to create booking: ${bookingError.message}`)
 
-  'notify.team': async (payload, context) => {
-    // Get business notification email
-    const { data: business } = await context.supabase
-      .from('businesses')
-      .select('notification_email, owner_id')
-      .eq('id', context.businessId)
-      .single()
+    console.log('[agent-runner] calendar.book:', { bookingId: booking.id, slotId: slot_id })
 
-    let notifyEmail = business?.notification_email
-
-    // Fallback to owner's profile email
-    if (!notifyEmail && business?.owner_id) {
-      const { data: profile } = await context.supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', business.owner_id)
-        .single()
-      
-      // In real implementation, would get email from auth.users
-      // For now, log the notification
-      console.log('[agent-runner] notify.team - would notify owner:', business.owner_id)
+    return {
+      success: true,
+      bookingId: booking.id,
+      confirmation: {
+        date: slotStart.toISOString().split('T')[0],
+        time: slotStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        duration: bookingDuration,
+        customer: customer_name,
+      },
     }
+  }
 
-    console.log('[agent-runner] notify.team:', {
-      to: notifyEmail || 'owner',
-      message: payload.message,
-      leadScore: payload.score,
+  // Direct booking without pre-selected slot
+  if (!date || !time) {
+    throw new Error('Either slot_id or date+time required for booking')
+  }
+
+  const bookingDate = new Date(`${date}T${time}`)
+  const durationMins = (duration_minutes as number) || 30
+  const endTime = new Date(bookingDate.getTime() + durationMins * 60 * 1000)
+
+  const { data: booking, error: bookingError } = await context.supabase
+    .from('bookings')
+    .insert({
+      business_id: context.businessId,
+      service_name: (service_name as string) || 'Appointment',
+      customer_name: customer_name as string,
+      customer_email: customer_email as string,
+      customer_phone: customer_phone as string,
+      booking_date: date as string,
+      booking_time: time as string,
+      duration_minutes: durationMins,
+      starts_at: bookingDate.toISOString(),
+      ends_at: endTime.toISOString(),
+      status: 'pending',
+      notes: notes as string,
+      metadata: { source: 'ai_agent', direct_booking: true },
     })
+    .select('id')
+    .single()
 
-    return { notified: true, channel: 'email' }
-  },
+  if (bookingError) throw new Error(`Failed to create booking: ${bookingError.message}`)
 
-  'pipeline.stage.set': async (payload, context) => {
-    if (!payload.leadId) {
-      throw new Error('leadId is required for pipeline.stage.set')
-    }
+  console.log('[agent-runner] calendar.book (direct):', { bookingId: booking.id, date, time })
 
-    const { error } = await context.supabase
-      .from('crm_leads')
-      .update({ status: payload.stage as string })
-      .eq('id', payload.leadId)
-      .eq('business_id', context.businessId)
-
-    if (error) throw new Error(`Failed to update pipeline stage: ${error.message}`)
-    
-    console.log('[agent-runner] pipeline.stage.set:', payload.leadId, '->', payload.stage)
-    return { updated: true, stage: payload.stage }
-  },
+  return {
+    success: true,
+    bookingId: booking.id,
+    requiresConfirmation: true,
+    confirmation: {
+      date: date as string,
+      time: time as string,
+      duration: durationMins,
+      customer: customer_name,
+    },
+  }
 }
 
-// Execute a single tool call
+// --- Agent Routing Tools (Orchestrator) ---
+
+const agentRoute: ToolHandler = async (payload, _context) => {
+  console.log('[agent-runner] agent.route:', payload.targetAgent)
+  return {
+    routed: true,
+    targetAgent: payload.targetAgent,
+    priority: payload.priority || 'normal',
+  }
+}
+
+const agentInvoke: ToolHandler = async (payload, context) => {
+  const { data, error } = await context.supabase
+    .from('ai_events')
+    .insert({
+      business_id: context.businessId,
+      plugin_instance_id: context.pluginInstanceId,
+      intent: payload.intent as string,
+      payload: payload.eventPayload || {},
+      status: 'pending',
+    })
+    .select('id')
+    .single()
+
+  if (error) throw new Error(`Failed to invoke agent: ${error.message}`)
+  
+  console.log('[agent-runner] agent.invoke:', { eventId: data.id, intent: payload.intent })
+
+  return {
+    invoked: true,
+    eventId: data.id,
+    intent: payload.intent,
+  }
+}
+
+// =============================================================================
+// Tool Registry
+// =============================================================================
+
+const toolHandlers: Record<string, ToolHandler> = {
+  // CRM
+  'crm.lead.create': crmLeadCreate,
+  'pipeline.stage.set': pipelineStageSet,
+  
+  // Notifications
+  'notify.team': notifyTeam,
+  
+  // State
+  'state.patch': statePatch,
+  
+  // Calendar (Phase 2)
+  'calendar.check': calendarCheck,
+  'calendar.book': calendarBook,
+  
+  // Agent routing (Orchestrator)
+  'agent.route': agentRoute,
+  'agent.invoke': agentInvoke,
+}
+
 async function executeTool(
   toolId: string,
   payload: Record<string, unknown>,
@@ -109,11 +388,24 @@ async function executeTool(
   }
 }
 
-// Call LLM with agent system prompt
+// =============================================================================
+// LLM Integration
+// =============================================================================
+
 async function callLLM(
   systemPrompt: string,
   userPayload: Record<string, unknown>
-): Promise<{ score: number; tags: string[]; stage: string; notes: string; proposedToolCalls: Array<{ tool: string; payload: Record<string, unknown> }> }> {
+): Promise<{ 
+  score?: number
+  tags?: string[]
+  stage?: string
+  outcome?: string
+  notes?: string
+  action?: string
+  proposedToolCalls?: Array<{ tool: string; payload: Record<string, unknown> }>
+  // deno-lint-ignore no-explicit-any
+  [key: string]: any 
+}> {
   const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')
   
   if (!lovableApiKey) {
@@ -158,6 +450,10 @@ async function callLLM(
     throw new Error('Invalid JSON response from LLM')
   }
 }
+
+// =============================================================================
+// Main Handler
+// =============================================================================
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -260,7 +556,6 @@ Deno.serve(async (req) => {
 
     if (runError) {
       console.error('[agent-runner] Failed to create run record:', runError)
-      // Continue anyway - run record is for audit, not critical path
     }
 
     // Link event to run
@@ -271,42 +566,41 @@ Deno.serve(async (req) => {
         .eq('id', event.id)
     }
 
-    // Get agent configuration
+    // Get agent configuration - route based on intent
     let systemPrompt: string
     let allowedTools: string[]
+    let agentSlug: string = 'lead_qualifier'
 
-    if (event.plugin_instance_id) {
-      // Get from plugin instance -> agent registry
-      const { data: instance } = await supabase
-        .from('ai_plugin_instances')
-        .select(`
-          config,
-          agent:ai_agent_registry(
-            system_prompt,
-            allowed_tools
-          )
-        `)
-        .eq('id', event.plugin_instance_id)
-        .single()
+    // Check orchestrator config for routing
+    const { data: orchestrator } = await supabase
+      .from('ai_agent_registry')
+      .select('default_config')
+      .eq('slug', 'unison_ai')
+      .eq('is_active', true)
+      .single()
 
-      // Handle joined agent data (could be array or object depending on Supabase version)
-      const agentData = Array.isArray(instance?.agent) ? instance.agent[0] : instance?.agent
-      if (agentData) {
-        systemPrompt = agentData.system_prompt
-        allowedTools = agentData.allowed_tools || []
-      } else {
-        // Fallback to default lead qualifier
-        const { data: defaultAgent } = await supabase
-          .from('ai_agent_registry')
-          .select('system_prompt, allowed_tools')
-          .eq('slug', 'lead_qualifier')
-          .single()
-
-        systemPrompt = defaultAgent?.system_prompt || 'You are a helpful assistant. Respond with JSON.'
-        allowedTools = defaultAgent?.allowed_tools || []
+    if (orchestrator?.default_config?.routing) {
+      const routing = orchestrator.default_config.routing as Record<string, string>
+      if (routing[event.intent]) {
+        agentSlug = routing[event.intent]
+        console.log('[agent-runner] Routed to agent:', agentSlug, 'for intent:', event.intent)
       }
+    }
+
+    // Get the target agent
+    const { data: agent } = await supabase
+      .from('ai_agent_registry')
+      .select('system_prompt, allowed_tools, slug, is_active')
+      .eq('slug', agentSlug)
+      .eq('is_active', true)
+      .single()
+
+    if (agent) {
+      systemPrompt = agent.system_prompt
+      allowedTools = agent.allowed_tools || []
+      console.log('[agent-runner] Using agent:', agent.slug, 'with', allowedTools.length, 'tools')
     } else {
-      // No plugin instance - use default lead qualifier
+      // Fallback to default lead qualifier
       const { data: defaultAgent } = await supabase
         .from('ai_agent_registry')
         .select('system_prompt, allowed_tools')
@@ -315,11 +609,12 @@ Deno.serve(async (req) => {
 
       systemPrompt = defaultAgent?.system_prompt || 'You are a helpful assistant. Respond with JSON.'
       allowedTools = defaultAgent?.allowed_tools || []
+      console.log('[agent-runner] Fallback to lead_qualifier')
     }
 
     // Call LLM
     let llmResult: Awaited<ReturnType<typeof callLLM>>
-    let tokensUsed = 0
+    const tokensUsed = 0
 
     try {
       llmResult = await callLLM(systemPrompt, {
@@ -331,7 +626,6 @@ Deno.serve(async (req) => {
       const error = err as Error
       console.error('[agent-runner] LLM call failed:', error)
 
-      // Update event and run as failed
       await supabase
         .from('ai_events')
         .update({ status: 'failed', processed_at: new Date().toISOString() })
@@ -356,7 +650,7 @@ Deno.serve(async (req) => {
     }
 
     // Execute proposed tool calls
-    const toolCallResults: Array<{ tool: string; success: boolean; result?: unknown; error?: string }> = []
+    const toolCallResults: ToolResult[] = []
     const toolContext: ToolContext = {
       supabase,
       businessId: event.business_id,
@@ -393,6 +687,8 @@ Deno.serve(async (req) => {
             score: llmResult.score,
             tags: llmResult.tags,
             stage: llmResult.stage,
+            outcome: llmResult.outcome,
+            action: llmResult.action,
             notes: llmResult.notes,
             lastProcessedAt: new Date().toISOString(),
             lastEventId: event.id,
@@ -430,6 +726,7 @@ Deno.serve(async (req) => {
     console.log('[agent-runner] Event processed successfully:', {
       eventId: event.id,
       runId: run?.id,
+      agentUsed: agentSlug,
       latencyMs,
       toolCallsExecuted: toolCallResults.length,
     })
@@ -439,9 +736,12 @@ Deno.serve(async (req) => {
         status: 'completed',
         eventId: event.id,
         runId: run?.id,
+        agent: agentSlug,
         result: {
           score: llmResult.score,
           stage: llmResult.stage,
+          outcome: llmResult.outcome,
+          action: llmResult.action,
           tags: llmResult.tags,
         },
         toolCalls: toolCallResults,
