@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProvisionResult {
@@ -20,11 +20,22 @@ interface UseAIPluginProvisioningReturn {
 export function useAIPluginProvisioning(): UseAIPluginProvisioningReturn {
   const [isProvisioning, setIsProvisioning] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  
+  // Track which business+agent combinations we've already attempted
+  const attemptedRef = useRef<Set<string>>(new Set());
 
   const ensurePluginInstance = useCallback(async (
     businessId: string,
     agentSlug: string = 'unison_ai'
   ): Promise<ProvisionResult | null> => {
+    // Prevent duplicate attempts for the same business+agent
+    const attemptKey = `${businessId}:${agentSlug}`;
+    if (attemptedRef.current.has(attemptKey)) {
+      console.log('[useAIPluginProvisioning] Already attempted:', attemptKey);
+      return null;
+    }
+    attemptedRef.current.add(attemptKey);
+
     setIsProvisioning(true);
     setError(null);
 
