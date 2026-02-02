@@ -51,9 +51,7 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
   const [manageOpen, setManageOpen] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [newBusinessName, setNewBusinessName] = useState('');
-  const [newBusinessSlug, setNewBusinessSlug] = useState('');
   const [editName, setEditName] = useState('');
-  const [editSlug, setEditSlug] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editIndustry, setEditIndustry] = useState('');
   const [editNotificationEmail, setEditNotificationEmail] = useState('');
@@ -104,15 +102,11 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
 
     setCreating(true);
     try {
-      const slug = newBusinessSlug.trim() || newBusinessName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      
       const { data, error } = await supabase
         .from('businesses')
         .insert({
-          name: newBusinessName,
-          slug,
+          name: newBusinessName.trim(),
           owner_id: userId,
-          created_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -122,7 +116,6 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
       setBusinesses([data, ...businesses]);
       setCreateOpen(false);
       setNewBusinessName('');
-      setNewBusinessSlug('');
 
       toast({
         title: 'Business created',
@@ -170,7 +163,6 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
   const openManageDialog = (business: Business) => {
     setSelectedBusiness(business);
     setEditName(business.name);
-    setEditSlug(business.slug || '');
     setEditWebsite(business.website || '');
     setEditIndustry(business.industry || '');
     setEditNotificationEmail(business.notification_email || '');
@@ -261,19 +253,6 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
                   placeholder="My Agency"
                   className="bg-slate-800/50"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="businessSlug">URL Slug (optional)</Label>
-                <Input
-                  id="businessSlug"
-                  value={newBusinessSlug}
-                  onChange={(e) => setNewBusinessSlug(e.target.value)}
-                  placeholder="my-agency"
-                  className="bg-slate-800/50"
-                />
-                <p className="text-xs text-slate-400">
-                  Used in URLs. Leave blank to auto-generate.
-                </p>
               </div>
             </div>
             <DialogFooter>
