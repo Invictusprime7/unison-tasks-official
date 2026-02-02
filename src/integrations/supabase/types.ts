@@ -26,6 +26,7 @@ export type Database = {
           slug: string
           system_prompt: string
           tier: Database["public"]["Enums"]["agent_tier"]
+          ui_kind: Database["public"]["Enums"]["agent_ui_kind"] | null
           updated_at: string
           version: string
         }
@@ -40,6 +41,7 @@ export type Database = {
           slug: string
           system_prompt: string
           tier?: Database["public"]["Enums"]["agent_tier"]
+          ui_kind?: Database["public"]["Enums"]["agent_ui_kind"] | null
           updated_at?: string
           version?: string
         }
@@ -54,6 +56,7 @@ export type Database = {
           slug?: string
           system_prompt?: string
           tier?: Database["public"]["Enums"]["agent_tier"]
+          ui_kind?: Database["public"]["Enums"]["agent_ui_kind"] | null
           updated_at?: string
           version?: string
         }
@@ -2549,6 +2552,8 @@ export type Database = {
         Returns: undefined
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      jsonb_is_object: { Args: { j: Json }; Returns: boolean }
+      jsonb_is_string_array: { Args: { j: Json }; Returns: boolean }
       validate_file_share_token: {
         Args: { _file_id: string; _token: string }
         Returns: boolean
@@ -2561,7 +2566,8 @@ export type Database = {
         | "completed"
         | "failed"
         | "cancelled"
-      agent_tier: "free" | "pro" | "enterprise"
+      agent_tier: "free" | "pro" | "enterprise" | "system"
+      agent_ui_kind: "hidden" | "widget" | "modal" | "inline"
       blend_mode:
         | "normal"
         | "multiply"
@@ -2712,7 +2718,8 @@ export const Constants = {
         "failed",
         "cancelled",
       ],
-      agent_tier: ["free", "pro", "enterprise"],
+      agent_tier: ["free", "pro", "enterprise", "system"],
+      agent_ui_kind: ["hidden", "widget", "modal", "inline"],
       blend_mode: [
         "normal",
         "multiply",
