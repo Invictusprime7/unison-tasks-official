@@ -1970,6 +1970,65 @@ const SMART_NAVIGATION_SCRIPT = `
     }, form.querySelector('button[type="submit"]'));
   }, true);
   
+  // ============================================================================
+  // Parent Window Command Handler (for booking.scroll, etc.)
+  // ============================================================================
+  window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'INTENT_COMMAND') return;
+    
+    var command = e.data.command;
+    var requestId = e.data.requestId;
+    
+    console.log('[Preview] Received command:', command, requestId);
+    
+    if (command === 'booking.scroll') {
+      // Find booking form on page
+      var bookingForm = document.querySelector(
+        'form[data-booking], form[id*="booking"], form[class*="booking"], ' +
+        'form[id*="reservation"], form[class*="reservation"], ' +
+        'form[id*="appointment"], form[class*="appointment"], ' +
+        '[data-section="booking"], [id*="booking-form"], ' +
+        '#booking, #reservation, #appointment, .booking-form, .reservation-form'
+      );
+      
+      // Fallback: find any form with date/time inputs
+      if (!bookingForm) {
+        var forms = document.querySelectorAll('form');
+        for (var i = 0; i < forms.length; i++) {
+          var form = forms[i];
+          var hasDate = form.querySelector('input[type="date"], input[type="datetime-local"], select[name*="date"], select[name*="time"]');
+          var hasName = form.querySelector('input[name*="name"], input[name*="client"], input[name*="customer"]');
+          if (hasDate && hasName) {
+            bookingForm = form;
+            break;
+          }
+        }
+      }
+      
+      var handled = false;
+      if (bookingForm) {
+        bookingForm.scrollIntoView({ behavior: 'auto', block: 'center' });
+        // Focus first input after tiny delay
+        setTimeout(function() {
+          var firstInput = bookingForm.querySelector('input:not([type="hidden"]), select, textarea');
+          if (firstInput) firstInput.focus();
+        }, 50);
+        handled = true;
+        console.log('[Preview] Scrolled to booking form');
+      } else {
+        console.log('[Preview] No booking form found on page');
+      }
+      
+      // Reply to parent
+      window.parent.postMessage({
+        type: 'INTENT_COMMAND_RESULT',
+        command: command,
+        requestId: requestId,
+        handled: handled
+      }, '*');
+    }
+  });
+  
   console.log('[Preview] Smart navigation system initialized');
 })();
 </script>
