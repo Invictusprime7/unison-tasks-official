@@ -732,6 +732,19 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       // Detect template action from user message
       const detectTemplateAction = (message: string): string | undefined => {
         const lowerMessage = message.toLowerCase();
+        
+        // Check for full control mode first (highest priority)
+        if (lowerMessage.match(/\b(full control|full reign|ai decide|you decide|your choice|go wild|do whatever|improve everything|make it better|optimize everything|enhance everything|fix everything|revamp|overhaul|transform|reimagine)\b/)) {
+          return 'full-control';
+        }
+        // E-commerce/checkout flow requests
+        if (lowerMessage.match(/\b(add|create|implement|build)\b.*\b(cart|checkout|ecommerce|e-commerce|shopping|payment|buy now|add to cart)\b/)) {
+          return 'full-control';
+        }
+        // Dynamic/interactive element requests
+        if (lowerMessage.match(/\b(make|add)\b.*\b(dynamic|interactive|animated|live|real-time)\b/)) {
+          return 'full-control';
+        }
         if (lowerMessage.match(/\b(add|insert|include|create new|put|place)\b.*\b(section|element|component|button|image|form|card|hero|footer|header|nav)/)) {
           return 'add';
         }
@@ -1002,12 +1015,12 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       "Make this section stand out with better UI",
       "Add icons to each item",
     ] : [
+      "🚀 Full AI control - improve everything",
       "Create a modern hero section",
+      "Add cart + checkout flow",
       "Build a pricing section with 3 tiers",
       "Generate a features showcase",
-      "Create a contact form section",
-      "Build a testimonials grid",
-      "Design a services section",
+      "Make elements dynamic & interactive",
     ],
     design: [
       "Review my layout hierarchy",

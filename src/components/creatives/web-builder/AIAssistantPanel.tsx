@@ -209,9 +209,10 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   };
 
   const quickPrompts = [
+    '🚀 Full AI control - transform this page',
+    'Add cart + checkout flow',
+    'Make everything dynamic',
     'Create a landing page for a SaaS',
-    'Design a portfolio section',
-    'Build a pricing card',
   ];
 
   if (!isOpen) return null;
