@@ -859,8 +859,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           const handled = await new Promise<boolean>((resolve) => {
             const timeout = window.setTimeout(() => {
               window.removeEventListener('message', onResult);
+              console.log('[WebBuilder] Booking scroll command timed out');
               resolve(false);
-            }, 250);
+            }, 1000); // Increased timeout for slower templates
 
             const onResult = (evt: MessageEvent) => {
               if (evt.data?.type !== 'INTENT_COMMAND_RESULT') return;
@@ -868,6 +869,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               if (evt.data?.requestId !== requestId) return;
               window.clearTimeout(timeout);
               window.removeEventListener('message', onResult);
+              console.log('[WebBuilder] Booking scroll result:', evt.data?.handled);
               resolve(!!evt.data?.handled);
             };
 
@@ -876,7 +878,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           });
 
           if (!handled) {
-            toast('No booking form found on this page');
+            // Don't show error toast - form may already be visible or user can scroll manually
+            console.log('[WebBuilder] Booking form not found - user may need to scroll manually');
           }
         })();
         return;
