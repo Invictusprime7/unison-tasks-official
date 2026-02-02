@@ -599,6 +599,18 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
   const biz = assertBusinessId(payload);
   if (!biz.ok) return { success: false, error: ('error' in biz ? biz.error : 'Invalid businessId') };
   
+  // Validate email for action intents that require it (lead capture, contact, newsletter, quote)
+  if (isActionIntent(intent) && intent !== 'booking.create') {
+    const email = String(payload.email ?? payload.customerEmail ?? '').trim();
+    if (!email) {
+      return { success: false, error: 'Email is required' };
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return { success: false, error: 'Please enter a valid email address' };
+    }
+  }
+  
   // ========================================================================
   // PAYMENT INTENTS - Backend creates checkout session
   // ========================================================================
