@@ -111,8 +111,9 @@ export function useAIActivityMonitor({
     try {
       setIsLoading(true);
       
-      // Fetch recent AI runs with agent info
-      const { data: runs, error: runsError } = await supabase
+      // Fetch recent AI runs - use LEFT JOIN to include runs without plugin instances
+      // First try to get runs with plugin instances
+      const { data: runsWithPlugins, error: runsError } = await supabase
         .from('ai_runs')
         .select(`
           id,
@@ -121,11 +122,7 @@ export function useAIActivityMonitor({
           completed_at,
           output_payload,
           error_message,
-          plugin_instance_id,
-          ai_plugin_instances!inner(
-            agent_id,
-            ai_agent_registry!inner(slug, name)
-          )
+          plugin_instance_id
         `)
         .eq('business_id', businessId)
         .order('created_at', { ascending: false })
@@ -133,14 +130,22 @@ export function useAIActivityMonitor({
 
       if (runsError) throw runsError;
 
-      const mappedEvents: AIActivityEvent[] = (runs || []).map((run) => {
-        const pluginInstance = run.ai_plugin_instances as unknown as { ai_agent_registry: { slug: string; name: string } } | null;
-        const agentSlug = pluginInstance?.ai_agent_registry?.slug || 'unknown';
+      // For runs without plugin instances, determine agent from intent
+      const mappedEvents: AIActivityEvent[] = (runsWithPlugins || []).map((run) => {
+        // Try to infer agent from output or use default
+        const output = (typeof run.output_payload === 'object' && run.output_payload !== null) 
+          ? run.output_payload as { score?: number; tags?: string[]; stage?: string; notes?: string; _schema?: string }
+          : null;
+        
+        // Infer agent from schema or default to lead_qualifier
+        let agentSlug = 'lead_qualifier';
+        if (output?._schema) {
+          const schemaMatch = output._schema.match(/^(\w+)\./);
+          if (schemaMatch) agentSlug = schemaMatch[1];
+        }
+        
         const display = getAgentDisplay(agentSlug);
         const status = mapEventStatus(run.status);
-        const output = (typeof run.output_payload === 'object' && run.output_payload !== null) 
-          ? run.output_payload as { score?: number; tags?: string[]; stage?: string; notes?: string }
-          : null;
         
         return {
           id: run.id,
