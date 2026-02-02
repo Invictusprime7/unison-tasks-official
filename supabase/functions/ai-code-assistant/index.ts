@@ -1056,11 +1056,12 @@ Learn from every bug fix to become better at prevention!`
       return '';
     };
 
-    // Check if user wants to generate an image
+    // Check if user wants to generate an image - only trigger on explicit requests
     const lastMessageContent = messages[messages.length - 1]?.content;
     const userPromptText = extractTextContent(lastMessageContent);
     const userPrompt = userPromptText.toLowerCase();
-    const imageKeywords = ['generate image', 'create image', 'add image', 'brand logo', 'logo', 'add photo', 'insert image', 'place image'];
+    // More specific keywords - avoid triggering on general page generation requests
+    const imageKeywords = ['generate image', 'create image', 'generate a logo', 'create a logo', 'make a logo', 'add logo image', 'insert image'];
     const shouldGenerateImage = generateImage || imageKeywords.some(kw => userPrompt.includes(kw));
     
     let generatedImageUrl = '';
@@ -1085,10 +1086,12 @@ Learn from every bug fix to become better at prevention!`
       
       // Determine if it's a logo request
       const isLogo = userPrompt.includes('logo') || userPrompt.includes('brand');
-      const imageStyle = isLogo ? 'logo' : 'digital-art';
       
       try {
-        // Call image generation
+        // Call image generation with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
         const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -1096,44 +1099,60 @@ Learn from every bug fix to become better at prevention!`
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash-image-preview',
+            model: 'google/gemini-3-pro-image-preview',
             messages: [{
               role: 'user',
               content: `${imageDescription}, ${isLogo ? 'clean professional logo design, minimal, vector style, transparent background' : 'high quality digital art'}`
             }],
             modalities: ['image', 'text']
           }),
+          signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
+        
         if (imageResponse.ok) {
-          const imageData = await imageResponse.json();
-          generatedImageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || '';
-          
-          if (generatedImageUrl) {
-            // Generate placement CSS
-            const placementStyles: Record<string, string> = {
-              'top-left': 'position: absolute; top: 10px; left: 10px;',
-              'top-center': 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%);',
-              'top-right': 'position: absolute; top: 10px; right: 10px;',
-              'center': 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);',
-              'bottom-left': 'position: absolute; bottom: 10px; left: 10px;',
-              'bottom-right': 'position: absolute; bottom: 10px; right: 10px;',
-            };
-            
-            const placementCss = placementStyles[detectedPlacement] || placementStyles['top-left'];
-            const maxSize = isLogo ? 'max-width: 120px; max-height: 60px;' : 'max-width: 300px; max-height: 200px;';
-            
-            imageHtml = `
+          const imageText = await imageResponse.text();
+          if (imageText && imageText.trim()) {
+            try {
+              const imageData = JSON.parse(imageText);
+              generatedImageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || '';
+              
+              if (generatedImageUrl) {
+                // Generate placement CSS
+                const placementStyles: Record<string, string> = {
+                  'top-left': 'position: absolute; top: 10px; left: 10px;',
+                  'top-center': 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%);',
+                  'top-right': 'position: absolute; top: 10px; right: 10px;',
+                  'center': 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);',
+                  'bottom-left': 'position: absolute; bottom: 10px; left: 10px;',
+                  'bottom-right': 'position: absolute; bottom: 10px; right: 10px;',
+                };
+                
+                const placementCss = placementStyles[detectedPlacement] || placementStyles['top-left'];
+                const maxSize = isLogo ? 'max-width: 120px; max-height: 60px;' : 'max-width: 300px; max-height: 200px;';
+                
+                imageHtml = `
 <!-- AI Generated Image - Drag to reposition, use corner handles to resize -->
 <div class="ai-image-container resizable-image" style="${placementCss} ${maxSize} z-index: 100;">
   <img src="${generatedImageUrl}" alt="${imageDescription}" class="w-full h-auto object-contain" />
 </div>`;
-            
-            console.log('[AI-Code-Assistant] Image generated and placed at:', detectedPlacement);
+                
+                console.log('[AI-Code-Assistant] Image generated and placed at:', detectedPlacement);
+              }
+            } catch (parseErr) {
+              console.error('[AI-Code-Assistant] Failed to parse image response:', parseErr);
+            }
           }
+        } else {
+          console.warn('[AI-Code-Assistant] Image generation returned non-OK status:', imageResponse.status);
         }
       } catch (imageError) {
-        console.error('[AI-Code-Assistant] Image generation failed:', imageError);
+        if (imageError instanceof Error && imageError.name === 'AbortError') {
+          console.warn('[AI-Code-Assistant] Image generation timed out');
+        } else {
+          console.error('[AI-Code-Assistant] Image generation failed:', imageError);
+        }
       }
     }
 
@@ -1174,6 +1193,10 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       ],
     };
 
+    // Main AI call with timeout
+    const mainController = new AbortController();
+    const mainTimeoutId = setTimeout(() => mainController.abort(), 60000); // 60 second timeout
+    
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -1181,7 +1204,10 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: mainController.signal
     });
+    
+    clearTimeout(mainTimeoutId);
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -1242,6 +1268,18 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     );
   } catch (error) {
     console.error('Error in ai-code-assistant:', error);
+    
+    // Handle timeout errors specifically
+    if (error instanceof Error && error.name === 'AbortError') {
+      return new Response(
+        JSON.stringify({ error: 'Request timed out. The AI service is taking too long. Please try again.' }),
+        {
+          status: 504,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    
     const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: message }),
