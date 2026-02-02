@@ -268,8 +268,10 @@ function injectIntentListener(html: string): string {
     }
 
     function findBookingTarget(){
-      const selectors = [
-        // Explicit forms
+      console.log('[Intent] Searching for booking form...');
+      
+      // Priority 1: Explicitly marked forms/sections
+      const explicitSelectors = [
         'form[data-ut-intent="booking.create"]',
         'form[data-intent="booking.create"]',
         'form[data-booking]',
@@ -280,52 +282,84 @@ function injectIntentListener(html: string): string {
         '.booking-form',
         '.reservation-form',
         '.appointment-form',
+      ];
 
-        // Common sections/anchors
+      for(const sel of explicitSelectors){
+        try{
+          const node = document.querySelector(sel);
+          if(node){
+            console.log('[Intent] Found explicit booking target:', sel);
+            return node;
+          }
+        }catch{}
+      }
+      
+      // Priority 2: Common booking section IDs/classes
+      const sectionSelectors = [
         '#booking',
         '#book',
         '#schedule',
         '#appointment',
         '#reservation',
-        // Any container hinting booking/reservation (guarded by input check below)
+        '#contact-form',
+        '#request-form',
+        'section[id*="booking"]',
+        'section[id*="book"]',
+        'section[id*="reserv"]',
+        'section[id*="appoint"]',
+        'section[id*="schedule"]',
         '[id*="booking" i]',
         '[class*="booking" i]',
         '[id*="reservation" i]',
         '[class*="reservation" i]',
         '[id*="appointment" i]',
         '[class*="appointment" i]',
-        '[id*="schedule" i]',
-        '[class*="schedule" i]',
-        'section[id*="booking"]',
-        'section[id*="book"]',
-        'section[id*="reserv"]',
-        'section[id*="appoint"]',
-        'section[id*="schedule"]',
       ];
 
-      for(const sel of selectors){
+      for(const sel of sectionSelectors){
         try{
           const node = document.querySelector(sel);
-          if(node && node.querySelector && node.querySelector('input,select,textarea,button[type="submit"],button')){
+          if(node && node.querySelector && node.querySelector('input,select,textarea')){
+            console.log('[Intent] Found section booking target:', sel);
             return node;
           }
         }catch{}
       }
 
-      // Heuristic: any form that looks like a booking widget
+      // Priority 3: Heuristic - any form with booking-like fields
+      try{
+        const forms = Array.from(document.querySelectorAll('form'));
+        console.log('[Intent] Checking', forms.length, 'forms for booking indicators');
+        
+        for(const f of forms){
+          const hasDate = f.querySelector('input[type="date"], input[type="datetime-local"], [name*="date" i], [id*="date" i], select[id*="date" i]');
+          const hasTime = f.querySelector('input[type="time"], [name*="time" i], [id*="time" i], select[id*="time" i]');
+          const hasEmail = f.querySelector('input[type="email"], [name*="email" i], [id*="email" i]');
+          const hasName = f.querySelector('input[name*="name" i], input[id*="name" i], input[placeholder*="name" i]');
+          const hasPhone = f.querySelector('input[type="tel"], input[name*="phone" i], input[id*="phone" i]');
+          const hasService = f.querySelector('[name*="service" i], [id*="service" i], select[id*="service" i]');
+          
+          // Booking if: (date AND time) OR (email AND date/time) OR (name AND phone AND any other field)
+          if((hasDate && hasTime) || (hasEmail && (hasDate || hasTime)) || (hasName && hasPhone) || (hasService && (hasDate || hasTime || hasName))){
+            console.log('[Intent] Found heuristic booking form');
+            return f;
+          }
+        }
+      }catch(e){console.error('[Intent] Form scan error:', e);}
+
+      // Priority 4: Last resort - find ANY form with multiple inputs
       try{
         const forms = Array.from(document.querySelectorAll('form'));
         for(const f of forms){
-          const hasDate = f.querySelector('input[type="date"], [name*="date" i], [id*="date" i]');
-          const hasTime = f.querySelector('input[type="time"], [name*="time" i], [id*="time" i]');
-          const hasEmail = f.querySelector('input[type="email"], [name*="email" i], [id*="email" i]');
-          const hasName = f.querySelector('[name*="name" i], [id*="name" i]');
-          if((hasDate && hasTime) || (hasEmail && (hasDate || hasTime)) || (hasName && hasEmail)){
+          const inputs = f.querySelectorAll('input:not([type="hidden"]), select, textarea');
+          if(inputs.length >= 2){
+            console.log('[Intent] Using fallback - first form with inputs');
             return f;
           }
         }
       }catch{}
 
+      console.log('[Intent] No booking form found');
       return null;
     }
 
