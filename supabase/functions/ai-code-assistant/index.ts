@@ -1201,7 +1201,21 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    const data = await response.json();
+    // Defensive JSON parsing - handle empty or invalid responses
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+      console.error('AI gateway returned empty response');
+      throw new Error('AI gateway returned empty response. Please try again.');
+    }
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse AI gateway response:', responseText.substring(0, 500));
+      throw new Error('Invalid response from AI gateway. Please try again.');
+    }
+    
     const content = data.choices?.[0]?.message?.content || '';
 
     // Save learning session (async, don't wait)
