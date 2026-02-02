@@ -181,6 +181,81 @@ ${templateAction === 'restyle' ? `User wants to RESTYLE the template visually.
 - Change colors, fonts, spacing as requested
 - Maintain layout and structure
 - Ensure consistent styling across all sections` : ''}
+${templateAction === 'full-control' ? `🚀 **FULL CREATIVE CONTROL MODE - AI HAS COMPLETE AUTHORITY**
+
+You have FULL AUTHORITY to make ANY UI/UX decisions to improve this template. The user trusts your expertise.
+
+🎨 **YOU CAN AND SHOULD:**
+
+**VISUAL DESIGN:**
+- Completely restyle colors, fonts, typography, spacing
+- Add gradients, shadows, animations, transitions
+- Implement glassmorphism, neumorphism, or any modern design trend
+- Change backgrounds, add patterns, textures, or visual effects
+- Adjust all spacing, padding, margins for better visual rhythm
+- Add micro-interactions and hover effects
+
+**LAYOUT & STRUCTURE:**
+- Reorder sections for better user flow and conversion
+- Add new sections (hero, features, testimonials, FAQ, CTA, etc.)
+- Remove redundant or weak sections
+- Reorganize grid layouts (2-col → 3-col, etc.)
+- Add responsive breakpoints where missing
+- Implement better visual hierarchy
+
+**CONTENT & COPY:**
+- Rewrite headlines for impact and clarity
+- Improve button labels for better conversion
+- Add compelling subheadings and descriptions
+- Enhance placeholder text to be more realistic
+- Add social proof elements (stats, testimonials, badges)
+- Improve CTAs with urgency and value props
+
+**FUNCTIONALITY:**
+- Make static elements dynamic (counters, carousels, tabs)
+- Add interactive components (accordions, modals, tooltips)
+- Implement cart → checkout flows for e-commerce
+- Add form validation and user feedback
+- Implement scroll animations and reveals
+- Add progress indicators and loading states
+
+**E-COMMERCE ENHANCEMENTS:**
+- Add product cards with proper data-ut-intent="cart.add"
+- Implement shopping cart with item count badge
+- Add checkout flow with data-ut-intent="checkout.start"
+- Include price displays, quantity selectors, variant pickers
+- Add "Add to Cart" animations and feedback
+- Include trust badges and security indicators
+
+**CONVERSION OPTIMIZATION:**
+- Add sticky headers/CTAs for key actions
+- Implement exit-intent triggers (conceptual placement)
+- Add urgency elements (limited time, stock counters)
+- Include trust signals throughout
+- Optimize form placement and length
+- Add multi-step forms for complex flows
+
+**BACKEND WIRING (REQUIRED):**
+- Wire all CTAs with appropriate data-ut-intent attributes:
+  - Booking: data-ut-intent="booking.create"
+  - Contact: data-ut-intent="contact.submit"
+  - Newsletter: data-ut-intent="newsletter.subscribe"
+  - E-commerce: data-ut-intent="cart.add", "cart.view", "checkout.start"
+  - Auth: data-ut-intent="auth.signup", "auth.signin"
+  - Quotes: data-ut-intent="quote.request"
+- Include proper data-* attributes for payload (data-product-id, data-price, etc.)
+- Add data-ut-cta labels for CTA tracking
+
+**OUTPUT REQUIREMENTS:**
+1. Return COMPLETE, PRODUCTION-READY HTML
+2. Use Tailwind CSS with design token classes (bg-primary, text-foreground, etc.)
+3. Include all necessary <style> blocks for custom animations
+4. Include all <script> blocks for interactivity
+5. Ensure responsive design (mobile-first with sm:, md:, lg: breakpoints)
+6. Wire ALL conversion elements with data-ut-intent
+7. No markdown, no explanations - just the complete HTML code
+
+🎯 **YOUR GOAL:** Transform this template into a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL page that you would be proud to showcase.` : ''}
 ${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - VISUAL THEME ONLY, PRESERVE ALL CONTENT**
 
 You are applying a design preset to modify ONLY the visual appearance of this template.
