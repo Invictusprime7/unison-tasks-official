@@ -5,12 +5,7 @@
  * Templates are now organized by industry type and map to Business Systems:
  *   
  *   Business Systems → Template Categories:
- *      booking     → restaurant, contractor
- *      portfolio   → portfolio, agency  
- *      store       → ecommerce
- *      agency      → agency, startup
- *      content     → blog, landing
- *      saas        → landing, startup
+ *      booking     → restaurant, contractor, salon
  * 
  * @see src/data/templates/index.ts for the main aggregation
  * @see src/data/templates/types.ts for Business System definitions
@@ -48,15 +43,8 @@ export {
   // Utilities
   wrapInHtmlDoc,
   
-  // Industry-specific template arrays
-  landingTemplates,
-  portfolioTemplates,
-  restaurantTemplates,
-  ecommerceTemplates,
-  blogTemplates,
-  contractorTemplates,
-  agencyTemplates,
-  startupTemplates,
+  // Salon templates only
+  salonTemplates,
   
   // Aggregated templates array
   layoutTemplates,

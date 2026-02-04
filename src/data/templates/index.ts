@@ -88,68 +88,19 @@ export {
   INTERACTIVE_SCRIPT 
 } from './advancedCss';
 
-// Industry Templates (Standard)
-export { landingTemplates } from './landing';
-export { portfolioTemplates } from './portfolio';
-export { restaurantTemplates } from './restaurant';
-export { ecommerceTemplates } from './ecommerce';
-export { blogTemplates } from './blog';
-export { contractorTemplates } from './contractor';
-export { agencyTemplates } from './agency';
-export { startupTemplates } from './startup';
-
-// Industry Templates (Premium)
-export { premiumRestaurantTemplates } from './restaurant/premium';
+// Salon Templates Only
 export { salonTemplates } from './salon';
-export { premiumAgencyTemplates } from './agency/premium';
-export { premiumEcommerceTemplates } from './ecommerce/premium';
-export { premiumContractorTemplates } from './contractor/premium';
-export { medicalTemplates } from './medical';
-export { saasTemplates } from './saas';
 
-// Import all templates for aggregation
-import { landingTemplates } from './landing';
-import { portfolioTemplates } from './portfolio';
-import { restaurantTemplates } from './restaurant';
-import { ecommerceTemplates } from './ecommerce';
-import { blogTemplates } from './blog';
-import { contractorTemplates } from './contractor';
-import { agencyTemplates } from './agency';
-import { startupTemplates } from './startup';
-
-// Premium templates
-import { premiumRestaurantTemplates } from './restaurant/premium';
+// Import salon templates for aggregation
 import { salonTemplates } from './salon';
-import { premiumAgencyTemplates } from './agency/premium';
-import { premiumEcommerceTemplates } from './ecommerce/premium';
-import { premiumContractorTemplates } from './contractor/premium';
-import { medicalTemplates } from './medical';
-import { saasTemplates } from './saas';
 import type { LayoutCategory, LayoutTemplate, BusinessSystemType } from './types';
 import { businessSystems } from './types';
 
 /**
- * All layout templates aggregated from industry folders
- * Includes both standard and premium templates
+ * All layout templates - Currently only Salon Booking templates
  */
 export const layoutTemplates: LayoutTemplate[] = [
-  // Standard templates
-  ...landingTemplates,
-  ...portfolioTemplates,
-  ...restaurantTemplates,
-  ...ecommerceTemplates,
-  ...blogTemplates,
-  ...contractorTemplates,
-  ...agencyTemplates,
-  ...startupTemplates,
-  // Premium templates
-  ...premiumRestaurantTemplates,
   ...salonTemplates,
-  ...premiumAgencyTemplates,
-  ...premiumEcommerceTemplates,
-  ...premiumContractorTemplates,
-  ...medicalTemplates,
-  ...saasTemplates,
 ];
 
 /**

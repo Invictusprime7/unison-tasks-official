@@ -13,6 +13,7 @@ import {
   Home,
   Kanban,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,8 +24,9 @@ import { CRMFormSubmissions } from "@/components/crm/CRMFormSubmissions";
 import { CRMOverview } from "@/components/crm/CRMOverview";
 import { CRMPipeline } from "@/components/crm/CRMPipeline";
 import { CRMAutomations } from "@/components/crm/CRMAutomations";
+import { PrebuiltWorkflows } from "@/components/crm/PrebuiltWorkflows";
 
-type CRMView = "overview" | "contacts" | "leads" | "pipeline" | "workflows" | "automations" | "forms";
+type CRMView = "overview" | "contacts" | "leads" | "pipeline" | "workflows" | "recipes" | "automations" | "forms";
 
 const navItems = [
   { id: "overview" as CRMView, label: "Overview", icon: BarChart3 },
@@ -32,6 +34,7 @@ const navItems = [
   { id: "leads" as CRMView, label: "Leads", icon: Target },
   { id: "pipeline" as CRMView, label: "Pipeline", icon: Kanban },
   { id: "workflows" as CRMView, label: "Workflows", icon: Workflow },
+  { id: "recipes" as CRMView, label: "Prebuilt", icon: Sparkles },
   { id: "automations" as CRMView, label: "Automations", icon: Zap },
   { id: "forms" as CRMView, label: "Form Submissions", icon: FileText },
 ];
@@ -54,6 +57,8 @@ export default function CRMDashboard({ initialView = "overview" }: CRMDashboardP
         return <CRMPipeline />;
       case "workflows":
         return <CRMWorkflows />;
+      case "recipes":
+        return <PrebuiltWorkflows />;
       case "automations":
         return <CRMAutomations />;
       case "forms":
@@ -134,11 +139,11 @@ export default function CRMDashboard({ initialView = "overview" }: CRMDashboardP
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
           <div>
             <h2 className="text-xl font-semibold text-foreground capitalize">
-              {activeView === "forms" ? "Form Submissions" : activeView}
+              {activeView === "forms" ? "Form Submissions" : activeView === "recipes" ? "Prebuilt Workflows" : activeView}
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            {activeView !== "overview" && activeView !== "forms" && activeView !== "pipeline" && activeView !== "automations" && (
+            {activeView !== "overview" && activeView !== "forms" && activeView !== "pipeline" && activeView !== "automations" && activeView !== "recipes" && (
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-1" />
                 Add {activeView === "workflows" ? "Workflow" : activeView.slice(0, -1)}

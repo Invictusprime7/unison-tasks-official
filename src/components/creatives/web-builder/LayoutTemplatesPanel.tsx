@@ -19,7 +19,6 @@ import {
   type LayoutTemplate,
   type BusinessSystemType,
 } from '@/data/layoutTemplates';
-import { intentTestTemplate } from '@/data/templates/test/intentTestTemplate';
 import { TemplateDetailCard } from '@/components/web-builder/TemplateDetailCard';
 
 type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
@@ -42,26 +41,10 @@ interface LayoutTemplatesPanelProps {
 }
 
 const categoryLabels: Record<LayoutCategory, string> = {
-  landing: 'Landing Pages',
-  portfolio: 'Portfolio',
-  restaurant: 'Restaurant',
-  ecommerce: 'E-Commerce',
-  blog: 'Blog',
-  contractor: 'Contractor',
-  agency: 'Agency',
-  startup: 'Startup',
   salon: 'Salon & Spa',
 };
 
 const categoryIcons: Record<LayoutCategory, string> = {
-  landing: '🚀',
-  portfolio: '🎨',
-  restaurant: '🍽️',
-  ecommerce: '🛍️',
-  blog: '📝',
-  contractor: '🔨',
-  agency: '💼',
-  startup: '💡',
   salon: '💅',
 };
 
@@ -301,33 +284,7 @@ export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
             </Card>
           )}
 
-          {/* Test Template - Always at top */}
-          <Card
-            className="group cursor-pointer hover:border-primary/50 transition-all bg-primary/10 border-primary/30 hover:bg-primary/20"
-            onClick={() => {
-              onSelectTemplate(intentTestTemplate, 'Intent Listener Test');
-              toast.success('Loaded: Intent Listener Test - Click buttons to test auto-wiring!');
-            }}
-          >
-            <CardContent className="p-3">
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Zap className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-medium truncate">🎯 Intent Listener Test</h4>
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                      TEST
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    Test template with buttons for all intent types. Verify auto-wiring works!
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              </div>
-            </CardContent>
-          </Card>
-          
+
           {filteredTemplates.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               <Layout className="h-8 w-8 mx-auto mb-2 opacity-50" />

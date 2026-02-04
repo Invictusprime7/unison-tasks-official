@@ -1188,16 +1188,8 @@ export function getManifestByPattern(templateId: string): TemplateManifest | und
  * Get default manifest for a system type (when no specific template manifest exists)
  */
 export function getDefaultManifestForSystem(systemType: BusinessSystemType): TemplateManifest {
-  const defaults: Record<BusinessSystemType, string> = {
-    booking: 'salon-booking',
-    portfolio: 'creator-portfolio',
-    store: 'ecommerce-store',
-    agency: 'agency-services',
-    content: 'content-blog',
-    saas: 'saas-landing',
-  };
-  
-  return templateManifests[defaults[systemType]] || templateManifests['salon-booking'];
+  // Only booking system is supported now
+  return templateManifests['salon-booking'] || templateManifests['restaurant-fine-dining'];
 }
 
 /**
