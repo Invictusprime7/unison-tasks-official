@@ -49,6 +49,98 @@ export interface DemoResponse {
  * All use ONLY ActionIntents: contact.submit, newsletter.subscribe, booking.create, quote.request
  */
 export const systemContracts: Record<BusinessSystemType, SystemContract> = {
+  saas: {
+    systemType: 'saas',
+    name: 'SaaS Business',
+    requiredIntents: ['contact.submit', 'newsletter.subscribe'],
+    requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
+    requiredData: ['business_name', 'business_email', 'pricing_tiers'],
+    recommendedIntegrations: ['stripe', 'email'],
+    publishChecks: [
+      { id: 'has_pricing', label: 'Pricing configured', description: 'At least one pricing tier must be defined', severity: 'error' },
+      { id: 'has_signup', label: 'Signup flow', description: 'Signup or contact form must be present', severity: 'error' },
+    ],
+    demoResponses: {
+      'booking.create': { success: true, message: '✅ Demo scheduled', data: {} },
+      'contact.submit': { success: true, message: '✅ Message received!', data: {} },
+      'newsletter.subscribe': { success: true, message: '✅ Subscribed to product updates!', data: {} },
+      'quote.request': { success: true, message: '✅ Quote request submitted', data: {} },
+      'lead.capture': { success: true, message: '✅ Thank you for your interest!', data: {} },
+    },
+  },
+  agency: {
+    systemType: 'agency',
+    name: 'Agency Business',
+    requiredIntents: ['contact.submit', 'quote.request'],
+    requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
+    requiredData: ['business_name', 'business_email', 'services'],
+    recommendedIntegrations: ['calendar', 'email'],
+    publishChecks: [
+      { id: 'has_contact', label: 'Contact form configured', description: 'Contact form must be present', severity: 'error' },
+      { id: 'has_services', label: 'Services defined', description: 'Define your agency services', severity: 'warning' },
+    ],
+    demoResponses: {
+      'booking.create': { success: true, message: '✅ Consultation scheduled', data: {} },
+      'contact.submit': { success: true, message: '✅ Message received!', data: {} },
+      'newsletter.subscribe': { success: true, message: '✅ Subscribed!', data: {} },
+      'quote.request': { success: true, message: '✅ Quote request submitted', data: {} },
+      'lead.capture': { success: true, message: '✅ Thank you for your interest!', data: {} },
+    },
+  },
+  portfolio: {
+    systemType: 'portfolio',
+    name: 'Portfolio',
+    requiredIntents: ['contact.submit'],
+    requiredSlots: ['cta.primary', 'cta.footer'],
+    requiredData: ['business_name', 'business_email'],
+    recommendedIntegrations: ['email'],
+    publishChecks: [
+      { id: 'has_contact', label: 'Contact form configured', description: 'Contact form must be present', severity: 'error' },
+    ],
+    demoResponses: {
+      'booking.create': { success: true, message: '✅ Meeting scheduled', data: {} },
+      'contact.submit': { success: true, message: '✅ Message received!', data: {} },
+      'newsletter.subscribe': { success: true, message: '✅ Subscribed!', data: {} },
+      'quote.request': { success: true, message: '✅ Quote request submitted', data: {} },
+      'lead.capture': { success: true, message: '✅ Thank you for your interest!', data: {} },
+    },
+  },
+  store: {
+    systemType: 'store',
+    name: 'Store',
+    requiredIntents: ['contact.submit'],
+    requiredSlots: ['cta.primary', 'cta.nav', 'cta.footer'],
+    requiredData: ['business_name', 'business_email', 'products'],
+    recommendedIntegrations: ['stripe', 'email'],
+    publishChecks: [
+      { id: 'has_products', label: 'Products configured', description: 'At least one product must be defined', severity: 'error' },
+    ],
+    demoResponses: {
+      'booking.create': { success: true, message: '✅ Order scheduled', data: {} },
+      'contact.submit': { success: true, message: '✅ Message received!', data: {} },
+      'newsletter.subscribe': { success: true, message: '✅ Subscribed to store updates!', data: {} },
+      'quote.request': { success: true, message: '✅ Quote request submitted', data: {} },
+      'lead.capture': { success: true, message: '✅ Thank you for your interest!', data: {} },
+    },
+  },
+  content: {
+    systemType: 'content',
+    name: 'Content Site',
+    requiredIntents: ['newsletter.subscribe'],
+    requiredSlots: ['cta.primary', 'cta.footer'],
+    requiredData: ['business_name', 'business_email'],
+    recommendedIntegrations: ['email'],
+    publishChecks: [
+      { id: 'has_newsletter', label: 'Newsletter signup', description: 'Newsletter form must be present', severity: 'warning' },
+    ],
+    demoResponses: {
+      'booking.create': { success: true, message: '✅ Scheduled', data: {} },
+      'contact.submit': { success: true, message: '✅ Message received!', data: {} },
+      'newsletter.subscribe': { success: true, message: '✅ Subscribed to newsletter!', data: {} },
+      'quote.request': { success: true, message: '✅ Request submitted', data: {} },
+      'lead.capture': { success: true, message: '✅ Thank you for your interest!', data: {} },
+    },
+  },
   booking: {
     systemType: 'booking',
     name: 'Booking Business',

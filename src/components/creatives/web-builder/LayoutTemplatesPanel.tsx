@@ -42,10 +42,26 @@ interface LayoutTemplatesPanelProps {
 
 const categoryLabels: Record<LayoutCategory, string> = {
   salon: 'Salon & Spa',
+  landing: 'Landing Pages',
+  restaurant: 'Restaurant',
+  contractor: 'Contractor',
+  portfolio: 'Portfolio',
+  agency: 'Agency',
+  store: 'Store',
+  saas: 'SaaS',
+  content: 'Content & Blog',
 };
 
 const categoryIcons: Record<LayoutCategory, string> = {
   salon: '💅',
+  landing: '🚀',
+  restaurant: '🍽️',
+  contractor: '🔧',
+  portfolio: '🎨',
+  agency: '🏢',
+  store: '🛍️',
+  saas: '💻',
+  content: '📝',
 };
 
 export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({
