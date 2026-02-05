@@ -14,7 +14,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Cloud, User, Building2, FolderKanban, Image, Mail, 
-  Plug, ArrowLeft, Settings, LogOut, Shield, Zap, 
+  Plug, ArrowLeft, Settings, LogOut, Shield, 
   Sparkles, Activity, Globe, Database, Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,12 +30,11 @@ import {
   CloudProjects, 
   CloudAssets, 
   CloudEmail, 
-  CloudIntegrations,
-  CloudAutomations 
+  CloudIntegrations
 } from '@/components/cloud';
 
 // Types
-type CloudTab = 'profile' | 'businesses' | 'projects' | 'assets' | 'email' | 'integrations' | 'automations';
+type CloudTab = 'profile' | 'businesses' | 'projects' | 'assets' | 'email' | 'integrations';
 
 interface TabConfig {
   id: CloudTab;
@@ -80,13 +79,6 @@ const TABS: TabConfig[] = [
     icon: <Mail className="h-5 w-5" />,
     description: 'Notifications & templates',
     gradient: 'from-red-500 to-rose-500'
-  },
-  { 
-    id: 'automations', 
-    label: 'Automations', 
-    icon: <Zap className="h-5 w-5" />,
-    description: 'Workflow recipes',
-    gradient: 'from-amber-500 to-orange-500'
   },
   { 
     id: 'integrations', 
@@ -318,8 +310,6 @@ export default function CloudDashboard() {
         return <CloudAssets userId={user.id} />;
       case 'email':
         return <CloudEmail userId={user.id} />;
-      case 'automations':
-        return <CloudAutomations userId={user.id} />;
       case 'integrations':
         return <CloudIntegrations userId={user.id} />;
       default:
