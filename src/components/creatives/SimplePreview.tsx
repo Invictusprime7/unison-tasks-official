@@ -2095,11 +2095,11 @@ const SMART_NAVIGATION_SCRIPT = `
     const form = e.target;
     if (!form) return;
     
-    // Check for form intent
-    let intent = form.getAttribute('data-intent');
+    // Check for form intent (data-ut-intent takes precedence over data-intent)
+    let intent = form.getAttribute('data-ut-intent') || form.getAttribute('data-intent');
     if (!intent) {
       const btn = form.querySelector('button[type="submit"]');
-      if (btn) intent = btn.getAttribute('data-intent') || inferIntent(btn.textContent);
+      if (btn) intent = btn.getAttribute('data-ut-intent') || btn.getAttribute('data-intent') || inferIntent(btn.textContent);
     }
     if (!intent) {
       const id = (form.id || '').toLowerCase();
