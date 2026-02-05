@@ -19,13 +19,19 @@ import {
   Layers,
   Workflow,
   Bot,
-  Cloud
+  Cloud,
+  FolderOpen,
+  Clock,
+  ExternalLink,
+  Plus,
+  Paintbrush
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { businessSystems } from "@/data/templates/types";
 import { getTemplatesByCategory, type LayoutTemplate } from "@/data/templates";
-import SystemLauncher from "@/components/onboarding/SystemLauncher";
+import { BusinessLauncher } from "@/components/onboarding/BusinessLauncher";
+import { SystemsAIPanel } from "@/components/onboarding/SystemsAIPanel";
 
 const pricingTiers = [
   {
@@ -118,12 +124,24 @@ const platformFeatures = [
   }
 ];
 
+// Interface for recent projects from design_templates table
+interface RecentProject {
+  id: string;
+  name: string;
+  description: string | null;
+  is_public: boolean;
+  updated_at: string;
+  created_at: string;
+}
+
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [launcherOpen, setLauncherOpen] = useState(false);
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -141,6 +159,35 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Load recent projects when user is authenticated
+  useEffect(() => {
+    const loadRecentProjects = async () => {
+      if (!user || !isSupabaseConfigured) return;
+      
+      setLoadingProjects(true);
+      try {
+        const { data, error } = await supabase
+          .from('design_templates')
+          .select('id, name, description, is_public, updated_at, created_at')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(6);
+
+        if (error) {
+          console.error('Error loading recent projects:', error);
+        } else {
+          setRecentProjects(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load recent projects:', err);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    loadRecentProjects();
+  }, [user]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -265,7 +312,7 @@ const Index = () => {
             (data, workflows, intents) automatically.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={handleStartLauncher} className="text-lg px-8 h-14">
+            <Button size="lg" onClick={() => document.getElementById('systems-ai')?.scrollIntoView({ behavior: 'smooth' })} className="text-lg px-8 h-14">
               <Play className="mr-2 h-5 w-5" />
               {user ? "Launch a System" : "Start Free"}
             </Button>
@@ -282,30 +329,99 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Business Systems Grid */}
-      <section id="systems" className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-foreground">Choose your business type</h2>
-          <p className="text-muted-foreground">These systems have contract-ready starters available now.</p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
-          {launchableSystems.map((system) => (
+      {/* Recent Projects Section - Only visible for authenticated users */}
+      {user && (
+        <section className="container mx-auto px-4 py-12 border-b border-border/40">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <FolderOpen className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">Your Recent Projects</h2>
+            </div>
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate("/cloud")}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              View All
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+          
+          {loadingProjects ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-3"></div>
+              Loading projects...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentProjects.map((project) => (
+              <Card 
+                key={project.id}
+                className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
+                onClick={() => navigate(`/web-builder?id=${project.id}`)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base truncate group-hover:text-primary transition-colors">
+                        {project.name || 'Untitled Project'}
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-2 mt-1">
+                        <Clock className="h-3 w-3" />
+                        <span className="text-xs">
+                          {new Date(project.updated_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </CardDescription>
+                    </div>
+                    <Badge 
+                      variant={project.is_public ? 'default' : 'secondary'}
+                      className="text-xs shrink-0"
+                    >
+                      {project.is_public ? 'Public' : 'Private'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardFooter className="pt-0 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/web-builder?id=${project.id}`);
+                    }}
+                  >
+                    <Paintbrush className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+            
+            {/* Quick Add New Project Card */}
             <Card 
-              key={system.id}
-              className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 border-border/50 group"
+              className="cursor-pointer hover:shadow-md transition-all border-dashed hover:border-primary/50 flex items-center justify-center min-h-[140px]"
               onClick={handleStartLauncher}
             >
-              <CardContent className="pt-6 text-center">
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">
-                  {system.icon}
-                </div>
-                <h3 className="font-semibold text-sm mb-1">{system.name}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-2">{system.tagline}</p>
+              <CardContent className="flex flex-col items-center justify-center py-6 text-muted-foreground hover:text-primary transition-colors">
+                <Plus className="h-8 w-8 mb-2" />
+                <span className="text-sm font-medium">New Project</span>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      </section>
+          </div>
+          )}
+        </section>
+      )}
+
+      {/* Systems AI Panel - Main interactive component */}
+      <SystemsAIPanel 
+        user={user} 
+        onAuthRequired={() => navigate("/auth")} 
+      />
 
       {/* The Difference Section */}
       <section className="bg-muted/30 py-20">
@@ -479,8 +595,8 @@ const Index = () => {
         </div>
       </footer>
 
-      {/* System Launcher Dialog */}
-      <SystemLauncher open={launcherOpen} onOpenChange={setLauncherOpen} />
+      {/* Business Launcher Dialog - New Flow */}
+      <BusinessLauncher open={launcherOpen} onOpenChange={setLauncherOpen} />
     </div>
   );
 };

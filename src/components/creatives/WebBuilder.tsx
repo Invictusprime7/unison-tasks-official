@@ -254,6 +254,53 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
   const templateFiles = useTemplateFiles();
   
+  // Load template from URL parameter on mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const templateId = searchParams.get('id');
+    
+    if (templateId) {
+      const loadTemplateFromUrl = async () => {
+        const template = await templateFiles.loadTemplate(templateId);
+        if (template) {
+          const canvasData = template.canvas_data as { html?: string; css?: string; previewCode?: string; js?: string };
+          let code = canvasData?.previewCode || canvasData?.html || '';
+          
+          if (code) {
+            // If there's separate CSS, integrate it
+            const separateCss = canvasData?.css || '';
+            if (separateCss && !code.includes(separateCss.substring(0, 50))) {
+              if (code.includes('</head>')) {
+                code = code.replace('</head>', `<style>\n${separateCss}\n</style>\n</head>`);
+              } else {
+                code = `<style>\n${separateCss}\n</style>\n${code}`;
+              }
+            }
+            
+            // If there's separate JS, integrate it
+            const separateJs = canvasData?.js || '';
+            if (separateJs && !code.includes(separateJs.substring(0, 50))) {
+              const scriptTag = `<script>\n${separateJs}\n</script>`;
+              if (code.includes('</body>')) {
+                code = code.replace('</body>', `${scriptTag}\n</body>`);
+              } else {
+                code = code + `\n${scriptTag}`;
+              }
+            }
+            
+            setEditorCode(code);
+            setPreviewCode(code);
+            setCurrentTemplateName(template.name);
+            setSaveProjectName(template.name);
+            setSaveProjectDescription(template.description || '');
+          }
+        }
+      };
+      
+      loadTemplateFromUrl();
+    }
+  }, [location.search]);
+  
   // Virtual file system for code editor
   const virtualFS = useVirtualFileSystem();
   

@@ -1,0 +1,1356 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+/**
+ * Systems Build Edge Function
+ * 
+ * Generates complete, production-ready business websites from a BusinessBlueprint.
+ * Uses the same AI capabilities as the Web Builder's ai-code-assistant.
+ */
+
+const BlueprintSchema = z.object({
+  version: z.string().optional(),
+  identity: z.object({
+    industry: z.string(),
+    business_model: z.string().optional(),
+    primary_goal: z.string().optional(),
+    locale: z.string().optional(),
+  }),
+  brand: z.object({
+    business_name: z.string(),
+    tagline: z.string().optional(),
+    tone: z.string().optional(),
+    palette: z.object({
+      primary: z.string().optional(),
+      secondary: z.string().optional(),
+      accent: z.string().optional(),
+      background: z.string().optional(),
+      foreground: z.string().optional(),
+    }).optional(),
+    typography: z.object({
+      heading: z.string().optional(),
+      body: z.string().optional(),
+    }).optional(),
+    logo: z.object({
+      mode: z.string().optional(),
+      text_lockup: z.string().optional(),
+    }).optional(),
+  }),
+  design: z.object({
+    layout: z.object({
+      hero_style: z.enum(["centered", "split", "image_left", "image_right", "fullscreen", "minimal"]).optional(),
+      section_spacing: z.enum(["compact", "normal", "spacious"]).optional(),
+      max_width: z.enum(["narrow", "normal", "wide", "full"]).optional(),
+      navigation_style: z.enum(["fixed", "sticky", "static"]).optional(),
+    }).optional(),
+    effects: z.object({
+      animations: z.boolean().optional(),
+      scroll_animations: z.boolean().optional(),
+      hover_effects: z.boolean().optional(),
+      gradient_backgrounds: z.boolean().optional(),
+      glassmorphism: z.boolean().optional(),
+      shadows: z.enum(["none", "subtle", "normal", "dramatic"]).optional(),
+    }).optional(),
+    images: z.object({
+      style: z.enum(["rounded", "sharp", "circular", "organic"]).optional(),
+      aspect_ratio: z.enum(["square", "portrait", "landscape", "auto"]).optional(),
+      placeholder_service: z.enum(["unsplash", "picsum", "placehold"]).optional(),
+      overlay_style: z.enum(["none", "gradient", "color", "blur"]).optional(),
+    }).optional(),
+    buttons: z.object({
+      style: z.enum(["rounded", "pill", "sharp", "outline"]).optional(),
+      size: z.enum(["small", "medium", "large"]).optional(),
+      hover_effect: z.enum(["scale", "glow", "lift", "none"]).optional(),
+    }).optional(),
+    sections: z.object({
+      include_stats: z.boolean().optional(),
+      include_testimonials: z.boolean().optional(),
+      include_faq: z.boolean().optional(),
+      include_cta_banner: z.boolean().optional(),
+      include_newsletter: z.boolean().optional(),
+      include_social_proof: z.boolean().optional(),
+      use_counter_animations: z.boolean().optional(),
+    }).optional(),
+    content: z.object({
+      density: z.enum(["minimal", "balanced", "rich"]).optional(),
+      use_icons: z.boolean().optional(),
+      use_emojis: z.boolean().optional(),
+      writing_style: z.enum(["professional", "conversational", "bold", "minimal"]).optional(),
+    }).optional(),
+  }).optional(),
+  site: z.object({
+    pages: z.array(z.object({
+      id: z.string().optional(),
+      type: z.string().optional(),
+      title: z.string(),
+      path: z.string().optional(),
+      sections: z.array(z.unknown()).optional(),
+    })).optional(),
+    navigation: z.array(z.object({
+      label: z.string(),
+      path: z.string(),
+    })).optional(),
+  }).optional(),
+  intents: z.array(z.object({
+    intent: z.string(),
+    target: z.object({
+      kind: z.string().optional(),
+      ref: z.string().optional(),
+    }).optional(),
+    payload_schema: z.array(z.unknown()).optional(),
+  })).optional(),
+  automations: z.object({
+    provision_mode: z.string().optional(),
+    rules: z.array(z.object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+      trigger: z.string().optional(),
+    })).optional(),
+  }).optional(),
+  crm: z.unknown().optional(),
+  guarantees: z.unknown().optional(),
+}).passthrough();
+
+const BodySchema = z.object({
+  blueprint: BlueprintSchema,
+  userPrompt: z.string().max(5000).optional(),
+  enhanceWithAI: z.boolean().optional().default(true),
+});
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const parsed = BodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body", details: parsed.error.issues.slice(0, 5) }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { blueprint, userPrompt, enhanceWithAI } = parsed.data;
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    if (!LOVABLE_API_KEY) {
+      console.warn("[systems-build] LOVABLE_API_KEY not configured - using fallback generation");
+      // Generate basic HTML without AI
+      const fallbackCode = generateFallbackHTML(blueprint);
+      return new Response(
+        JSON.stringify({ 
+          code: fallbackCode,
+          _meta: { ai_generated: false, fallback: true }
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build comprehensive system prompt for business website generation
+    const systemPrompt = buildSystemPrompt(blueprint);
+    const userMessage = buildUserMessage(blueprint, userPrompt);
+
+    console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})`);
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage }
+        ],
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.error("[systems-build] AI gateway error:", response.status);
+      // Fall back to basic generation
+      const fallbackCode = generateFallbackHTML(blueprint);
+      return new Response(
+        JSON.stringify({ 
+          code: fallbackCode,
+          _meta: { ai_generated: false, fallback: true, error: "AI gateway error" }
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const data = await response.json();
+    let generatedCode = String(data?.choices?.[0]?.message?.content ?? "").slice(0, 500_000);
+
+    // Clean up markdown code blocks if present
+    generatedCode = cleanupCodeBlocks(generatedCode);
+
+    console.log(`[systems-build] Generated ${generatedCode.length} characters of code`);
+
+    return new Response(
+      JSON.stringify({ 
+        code: generatedCode,
+        blueprint,
+        _meta: { ai_generated: true, model: "google/gemini-2.5-flash" }
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error: unknown) {
+    console.error("[systems-build] Error:", error);
+    const message = error instanceof Error ? error.message : "An error occurred";
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+
+function cleanupCodeBlocks(code: string): string {
+  // Remove markdown code block wrappers
+  let cleaned = code.trim();
+  if (cleaned.startsWith("```html")) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.slice(3);
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  return cleaned.trim();
+}
+
+function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>): string {
+  const { brand, identity, design } = blueprint;
+  const palette = brand.palette || {};
+  const pages = blueprint.site?.pages || [];
+  const navigation = blueprint.site?.navigation || [];
+  const intents = blueprint.intents || [];
+  
+  // Design schema preferences with defaults
+  const layout = design?.layout || {};
+  const effects = design?.effects || {};
+  const images = design?.images || {};
+  const buttons = design?.buttons || {};
+  const sections = design?.sections || {};
+  const content = design?.content || {};
+
+  return `You are an ELITE "Super Web Builder Expert" AI for a Web Builder that supports a built-in backend (database, authentication, and backend functions) - like GitHub Copilot and Lovable AI combined.
+
+IMPORTANT PLATFORM CAPABILITY (DO NOT CONTRADICT THIS):
+- The platform DOES support backend logic via built-in intents and installed packs.
+- NEVER say you "cannot build/host a backend" or that you can only do "client-side simulation".
+- Your job is to generate a fully responsive multi-section template (HTML + Tailwind + vanilla JS) and WIRE it to backend intents using data attributes.
+
+🏢 **BUSINESS CONTEXT:**
+- **Business Name:** ${brand.business_name}
+- **Industry:** ${identity.industry.replace(/_/g, " ")}
+- **Tagline:** ${brand.tagline || "Professional services you can trust"}
+- **Goal:** ${identity.primary_goal || "Generate leads and grow the business"}
+- **Tone:** ${brand.tone || "professional and friendly"}
+
+🎨 **BRAND COLORS (USE THESE EXACTLY IN TAILWIND CONFIG):**
+- Primary: ${palette.primary || "#0EA5E9"}
+- Secondary: ${palette.secondary || "#22D3EE"}
+- Accent: ${palette.accent || "#F59E0B"}
+- Background: ${palette.background || "#FFFFFF"}
+- Foreground/Text: ${palette.foreground || "#1E293B"}
+
+📝 **TYPOGRAPHY:**
+- Headings: ${brand.typography?.heading || "Inter"}
+- Body: ${brand.typography?.body || "Inter"}
+
+🎨 **WEBSITE DESIGN SCHEMA (FOLLOW THESE PREFERENCES):**
+
+📐 **LAYOUT:**
+- Hero Style: ${layout.hero_style || "split"} (centered = text centered, split = text left + image right, fullscreen = full viewport hero)
+- Section Spacing: ${layout.section_spacing || "normal"} (compact = py-12, normal = py-20, spacious = py-32)
+- Max Width: ${layout.max_width || "normal"} (narrow = max-w-4xl, normal = max-w-6xl, wide = max-w-7xl, full = w-full)
+- Navigation: ${layout.navigation_style || "fixed"} (fixed = always visible, sticky = appears on scroll, static = normal flow)
+
+✨ **VISUAL EFFECTS:**
+- Animations: ${effects.animations !== false ? "ENABLED - Use fadeIn, float, pulse animations" : "DISABLED - No animations"}
+- Scroll Animations: ${effects.scroll_animations !== false ? "ENABLED - Use Intersection Observer for scroll-triggered animations" : "DISABLED"}
+- Hover Effects: ${effects.hover_effects !== false ? "ENABLED - Add hover:scale-105, hover:shadow-lg transitions" : "DISABLED"}
+- Gradient Backgrounds: ${effects.gradient_backgrounds !== false ? "ENABLED - Use gradient backgrounds on hero and CTA sections" : "DISABLED"}
+- Glassmorphism: ${effects.glassmorphism === true ? "ENABLED - Use backdrop-blur-sm, bg-white/80 for glass effect" : "DISABLED"}
+- Shadows: ${effects.shadows || "normal"} (none = no shadows, subtle = shadow-sm, normal = shadow-lg, dramatic = shadow-2xl)
+
+🖼️ **IMAGE STYLING:**
+- Image Style: ${images.style || "rounded"} (rounded = rounded-xl, sharp = rounded-none, circular = rounded-full, organic = custom border-radius)
+- Aspect Ratio: ${images.aspect_ratio || "auto"} (square = aspect-square, portrait = aspect-[3/4], landscape = aspect-video)
+- Placeholder Service: ${images.placeholder_service || "unsplash"} (use https://images.unsplash.com/photo-... for ${images.placeholder_service || "unsplash"})
+- Image Overlay: ${images.overlay_style || "gradient"} (none = no overlay, gradient = gradient overlay, color = solid color overlay)
+
+🔘 **BUTTON STYLING:**
+- Button Style: ${buttons.style || "pill"} (rounded = rounded-lg, pill = rounded-full, sharp = rounded-none, outline = border-2 + transparent bg)
+- Button Size: ${buttons.size || "medium"} (small = px-4 py-2 text-sm, medium = px-6 py-3, large = px-8 py-4 text-lg)
+- Hover Effect: ${buttons.hover_effect || "scale"} (scale = hover:scale-105, glow = hover:shadow-lg shadow-primary/25, lift = hover:-translate-y-1)
+
+📋 **SECTIONS TO INCLUDE:**
+- Stats Section: ${sections.include_stats !== false ? "YES - Include animated statistics counters" : "NO"}
+- Testimonials: ${sections.include_testimonials !== false ? "YES - Include customer testimonials with cards" : "NO"}
+- FAQ Section: ${sections.include_faq !== false ? "YES - Include collapsible FAQ accordion" : "NO"}
+- CTA Banner: ${sections.include_cta_banner !== false ? "YES - Include prominent call-to-action banner" : "NO"}
+- Newsletter: ${sections.include_newsletter !== false ? "YES - Include newsletter signup form" : "NO"}
+- Social Proof: ${sections.include_social_proof !== false ? "YES - Include trust badges, client logos, ratings" : "NO"}
+- Counter Animations: ${sections.use_counter_animations !== false ? "YES - Animate numbers counting up on scroll" : "NO"}
+
+📝 **CONTENT PREFERENCES:**
+- Content Density: ${content.density || "balanced"} (minimal = essential content only, balanced = standard, rich = detailed content)
+- Use Icons: ${content.use_icons !== false ? "YES - Use emoji or SVG icons for visual interest" : "NO"}
+- Use Emojis: ${content.use_emojis === true ? "YES - Use emojis in headings and text" : "NO - Keep professional without emojis"}
+- Writing Style: ${content.writing_style || "conversational"} (professional = formal language, conversational = friendly, bold = punchy, minimal = brief)
+
+📄 **PAGES TO INCLUDE:**
+${pages.map((p, i) => `${i + 1}. ${p.title} (${p.path || "/"})`).join("\n")}
+
+🔗 **NAVIGATION MENU:**
+${navigation.map(n => `- ${n.label}: ${n.path}`).join("\n")}
+
+🎯 **INTENT BUTTONS TO WIRE:**
+${intents.map(i => `- data-ut-intent="${i.intent}" for ${i.intent.replace(/\./g, " ").replace(/[_-]/g, " ")}`).join("\n")}
+
+**WIRING RULES (CRITICAL):**
+- Use data-ut-intent for actions (also keep data-intent for compatibility).
+- Use data-ut-cta + data-ut-label on key CTAs (cta.nav, cta.hero, cta.primary, cta.footer).
+- IMPORTANT: Do NOT wire every button. UI selectors (tabs, filters, time slots, service pickers, accordions, carousels) MUST NOT trigger intents.
+  - For selector buttons, add: data-no-intent
+  - Only add data-ut-intent on real conversion CTAs ("Book", "Submit", "Buy", "Join", "Request quote", etc.)
+- For e-commerce: use intents like cart.add, cart.view, checkout.start.
+- For auth: use intents like auth.signup, auth.signin, auth.signout.
+
+**DESIGN SYSTEM RULES (CRITICAL):**
+- Use design tokens via Tailwind config: bg-primary, text-foreground, bg-secondary, text-primary, border-primary.
+- Configure Tailwind with brand colors in <script> tag.
+
+💡 **CODE GENERATION EXCELLENCE:**
+You create COMPLETE, PRODUCTION-READY websites with:
+
+1. **VANILLA JAVASCRIPT** - No frameworks, immediately executable in browser
+2. **Semantic HTML5** - proper structure, ARIA labels, keyboard navigation
+3. **Tailwind CSS via CDN** - responsive breakpoints (sm:, md:, lg:, xl:)
+4. **Browser APIs** - Fetch, localStorage, DOM manipulation, events
+5. **Production Quality** - error handling, loading states, edge cases
+6. **Performance** - optimized DOM updates, event delegation, lazy loading
+7. **Responsive Design** - mobile-first, fluid layouts
+
+**ANIMATION INTEGRATION (CRITICAL FOR VISUAL EFFECTS):**
+
+Include these CSS animations in a <style> block:
+
+\`\`\`css
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+.animate-pulse-custom { animation: pulse 2s ease-in-out infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.btn-ripple:hover {
+  transform: scale(1.05);
+}
+
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+\`\`\`
+
+**IMAGE INTEGRATION RULES:**
+
+ALWAYS USE CORS-SAFE PUBLIC IMAGE URLS:
+✅ CORRECT URLs that WILL work:
+- https://images.unsplash.com/photo-[id]?w=800&h=600&fit=crop
+- https://picsum.photos/800/600
+- https://placehold.co/800x600/[color]/white?text=Placeholder
+
+❌ NEVER use:
+- Relative paths: ./image.jpg
+- Local filesystem paths
+- URLs without CORS headers
+
+Use appropriate Unsplash photos for the industry:
+- Salon/Spa: Beauty, wellness, relaxation imagery
+- Restaurant: Food photography, dining ambiance
+- E-commerce: Product photography, shopping
+- Real Estate: Property, homes, interiors
+- Coaching: Professional headshots, meeting rooms
+- Local Service: Service workers, tools, before/after
+- Portfolio: Creative work, designs, projects
+- Nonprofit: People helping, community, impact
+
+**REQUIRED SECTIONS FOR ${identity.industry.toUpperCase()} WEBSITE:**
+
+1. **NAVIGATION** - Sticky header with logo, nav links, and CTA button
+2. **HERO SECTION** - Full-width with gradient, compelling headline, subheadline, hero image, primary CTA with data-ut-intent
+3. **FEATURES/SERVICES** - 3-4 column grid with icons, titles, descriptions
+4. **ABOUT/TRUST** - Why choose us, trust signals, stats (10+ years, 500+ clients, etc.)
+5. **TESTIMONIALS** - Customer reviews with names, photos, star ratings, quotes
+6. **PRICING/SERVICES** (if applicable) - Pricing cards or service packages
+7. **FAQ** - Accordion with common questions and answers
+8. **CTA SECTION** - Full-width gradient with compelling headline and button
+9. **CONTACT** - Contact form with fields, business info, optional map placeholder
+10. **FOOTER** - Business info, quick links, social icons, copyright
+
+**FUNCTIONAL BLOCKS TO INCLUDE:**
+
+Based on ${identity.industry}, include these interactive elements:
+
+${getIndustrySpecificElements(identity.industry)}
+
+**JAVASCRIPT FUNCTIONALITY:**
+
+Include this vanilla JS for interactivity:
+
+\`\`\`javascript
+(function() {
+  'use strict';
+  
+  // Scroll animations with Intersection Observer
+  const observeElements = () => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+    
+    document.querySelectorAll('.animate-on-scroll').forEach(el => {
+      observer.observe(el);
+    });
+  };
+  
+  // Mobile menu toggle
+  const setupMobileMenu = () => {
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (menuBtn && mobileMenu) {
+      menuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+    }
+  };
+  
+  // FAQ Accordion
+  const setupAccordion = () => {
+    document.querySelectorAll('[data-accordion-toggle]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const content = this.nextElementSibling;
+        const icon = this.querySelector('[data-accordion-icon]');
+        content.classList.toggle('hidden');
+        if (icon) icon.classList.toggle('rotate-180');
+      });
+    });
+  };
+  
+  // Smooth scroll for anchor links
+  const setupSmoothScroll = () => {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  };
+  
+  // Form submission handler
+  const setupForms = () => {
+    document.querySelectorAll('form[data-ut-intent]').forEach(form => {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+        const intent = this.getAttribute('data-ut-intent');
+        console.log('Form submitted:', intent, data);
+        
+        // Show success feedback
+        const successMsg = this.querySelector('.form-success') || document.createElement('div');
+        successMsg.className = 'form-success mt-4 p-4 bg-green-100 text-green-800 rounded-lg';
+        successMsg.textContent = 'Thank you! We will be in touch soon.';
+        if (!this.querySelector('.form-success')) {
+          this.appendChild(successMsg);
+        }
+        
+        // Reset form
+        this.reset();
+      });
+    });
+  };
+  
+  // Counter animation for stats
+  const animateCounters = () => {
+    document.querySelectorAll('[data-counter]').forEach(counter => {
+      const target = parseInt(counter.getAttribute('data-counter'));
+      const duration = 2000;
+      const step = target / (duration / 16);
+      let current = 0;
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const interval = setInterval(() => {
+              current += step;
+              if (current >= target) {
+                counter.textContent = target.toLocaleString() + (counter.getAttribute('data-suffix') || '');
+                clearInterval(interval);
+              } else {
+                counter.textContent = Math.floor(current).toLocaleString() + (counter.getAttribute('data-suffix') || '');
+              }
+            }, 16);
+            observer.unobserve(counter);
+          }
+        });
+      }, { threshold: 0.5 });
+      
+      observer.observe(counter);
+    });
+  };
+  
+  // Initialize all functionality
+  function init() {
+    observeElements();
+    setupMobileMenu();
+    setupAccordion();
+    setupSmoothScroll();
+    setupForms();
+    animateCounters();
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+\`\`\`
+
+**TAILWIND CONFIG (REQUIRED IN HEAD):**
+
+\`\`\`html
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '${palette.primary || "#0EA5E9"}',
+          secondary: '${palette.secondary || "#22D3EE"}',
+          accent: '${palette.accent || "#F59E0B"}',
+          background: '${palette.background || "#FFFFFF"}',
+          foreground: '${palette.foreground || "#1E293B"}',
+        },
+        fontFamily: {
+          heading: ['${brand.typography?.heading || "Inter"}', 'sans-serif'],
+          body: ['${brand.typography?.body || "Inter"}', 'sans-serif'],
+        }
+      }
+    }
+  }
+</script>
+\`\`\`
+
+**CRITICAL OUTPUT RULES:**
+
+1. Return COMPLETE HTML document (<!DOCTYPE html> to </html>)
+2. Include Tailwind CDN and config script in <head>
+3. Include all CSS animations in <style> block
+4. Include all JavaScript at end of <body>
+5. Wire ALL conversion CTAs with data-ut-intent attributes
+6. Use data-no-intent on UI-only buttons (tabs, filters, accordions)
+7. Make fully responsive with sm:, md:, lg:, xl: breakpoints
+8. Use brand colors via Tailwind config (bg-primary, text-foreground, etc.)
+9. Include realistic placeholder content for ${identity.industry.replace(/_/g, " ")}
+10. Include at least 6-8 sections for a complete website
+11. No markdown, no explanations - ONLY the complete HTML code
+
+🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL website for ${brand.business_name} that would impress any business owner.`;
+}
+
+function buildUserMessage(blueprint: z.infer<typeof BlueprintSchema>, userPrompt?: string): string {
+  const { brand, identity } = blueprint;
+  const intents = blueprint.intents || [];
+  
+  let message = `Generate a complete, production-ready, multi-section website for "${brand.business_name}", a ${identity.industry.replace(/_/g, " ")} business.
+
+**REQUIRED OUTPUT:**
+- Complete HTML document from <!DOCTYPE html> to </html>
+- Include Tailwind CDN + config in <head>
+- Include all CSS animations in <style> block
+- Include all JavaScript functionality at end of <body>
+- Minimum 8 content-rich sections
+- All CTAs wired with data-ut-intent attributes
+- Fully responsive (mobile, tablet, desktop)
+- Beautiful modern design with brand colors
+
+**INTENT BINDINGS TO WIRE:**
+${intents.map(i => `- "${i.intent}" on appropriate buttons/forms`).join("\n")}`;
+  
+  if (userPrompt) {
+    message += `
+
+**ADDITIONAL USER REQUIREMENTS:**
+${userPrompt}`;
+  }
+  
+  message += `
+
+**IMPORTANT:**
+- Include realistic placeholder content for a ${identity.industry.replace(/_/g, " ")} business
+- Use professional imagery from Unsplash
+- Create compelling copy that converts
+- Make it visually stunning with gradients, shadows, and animations
+- The website should be ready to launch
+
+Return ONLY the complete HTML code. No markdown, no explanations.`;
+  
+  return message;
+}
+
+function getIndustrySpecificElements(industry: string): string {
+  const elements: Record<string, string> = {
+    salon_spa: `
+**SALON/SPA SPECIFIC REQUIREMENTS:**
+- **Service Menu** - Grid of services with names, descriptions, durations, prices
+  - Each service card should have "Book Now" button with data-ut-intent="booking.create"
+- **Team Section** - Staff profiles with photos, names, specialties, availability
+- **Before/After Gallery** - Transformation photos in grid layout
+- **Gift Cards** - Promotional section with "Buy Gift Card" CTA
+- **Special Offers** - Featured deals with countdown timer UI
+- **Online Booking Widget Placeholder** - Section indicating booking calendar
+  \`\`\`html
+  <div class="bg-secondary/10 p-8 rounded-2xl text-center">
+    <h3 class="text-2xl font-bold mb-4">Book Your Appointment</h3>
+    <p class="text-foreground/70 mb-6">Select a service and preferred time</p>
+    <button data-ut-intent="booking.create" data-ut-cta="cta.booking" class="bg-primary text-white px-8 py-4 rounded-full font-bold">Book Now</button>
+  </div>
+  \`\`\`
+- Include realistic service names (Haircut, Color, Highlights, Facial, Massage, Manicure, Pedicure, etc.)`,
+    
+    restaurant: `
+**RESTAURANT SPECIFIC REQUIREMENTS:**
+- **Menu Sections** - Organized by category (Appetizers, Mains, Desserts, Drinks)
+  - Each item: Name, description, price, optional dietary icons
+- **Online Ordering CTA** - "Order Now" button with data-ut-intent="order.create"
+- **Reservation Form** - Date, time, party size, contact info
+  - Wire with data-ut-intent="booking.create"
+- **Photo Gallery** - Dishes, interior, ambiance
+- **Hours & Location** - Operating hours, address, embedded map placeholder
+- **Chef's Specials** - Featured seasonal dishes
+- Include realistic menu items with prices ($12-35 range)
+- Add dietary icons where appropriate (🌱 Vegan, 🌾 Gluten-Free, 🌶️ Spicy)`,
+    
+    ecommerce: `
+**E-COMMERCE SPECIFIC REQUIREMENTS:**
+- **Product Grid** - 3-4 column grid with product cards
+  \`\`\`html
+  <div class="bg-white rounded-xl shadow-lg overflow-hidden card-hover">
+    <img src="product-image" class="w-full h-48 object-cover" />
+    <div class="p-4">
+      <h3 class="font-bold">Product Name</h3>
+      <p class="text-primary font-bold text-xl">$99.00</p>
+      <button data-ut-intent="cart.add" data-product-id="123" data-product-name="Product" data-price="99.00" class="w-full mt-4 bg-primary text-white py-2 rounded-lg">Add to Cart</button>
+    </div>
+  </div>
+  \`\`\`
+- **Shopping Cart Icon** - Fixed position with badge
+  - data-ut-intent="cart.view" on click
+- **Featured Products Carousel** - Hero section with slides
+- **Categories Section** - Visual category grid
+- **Trust Badges** - Free shipping, secure checkout, money-back guarantee
+- **Newsletter Signup** - Email capture with data-ut-intent="newsletter.subscribe"
+- Include realistic product names and prices`,
+    
+    local_service: `
+**LOCAL SERVICE SPECIFIC REQUIREMENTS:**
+- **Service Area** - List of cities/neighborhoods served
+- **Quote Request Form** - Project details, contact info
+  - Wire with data-ut-intent="quote.request"
+- **Service Packages** - 3-tier pricing (Basic, Standard, Premium)
+- **Before/After Gallery** - Transformation showcase
+- **Licensing & Insurance** - Trust badges
+- **Emergency Service CTA** - Prominent phone number, "Call Now" button
+- **Customer Reviews** - Star ratings, verified customer badge
+- Include realistic services (Plumbing, Electrical, HVAC, Landscaping, Cleaning, etc.)`,
+    
+    coaching_consulting: `
+**COACHING/CONSULTING SPECIFIC REQUIREMENTS:**
+- **About Section** - Professional headshot, bio, credentials, certifications
+- **Services/Packages** - 3 tiers (Starter, Professional, Enterprise)
+  - Include what's included in each, session counts, pricing
+- **Booking Calendar** - "Schedule a Call" CTA with data-ut-intent="booking.create"
+- **Free Consultation** - Lead magnet section
+  \`\`\`html
+  <div class="bg-gradient-to-r from-primary to-secondary p-8 rounded-2xl text-white text-center">
+    <h3 class="text-2xl font-bold mb-4">Free 30-Minute Strategy Call</h3>
+    <p class="mb-6">Discover how we can accelerate your growth</p>
+    <button data-ut-intent="booking.create" data-ut-cta="cta.consultation" class="bg-white text-primary px-8 py-4 rounded-full font-bold">Book Your Free Call</button>
+  </div>
+  \`\`\`
+- **Client Results** - Success stories with metrics
+- **Testimonials** - Video testimonial placeholders with quotes
+- **Blog/Resources** - Featured articles section`,
+    
+    real_estate: `
+**REAL ESTATE SPECIFIC REQUIREMENTS:**
+- **Property Listings Grid** - Cards with:
+  - Photo, price, beds/baths, sqft, address
+  - "Schedule Viewing" button with data-ut-intent="booking.create"
+- **Search Filters** - Price range, bedrooms, property type (use data-no-intent)
+- **Featured Listings Carousel** - Premium properties
+- **Agent Profile** - Photo, name, contact, years experience, transactions
+- **Market Stats** - Average prices, days on market, sold properties
+- **Contact Form** - Property inquiry with data-ut-intent="contact.submit"
+- Include realistic property prices and details
+- Add property type badges (For Sale, For Rent, New Construction)`,
+    
+    creator_portfolio: `
+**PORTFOLIO SPECIFIC REQUIREMENTS:**
+- **Project Showcase Grid** - Filterable by category
+  - Each project: Image, title, category, "View Project" link
+- **Skills Section** - Visual skill bars or badges
+- **About/Bio** - Professional photo, story, background
+- **Services Offered** - What you do, hourly/project rates
+- **Process Section** - How you work (Discovery, Design, Delivery)
+- **Contact CTA** - "Hire Me" button with data-ut-intent="contact.submit"
+- **Client Logos** - Past clients/companies worked with
+- **Testimonials** - Client feedback with project context`,
+    
+    nonprofit: `
+**NONPROFIT SPECIFIC REQUIREMENTS:**
+- **Mission Statement** - Prominent hero with cause
+- **Impact Statistics** - Large numbers with counters
+  - Lives impacted, funds raised, projects completed
+  - Use data-counter attribute for animations
+- **Donate Section** - Multiple donation tiers
+  \`\`\`html
+  <div class="grid md:grid-cols-3 gap-6">
+    <button data-ut-intent="donation.create" data-amount="25" class="p-6 border-2 border-primary rounded-xl hover:bg-primary hover:text-white">$25</button>
+    <button data-ut-intent="donation.create" data-amount="50" class="p-6 border-2 border-primary rounded-xl hover:bg-primary hover:text-white">$50</button>
+    <button data-ut-intent="donation.create" data-amount="100" class="p-6 border-2 border-primary rounded-xl hover:bg-primary hover:text-white">$100</button>
+  </div>
+  \`\`\`
+- **Volunteer Signup** - Form with data-ut-intent="volunteer.signup"
+- **Events Calendar** - Upcoming fundraisers and events
+- **Team Section** - Board members, staff, volunteers
+- **Partners & Sponsors** - Logo grid`,
+    
+    other: `
+**GENERAL BUSINESS REQUIREMENTS:**
+- **Value Proposition** - Clear headline explaining what you do
+- **Services/Products** - 3-4 core offerings with icons
+- **About Section** - Company story, team, values
+- **Trust Signals** - Years in business, customer count, certifications
+- **Testimonials** - Customer reviews with photos
+- **FAQ Section** - Accordion with 5-6 common questions
+- **Contact Section** - Form with all fields, business info
+  - Wire form with data-ut-intent="contact.submit"
+- **Multiple CTAs** - Hero, mid-page, footer
+- Include realistic content relevant to the business`,
+  };
+  
+  return elements[industry] || elements.other;
+}
+
+function generateFallbackHTML(blueprint: z.infer<typeof BlueprintSchema>): string {
+  const { brand, identity } = blueprint;
+  const palette = brand.palette || {};
+  const pages = blueprint.site?.pages || [];
+  const navigation = blueprint.site?.navigation || [];
+  
+  const primary = palette.primary || "#0EA5E9";
+  const secondary = palette.secondary || "#22D3EE";
+  const accent = palette.accent || "#F59E0B";
+  const background = palette.background || "#FFFFFF";
+  const foreground = palette.foreground || "#1E293B";
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${brand.business_name} - ${brand.tagline || "Welcome"}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '${primary}',
+            secondary: '${secondary}',
+            accent: '${accent}',
+            background: '${background}',
+            foreground: '${foreground}',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+    .animate-float { animation: float 3s ease-in-out infinite; }
+    .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+    .animate-on-scroll { opacity: 0; transform: translateY(30px); transition: all 0.6s ease; }
+    .animate-on-scroll.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body class="bg-background text-foreground min-h-screen">
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm shadow-sm z-50">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="text-2xl font-bold text-primary">${brand.business_name}</a>
+      <button id="mobile-menu-btn" class="md:hidden p-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
+      <div class="hidden md:flex items-center gap-6">
+        ${navigation.map(n => `<a href="${n.path}" class="text-foreground/80 hover:text-primary transition-colors">${n.label}</a>`).join("\n        ")}
+      </div>
+      <button 
+        class="hidden md:block bg-primary text-white px-6 py-2 rounded-full font-semibold hover:bg-primary/90 transition-all hover:scale-105"
+        data-ut-intent="lead.capture"
+        data-ut-cta="cta.nav"
+      >
+        Get Started
+      </button>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden px-4 pb-4 space-y-2">
+      ${navigation.map(n => `<a href="${n.path}" class="block py-2 text-foreground/80 hover:text-primary">${n.label}</a>`).join("\n      ")}
+      <button class="w-full bg-primary text-white px-6 py-3 rounded-lg font-semibold" data-ut-intent="lead.capture">Get Started</button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="pt-24 min-h-screen flex items-center relative overflow-hidden" style="background: linear-gradient(135deg, ${primary}08 0%, ${secondary}12 50%, ${accent}05 100%);">
+    <div class="absolute inset-0 overflow-hidden">
+      <div class="absolute top-20 right-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float"></div>
+      <div class="absolute bottom-20 left-20 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-float" style="animation-delay: 1s;"></div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 py-20 grid md:grid-cols-2 gap-12 items-center relative z-10">
+      <div class="animate-fadeIn">
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-6">
+          <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+          ${identity.industry.replace(/_/g, " ").split(" ").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")} Excellence
+        </div>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6">
+          Welcome to <span class="text-primary">${brand.business_name}</span>
+        </h1>
+        <p class="text-xl text-foreground/70 mb-8 leading-relaxed">
+          ${brand.tagline || "Professional services tailored to your needs. Experience the difference that expertise, dedication, and quality make."}
+        </p>
+        <div class="flex flex-wrap gap-4">
+          <button 
+            class="bg-primary text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all"
+            data-ut-intent="lead.capture"
+            data-ut-cta="cta.hero"
+          >
+            Get Started Today →
+          </button>
+          <button 
+            class="border-2 border-foreground/20 text-foreground px-8 py-4 rounded-full font-bold text-lg hover:bg-foreground/5 transition-all"
+            data-ut-intent="contact.submit"
+          >
+            Learn More
+          </button>
+        </div>
+        <div class="flex items-center gap-8 mt-10 pt-8 border-t border-foreground/10">
+          <div>
+            <div class="text-3xl font-bold text-primary" data-counter="500" data-suffix="+">0+</div>
+            <div class="text-sm text-foreground/60">Happy Clients</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold text-primary" data-counter="10" data-suffix="+">0+</div>
+            <div class="text-sm text-foreground/60">Years Experience</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold text-primary" data-counter="99" data-suffix="%">0%</div>
+            <div class="text-sm text-foreground/60">Satisfaction Rate</div>
+          </div>
+        </div>
+      </div>
+      <div class="animate-fadeIn relative" style="animation-delay: 0.2s;">
+        <div class="aspect-square bg-gradient-to-br from-primary/20 via-secondary/10 to-accent/20 rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/10">
+          <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=600&h=600&fit=crop" alt="${brand.business_name}" class="w-full h-full object-cover rounded-3xl" onerror="this.src='https://placehold.co/600x600/${primary.replace('#', '')}/${secondary.replace('#', '')}?text=${encodeURIComponent(brand.business_name)}'"/>
+        </div>
+        <div class="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">✓</div>
+            <div>
+              <div class="font-bold text-foreground">Trusted by 500+</div>
+              <div class="text-sm text-foreground/60">Business Owners</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center mb-16 animate-on-scroll">
+        <div class="inline-block px-4 py-1 bg-secondary/10 rounded-full text-secondary text-sm font-medium mb-4">Our Services</div>
+        <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-4">Why Choose ${brand.business_name}</h2>
+        <p class="text-lg text-foreground/60 max-w-2xl mx-auto">We deliver exceptional results through our proven methodology and dedicated team</p>
+      </div>
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        ${[
+          { icon: "🎯", title: "Expert Team", desc: "Skilled professionals with years of industry experience dedicated to your success" },
+          { icon: "⚡", title: "Fast Delivery", desc: "Quick turnaround times without compromising on quality or attention to detail" },
+          { icon: "💎", title: "Premium Quality", desc: "High-quality solutions that exceed expectations and stand the test of time" },
+          { icon: "🤝", title: "24/7 Support", desc: "Round-the-clock assistance whenever you need help or have questions" }
+        ].map((f, i) => `
+        <div class="animate-on-scroll card-hover p-8 bg-gray-50 rounded-2xl" style="animation-delay: ${i * 100}ms;">
+          <div class="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl flex items-center justify-center mb-6 text-3xl">
+            ${f.icon}
+          </div>
+          <h3 class="text-xl font-bold text-foreground mb-3">${f.title}</h3>
+          <p class="text-foreground/60 leading-relaxed">${f.desc}</p>
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="py-20" style="background: linear-gradient(135deg, ${primary} 0%, ${secondary} 100%);">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white">
+        ${[
+          { value: "1000", suffix: "+", label: "Projects Completed" },
+          { value: "500", suffix: "+", label: "Happy Clients" },
+          { value: "15", suffix: "+", label: "Years Experience" },
+          { value: "24", suffix: "/7", label: "Support Available" }
+        ].map(s => `
+        <div class="animate-on-scroll">
+          <div class="text-4xl md:text-5xl font-bold mb-2" data-counter="${s.value}" data-suffix="${s.suffix}">0${s.suffix}</div>
+          <div class="text-white/80">${s.label}</div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials Section -->
+  <section class="py-24 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center mb-16 animate-on-scroll">
+        <div class="inline-block px-4 py-1 bg-accent/10 rounded-full text-accent text-sm font-medium mb-4">Testimonials</div>
+        <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-4">What Our Clients Say</h2>
+        <p class="text-lg text-foreground/60 max-w-2xl mx-auto">Don't just take our word for it - hear from some of our satisfied clients</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-8">
+        ${[
+          { name: "Sarah Johnson", role: "Business Owner", quote: "Absolutely incredible service! They exceeded all my expectations and delivered results beyond what I thought possible.", rating: 5 },
+          { name: "Michael Chen", role: "Startup Founder", quote: "Professional, reliable, and extremely talented. I couldn't be happier with the outcome of our project.", rating: 5 },
+          { name: "Emily Williams", role: "Marketing Director", quote: "Their attention to detail and commitment to quality is unmatched. Highly recommend to anyone.", rating: 5 }
+        ].map((t, i) => `
+        <div class="animate-on-scroll card-hover bg-white p-8 rounded-2xl shadow-lg" style="animation-delay: ${i * 100}ms;">
+          <div class="flex text-yellow-400 mb-4">${"★".repeat(t.rating)}</div>
+          <p class="text-foreground/80 mb-6 italic">"${t.quote}"</p>
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white font-bold">${t.name.charAt(0)}</div>
+            <div>
+              <div class="font-bold text-foreground">${t.name}</div>
+              <div class="text-sm text-foreground/60">${t.role}</div>
+            </div>
+          </div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="py-24 bg-white">
+    <div class="max-w-3xl mx-auto px-4">
+      <div class="text-center mb-16 animate-on-scroll">
+        <div class="inline-block px-4 py-1 bg-primary/10 rounded-full text-primary text-sm font-medium mb-4">FAQ</div>
+        <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-4">Frequently Asked Questions</h2>
+        <p class="text-lg text-foreground/60">Find answers to common questions about our services</p>
+      </div>
+      <div class="space-y-4 animate-on-scroll">
+        ${[
+          { q: "How do I get started?", a: "Getting started is easy! Simply click the 'Get Started' button above or fill out our contact form, and we'll get back to you within 24 hours." },
+          { q: "What are your pricing options?", a: "We offer flexible pricing options tailored to your specific needs. Contact us for a free, no-obligation quote." },
+          { q: "How long does a typical project take?", a: "Project timelines vary based on scope and complexity. We'll provide a detailed timeline during our initial consultation." },
+          { q: "Do you offer ongoing support?", a: "Yes! We pride ourselves on providing excellent ongoing support. Our team is available 24/7 to help with any questions or concerns." }
+        ].map((faq, i) => `
+        <div class="bg-gray-50 rounded-xl overflow-hidden">
+          <button data-accordion-toggle class="w-full flex items-center justify-between p-6 text-left font-bold text-foreground hover:bg-gray-100 transition-colors" data-no-intent>
+            ${faq.q}
+            <svg data-accordion-icon class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div class="${i === 0 ? '' : 'hidden'} p-6 pt-0 text-foreground/70">
+            ${faq.a}
+          </div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="py-24 relative overflow-hidden" style="background: linear-gradient(135deg, ${primary} 0%, ${secondary} 100%);">
+    <div class="absolute inset-0 overflow-hidden">
+      <div class="absolute top-10 left-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-10 right-10 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+    </div>
+    <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
+      <h2 class="text-3xl md:text-5xl font-bold text-white mb-6">Ready to Transform Your Business?</h2>
+      <p class="text-xl text-white/80 mb-10 max-w-2xl mx-auto">Join hundreds of satisfied clients who have taken their business to the next level. Start your journey today.</p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <button 
+          class="bg-white text-primary px-10 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+          data-ut-intent="lead.capture"
+          data-ut-cta="cta.primary"
+        >
+          Get Started Now →
+        </button>
+        <button 
+          class="border-2 border-white text-white px-10 py-4 rounded-full font-bold text-lg hover:bg-white/10 transition-all"
+          data-ut-intent="booking.create"
+        >
+          Schedule a Call
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section class="py-24 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid md:grid-cols-2 gap-12 items-start">
+        <div class="animate-on-scroll">
+          <div class="inline-block px-4 py-1 bg-primary/10 rounded-full text-primary text-sm font-medium mb-4">Contact Us</div>
+          <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">Get In Touch</h2>
+          <p class="text-lg text-foreground/60 mb-8">Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+          <div class="space-y-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl">📍</div>
+              <div>
+                <div class="font-bold text-foreground">Our Location</div>
+                <div class="text-foreground/60">123 Business Street, City, ST 12345</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl">📞</div>
+              <div>
+                <div class="font-bold text-foreground">Phone Number</div>
+                <div class="text-foreground/60">(555) 123-4567</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl">✉️</div>
+              <div>
+                <div class="font-bold text-foreground">Email Address</div>
+                <div class="text-foreground/60">contact@${brand.business_name.toLowerCase().replace(/\s+/g, "")}.com</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl">🕐</div>
+              <div>
+                <div class="font-bold text-foreground">Business Hours</div>
+                <div class="text-foreground/60">Mon - Fri: 9AM - 6PM</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <form class="animate-on-scroll bg-white p-8 rounded-2xl shadow-xl" data-ut-intent="contact.submit">
+          <h3 class="text-xl font-bold text-foreground mb-6">Send us a message</h3>
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-foreground/70 mb-2">Your Name</label>
+              <input type="text" name="name" placeholder="John Doe" required class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-foreground/70 mb-2">Your Email</label>
+              <input type="email" name="email" placeholder="john@example.com" required class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" />
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-foreground/70 mb-2">Phone Number</label>
+            <input type="tel" name="phone" placeholder="(555) 123-4567" class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" />
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-foreground/70 mb-2">Your Message</label>
+            <textarea name="message" placeholder="Tell us about your project..." rows="4" required class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"></textarea>
+          </div>
+          <button 
+            type="submit"
+            class="w-full bg-primary text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25"
+            data-ut-intent="contact.submit"
+            data-ut-cta="cta.contact"
+          >
+            Send Message →
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-foreground text-white py-16">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid md:grid-cols-4 gap-8 mb-12">
+        <div>
+          <h3 class="text-2xl font-bold mb-4">${brand.business_name}</h3>
+          <p class="text-white/60 mb-6">${brand.tagline || "Your trusted partner for all your business needs."}</p>
+          <div class="flex gap-4">
+            <a href="#" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+            <a href="#" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </a>
+            <a href="#" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+            </a>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4">Quick Links</h4>
+          <ul class="space-y-3">
+            ${navigation.slice(0, 5).map(n => `<li><a href="${n.path}" class="text-white/60 hover:text-white transition-colors">${n.label}</a></li>`).join("\n            ")}
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4">Services</h4>
+          <ul class="space-y-3">
+            <li class="text-white/60">Consulting</li>
+            <li class="text-white/60">Development</li>
+            <li class="text-white/60">Design</li>
+            <li class="text-white/60">Marketing</li>
+            <li class="text-white/60">Support</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4">Newsletter</h4>
+          <p class="text-white/60 mb-4">Subscribe to get the latest updates and news.</p>
+          <form class="flex gap-2" data-ut-intent="newsletter.subscribe">
+            <input type="email" name="email" placeholder="Enter your email" class="flex-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-white/40" />
+            <button type="submit" class="px-4 py-2 bg-primary rounded-lg font-semibold hover:bg-primary/90 transition-colors" data-ut-intent="newsletter.subscribe">→</button>
+          </form>
+        </div>
+      </div>
+      <div class="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-white/40">© ${new Date().getFullYear()} ${brand.business_name}. All rights reserved.</p>
+        <div class="flex gap-6 text-sm text-white/40">
+          <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
+          <a href="#" class="hover:text-white transition-colors">Terms of Service</a>
+          <a href="#" class="hover:text-white transition-colors">Cookie Policy</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      'use strict';
+      
+      // Scroll animations with Intersection Observer
+      const observeElements = () => {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+            }
+          });
+        }, { threshold: 0.1 });
+        
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+          observer.observe(el);
+        });
+      };
+      
+      // Mobile menu toggle
+      const setupMobileMenu = () => {
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (menuBtn && mobileMenu) {
+          menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+          });
+        }
+      };
+      
+      // FAQ Accordion
+      const setupAccordion = () => {
+        document.querySelectorAll('[data-accordion-toggle]').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const content = this.nextElementSibling;
+            const icon = this.querySelector('[data-accordion-icon]');
+            content.classList.toggle('hidden');
+            if (icon) icon.classList.toggle('rotate-180');
+          });
+        });
+      };
+      
+      // Smooth scroll for anchor links
+      const setupSmoothScroll = () => {
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+          anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
+        });
+      };
+      
+      // Form submission handler
+      const setupForms = () => {
+        document.querySelectorAll('form[data-ut-intent]').forEach(form => {
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            const intent = this.getAttribute('data-ut-intent');
+            console.log('Form submitted:', intent, data);
+            
+            // Show success feedback
+            let successMsg = this.querySelector('.form-success');
+            if (!successMsg) {
+              successMsg = document.createElement('div');
+              successMsg.className = 'form-success mt-4 p-4 bg-green-100 text-green-800 rounded-lg text-center font-medium';
+              this.appendChild(successMsg);
+            }
+            successMsg.textContent = '✓ Thank you! We will be in touch soon.';
+            successMsg.classList.remove('hidden');
+            
+            // Reset form
+            this.reset();
+            
+            // Hide message after 5 seconds
+            setTimeout(() => successMsg.classList.add('hidden'), 5000);
+          });
+        });
+      };
+      
+      // Counter animation for stats
+      const animateCounters = () => {
+        document.querySelectorAll('[data-counter]').forEach(counter => {
+          const target = parseInt(counter.getAttribute('data-counter'));
+          const suffix = counter.getAttribute('data-suffix') || '';
+          const duration = 2000;
+          const step = target / (duration / 16);
+          let current = 0;
+          
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                const interval = setInterval(() => {
+                  current += step;
+                  if (current >= target) {
+                    counter.textContent = target.toLocaleString() + suffix;
+                    clearInterval(interval);
+                  } else {
+                    counter.textContent = Math.floor(current).toLocaleString() + suffix;
+                  }
+                }, 16);
+                observer.unobserve(counter);
+              }
+            });
+          }, { threshold: 0.5 });
+          
+          observer.observe(counter);
+        });
+      };
+      
+      // Initialize all functionality
+      function init() {
+        observeElements();
+        setupMobileMenu();
+        setupAccordion();
+        setupSmoothScroll();
+        setupForms();
+        animateCounters();
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>`;
+}
