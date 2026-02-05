@@ -1706,6 +1706,8 @@ const SMART_NAVIGATION_SCRIPT = `
     'book now': 'booking.create', 'reserve': 'booking.create', 'reserve table': 'booking.create', 'book service': 'booking.create',
     'make reservation': 'booking.create', 'book appointment': 'booking.create', 'schedule now': 'booking.create',
     'reserve now': 'booking.create', 'book a table': 'booking.create', 'table for': 'booking.create',
+    'book': 'booking.create', 'book this service': 'booking.create', 'request appointment': 'booking.create',
+    'book with': 'booking.create', 'schedule appointment': 'booking.create', 'make booking': 'booking.create',
     'book a call': 'calendar.book', 'schedule call': 'calendar.book', 'book meeting': 'calendar.book',
     'book consultation': 'consultation.book', 'free consultation': 'consultation.book', 'schedule consultation': 'consultation.book',
     
@@ -1767,7 +1769,7 @@ const SMART_NAVIGATION_SCRIPT = `
   function collectPayload(el) {
     const payload = {};
     Array.from(el.attributes).forEach(function(attr) {
-      if (attr.name.startsWith('data-') && attr.name !== 'data-intent') {
+      if (attr.name.startsWith('data-') && attr.name !== 'data-intent' && attr.name !== 'data-ut-intent' && attr.name !== 'data-ut-cta' && attr.name !== 'data-ut-section') {
         const key = attr.name.replace('data-', '').replace(/-([a-z])/g, function(_, l) { return l.toUpperCase(); });
         try { payload[key] = JSON.parse(attr.value); } catch(e) { payload[key] = attr.value; }
       }
@@ -2001,13 +2003,13 @@ const SMART_NAVIGATION_SCRIPT = `
   // Intercept all link and button clicks
   document.addEventListener('click', function(e) {
     const link = e.target.closest('a[href]');
-    const button = e.target.closest('button, [role="button"], [data-intent]');
+    const button = e.target.closest('button, [role="button"], [data-intent], [data-ut-intent]');
     const el = link || button;
     
     if (!el) return;
     
-    // Check for explicit data-intent attribute
-    const intentAttr = el.getAttribute('data-intent');
+    // Check for explicit data-intent or data-ut-intent attribute (data-ut-intent takes precedence)
+    const intentAttr = el.getAttribute('data-ut-intent') || el.getAttribute('data-intent');
     if (intentAttr === 'none' || intentAttr === 'ignore') {
       // Explicitly marked as no intent - allow default behavior or show overlay
       if (link) {
