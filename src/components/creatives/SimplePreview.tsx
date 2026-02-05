@@ -1779,8 +1779,146 @@ const SMART_NAVIGATION_SCRIPT = `
     return payload;
   }
   
+  // ============================================================================
+  // Booking/Form Confirmation Page
+  // ============================================================================
+  function showConfirmationPage(intent, payload, result, theme) {
+    if (!theme) theme = extractTheme();
+    
+    // Remove existing overlay if any
+    if (currentOverlay) currentOverlay.remove();
+    
+    var overlay = document.createElement('div');
+    overlay.id = 'preview-confirmation-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;overflow-y:auto;background:' + theme.background + ';font-family:' + theme.fontFamily + ';opacity:0;transition:opacity 0.3s ease;';
+    
+    currentOverlay = overlay;
+    
+    var isBooking = intent.includes('booking');
+    var isContact = intent.includes('contact');
+    var isNewsletter = intent.includes('newsletter');
+    
+    // Build confirmation content based on intent type
+    var icon, title, subtitle, details;
+    
+    if (isBooking) {
+      icon = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="' + theme.primary + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>';
+      title = 'Appointment Request Received!';
+      subtitle = 'We\\'ll confirm your booking shortly';
+      
+      var serviceName = payload.service || payload.serviceName || payload.serviceType || 'Your appointment';
+      var customerName = payload.name || payload.customerName || 'Valued Customer';
+      var customerEmail = payload.email || payload.customerEmail || '';
+      var date = payload.date || payload.preferredDate || '';
+      var time = payload.time || payload.preferredTime || '';
+      var confirmationId = (result && result.bookingId) || (result && result.confirmationId) || 'BK-' + Date.now().toString(36).toUpperCase();
+      
+      details = '<div style="background:' + theme.cardBg + ';border:1px solid ' + theme.border + ';border-radius:' + theme.borderRadius + ';padding:1.5rem;margin:1.5rem 0;text-align:left;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid ' + theme.border + ';">' +
+          '<span style="font-size:0.85rem;color:' + theme.muted + ';">Confirmation #</span>' +
+          '<span style="font-family:monospace;font-weight:600;color:' + theme.primary + ';">' + confirmationId + '</span>' +
+        '</div>' +
+        '<div style="display:grid;gap:0.75rem;">' +
+          '<div style="display:flex;justify-content:space-between;"><span style="color:' + theme.muted + ';font-size:0.9rem;">Service</span><span style="font-weight:500;color:' + theme.foreground + ';">' + serviceName + '</span></div>' +
+          (date ? '<div style="display:flex;justify-content:space-between;"><span style="color:' + theme.muted + ';font-size:0.9rem;">Date</span><span style="font-weight:500;color:' + theme.foreground + ';">' + date + '</span></div>' : '') +
+          (time ? '<div style="display:flex;justify-content:space-between;"><span style="color:' + theme.muted + ';font-size:0.9rem;">Time</span><span style="font-weight:500;color:' + theme.foreground + ';">' + time + '</span></div>' : '') +
+          '<div style="display:flex;justify-content:space-between;"><span style="color:' + theme.muted + ';font-size:0.9rem;">Name</span><span style="font-weight:500;color:' + theme.foreground + ';">' + customerName + '</span></div>' +
+          (customerEmail ? '<div style="display:flex;justify-content:space-between;"><span style="color:' + theme.muted + ';font-size:0.9rem;">Email</span><span style="font-weight:500;color:' + theme.foreground + ';">' + customerEmail + '</span></div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:1rem;">' +
+        '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:rgba(34,197,94,0.1);border-radius:' + theme.borderRadius + ';">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' +
+          '<span style="font-size:0.9rem;color:' + theme.foreground + ';">Confirmation email will be sent shortly</span>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:rgba(59,130,246,0.1);border-radius:' + theme.borderRadius + ';">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' +
+          '<span style="font-size:0.9rem;color:' + theme.foreground + ';">We may call to confirm your appointment</span>' +
+        '</div>' +
+      '</div>';
+    } else if (isContact) {
+      icon = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="' + theme.primary + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><path d="M9 16l2 2 4-4" stroke="#22c55e" stroke-width="2"/></svg>';
+      title = 'Message Sent!';
+      subtitle = 'Thank you for reaching out';
+      details = '<div style="background:' + theme.cardBg + ';border:1px solid ' + theme.border + ';border-radius:' + theme.borderRadius + ';padding:1.5rem;margin:1.5rem 0;text-align:center;">' +
+        '<p style="color:' + theme.foreground + ';margin:0 0 1rem 0;">We\\'ve received your message and will get back to you within 24 hours.</p>' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;color:' + theme.muted + ';font-size:0.9rem;">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+          '<span>Typical response time: 2-4 hours</span>' +
+        '</div>' +
+      '</div>';
+    } else if (isNewsletter) {
+      icon = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="' + theme.primary + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>';
+      title = 'You\\'re Subscribed!';
+      subtitle = 'Welcome to our newsletter';
+      details = '<div style="background:' + theme.cardBg + ';border:1px solid ' + theme.border + ';border-radius:' + theme.borderRadius + ';padding:1.5rem;margin:1.5rem 0;text-align:center;">' +
+        '<p style="color:' + theme.foreground + ';margin:0;">You\\'ll receive our latest updates, tips, and exclusive offers straight to your inbox.</p>' +
+      '</div>';
+    } else {
+      icon = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="' + theme.primary + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+      title = 'Success!';
+      subtitle = 'Your request has been processed';
+      details = '<div style="background:' + theme.cardBg + ';border:1px solid ' + theme.border + ';border-radius:' + theme.borderRadius + ';padding:1.5rem;margin:1.5rem 0;text-align:center;">' +
+        '<p style="color:' + theme.foreground + ';margin:0;">We\\'ve received your submission and will be in touch soon.</p>' +
+      '</div>';
+    }
+    
+    overlay.innerHTML = '<div style="width:100%;max-width:480px;padding:2rem;text-align:center;">' +
+      '<div style="width:80px;height:80px;margin:0 auto 1.5rem;background:rgba(34,197,94,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' +
+      '</div>' +
+      '<h1 style="font-size:1.75rem;font-weight:700;color:' + theme.foreground + ';margin:0 0 0.5rem 0;">' + title + '</h1>' +
+      '<p style="color:' + theme.muted + ';margin:0 0 1rem 0;font-size:1rem;">' + subtitle + '</p>' +
+      details +
+      '<div style="display:flex;gap:1rem;justify-content:center;margin-top:1.5rem;">' +
+        '<button onclick="window.__closeConfirmationOverlay()" style="padding:0.75rem 2rem;background:' + theme.primary + ';color:white;border:none;border-radius:' + theme.borderRadius + ';font-size:0.95rem;font-weight:500;cursor:pointer;">Continue</button>' +
+      '</div>' +
+      '<p style="margin-top:1.5rem;font-size:0.8rem;color:' + theme.muted + ';">This is a preview demonstration</p>' +
+    '</div>';
+    
+    document.body.appendChild(overlay);
+    
+    // Animate in
+    requestAnimationFrame(function() {
+      overlay.style.opacity = '1';
+    });
+    
+    // Close handler - return to origin
+    window.__closeConfirmationOverlay = function() {
+      overlay.style.opacity = '0';
+      setTimeout(function() {
+        overlay.remove();
+        currentOverlay = null;
+        delete window.__closeConfirmationOverlay;
+      }, 300);
+    };
+    
+    // ESC to close
+    function escHandler(e) {
+      if (e.key === 'Escape') {
+        window.__closeConfirmationOverlay();
+        document.removeEventListener('keydown', escHandler);
+      }
+    }
+    document.addEventListener('keydown', escHandler);
+  }
+  
+  // Track pending intents for confirmation page display
+  var pendingIntents = {};
+  
   function triggerIntent(intent, payload, element) {
     console.log('[Preview] Intent triggered:', intent, payload);
+    
+    // Generate a request ID for tracking
+    var requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    
+    // Store pending intent info
+    pendingIntents[requestId] = {
+      intent: intent,
+      payload: payload,
+      element: element,
+      timestamp: Date.now()
+    };
     
     // Add loading state
     if (element) {
@@ -1792,19 +1930,68 @@ const SMART_NAVIGATION_SCRIPT = `
     window.parent.postMessage({
       type: 'INTENT_TRIGGER',
       intent: intent,
-      payload: payload
+      payload: payload,
+      requestId: requestId
     }, '*');
     
-    // Reset button state after short delay
-    if (element) {
+    // For booking/contact/newsletter intents, wait for result to show confirmation
+    var isConfirmableIntent = intent.includes('booking') || intent.includes('contact') || intent.includes('newsletter') || intent.includes('quote') || intent.includes('form');
+    
+    if (isConfirmableIntent) {
+      // Set timeout for fallback (if parent doesn't respond)
       setTimeout(function() {
-        element.classList.remove('intent-loading');
-        element.classList.add('intent-success');
-        element.disabled = false;
-        setTimeout(function() { element.classList.remove('intent-success'); }, 2000);
-      }, 500);
+        if (pendingIntents[requestId]) {
+          delete pendingIntents[requestId];
+          if (element) {
+            element.classList.remove('intent-loading');
+            element.classList.add('intent-success');
+            element.disabled = false;
+          }
+          // Show confirmation page with mock success
+          if (!theme) theme = extractTheme();
+          showConfirmationPage(intent, payload, { success: true }, theme);
+        }
+      }, 2000);
+    } else {
+      // Non-confirmable intents: just reset button after short delay
+      if (element) {
+        setTimeout(function() {
+          element.classList.remove('intent-loading');
+          element.classList.add('intent-success');
+          element.disabled = false;
+          setTimeout(function() { element.classList.remove('intent-success'); }, 2000);
+        }, 500);
+      }
     }
   }
+  
+  // Listen for intent results from parent
+  window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'INTENT_RESULT') return;
+    
+    var requestId = e.data.requestId;
+    var result = e.data.result || {};
+    
+    console.log('[Preview] Intent result received:', requestId, result);
+    
+    var pending = pendingIntents[requestId];
+    if (!pending) return;
+    
+    delete pendingIntents[requestId];
+    
+    // Reset element state
+    if (pending.element) {
+      pending.element.classList.remove('intent-loading');
+      pending.element.classList.add('intent-success');
+      pending.element.disabled = false;
+    }
+    
+    // Show confirmation page for successful confirmable intents
+    if (result.success !== false) {
+      if (!theme) theme = extractTheme();
+      showConfirmationPage(pending.intent, pending.payload, result, theme);
+    }
+  });
   
   // ============================================================================
   // Event Handlers

@@ -829,8 +829,24 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       // Only handle intent trigger messages
       if (event.data?.type !== 'INTENT_TRIGGER') return;
       
-      const { intent, payload } = event.data;
-      console.log('[WebBuilder] Received intent from preview:', intent, payload);
+      const { intent, payload, requestId } = event.data;
+      console.log('[WebBuilder] Received intent from preview:', intent, payload, 'requestId:', requestId);
+
+      // Get the source window for sending results back
+      const source = (event.source && typeof (event.source as any).postMessage === 'function')
+        ? (event.source as Window)
+        : null;
+
+      // Helper to send result back to iframe
+      const sendResultToIframe = (result: { success: boolean; [key: string]: unknown }) => {
+        if (source && requestId) {
+          source.postMessage({
+            type: 'INTENT_RESULT',
+            requestId,
+            result
+          }, '*');
+        }
+      };
 
       // Never open overlays for preview click actions (these are disruptive in the builder).
       // Instead: autorun, open demo in a new tab, or ask the iframe to scroll to an on-page form.
@@ -845,16 +861,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       // Booking: always prefer scrolling within the preview iframe.
       if (intent === 'booking.create') {
         void (async () => {
-          const source = (event.source && typeof (event.source as any).postMessage === 'function')
-            ? (event.source as Window)
-            : null;
-
           if (!source) {
             toast('Scroll to booking form');
             return;
           }
 
-          const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          const scrollRequestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
           const handled = await new Promise<boolean>((resolve) => {
             const timeout = window.setTimeout(() => {
@@ -866,7 +878,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             const onResult = (evt: MessageEvent) => {
               if (evt.data?.type !== 'INTENT_COMMAND_RESULT') return;
               if (evt.data?.command !== 'booking.scroll') return;
-              if (evt.data?.requestId !== requestId) return;
+              if (evt.data?.requestId !== scrollRequestId) return;
               window.clearTimeout(timeout);
               window.removeEventListener('message', onResult);
               console.log('[WebBuilder] Booking scroll result:', evt.data?.handled);
@@ -874,13 +886,20 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             };
 
             window.addEventListener('message', onResult);
-            source.postMessage({ type: 'INTENT_COMMAND', command: 'booking.scroll', requestId }, '*');
+            source.postMessage({ type: 'INTENT_COMMAND', command: 'booking.scroll', requestId: scrollRequestId }, '*');
           });
 
           if (!handled) {
             // Don't show error toast - form may already be visible or user can scroll manually
             console.log('[WebBuilder] Booking form not found - user may need to scroll manually');
           }
+          
+          // Send success result for booking intent - iframe will show confirmation page
+          sendResultToIframe({
+            success: true,
+            bookingId: `BK-${Date.now().toString(36).toUpperCase()}`,
+            message: 'Appointment request received'
+          });
         })();
         return;
       }
@@ -905,12 +924,26 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           const res = await handleIntent(intent, payload as IntentPayload);
           if (res.success) {
             toast.success(`${toastLabel} complete`);
+            // Send success result back to iframe for confirmation page
+            sendResultToIframe({
+              success: true,
+              ...res,
+              message: `${toastLabel} complete`
+            });
           } else {
             toast.error(res.error || `${toastLabel} failed`);
+            sendResultToIframe({
+              success: false,
+              error: res.error || `${toastLabel} failed`
+            });
           }
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Unknown error';
           toast.error(msg);
+          sendResultToIframe({
+            success: false,
+            error: msg
+          });
         }
       })();
     };
