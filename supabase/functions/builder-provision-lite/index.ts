@@ -86,25 +86,27 @@ serve(async (req) => {
     }
 
     // Step 2: Design preferences
-    await supabase.from("business_design_preferences").upsert({
+    const { error: designError } = await supabase.from("business_design_preferences").upsert({
       business_id: business.id,
       color_primary: blueprint.brand.palette.primary,
       color_secondary: blueprint.brand.palette.secondary,
       color_accent: blueprint.brand.palette.accent,
       font_heading: blueprint.brand.typography.heading,
       font_body: blueprint.brand.typography.body,
-    }).catch(() => { /* Table may not exist */ });
+    });
+    if (designError) console.warn("[provision-lite] Design preferences:", designError.message);
 
     // Step 3: Intent bindings
     if (blueprint.intents?.length) {
       for (const intent of blueprint.intents) {
-        await supabase.from("intent_bindings").insert({
+        const { error: intentError } = await supabase.from("intent_bindings").insert({
           business_id: business.id,
           intent: intent.intent,
           handler: intent.target.ref,
           payload_schema: intent.payload_schema || [],
           enabled: true,
-        }).catch(() => { /* Table may not exist */ });
+        });
+        if (intentError) console.warn("[provision-lite] Intent binding:", intentError.message);
       }
     }
 
@@ -112,13 +114,14 @@ serve(async (req) => {
     if (blueprint.crm?.pipelines?.length) {
       for (const pipeline of blueprint.crm.pipelines) {
         for (const stage of pipeline.stages) {
-          await supabase.from("crm_pipeline_stages").insert({
+          const { error: stageError } = await supabase.from("crm_pipeline_stages").insert({
             business_id: business.id,
             pipeline_id: pipeline.pipeline_id,
             stage_id: stage.id,
             label: stage.label,
             position: stage.order,
-          }).catch(() => { /* Table may not exist */ });
+          });
+          if (stageError) console.warn("[provision-lite] Pipeline stage:", stageError.message);
         }
       }
     }
@@ -128,7 +131,7 @@ serve(async (req) => {
       const isShadow = (options?.provision_mode || blueprint.automations.provision_mode) === "shadow_automations";
       
       for (const rule of blueprint.automations.rules) {
-        await supabase.from("automation_recipes").insert({
+        const { error: recipeError } = await supabase.from("automation_recipes").insert({
           business_id: business.id,
           name: rule.name,
           trigger_event: rule.trigger,
@@ -136,7 +139,8 @@ serve(async (req) => {
           actions: rule.actions || [],
           is_active: rule.enabled_by_default && !isShadow,
           is_shadow: isShadow,
-        }).catch(() => { /* Table may not exist */ });
+        });
+        if (recipeError) console.warn("[provision-lite] Automation recipe:", recipeError.message);
       }
     }
 
