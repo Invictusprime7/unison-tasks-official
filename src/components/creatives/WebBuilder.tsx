@@ -80,6 +80,146 @@ function getOrCreatePreviewBusinessId(systemType?: string): string {
   }
 }
 
+/**
+ * Build a context-aware prompt for dynamic page generation
+ * Used when user clicks navigation links to generate linked pages on-the-fly
+ */
+function buildDynamicPagePrompt(
+  pageName: string,
+  pageContext: string,
+  navLabel: string,
+  mainPageCode: string
+): string {
+  // Extract brand/styling context from main page
+  const colorMatch = mainPageCode.match(/(?:bg-|text-|from-|to-)([a-z]+-\d+)/g);
+  const colors = colorMatch ? [...new Set(colorMatch)].slice(0, 10).join(', ') : 'blue, purple, gray';
+  
+  // Page-specific prompts based on context
+  const pagePrompts: Record<string, string> = {
+    checkout: `Create a COMPLETE checkout page with:
+- Order summary section showing cart items with prices
+- Shipping address form (name, email, address, city, state, zip)
+- Payment section with card input fields (card number, expiry, CVV)
+- Order total with subtotal, shipping, tax breakdown
+- "Complete Purchase" button with data-ut-intent="checkout.complete"
+- Trust badges and secure payment icons
+- Back to cart link`,
+    
+    cart: `Create a COMPLETE shopping cart page with:
+- Cart items list with product images, names, quantities, prices
+- Quantity adjusters (+/- buttons) with data-no-intent
+- Remove item buttons
+- Subtotal calculation
+- "Proceed to Checkout" button with data-ut-intent="checkout.start"
+- "Continue Shopping" link back to main page
+- Empty cart state message`,
+    
+    booking: `Create a COMPLETE booking/appointment page with:
+- Service selection dropdown or cards
+- Date picker calendar UI
+- Available time slots grid
+- Customer info form (name, email, phone)
+- Special requests textarea
+- "Confirm Booking" button with data-ut-intent="booking.create"
+- Cancellation policy notice`,
+    
+    contact: `Create a COMPLETE contact page with:
+- Contact form (name, email, phone, subject, message)
+- Form validation styling
+- "Send Message" button with data-ut-intent="contact.submit"
+- Business contact info (address, phone, email, hours)
+- Embedded map placeholder
+- Social media links`,
+    
+    services: `Create a COMPLETE services page with:
+- Hero section with services overview
+- Individual service cards with icons, descriptions, pricing
+- "Book Now" buttons with data-ut-intent="booking.create"
+- Service comparison table (if applicable)
+- FAQ section about services
+- CTA to contact for custom quotes`,
+    
+    about: `Create a COMPLETE about page with:
+- Company story/mission section
+- Team member profiles with photos and bios
+- Company values or philosophy
+- Timeline or milestones
+- Awards/certifications
+- CTA to contact or learn more`,
+    
+    products: `Create a COMPLETE products catalog page with:
+- Product grid with images, names, prices
+- Filter/sort controls (data-no-intent on these)
+- "Add to Cart" buttons with data-ut-intent="cart.add"
+- Product quick view modals
+- Pagination or load more
+- Featured products section`,
+    
+    login: `Create a COMPLETE login page with:
+- Login form (email, password)
+- "Sign In" button with data-ut-intent="auth.signin"
+- "Forgot Password" link
+- "Create Account" link
+- Social login buttons (Google, Apple)
+- Remember me checkbox`,
+    
+    signup: `Create a COMPLETE registration page with:
+- Signup form (name, email, password, confirm password)
+- Password strength indicator
+- Terms & conditions checkbox
+- "Create Account" button with data-ut-intent="auth.signup"
+- Already have account? Sign in link
+- Social signup options`,
+    
+    pricing: `Create a COMPLETE pricing page with:
+- 3 pricing tiers (Basic, Pro, Enterprise)
+- Feature comparison table
+- Toggle for monthly/yearly pricing
+- "Get Started" buttons with appropriate intents
+- FAQ about billing
+- Money-back guarantee notice`,
+    
+    gallery: `Create a COMPLETE gallery/portfolio page with:
+- Masonry or grid image gallery
+- Category filter tabs (data-no-intent)
+- Lightbox-style image viewing
+- Project descriptions
+- Client testimonials
+- CTA to inquire about projects`,
+  };
+
+  const specificPrompt = pagePrompts[pageName.toLowerCase()] || 
+    `Create a complete ${navLabel || pageName} page with relevant content, forms, and call-to-action buttons properly wired with data-ut-intent attributes.`;
+
+  return `🚀 CREATE A DYNAMIC "${navLabel || pageName.toUpperCase()}" PAGE
+
+This page is part of a multi-page website. The user clicked "${navLabel}" from the main page.
+
+${specificPrompt}
+
+📋 CRITICAL REQUIREMENTS:
+
+1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html>, include Tailwind CSS
+2. **MATCH MAIN PAGE STYLING** - Use similar colors: ${colors}
+3. **NAVIGATION** - Include header with nav links back to main page and other pages
+4. **REAL CONTENT** - Write actual text, not placeholders
+5. **WORKING INTENTS** - Wire all CTAs with data-ut-intent, data-ut-cta, data-intent attributes
+6. **RESPONSIVE** - Mobile-first with md: and lg: breakpoints
+7. **FOOTER** - Match the main page footer style
+
+🔌 INTENT WIRING:
+- Navigation: data-ut-intent="nav.goto" data-ut-path="/index.html"
+- Forms: data-ut-intent on submit buttons (contact.submit, booking.create, etc.)
+- E-commerce: cart.add, cart.view, checkout.start, checkout.complete
+- Auth: auth.signin, auth.signup, auth.signout
+- Add data-no-intent to UI controls that shouldn't trigger actions (filters, tabs, quantity adjusters)
+
+CONTEXT FROM MAIN PAGE (extract styling patterns):
+${mainPageCode.substring(0, 2000)}
+
+OUTPUT: Complete HTML page only, no markdown, no explanations.`;
+}
+
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
 interface SelectedElement {
   id?: string;
@@ -998,6 +1138,114 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     window.addEventListener('message', handleIntentMessage);
     return () => window.removeEventListener('message', handleIntentMessage);
   }, []);
+
+  // Dynamic page generation state
+  const [generatedPages, setGeneratedPages] = useState<Record<string, string>>({});
+  const [isGeneratingPage, setIsGeneratingPage] = useState(false);
+  const [currentNavPage, setCurrentNavPage] = useState<string | null>(null);
+
+  // Listen for NAV_PAGE_GENERATE messages from iframe for dynamic page creation
+  useEffect(() => {
+    const handleNavPageGenerate = async (event: MessageEvent) => {
+      if (event.data?.type !== 'NAV_PAGE_GENERATE') return;
+      
+      const { pageName, pageContext, navLabel, requestId } = event.data;
+      console.log('[WebBuilder] Dynamic page generation requested:', pageName, pageContext);
+      
+      const source = (event.source && typeof (event.source as any).postMessage === 'function')
+        ? (event.source as Window)
+        : null;
+
+      // Check if page already exists in VFS or cache
+      const existingPage = virtualFS.nodes[`/${pageName}.html`] || generatedPages[pageName];
+      if (existingPage) {
+        console.log('[WebBuilder] Page already exists:', pageName);
+        const pageContent = typeof existingPage === 'string' ? existingPage : (existingPage as any).content;
+        if (source) {
+          source.postMessage({
+            type: 'NAV_PAGE_READY',
+            requestId,
+            pageName,
+            pageContent
+          }, '*');
+        }
+        return;
+      }
+
+      // Generate new page with AI
+      setIsGeneratingPage(true);
+      setCurrentNavPage(pageName);
+
+      try {
+        // Build context-aware prompt for the page
+        const pagePrompt = buildDynamicPagePrompt(pageName, pageContext, navLabel, previewCode);
+        
+        const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
+          body: {
+            messages: [{ role: "user", content: pagePrompt }],
+            mode: "code",
+            templateAction: "full-control",
+            editMode: false,
+          },
+        });
+
+        if (error) throw error;
+
+        const content = data?.content || "";
+        let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
+        if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
+        
+        let pageCode = codeMatch ? codeMatch[1].trim() : content.trim();
+        
+        // Clean markdown artifacts
+        pageCode = pageCode
+          .replace(/^#{1,6}\s+.*$/gm, '')
+          .replace(/```[\w]*\n?/g, '')
+          .replace(/<<<|>>>|---/g, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+
+        if (pageCode) {
+          // Store in VFS and cache
+          virtualFS.importFiles({ [`/${pageName}.html`]: pageCode });
+          setGeneratedPages(prev => ({ ...prev, [pageName]: pageCode }));
+
+          console.log('[WebBuilder] Dynamic page generated:', pageName, pageCode.length, 'chars');
+          
+          if (source) {
+            source.postMessage({
+              type: 'NAV_PAGE_READY',
+              requestId,
+              pageName,
+              pageContent: pageCode
+            }, '*');
+          }
+
+          toast.success(`${navLabel || pageName} page created!`);
+        } else {
+          throw new Error('No page content generated');
+        }
+      } catch (err) {
+        console.error('[WebBuilder] Page generation failed:', err);
+        toast.error(`Failed to generate ${navLabel || pageName} page`);
+        
+        if (source) {
+          source.postMessage({
+            type: 'NAV_PAGE_ERROR',
+            requestId,
+            pageName,
+            error: err instanceof Error ? err.message : 'Generation failed'
+          }, '*');
+        }
+      } finally {
+        setIsGeneratingPage(false);
+        setCurrentNavPage(null);
+      }
+    };
+
+    window.addEventListener('message', handleNavPageGenerate);
+    return () => window.removeEventListener('message', handleNavPageGenerate);
+  }, [virtualFS, previewCode, generatedPages]);
   
   // Clear draft when template is saved
   const clearDraft = useCallback(() => {
@@ -1024,15 +1272,24 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
 
     if (location.state?.generatedCode) {
-      const { generatedCode, templateName, aesthetic } = location.state;
-      console.log('[WebBuilder] Loading template code from Web Design Kit:', templateName);
+      const { generatedCode, templateName, aesthetic, startInPreview } = location.state;
+      console.log('[WebBuilder] Loading template code:', templateName, 'startInPreview:', startInPreview);
       if (templateName) setCurrentTemplateName(templateName);
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
-      setViewMode('code'); // Start in code view to show the template in CodeMirror
-      toast(`${templateName} loaded!`, {
-        description: `${aesthetic} - View and edit in Code Editor`,
-      });
+      
+      // Start in canvas/preview mode if coming from homepage AI panel, otherwise code mode
+      if (startInPreview) {
+        setViewMode('canvas');
+        toast(`${templateName} loaded!`, {
+          description: `${aesthetic} - Preview your AI-generated website`,
+        });
+      } else {
+        setViewMode('code');
+        toast(`${templateName} loaded!`, {
+          description: `${aesthetic} - View and edit in Code Editor`,
+        });
+      }
       // Clear the state to prevent re-loading on subsequent renders
       window.history.replaceState({}, document.title);
     } else if (location.state?.generatedTemplate) {

@@ -328,7 +328,11 @@ const Index = () => {
           </div>
         </div>
       </section>
-
+      {/* Systems AI Panel - Main interactive component */}
+      <SystemsAIPanel 
+        user={user} 
+        onAuthRequired={() => navigate("/auth")} 
+      />
       {/* Recent Projects Section - Only visible for authenticated users */}
       {user && (
         <section className="container mx-auto px-4 py-12 border-b border-border/40">
@@ -416,12 +420,6 @@ const Index = () => {
           )}
         </section>
       )}
-
-      {/* Systems AI Panel - Main interactive component */}
-      <SystemsAIPanel 
-        user={user} 
-        onAuthRequired={() => navigate("/auth")} 
-      />
 
       {/* The Difference Section */}
       <section className="bg-muted/30 py-20">

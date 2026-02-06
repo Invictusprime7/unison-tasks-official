@@ -241,8 +241,107 @@ function injectIntentListener(html: string): string {
       return null;
     }
 
+    // Store for dynamically generated pages
+    const dynamicPageCache = {};
+    let isLoadingPage = false;
+
     function executeNavIntent(intent, target){
       console.log('[Intent] Navigation:', intent, target);
+      
+      // Handle anchor links (scroll within page)
+      if(intent === 'nav.anchor' || (target && target.startsWith('#'))){
+        const anchor = target.replace('#', '');
+        const targetEl = document.getElementById(anchor) || document.querySelector('[name="' + anchor + '"]');
+        if(targetEl){
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+      }
+      
+      // Handle external links
+      if(intent === 'nav.external' || (target && (target.startsWith('http://') || target.startsWith('https://')))){
+        window.parent.postMessage({
+          type: 'NAV_EXTERNAL',
+          intent: intent,
+          target: target
+        }, '*');
+        return;
+      }
+      
+      // Handle internal page navigation - request dynamic page generation
+      if(intent === 'nav.goto' || target){
+        // Extract page name from path (e.g., "/checkout.html" -> "checkout")
+        const pagePath = target || '';
+        const pageName = pagePath.replace(/^\//, '').replace(/\.html$/, '').replace(/\/$/, '') || 'index';
+        
+        // Get nav label from clicked element
+        const clickedEl = document.activeElement || document.querySelector('[data-ut-path="' + target + '"]');
+        const navLabel = clickedEl ? (clickedEl.textContent || '').trim() : pageName;
+        
+        // Show loading indicator
+        if(isLoadingPage) return;
+        isLoadingPage = true;
+        
+        // Create loading overlay
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'nav-loading-overlay';
+        loadingOverlay.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:white;padding:24px 48px;border-radius:12px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);"><div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div><div style="font-weight:600;color:#111;">Generating ' + navLabel + ' page...</div><div style="font-size:12px;color:#666;margin-top:4px;">AI is creating your custom page</div></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+        document.body.appendChild(loadingOverlay);
+        
+        // Request dynamic page generation from parent
+        const requestId = Date.now() + '-' + Math.random().toString(36).slice(2);
+        
+        // Listen for page ready response
+        const handlePageReady = function(evt){
+          if(!evt.data) return;
+          if(evt.data.type === 'NAV_PAGE_READY' && evt.data.requestId === requestId){
+            window.removeEventListener('message', handlePageReady);
+            isLoadingPage = false;
+            const overlay = document.getElementById('nav-loading-overlay');
+            if(overlay) overlay.remove();
+            
+            // Replace current page content with new page
+            if(evt.data.pageContent){
+              document.open();
+              document.write(evt.data.pageContent);
+              document.close();
+            }
+          }
+          if(evt.data.type === 'NAV_PAGE_ERROR' && evt.data.requestId === requestId){
+            window.removeEventListener('message', handlePageReady);
+            isLoadingPage = false;
+            const overlay = document.getElementById('nav-loading-overlay');
+            if(overlay) overlay.remove();
+            console.error('[Intent] Page generation failed:', evt.data.error);
+          }
+        };
+        
+        window.addEventListener('message', handlePageReady);
+        
+        // Send page generation request
+        window.parent.postMessage({
+          type: 'NAV_PAGE_GENERATE',
+          requestId: requestId,
+          pageName: pageName,
+          navLabel: navLabel,
+          pageContext: intent
+        }, '*');
+        
+        // Timeout fallback
+        setTimeout(function(){
+          if(isLoadingPage){
+            window.removeEventListener('message', handlePageReady);
+            isLoadingPage = false;
+            const overlay = document.getElementById('nav-loading-overlay');
+            if(overlay) overlay.remove();
+            console.error('[Intent] Page generation timed out');
+          }
+        }, 30000);
+        
+        return;
+      }
+      
+      // Fallback: send to parent
       window.parent.postMessage({
         type: 'NAV_INTENT',
         intent: intent,
