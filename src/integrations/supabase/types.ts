@@ -1930,6 +1930,42 @@ export type Database = {
         }
         Relationships: []
       }
+      lucide_icon_registry: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          industry_relevance: string[] | null
+          name: string
+          subcategory: string | null
+          tags: string[] | null
+          use_cases: string[] | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          industry_relevance?: string[] | null
+          name: string
+          subcategory?: string | null
+          tags?: string[] | null
+          use_cases?: string[] | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          industry_relevance?: string[] | null
+          name?: string
+          subcategory?: string | null
+          tags?: string[] | null
+          use_cases?: string[] | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           business_id: string | null
