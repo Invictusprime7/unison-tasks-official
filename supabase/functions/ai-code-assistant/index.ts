@@ -432,6 +432,32 @@ ${learnedPatterns}
 - **MAP VISUALIZATION** - SVG-based maps, interactive geographic displays
 - **CSS ANIMATIONS** - Keyframe animations, transitions, scroll-triggered effects
 
+🏆 **PREMIUM DESIGN MANDATE — AWARD-WINNING LEVEL:**
+
+Your output MUST rival top-tier ThemeForest templates and Framer showcases.
+
+**DARK LUXURY HERO (default for service businesses):**
+- min-h-screen with Unsplash background + gradient overlay (from-black/80 via-black/60 to-transparent)
+- Decorative blur orbs: absolute w-72 h-72 bg-primary/10 rounded-full blur-3xl
+- Badge above headline: inline-flex rounded-full bg-white/10 backdrop-blur-sm
+- H1: text-5xl md:text-6xl lg:text-7xl font-bold with gradient text accent (bg-clip-text)
+- Dual CTAs: primary (bg-primary rounded-full shadow-lg) + secondary (border-2 border-white/20)
+
+**SERVICE CARDS (mandatory for service sites):**
+- bg-gray-900 rounded-2xl p-8 border border-gray-800 hover:border-primary/50 hover:-translate-y-1
+- Price: text-2xl font-bold text-primary top-right
+- Badges: "Most Popular" (bg-primary/20 text-primary), "Premium" (bg-amber-500/20 text-amber-400)
+- Metadata row: clock icon + duration, sparkles icon + tag, text-sm text-gray-500
+- CATEGORY PILLS above cards: rounded-full bg-white/10 text-gray-300 (active: bg-primary text-white)
+
+**SECTION DESIGN DENSITY:**
+- Section headers: ALWAYS eyebrow (text-primary text-sm uppercase tracking-wider) + h2 + subtitle
+- Cards: 4-6 content elements minimum (badge/icon, title, description, metadata, CTA)
+- py-20 md:py-28 section padding, max-w-6xl mx-auto containers
+- Dark theme: bg-gray-950 page, bg-gray-900 cards, border-gray-800, text-white/gray-300/gray-400
+
+**STATS STRIP:** grid-cols-2 md:grid-cols-4 with data-counter animated numbers
+
 💡 **CODE GENERATION EXCELLENCE:**
 You create COMPLETE, PRODUCTION-READY components with:
 
