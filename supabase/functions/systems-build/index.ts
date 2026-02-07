@@ -305,12 +305,25 @@ function hardenGeneratedHTML(code: string): string {
   }
 
   // Fix 3: Ensure CTA buttons have visible text contrast
-  // Replace any `text-transparent` or invisible button text patterns
   hardened = hardened.replace(/class="([^"]*\btext-transparent\b[^"]*)"/g, (match, classes) => {
-    // Only fix if it's on a button/anchor
-    if (classes.includes('bg-clip-text')) return match; // Intentional gradient text
+    if (classes.includes('bg-clip-text')) return match;
     return `class="${classes.replace('text-transparent', 'text-white')}"`;
   });
+
+  // Fix 4: Inject Lucide CDN if not present but data-lucide attributes exist
+  if (hardened.includes('data-lucide') && !hardened.includes('lucide')) {
+    // Add CDN to head
+    if (hardened.includes('</head>')) {
+      hardened = hardened.replace('</head>', '<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"><\/script>\n</head>');
+    }
+  }
+
+  // Fix 5: Ensure lucide.createIcons() is called if Lucide is used
+  if (hardened.includes('data-lucide') && !hardened.includes('lucide.createIcons')) {
+    if (hardened.includes('</body>')) {
+      hardened = hardened.replace('</body>', '<script>if(typeof lucide!=="undefined"){lucide.createIcons();}</script>\n</body>');
+    }
+  }
 
   return hardened;
 }
@@ -706,6 +719,36 @@ Include this vanilla JS for interactivity:
   }
 </script>
 \`\`\`
+
+🎯 **LUCIDE ICONS INTEGRATION (MANDATORY):**
+
+Use Lucide icons for ALL icon needs. Include the Lucide CDN in <head>:
+
+\`\`\`html
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+\`\`\`
+
+Use icons with this syntax:
+\`\`\`html
+<i data-lucide="icon-name" class="w-6 h-6"></i>
+\`\`\`
+
+Initialize icons at end of <body> BEFORE other scripts:
+\`\`\`html
+<script>lucide.createIcons();</script>
+\`\`\`
+
+**INDUSTRY-SPECIFIC LUCIDE ICONS TO USE:**
+${getLucideIconsForIndustry(identity.industry)}
+
+**ICON USAGE RULES:**
+- Use Lucide icons for ALL feature cards, service items, trust badges, navigation, and UI elements
+- NEVER use emoji as icons in professional sections — use Lucide icons instead
+- Size icons appropriately: w-5 h-5 for inline, w-6 h-6 for cards, w-8 h-8 or w-10 h-10 for feature highlights
+- Color icons with text-primary, text-secondary, text-accent, or text-foreground classes
+- Wrap icons in colored circles for feature cards: \`<div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center"><i data-lucide="icon-name" class="w-7 h-7 text-primary"></i></div>\`
+- Use icons in navigation: menu, phone, mail, map-pin, shopping-cart
+- Use icons in footer: social media, contact info, navigation arrows
 
 🚀 **FULL CREATIVE CONTROL MODE - YOU HAVE COMPLETE AUTHORITY**
 
@@ -1183,7 +1226,73 @@ function getIndustrySpecificElements(industry: string): string {
   return elements[industry] || elements.other;
 }
 
-function generateFallbackHTML(blueprint: z.infer<typeof BlueprintSchema>): string {
+/**
+ * Returns industry-specific Lucide icon recommendations for AI prompt injection
+ */
+function getLucideIconsForIndustry(industry: string): string {
+  const iconSets: Record<string, string> = {
+    restaurant: `
+- Hero/Nav: utensils, menu, phone, map-pin, clock
+- Features: chef-hat, cooking-pot, wine, coffee, cake, salad, beef, pizza
+- Services: utensils, calendar, truck, gift, star
+- Trust: award, shield-check, heart-pulse, users, thumbs-up
+- Contact: phone, mail, map-pin, clock, navigation
+- Social: share-2, message-circle, heart-pulse`,
+    salon_spa: `
+- Hero/Nav: scissors, sparkles, calendar, phone, map-pin
+- Features: scissors, palette, gem, spray-can, bath, flower-2, crown, droplets
+- Services: scissors, sparkles, gem, crown, heart-pulse, smile
+- Trust: award, star, shield-check, users, check-circle
+- Contact: phone, mail, map-pin, clock, calendar
+- Booking: calendar, clock, user-check, check-circle`,
+    ecommerce: `
+- Hero/Nav: shopping-bag, search, shopping-cart, user-check, heart-pulse
+- Features: package, truck, shield-check, credit-card, receipt, store
+- Products: shopping-bag, star, heart-pulse, eye, share-2
+- Trust: shield-check, truck, credit-card, award, check-circle
+- Cart: shopping-cart, plus, x, credit-card, package`,
+    local_service: `
+- Hero/Nav: wrench, phone, map-pin, shield-check, clock
+- Features: wrench, settings, shield-check, clock, truck, ruler
+- Services: wrench, zap, droplets, thermometer, paintbrush, hammer
+- Trust: award, star, shield-check, users, check-circle, thumbs-up
+- Contact: phone, mail, map-pin, clock, navigation`,
+    coaching_consulting: `
+- Hero/Nav: briefcase, calendar, phone, trending-up, award
+- Features: trending-up, bar-chart-3, brain, rocket, zap, presentation
+- Services: briefcase, users, book-open, calendar, video
+- Trust: award, star, shield-check, trending-up, check-circle
+- Contact: phone, mail, calendar, video, message-circle`,
+    real_estate: `
+- Hero/Nav: home, search, phone, map-pin, building
+- Features: home, building, key, bed-double, sofa, trees, ruler, fence
+- Listings: home, bed-double, bath, ruler, map-pin, car
+- Trust: award, star, shield-check, key, check-circle
+- Contact: phone, mail, map-pin, calendar, navigation`,
+    creator_portfolio: `
+- Hero/Nav: pen-tool, palette, camera, mail, globe
+- Features: pen-tool, code, camera, film, palette, image
+- Work: image, eye, external-link, play-circle, download
+- Trust: award, star, users, check-circle, briefcase
+- Contact: mail, message-circle, phone, globe, send`,
+    nonprofit: `
+- Hero/Nav: heart-pulse, users, globe, mail, phone
+- Features: heart-pulse, users, globe, sprout, recycle, hand-heart
+- Impact: trending-up, users, globe, heart-pulse, award
+- Trust: shield-check, award, check-circle, star, users
+- Contact: mail, phone, map-pin, message-circle, send`,
+    other: `
+- Hero/Nav: briefcase, phone, mail, map-pin, menu
+- Features: star, zap, shield-check, clock, check-circle, trending-up
+- Services: briefcase, settings, users, rocket, award
+- Trust: award, star, shield-check, check-circle, thumbs-up
+- Contact: phone, mail, map-pin, clock, message-circle`,
+  };
+
+  return iconSets[industry] || iconSets.other;
+}
+
+
   const { brand, identity } = blueprint;
   const palette = brand.palette || {};
   const _pages = blueprint.site?.pages || [];
@@ -1202,6 +1311,7 @@ function generateFallbackHTML(blueprint: z.infer<typeof BlueprintSchema>): strin
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${brand.business_name} - ${brand.tagline || "Welcome"}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -1244,9 +1354,7 @@ function generateFallbackHTML(blueprint: z.infer<typeof BlueprintSchema>): strin
     <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
       <a href="/" class="text-2xl font-bold text-primary">${brand.business_name}</a>
       <button id="mobile-menu-btn" class="md:hidden p-2">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-        </svg>
+        <i data-lucide="menu" class="w-6 h-6"></i>
       </button>
       <div class="hidden md:flex items-center gap-6">
         ${navigation.map(n => `<a href="${n.path}" class="text-foreground/80 hover:text-primary transition-colors">${n.label}</a>`).join("\n        ")}
@@ -1718,6 +1826,7 @@ function generateFallbackHTML(blueprint: z.infer<typeof BlueprintSchema>): strin
       }
     })();
   </script>
+  <script>if(typeof lucide!=="undefined"){lucide.createIcons();}</script>
 </body>
 </html>`;
 }

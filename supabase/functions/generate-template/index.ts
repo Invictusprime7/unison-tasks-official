@@ -68,11 +68,36 @@ Use hsl(var(--primary)), hsl(var(--foreground)), etc. in all styling.
 
 ARCHITECTURE RULES:
 1. Use Tailwind CSS via CDN (<script src="https://cdn.tailwindcss.com"></script>) with custom theme extending design tokens
-2. Use semantic HTML5: <header>, <main>, <section>, <article>, <aside>, <footer>, <nav>
-3. Mobile-first responsive: base → sm: → md: → lg: → xl: breakpoints
-4. Every section must have proper id attributes for navigation
-5. Include <meta name="viewport" content="width=device-width, initial-scale=1.0">
-6. Include <meta charset="UTF-8">
+2. Use Lucide Icons CDN (<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>) for ALL icons
+3. Use semantic HTML5: <header>, <main>, <section>, <article>, <aside>, <footer>, <nav>
+4. Mobile-first responsive: base → sm: → md: → lg: → xl: breakpoints
+5. Every section must have proper id attributes for navigation
+6. Include <meta name="viewport" content="width=device-width, initial-scale=1.0">
+7. Include <meta charset="UTF-8">
+8. Initialize Lucide icons before closing </body>: <script>lucide.createIcons();</script>
+
+LUCIDE ICONS (MANDATORY — use instead of emoji or inline SVG):
+Use <i data-lucide="icon-name" class="w-6 h-6"></i> syntax for all icons.
+Available icons by category:
+- Navigation: menu, x, chevron-right, arrow-right, external-link, search
+- Contact: phone, mail, map-pin, message-circle, send, clock, calendar
+- Food/Dining: utensils, chef-hat, wine, coffee, cake, pizza, salad, cooking-pot
+- Business: briefcase, building-2, trending-up, bar-chart-3, receipt, wallet, credit-card, store
+- Health: heart-pulse, stethoscope, activity, dumbbell, brain, apple, leaf
+- Beauty: scissors, sparkles, gem, palette, crown, bath
+- Real Estate: home, building, key, door-open, bed-double, sofa, trees, ruler
+- Tech: monitor, smartphone, cloud, database, shield-check, code, rocket, zap
+- Travel: map, compass, plane, car, hotel, mountain, luggage, navigation
+- Education: graduation-cap, book-open, pen-tool, microscope, presentation
+- Social: users, user-check, share-2, video, bell, megaphone
+- UI: star, award, check-circle, info, thumbs-up, quote, image, play-circle, download
+- Legal: scale, file-text, clipboard-list
+- Entertainment: music, mic, camera, film, ticket, party-popper
+- Nature: sun, waves, sprout, tree-pine, recycle, wind
+- Pets: dog, cat, paw-print
+
+Icon sizing guide: w-5 h-5 (inline), w-6 h-6 (cards), w-8 h-8 (features), w-10 h-10 (hero accents)
+Wrap in circles for feature cards: <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center"><i data-lucide="star" class="w-7 h-7 text-primary"></i></div>
 
 PREMIUM QUALITY STANDARDS:
 
@@ -357,6 +382,20 @@ function hardenGeneratedHTML(code: string): string {
     if (classes.includes('bg-clip-text')) return match;
     return `class="${classes.replace('text-transparent', 'text-white')}"`;
   });
+
+  // Fix 4: Inject Lucide CDN if data-lucide attributes are used but CDN is missing
+  if (hardened.includes('data-lucide') && !hardened.includes('lucide')) {
+    if (hardened.includes('</head>')) {
+      hardened = hardened.replace('</head>', '<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"><\/script>\n</head>');
+    }
+  }
+
+  // Fix 5: Ensure lucide.createIcons() is called
+  if (hardened.includes('data-lucide') && !hardened.includes('lucide.createIcons')) {
+    if (hardened.includes('</body>')) {
+      hardened = hardened.replace('</body>', '<script>if(typeof lucide!=="undefined"){lucide.createIcons();}</script>\n</body>');
+    }
+  }
 
   return hardened;
 }
