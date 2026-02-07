@@ -102,6 +102,38 @@ function codeToHtml(code: string): string {
  * Inject intent listener script into existing HTML document
  */
 function injectIntentListener(html: string): string {
+  // Failsafe: force-reveal any animate-on-scroll elements that stay invisible
+  const animationFailsafe = `
+  <style>
+    /* Failsafe: auto-reveal animated sections after 1.5s even if IntersectionObserver fails */
+    @keyframes forceReveal {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-on-scroll:not(.animate-visible) {
+      animation: forceReveal 0.6s ease-out 1.5s forwards;
+    }
+    .animate-fadeIn, [class*="animate-fade"], [class*="animate-slide"] {
+      animation-fill-mode: forwards;
+    }
+  </style>
+  <script>
+    // Force-reveal all hidden animated elements after DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        document.querySelectorAll('.animate-on-scroll:not(.animate-visible)').forEach(function(el) {
+          el.classList.add('animate-visible');
+        });
+        // Also catch elements with opacity:0 inline styles from animation delays
+        document.querySelectorAll('[style*="opacity: 0"], [style*="opacity:0"]').forEach(function(el) {
+          if (el.classList.contains('animate-on-scroll') || el.style.opacity === '0') {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+          }
+        });
+      }, 2000);
+    });
+  </script>`;
+
   const intentListenerScript = `
   <script>
   (function(){
@@ -596,12 +628,15 @@ function injectIntentListener(html: string): string {
   </style>`;
   
   // Try to inject before </body>, or before </html>, or at the end
+  if (html.includes('</head>')) {
+    html = html.replace('</head>', animationFailsafe + '\n</head>');
+  }
   if (html.includes('</body>')) {
     return html.replace('</body>', intentListenerScript + '\n</body>');
   } else if (html.includes('</html>')) {
     return html.replace('</html>', intentListenerScript + '\n</html>');
   } else {
-    return html + intentListenerScript;
+    return html + animationFailsafe + intentListenerScript;
   }
 }
 
@@ -746,6 +781,10 @@ function wrapHtmlSnippet(html: string): string {
     .intent-error { animation: intent-shake 0.3s; }
     @keyframes intent-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
     @keyframes intent-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+    /* Failsafe: auto-reveal animated sections */
+    @keyframes forceReveal { to { opacity: 1; transform: translateY(0) scale(1); } }
+    .animate-on-scroll:not(.animate-visible) { animation: forceReveal 0.6s ease-out 1.5s forwards; }
+    .animate-fadeIn, [class*="animate-fade"], [class*="animate-slide"] { animation-fill-mode: forwards; }
   </style>
 </head>
 <body>
@@ -914,6 +953,16 @@ function wrapHtmlSnippet(html: string): string {
       form.reset();
     },{capture:true});
     console.log('[Intent] Global listener active');
+    // Force-reveal animated elements after 2s (failsafe for IntersectionObserver failures)
+    setTimeout(function(){
+      document.querySelectorAll('.animate-on-scroll:not(.animate-visible)').forEach(function(el){
+        el.classList.add('animate-visible');
+      });
+      document.querySelectorAll('[style*="opacity: 0"], [style*="opacity:0"]').forEach(function(el){
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      });
+    }, 2000);
   })();
   </script>
 </body>
