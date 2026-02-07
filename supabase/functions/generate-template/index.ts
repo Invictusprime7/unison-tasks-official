@@ -46,20 +46,29 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { data: designPatterns } = await supabase
+    // Infer industry from template name / source for targeted pattern matching
+    const inferredIndustry = inferIndustryFromPrompt(templateName, aesthetic, source);
+    
+    // Query industry-specific patterns first
+    const industryFilter = inferredIndustry 
+      ? `tags.cs.{${inferredIndustry}}`
+      : `tags.cs.{all-industries}`;
+    
+    const { data: industryPatterns } = await supabase
       .from('ai_code_patterns')
       .select('pattern_type, description, code_snippet')
+      .or(`${industryFilter},tags.cs.{all-industries}`)
       .order('usage_count', { ascending: false })
-      .limit(10);
+      .limit(15);
 
-    const patternRef = designPatterns && designPatterns.length > 0
-      ? `\n\n📚 **PRODUCTION DESIGN PATTERNS (USE AS STRUCTURAL REFERENCE):**\n` +
-        designPatterns.map((p: { pattern_type: string; description: string; code_snippet: string }) =>
-          `**${p.pattern_type}**: ${p.description}\n\`\`\`html\n${p.code_snippet.substring(0, 500)}\n\`\`\``
+    const patternRef = industryPatterns && industryPatterns.length > 0
+      ? `\n\n📚 **PRODUCTION DESIGN PATTERNS (USE AS STRUCTURAL REFERENCE — follow these exact Tailwind patterns):**\n` +
+        industryPatterns.map((p: { pattern_type: string; description: string; code_snippet: string }) =>
+          `**${p.pattern_type}**: ${p.description}\n\`\`\`html\n${p.code_snippet.substring(0, 800)}\n\`\`\``
         ).join('\n\n')
       : '';
 
-    console.log(`[generate-template] Loaded ${designPatterns?.length ?? 0} design patterns`);
+    console.log(`[generate-template] Loaded ${industryPatterns?.length ?? 0} design patterns (industry: ${inferredIndustry || 'general'})`);
 
     const systemPrompt = `You are an ELITE web designer producing PREMIUM, AWARD-WINNING website templates. Your output must rival top-tier templates from ThemeForest, Webflow, and Framer.${patternRef}
 
@@ -450,4 +459,25 @@ function hardenGeneratedHTML(code: string): string {
   }
 
   return hardened;
+}
+
+/**
+ * Infer industry from template name/aesthetic/source for targeted pattern matching.
+ */
+function inferIndustryFromPrompt(name: string, aesthetic: string, source: string): string | null {
+  const combined = `${name} ${aesthetic} ${source}`.toLowerCase();
+  const INDUSTRY_KEYWORDS: Record<string, string[]> = {
+    'restaurant': ['restaurant', 'food', 'dining', 'cafe', 'bistro', 'bar', 'kitchen', 'chef', 'menu', 'cuisine'],
+    'salon-spa': ['salon', 'spa', 'beauty', 'hair', 'nail', 'skincare', 'wellness', 'barber', 'cosmetic'],
+    'real-estate': ['real estate', 'property', 'realtor', 'home', 'apartment', 'listing', 'housing', 'mortgage'],
+    'ecommerce': ['ecommerce', 'shop', 'store', 'product', 'fashion', 'retail', 'boutique', 'clothing'],
+    'coaching': ['coaching', 'consultant', 'mentor', 'advisor', 'training', 'workshop', 'course'],
+    'local-service': ['plumber', 'electrician', 'contractor', 'cleaning', 'repair', 'hvac', 'roofing', 'landscap'],
+    'portfolio': ['portfolio', 'freelance', 'designer', 'photographer', 'artist', 'creative', 'agency'],
+    'nonprofit': ['nonprofit', 'charity', 'foundation', 'ngo', 'donate', 'volunteer', 'cause'],
+  };
+  for (const [industry, keywords] of Object.entries(INDUSTRY_KEYWORDS)) {
+    if (keywords.some(kw => combined.includes(kw))) return industry;
+  }
+  return null;
 }

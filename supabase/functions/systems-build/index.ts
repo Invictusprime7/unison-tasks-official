@@ -157,21 +157,59 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const industryTag = blueprint.identity.industry.replace(/_/g, "-");
-    const { data: patterns } = await supabase
+    // Build industry-specific tag variants for broad matching
+    const rawIndustry = blueprint.identity.industry;
+    const industryTag = rawIndustry.replace(/_/g, "-");
+    const industryVariants = [rawIndustry, industryTag];
+    // Add common aliases (e.g. salon_spa -> salon, spa, beauty)
+    const INDUSTRY_ALIASES: Record<string, string[]> = {
+      salon_spa: ["salon-spa", "salon", "spa", "beauty"],
+      restaurant: ["restaurant", "food", "dining"],
+      local_service: ["local-service", "contractor", "plumber", "electrician"],
+      ecommerce: ["ecommerce", "shopping", "fashion", "products"],
+      coaching_consulting: ["coaching", "consulting", "coach"],
+      real_estate: ["real-estate", "property", "luxury"],
+      creator_portfolio: ["portfolio", "creator", "designer", "freelancer"],
+      nonprofit: ["nonprofit", "charity", "donate"],
+      other: ["other", "general"],
+    };
+    const aliases = INDUSTRY_ALIASES[rawIndustry] || [industryTag];
+    const allTags = [...new Set([...industryVariants, ...aliases])];
+    
+    // Query industry-specific patterns first, then fill with universal
+    const tagFilters = allTags.map(t => `tags.cs.{${t}}`).join(",");
+    const { data: industryPatterns } = await supabase
       .from("ai_code_patterns")
       .select("pattern_type, description, code_snippet, tags")
-      .or(`tags.cs.{all-industries},tags.cs.{${industryTag}}`)
+      .or(tagFilters)
       .order("usage_count", { ascending: false })
-      .limit(12);
+      .limit(15);
+    
+    // Also get universal patterns to supplement
+    const { data: universalPatterns } = await supabase
+      .from("ai_code_patterns")
+      .select("pattern_type, description, code_snippet, tags")
+      .contains("tags", ["all-industries"])
+      .order("usage_count", { ascending: false })
+      .limit(8);
 
-    const patternContext = patterns && patterns.length > 0
-      ? patterns.map((p: { pattern_type: string; description: string; code_snippet: string }) =>
-        `📐 **${p.pattern_type.toUpperCase()}** — ${p.description}\n\`\`\`html\n${p.code_snippet.substring(0, 800)}\n\`\`\``
+    // Merge: industry-specific first, then universal (deduplicated)
+    const seenTypes = new Set<string>();
+    const mergedPatterns: Array<{ pattern_type: string; description: string; code_snippet: string }> = [];
+    for (const p of [...(industryPatterns || []), ...(universalPatterns || [])]) {
+      if (!seenTypes.has(p.pattern_type)) {
+        seenTypes.add(p.pattern_type);
+        mergedPatterns.push(p);
+      }
+    }
+
+    const patternContext = mergedPatterns.length > 0
+      ? mergedPatterns.map((p) =>
+        `📐 **${p.pattern_type.toUpperCase()}** — ${p.description}\n\`\`\`html\n${p.code_snippet.substring(0, 1000)}\n\`\`\``
       ).join("\n\n")
       : "";
 
-    console.log(`[systems-build] Loaded ${patterns?.length ?? 0} design patterns for ${blueprint.identity.industry}`);
+    console.log(`[systems-build] Loaded ${mergedPatterns.length} design patterns (${industryPatterns?.length ?? 0} industry + ${universalPatterns?.length ?? 0} universal) for ${rawIndustry}`);
 
     // Build comprehensive system prompt for business website generation
     const systemPrompt = buildSystemPrompt(blueprint, patternContext);
