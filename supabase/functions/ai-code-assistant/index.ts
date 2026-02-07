@@ -527,26 +527,41 @@ When user requests animations, ALWAYS use CSS keyframes and transitions that DON
    }
    \`\`\`
 
-3. **SCROLL-TRIGGERED ANIMATIONS:**
+3. **SCROLL-TRIGGERED ANIMATIONS (CRITICAL - MUST INCLUDE THIS EXACT PATTERN):**
    \`\`\`javascript
-   // Intersection Observer for scroll animations
-   const observeElements = () => {
-     const observer = new IntersectionObserver((entries) => {
-       entries.forEach(entry => {
+   // MANDATORY: Include this IntersectionObserver script before </body>
+   document.addEventListener('DOMContentLoaded', function() {
+     var observer = new IntersectionObserver(function(entries) {
+       entries.forEach(function(entry) {
          if (entry.isIntersecting) {
            entry.target.classList.add('animate-visible');
+           observer.unobserve(entry.target);
          }
        });
-     }, { threshold: 0.1 });
+     }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
      
-     document.querySelectorAll('.animate-on-scroll').forEach(el => {
+     document.querySelectorAll('.animate-on-scroll').forEach(function(el) {
        observer.observe(el);
      });
-   };
+     
+     // CRITICAL FALLBACK: Force-reveal all hidden elements after 3s
+     // (prevents blank sections if IntersectionObserver fails in iframes)
+     setTimeout(function() {
+       document.querySelectorAll('.animate-on-scroll:not(.animate-visible)').forEach(function(el) {
+         el.classList.add('animate-visible');
+       });
+     }, 3000);
+   });
+   \`\`\`
    
-   // CSS for scroll animations
-   // .animate-on-scroll { opacity: 0; transform: translateY(30px); transition: all 0.6s ease; }
-   // .animate-on-scroll.animate-visible { opacity: 1; transform: translateY(0); }
+   \`\`\`css
+   /* CSS for scroll animations */
+   .animate-on-scroll { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+   .animate-on-scroll.animate-visible { opacity: 1; transform: translateY(0); }
+   .animate-delay-1 { transition-delay: 0.1s; }
+   .animate-delay-2 { transition-delay: 0.2s; }
+   .animate-delay-3 { transition-delay: 0.3s; }
+   .animate-delay-4 { transition-delay: 0.4s; }
    \`\`\`
 
 4. **HOVER/INTERACTION ANIMATIONS:**

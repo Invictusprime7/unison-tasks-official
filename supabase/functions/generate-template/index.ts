@@ -119,6 +119,32 @@ PREMIUM QUALITY STANDARDS:
 .animate-delay-3 { transition-delay: 0.3s; }
 .animate-delay-4 { transition-delay: 0.4s; }
 
+CRITICAL: You MUST include this EXACT IntersectionObserver script before </body> to trigger animations. Without it, sections stay invisible:
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('animate-visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  
+  document.querySelectorAll('.animate-on-scroll').forEach(function(el) {
+    observer.observe(el);
+  });
+  
+  // Fallback: force-reveal any elements still hidden after 3 seconds
+  setTimeout(function() {
+    document.querySelectorAll('.animate-on-scroll:not(.animate-visible)').forEach(function(el) {
+      el.classList.add('animate-visible');
+    });
+  }, 3000);
+});
+</script>
+
 **Color Usage:**
 - Use design token classes: bg-primary, text-primary-foreground, bg-card, text-muted-foreground, border-border
 - Gradients for hero backgrounds and CTA sections
