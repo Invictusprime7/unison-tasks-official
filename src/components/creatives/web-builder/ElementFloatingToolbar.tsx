@@ -15,7 +15,7 @@ import { Slider } from '@/components/ui/slider';
 import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
   Type, Palette, Trash2, Copy, MoveUp, MoveDown, Edit3,
-  ChevronDown, Image, Maximize2, Undo2,
+  ChevronDown, Image, Maximize2, Undo2, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +37,8 @@ interface ElementFloatingToolbarProps {
   onDelete: (selector: string) => void;
   onDuplicate: (selector: string) => void;
   onClear: () => void;
+  /** Trigger AI-assisted editing for this element */
+  onRequestAI?: (selector: string) => void;
   className?: string;
 }
 
@@ -56,6 +58,7 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   onDelete,
   onDuplicate,
   onClear,
+  onRequestAI,
   className,
 }) => {
   const [isEditingText, setIsEditingText] = useState(false);
@@ -328,6 +331,18 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
       <Separator orientation="vertical" className="h-6 mx-0.5" />
 
       {/* Actions */}
+      {onRequestAI && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRequestAI(selector)}
+          className="h-7 gap-1 px-2 text-primary hover:text-primary hover:bg-primary/10"
+          title="AI Edit — describe changes for this element"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span className="text-[10px] font-semibold">AI</span>
+        </Button>
+      )}
       <Button variant="ghost" size="sm" onClick={() => onDuplicate(selector)} className="h-7 w-7 p-0" title="Duplicate">
         <Copy className="w-3.5 h-3.5" />
       </Button>

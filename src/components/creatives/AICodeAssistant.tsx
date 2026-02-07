@@ -254,6 +254,10 @@ interface AICodeAssistantProps {
     selector: string;
     section?: string;
   }; // Selected element from preview for targeted editing
+  /** When true, the AI panel opens to edit the selected element. Controlled externally. */
+  requestAIEdit?: boolean;
+  /** Called when the AI panel finishes or dismisses the element-edit request. */
+  onAIEditDismissed?: () => void;
   /** Return true when the update was applied successfully. */
   onElementUpdate?: (selector: string, newHtml: string) => boolean;
 }
@@ -272,6 +276,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   backendStateContext,
   businessDataContext,
   selectedElement,
+  requestAIEdit,
+  onAIEditDismissed,
   onElementUpdate,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -323,19 +329,27 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [slotEngine, setSlotEngine] = useState<AISlotRulesEngine | null>(null);
   const [imageInsights, setImageInsights] = useState<string[]>([]);
   
-  // Track when user selects an element to edit
+  // Only activate AI editing mode when explicitly requested via the toolbar AI button
   useEffect(() => {
-    if (selectedElement) {
+    if (requestAIEdit && selectedElement) {
       setIsEditingElement(true);
       setIsExpanded(true);
       toast({
-        title: "Element selected for editing",
-        description: `Ready to edit: ${selectedElement.section || 'element'}`,
+        title: "AI Edit Mode",
+        description: `Describe changes for: ${selectedElement.section || selectedElement.selector || 'element'}`,
       });
-    } else {
+    } else if (!requestAIEdit) {
       setIsEditingElement(false);
+      // Don't collapse the panel if user has it open for other reasons
     }
-  }, [selectedElement, toast]);
+  }, [requestAIEdit, selectedElement, toast]);
+
+  // Notify parent when AI edit is dismissed (panel collapsed while in edit mode)
+  useEffect(() => {
+    if (!isExpanded && isEditingElement && onAIEditDismissed) {
+      onAIEditDismissed();
+    }
+  }, [isExpanded, isEditingElement, onAIEditDismissed]);
 
   const handleThemeChange = (theme: AITheme) => {
     setCurrentTheme(theme);
