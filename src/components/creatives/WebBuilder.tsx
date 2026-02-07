@@ -406,7 +406,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const applyElementHtmlUpdate = useCallback((code: string, selector: string, newHtml: string) => {
     try {
       const trimmed = (code || '').trim();
-      const isDoc = trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html');
+      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
       // This targeted replace is only safe for HTML templates.
       if (!trimmed.startsWith('<') || trimmed.includes('export default') || trimmed.includes('import React')) {
         return { ok: false as const, code };
@@ -414,8 +414,55 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
-      const target = doc.querySelector(selector);
-      if (!target) return { ok: false as const, code };
+
+      // Try multiple selector strategies to handle DOM structure differences
+      // between the live preview iframe and the re-parsed source HTML
+      let target: Element | null = null;
+
+      // 1. Try the exact selector
+      try { target = doc.querySelector(selector); } catch { /* invalid selector */ }
+
+      // 2. Strip html > body prefix (live DOM includes injected elements that shift nth-child)
+      if (!target) {
+        const stripped = selector
+          .replace(/^html\s*>\s*body[^\s>]*\s*>\s*/, '')
+          .replace(/^body[^\s>]*\s*>\s*/, '');
+        if (stripped !== selector) {
+          try { target = doc.querySelector(stripped); } catch { /* noop */ }
+        }
+      }
+
+      // 3. Remove all :nth-child() qualifiers (index mismatch from injected elements)
+      if (!target) {
+        const noNth = selector.replace(/:nth-child\(\d+\)/g, '');
+        try { target = doc.querySelector(noNth); } catch { /* noop */ }
+        if (!target) {
+          const strippedNoNth = noNth
+            .replace(/^html\s*>\s*body[^\s>]*\s*>\s*/, '')
+            .replace(/^body[^\s>]*\s*>\s*/, '');
+          if (strippedNoNth !== noNth) {
+            try { target = doc.querySelector(strippedNoNth); } catch { /* noop */ }
+          }
+        }
+      }
+
+      // 4. Tag-only path fallback (most permissive)
+      if (!target) {
+        const tagPath = selector
+          .split(/\s*>\s*/)
+          .map(part => part.replace(/[.#:[][^\s>]*/g, '').trim())
+          .filter(Boolean)
+          .filter(t => t !== 'html' && t !== 'body')
+          .join(' > ');
+        if (tagPath) {
+          try { target = doc.querySelector(tagPath); } catch { /* noop */ }
+        }
+      }
+
+      if (!target) {
+        console.warn('[applyElementHtmlUpdate] No match for selector:', selector);
+        return { ok: false as const, code };
+      }
 
       // Replace outerHTML via DOM manipulation
       const container = doc.createElement('div');
@@ -428,7 +475,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`
         : doc.body.innerHTML;
       return { ok: true as const, code: next };
-    } catch {
+    } catch (err) {
+      console.error('[applyElementHtmlUpdate] Error:', err);
       return { ok: false as const, code };
     }
   }, []);
