@@ -25,9 +25,9 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert web template generator for a Web Builder canvas. Create beautiful, production-ready web page templates.
+    const systemPrompt = `You are an ELITE web template generator producing PREMIUM, PRODUCTION-READY templates for a Web Builder canvas. Your templates must rival top-tier designs from ThemeForest, Webflow, and Framer.
 
-Your templates MUST use this exact schema:
+TEMPLATE SCHEMA (STRICT — follow exactly):
 {
   "name": "Template Name",
   "description": "Brief description",
@@ -37,101 +37,12 @@ Your templates MUST use this exact schema:
     "secondaryColor": "#1e40af",
     "accentColor": "#06b6d4",
     "fonts": {
-      "heading": "Inter",
+      "heading": "Plus Jakarta Sans",
       "body": "Inter",
-      "accent": "Inter"
+      "accent": "Space Grotesk"
     }
   },
-  "sections": [
-    {
-      "id": "section-hero",
-      "name": "Hero Section",
-      "type": "hero",
-      "constraints": {
-        "width": { "mode": "fill" },
-        "height": { "mode": "fixed", "value": 600 },
-        "padding": { "top": 60, "right": 80, "bottom": 60, "left": 80 },
-        "gap": 24,
-        "flexDirection": "column",
-        "alignItems": "center",
-        "justifyContent": "center"
-      },
-      "components": [
-        {
-          "id": "hero-title",
-          "type": "text",
-          "name": "Hero Title",
-          "constraints": {
-            "width": { "mode": "hug" },
-            "height": { "mode": "hug" }
-          },
-          "dataBinding": {
-            "field": "title",
-            "type": "text",
-            "defaultValue": "Welcome to Our Platform"
-          },
-          "style": {
-            "backgroundColor": "transparent",
-            "opacity": 1
-          },
-          "fabricProps": {
-            "fontSize": 56,
-            "fontFamily": "Inter",
-            "fontWeight": "bold",
-            "fill": "#1e293b"
-          }
-        },
-        {
-          "id": "hero-subtitle",
-          "type": "text",
-          "name": "Subtitle",
-          "constraints": {
-            "width": { "mode": "hug" },
-            "height": { "mode": "hug" }
-          },
-          "dataBinding": {
-            "field": "subtitle",
-            "type": "text",
-            "defaultValue": "Build amazing things with our tools"
-          },
-          "style": {
-            "backgroundColor": "transparent",
-            "opacity": 1
-          },
-          "fabricProps": {
-            "fontSize": 24,
-            "fontFamily": "Inter",
-            "fill": "#64748b"
-          }
-        },
-        {
-          "id": "hero-button",
-          "type": "button",
-          "name": "CTA Button",
-          "constraints": {
-            "width": { "mode": "fixed", "value": 200 },
-            "height": { "mode": "fixed", "value": 60 }
-          },
-          "dataBinding": {
-            "field": "ctaText",
-            "type": "text",
-            "defaultValue": "Get Started"
-          },
-          "style": {
-            "backgroundColor": "#3b82f6",
-            "borderRadius": 8,
-            "opacity": 1
-          },
-          "fabricProps": {
-            "fontSize": 18,
-            "fontFamily": "Inter",
-            "fontWeight": "600",
-            "fill": "#ffffff"
-          }
-        }
-      ]
-    }
-  ],
+  "sections": [ ... ],
   "formats": [
     {
       "id": "desktop",
@@ -140,30 +51,120 @@ Your templates MUST use this exact schema:
       "format": "web"
     }
   ],
-  "data": {
-    "title": "Your Title Here",
-    "subtitle": "Your subtitle here",
-    "ctaText": "Get Started"
+  "data": { ... }
+}
+
+SECTION STRUCTURE:
+{
+  "id": "section-[name]",
+  "name": "Section Name",
+  "type": "hero" | "features" | "cta" | "testimonials" | "pricing" | "stats" | "about" | "footer" | "gallery" | "faq",
+  "constraints": {
+    "width": { "mode": "fill" },
+    "height": { "mode": "fixed", "value": 600 },
+    "padding": { "top": 60, "right": 80, "bottom": 60, "left": 80 },
+    "gap": 24,
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center"
+  },
+  "style": {
+    "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+  },
+  "components": [ ... ]
+}
+
+COMPONENT STRUCTURE:
+{
+  "id": "unique-id",
+  "type": "text" | "image" | "shape" | "button" | "container",
+  "name": "Component Name",
+  "constraints": {
+    "width": { "mode": "fill" | "hug" | "fixed", "value": 200 },
+    "height": { "mode": "fill" | "hug" | "fixed", "value": 60 }
+  },
+  "dataBinding": {
+    "field": "fieldName",
+    "type": "text" | "image",
+    "defaultValue": "Content here"
+  },
+  "style": {
+    "backgroundColor": "#3b82f6",
+    "borderRadius": 12,
+    "opacity": 1,
+    "boxShadow": "0 10px 30px -10px rgba(0,0,0,0.2)"
+  },
+  "fabricProps": {
+    "fontSize": 56,
+    "fontFamily": "Plus Jakarta Sans",
+    "fontWeight": "bold",
+    "fill": "#1e293b",
+    "lineHeight": 1.2,
+    "letterSpacing": -0.5
   }
 }
 
-CRITICAL REQUIREMENTS:
-1. Create COMPLETE sections with MULTIPLE components (minimum 3-5 components per section)
-2. Use component types: "text", "image", "shape", "button", "container"
-3. Always include proper constraints (width/height modes: "fill", "hug", "fixed")
-4. Set fabricProps for styling (fontSize, fontFamily, fill color, fontWeight)
-5. Use dataBinding to make content dynamic
-6. Create proper layout with padding, gap, flexDirection, alignItems, justifyContent
-7. Use realistic content and professional color schemes
-8. For images, use Unsplash URLs: https://images.unsplash.com/photo-{id}?w=800&q=80
+PREMIUM QUALITY REQUIREMENTS:
 
-EXAMPLE WEB SECTIONS TO CREATE:
-- Hero: Large heading, subtitle, CTA button, optional background image
-- Features: Grid of feature cards with icons, titles, descriptions
-- CTA: Call-to-action section with compelling text and button
-- Footer: Links, social icons, copyright text
+1. **Typography Excellence:**
+   - Use premium Google Fonts (Plus Jakarta Sans, Inter, Manrope, DM Sans, Space Grotesk)
+   - Hero title: 48-64px, bold/extrabold, tight letter-spacing
+   - Section headings: 32-42px, semibold
+   - Body text: 16-18px, regular weight
+   - Proper line-height values (1.1-1.2 headings, 1.6-1.7 body)
 
-Make templates production-ready with real content, proper spacing, and visual hierarchy!`;
+2. **Visual Depth:**
+   - Use gradient backgrounds on hero and CTA sections
+   - Add boxShadow to cards and elevated elements
+   - Use subtle background colors to alternate sections
+   - Decorative shape components for visual interest (circles, blobs)
+   - Use opacity and transparency for layered effects
+
+3. **Color Strategy:**
+   - Primary color for CTAs and key accents
+   - Secondary color for supporting elements
+   - Accent color for highlights and badges
+   - Use muted foreground (#64748b) for body text
+   - Use dark foreground (#0f172a, #1e293b) for headings
+   - White/light backgrounds (#ffffff, #f8fafc) alternating with tinted sections
+
+4. **Section Requirements (MINIMUM 6 sections):**
+   - Hero: Large heading, subtitle, 1-2 CTA buttons, optional badge/tag, decorative elements
+   - Social Proof: Stats bar or trusted-by logos (3-5 items)
+   - Features: 3-4 feature cards with icons (use shape type), titles, descriptions
+   - About/Story: Image + text split layout
+   - Testimonials: 2-3 testimonial cards with quotes, names, roles
+   - CTA: Compelling call-to-action with gradient background
+   - Footer: Multi-column with links and copyright
+
+5. **Component Density:**
+   - MINIMUM 4-6 components per section
+   - Hero: badge + heading + subtitle + 2 buttons + decorative shape = 6+ components
+   - Features: section title + subtitle + 3 feature cards (each with icon + title + description) = 12+ components
+   - Use container type to group related components
+
+6. **Spacing & Layout:**
+   - Section heights: Hero 700-800, Features 600-700, CTA 400-500, Footer 300-400
+   - Generous padding: 60-80px vertical, 80-120px horizontal
+   - Consistent gap values: 16-32px between components
+   - Use flexDirection "row" for horizontal layouts, "column" for vertical
+
+7. **Interactive Elements:**
+   - Buttons must have hover-ready styling (borderRadius, boxShadow)
+   - Cards should have subtle shadows and rounded corners
+   - Use proper button sizes: primary 200x56, secondary 160x48
+
+8. **Images:**
+   - Use real Unsplash URLs: https://images.unsplash.com/photo-{id}?w=800&q=80
+   - Include relevant images for the industry
+   - Use proper aspect ratios and object-fit cover
+
+9. **Data Bindings:**
+   - ALL text components must have dataBinding with meaningful field names
+   - Use realistic, compelling copy (not lorem ipsum)
+   - Include proper data structure in the "data" object
+
+OUTPUT: Return ONLY valid JSON matching the schema above. No markdown, no explanations.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -172,7 +173,7 @@ Make templates production-ready with real content, proper spacing, and visual hi
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: prompt }
@@ -209,7 +210,12 @@ Make templates production-ready with real content, proper spacing, and visual hi
 
     let templateStructure;
     try {
-      templateStructure = JSON.parse(messageContent);
+      // Clean potential markdown fences
+      const cleaned = messageContent
+        .replace(/^```json?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
+      templateStructure = JSON.parse(cleaned);
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
       throw new Error("Invalid JSON response from AI");
@@ -228,8 +234,10 @@ Make templates production-ready with real content, proper spacing, and visual hi
     }
 
     if (!templateStructure.formats || !Array.isArray(templateStructure.formats)) {
-      console.error("Invalid template structure: missing formats");
-      throw new Error("Invalid template structure: missing formats");
+      // Auto-add default format if missing
+      templateStructure.formats = [
+        { id: "desktop", name: "Desktop", size: { width: 1280, height: 800 }, format: "web" }
+      ];
     }
 
     const completeTemplate = {
@@ -240,7 +248,8 @@ Make templates production-ready with real content, proper spacing, and visual hi
     };
 
     console.log("✅ Template generated successfully with", 
-      completeTemplate.sections.length, "sections");
+      completeTemplate.sections.length, "sections,",
+      completeTemplate.sections.reduce((acc: number, s: any) => acc + (s.components?.length || 0), 0), "total components");
 
     return new Response(
       JSON.stringify({ 
