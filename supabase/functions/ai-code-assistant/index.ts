@@ -93,24 +93,21 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch top learned patterns for context
+    // Fetch top learned patterns for context — include full code snippets for design reference
     const { data: patterns } = await supabase
       .from('ai_code_patterns')
       .select('*')
-      .order('success_rate', { ascending: false })
       .order('usage_count', { ascending: false })
-      .limit(10);
+      .order('success_rate', { ascending: false })
+      .limit(12);
 
     const learnedPatterns = patterns && patterns.length > 0 ? (patterns as CodePattern[]).map((p: CodePattern) => `
-📚 Pattern: ${p.pattern_type.toUpperCase()}
-Description: ${p.description || 'N/A'}
-Used ${p.usage_count} times with ${p.success_rate}% success
-Tags: ${(p.tags || []).join(', ')}
-Code Example:
+📐 **${p.pattern_type.toUpperCase()}** — ${p.description || 'N/A'}
+Tags: ${(p.tags || []).join(', ')} | Used ${p.usage_count}× | ${p.success_rate}% success
+\`\`\`html
+${p.code_snippet.substring(0, 600)}${p.code_snippet.length > 600 ? '...' : ''}
 \`\`\`
-${p.code_snippet.substring(0, 300)}${p.code_snippet.length > 300 ? '...' : ''}
-\`\`\`
-`).join('\n---\n') : 'No learned patterns yet - but I will learn from every successful interaction!';
+`).join('\n') : 'No learned patterns yet - but I will learn from every successful interaction!';
 
     // Analyze template structure for context-aware editing
     const analyzeTemplateStructure = (code: string): string => {

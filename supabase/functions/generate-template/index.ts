@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
@@ -40,7 +41,27 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an ELITE web designer producing PREMIUM, AWARD-WINNING website templates. Your output must rival top-tier templates from ThemeForest, Webflow, and Framer.
+    // Query production Tailwind patterns from database
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data: designPatterns } = await supabase
+      .from('ai_code_patterns')
+      .select('pattern_type, description, code_snippet')
+      .order('usage_count', { ascending: false })
+      .limit(10);
+
+    const patternRef = designPatterns && designPatterns.length > 0
+      ? `\n\n📚 **PRODUCTION DESIGN PATTERNS (USE AS STRUCTURAL REFERENCE):**\n` +
+        designPatterns.map((p: { pattern_type: string; description: string; code_snippet: string }) =>
+          `**${p.pattern_type}**: ${p.description}\n\`\`\`html\n${p.code_snippet.substring(0, 500)}\n\`\`\``
+        ).join('\n\n')
+      : '';
+
+    console.log(`[generate-template] Loaded ${designPatterns?.length ?? 0} design patterns`);
+
+    const systemPrompt = `You are an ELITE web designer producing PREMIUM, AWARD-WINNING website templates. Your output must rival top-tier templates from ThemeForest, Webflow, and Framer.${patternRef}
 
 DESIGN SYSTEM (MANDATORY):
 Use CSS custom properties for theming. Define these in :root and use them throughout:

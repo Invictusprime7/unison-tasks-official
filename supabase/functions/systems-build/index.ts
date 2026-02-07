@@ -142,7 +142,6 @@ serve(async (req) => {
 
     if (!LOVABLE_API_KEY) {
       console.warn("[systems-build] LOVABLE_API_KEY not configured - using fallback generation");
-      // Generate basic HTML without AI
       const fallbackCode = generateFallbackHTML(blueprint);
       return new Response(
         JSON.stringify({ 
@@ -153,8 +152,29 @@ serve(async (req) => {
       );
     }
 
+    // Query production Tailwind patterns from the database
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const industryTag = blueprint.identity.industry.replace(/_/g, "-");
+    const { data: patterns } = await supabase
+      .from("ai_code_patterns")
+      .select("pattern_type, description, code_snippet, tags")
+      .or(`tags.cs.{all-industries},tags.cs.{${industryTag}}`)
+      .order("usage_count", { ascending: false })
+      .limit(12);
+
+    const patternContext = patterns && patterns.length > 0
+      ? patterns.map((p: { pattern_type: string; description: string; code_snippet: string }) =>
+        `📐 **${p.pattern_type.toUpperCase()}** — ${p.description}\n\`\`\`html\n${p.code_snippet.substring(0, 800)}\n\`\`\``
+      ).join("\n\n")
+      : "";
+
+    console.log(`[systems-build] Loaded ${patterns?.length ?? 0} design patterns for ${blueprint.identity.industry}`);
+
     // Build comprehensive system prompt for business website generation
-    const systemPrompt = buildSystemPrompt(blueprint);
+    const systemPrompt = buildSystemPrompt(blueprint, patternContext);
     const userMessage = buildUserMessage(blueprint, userPrompt);
 
     console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})`);
@@ -328,7 +348,7 @@ function hardenGeneratedHTML(code: string): string {
   return hardened;
 }
 
-function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>): string {
+function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = ""): string {
   const { brand, identity, design } = blueprint;
   const palette = brand.palette || {};
   const pages = blueprint.site?.pages || [];
@@ -1001,7 +1021,14 @@ CartManager.updateUI();
 13. Include social proof elements
 14. No markdown, no explanations - ONLY the complete HTML code
 
-🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL website for ${brand.business_name} that would impress any business owner and drive real conversions.`;
+🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL website for ${brand.business_name} that would impress any business owner and drive real conversions.
+
+${patternContext ? `
+📚 **PRODUCTION DESIGN PATTERNS (USE THESE AS REFERENCE — adapt to match brand):**
+These are proven, high-converting section patterns from our design system. Use these as structural and styling references. Adapt colors, content, and icons to match the business context:
+
+${patternContext}
+` : ""}`;
 }
 
 function buildUserMessage(blueprint: z.infer<typeof BlueprintSchema>, userPrompt?: string): string {
