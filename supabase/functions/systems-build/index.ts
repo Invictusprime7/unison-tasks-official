@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-import-prefix
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
@@ -136,7 +137,7 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -819,7 +820,7 @@ function getIndustrySpecificElements(industry: string): string {
 function generateFallbackHTML(blueprint: z.infer<typeof BlueprintSchema>): string {
   const { brand, identity } = blueprint;
   const palette = brand.palette || {};
-  const pages = blueprint.site?.pages || [];
+  const _pages = blueprint.site?.pages || [];
   const navigation = blueprint.site?.navigation || [];
   
   const primary = palette.primary || "#0EA5E9";
