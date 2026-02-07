@@ -65,6 +65,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildPageStructureContext } from "@/utils/pageStructureContext";
 import { AIActivityPanel } from "@/components/ai-agent/AIActivityPanel";
 import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
+import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
+import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
+import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -359,6 +362,44 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const livePreviewRef = useRef<VFSPreviewHandle | null>(null);
   const liveHtmlPreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
+
+  // Template Customizer - full DOM control
+  const templateCustomizer = useTemplateCustomizer();
+  const [customizerOpen, setCustomizerOpen] = useState(false);
+
+  // Parse template when previewCode changes
+  useEffect(() => {
+    if (previewCode && previewCode.trim().startsWith('<')) {
+      templateCustomizer.parseTemplate(previewCode);
+    }
+  }, [previewCode]);
+
+  // Apply customizer overrides to preview
+  const applyCustomizerOverrides = useCallback(() => {
+    if (!templateCustomizer.isDirty || !previewCode) return;
+    const customized = templateCustomizer.applyOverrides(previewCode);
+    if (customized !== previewCode) {
+      setPreviewCode(customized);
+      setEditorCode(customized);
+    }
+  }, [templateCustomizer, previewCode]);
+
+  // Handle element-level edits from floating toolbar
+  const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
+    templateCustomizer.setElementOverride(selector, { styles });
+    applyCustomizerOverrides();
+  }, [templateCustomizer, applyCustomizerOverrides]);
+
+  const handleFloatingTextUpdate = useCallback((selector: string, text: string) => {
+    templateCustomizer.setElementOverride(selector, { textContent: text });
+    applyCustomizerOverrides();
+  }, [templateCustomizer, applyCustomizerOverrides]);
+
+  const handleFloatingImageReplace = useCallback((selector: string, src: string) => {
+    templateCustomizer.setElementOverride(selector, { imageSrc: src });
+    applyCustomizerOverrides();
+  }, [templateCustomizer, applyCustomizerOverrides]);
+
 
   const applyElementHtmlUpdate = useCallback((code: string, selector: string, newHtml: string) => {
     try {
@@ -3211,34 +3252,63 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right Properties Panel - Collapsible with integrated toggle */}
-        <CollapsiblePropertiesPanel 
-          fabricCanvas={fabricCanvas}
-          selectedObject={selectedObject}
-          selectedHTMLElement={selectedHTMLElement}
-          isCollapsed={rightPanelCollapsed}
-          onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-          onUpdate={() => fabricCanvas?.renderAll()}
-          onUpdateHTMLElement={(updates) => {
-            // SimplePreview doesn't support direct DOM manipulation
-            // Updates should be made in the code editor instead
-            if (selectedHTMLElement?.selector) {
-              console.log('[WebBuilder] Element update requested:', selectedHTMLElement.selector, updates);
-              toast.info('Edit the code to update elements. Changes will be reflected in preview.');
-              
-              // Update local state for UI consistency
-              const updatedElement = { 
-                ...selectedHTMLElement, 
-                styles: { ...selectedHTMLElement.styles, ...updates.styles },
-                textContent: updates.textContent ?? selectedHTMLElement.textContent 
-              };
-              setSelectedHTMLElement(updatedElement);
-            }
-          }}
-          onClearHTMLSelection={() => setSelectedHTMLElement(null)}
-          onDelete={handleDelete}
-          onDuplicate={handleDuplicate}
-        />
+        {/* Right Panel: Customizer OR Properties */}
+        {!rightPanelCollapsed && previewCode && !selectedObject ? (
+          <TemplateCustomizerPanel
+            customizer={templateCustomizer}
+            onApply={applyCustomizerOverrides}
+          />
+        ) : (
+          <CollapsiblePropertiesPanel 
+            fabricCanvas={fabricCanvas}
+            selectedObject={selectedObject}
+            selectedHTMLElement={selectedHTMLElement}
+            isCollapsed={rightPanelCollapsed}
+            onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+            onUpdate={() => fabricCanvas?.renderAll()}
+            onUpdateHTMLElement={(updates) => {
+              if (selectedHTMLElement?.selector) {
+                handleFloatingStyleUpdate(selectedHTMLElement.selector, updates.styles || {});
+                if (updates.textContent !== undefined) {
+                  handleFloatingTextUpdate(selectedHTMLElement.selector, updates.textContent);
+                }
+                const updatedElement = { 
+                  ...selectedHTMLElement, 
+                  styles: { ...selectedHTMLElement.styles, ...updates.styles },
+                  textContent: updates.textContent ?? selectedHTMLElement.textContent 
+                };
+                setSelectedHTMLElement(updatedElement);
+              }
+            }}
+            onClearHTMLSelection={() => setSelectedHTMLElement(null)}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+          />
+        )}
+
+        {/* Floating Element Toolbar - appears over selected elements */}
+        {selectedHTMLElement && viewMode === 'canvas' && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+            <ElementFloatingToolbar
+              element={selectedHTMLElement}
+              onUpdateStyles={handleFloatingStyleUpdate}
+              onUpdateText={handleFloatingTextUpdate}
+              onReplaceImage={handleFloatingImageReplace}
+              onDelete={(selector) => {
+                if (liveHtmlPreviewRef.current) {
+                  liveHtmlPreviewRef.current.deleteElement(selector);
+                  setSelectedHTMLElement(null);
+                }
+              }}
+              onDuplicate={(selector) => {
+                if (liveHtmlPreviewRef.current) {
+                  liveHtmlPreviewRef.current.duplicateElement(selector);
+                }
+              }}
+              onClear={() => setSelectedHTMLElement(null)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Code Preview Dialog */}
