@@ -1256,7 +1256,7 @@ Learn from every bug fix to become better at prevention!`
     console.log(`[AI-Code-Assistant] Processing ${processedMessages.length} messages (from ${messages.length} original)`);
 
     const body: Record<string, unknown> = {
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-2.5-pro',
       messages: [
         { role: 'system', content: systemPrompt + (generatedImageUrl ? `
 
