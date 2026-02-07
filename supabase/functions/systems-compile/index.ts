@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const AI_MODEL = "google/gemini-2.5-flash";
+const AI_MODEL = "google/gemini-2.5-pro";
 
 /**
  * Systems AI - Compile Endpoint

@@ -159,19 +159,19 @@ serve(async (req) => {
 
     console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})`);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
         ],
-        temperature: 0.8,
+        temperature: 0.7,
       }),
     });
 
@@ -205,6 +205,9 @@ serve(async (req) => {
 
     // Clean up markdown code blocks if present
     generatedCode = cleanupCodeBlocks(generatedCode);
+    
+    // Post-generation hardening: fix invisible sections & CTAs
+    generatedCode = hardenGeneratedHTML(generatedCode);
 
     console.log(`[systems-build] Generated ${generatedCode.length} characters of code`);
 
@@ -212,7 +215,7 @@ serve(async (req) => {
       JSON.stringify({ 
         code: generatedCode,
         blueprint,
-        _meta: { ai_generated: true, model: "google/gemini-2.5-flash" }
+        _meta: { ai_generated: true, model: "google/gemini-2.5-pro" }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -239,6 +242,77 @@ function cleanupCodeBlocks(code: string): string {
     cleaned = cleaned.slice(0, -3);
   }
   return cleaned.trim();
+}
+
+/**
+ * Post-generation HTML hardening.
+ * Fixes common AI output issues:
+ * 1. Invisible sections due to animation class mismatch
+ * 2. Missing IntersectionObserver fallback for iframes
+ * 3. CTA buttons with no visible styling
+ */
+function hardenGeneratedHTML(code: string): string {
+  let hardened = code;
+
+  // Fix 1: Normalize animation class names
+  // AI sometimes uses `.visible` and sometimes `.animate-visible` — standardize to `.visible`
+  // and ensure both class names work
+  if (hardened.includes('.animate-on-scroll')) {
+    // Ensure the CSS handles both class names
+    const visibilityCSS = `
+/* Hardened visibility: support both .visible and .animate-visible */
+.animate-on-scroll.visible,
+.animate-on-scroll.animate-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}`;
+    
+    // Insert before </style> if style block exists
+    if (hardened.includes('</style>')) {
+      hardened = hardened.replace('</style>', visibilityCSS + '\n</style>');
+    }
+  }
+
+  // Fix 2: Add iframe-safe fallback timeout for scroll animations
+  // In iframes, IntersectionObserver can be unreliable, so force-reveal after 2.5s
+  const fallbackScript = `
+<!-- Hardened: Force-reveal all animated elements after 2.5s (iframe safety) -->
+<script>
+(function(){
+  // Immediate: reveal elements already in viewport
+  setTimeout(function(){
+    document.querySelectorAll('.animate-on-scroll').forEach(function(el){
+      var rect = el.getBoundingClientRect();
+      if(rect.top < window.innerHeight + 100){
+        el.classList.add('visible');
+        el.classList.add('animate-visible');
+      }
+    });
+  }, 300);
+  // Fallback: force-reveal ALL after 2.5s
+  setTimeout(function(){
+    document.querySelectorAll('.animate-on-scroll:not(.visible):not(.animate-visible)').forEach(function(el){
+      el.classList.add('visible');
+      el.classList.add('animate-visible');
+    });
+  }, 2500);
+})();
+</script>`;
+
+  // Insert before </body>
+  if (hardened.includes('</body>')) {
+    hardened = hardened.replace('</body>', fallbackScript + '\n</body>');
+  }
+
+  // Fix 3: Ensure CTA buttons have visible text contrast
+  // Replace any `text-transparent` or invisible button text patterns
+  hardened = hardened.replace(/class="([^"]*\btext-transparent\b[^"]*)"/g, (match, classes) => {
+    // Only fix if it's on a button/anchor
+    if (classes.includes('bg-clip-text')) return match; // Intentional gradient text
+    return `class="${classes.replace('text-transparent', 'text-white')}"`;
+  });
+
+  return hardened;
 }
 
 function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>): string {
@@ -408,14 +482,22 @@ Include these CSS animations in a <style> block:
   transform: scale(1.05);
 }
 
+/* CRITICAL: animate-on-scroll starts VISIBLE by default for iframe safety */
 .animate-on-scroll {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.6s ease;
-}
-.animate-on-scroll.visible {
   opacity: 1;
   transform: translateY(0);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease;
+  }
+  .animate-on-scroll.visible,
+  .animate-on-scroll.animate-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 \`\`\`
 
@@ -475,13 +557,23 @@ Include this vanilla JS for interactivity:
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
+          entry.target.classList.add('animate-visible');
+          observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.1 });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
     
     document.querySelectorAll('.animate-on-scroll').forEach(el => {
       observer.observe(el);
     });
+    
+    // Iframe-safe fallback: force reveal after 2.5s
+    setTimeout(() => {
+      document.querySelectorAll('.animate-on-scroll').forEach(el => {
+        el.classList.add('visible');
+        el.classList.add('animate-visible');
+      });
+    }, 2500);
   };
   
   // Mobile menu toggle
