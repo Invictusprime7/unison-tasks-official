@@ -770,32 +770,68 @@ ${getLucideIconsForIndustry(identity.industry)}
 - Use icons in navigation: menu, phone, mail, map-pin, shopping-cart
 - Use icons in footer: social media, contact info, navigation arrows
 
-🚀 **FULL CREATIVE CONTROL MODE - YOU HAVE COMPLETE AUTHORITY**
+🚀 **PREMIUM DESIGN MANDATE — AWARD-WINNING LEVEL (CRITICAL)**
 
-You have FULL AUTHORITY to make ANY UI/UX decisions to create a stunning, high-converting website. Apply your expert knowledge.
+You MUST produce designs that rival top-tier agencies. Every generated site must look like a premium ThemeForest template or Framer showcase.
 
-🎨 **VISUAL EXCELLENCE - APPLY THESE:**
+🎨 **DARK LUXURY HERO PATTERN (DEFAULT FOR SERVICE BUSINESSES):**
+- Full-viewport min-h-screen hero with real Unsplash background image
+- Heavy gradient overlay: bg-gradient-to-r from-black/80 via-black/60 to-transparent
+- Decorative blur orbs: absolute w-72 h-72 bg-primary/10 rounded-full blur-3xl
+- Badge/pill above headline: inline-flex px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm
+- Headline: text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1]
+- Gradient text accent: text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary
+- Dual CTAs: primary (bg-primary rounded-full px-8 py-4) + secondary (border-2 border-white/20 rounded-full)
 
-**MODERN DESIGN PATTERNS:**
-- Use gradient overlays on hero sections (from-primary/90 to-secondary/80)
-- Apply glassmorphism (backdrop-blur-sm bg-white/80) for floating elements
-- Add subtle depth with shadow-lg and shadow-xl
-- Use rounded-2xl and rounded-3xl for modern card aesthetics
-- Apply hover:scale-105 and hover:-translate-y-1 for interactive elements
+📐 **SERVICE/PRICING CARDS (MANDATORY FOR SERVICE BUSINESSES):**
+- Dark card bg: bg-gray-900 rounded-2xl p-8 border border-gray-800
+- Hover: hover:border-primary/50 hover:-translate-y-1 transition-all duration-300
+- Price display: text-2xl font-bold text-primary positioned top-right of card
+- Badge system: "Most Popular" (bg-primary/20 text-primary), "Premium" (bg-amber-500/20 text-amber-400)
+- Duration + metadata: flex items-center gap-4 text-sm text-gray-500 with clock/sparkles icons
+- CTA link: inline-flex items-center text-primary font-semibold with arrow-right icon
+- CATEGORY FILTER PILLS above cards: flex flex-wrap justify-center gap-3 mb-12
+  - Active: bg-primary text-white rounded-full px-5 py-2
+  - Inactive: bg-white/10 text-gray-300 hover:bg-white/20 rounded-full
 
-**MICRO-INTERACTIONS:**
-- Button hover effects with transform and shadow transitions
-- Card hover with translateY(-8px) and increased shadow
-- Image zoom on hover (group-hover:scale-110)
-- Underline animations on nav links
-- Badge pop animations for notifications
+🏗️ **SECTION DESIGN DENSITY (MINIMUM REQUIREMENTS):**
+- Every section: py-20 md:py-28 minimum padding
+- Section headers: ALWAYS include eyebrow text (text-primary text-sm uppercase tracking-wider) + h2 + subtitle
+- Cards: ALWAYS include icon/image + title + description + metadata + CTA
+- Never sparse — fill each card with 4-6 content elements minimum
+- Use grid-cols-1 md:grid-cols-2 lg:grid-cols-3 for responsive card grids
 
-**LAYOUT EXCELLENCE:**
-- Asymmetric hero layouts (split content + image)
-- Overlapping elements with negative margins (-mt-12)
-- Staggered grid layouts with different card sizes
-- Full-width sections alternating with constrained content
-- Floating decorative shapes (absolute blur-3xl opacity-20)
+✨ **VISUAL EFFECTS (ALL MANDATORY):**
+- Gradient overlays on hero and CTA sections
+- Glassmorphism: backdrop-blur-sm bg-white/10 or bg-gray-900/50
+- Floating decorative shapes: absolute blur-3xl opacity-20 rounded-full
+- Card hover: hover:-translate-y-1 hover:border-primary/50 + shadow transition
+- Button hover: hover:scale-105 transition-all duration-300 shadow-lg shadow-primary/25
+- Image zoom on hover: group-hover:scale-110 overflow-hidden
+- Staggered scroll animations: animate-on-scroll with animate-delay-1 through animate-delay-4
+- Nav scroll effect: transparent → solid with backdrop-blur on scroll
+
+🎯 **TYPOGRAPHY HIERARCHY (STRICT):**
+- Import 2 Google Fonts: one display (Plus Jakarta Sans, Space Grotesk, Manrope) + one body (Inter, DM Sans)
+- Hero H1: text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1]
+- Section H2: text-3xl md:text-4xl font-bold
+- Card H3: text-xl font-bold
+- Body: text-base md:text-lg leading-relaxed text-gray-400 (dark) or text-gray-600 (light)
+- Eyebrow: text-sm font-semibold uppercase tracking-wider text-primary
+
+🌑 **DARK THEME (DEFAULT FOR PREMIUM):**
+- Page background: bg-gray-950 or bg-[#030712]
+- Section alternating: bg-gray-950 → bg-gray-900 → bg-gray-950
+- Card background: bg-gray-900 with border border-gray-800
+- Text: text-white for headings, text-gray-300 for body, text-gray-400 for descriptions, text-gray-500 for metadata
+- Borders: border-gray-800, hover:border-primary/50
+- Footer: bg-gray-950 border-t border-gray-800
+
+📊 **STATS/TRUST STRIP (MANDATORY):**
+- grid grid-cols-2 md:grid-cols-4 gap-8 text-center
+- Large numbers: text-4xl md:text-5xl font-bold text-white with data-counter animation
+- Labels: text-gray-400 text-sm uppercase tracking-wider
+- Include: Years Experience, Happy Clients, Team Size, Average Rating
 
 🛒 **E-COMMERCE FUNCTIONALITY (CRITICAL FOR ECOMMERCE SITES):**
 
@@ -1111,22 +1147,26 @@ Make this website IMPRESSIVE - the kind that wins design awards and converts vis
 function getIndustrySpecificElements(industry: string): string {
   const elements: Record<string, string> = {
     salon_spa: `
-**SALON/SPA SPECIFIC REQUIREMENTS:**
-- **Service Menu** - Grid of services with names, descriptions, durations, prices
-  - Each service card should have "Book Now" button with data-ut-intent="booking.create"
-- **Team Section** - Staff profiles with photos, names, specialties, availability
-- **Before/After Gallery** - Transformation photos in grid layout
-- **Gift Cards** - Promotional section with "Buy Gift Card" CTA
-- **Special Offers** - Featured deals with countdown timer UI
-- **Online Booking Widget Placeholder** - Section indicating booking calendar
+**SALON/SPA PREMIUM DESIGN REQUIREMENTS:**
+- **Service Cards (CRITICAL)** — Dark premium cards (bg-gray-900 rounded-2xl p-8 border border-gray-800):
+  - Each card: Badge ("Most Popular" / "Premium" / "New"), Price (text-2xl font-bold text-primary top-right), Title, Description, Duration + metadata row with clock/sparkles icons, CTA link with arrow
+  - Hover: hover:border-primary/50 hover:-translate-y-1 transition-all
+- **Category Filter Pills** — Above service cards: flex flex-wrap justify-center gap-3 mb-12
+  - Pills: rounded-full px-5 py-2 text-sm font-medium
+  - Active: bg-primary text-white / Inactive: bg-white/10 text-gray-300 hover:bg-white/20
+  - Categories: Hair, Color, Nails, Skin, Makeup, Spa (adapt to business)
+- **Team Section** — Staff profiles: circular photos (w-24 h-24 rounded-full border-2 border-primary/30), name, specialty, experience
+- **Before/After Gallery** — Transformation grid with hover zoom (group-hover:scale-110 overflow-hidden)
+- **Booking Section** — Dark section with gradient accent:
   \`\`\`html
-  <div class="bg-secondary/10 p-8 rounded-2xl text-center">
-    <h3 class="text-2xl font-bold mb-4">Book Your Appointment</h3>
-    <p class="text-foreground/70 mb-6">Select a service and preferred time</p>
-    <button data-ut-intent="booking.create" data-ut-cta="cta.booking" class="bg-primary text-white px-8 py-4 rounded-full font-bold">Book Now</button>
+  <div class="bg-gray-900 rounded-2xl p-12 border border-gray-800 text-center">
+    <i data-lucide="calendar" class="w-12 h-12 text-primary mx-auto mb-4"></i>
+    <h3 class="text-2xl font-bold text-white mb-3">Book Your Appointment</h3>
+    <p class="text-gray-400 mb-8 max-w-md mx-auto">Select your service and preferred time</p>
+    <button data-ut-intent="booking.create" data-ut-cta="cta.booking" class="px-10 py-4 rounded-full bg-primary text-white font-bold hover:bg-primary/90 hover:scale-105 transition-all shadow-lg shadow-primary/25">Book Now</button>
   </div>
   \`\`\`
-- Include realistic service names (Haircut, Color, Highlights, Facial, Massage, Manicure, Pedicure, etc.)`,
+- Include realistic service names with pricing: Women's Haircut ($85+), Men's Haircut ($55+), Color & Highlights ($120+), Hair Extensions ($400+), Facial ($95+), Manicure ($45+)`,
     
     restaurant: `
 **RESTAURANT SPECIFIC REQUIREMENTS:**

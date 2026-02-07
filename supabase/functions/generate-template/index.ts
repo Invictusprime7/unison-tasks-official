@@ -120,29 +120,57 @@ Available icons by category:
 Icon sizing guide: w-5 h-5 (inline), w-6 h-6 (cards), w-8 h-8 (features), w-10 h-10 (hero accents)
 Wrap in circles for feature cards: <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center"><i data-lucide="star" class="w-7 h-7 text-primary"></i></div>
 
-PREMIUM QUALITY STANDARDS:
+PREMIUM DESIGN MANDATE — AWARD-WINNING LEVEL (CRITICAL):
 
-**Typography:**
-- Import premium Google Fonts (Inter, Plus Jakarta Sans, Manrope, DM Sans, Space Grotesk — pick 2 complementary fonts)
-- Establish clear type hierarchy: hero 56-72px, h2 36-48px, h3 24-30px, body 16-18px
-- Use font-weight variations: 400 body, 500 medium, 600 semibold, 700-800 headings
-- Letter-spacing: tight (-0.02em) for headings, normal for body
-- Line-height: 1.1-1.2 for headings, 1.6-1.7 for body text
+Your output MUST rival top-tier ThemeForest templates, Framer showcases, and agency portfolios.
+
+**Typography (STRICT HIERARCHY):**
+- Import 2 premium Google Fonts (Plus Jakarta Sans + Inter, Space Grotesk + DM Sans, Manrope + Inter)
+- Hero H1: text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] with gradient text accents
+- Section H2: text-3xl md:text-4xl font-bold with eyebrow text above (text-primary text-sm uppercase tracking-wider)
+- Card H3: text-xl font-bold
+- Body: text-base md:text-lg leading-relaxed
+- Letter-spacing: tight (-0.02em) for headings, tracking-wider for labels
+
+**Dark Luxury Hero (DEFAULT FOR SERVICE BUSINESSES):**
+- Full-viewport min-h-screen with real Unsplash background image
+- Heavy gradient overlay: bg-gradient-to-r from-black/80 via-black/60 to-transparent
+- Decorative blur orbs: absolute w-72 h-72 bg-primary/10 rounded-full blur-3xl
+- Badge/pill above headline: inline-flex px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm
+- Gradient text accent: text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary
+- Dual CTAs: primary (bg-primary rounded-full px-8 py-4 shadow-lg shadow-primary/25) + secondary (border-2 border-white/20 rounded-full)
+
+**Service/Pricing Cards (MANDATORY FOR SERVICE SITES):**
+- Dark cards: bg-gray-900 rounded-2xl p-8 border border-gray-800 hover:border-primary/50 hover:-translate-y-1 transition-all
+- Price display: text-2xl font-bold text-primary positioned top-right
+- Badge system: "Most Popular" (bg-primary/20 text-primary), "Premium" (bg-amber-500/20 text-amber-400), "New" (bg-emerald-500/20 text-emerald-400)
+- Duration + metadata row: flex items-center gap-4 text-sm text-gray-500 with Lucide clock/sparkles icons
+- CTA link: inline-flex items-center text-primary font-semibold with animated arrow-right gap
+- CATEGORY FILTER PILLS above cards: rounded-full px-5 py-2 bg-white/10 text-gray-300 (active: bg-primary text-white)
 
 **Layout & Spacing:**
-- Max container width: 1280px centered with mx-auto
-- Section padding: py-20 md:py-28 lg:py-32 with px-4 sm:px-6 lg:px-8
-- Use CSS Grid and Flexbox for complex layouts
-- Generous whitespace — never cramped
-- Consistent gap values: 6, 8, 12, 16, 20, 24
+- Max container: max-w-6xl mx-auto (hero: max-w-7xl)
+- Section padding: py-20 md:py-28 with px-4 sm:px-6 lg:px-8
+- Section headers: ALWAYS eyebrow + h2 + subtitle paragraph (3-line header pattern)
+- Cards must contain 4-6 content elements: icon/badge, title, description, metadata, CTA
+- grid-cols-1 md:grid-cols-2 lg:grid-cols-3 for card grids
 
-**Visual Effects (MANDATORY):**
-- Gradient backgrounds: linear-gradient with 2-3 stops
-- Subtle background patterns or decorative SVG shapes
-- Box shadows: shadow-sm for cards, shadow-lg for elevated elements, shadow-2xl for modals
-- Border radius: rounded-lg to rounded-2xl for modern feel
-- Glassmorphism where appropriate: backdrop-blur-xl bg-white/80
-- Animated gradient borders or accent lines
+**Visual Effects (ALL MANDATORY):**
+- Gradient overlays on hero and CTA sections with decorative blur shapes
+- Glassmorphism: backdrop-blur-sm bg-white/10 or bg-gray-900/50
+- Card hover: hover:-translate-y-1 hover:border-primary/50 transition-all duration-300
+- Button hover: hover:scale-105 shadow-lg shadow-primary/25
+- Image zoom: group-hover:scale-110 with overflow-hidden container
+- Nav: transparent-to-solid on scroll with backdrop-blur-lg
+
+**Dark Theme (DEFAULT):**
+- Page: bg-gray-950, cards: bg-gray-900 border-gray-800, text: white/gray-300/gray-400/gray-500
+- Alternating sections: bg-gray-950 → bg-gray-900 → bg-gray-950
+- Footer: bg-gray-950 border-t border-gray-800
+
+**Stats Strip (MANDATORY):**
+- grid-cols-2 md:grid-cols-4 with animated counters (data-counter attribute)
+- Large: text-4xl font-bold text-white, labels: text-gray-400 text-sm uppercase tracking-wider
 
 **Animations (MANDATORY — but VISIBILITY CRITICAL):**
 - Scroll-triggered fade-in animations using IntersectionObserver
@@ -269,21 +297,24 @@ OUTPUT: Return ONLY the complete, self-contained HTML document. No markdown, no 
 
     const userPrompt = `Generate a PREMIUM, PRODUCTION-READY website template for "${templateName}" with a ${aesthetic} aesthetic, inspired by ${source}.
 
-This must be a COMPLETE, MULTI-SECTION website (minimum 6 sections) that looks like it was designed by a top agency. Include:
-- Stunning hero section with entrance animations
-- Professional navigation with mobile support
-- Multiple content sections with scroll-triggered animations
+This must be a COMPLETE, MULTI-SECTION website (minimum 8 sections) that looks like it was designed by a top agency. Include:
+- Dark luxury hero (min-h-screen) with real Unsplash background, gradient overlay, decorative blur shapes, badge pill, gradient text accent, and dual CTAs
+- Professional sticky navigation with transparent-to-solid scroll effect and accent CTA button
+- Category filter pills (rounded-full) above service/feature cards
+- Service/pricing cards with badge system (Most Popular/Premium), pricing display ($XX+), duration metadata with Lucide icons, and CTA links with arrows
+- Stats strip with animated counters (data-counter), 4 metrics minimum
+- Testimonial cards with star ratings, client photos, and glass effect borders
+- Full-width gradient CTA section with decorative SVG pattern
+- Multi-column dark footer with social icons, contact info, business hours, and newsletter
+- ALL sections use eyebrow text + h2 + subtitle pattern
+- Dark theme throughout (bg-gray-950, bg-gray-900, border-gray-800)
+- Staggered scroll animations with animate-on-scroll + animate-delay-1 through 4
+- Premium Google Fonts (Plus Jakarta Sans + DM Sans or similar pairing)
 - Real Unsplash images relevant to the industry
-- Compelling, realistic copy (not lorem ipsum)
-- Fully responsive from 320px to 1920px
-- Premium typography with Google Fonts
-- All interactive elements with smooth transitions
 - Backend-wired CTAs with data-ut-intent attributes
-- Footer with social links and newsletter
+- Responsive from 320px to 1920px
 
-The template should feel ALIVE with subtle animations and micro-interactions. Every section should have visual depth through shadows, gradients, and layered elements.
-
-Return ONLY the complete HTML code. Make it production-ready and visually stunning.`;
+Return ONLY the complete HTML code. Make it look like a $5000 custom-built website.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
