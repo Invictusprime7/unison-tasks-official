@@ -366,6 +366,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Template Customizer - full DOM control
   const templateCustomizer = useTemplateCustomizer();
   const [customizerOpen, setCustomizerOpen] = useState(false);
+  // AI edit request state — only true when user clicks AI button in floating toolbar
+  const [aiEditRequested, setAiEditRequested] = useState(false);
 
   // Parse template when previewCode changes
   useEffect(() => {
@@ -3305,7 +3307,8 @@ export default function App() {
                   liveHtmlPreviewRef.current.duplicateElement(selector);
                 }
               }}
-              onClear={() => setSelectedHTMLElement(null)}
+              onClear={() => { setSelectedHTMLElement(null); setAiEditRequested(false); }}
+              onRequestAI={() => setAiEditRequested(true)}
             />
           </div>
         )}
@@ -3445,7 +3448,7 @@ export default function App() {
         backendStateContext={backendStateContext}
         businessDataContext={businessDataContext}
         selectedElement={
-          selectedHTMLElement?.selector && selectedHTMLElement?.html
+          aiEditRequested && selectedHTMLElement?.selector && selectedHTMLElement?.html
             ? {
                 selector: selectedHTMLElement.selector,
                 html: selectedHTMLElement.html,
@@ -3453,6 +3456,8 @@ export default function App() {
               }
             : undefined
         }
+        requestAIEdit={aiEditRequested}
+        onAIEditDismissed={() => setAiEditRequested(false)}
         onElementUpdate={(selector, newHtml) => {
           const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
           if (!res.ok) {
