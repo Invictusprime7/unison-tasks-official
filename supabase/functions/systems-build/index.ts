@@ -615,6 +615,240 @@ Include this vanilla JS for interactivity:
 </script>
 \`\`\`
 
+🚀 **FULL CREATIVE CONTROL MODE - YOU HAVE COMPLETE AUTHORITY**
+
+You have FULL AUTHORITY to make ANY UI/UX decisions to create a stunning, high-converting website. Apply your expert knowledge.
+
+🎨 **VISUAL EXCELLENCE - APPLY THESE:**
+
+**MODERN DESIGN PATTERNS:**
+- Use gradient overlays on hero sections (from-primary/90 to-secondary/80)
+- Apply glassmorphism (backdrop-blur-sm bg-white/80) for floating elements
+- Add subtle depth with shadow-lg and shadow-xl
+- Use rounded-2xl and rounded-3xl for modern card aesthetics
+- Apply hover:scale-105 and hover:-translate-y-1 for interactive elements
+
+**MICRO-INTERACTIONS:**
+- Button hover effects with transform and shadow transitions
+- Card hover with translateY(-8px) and increased shadow
+- Image zoom on hover (group-hover:scale-110)
+- Underline animations on nav links
+- Badge pop animations for notifications
+
+**LAYOUT EXCELLENCE:**
+- Asymmetric hero layouts (split content + image)
+- Overlapping elements with negative margins (-mt-12)
+- Staggered grid layouts with different card sizes
+- Full-width sections alternating with constrained content
+- Floating decorative shapes (absolute blur-3xl opacity-20)
+
+🛒 **E-COMMERCE FUNCTIONALITY (CRITICAL FOR ECOMMERCE SITES):**
+
+Include complete shopping cart functionality:
+
+\`\`\`javascript
+// Shopping Cart State Manager
+const CartManager = {
+  items: JSON.parse(localStorage.getItem('cart') || '[]'),
+  
+  add(product) {
+    const existing = this.items.find(i => i.id === product.id);
+    if (existing) {
+      existing.quantity++;
+    } else {
+      this.items.push({ ...product, quantity: 1 });
+    }
+    this.save();
+    this.updateUI();
+    this.showNotification(\`\${product.name} added to cart!\`);
+  },
+  
+  remove(id) {
+    this.items = this.items.filter(i => i.id !== id);
+    this.save();
+    this.updateUI();
+  },
+  
+  updateQuantity(id, quantity) {
+    const item = this.items.find(i => i.id === id);
+    if (item) {
+      item.quantity = Math.max(1, quantity);
+      this.save();
+      this.updateUI();
+    }
+  },
+  
+  getTotal() {
+    return this.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  },
+  
+  getCount() {
+    return this.items.reduce((sum, i) => sum + i.quantity, 0);
+  },
+  
+  save() {
+    localStorage.setItem('cart', JSON.stringify(this.items));
+  },
+  
+  updateUI() {
+    // Update cart badge
+    const badge = document.getElementById('cart-badge');
+    if (badge) {
+      const count = this.getCount();
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'flex' : 'none';
+    }
+    
+    // Update cart panel if open
+    const panel = document.getElementById('cart-panel');
+    if (panel && !panel.classList.contains('hidden')) {
+      this.renderCartPanel();
+    }
+  },
+  
+  showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fadeIn';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 3000);
+  },
+  
+  renderCartPanel() {
+    const panel = document.getElementById('cart-panel');
+    if (!panel) return;
+    
+    const itemsContainer = panel.querySelector('.cart-items');
+    const totalContainer = panel.querySelector('.cart-total');
+    
+    if (itemsContainer) {
+      if (this.items.length === 0) {
+        itemsContainer.innerHTML = '<p class="text-center text-gray-500 py-8">Your cart is empty</p>';
+      } else {
+        itemsContainer.innerHTML = this.items.map(item => \`
+          <div class="flex items-center justify-between py-4 border-b">
+            <div class="flex items-center gap-4">
+              <img src="\${item.image}" alt="\${item.name}" class="w-16 h-16 object-cover rounded-lg">
+              <div>
+                <h4 class="font-semibold">\${item.name}</h4>
+                <p class="text-primary font-bold">$\${item.price.toFixed(2)}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <button data-no-intent onclick="CartManager.updateQuantity('\${item.id}', \${item.quantity - 1})" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">-</button>
+              <span>\${item.quantity}</span>
+              <button data-no-intent onclick="CartManager.updateQuantity('\${item.id}', \${item.quantity + 1})" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">+</button>
+              <button data-no-intent onclick="CartManager.remove('\${item.id}')" class="text-red-500 ml-2">×</button>
+            </div>
+          </div>
+        \`).join('');
+      }
+    }
+    
+    if (totalContainer) {
+      totalContainer.textContent = '$' + this.getTotal().toFixed(2);
+    }
+  }
+};
+
+// Wire up Add to Cart buttons
+document.querySelectorAll('[data-ut-intent="cart.add"], [data-intent="cart.add"]').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const product = {
+      id: btn.dataset.productId || Math.random().toString(36).substr(2, 9),
+      name: btn.dataset.productName || 'Product',
+      price: parseFloat(btn.dataset.price) || 0,
+      image: btn.dataset.productImage || 'https://placehold.co/200x200'
+    };
+    CartManager.add(product);
+  });
+});
+
+// Initialize cart UI
+CartManager.updateUI();
+\`\`\`
+
+**CART UI COMPONENT (Include in DOM for e-commerce):**
+\`\`\`html
+<!-- Fixed Cart Button -->
+<button data-ut-intent="cart.view" data-ut-cta="cta.cart" onclick="document.getElementById('cart-panel').classList.toggle('hidden')" class="fixed bottom-6 right-6 bg-primary text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-40 hover:scale-110 transition-transform">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8l-1.5 6h11l-1.5-6m-9 3a1 1 0 112 0 1 1 0 01-2 0zm10 0a1 1 0 112 0 1 1 0 01-2 0z"></path></svg>
+  <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full items-center justify-center hidden">0</span>
+</button>
+
+<!-- Cart Slide-out Panel -->
+<div id="cart-panel" class="hidden fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform transition-transform">
+  <div class="flex flex-col h-full">
+    <div class="flex items-center justify-between p-6 border-b">
+      <h2 class="text-xl font-bold">Shopping Cart</h2>
+      <button data-no-intent onclick="document.getElementById('cart-panel').classList.add('hidden')" class="text-gray-500 hover:text-gray-700">✕</button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6 cart-items"></div>
+    <div class="p-6 border-t">
+      <div class="flex justify-between mb-4">
+        <span class="font-semibold">Total:</span>
+        <span class="cart-total font-bold text-xl text-primary">$0.00</span>
+      </div>
+      <button data-ut-intent="checkout.start" data-ut-cta="cta.checkout" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90">Proceed to Checkout</button>
+    </div>
+  </div>
+</div>
+\`\`\`
+
+📱 **ENHANCED MOBILE EXPERIENCE:**
+
+**Hamburger Menu Animation:**
+\`\`\`css
+.hamburger-line {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.menu-open .hamburger-line:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+.menu-open .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+.menu-open .hamburger-line:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+\`\`\`
+
+**Mobile Menu Slide:**
+\`\`\`css
+.mobile-menu {
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+.mobile-menu.open {
+  transform: translateX(0);
+}
+@media (min-width: 768px) {
+  .mobile-menu {
+    transform: none;
+  }
+}
+\`\`\`
+
+🔥 **CONVERSION OPTIMIZATION:**
+
+**Social Proof Elements:**
+- Floating notification popups ("John from NYC just booked!")
+- Trust badges with icons (SSL, Money-back, 24/7 Support)
+- Review counts with star ratings (⭐⭐⭐⭐⭐ 4.9/5)
+- "X customers served" counters with animation
+- "Limited availability" urgency indicators
+
+**Exit Intent / Sticky CTAs:**
+\`\`\`html
+<!-- Sticky Bottom CTA (Mobile) -->
+<div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 md:hidden z-40">
+  <button data-ut-intent="${intents[0]?.intent || 'lead.capture'}" data-ut-cta="cta.sticky" class="w-full bg-primary text-white py-3 rounded-lg font-bold">
+    ${identity.primary_goal === 'get_bookings' ? 'Book Now' : identity.primary_goal === 'sell_products' ? 'Shop Now' : 'Get Started'}
+  </button>
+</div>
+\`\`\`
+
 **CRITICAL OUTPUT RULES:**
 
 1. Return COMPLETE HTML document (<!DOCTYPE html> to </html>)
@@ -626,48 +860,88 @@ Include this vanilla JS for interactivity:
 7. Make fully responsive with sm:, md:, lg:, xl: breakpoints
 8. Use brand colors via Tailwind config (bg-primary, text-foreground, etc.)
 9. Include realistic placeholder content for ${identity.industry.replace(/_/g, " ")}
-10. Include at least 6-8 sections for a complete website
-11. No markdown, no explanations - ONLY the complete HTML code
+10. Include at least 8-10 sections for a complete website
+11. Include shopping cart if e-commerce industry
+12. Add sticky mobile CTA bar
+13. Include social proof elements
+14. No markdown, no explanations - ONLY the complete HTML code
 
-🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL website for ${brand.business_name} that would impress any business owner.`;
+🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL website for ${brand.business_name} that would impress any business owner and drive real conversions.`;
 }
 
 function buildUserMessage(blueprint: z.infer<typeof BlueprintSchema>, userPrompt?: string): string {
   const { brand, identity } = blueprint;
   const intents = blueprint.intents || [];
+  const isEcommerce = identity.industry === 'ecommerce';
   
-  let message = `Generate a complete, production-ready, multi-section website for "${brand.business_name}", a ${identity.industry.replace(/_/g, " ")} business.
+  let message = `🚀 CREATE A COMPLETE, PRODUCTION-READY, VISUALLY STUNNING WEBSITE
 
-**REQUIRED OUTPUT:**
-- Complete HTML document from <!DOCTYPE html> to </html>
-- Include Tailwind CDN + config in <head>
-- Include all CSS animations in <style> block
-- Include all JavaScript functionality at end of <body>
-- Minimum 8 content-rich sections
-- All CTAs wired with data-ut-intent attributes
-- Fully responsive (mobile, tablet, desktop)
-- Beautiful modern design with brand colors
+Generate a professional, high-converting multi-section website for "${brand.business_name}", a ${identity.industry.replace(/_/g, " ")} business.
 
-**INTENT BINDINGS TO WIRE:**
-${intents.map(i => `- "${i.intent}" on appropriate buttons/forms`).join("\n")}`;
+📋 **ABSOLUTE REQUIREMENTS:**
+
+1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html>, include full structure
+2. **TAILWIND CSS** - Include CDN + custom config with brand colors
+3. **MINIMUM 10 SECTIONS** - All must be content-rich and professionally designed:
+   - Navigation (sticky with mobile hamburger menu)
+   - Hero (full-width with gradient overlay, compelling copy, hero image)
+   - Features/Services (3-4 column grid with icons)
+   - About/Trust (company story + trust signals + stats counters)
+   - Testimonials (customer reviews with photos and star ratings)
+   - ${isEcommerce ? 'Product Grid (with Add to Cart buttons)' : 'Pricing/Services (tier cards)'}
+   - FAQ (accordion with 5+ questions)
+   - CTA Section (full-width gradient with compelling headline)
+   - Contact Form (all fields with validation)
+   - Footer (links, social, newsletter signup)
+
+4. **VISUAL EXCELLENCE** - Apply modern design:
+   - Gradient overlays and backgrounds
+   - Shadow and depth effects
+   - Hover animations on all interactive elements
+   - Card hover effects (lift + shadow)
+   - Smooth transitions and micro-interactions
+   - Professional typography hierarchy
+
+5. **BACKEND INTENT WIRING:**
+${intents.map(i => `   - Wire "${i.intent}" to appropriate buttons/forms`).join("\n")}
+   - Add data-no-intent on UI-only elements (filters, tabs, accordions)
+
+6. **JAVASCRIPT FUNCTIONALITY:**
+   - Scroll animations (IntersectionObserver)
+   - Mobile menu toggle with animation
+   - FAQ accordion
+   - Form validation
+   - Smooth scroll for anchor links
+   - Counter animations for statistics
+${isEcommerce ? '   - Complete shopping cart with add/remove/quantity\n   - Cart badge and slide-out panel\n   - Checkout integration' : ''}
+
+7. **MOBILE RESPONSIVE:**
+   - Mobile-first design
+   - Hamburger menu for mobile
+   - Sticky mobile CTA bar
+   - Touch-friendly buttons and links`;
   
   if (userPrompt) {
     message += `
 
-**ADDITIONAL USER REQUIREMENTS:**
+📝 **ADDITIONAL REQUIREMENTS:**
 ${userPrompt}`;
   }
   
   message += `
 
-**IMPORTANT:**
-- Include realistic placeholder content for a ${identity.industry.replace(/_/g, " ")} business
-- Use professional imagery from Unsplash
-- Create compelling copy that converts
-- Make it visually stunning with gradients, shadows, and animations
-- The website should be ready to launch
+⚡ **OUTPUT FORMAT:**
+- Return ONLY the complete HTML code
+- NO markdown wrappers
+- NO explanations or comments
+- Start with <!DOCTYPE html>
+- Include all CSS in <style> block
+- Include all JS before </body>
+- Make it look like a real, launched business website
+- Write compelling, realistic copy (NOT placeholder text)
+- Use Unsplash for high-quality images
 
-Return ONLY the complete HTML code. No markdown, no explanations.`;
+Make this website IMPRESSIVE - the kind that wins design awards and converts visitors into customers.`;
   
   return message;
 }
