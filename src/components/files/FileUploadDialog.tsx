@@ -42,15 +42,23 @@ const FileUploadDialog = ({
 
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id || null;
+
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to upload files.",
+        variant: "destructive",
+      });
+      setUploading(false);
+      return;
+    }
+
+    const userId = user.id;
 
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileExt = file.name.split(".").pop();
-        const filePath = userId 
-          ? `${userId}/${Date.now()}-${file.name}`
-          : `anonymous/${Date.now()}-${file.name}`;
+        const filePath = `${userId}/${Date.now()}-${file.name}`;
 
         // Upload to storage
         const { error: uploadError } = await supabase.storage
@@ -82,7 +90,7 @@ const FileUploadDialog = ({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to upload file. Please try again.",
         variant: "destructive",
       });
     } finally {

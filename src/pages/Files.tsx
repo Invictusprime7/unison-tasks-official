@@ -56,13 +56,22 @@ const Files = () => {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to create folders.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase.from("files").insert({
       name: folderName,
       size: 0,
       mime_type: "folder",
       storage_path: "",
       folder_path: currentFolder,
-      user_id: user?.id || null,
+      user_id: user.id,
     });
 
     if (error) {
