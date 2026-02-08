@@ -369,17 +369,25 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // AI edit request state — only true when user clicks AI button in floating toolbar
   const [aiEditRequested, setAiEditRequested] = useState(false);
 
-  // Parse template when previewCode changes
+  // Parse template when previewCode changes (but NOT when customizer is applying overrides)
   useEffect(() => {
     if (previewCode && previewCode.trim().startsWith('<')) {
+      // Skip re-parsing if the change came from customizer applying overrides
+      // This prevents resetting the images array and losing user-uploaded data URLs
+      if (templateCustomizer.consumeCustomizerApplyFlag()) {
+        return;
+      }
       templateCustomizer.parseTemplate(previewCode);
     }
   }, [previewCode]);
 
   // Apply customizer overrides to preview
   const applyCustomizerOverrides = useCallback(() => {
-    if (!templateCustomizer.isDirty || !previewCode) return;
-    const customized = templateCustomizer.applyOverrides(previewCode);
+    if (!templateCustomizer.isDirty) return;
+    // Always apply on the original (base) HTML, not the already-customized previewCode
+    const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
+    if (!baseHtml) return;
+    const customized = templateCustomizer.applyOverrides(baseHtml);
     if (customized !== previewCode) {
       setPreviewCode(customized);
       setEditorCode(customized);
@@ -388,8 +396,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   // Auto-apply overrides when customizer state changes (e.g. after image replacement)
   useEffect(() => {
-    if (templateCustomizer.overrideVersion > 0 && templateCustomizer.isDirty && previewCode) {
-      const customized = templateCustomizer.applyOverrides(previewCode);
+    if (templateCustomizer.overrideVersion > 0 && templateCustomizer.isDirty) {
+      const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
+      if (!baseHtml) return;
+      const customized = templateCustomizer.applyOverrides(baseHtml);
       if (customized !== previewCode) {
         setPreviewCode(customized);
         setEditorCode(customized);
