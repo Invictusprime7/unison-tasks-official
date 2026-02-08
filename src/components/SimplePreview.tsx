@@ -1079,12 +1079,27 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     return url;
   }, [code]);
   
-  // Cleanup blob URL on unmount or when URL changes
+  // When previewUrl changes (i.e. base code changed), navigate the existing iframe
+  // without remounting it.  Also clean up the previous blob URL.
+  const prevUrlRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const prev = prevUrlRef.current;
+    prevUrlRef.current = previewUrl;
+
+    // Revoke old blob URL
+    if (prev && prev !== previewUrl) {
+      URL.revokeObjectURL(prev);
+    }
+
+    // Navigate the iframe imperatively so it doesn't remount
+    if (iframeRef.current && previewUrl) {
+      iframeRef.current.src = previewUrl;
+    }
+
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      // On unmount, revoke current URL
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
@@ -1268,7 +1283,6 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
         >
         <iframe
           ref={iframeRef}
-          key={previewUrl}
           src={previewUrl}
           className="w-full h-full border-0 bg-white"
           title="Code Preview"

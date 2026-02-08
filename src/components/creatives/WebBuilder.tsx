@@ -396,13 +396,84 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [templateCustomizer, previewCode]);
 
   // Auto-apply overrides when customizer state changes (e.g. after image replacement)
+  // Patches the iframe DOM in-place to avoid scroll-reset & blink.
   useEffect(() => {
-    if (templateCustomizer.overrideVersion > 0 && templateCustomizer.isDirty) {
+    if (templateCustomizer.overrideVersion <= 0 || !templateCustomizer.isDirty) return;
+
+    const iframe = simplePreviewRef.current?.getIframe();
+    const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+    if (!iframeDoc || !iframeDoc.head) {
+      // Iframe not ready — fall back to full HTML replace (initial load)
       const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
       if (!baseHtml) return;
       const customized = templateCustomizer.applyOverrides(baseHtml);
       if (customized !== previewCode) {
         setPreviewCode(customized);
+        setEditorCode(customized);
+      }
+      return;
+    }
+
+    // 1. Inject / update the customizer override CSS in-place
+    const overrideCSS = templateCustomizer.generateOverrideCSS();
+    let styleEl = iframeDoc.getElementById('customizer-overrides') as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = iframeDoc.createElement('style');
+      styleEl.id = 'customizer-overrides';
+      iframeDoc.head.appendChild(styleEl);
+    }
+    styleEl.textContent = overrideCSS;
+
+    // 2. Apply text / image element overrides directly on DOM nodes
+    templateCustomizer.elementOverrides.forEach((override) => {
+      try {
+        if (override.textContent !== undefined) {
+          const el = iframeDoc.querySelector(override.selector);
+          if (el) el.textContent = override.textContent;
+        }
+        if (override.imageSrc) {
+          const el = iframeDoc.querySelector(override.selector) as HTMLImageElement | null;
+          if (el) el.setAttribute('src', override.imageSrc);
+        }
+        // Inline style overrides (for per-element tweaks beyond the CSS sheet)
+        if (override.styles && Object.keys(override.styles).length) {
+          const el = iframeDoc.querySelector(override.selector) as HTMLElement | null;
+          if (el) {
+            Object.entries(override.styles).forEach(([k, v]) => {
+              el.style.setProperty(
+                k.replace(/([A-Z])/g, '-$1').toLowerCase(),
+                v,
+                'important',
+              );
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('[Customizer] DOM patch failed for', override.selector, e);
+      }
+    });
+
+    // 3. Apply image replacements
+    templateCustomizer.images.forEach((img) => {
+      try {
+        let el = iframeDoc.querySelector(img.selector) as HTMLImageElement | null;
+        if (!el) {
+          const allImgs = iframeDoc.querySelectorAll('img');
+          const idx = parseInt(img.id.replace('img-', ''), 10);
+          if (!isNaN(idx) && idx < allImgs.length) el = allImgs[idx] as HTMLImageElement;
+        }
+        if (el && el.getAttribute('src') !== img.src) {
+          el.setAttribute('src', img.src);
+          if (img.alt) el.setAttribute('alt', img.alt);
+        }
+      } catch {}
+    });
+
+    // 4. Keep editorCode in sync (generate the full HTML for code-editor pane)
+    const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
+    if (baseHtml) {
+      const customized = templateCustomizer.applyOverrides(baseHtml);
+      if (customized !== previewCode) {
         setEditorCode(customized);
       }
     }
@@ -2981,7 +3052,7 @@ ${body.innerHTML}
                 >
                   {/* Both modes use SimplePreview for consistent rendering */}
                   <SimplePreview
-                    ref={builderMode === 'select' ? simplePreviewRef : undefined}
+                    ref={simplePreviewRef}
                     code={previewCode}
                     className="w-full h-full min-h-0 flex-1"
                     showToolbar={false}
@@ -3168,7 +3239,7 @@ export default function App() {
                   >
                     {/* Both modes use SimplePreview for consistent rendering */}
                     <SimplePreview
-                      ref={builderMode === 'select' ? simplePreviewRef : undefined}
+                      ref={simplePreviewRef}
                       code={previewCode}
                       className="w-full h-full min-h-0 flex-1"
                       showToolbar={false}
