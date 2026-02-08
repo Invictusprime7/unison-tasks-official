@@ -97,10 +97,12 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
       const dataUrl = reader.result as string;
       customizer.replaceImage(imageId, dataUrl);
       setReplacingImageId(null);
-      onApply();
+      // Don't call onApply() here - the overrideVersion useEffect in WebBuilder
+      // handles this automatically after React commits the new images state,
+      // avoiding a stale closure race condition.
     };
     reader.readAsDataURL(file);
-  }, [customizer, onApply]);
+  }, [customizer]);
 
   const handleSectionMove = useCallback((index: number, direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1;

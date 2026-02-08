@@ -223,6 +223,7 @@ export const useTemplateCustomizer = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [overrideVersion, setOverrideVersion] = useState(0); // Increments on every change to trigger reactivity
   const originalHtmlRef = useRef<string>('');
+  const isCustomizerApplyingRef = useRef(false); // Prevents parseTemplate from running on customizer output
 
   // ---- Parse template structure ----
   const parseTemplate = useCallback((html: string) => {
@@ -498,11 +499,14 @@ ${elementCSS}
     if (!html || !html.trim()) return html;
     if (!isDirty) return html;
 
+    // Always apply on the original (base) HTML to avoid cumulative mangling
+    const baseHtml = originalHtmlRef.current || html;
+
     const overrideCSS = generateOverrideCSS();
 
     // Handle section reordering by DOM manipulation
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+    const doc = parser.parseFromString(baseHtml, 'text/html');
 
     // Reorder sections
     const body = doc.body;
@@ -567,9 +571,23 @@ ${elementCSS}
     } else {
       result = `<style id="customizer-overrides">${overrideCSS}</style>\n${result}`;
     }
+    // Mark that the output is from customizer (to prevent parseTemplate from re-running on it)
+    isCustomizerApplyingRef.current = true;
 
     return result;
   }, [isDirty, generateOverrideCSS, sections, images, elementOverrides]);
+
+  // ---- Check if customizer just applied (to skip parseTemplate) ----
+  const consumeCustomizerApplyFlag = useCallback((): boolean => {
+    if (isCustomizerApplyingRef.current) {
+      isCustomizerApplyingRef.current = false;
+      return true;
+    }
+    return false;
+  }, []);
+
+  // ---- Get original HTML ----
+  const getOriginalHtml = useCallback(() => originalHtmlRef.current, []);
 
   // ---- Reset all ----
   const resetAll = useCallback(() => {
@@ -620,6 +638,8 @@ ${elementCSS}
     applyOverrides,
     generateOverrideCSS,
     resetAll,
+    consumeCustomizerApplyFlag,
+    getOriginalHtml,
   };
 };
 
