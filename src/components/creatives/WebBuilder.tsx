@@ -341,7 +341,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     ((location.state as { manifestId?: string })?.manifestId as string) || null
   );
   const [isSavingProject, setIsSavingProject] = useState(false);
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -3302,38 +3302,53 @@ export default function App() {
           </div>
         </div>
 
+        {/* Right Panel Toggle */}
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-12 w-6 rounded-l-md rounded-r-none bg-[#1a1a1a] border-r-0 border border-white/10 text-white/70 hover:text-white hover:bg-[#252525]"
+            title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
+          >
+            {rightPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+        </div>
+
         {/* Right Panel: Customizer OR Properties */}
-        {!rightPanelCollapsed && previewCode && !selectedObject ? (
-          <TemplateCustomizerPanel
-            customizer={templateCustomizer}
-            onApply={applyCustomizerOverrides}
-          />
-        ) : (
-          <CollapsiblePropertiesPanel 
-            fabricCanvas={fabricCanvas}
-            selectedObject={selectedObject}
-            selectedHTMLElement={selectedHTMLElement}
-            isCollapsed={rightPanelCollapsed}
-            onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-            onUpdate={() => fabricCanvas?.renderAll()}
-            onUpdateHTMLElement={(updates) => {
-              if (selectedHTMLElement?.selector) {
-                handleFloatingStyleUpdate(selectedHTMLElement.selector, updates.styles || {});
-                if (updates.textContent !== undefined) {
-                  handleFloatingTextUpdate(selectedHTMLElement.selector, updates.textContent);
+        {!rightPanelCollapsed && (
+          previewCode && !selectedObject ? (
+            <TemplateCustomizerPanel
+              customizer={templateCustomizer}
+              onApply={applyCustomizerOverrides}
+            />
+          ) : (
+            <CollapsiblePropertiesPanel 
+              fabricCanvas={fabricCanvas}
+              selectedObject={selectedObject}
+              selectedHTMLElement={selectedHTMLElement}
+              isCollapsed={rightPanelCollapsed}
+              onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+              onUpdate={() => fabricCanvas?.renderAll()}
+              onUpdateHTMLElement={(updates) => {
+                if (selectedHTMLElement?.selector) {
+                  handleFloatingStyleUpdate(selectedHTMLElement.selector, updates.styles || {});
+                  if (updates.textContent !== undefined) {
+                    handleFloatingTextUpdate(selectedHTMLElement.selector, updates.textContent);
+                  }
+                  const updatedElement = { 
+                    ...selectedHTMLElement, 
+                    styles: { ...selectedHTMLElement.styles, ...updates.styles },
+                    textContent: updates.textContent ?? selectedHTMLElement.textContent 
+                  };
+                  setSelectedHTMLElement(updatedElement);
                 }
-                const updatedElement = { 
-                  ...selectedHTMLElement, 
-                  styles: { ...selectedHTMLElement.styles, ...updates.styles },
-                  textContent: updates.textContent ?? selectedHTMLElement.textContent 
-                };
-                setSelectedHTMLElement(updatedElement);
-              }
-            }}
-            onClearHTMLSelection={() => setSelectedHTMLElement(null)}
-            onDelete={handleDelete}
-            onDuplicate={handleDuplicate}
-          />
+              }}
+              onClearHTMLSelection={() => setSelectedHTMLElement(null)}
+              onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
+            />
+          )
         )}
 
         {/* Floating Element Toolbar - appears over selected elements */}
