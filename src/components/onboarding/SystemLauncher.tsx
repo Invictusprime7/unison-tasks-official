@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowRight, ArrowLeft, Check, Zap, Layout, Eye, Database, Workflow, Shield } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Zap, Layout, Eye, Database, Workflow, Shield, Sparkles, Loader2 } from "lucide-react";
 import { businessSystems, type BusinessSystemType, type LayoutTemplate, type LayoutCategory } from "@/data/templates/types";
 import { getTemplatesByCategory } from "@/data/templates";
 import { getTemplateManifest, getDefaultManifestForSystem } from "@/data/templates/manifest";
@@ -33,7 +33,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate | null>(null);
   const [step, setStep] = useState<"select" | "templates">("select");
   const [isLaunching, setIsLaunching] = useState(false);
-
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
   // Web Design Kit integration (launcher-level)
   const [categoryFilter, setCategoryFilter] = useState<LayoutCategory | "all">("all");
   const [designPreset, setDesignPreset] = useState<string>("none");
@@ -204,6 +204,98 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     }
   };
 
+  /**
+   * Generate a unique AI variation using the selected template as a quality reference.
+   * Routes through systems-build with the template HTML injected into the prompt.
+   */
+  const handleAIGenerate = async () => {
+    if (!selectedSystem || !selectedTemplate) return;
+
+    const system = businessSystems.find(s => s.id === selectedSystem);
+    if (!system) return;
+
+    setIsAIGenerating(true);
+    try {
+      // Build a blueprint from the selected system
+      const industry = selectedTemplate.category;
+      const blueprint = {
+        version: "1.0",
+        identity: {
+          industry,
+          primary_goal: "Generate leads and grow the business",
+        },
+        brand: {
+          business_name: `${system.name} Business`,
+          tagline: `Professional ${system.name.toLowerCase()} services you can trust`,
+          tone: "professional and friendly",
+          typography: { heading: "Plus Jakarta Sans", body: "Inter" },
+        },
+        design: {
+          layout: { hero_style: "split" as const, section_spacing: "spacious" as const, navigation_style: "fixed" as const },
+          effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: true, shadows: "dramatic" as const },
+          sections: { include_stats: true, include_testimonials: true, include_faq: true, include_cta_banner: true, include_newsletter: true, include_social_proof: true },
+        },
+        intents: system.intents.map(i => ({ intent: i })),
+      };
+
+      console.log(`[SystemLauncher] AI generating with template reference: ${selectedTemplate.id}`);
+
+      const { data, error } = await supabase.functions.invoke("systems-build", {
+        body: {
+          blueprint,
+          userPrompt: `Create a unique, premium ${system.name.toLowerCase()} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.`,
+          enhanceWithAI: true,
+          templateId: selectedTemplate.id,
+          templateHtml: selectedTemplate.code,
+        },
+      });
+
+      if (error) {
+        if (error.message?.includes('429')) {
+          toast.error("Rate limit exceeded. Please try again shortly.");
+          return;
+        }
+        if (error.message?.includes('402')) {
+          toast.error("Credits required. Please add credits to continue.");
+          return;
+        }
+        throw error;
+      }
+
+      const generatedCode = data?.code;
+      if (!generatedCode || generatedCode.length < 100) {
+        toast.error("AI generation produced no output. Try again.");
+        return;
+      }
+
+      console.log(`[SystemLauncher] AI generated ${generatedCode.length} chars`);
+
+      // Navigate to builder with the AI-generated code
+      navigate("/web-builder", {
+        state: {
+          generatedCode,
+          templateName: `AI ${selectedTemplate.name}`,
+          aesthetic: designPreset !== "none" ? designPreset : undefined,
+          templateCategory: selectedTemplate.category,
+          systemType: selectedSystem,
+          systemName: system.name,
+          preloadedIntents: system.intents,
+          startInPreview: true,
+        },
+      });
+
+      onOpenChange(false);
+      resetState();
+      toast.success("AI website generated! Opening in builder…");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "AI generation failed";
+      console.error("[SystemLauncher] AI generation error", e);
+      toast.error(msg);
+    } finally {
+      setIsAIGenerating(false);
+    }
+  };
+
   const resetState = () => {
     setStep("select");
     setSelectedSystem(null);
@@ -213,6 +305,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     setEditedTemplateFiles(null);
     setCategoryFilter("all");
     setDesignPreset("none");
+    setIsAIGenerating(false);
   };
 
   const handleBack = () => {
@@ -538,21 +631,40 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
                         )}
                       </div>
 
-                      {/* Launch button */}
+                      {/* Launch buttons */}
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="lg"
                           onClick={() => setAiEditOpen(true)}
-                          disabled={!selectedTemplate}
+                          disabled={!selectedTemplate || isAIGenerating}
                         >
                           <Zap className="mr-2 h-4 w-4" />
                           AI edit
                         </Button>
                         <Button
+                          variant="secondary"
+                          size="lg"
+                          onClick={handleAIGenerate}
+                          disabled={!selectedTemplate || isAIGenerating || isLaunching}
+                          className="min-w-[160px]"
+                        >
+                          {isAIGenerating ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Generating…
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Generate with AI
+                            </>
+                          )}
+                        </Button>
+                        <Button
                           size="lg"
                           onClick={handleLaunch}
-                          disabled={!selectedTemplate || isLaunching}
+                          disabled={!selectedTemplate || isLaunching || isAIGenerating}
                           className="min-w-[180px]"
                         >
                           <Zap className="mr-2 h-4 w-4" />

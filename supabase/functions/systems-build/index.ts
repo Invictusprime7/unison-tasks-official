@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-import-prefix
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,6 +122,8 @@ const BodySchema = z.object({
   blueprint: BlueprintSchema,
   userPrompt: z.string().max(5000).optional(),
   enhanceWithAI: z.boolean().optional().default(true),
+  templateId: z.string().optional(),
+  templateHtml: z.string().max(200_000).optional(),
 });
 
 serve(async (req) => {
@@ -137,7 +140,7 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -212,10 +215,10 @@ serve(async (req) => {
     console.log(`[systems-build] Loaded ${mergedPatterns.length} design patterns (${industryPatterns?.length ?? 0} industry + ${universalPatterns?.length ?? 0} universal) for ${rawIndustry}`);
 
     // Build comprehensive system prompt for business website generation
-    const systemPrompt = buildSystemPrompt(blueprint, patternContext);
+    const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml);
     const userMessage = buildUserMessage(blueprint, userPrompt);
 
-    console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})`);
+    console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})${templateId ? ` with reference template: ${templateId}` : ''}`);
 
 const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -386,7 +389,7 @@ function hardenGeneratedHTML(code: string): string {
   return hardened;
 }
 
-function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = ""): string {
+function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = "", templateHtml?: string): string {
   const { brand, identity, design } = blueprint;
   const palette = brand.palette || {};
   const pages = blueprint.site?.pages || [];
@@ -400,6 +403,30 @@ function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternCo
   const buttons = design?.buttons || {};
   const sections = design?.sections || {};
   const content = design?.content || {};
+
+  // Build template reference context if a premium template was provided
+  const templateReferenceBlock = templateHtml ? `
+
+🏆 **PREMIUM REFERENCE TEMPLATE (QUALITY BASELINE):**
+
+Below is a PREMIUM, handcrafted HTML template for this industry. Use it as your QUALITY BASELINE — your output must MATCH OR EXCEED this level of design sophistication, section density, visual effects, and content quality.
+
+IMPORTANT RULES FOR USING THE REFERENCE:
+1. DO NOT copy the template verbatim — generate ORIGINAL content and design variations
+2. MATCH the structural quality: same number of sections, same density of components per section
+3. MATCH the visual quality: gradients, glassmorphism, hover effects, scroll animations
+4. MATCH the intent wiring: data-ut-intent, data-ut-cta, data-no-intent attributes
+5. MATCH the typography hierarchy: eyebrow → heading → subheading → body text
+6. ADAPT the content to match the blueprint's business name, tagline, and brand colors
+7. USE the blueprint's color palette instead of the reference template's colors
+8. MAINTAIN the same level of Lucide icon usage and image integration
+
+Reference template (first 15000 chars for context):
+\`\`\`html
+${templateHtml.substring(0, 15000)}
+\`\`\`
+${templateHtml.length > 15000 ? `\n[Template continues for ${templateHtml.length} total characters — maintain this level of density and quality throughout]` : ''}
+` : '';
 
   return `You are an ELITE "Super Web Builder Expert" AI for a Web Builder that supports a built-in backend (database, authentication, and backend functions) - like GitHub Copilot and Lovable AI combined.
 
@@ -1102,7 +1129,8 @@ ${patternContext ? `
 These are proven, high-converting section patterns from our design system. Use these as structural and styling references. Adapt colors, content, and icons to match the business context:
 
 ${patternContext}
-` : ""}`;
+` : ""}
+${templateReferenceBlock}`;
 }
 
 function buildUserMessage(blueprint: z.infer<typeof BlueprintSchema>, userPrompt?: string): string {
