@@ -236,14 +236,18 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
 
   // Category display names
   const categoryLabels: Record<string, string> = {
+    salon: "Salon & Spa",
     landing: "Landing Pages",
     portfolio: "Portfolio",
     restaurant: "Restaurant",
-    ecommerce: "E-Commerce",
-    blog: "Blog",
-    contractor: "Contractor",
+    store: "E-Commerce",
+    contractor: "Local Service",
+    coaching: "Coaching",
+    realestate: "Real Estate",
+    nonprofit: "Nonprofit",
     agency: "Agency",
-    startup: "Startup",
+    content: "Content",
+    saas: "SaaS",
   };
 
   return (
