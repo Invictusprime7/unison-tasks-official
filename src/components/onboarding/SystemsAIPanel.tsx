@@ -1,8 +1,9 @@
-﻿/**
+/**
  * SystemsAIPanel - AI Code Assistant panel for the homepage
  * 
  * Allows users to describe what they want to build and generates
- * production-ready code using the ai-code-assistant edge function.
+ * production-ready code using the systems-build edge function with
+ * premium template references for quality baseline.
  */
 
 import { useState } from "react";
@@ -25,6 +26,32 @@ import {
   Code2
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { getTemplatesByCategory } from "@/data/templates";
+import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
+
+// Map chip IDs to BusinessSystemType for template lookup
+const CHIP_TO_SYSTEM: Record<string, BusinessSystemType> = {
+  local_service: "booking",
+  salon_spa: "booking",
+  restaurant: "booking",
+  ecommerce: "store",
+  creator: "portfolio",
+  coaching: "booking",
+  real_estate: "agency",
+  nonprofit: "content",
+};
+
+// Map chip IDs to industry string for the blueprint
+const CHIP_TO_INDUSTRY: Record<string, string> = {
+  local_service: "local_service",
+  salon_spa: "salon_spa",
+  restaurant: "restaurant",
+  ecommerce: "ecommerce",
+  creator: "creator_portfolio",
+  coaching: "coaching_consulting",
+  real_estate: "real_estate",
+  nonprofit: "nonprofit",
+};
 
 // Industry/business prompt chips for quick actions
 const codePromptChips = [
@@ -41,6 +68,84 @@ const codePromptChips = [
 interface SystemsAIPanelProps {
   user: User | null;
   onAuthRequired?: () => void;
+}
+
+// Map chip IDs to LayoutCategory for direct template lookup
+const CHIP_TO_CATEGORY: Record<string, LayoutCategory> = {
+  local_service: "contractor",
+  salon_spa: "salon",
+  restaurant: "restaurant",
+  ecommerce: "store",
+  creator: "portfolio",
+  coaching: "coaching",
+  real_estate: "realestate",
+  nonprofit: "nonprofit",
+};
+
+/**
+ * Picks the best template HTML for a given chip to use as AI reference.
+ * Prefers the first (dark luxury) variant as it's typically the most premium.
+ */
+function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; systemType: BusinessSystemType } | null {
+  const systemType = CHIP_TO_SYSTEM[chipId];
+  const category = CHIP_TO_CATEGORY[chipId];
+  if (!systemType || !category) return null;
+  
+  const templates = getTemplatesByCategory(category);
+  if (!templates.length) return null;
+  
+  // Pick first template (dark luxury variant) as the quality baseline
+  const bestTemplate = templates[0];
+  if (!bestTemplate.code || bestTemplate.code.length < 100) return null;
+  
+  return {
+    templateId: bestTemplate.id,
+    templateHtml: bestTemplate.code,
+    systemType,
+  };
+}
+
+/**
+ * Build a minimal BusinessBlueprint from a chip selection for systems-build
+ */
+function buildBlueprintFromChip(chipId: string, prompt: string) {
+  const chip = codePromptChips.find(c => c.id === chipId);
+  const industry = CHIP_TO_INDUSTRY[chipId] || "other";
+  
+  // Industry-specific defaults
+  const INDUSTRY_DEFAULTS: Record<string, { palette: Record<string, string>; intents: string[] }> = {
+    salon_spa: { palette: { primary: "#D4A574", secondary: "#8B6F4E", accent: "#E8D5C4", background: "#1A1A2E", foreground: "#F5F5F5" }, intents: ["booking.create", "contact.submit", "newsletter.subscribe"] },
+    restaurant: { palette: { primary: "#D4A574", secondary: "#8B4513", accent: "#FFD700", background: "#1A1A1A", foreground: "#FFFFFF" }, intents: ["booking.create", "contact.submit", "newsletter.subscribe"] },
+    local_service: { palette: { primary: "#0EA5E9", secondary: "#22D3EE", accent: "#F59E0B", background: "#0F172A", foreground: "#F8FAFC" }, intents: ["quote.request", "contact.submit", "booking.create"] },
+    ecommerce: { palette: { primary: "#8B5CF6", secondary: "#A78BFA", accent: "#F59E0B", background: "#0F0F0F", foreground: "#FFFFFF" }, intents: ["newsletter.subscribe", "contact.submit"] },
+    creator: { palette: { primary: "#6366F1", secondary: "#818CF8", accent: "#F472B6", background: "#0A0A0A", foreground: "#FAFAFA" }, intents: ["contact.submit", "quote.request"] },
+    coaching: { palette: { primary: "#10B981", secondary: "#34D399", accent: "#F59E0B", background: "#0F172A", foreground: "#F8FAFC" }, intents: ["booking.create", "contact.submit", "newsletter.subscribe", "quote.request"] },
+    real_estate: { palette: { primary: "#D4AF37", secondary: "#C9B037", accent: "#1E3A5F", background: "#0A0A0A", foreground: "#FFFFFF" }, intents: ["contact.submit", "quote.request", "newsletter.subscribe"] },
+    nonprofit: { palette: { primary: "#E11D48", secondary: "#FB7185", accent: "#F59E0B", background: "#FFFFFF", foreground: "#1E293B" }, intents: ["contact.submit", "newsletter.subscribe"] },
+  };
+
+  const defaults = INDUSTRY_DEFAULTS[chipId] || { palette: { primary: "#0EA5E9" }, intents: ["contact.submit"] };
+
+  return {
+    version: "1.0",
+    identity: {
+      industry: industry,
+      primary_goal: "Generate leads and grow the business",
+    },
+    brand: {
+      business_name: chip?.label || "My Business",
+      tagline: `Professional ${chip?.label || "business"} services you can trust`,
+      tone: "professional and friendly",
+      palette: defaults.palette,
+      typography: { heading: "Plus Jakarta Sans", body: "Inter" },
+    },
+    design: {
+      layout: { hero_style: "split" as const, section_spacing: "spacious" as const, navigation_style: "fixed" as const },
+      effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: true, shadows: "dramatic" as const },
+      sections: { include_stats: true, include_testimonials: true, include_faq: true, include_cta_banner: true, include_newsletter: true, include_social_proof: true },
+    },
+    intents: defaults.intents.map(i => ({ intent: i })),
+  };
 }
 
 export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
@@ -61,7 +166,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
     }
   };
 
-  // Handler for code assistant submit - uses the ai-code-assistant edge function
+  // Handler for code assistant submit - routes through systems-build with template reference
   const handleCodeSubmit = async () => {
     if (!codePrompt.trim()) {
       toast({ title: "Please describe what you want to build", variant: "destructive" });
@@ -71,163 +176,98 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
     setIsCodeLoading(true);
 
     try {
-      // Build an enhanced prompt that instructs the AI to create polished, content-rich templates
-      // This matches the quality expectations of the in-builder AICodeAssistant
-      const selectedChip = codePromptChips.find(c => c.id === selectedCodeChip);
-      const industryContext = selectedChip ? `\n\nINDUSTRY CONTEXT: ${selectedChip.label} business` : '';
-      
-      const enhancedPrompt = `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY MULTI-PAGE WEBSITE
+      // If a chip is selected, use systems-build with template reference for premium quality
+      if (selectedCodeChip) {
+        const ref = getTemplateReference(selectedCodeChip);
+        const blueprint = buildBlueprintFromChip(selectedCodeChip, codePrompt);
 
-USER REQUEST: ${codePrompt}${industryContext}
+        console.log(`[SystemsAIPanel] Using systems-build with${ref ? ` template reference: ${ref.templateId}` : 'out template reference'}`);
 
-📋 CRITICAL REQUIREMENTS - YOU MUST INCLUDE ALL OF THESE:
+        const { data, error } = await supabase.functions.invoke("systems-build", {
+          body: {
+            blueprint,
+            userPrompt: codePrompt,
+            enhanceWithAI: true,
+            templateId: ref?.templateId,
+            templateHtml: ref?.templateHtml,
+          },
+        });
 
-1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html> and include full <html>, <head>, <body>
-2. **TAILWIND CSS** - Include <script src="https://cdn.tailwindcss.com"></script>
-3. **MULTI-SECTION LAYOUT** - Include AT MINIMUM:
-   - Navigation header with logo and menu links
-   - Hero section with compelling headline, subtext, and CTA button
-   - Features/services section with 3-4 feature cards
-   - Testimonials or social proof section
-   - Contact/CTA section
-   - Footer with links and copyright
+        if (error) {
+          if (error.message?.includes('429')) {
+            toast({ title: "Rate limit exceeded", description: "Please wait a moment before trying again.", variant: "destructive" });
+            return;
+          }
+          if (error.message?.includes('402')) {
+            toast({ title: "Credits required", description: "Please add credits to continue using AI features.", variant: "destructive" });
+            return;
+          }
+          throw error;
+        }
 
-4. **REAL, COMPELLING CONTENT** - NOT placeholder text:
-   - Write actual headlines, descriptions, and body copy
-   - Use realistic business names, services, pricing
-   - Include real-sounding testimonials with names
-   - Add compelling CTAs that match the business type
+        const generatedCode = data?.code || "";
+        if (generatedCode && generatedCode.length > 50) {
+          console.log('[SystemsAIPanel] systems-build generated', generatedCode.length, 'chars');
+          sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
+          navigate("/web-builder", {
+            state: {
+              generatedCode,
+              templateName: `AI ${codePromptChips.find(c => c.id === selectedCodeChip)?.label || "Generated"}`,
+              aesthetic: "modern",
+              startInPreview: true,
+              systemType: ref?.systemType,
+            },
+          });
+          toast({ title: "Website generated!", description: "Opening in Web Builder..." });
+          return;
+        }
+      }
 
-5. **POLISHED VISUAL DESIGN**:
-   - Modern color scheme with gradients
-   - Professional typography with proper hierarchy
-   - Generous whitespace and padding
-   - Hover effects on buttons and cards
-   - Smooth transitions and micro-animations
-   - Icons using inline SVG or Unicode symbols
-   - Responsive design (mobile-first with md: and lg: breakpoints)
+      // Fallback: use ai-code-assistant for free-form prompts without a chip selected
+      const enhancedPrompt = buildFreeformPrompt(codePrompt);
 
-6. **INTERACTIVE ELEMENTS**:
-   - Working navigation (anchor links to sections)
-   - Hover states on all clickable elements
-   - Form inputs with proper styling
-   - Animated elements (fade-in, slide-in on scroll)
-
-7. **MULTI-PAGE NAVIGATION WIRING** (CRITICAL FOR DYNAMIC PAGES):
-   Navigation links MUST use data-ut-intent="nav.goto" with data-ut-path for internal pages:
-   
-   <a href="/about.html" data-ut-intent="nav.goto" data-ut-path="/about.html">About</a>
-   <a href="/services.html" data-ut-intent="nav.goto" data-ut-path="/services.html">Services</a>
-   <a href="/contact.html" data-ut-intent="nav.goto" data-ut-path="/contact.html">Contact</a>
-   <a href="/checkout.html" data-ut-intent="nav.goto" data-ut-path="/checkout.html">Checkout</a>
-   
-   When users click these links, the system will AUTOMATICALLY generate those pages!
-
-8. **BACKEND INTENT WIRING** - Add data attributes for working automations:
-   - Booking: data-ut-intent="booking.create" data-ut-cta="cta.booking"
-   - Contact: data-ut-intent="contact.submit" data-ut-cta="cta.contact"
-   - Cart: data-ut-intent="cart.add" data-product-id="..." data-product-name="..."
-   - Checkout: data-ut-intent="checkout.start" data-ut-cta="cta.checkout"
-   - Auth: data-ut-intent="auth.signup" / data-ut-intent="auth.signin"
-   - Newsletter: data-ut-intent="newsletter.subscribe"
-   - Quote: data-ut-intent="quote.request"
-   
-   Also add data-intent for compatibility. These intents WORK automatically!
-
-9. **UI CONTROLS WITHOUT INTENTS** - Add data-no-intent to:
-   - Filter buttons, sort dropdowns, tabs
-   - Quantity adjusters (+/- buttons)
-   - Accordion toggles, carousel controls
-   - Any UI that shouldn't trigger backend actions
-
-10. **JAVASCRIPT ENHANCEMENTS** - Include in <script> tag:
-    - Smooth scroll for anchor links
-    - Scroll animations (IntersectionObserver)
-    - Mobile menu toggle
-    - Form validation (if applicable)
-
-OUTPUT FORMAT:
-- Return ONLY the complete HTML code
-- NO markdown, NO explanations, NO comments outside the code
-- Start with <!DOCTYPE html>
-- Make it look like a real, professional business website
-- Include navigation to other pages (About, Services, Contact, etc.) with proper data-ut-intent wiring`;
-
-      // Call the ai-code-assistant edge function with full-control mode
       const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
         body: {
-          messages: [
-            { role: "user", content: enhancedPrompt }
-          ],
+          messages: [{ role: "user", content: enhancedPrompt }],
           mode: "code",
-          templateAction: "full-control", // Give AI creative authority for polished output
+          templateAction: "full-control",
           editMode: false,
         },
       });
 
       if (error) {
-        // Handle specific error codes
         if (error.message?.includes('429')) {
-          toast({ title: "Rate limit exceeded", description: "Please wait a moment before trying again.", variant: "destructive" });
+          toast({ title: "Rate limit exceeded", description: "Please wait a moment.", variant: "destructive" });
           return;
         }
         if (error.message?.includes('402')) {
-          toast({ title: "Credits required", description: "Please add credits to continue using AI features.", variant: "destructive" });
+          toast({ title: "Credits required", description: "Please add credits.", variant: "destructive" });
           return;
         }
         throw error;
       }
 
-      // Extract code from response - ai-code-assistant returns { content: string }
       const content = data?.content || "";
-      
-      // Extract code block if present - match AICodeAssistant's extraction logic
-      // Try to match code blocks with language specifiers first
       let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
-      
-      // If no match, try without language specifier
-      if (!codeMatch) {
-        codeMatch = content.match(/```\n([\s\S]*?)```/);
-      }
-      
-      // If still no match, try optional newline (lenient)
-      if (!codeMatch) {
-        codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)?\n?([\s\S]*?)```/);
-      }
+      if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
+      if (!codeMatch) codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)?\n?([\s\S]*?)```/);
       
       let generatedCode = codeMatch ? codeMatch[1].trim() : content.trim();
-      
-      // Clean markdown syntax that sometimes slips through (same as AICodeAssistant)
       if (generatedCode) {
         generatedCode = generatedCode
-          // Remove markdown headers (###, ##, #)
           .replace(/^#{1,6}\s+.*$/gm, '')
-          // Remove markdown code fences that appear in content
           .replace(/```[\w]*\n?/g, '')
-          // Remove markdown arrows/symbols (<<<, >>>, ---)
           .replace(/^[<>-]{3,}.*$/gm, '')
-          // Remove standalone markdown symbols
           .replace(/<<<|>>>|---/g, '')
-          // Clean up any resulting empty lines (more than 2 consecutive)
           .replace(/\n{3,}/g, '\n\n')
           .trim();
       }
 
       if (generatedCode) {
-        console.log('[SystemsAIPanel] Code extracted, length:', generatedCode.length);
-        console.log('[SystemsAIPanel] Code preview:', generatedCode.substring(0, 200));
-        
-        // Store and navigate to web builder
         sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
         navigate("/web-builder", {
-          state: {
-            generatedCode,
-            templateName: "AI Generated",
-            aesthetic: "modern",
-            startInPreview: true, // Signal to start in canvas/preview mode
-          },
+          state: { generatedCode, templateName: "AI Generated", aesthetic: "modern", startInPreview: true },
         });
-        
         toast({ title: "Code generated!", description: "Opening in Web Builder..." });
       } else {
         toast({ title: "No code generated", description: "Please try a different prompt", variant: "destructive" });
@@ -347,6 +387,38 @@ OUTPUT FORMAT:
       </div>
     </section>
   );
+}
+
+/**
+ * Build an enhanced freeform prompt for ai-code-assistant (no chip selected)
+ */
+function buildFreeformPrompt(prompt: string): string {
+  return `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY MULTI-PAGE WEBSITE
+
+USER REQUEST: ${prompt}
+
+📋 CRITICAL REQUIREMENTS - YOU MUST INCLUDE ALL OF THESE:
+
+1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html> and include full <html>, <head>, <body>
+2. **TAILWIND CSS** - Include <script src="https://cdn.tailwindcss.com"></script>
+3. **MULTI-SECTION LAYOUT** - Include AT MINIMUM:
+   - Navigation header with logo and menu links
+   - Hero section with compelling headline, subtext, and CTA button
+   - Features/services section with 3-4 feature cards
+   - Testimonials or social proof section
+   - Contact/CTA section
+   - Footer with links and copyright
+
+4. **REAL, COMPELLING CONTENT** - NOT placeholder text
+5. **POLISHED VISUAL DESIGN** - Modern color scheme, gradients, typography, hover effects
+6. **INTERACTIVE ELEMENTS** - Working navigation, hover states, scroll animations
+7. **BACKEND INTENT WIRING** - data-ut-intent attributes on CTAs
+8. **UI CONTROLS WITHOUT INTENTS** - data-no-intent on non-conversion elements
+
+OUTPUT FORMAT:
+- Return ONLY the complete HTML code
+- NO markdown, NO explanations
+- Start with <!DOCTYPE html>`;
 }
 
 export default SystemsAIPanel;
