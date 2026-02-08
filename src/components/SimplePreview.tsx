@@ -1093,7 +1093,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     if (!enableSelection || !iframeRef.current) return;
     const iframe = iframeRef.current;
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) return;
+    if (!iframeDoc || !iframeDoc.head || !iframeDoc.body) return;
 
     // Inject selection-mode styles: suppress intent scripts, add cursor
     const style = iframeDoc.createElement('style');
