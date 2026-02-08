@@ -26,6 +26,7 @@ const AIPageGenerator = lazy(() => import("./components/creatives/AIPageGenerato
 const CRMDashboard = lazy(() => import("./pages/CRMDashboard"));
 const BusinessSettings = lazy(() => import("./pages/BusinessSettings"));
 const CloudDashboard = lazy(() => import("./pages/CloudDashboard"));
+const InvestorDeck = lazy(() => import("./pages/InvestorDeck"));
 
 const queryClient = new QueryClient();
 
@@ -116,6 +117,11 @@ const App = () => (
             <Route path="/cloud" element={
               <Suspense fallback={<PageLoader />}>
                 <CloudDashboard />
+              </Suspense>
+            } />
+            <Route path="/investor-deck" element={
+              <Suspense fallback={<PageLoader />}>
+                <InvestorDeck />
               </Suspense>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
