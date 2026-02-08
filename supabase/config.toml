@@ -59,3 +59,60 @@ verify_jwt = false
 
 [functions.agent-runner]
 verify_jwt = false
+
+[functions.systems-build]
+verify_jwt = false
+
+[functions.systems-classify]
+verify_jwt = false
+
+[functions.systems-compile]
+verify_jwt = false
+
+[functions.install-system]
+verify_jwt = false
+
+[functions.automation-event]
+verify_jwt = false
+
+[functions.automation-runtime]
+verify_jwt = false
+
+[functions.builder-actions]
+verify_jwt = false
+
+[functions.builder-provision]
+verify_jwt = false
+
+[functions.builder-provision-lite]
+verify_jwt = false
+
+[functions.create-booking]
+verify_jwt = false
+
+[functions.create-lead]
+verify_jwt = false
+
+[functions.create-lead-lite]
+verify_jwt = false
+
+[functions.generate-fullstack-app]
+verify_jwt = false
+
+[functions.intent-action]
+verify_jwt = false
+
+[functions.intent-booking]
+verify_jwt = false
+
+[functions.intent-router]
+verify_jwt = false
+
+[functions.intent-router-lite]
+verify_jwt = false
+
+[functions.save-email-provider]
+verify_jwt = false
+
+[functions.template-backend]
+verify_jwt = false
