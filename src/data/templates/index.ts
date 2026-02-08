@@ -91,16 +91,39 @@ export {
 // Salon Templates Only
 export { salonTemplates } from './salon';
 
-// Import salon templates for aggregation
+// Industry Templates
+export { restaurantTemplates } from './restaurant';
+export { localServiceTemplates } from './local-service';
+export { ecommerceTemplates } from './ecommerce';
+export { coachingTemplates } from './coaching';
+export { realEstateTemplates } from './real-estate';
+export { portfolioTemplates } from './portfolio';
+export { nonprofitTemplates } from './nonprofit';
+
+// Import all templates for aggregation
 import { salonTemplates } from './salon';
+import { restaurantTemplates } from './restaurant';
+import { localServiceTemplates } from './local-service';
+import { ecommerceTemplates } from './ecommerce';
+import { coachingTemplates } from './coaching';
+import { realEstateTemplates } from './real-estate';
+import { portfolioTemplates } from './portfolio';
+import { nonprofitTemplates } from './nonprofit';
 import type { LayoutCategory, LayoutTemplate, BusinessSystemType } from './types';
 import { businessSystems } from './types';
 
 /**
- * All layout templates - Currently only Salon Booking templates
+ * All layout templates - 24 premium templates across 8 industries
  */
 export const layoutTemplates: LayoutTemplate[] = [
   ...salonTemplates,
+  ...restaurantTemplates,
+  ...localServiceTemplates,
+  ...ecommerceTemplates,
+  ...coachingTemplates,
+  ...realEstateTemplates,
+  ...portfolioTemplates,
+  ...nonprofitTemplates,
 ];
 
 /**
