@@ -1847,6 +1847,7 @@ ${html}
       action: () => {
         setBuilderMode('preview');
         setIsInteractiveMode(true);
+        setSelectedHTMLElement(null);
       },
     },
     {
@@ -2817,6 +2818,9 @@ ${body.innerHTML}
               onModeChange={(mode) => {
                 setBuilderMode(mode);
                 setIsInteractiveMode(mode === 'preview');
+                if (mode === 'preview') {
+                  setSelectedHTMLElement(null);
+                }
               }}
               hasSelection={!!selectedHTMLElement || !!selectedObject}
               onDelete={() => {
@@ -3359,7 +3363,7 @@ export default function App() {
         )}
 
         {/* Floating Element Toolbar - appears over selected elements */}
-        {selectedHTMLElement && viewMode === 'canvas' && (
+        {selectedHTMLElement && viewMode === 'canvas' && builderMode === 'select' && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
             <ElementFloatingToolbar
               element={selectedHTMLElement}
