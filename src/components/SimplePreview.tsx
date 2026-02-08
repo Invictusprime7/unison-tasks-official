@@ -3,12 +3,22 @@
  * 
  * A simple, reliable preview that renders HTML/JSX directly in an iframe.
  * No complex VFS, Docker, or file system - just takes code and renders it.
+ * 
+ * Supports optional element selection mode for the web builder's Edit toggle.
  */
 
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { FileCode, RefreshCw, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getSelectedElementData, highlightElement, removeHighlight } from '@/utils/htmlElementSelector';
+
+export interface SimplePreviewHandle {
+  getIframe: () => HTMLIFrameElement | null;
+  deleteElement: (selector: string) => boolean;
+  duplicateElement: (selector: string) => boolean;
+  updateElement: (selector: string, updates: any) => boolean;
+}
 
 export interface SimplePreviewProps {
   /** The code to preview - can be HTML, JSX, or React code */
@@ -19,6 +29,10 @@ export interface SimplePreviewProps {
   showToolbar?: boolean;
   /** Device breakpoint for responsive preview */
   device?: 'desktop' | 'tablet' | 'mobile';
+  /** Enable element selection (for Edit mode) */
+  enableSelection?: boolean;
+  /** Callback when an element is selected */
+  onElementSelect?: (elementData: any) => void;
 }
 
 /**
@@ -992,14 +1006,63 @@ function getEmptyStateHtml(): string {
 </html>`;
 }
 
-export const SimplePreview: React.FC<SimplePreviewProps> = ({
+export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>(({
   code,
   className,
   showToolbar = true,
   device = 'desktop',
-}) => {
+  enableSelection = false,
+  onElementSelect,
+}, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
+  const selectedElementRef = useRef<HTMLElement | null>(null);
   
+  // Expose imperative handle for delete/duplicate/update from parent
+  useImperativeHandle(ref, () => ({
+    getIframe: () => iframeRef.current,
+    deleteElement: (selector: string) => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return false;
+      try {
+        const el = doc.querySelector(selector);
+        if (el) { el.remove(); selectedElementRef.current = null; return true; }
+      } catch (e) { console.error('[SimplePreview] Delete failed:', e); }
+      return false;
+    },
+    duplicateElement: (selector: string) => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return false;
+      try {
+        const el = doc.querySelector(selector);
+        if (el && el.parentNode) {
+          const clone = el.cloneNode(true) as HTMLElement;
+          if (clone.id) clone.id = `${clone.id}-copy-${Date.now()}`;
+          el.parentNode.insertBefore(clone, el.nextSibling);
+          return true;
+        }
+      } catch (e) { console.error('[SimplePreview] Duplicate failed:', e); }
+      return false;
+    },
+    updateElement: (selector: string, updates: any) => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return false;
+      try {
+        const el = doc.querySelector(selector) as HTMLElement | null;
+        if (!el) return false;
+        if (updates.textContent !== undefined) el.textContent = updates.textContent;
+        if (updates.innerHTML !== undefined) el.innerHTML = updates.innerHTML;
+        if (updates.styles) {
+          Object.entries(updates.styles).forEach(([k, v]) => {
+            (el.style as any)[k] = v;
+          });
+        }
+        return true;
+      } catch (e) { console.error('[SimplePreview] Update failed:', e); }
+      return false;
+    },
+  }));
+
   // Convert code to HTML and create blob URL
   const previewUrl = useMemo(() => {
     console.log('[SimplePreview] ===== GENERATING PREVIEW =====');
@@ -1024,6 +1087,97 @@ export const SimplePreview: React.FC<SimplePreviewProps> = ({
       }
     };
   }, [previewUrl]);
+
+  // ---- Element selection for Edit mode ----
+  const attachSelectionListeners = useCallback(() => {
+    if (!enableSelection || !iframeRef.current) return;
+    const iframe = iframeRef.current;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) return;
+
+    // Inject selection-mode styles: suppress intent scripts, add cursor
+    const style = iframeDoc.createElement('style');
+    style.id = 'simple-preview-selection-styles';
+    style.textContent = `
+      * { cursor: default !important; }
+      button, a, [role="button"] { cursor: pointer !important; }
+    `;
+    if (!iframeDoc.getElementById('simple-preview-selection-styles')) {
+      iframeDoc.head.appendChild(style);
+    }
+
+    let currentHovered: HTMLElement | null = null;
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
+      if (currentHovered && currentHovered !== target) {
+        removeHighlight(currentHovered);
+      }
+      highlightElement(target, '#3b82f6');
+      currentHovered = target;
+    };
+
+    const handleMouseOut = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && currentHovered === target) {
+        removeHighlight(target);
+        currentHovered = null;
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      const target = e.target as HTMLElement;
+      if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
+
+      // Remove previous selection highlight
+      if (selectedElementRef.current && selectedElementRef.current !== target) {
+        removeHighlight(selectedElementRef.current);
+      }
+
+      const elementData = getSelectedElementData(target);
+      console.log('[SimplePreview] Element selected:', elementData);
+      onElementSelect?.(elementData);
+
+      selectedElementRef.current = target;
+      highlightElement(target, '#10b981');
+    };
+
+    iframeDoc.addEventListener('mouseover', handleMouseOver);
+    iframeDoc.addEventListener('mouseout', handleMouseOut);
+    // Use capture phase so our handler fires before the intent listener can
+    iframeDoc.addEventListener('click', handleClick, true);
+
+    return () => {
+      iframeDoc.removeEventListener('mouseover', handleMouseOver);
+      iframeDoc.removeEventListener('mouseout', handleMouseOut);
+      iframeDoc.removeEventListener('click', handleClick, true);
+    };
+  }, [enableSelection, onElementSelect]);
+
+  // Re-attach selection listeners whenever iframe reloads
+  useEffect(() => {
+    if (!enableSelection) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const onLoad = () => {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => attachSelectionListeners(), 100);
+    };
+
+    iframe.addEventListener('load', onLoad);
+    // Also try immediately in case iframe is already loaded
+    attachSelectionListeners();
+
+    return () => {
+      iframe.removeEventListener('load', onLoad);
+    };
+  }, [enableSelection, previewUrl, attachSelectionListeners]);
   
   const handleRefresh = () => {
     if (iframeRef.current) {
@@ -1094,6 +1248,8 @@ export const SimplePreview: React.FC<SimplePreviewProps> = ({
       </div>
     </div>
   );
-};
+});
+
+SimplePreview.displayName = 'SimplePreview';
 
 export default SimplePreview;

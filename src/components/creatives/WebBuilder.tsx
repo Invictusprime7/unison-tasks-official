@@ -15,7 +15,7 @@ import {
 import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
-import { SimplePreview } from '@/components/SimplePreview';
+import { SimplePreview, type SimplePreviewHandle } from '@/components/SimplePreview';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { LiveHTMLPreview, type LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
@@ -362,6 +362,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
   const livePreviewRef = useRef<VFSPreviewHandle | null>(null);
   const liveHtmlPreviewRef = useRef<LiveHTMLPreviewHandle | null>(null);
+  const simplePreviewRef = useRef<SimplePreviewHandle | null>(null);
 
   // Template Customizer - full DOM control
   const templateCustomizer = useTemplateCustomizer();
@@ -2971,34 +2972,26 @@ ${body.innerHTML}
                   data-drop-zone="true"
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
-                  {/* Select mode: enable element/section selection for AI redesign */}
-                  {builderMode === 'select' ? (
-                    <LiveHTMLPreview
-                      ref={liveHtmlPreviewRef}
-                      code={previewCode}
-                      className="w-full h-full min-h-0 flex-1"
-                      enableSelection
-                      isInteractiveMode={false}
-                      onElementSelect={(el) => {
-                        setSelectedHTMLElement({
-                          tagName: el.tagName,
-                          textContent: el.textContent,
-                          styles: el.styles,
-                          attributes: el.attributes,
-                          selector: el.selector,
-                          html: el.html,
-                          section: el.section,
-                        });
-                      }}
-                    />
-                  ) : (
-                    <SimplePreview
-                      code={previewCode}
-                      className="w-full h-full min-h-0 flex-1"
-                      showToolbar={false}
-                      device={device}
-                    />
-                  )}
+                  {/* Both modes use SimplePreview for consistent rendering */}
+                  <SimplePreview
+                    ref={builderMode === 'select' ? simplePreviewRef : undefined}
+                    code={previewCode}
+                    className="w-full h-full min-h-0 flex-1"
+                    showToolbar={false}
+                    device={device}
+                    enableSelection={builderMode === 'select'}
+                    onElementSelect={builderMode === 'select' ? (el) => {
+                      setSelectedHTMLElement({
+                        tagName: el.tagName,
+                        textContent: el.textContent,
+                        styles: el.styles,
+                        attributes: el.attributes,
+                        selector: el.selector,
+                        html: el.html,
+                        section: el.section,
+                      });
+                    } : undefined}
+                  />
                 </div>
               </div>
             )}
@@ -3166,32 +3159,25 @@ export default function App() {
                     data-drop-zone="true"
                     className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
-                    {builderMode === 'select' ? (
-                      <LiveHTMLPreview
-                        ref={liveHtmlPreviewRef}
-                        code={previewCode}
-                        className="w-full h-full min-h-0 flex-1"
-                        enableSelection
-                        isInteractiveMode={false}
-                        onElementSelect={(el) => {
-                          setSelectedHTMLElement({
-                            tagName: el.tagName,
-                            textContent: el.textContent,
-                            styles: el.styles,
-                            attributes: el.attributes,
-                            selector: el.selector,
-                            html: el.html,
-                            section: el.section,
-                          });
-                        }}
-                      />
-                    ) : (
-                      <SimplePreview
-                        code={previewCode}
-                        className="w-full h-full min-h-0 flex-1"
-                        showToolbar={false}
-                      />
-                    )}
+                    {/* Both modes use SimplePreview for consistent rendering */}
+                    <SimplePreview
+                      ref={builderMode === 'select' ? simplePreviewRef : undefined}
+                      code={previewCode}
+                      className="w-full h-full min-h-0 flex-1"
+                      showToolbar={false}
+                      enableSelection={builderMode === 'select'}
+                      onElementSelect={builderMode === 'select' ? (el) => {
+                        setSelectedHTMLElement({
+                          tagName: el.tagName,
+                          textContent: el.textContent,
+                          styles: el.styles,
+                          attributes: el.attributes,
+                          selector: el.selector,
+                          html: el.html,
+                          section: el.section,
+                        });
+                      } : undefined}
+                    />
                   </div>
                 </div>
 
@@ -3381,14 +3367,14 @@ export default function App() {
               onUpdateText={handleFloatingTextUpdate}
               onReplaceImage={handleFloatingImageReplace}
               onDelete={(selector) => {
-                if (liveHtmlPreviewRef.current) {
-                  liveHtmlPreviewRef.current.deleteElement(selector);
+                if (simplePreviewRef.current) {
+                  simplePreviewRef.current.deleteElement(selector);
                   setSelectedHTMLElement(null);
                 }
               }}
               onDuplicate={(selector) => {
-                if (liveHtmlPreviewRef.current) {
-                  liveHtmlPreviewRef.current.duplicateElement(selector);
+                if (simplePreviewRef.current) {
+                  simplePreviewRef.current.duplicateElement(selector);
                 }
               }}
               onClear={() => { setSelectedHTMLElement(null); setAiEditRequested(false); }}
