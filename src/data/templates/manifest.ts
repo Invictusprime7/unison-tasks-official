@@ -1157,6 +1157,15 @@ export const templateManifests: Record<string, TemplateManifest> = {
 };
 
 // ============================================================================
+// MERGE INDUSTRY TEMPLATE MANIFESTS
+// ============================================================================
+
+import { industryTemplateManifests } from './manifest-industry';
+
+// Merge industry-specific manifests (they take priority for matching IDs)
+Object.assign(templateManifests, industryTemplateManifests);
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -1188,8 +1197,17 @@ export function getManifestByPattern(templateId: string): TemplateManifest | und
  * Get default manifest for a system type (when no specific template manifest exists)
  */
 export function getDefaultManifestForSystem(systemType: BusinessSystemType): TemplateManifest {
-  // Only booking system is supported now
-  return templateManifests['salon-booking'] || templateManifests['restaurant-fine-dining'];
+  // Return a sensible default manifest per system type
+  const defaults: Record<string, string> = {
+    booking: 'salon-luxury-premium',
+    store: 'ecommerce-dark-fashion',
+    agency: 'realestate-dark-luxury',
+    portfolio: 'portfolio-dark-minimal',
+    content: 'nonprofit-warm-mission',
+    saas: 'saas-landing',
+  };
+  const key = defaults[systemType] || 'salon-luxury-premium';
+  return templateManifests[key] || templateManifests['salon-booking'] || templateManifests['restaurant-fine-dining'];
 }
 
 /**
