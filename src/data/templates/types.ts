@@ -5,15 +5,18 @@
 
 // Layout categories for template classification
 export type LayoutCategory = 
-  | "salon"      // Salon/spa booking templates
-  | "landing"    // Landing page templates
-  | "restaurant" // Restaurant templates
-  | "contractor" // Contractor/service templates
-  | "portfolio"  // Portfolio showcase templates
-  | "agency"     // Agency/business templates
-  | "store"      // E-commerce store templates
-  | "saas"       // SaaS product templates
-  | "content";   // Content/blog templates
+  | "salon"       // Salon/spa booking templates
+  | "landing"     // Landing page templates
+  | "restaurant"  // Restaurant templates
+  | "contractor"  // Contractor/service templates
+  | "portfolio"   // Portfolio showcase templates
+  | "agency"      // Agency/business templates
+  | "store"       // E-commerce store templates
+  | "saas"        // SaaS product templates
+  | "content"     // Content/blog templates
+  | "coaching"    // Coaching/consulting templates
+  | "realestate"  // Real estate templates
+  | "nonprofit";  // Nonprofit/charity templates
 
 // Business System Types
 export type BusinessSystemType =
@@ -59,7 +62,7 @@ export const businessSystems: BusinessSystem[] = [
     description: "Perfect for salons, restaurants, spas, and service businesses. Includes calendar, appointments, and client management.",
     icon: "📅",
     color: "bg-pink-500",
-    templateCategories: ["salon", "restaurant", "contractor"],
+    templateCategories: ["salon", "restaurant", "contractor", "coaching"],
     features: ["Online booking", "Calendar sync", "Client management", "Email notifications", "Service menu"],
     intents: ["booking.create", "contact.submit", "newsletter.subscribe"]
   },
@@ -81,7 +84,7 @@ export const businessSystems: BusinessSystem[] = [
     description: "For creative agencies, consultancies, and professional services.",
     icon: "🏢",
     color: "bg-purple-500",
-    templateCategories: ["agency", "landing"],
+    templateCategories: ["agency", "landing", "realestate"],
     features: ["Portfolio showcase", "Team profiles", "Case studies", "Contact forms", "Quote requests"],
     intents: ["contact.submit", "quote.request", "newsletter.subscribe"]
   },
@@ -111,10 +114,10 @@ export const businessSystems: BusinessSystem[] = [
     id: "content",
     name: "Content System",
     tagline: "Share your content and stories",
-    description: "For blogs, media sites, and content creators.",
+    description: "For blogs, media sites, content creators, and nonprofits.",
     icon: "📝",
     color: "bg-orange-500",
-    templateCategories: ["content"],
+    templateCategories: ["content", "nonprofit"],
     features: ["Blog layouts", "Article templates", "Newsletter signup", "Author profiles"],
     intents: ["contact.submit", "newsletter.subscribe"]
   }
