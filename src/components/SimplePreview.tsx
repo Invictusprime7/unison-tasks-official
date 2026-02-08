@@ -1159,23 +1159,53 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     };
   }, [enableSelection, onElementSelect]);
 
-  // Re-attach selection listeners whenever iframe reloads
+  // Re-attach selection listeners whenever iframe reloads; clean up when disabled
+  const selectionCleanupRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
-    if (!enableSelection) return;
+    // Always clean up previous listeners first
+    if (selectionCleanupRef.current) {
+      selectionCleanupRef.current();
+      selectionCleanupRef.current = null;
+    }
+
+    // Also strip leftover selection styles & highlights from the iframe
     const iframe = iframeRef.current;
-    if (!iframe) return;
+    if (iframe) {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc) {
+          const oldStyle = iframeDoc.getElementById('simple-preview-selection-styles');
+          if (oldStyle) oldStyle.remove();
+          // Remove any residual outlines
+          iframeDoc.querySelectorAll('*').forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            if (htmlEl.style.outline) htmlEl.style.outline = '';
+            if (htmlEl.style.outlineOffset) htmlEl.style.outlineOffset = '';
+          });
+        }
+      } catch { /* cross-origin safety */ }
+    }
+
+    if (!enableSelection || !iframe) return;
 
     const onLoad = () => {
       // Small delay to ensure DOM is ready
-      setTimeout(() => attachSelectionListeners(), 100);
+      setTimeout(() => {
+        selectionCleanupRef.current = attachSelectionListeners() || null;
+      }, 100);
     };
 
     iframe.addEventListener('load', onLoad);
     // Also try immediately in case iframe is already loaded
-    attachSelectionListeners();
+    selectionCleanupRef.current = attachSelectionListeners() || null;
 
     return () => {
       iframe.removeEventListener('load', onLoad);
+      if (selectionCleanupRef.current) {
+        selectionCleanupRef.current();
+        selectionCleanupRef.current = null;
+      }
     };
   }, [enableSelection, previewUrl, attachSelectionListeners]);
   
