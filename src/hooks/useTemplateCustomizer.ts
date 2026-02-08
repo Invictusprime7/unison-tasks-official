@@ -359,6 +359,7 @@ export const useTemplateCustomizer = () => {
       return newMap;
     });
     setIsDirty(true);
+    setOverrideVersion(v => v + 1); // Trigger reactive apply
   }, []);
 
   const clearElementOverride = useCallback((selector: string) => {

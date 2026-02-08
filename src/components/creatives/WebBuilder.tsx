@@ -411,18 +411,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Handle element-level edits from floating toolbar
   const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
     templateCustomizer.setElementOverride(selector, { styles });
-    applyCustomizerOverrides();
-  }, [templateCustomizer, applyCustomizerOverrides]);
+    // Don't call applyCustomizerOverrides synchronously — setElementOverride
+    // increments overrideVersion which triggers the reactive useEffect
+  }, [templateCustomizer]);
 
   const handleFloatingTextUpdate = useCallback((selector: string, text: string) => {
     templateCustomizer.setElementOverride(selector, { textContent: text });
-    applyCustomizerOverrides();
-  }, [templateCustomizer, applyCustomizerOverrides]);
+  }, [templateCustomizer]);
 
   const handleFloatingImageReplace = useCallback((selector: string, src: string) => {
     templateCustomizer.setElementOverride(selector, { imageSrc: src });
-    applyCustomizerOverrides();
-  }, [templateCustomizer, applyCustomizerOverrides]);
+  }, [templateCustomizer]);
 
 
   const applyElementHtmlUpdate = useCallback((code: string, selector: string, newHtml: string) => {
