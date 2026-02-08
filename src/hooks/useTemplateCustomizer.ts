@@ -221,6 +221,7 @@ export const useTemplateCustomizer = () => {
   const [elementOverrides, setElementOverrides] = useState<Map<string, ElementOverride>>(new Map());
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [overrideVersion, setOverrideVersion] = useState(0); // Increments on every change to trigger reactivity
   const originalHtmlRef = useRef<string>('');
 
   // ---- Parse template structure ----
@@ -341,6 +342,7 @@ export const useTemplateCustomizer = () => {
       img.id === imageId ? { ...img, src: newSrc, alt: newAlt || img.alt } : img
     ));
     setIsDirty(true);
+    setOverrideVersion(v => v + 1);
   }, []);
 
   // ---- Element-level overrides ----
@@ -521,9 +523,19 @@ ${elementCSS}
       });
     }
 
-    // Replace images
+    // Replace images - use multiple fallback selectors
     images.forEach(img => {
-      const el = doc.querySelector(img.selector) as HTMLImageElement;
+      let el = doc.querySelector(img.selector) as HTMLImageElement;
+      
+      // Fallback: try matching by original src attribute
+      if (!el) {
+        const allImgs = doc.querySelectorAll('img');
+        const idx = parseInt(img.id.replace('img-', ''), 10);
+        if (!isNaN(idx) && idx < allImgs.length) {
+          el = allImgs[idx] as HTMLImageElement;
+        }
+      }
+      
       if (el && el.getAttribute('src') !== img.src) {
         el.setAttribute('src', img.src);
         if (img.alt) el.setAttribute('alt', img.alt);
@@ -579,6 +591,7 @@ ${elementCSS}
     elementOverrides,
     activePresetId,
     isDirty,
+    overrideVersion,
     presets: THEME_PRESETS,
     availableFonts: GOOGLE_FONTS,
 
