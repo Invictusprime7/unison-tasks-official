@@ -5,7 +5,7 @@
  * Provides developer-grade control over every visual aspect of the template.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,16 +87,20 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
   onApply,
   className,
 }) => {
-  const [imageUrlInput, setImageUrlInput] = useState('');
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageReplace = useCallback((imageId: string) => {
-    if (!imageUrlInput.trim()) return;
-    customizer.replaceImage(imageId, imageUrlInput.trim());
-    setImageUrlInput('');
-    setReplacingImageId(null);
-    onApply();
-  }, [imageUrlInput, customizer, onApply]);
+  const handleImageFileUpload = useCallback((imageId: string, file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      customizer.replaceImage(imageId, dataUrl);
+      setReplacingImageId(null);
+      onApply();
+    };
+    reader.readAsDataURL(file);
+  }, [customizer, onApply]);
 
   const handleSectionMove = useCallback((index: number, direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
@@ -415,15 +419,24 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                         </p>
                         {replacingImageId === img.id ? (
                           <div className="flex gap-1">
-                            <Input
-                              value={imageUrlInput}
-                              onChange={e => setImageUrlInput(e.target.value)}
-                              placeholder="Paste image URL..."
-                              className="h-7 text-xs flex-1"
-                              onKeyDown={e => e.key === 'Enter' && handleImageReplace(img.id)}
+                            <input
+                              ref={imageFileInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleImageFileUpload(img.id, file);
+                              }}
                             />
-                            <Button size="sm" onClick={() => handleImageReplace(img.id)} className="h-7 w-7 p-0">
-                              <Check className="w-3 h-3" />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => imageFileInputRef.current?.click()}
+                              className="flex-1 h-7 text-xs gap-1"
+                            >
+                              <Upload className="w-3 h-3" />
+                              Choose File
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => setReplacingImageId(null)} className="h-7 w-7 p-0">
                               <X className="w-3 h-3" />
@@ -436,7 +449,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                             onClick={() => setReplacingImageId(img.id)}
                             className="w-full h-7 text-xs gap-1"
                           >
-                            <Link className="w-3 h-3" />
+                            <Upload className="w-3 h-3" />
                             Replace Image
                           </Button>
                         )}

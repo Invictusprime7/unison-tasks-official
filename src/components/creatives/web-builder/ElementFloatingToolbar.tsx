@@ -5,7 +5,7 @@
  * Provides quick access to typography, colors, spacing, and actions.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,14 +63,14 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
 }) => {
   const [isEditingText, setIsEditingText] = useState(false);
   const [editText, setEditText] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (element?.textContent) {
       setEditText(element.textContent);
     }
     setIsEditingText(false);
-    setImageUrl('');
+    if (imageInputRef.current) imageInputRef.current.value = '';
   }, [element]);
 
   if (!element || !element.selector) return null;
@@ -101,11 +101,16 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
     setIsEditingText(false);
   };
 
-  const handleImageReplace = () => {
-    if (imageUrl.trim()) {
-      onReplaceImage(selector, imageUrl.trim());
-      setImageUrl('');
-    }
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      onReplaceImage(selector, dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -236,27 +241,22 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
       {/* Image replace */}
       {isImage && (
         <>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
-                <Image className="w-3 h-3" />
-                Replace
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3" align="start">
-              <Label className="text-xs text-muted-foreground mb-2 block">Image URL</Label>
-              <div className="flex gap-1">
-                <Input
-                  value={imageUrl}
-                  onChange={e => setImageUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="h-7 text-xs flex-1"
-                  onKeyDown={e => e.key === 'Enter' && handleImageReplace()}
-                />
-                <Button size="sm" onClick={handleImageReplace} className="h-7 text-xs px-2">Set</Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageFileChange}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => imageInputRef.current?.click()}
+          >
+            <Image className="w-3 h-3" />
+            Replace
+          </Button>
           <Separator orientation="vertical" className="h-6 mx-0.5" />
         </>
       )}
