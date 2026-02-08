@@ -2815,8 +2815,14 @@ ${body.innerHTML}
             <SimpleModeToggle
               currentMode={builderMode}
               onModeChange={(mode) => {
-                setBuilderMode(mode);
+              setBuilderMode(mode);
                 setIsInteractiveMode(mode === 'preview');
+                // Clear edit selection when entering preview mode
+                if (mode === 'preview') {
+                  setSelectedHTMLElement(null);
+                  setSelectedObject(null);
+                  setAiEditRequested(false);
+                }
               }}
               hasSelection={!!selectedHTMLElement || !!selectedObject}
               onDelete={() => {
@@ -2959,13 +2965,15 @@ ${body.innerHTML}
                       {builderMode === 'select' ? 'Select Mode - Click elements to edit' : 'Preview Mode - Test interactions'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">Del</kbd>
-                    <span>Delete</span>
-                    <span className="mx-1">·</span>
-                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘D</kbd>
-                    <span>Duplicate</span>
-                  </div>
+                  {builderMode === 'select' && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">Del</kbd>
+                      <span>Delete</span>
+                      <span className="mx-1">·</span>
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘D</kbd>
+                      <span>Duplicate</span>
+                    </div>
+                  )}
                 </div>
                 <div 
                   ref={scrollContainerRef}
@@ -3359,7 +3367,7 @@ export default function App() {
         )}
 
         {/* Floating Element Toolbar - appears over selected elements */}
-        {selectedHTMLElement && viewMode === 'canvas' && (
+        {selectedHTMLElement && viewMode === 'canvas' && builderMode === 'select' && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
             <ElementFloatingToolbar
               element={selectedHTMLElement}
