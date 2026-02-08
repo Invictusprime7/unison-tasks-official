@@ -386,6 +386,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
   }, [templateCustomizer, previewCode]);
 
+  // Auto-apply overrides when customizer state changes (e.g. after image replacement)
+  useEffect(() => {
+    if (templateCustomizer.overrideVersion > 0 && templateCustomizer.isDirty && previewCode) {
+      const customized = templateCustomizer.applyOverrides(previewCode);
+      if (customized !== previewCode) {
+        setPreviewCode(customized);
+        setEditorCode(customized);
+      }
+    }
+  }, [templateCustomizer.overrideVersion]);
+
   // Handle element-level edits from floating toolbar
   const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
     templateCustomizer.setElementOverride(selector, { styles });
