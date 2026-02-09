@@ -10,7 +10,8 @@
     "build:analyze": "vite build --mode analyze",
     "lint": "eslint .",
     "type-check": "tsc --build --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "create-review-bundle": "bash scripts/create-review-bundle.sh"
   },
   "dependencies": {
     "@babel/standalone": "^7.28.4",
