@@ -222,7 +222,7 @@ function injectIntentListener(html: string): string {
     }
 
     function normalizeText(t){
-      return (t||'').replace(/\s+/g,' ').trim();
+      return (t||'').replace(/\\s+/g,' ').trim();
     }
 
     function shouldOpenResearch(el){
@@ -318,7 +318,7 @@ function injectIntentListener(html: string): string {
       if(intent === 'nav.goto' || target){
         // Extract page name from path (e.g., "/checkout.html" -> "checkout")
         const pagePath = target || '';
-        const pageName = pagePath.replace(/^\//, '').replace(/\.html$/, '').replace(/\/$/, '') || 'index';
+        const pageName = pagePath.replace(/^\\//, '').replace(/\\.html$/, '').replace(/\\/$/, '') || 'index';
         
         // Get nav label from clicked element
         const clickedEl = document.activeElement || document.querySelector('[data-ut-path="' + target + '"]');
@@ -831,7 +831,7 @@ function wrapHtmlSnippet(html: string): string {
       return false;
     }
     function collectPayload(el){const p={};Array.from(el.attributes).forEach(a=>{if(a.name.startsWith('data-')&&a.name!=='data-intent'&&a.name!=='data-ut-intent'){const k=a.name.replace('data-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());try{p[k]=JSON.parse(a.value)}catch{p[k]=a.value}}});const f=el.closest('form');if(f)new FormData(f).forEach((v,k)=>{if(typeof v==='string')p[k]=v});return p;}
-    function normalizeText(t){return (t||'').replace(/\s+/g,' ').trim();}
+    function normalizeText(t){return (t||'').replace(/\\s+/g,' ').trim();}
     function shouldOpenResearch(el){
       try{
         const tag=(el.tagName||'').toLowerCase();

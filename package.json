@@ -66,6 +66,7 @@
     "fabric": "^6.7.1",
     "framer-motion": "^12.29.2",
     "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.14.0",
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.545.0",

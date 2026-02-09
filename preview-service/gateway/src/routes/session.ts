@@ -8,10 +8,20 @@
  * - POST /:sessionId/ping - Keep alive
  * - POST /:sessionId/stop - Stop session
  * - GET /:sessionId - Get session status
+ * 
+ * All endpoints require authentication and enforce org quotas.
  */
 
 import { Router, type Router as RouterType } from 'express';
 import { sessionManager, logger } from '../server.js';
+import { 
+  authMiddleware, 
+  apiKeyAuth,
+  requirePermission, 
+  checkQuota, 
+  verifySessionOwnership,
+  type AuthenticatedRequest 
+} from '../middleware/auth.js';
 import type { 
   StartSessionRequest, 
   PatchFileRequest,
@@ -23,11 +33,20 @@ import type {
 
 export const sessionRouter: RouterType = Router();
 
+// Apply auth middleware to all routes
+sessionRouter.use(apiKeyAuth);
+
 /**
  * POST /start
  * Create a new preview session
+ * 
+ * Requires: authentication, preview:create permission, session quota
  */
-sessionRouter.post('/start', async (req, res) => {
+sessionRouter.post('/start', 
+  requirePermission('preview:create'),
+  checkQuota('session'),
+  checkQuota('session_daily'),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const { projectId, files } = req.body as StartSessionRequest;
 
@@ -66,8 +85,12 @@ sessionRouter.post('/start', async (req, res) => {
 /**
  * PATCH /:sessionId/file
  * Update a file in the session (triggers HMR)
+ * 
+ * Requires: session ownership verification
  */
-sessionRouter.patch('/:sessionId/file', async (req, res) => {
+sessionRouter.patch('/:sessionId/file', 
+  verifySessionOwnership,
+  async (req: AuthenticatedRequest, res) => {
   try {
     const { sessionId } = req.params;
     const { path, content } = req.body as PatchFileRequest;
@@ -96,8 +119,12 @@ sessionRouter.patch('/:sessionId/file', async (req, res) => {
 /**
  * GET /:sessionId/logs
  * Get session logs
+ * 
+ * Requires: session ownership verification
  */
-sessionRouter.get('/:sessionId/logs', async (req, res) => {
+sessionRouter.get('/:sessionId/logs', 
+  verifySessionOwnership,
+  async (req: AuthenticatedRequest, res) => {
   try {
     const { sessionId } = req.params;
     const since = req.query.since as string | undefined;
@@ -118,8 +145,12 @@ sessionRouter.get('/:sessionId/logs', async (req, res) => {
 /**
  * POST /:sessionId/ping
  * Keep session alive
+ * 
+ * Requires: session ownership verification
  */
-sessionRouter.post('/:sessionId/ping', (req, res) => {
+sessionRouter.post('/:sessionId/ping', 
+  verifySessionOwnership,
+  (req: AuthenticatedRequest, res) => {
   const { sessionId } = req.params;
   const success = sessionManager.pingSession(sessionId);
   
@@ -133,8 +164,12 @@ sessionRouter.post('/:sessionId/ping', (req, res) => {
 /**
  * POST /:sessionId/stop
  * Stop a session
+ * 
+ * Requires: session ownership verification
  */
-sessionRouter.post('/:sessionId/stop', async (req, res) => {
+sessionRouter.post('/:sessionId/stop', 
+  verifySessionOwnership,
+  async (req: AuthenticatedRequest, res) => {
   try {
     const { sessionId } = req.params;
     await sessionManager.stopSession(sessionId);
@@ -151,8 +186,12 @@ sessionRouter.post('/:sessionId/stop', async (req, res) => {
 /**
  * GET /:sessionId
  * Get session status
+ * 
+ * Requires: session ownership verification
  */
-sessionRouter.get('/:sessionId', (req, res) => {
+sessionRouter.get('/:sessionId', 
+  verifySessionOwnership,
+  (req: AuthenticatedRequest, res) => {
   const { sessionId } = req.params;
   const session = sessionManager.getSession(sessionId);
 

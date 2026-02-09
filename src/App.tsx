@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Suspense, lazy } from "react";
+import { RouteErrorBoundary, AsyncBoundary } from "@/components/RouteErrorBoundary";
 
 // Static imports for lightweight pages
 import Landing from "./pages/Landing";
@@ -26,7 +27,10 @@ const AIPageGenerator = lazy(() => import("./components/creatives/AIPageGenerato
 const CRMDashboard = lazy(() => import("./pages/CRMDashboard"));
 const BusinessSettings = lazy(() => import("./pages/BusinessSettings"));
 const CloudDashboard = lazy(() => import("./pages/CloudDashboard"));
-const InvestorDeck = lazy(() => import("./pages/InvestorDeck"));
+const DocsPage = lazy(() => import("./pages/DocsPage"));
+const Settings = lazy(() => import("./pages/Settings"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 
 const queryClient = new QueryClient();
 
@@ -41,88 +45,104 @@ const PageLoader = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <DirectionProvider dir="ltr">
-      <TooltipProvider>
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/pricing" element={
-              <Suspense fallback={<PageLoader />}>
-                <Pricing />
-              </Suspense>
-            } />
-            <Route path="/home" element={
-              <Suspense fallback={<PageLoader />}>
-                <Index />
-              </Suspense>
-            } />
-            <Route path="/dashboard" element={
-              <Suspense fallback={<PageLoader />}>
-                <Dashboard />
-              </Suspense>
-            } />
-            <Route path="/project/:id" element={
-              <Suspense fallback={<PageLoader />}>
-                <Project />
-              </Suspense>
+  <RouteErrorBoundary routeName="root">
+    <QueryClientProvider client={queryClient}>
+      <DirectionProvider dir="ltr">
+        <TooltipProvider>
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/pricing" element={
+                <AsyncBoundary loading={<PageLoader />}>
+                  <Pricing />
+                </AsyncBoundary>
+              } />
+              <Route path="/home" element={
+                <AsyncBoundary loading={<PageLoader />}>
+                  <Index />
+                </AsyncBoundary>
+              } />
+              <Route path="/dashboard" element={
+                <AsyncBoundary loading={<PageLoader />}>
+                  <Dashboard />
+                </AsyncBoundary>
+              } />
+              <Route path="/project/:id" element={
+                <AsyncBoundary loading={<PageLoader />}>
+                  <Project />
+                </AsyncBoundary>
             } />
             <Route path="/files" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <Files />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/creatives" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <Creatives />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/planning" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <TaskPlanning />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/design-studio" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <DesignStudioPage />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/web-builder" element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteErrorBoundary routeName="web-builder">
                 <WebBuilderPage />
-              </Suspense>
+              </RouteErrorBoundary>
             } />
             <Route path="/ai-generator" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <AIPageGenerator />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/crm" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <CRMDashboard />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/business-settings" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <BusinessSettings />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/dashboard/leads" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <CRMDashboard initialView="leads" />
-              </Suspense>
+              </AsyncBoundary>
             } />
             <Route path="/cloud" element={
-              <Suspense fallback={<PageLoader />}>
+              <AsyncBoundary loading={<PageLoader />}>
                 <CloudDashboard />
-              </Suspense>
+              </AsyncBoundary>
             } />
-            <Route path="/investor-deck" element={
-              <Suspense fallback={<PageLoader />}>
-                <InvestorDeck />
-              </Suspense>
+            <Route path="/docs" element={
+              <AsyncBoundary loading={<PageLoader />}>
+                <DocsPage />
+              </AsyncBoundary>
+            } />
+            <Route path="/settings" element={
+              <AsyncBoundary loading={<PageLoader />}>
+                <Settings />
+              </AsyncBoundary>
+            } />
+            <Route path="/auth/reset-password" element={
+              <AsyncBoundary loading={<PageLoader />}>
+                <ResetPassword />
+              </AsyncBoundary>
+            } />
+            <Route path="/auth/callback" element={
+              <AsyncBoundary loading={<PageLoader />}>
+                <AuthCallback />
+              </AsyncBoundary>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
@@ -131,6 +151,7 @@ const App = () => (
       </TooltipProvider>
     </DirectionProvider>
   </QueryClientProvider>
+  </RouteErrorBoundary>
 );
 
 export default App;

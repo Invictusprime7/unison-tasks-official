@@ -24,7 +24,8 @@ import {
   Clock,
   ExternalLink,
   Plus,
-  Paintbrush
+  Paintbrush,
+  Menu
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,8 @@ import { businessSystems } from "@/data/templates/types";
 import { getTemplatesByCategory, type LayoutTemplate } from "@/data/templates";
 import { BusinessLauncher } from "@/components/onboarding/BusinessLauncher";
 import { SystemsAIPanel } from "@/components/onboarding/SystemsAIPanel";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { DocHelper } from "@/components/docs";
 
 const pricingTiers = [
   {
@@ -142,6 +145,7 @@ const Index = () => {
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [docsOpen, setDocsOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -245,9 +249,22 @@ const Index = () => {
       {/* Navigation */}
       <nav className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <CheckSquare className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">Unison Tasks</span>
+          <div className="flex items-center gap-3">
+            <Sheet open={docsOpen} onOpenChange={setDocsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Open documentation</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[400px] sm:w-[450px] p-0 overflow-hidden">
+                <DocHelper embedded className="h-full" />
+              </SheetContent>
+            </Sheet>
+            <div className="flex items-center gap-2">
+              <CheckSquare className="h-8 w-8 text-primary" />
+              <span className="text-2xl font-bold text-foreground">Unison Tasks</span>
+            </div>
           </div>
           <div className="hidden md:flex items-center gap-6">
             <a href="#systems" className="text-muted-foreground hover:text-foreground transition-colors">Systems</a>

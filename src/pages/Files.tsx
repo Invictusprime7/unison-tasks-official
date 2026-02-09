@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, FolderPlus, Search, Grid, List, Star, Home } from "lucide-react";
+import { Upload, FolderPlus, Search, Grid, List, Star, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import FileUploadDialog from "@/components/files/FileUploadDialog";
 import FileGrid from "@/components/files/FileGrid";
@@ -133,10 +133,10 @@ const Files = () => {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => navigate("/")}
+              onClick={() => navigate(-1)}
             >
-              <Home className="h-4 w-4 mr-2" />
-              Home
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
             </Button>
             <Button
               variant={viewMode === "grid" ? "default" : "outline"}

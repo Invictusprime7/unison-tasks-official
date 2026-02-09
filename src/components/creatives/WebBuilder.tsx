@@ -466,7 +466,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           el.setAttribute('src', img.src);
           if (img.alt) el.setAttribute('alt', img.alt);
         }
-      } catch {}
+      } catch { /* ignore selector errors */ }
     });
 
     // 4. Keep editorCode in sync (generate the full HTML for code-editor pane)

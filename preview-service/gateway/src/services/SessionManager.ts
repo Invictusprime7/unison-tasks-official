@@ -284,6 +284,14 @@ export class SessionManager {
   }
 
   private async startContainer(sessionId: string, workDir: string, port: number): Promise<Docker.Container> {
+    // Enterprise-grade container resource limits
+    const MEMORY_LIMIT = parseInt(process.env.CONTAINER_MEMORY_MB || '256', 10) * 1024 * 1024;
+    const MEMORY_SWAP = MEMORY_LIMIT; // No swap allowed (prevents OOM swapping)
+    const CPU_PERIOD = 100000; // microseconds
+    const CPU_QUOTA = parseInt(process.env.CONTAINER_CPU_PERCENT || '25', 10) * 1000; // 25% CPU by default
+    const PIDS_LIMIT = 64; // Max number of processes
+    const DISK_QUOTA = parseInt(process.env.CONTAINER_DISK_MB || '100', 10) * 1024 * 1024;
+    
     const container = await this.docker.createContainer({
       Image: CONTAINER_IMAGE,
       name: `preview-${sessionId}`,
@@ -296,18 +304,65 @@ export class SessionManager {
           '4173/tcp': [{ HostPort: port.toString() }],
         },
         Binds: [`${workDir}:/app:rw`],
-        Memory: 512 * 1024 * 1024, // 512MB
+        
+        // Memory limits
+        Memory: MEMORY_LIMIT,
+        MemorySwap: MEMORY_SWAP,
+        MemoryReservation: Math.floor(MEMORY_LIMIT * 0.5),
+        OomKillDisable: false, // Allow OOM killer if memory exceeded
+        
+        // CPU limits
+        CpuPeriod: CPU_PERIOD,
+        CpuQuota: CPU_QUOTA,
         CpuShares: 256,
-        AutoRemove: true,
+        
+        // Process limits
+        PidsLimit: PIDS_LIMIT,
+        
+        // Security settings
+        ReadonlyRootfs: false, // Vite needs to write
+        SecurityOpt: ['no-new-privileges:true'],
+        CapDrop: ['ALL'],
+        CapAdd: ['CHOWN', 'SETUID', 'SETGID'], // Minimal capabilities for Node
+        
+        // Network restrictions (only allow specific egress)
+        // In production, use a restricted network with allowlist
         NetworkMode: CONTAINER_NETWORK,
+        
+        // Filesystem limits (requires disk quota support)
+        StorageOpt: process.env.ENABLE_DISK_QUOTA === 'true' ? {
+          size: `${DISK_QUOTA}`,
+        } : undefined,
+        
+        // Cleanup
+        AutoRemove: true,
+        
+        // Resource monitoring
+        BlkioWeight: 300, // Lower disk I/O priority
+        
+        // DNS - use internal resolver only (limits network access)
+        Dns: process.env.CONTAINER_DNS ? [process.env.CONTAINER_DNS] : undefined,
       },
       Env: [
         `SESSION_ID=${sessionId}`,
         'NODE_ENV=development',
+        // Limit npm/node network access
+        'npm_config_offline=true', // Disable npm network calls
+        'DISABLE_TELEMETRY=1',
+        'DO_NOT_TRACK=1',
       ],
       Labels: {
         'unison.session.id': sessionId,
         'unison.service': 'preview-worker',
+        'unison.created': new Date().toISOString(),
+      },
+      // Healthcheck
+      Healthcheck: {
+        Test: ['CMD', 'curl', '-f', 'http://localhost:4173/', '||', 'exit', '1'],
+        Interval: 10 * 1000000000, // 10 seconds in nanoseconds
+        Timeout: 5 * 1000000000,
+        Retries: 3,
+        StartPeriod: 30 * 1000000000,
       },
     });
 
