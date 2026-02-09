@@ -1,7 +1,9 @@
 #!/bin/bash
+set -e
 
 # Creates unison_tasks_review_bundle.zip with only important files
-rm -rf .review_bundle && mkdir -p .review_bundle
+rm -rf .review_bundle
+mkdir -p .review_bundle
 
 rsync -av --prune-empty-dirs \
   --include='README*' \
@@ -35,5 +37,7 @@ rsync -av --prune-empty-dirs \
   --exclude='.git/***' \
   ./ .review_bundle/
 
-cd .review_bundle && zip -r ../unison_tasks_review_bundle.zip . && cd ..
+cd .review_bundle || exit 1
+zip -r ../unison_tasks_review_bundle.zip .
+cd ..
 echo "Created: unison_tasks_review_bundle.zip"
