@@ -8,6 +8,8 @@
  * - Assets & Media
  * - Email & Notifications
  * - Third-party Integrations
+ * 
+ * Fully wired with CloudContext for real-time state management.
  */
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -23,6 +25,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+// Cloud Context for centralized state
+import { CloudProvider, useCloud } from '@/contexts/CloudContext';
+
 // Cloud Tab Components
 import { 
   CloudProfile, 
@@ -32,11 +37,10 @@ import {
   CloudEmail, 
   CloudIntegrations,
   CloudSecurity,
-  CloudTeams,
 } from '@/components/cloud';
 
 // Types
-type CloudTab = 'profile' | 'businesses' | 'projects' | 'assets' | 'email' | 'integrations' | 'security' | 'teams';
+type CloudTab = 'profile' | 'businesses' | 'projects' | 'assets' | 'email' | 'integrations' | 'security';
 
 interface TabConfig {
   id: CloudTab;
@@ -95,13 +99,6 @@ const TABS: TabConfig[] = [
     icon: <Shield className="h-5 w-5" />,
     description: 'Account protection',
     gradient: 'from-green-500 to-emerald-500'
-  },
-  { 
-    id: 'teams', 
-    label: 'Teams', 
-    icon: <User className="h-5 w-5" />,
-    description: 'Members & roles',
-    gradient: 'from-pink-500 to-rose-500'
   },
 ];
 
@@ -216,10 +213,11 @@ function NavTab({
   );
 }
 
-// Main Cloud Dashboard Component
-export default function CloudDashboard() {
+// Main Cloud Dashboard Component - wrapped by CloudProvider
+function CloudDashboardContent() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const cloud = useCloud(); // Use cloud context for centralized state
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<CloudTab>('profile');
@@ -330,8 +328,6 @@ export default function CloudDashboard() {
         return <CloudIntegrations userId={user.id} />;
       case 'security':
         return <CloudSecurity userId={user.id} />;
-      case 'teams':
-        return <CloudTeams userId={user.id} />;
       default:
         return <CloudProfile user={user} />;
     }
@@ -503,5 +499,14 @@ export default function CloudDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrapper component that provides CloudContext
+export default function CloudDashboardWithProvider() {
+  return (
+    <CloudProvider>
+      <CloudDashboardContent />
+    </CloudProvider>
   );
 }

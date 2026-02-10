@@ -7,6 +7,8 @@
  * - Login history
  * - Two-factor authentication
  * - Security alerts
+ * 
+ * Wired with CloudContext for real-time security data.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -61,6 +63,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+// Import Cloud context for wired security data
+import { useCloudSecurity } from '@/contexts/CloudContext';
 
 interface CloudSecurityProps {
   userId: string;
@@ -290,9 +295,20 @@ function LoginHistoryItem({ event }: { event: LoginEvent }) {
 
 export function CloudSecurity({ userId }: CloudSecurityProps) {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loginHistory, setLoginHistory] = useState<LoginEvent[]>([]);
+  
+  // Use CloudContext for wired security data
+  const {
+    sessions: contextSessions,
+    loginHistory: contextLoginHistory,
+    securityStatus,
+    revokeSession: contextRevokeSession,
+    revokeAllOtherSessions,
+    enableTwoFactor,
+    disableTwoFactor,
+    refresh,
+    isLoading,
+  } = useCloudSecurity();
+  
   const [revokingSession, setRevokingSession] = useState<string | null>(null);
 
   // Password change state
@@ -303,79 +319,33 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
   const [changingPassword, setChangingPassword] = useState(false);
 
   // 2FA state
-  const [twoFaEnabled, setTwoFaEnabled] = useState(false);
+  const twoFaEnabled = securityStatus?.twoFactorEnabled || false;
   const [enablingTwoFa, setEnablingTwoFa] = useState(false);
 
   // Revoke all sessions dialog
   const [revokeAllDialogOpen, setRevokeAllDialogOpen] = useState(false);
   const [revokingAll, setRevokingAll] = useState(false);
 
-  useEffect(() => {
-    loadSecurityData();
-  }, [userId]);
+  // Convert context data to local format
+  const sessions: Session[] = contextSessions.map(s => ({
+    id: s.id,
+    device: s.device,
+    browser: s.browser,
+    location: s.location,
+    ipAddress: s.ipAddress,
+    lastActive: s.lastActive,
+    isCurrent: s.isCurrent,
+  }));
 
-  const loadSecurityData = async () => {
-    setLoading(true);
-    try {
-      // Simulated sessions - would come from user_sessions table
-      const mockSessions: Session[] = [
-        {
-          id: '1',
-          device: 'Windows 11',
-          browser: 'Chrome 120',
-          location: 'New York, US',
-          ipAddress: '192.168.1.1',
-          lastActive: new Date(),
-          isCurrent: true,
-        },
-        {
-          id: '2',
-          device: 'iPhone 15 Pro',
-          browser: 'Safari Mobile',
-          location: 'New York, US',
-          ipAddress: '192.168.1.50',
-          lastActive: new Date(Date.now() - 3600000),
-          isCurrent: false,
-        },
-      ];
-
-      // Simulated login history - would come from login_history table
-      const mockHistory: LoginEvent[] = [
-        {
-          id: '1',
-          type: 'success',
-          device: 'Windows 11 - Chrome',
-          location: 'New York, US',
-          ipAddress: '192.168.1.1',
-          timestamp: new Date(),
-        },
-        {
-          id: '2',
-          type: 'success',
-          device: 'iPhone 15 Pro - Safari',
-          location: 'New York, US',
-          ipAddress: '192.168.1.50',
-          timestamp: new Date(Date.now() - 86400000),
-        },
-        {
-          id: '3',
-          type: 'failed',
-          device: 'Unknown - Firefox',
-          location: 'London, UK',
-          ipAddress: '10.0.0.5',
-          timestamp: new Date(Date.now() - 172800000),
-          reason: 'Invalid password',
-        },
-      ];
-
-      setSessions(mockSessions);
-      setLoginHistory(mockHistory);
-    } catch (error) {
-      console.error('Error loading security data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loginHistory: LoginEvent[] = contextLoginHistory.map(h => ({
+    id: h.id,
+    type: h.type,
+    device: h.device,
+    location: h.location,
+    ipAddress: h.ipAddress,
+    timestamp: h.timestamp,
+    reason: h.reason,
+  }));
 
   const passwordStrength = checkPasswordStrength(newPassword);
   const passwordsMatch = newPassword === confirmPassword;
@@ -400,6 +370,7 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
       setPasswordDialogOpen(false);
       setNewPassword('');
       setConfirmPassword('');
+      await refresh(); // Refresh security data
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -411,79 +382,42 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
     }
   };
 
+  // Use context action for revoking sessions
   const handleRevokeSession = async (sessionId: string) => {
     setRevokingSession(sessionId);
     try {
-      // Would call API to revoke session
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-
-      toast({
-        title: 'Session Revoked',
-        description: 'The session has been terminated.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to revoke session',
-        variant: 'destructive',
-      });
+      await contextRevokeSession(sessionId);
     } finally {
       setRevokingSession(null);
     }
   };
 
+  // Use context action for revoking all sessions
   const handleRevokeAllSessions = async () => {
     setRevokingAll(true);
     try {
-      // Would call API to revoke all other sessions
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setSessions((prev) => prev.filter((s) => s.isCurrent));
-
-      toast({
-        title: 'All Sessions Revoked',
-        description: 'All other sessions have been terminated.',
-      });
+      await revokeAllOtherSessions();
       setRevokeAllDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to revoke sessions',
-        variant: 'destructive',
-      });
     } finally {
       setRevokingAll(false);
     }
   };
 
+  // Use context actions for 2FA
   const handleToggle2FA = async () => {
     setEnablingTwoFa(true);
     try {
-      // Would enable/disable 2FA via Supabase MFA API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setTwoFaEnabled(!twoFaEnabled);
-
-      toast({
-        title: twoFaEnabled ? '2FA Disabled' : '2FA Enabled',
-        description: twoFaEnabled
-          ? 'Two-factor authentication has been disabled.'
-          : 'Two-factor authentication is now active.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update 2FA settings',
-        variant: 'destructive',
-      });
+      if (twoFaEnabled) {
+        await disableTwoFactor();
+      } else {
+        await enableTwoFactor();
+      }
     } finally {
       setEnablingTwoFa(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
@@ -633,7 +567,7 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={loadSecurityData}
+                onClick={refresh}
                 className="border-white/10 hover:bg-white/5"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />

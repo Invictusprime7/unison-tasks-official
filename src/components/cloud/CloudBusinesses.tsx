@@ -5,12 +5,13 @@
  * Projects, assets, CRM, and automations belong to businesses.
  */
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Building2, Plus, Users, Settings, Trash2, Loader2, Paintbrush,
   ArrowLeft, BarChart3, Target, Kanban, Workflow, Zap, FileText,
-  Sparkles, UserCircle
+  Sparkles, UserCircle, UserPlus, Mail, Crown, Shield, Pencil, Eye,
+  MoreHorizontal, RefreshCw, X, Check
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,21 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -60,6 +76,52 @@ interface Business {
   notification_phone?: string;
   settings?: Record<string, unknown>;
 }
+
+type BusinessRole = 'owner' | 'admin' | 'editor' | 'viewer';
+type MemberStatus = 'pending' | 'active' | 'suspended' | 'removed';
+
+interface BusinessMember {
+  id: string;
+  business_id: string;
+  user_id: string;
+  role: BusinessRole;
+  status: MemberStatus;
+  invited_by: string | null;
+  invited_at: string;
+  accepted_at: string | null;
+  created_at: string;
+  // Joined from profiles
+  email?: string;
+  full_name?: string;
+  avatar_url?: string;
+}
+
+const ROLE_CONFIG: Record<BusinessRole, { icon: React.ElementType; label: string; description: string; color: string }> = {
+  owner: {
+    icon: Crown,
+    label: 'Owner',
+    description: 'Full access, can delete business',
+    color: 'text-yellow-400',
+  },
+  admin: {
+    icon: Shield,
+    label: 'Admin',
+    description: 'Manage team, settings, all projects',
+    color: 'text-blue-400',
+  },
+  editor: {
+    icon: Pencil,
+    label: 'Editor',
+    description: 'Create and edit projects',
+    color: 'text-purple-400',
+  },
+  viewer: {
+    icon: Eye,
+    label: 'Viewer',
+    description: 'View-only access',
+    color: 'text-slate-400',
+  },
+};
 
 type BusinessView = 'list' | 'detail';
 type BusinessTab = 'overview' | 'crm' | 'automations' | 'settings';
@@ -96,6 +158,15 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
   const [activeBusiness, setActiveBusiness] = useState<Business | null>(null);
   const [activeTab, setActiveTab] = useState<BusinessTab>('overview');
   const [crmSubTab, setCrmSubTab] = useState<CRMSubTab>('overview');
+
+  // Team management state
+  const [teamMembers, setTeamMembers] = useState<BusinessMember[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<BusinessRole>('editor');
+  const [inviting, setInviting] = useState(false);
+  const [updatingMember, setUpdatingMember] = useState<string | null>(null);
 
   const openInBuilder = (business: Business) => {
     navigate('/web-builder', {
@@ -260,6 +331,248 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
       setSaving(false);
     }
   };
+
+  // ============================================
+  // TEAM MEMBER MANAGEMENT
+  // ============================================
+
+  const loadTeamMembers = useCallback(async (businessId: string) => {
+    setTeamLoading(true);
+    try {
+      // Fetch business members with user profile data
+      const { data: members, error } = await supabase
+        .from('business_members')
+        .select(`
+          id,
+          business_id,
+          user_id,
+          role,
+          status,
+          invited_by,
+          invited_at,
+          accepted_at,
+          created_at
+        `)
+        .eq('business_id', businessId)
+        .neq('status', 'removed')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading team members:', error);
+        setTeamMembers([]);
+        return;
+      }
+
+      // Fetch user profiles for each member
+      const memberIds = members?.map(m => m.user_id) || [];
+      if (memberIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, avatar_url')
+          .in('id', memberIds);
+
+        const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        
+        const enrichedMembers: BusinessMember[] = (members || []).map(m => ({
+          ...m,
+          role: m.role as BusinessRole,
+          status: m.status as MemberStatus,
+          email: profileMap.get(m.user_id)?.email,
+          full_name: profileMap.get(m.user_id)?.full_name,
+          avatar_url: profileMap.get(m.user_id)?.avatar_url,
+        }));
+
+        setTeamMembers(enrichedMembers);
+      } else {
+        setTeamMembers([]);
+      }
+    } catch (error) {
+      console.error('Error loading team members:', error);
+      setTeamMembers([]);
+    } finally {
+      setTeamLoading(false);
+    }
+  }, []);
+
+  // Load team when manage dialog opens
+  useEffect(() => {
+    if (manageOpen && selectedBusiness) {
+      loadTeamMembers(selectedBusiness.id);
+    }
+  }, [manageOpen, selectedBusiness, loadTeamMembers]);
+
+  const inviteTeamMember = async () => {
+    if (!selectedBusiness || !inviteEmail.trim()) return;
+
+    setInviting(true);
+    try {
+      // First check if user exists in profiles by email
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', inviteEmail.trim().toLowerCase())
+        .maybeSingle();
+
+      if (!existingProfile) {
+        // User doesn't exist yet - create a pending invitation entry
+        // In a real app, you'd send an email invitation here
+        toast({
+          title: 'User not found',
+          description: 'The user must create an account first, then you can add them to the business.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Check if already a member
+      const { data: existingMember } = await supabase
+        .from('business_members')
+        .select('id, status')
+        .eq('business_id', selectedBusiness.id)
+        .eq('user_id', existingProfile.id)
+        .maybeSingle();
+
+      if (existingMember) {
+        if (existingMember.status === 'removed') {
+          // Re-activate the member
+          await supabase
+            .from('business_members')
+            .update({ 
+              status: 'active', 
+              role: inviteRole,
+              accepted_at: new Date().toISOString(),
+            })
+            .eq('id', existingMember.id);
+        } else {
+          toast({
+            title: 'Already a member',
+            description: `${inviteEmail} is already a member of this business.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      } else {
+        // Add new member
+        const { error } = await supabase
+          .from('business_members')
+          .insert({
+            business_id: selectedBusiness.id,
+            user_id: existingProfile.id,
+            role: inviteRole,
+            status: 'active',
+            invited_by: userId,
+            invited_at: new Date().toISOString(),
+            accepted_at: new Date().toISOString(),
+          });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: 'Member added',
+        description: `${inviteEmail} has been added to ${selectedBusiness.name}.`,
+      });
+
+      // Refresh team list
+      await loadTeamMembers(selectedBusiness.id);
+      setInviteDialogOpen(false);
+      setInviteEmail('');
+      setInviteRole('editor');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      console.error('Error inviting member:', error);
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to add team member.',
+        variant: 'destructive',
+      });
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const updateMemberRole = async (memberId: string, newRole: BusinessRole) => {
+    if (!selectedBusiness) return;
+
+    setUpdatingMember(memberId);
+    try {
+      const { error } = await supabase
+        .from('business_members')
+        .update({ role: newRole })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      setTeamMembers(members => 
+        members.map(m => m.id === memberId ? { ...m, role: newRole } : m)
+      );
+
+      toast({
+        title: 'Role updated',
+        description: `Member role has been updated to ${ROLE_CONFIG[newRole].label}.`,
+      });
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update member role.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingMember(null);
+    }
+  };
+
+  const removeMember = async (member: BusinessMember) => {
+    if (!selectedBusiness) return;
+
+    // Prevent removing the owner
+    if (member.role === 'owner') {
+      toast({
+        title: 'Cannot remove owner',
+        description: 'The business owner cannot be removed.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!confirm(`Remove ${member.full_name || member.email} from ${selectedBusiness.name}?`)) {
+      return;
+    }
+
+    setUpdatingMember(member.id);
+    try {
+      const { error } = await supabase
+        .from('business_members')
+        .update({ status: 'removed' })
+        .eq('id', member.id);
+
+      if (error) throw error;
+
+      setTeamMembers(members => members.filter(m => m.id !== member.id));
+
+      toast({
+        title: 'Member removed',
+        description: `${member.full_name || member.email} has been removed from the business.`,
+      });
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to remove member.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingMember(null);
+    }
+  };
+
+  // Check if current user can manage team (owner or admin)
+  const canManageTeam = useCallback((businessOwnerId: string) => {
+    if (userId === businessOwnerId) return true;
+    const currentMember = teamMembers.find(m => m.user_id === userId);
+    return currentMember?.role === 'admin' || currentMember?.role === 'owner';
+  }, [userId, teamMembers]);
 
   // Render CRM sub-tab content
   const renderCRMContent = () => {
@@ -749,15 +1062,215 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
               </div>
             </TabsContent>
             <TabsContent value="team" className="py-4">
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Team Members</h3>
-                <p className="text-slate-400 mb-4 text-sm">
-                  Invite team members to collaborate on projects within this business.
-                </p>
-                <Badge variant="outline" className="text-amber-400 border-amber-500/30">
-                  Coming Soon
-                </Badge>
+              <div className="space-y-4">
+                {/* Header with Add button */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Team Members</h3>
+                    <p className="text-slate-400 text-sm">
+                      {teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  {selectedBusiness && canManageTeam(selectedBusiness.owner_id) && (
+                    <Button
+                      size="sm"
+                      onClick={() => setInviteDialogOpen(true)}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add Member
+                    </Button>
+                  )}
+                </div>
+
+                {/* Team Members List */}
+                {teamLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                  </div>
+                ) : teamMembers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                    <p className="text-slate-400 text-sm">
+                      No team members yet. Add members to collaborate.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {teamMembers.map((member) => {
+                      const roleConfig = ROLE_CONFIG[member.role];
+                      const RoleIcon = roleConfig.icon;
+                      const isOwner = member.role === 'owner';
+                      const canEdit = selectedBusiness && canManageTeam(selectedBusiness.owner_id) && !isOwner;
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-white/5"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                              <AvatarImage src={member.avatar_url || undefined} />
+                              <AvatarFallback className="bg-slate-700 text-slate-300 text-sm">
+                                {(member.full_name || member.email || '?').charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">
+                                {member.full_name || member.email || 'Unknown'}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <RoleIcon className={cn('h-3 w-3', roleConfig.color)} />
+                                <span className="text-xs text-slate-400">{roleConfig.label}</span>
+                                {member.status === 'pending' && (
+                                  <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-xs px-1.5 py-0">
+                                    Pending
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {canEdit && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={updatingMember === member.id}
+                                >
+                                  {updatingMember === member.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-slate-900 border-white/10">
+                                <DropdownMenuItem
+                                  onClick={() => updateMemberRole(member.id, 'admin')}
+                                  disabled={member.role === 'admin'}
+                                >
+                                  <Shield className="h-4 w-4 mr-2 text-blue-400" />
+                                  Make Admin
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => updateMemberRole(member.id, 'editor')}
+                                  disabled={member.role === 'editor'}
+                                >
+                                  <Pencil className="h-4 w-4 mr-2 text-purple-400" />
+                                  Make Editor
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => updateMemberRole(member.id, 'viewer')}
+                                  disabled={member.role === 'viewer'}
+                                >
+                                  <Eye className="h-4 w-4 mr-2 text-slate-400" />
+                                  Make Viewer
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-white/10" />
+                                <DropdownMenuItem
+                                  onClick={() => removeMember(member)}
+                                  className="text-red-400 focus:text-red-400"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Remove
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+
+                          {isOwner && (
+                            <Badge variant="outline" className="text-yellow-400 border-yellow-500/30">
+                              Owner
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Invite Member Dialog */}
+                <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                  <DialogContent className="bg-slate-900 border-white/10">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <UserPlus className="h-5 w-5 text-purple-400" />
+                        Add Team Member
+                      </DialogTitle>
+                      <DialogDescription>
+                        Add a team member to collaborate on this business.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="inviteEmail">Email Address</Label>
+                        <Input
+                          id="inviteEmail"
+                          type="email"
+                          placeholder="colleague@company.com"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          className="bg-slate-800/50"
+                        />
+                        <p className="text-xs text-slate-400">
+                          The user must have an existing account.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="inviteRole">Role</Label>
+                        <Select
+                          value={inviteRole}
+                          onValueChange={(v) => setInviteRole(v as BusinessRole)}
+                        >
+                          <SelectTrigger className="bg-slate-800/50 border-white/10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-white/10">
+                            {(['admin', 'editor', 'viewer'] as BusinessRole[]).map((role) => {
+                              const config = ROLE_CONFIG[role];
+                              const Icon = config.icon;
+                              return (
+                                <SelectItem key={role} value={role}>
+                                  <div className="flex items-center gap-2">
+                                    <Icon className={cn('h-4 w-4', config.color)} />
+                                    <span>{config.label}</span>
+                                    <span className="text-xs text-slate-500">
+                                      - {config.description}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setInviteDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={inviteTeamMember}
+                        disabled={!inviteEmail.trim() || inviting}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500"
+                      >
+                        {inviting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Add Member
+                          </>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </TabsContent>
           </Tabs>

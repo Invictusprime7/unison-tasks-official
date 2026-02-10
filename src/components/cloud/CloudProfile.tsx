@@ -285,20 +285,59 @@ export function CloudProfile({ user }: CloudProfileProps) {
   };
 
   const saveProfile = async () => {
+    // Input validation
+    const trimmedName = fullName.trim();
+    
+    if (!trimmedName) {
+      toast({
+        title: 'Validation error',
+        description: 'Name cannot be empty.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (trimmedName.length > 100) {
+      toast({
+        title: 'Validation error',
+        description: 'Name must be 100 characters or less.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Sanitize: remove any HTML tags or dangerous characters
+    const sanitizedName = trimmedName
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/[<>"'&]/g, ''); // Remove potentially dangerous chars
+
+    if (sanitizedName !== trimmedName) {
+      toast({
+        title: 'Validation error',
+        description: 'Name contains invalid characters.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      // Always update - profile should exist (created on signup)
+      // Direct update to profiles table only - no side effects
+      // RLS ensures user can only update their own profile (auth.uid() = id)
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: fullName,
+          full_name: sanitizedName,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message || 'Failed to save profile');
+      }
 
-      setProfile({ ...profile, full_name: fullName });
+      setFullName(sanitizedName);
+      setProfile({ ...profile, full_name: sanitizedName });
       toast({
         title: 'Profile updated',
         description: 'Your profile has been saved successfully.',
@@ -411,11 +450,21 @@ export function CloudProfile({ user }: CloudProfileProps) {
                       className="bg-slate-800/80 border-white/20 text-xl font-bold h-10 max-w-xs"
                       placeholder="Your name"
                       autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveProfile();
+                        if (e.key === 'Escape') {
+                          setFullName(profile?.full_name || '');
+                          setEditing(false);
+                        }
+                      }}
                     />
                     <Button size="sm" onClick={saveProfile} disabled={saving} className="bg-green-600 hover:bg-green-500">
-                      <Check className="h-4 w-4" />
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                    <Button size="sm" variant="ghost" onClick={() => {
+                      setFullName(profile?.full_name || '');
+                      setEditing(false);
+                    }}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
