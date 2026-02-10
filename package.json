@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "type-check": "tsc --build --noEmit",
     "preview": "vite preview",
-    "create-review-bundle": "bash scripts/create-review-bundle.sh"
+    "create-review-bundle": "node scripts/create-review-bundle.cjs"
   },
   "dependencies": {
     "@babel/standalone": "^7.28.4",
