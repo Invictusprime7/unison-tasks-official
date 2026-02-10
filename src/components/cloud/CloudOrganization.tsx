@@ -6,6 +6,8 @@
  * - Billing & subscription
  * - Usage analytics
  * - Danger zone (delete org)
+ * 
+ * Wired with CloudContext for real-time organization data.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -65,6 +67,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+// Import Cloud context for wired organization data
+import { useCloudOrganizations, useCloudTeam } from '@/contexts/CloudContext';
 
 interface CloudOrganizationProps {
   userId: string;
@@ -219,11 +224,19 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
 
 export function CloudOrganization({ userId, organizationId }: CloudOrganizationProps) {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [usage, setUsage] = useState<UsageStats | null>(null);
+  
+  // Use CloudContext for wired organization data
+  const { 
+    currentOrganization, 
+    updateOrganization,
+    deleteOrganization,
+    isLoading 
+  } = useCloudOrganizations();
+  
+  const { usageStats, currentUserRole } = useCloudTeam();
+  
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [isOwner, setIsOwner] = useState(true);
+  const isOwner = currentUserRole === 'owner';
 
   // Edit state
   const [editing, setEditing] = useState(false);
@@ -239,125 +252,94 @@ export function CloudOrganization({ userId, organizationId }: CloudOrganizationP
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Convert context organization to local format
+  const organization: Organization | null = currentOrganization ? {
+    id: currentOrganization.id,
+    name: currentOrganization.name,
+    slug: currentOrganization.slug,
+    logoUrl: currentOrganization.logoUrl,
+    website: currentOrganization.website,
+    industry: currentOrganization.industry,
+    size: currentOrganization.size,
+    createdAt: new Date(currentOrganization.createdAt),
+    plan: currentOrganization.plan,
+  } : null;
+
+  // Convert context usage stats
+  const usage: UsageStats | null = usageStats ? {
+    members: usageStats.members,
+    projects: usageStats.projects,
+    storage: usageStats.storage,
+    apiCalls: usageStats.apiCalls,
+  } : null;
+
+  // Initialize edit fields when organization loads
   useEffect(() => {
-    loadOrganizationData();
-  }, [userId, organizationId]);
-
-  const loadOrganizationData = async () => {
-    setLoading(true);
-    try {
-      // Mock data - would come from organizations/businesses table
-      const mockOrg: Organization = {
-        id: organizationId || 'org-1',
-        name: 'Acme Corporation',
-        slug: 'acme-corp',
-        logoUrl: null,
-        website: 'https://acme.com',
-        industry: 'Technology',
-        size: '50-100',
-        createdAt: new Date('2024-01-15'),
-        plan: 'team',
-      };
-
-      const mockUsage: UsageStats = {
-        members: { current: 12, limit: 25 },
-        projects: { current: 45, limit: 100 },
-        storage: { current: 4.2, limit: 10 },
-        apiCalls: { current: 8500, limit: 10000 },
-      };
-
-      const mockInvoices: Invoice[] = [
-        {
-          id: 'inv-1',
-          date: new Date('2026-02-01'),
-          amount: 99.00,
-          status: 'paid',
-          downloadUrl: '#',
-        },
-        {
-          id: 'inv-2',
-          date: new Date('2026-01-01'),
-          amount: 99.00,
-          status: 'paid',
-          downloadUrl: '#',
-        },
-        {
-          id: 'inv-3',
-          date: new Date('2025-12-01'),
-          amount: 99.00,
-          status: 'paid',
-          downloadUrl: '#',
-        },
-      ];
-
-      setOrganization(mockOrg);
-      setUsage(mockUsage);
-      setInvoices(mockInvoices);
-      setEditName(mockOrg.name);
-      setEditWebsite(mockOrg.website || '');
-    } catch (error) {
-      console.error('Error loading organization:', error);
-    } finally {
-      setLoading(false);
+    if (organization) {
+      setEditName(organization.name);
+      setEditWebsite(organization.website || '');
     }
-  };
+  }, [organization?.id]);
 
+  // Load invoices (these would come from billing API)
+  useEffect(() => {
+    if (currentOrganization) {
+      // In a real implementation, fetch from billing service
+      // For now, showing empty or placeholder
+      setInvoices([]);
+    }
+  }, [currentOrganization?.id]);
+
+  // Use context action to save profile
   const handleSaveProfile = async () => {
     if (!organization) return;
 
     setSaving(true);
     try {
-      // Would call update organization API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setOrganization({
-        ...organization,
+      const success = await updateOrganization(organization.id, {
         name: editName,
         website: editWebsite || null,
       });
 
-      toast({
-        title: 'Organization Updated',
-        description: 'Your organization profile has been saved.',
-      });
-      setEditing(false);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update organization',
-        variant: 'destructive',
-      });
+      if (success) {
+        setEditing(false);
+      }
     } finally {
       setSaving(false);
     }
   };
 
+  // Use context action to delete organization
   const handleDeleteOrganization = async () => {
-    if (deleteConfirmText !== organization?.name) return;
+    if (!organization || deleteConfirmText !== organization.name) return;
 
     setDeleting(true);
     try {
-      // Would call delete organization API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast({
-        title: 'Organization Deleted',
-        description: 'Your organization has been permanently deleted.',
-      });
-      setDeleteDialogOpen(false);
-      // Would redirect to home/org list
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete organization',
-        variant: 'destructive',
-      });
+      const success = await deleteOrganization(organization.id);
+      if (success) {
+        setDeleteDialogOpen(false);
+      }
     } finally {
       setDeleting(false);
     }
   };
 
-  if (loading || !organization) {
+  // Check if no organization selected
+  if (!currentOrganization) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Building2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">No Organization Selected</h3>
+          <p className="text-slate-400 mb-4">
+            Create or select an organization in the Businesses tab to view details.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !organization) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">

@@ -38,3 +38,7 @@ vs code loveable migration.txt
 *.sw?
 .vercel
 .env*.local
+
+# Review bundle
+.review_bundle
+unison_tasks_review_bundle.zip

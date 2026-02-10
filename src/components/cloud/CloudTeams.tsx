@@ -7,6 +7,8 @@
  * - Role management
  * - Remove members
  * - Pending invitations
+ * 
+ * Wired with CloudContext for real-time team data.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -68,6 +70,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+// Import Cloud context for wired data
+import { useCloudTeam, useCloudOrganizations } from '@/contexts/CloudContext';
 
 interface CloudTeamsProps {
   userId: string;
@@ -381,11 +386,25 @@ function InvitationCard({
 
 export function CloudTeams({ userId, organizationId }: CloudTeamsProps) {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  
+  // Use CloudContext for wired team data
+  const { 
+    members: contextMembers, 
+    invitations: contextInvitations, 
+    currentUserRole: contextUserRole,
+    inviteMember,
+    removeMember: removeTeamMember,
+    updateMemberRole,
+    cancelInvitation,
+    resendInvitation,
+    refresh,
+    isLoading,
+    usageStats
+  } = useCloudTeam();
+  
+  const { currentOrganization } = useCloudOrganizations();
+  
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentUserRole, setCurrentUserRole] = useState<TeamRole>('member');
 
   // Invite dialog state
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -394,98 +413,34 @@ export function CloudTeams({ userId, organizationId }: CloudTeamsProps) {
   const [inviting, setInviting] = useState(false);
 
   // Action dialogs
-  const [removeMember, setRemoveMember] = useState<TeamMember | null>(null);
+  const [removeMemberDialog, setRemoveMemberDialog] = useState<TeamMember | null>(null);
   const [transferTo, setTransferTo] = useState<TeamMember | null>(null);
   const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
+  // Convert context data to local format
+  const members: TeamMember[] = contextMembers.map(m => ({
+    id: m.id,
+    userId: m.userId,
+    email: m.email,
+    fullName: m.fullName,
+    avatarUrl: m.avatarUrl,
+    role: m.role as TeamRole,
+    joinedAt: new Date(m.joinedAt),
+    lastActive: m.lastActiveAt ? new Date(m.lastActiveAt) : new Date(),
+  }));
+
+  const invitations: Invitation[] = contextInvitations.map(inv => ({
+    id: inv.id,
+    email: inv.email,
+    role: inv.role as TeamRole,
+    invitedBy: inv.inviterName,
+    invitedAt: new Date(inv.createdAt),
+    expiresAt: new Date(inv.expiresAt),
+    status: inv.status as 'pending' | 'expired',
+  }));
+
+  const currentUserRole = contextUserRole || 'member';
   const canManage = ['owner', 'admin'].includes(currentUserRole);
-
-  useEffect(() => {
-    loadTeamData();
-  }, [userId, organizationId]);
-
-  const loadTeamData = async () => {
-    setLoading(true);
-    try {
-      // Mock data - would come from organization_members table
-      const mockMembers: TeamMember[] = [
-        {
-          id: '1',
-          userId: userId,
-          email: 'you@example.com',
-          fullName: 'Current User',
-          avatarUrl: null,
-          role: 'owner',
-          joinedAt: new Date('2024-01-15'),
-          lastActive: new Date(),
-        },
-        {
-          id: '2',
-          userId: 'user-2',
-          email: 'sarah@acme.com',
-          fullName: 'Sarah Chen',
-          avatarUrl: null,
-          role: 'admin',
-          joinedAt: new Date('2024-02-20'),
-          lastActive: new Date(Date.now() - 3600000),
-        },
-        {
-          id: '3',
-          userId: 'user-3',
-          email: 'mike@acme.com',
-          fullName: 'Mike Johnson',
-          avatarUrl: null,
-          role: 'member',
-          joinedAt: new Date('2024-03-10'),
-          lastActive: new Date(Date.now() - 86400000),
-        },
-        {
-          id: '4',
-          userId: 'user-4',
-          email: 'emma@acme.com',
-          fullName: 'Emma Wilson',
-          avatarUrl: null,
-          role: 'viewer',
-          joinedAt: new Date('2024-04-05'),
-          lastActive: new Date(Date.now() - 172800000),
-        },
-      ];
-
-      const mockInvitations: Invitation[] = [
-        {
-          id: 'inv-1',
-          email: 'john@newteam.com',
-          role: 'member',
-          invitedBy: 'you@example.com',
-          invitedAt: new Date(Date.now() - 86400000),
-          expiresAt: new Date(Date.now() + 86400000 * 6),
-          status: 'pending',
-        },
-        {
-          id: 'inv-2',
-          email: 'expired@oldteam.com',
-          role: 'viewer',
-          invitedBy: 'you@example.com',
-          invitedAt: new Date(Date.now() - 86400000 * 10),
-          expiresAt: new Date(Date.now() - 86400000 * 3),
-          status: 'expired',
-        },
-      ];
-
-      setMembers(mockMembers);
-      setInvitations(mockInvitations);
-
-      // Set current user role
-      const currentMember = mockMembers.find((m) => m.userId === userId);
-      if (currentMember) {
-        setCurrentUserRole(currentMember.role);
-      }
-    } catch (error) {
-      console.error('Error loading team data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredMembers = members.filter((m) => {
     const query = searchQuery.toLowerCase();
@@ -496,6 +451,7 @@ export function CloudTeams({ userId, organizationId }: CloudTeamsProps) {
     );
   });
 
+  // Use context action for inviting
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
       toast({
@@ -508,165 +464,67 @@ export function CloudTeams({ userId, organizationId }: CloudTeamsProps) {
 
     setInviting(true);
     try {
-      // Would call team invite API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const newInvitation: Invitation = {
-        id: `inv-${Date.now()}`,
-        email: inviteEmail,
-        role: inviteRole,
-        invitedBy: 'you@example.com',
-        invitedAt: new Date(),
-        expiresAt: new Date(Date.now() + 86400000 * 7),
-        status: 'pending',
-      };
-
-      setInvitations((prev) => [newInvitation, ...prev]);
-
-      toast({
-        title: 'Invitation Sent',
-        description: `Invitation sent to ${inviteEmail}`,
-      });
-      setInviteDialogOpen(false);
-      setInviteEmail('');
-      setInviteRole('member');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to send invitation',
-        variant: 'destructive',
-      });
+      const success = await inviteMember(inviteEmail, inviteRole);
+      if (success) {
+        setInviteDialogOpen(false);
+        setInviteEmail('');
+        setInviteRole('member');
+      }
     } finally {
       setInviting(false);
     }
   };
 
+  // Use context action for role changes
   const handleRoleChange = async (memberId: string, newRole: TeamRole) => {
-    try {
-      // Would call role update API
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setMembers((prev) =>
-        prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
-      );
-
-      toast({
-        title: 'Role Updated',
-        description: 'Member role has been updated',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update role',
-        variant: 'destructive',
-      });
-    }
+    await updateMemberRole(memberId, newRole);
   };
 
+  // Use context action for removing members
   const handleRemoveMember = async () => {
-    if (!removeMember) return;
-
-    try {
-      // Would call remove member API
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setMembers((prev) => prev.filter((m) => m.id !== removeMember.id));
-
-      toast({
-        title: 'Member Removed',
-        description: `${removeMember.fullName || removeMember.email} has been removed from the team`,
-      });
-      setRemoveMember(null);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to remove member',
-        variant: 'destructive',
-      });
-    }
+    if (!removeMemberDialog) return;
+    await removeTeamMember(removeMemberDialog.id);
+    setRemoveMemberDialog(null);
   };
 
+  // Transfer ownership - uses role change
   const handleTransferOwnership = async () => {
     if (!transferTo) return;
-
-    try {
-      // Would call transfer ownership API
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setMembers((prev) =>
-        prev.map((m) => {
-          if (m.id === transferTo.id) return { ...m, role: 'owner' as TeamRole };
-          if (m.userId === userId) return { ...m, role: 'admin' as TeamRole };
-          return m;
-        })
-      );
-      setCurrentUserRole('admin');
-
-      toast({
-        title: 'Ownership Transferred',
-        description: `Ownership transferred to ${transferTo.fullName || transferTo.email}`,
-      });
-      setTransferTo(null);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to transfer ownership',
-        variant: 'destructive',
-      });
-    }
+    // Note: Full ownership transfer requires additional backend logic
+    // For now, promote to admin
+    await updateMemberRole(transferTo.id, 'owner');
+    setTransferTo(null);
   };
 
+  // Use context action for resending invites
   const handleResendInvite = async (inviteId: string) => {
     setResendingInvite(inviteId);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setInvitations((prev) =>
-        prev.map((inv) =>
-          inv.id === inviteId
-            ? {
-                ...inv,
-                invitedAt: new Date(),
-                expiresAt: new Date(Date.now() + 86400000 * 7),
-                status: 'pending' as const,
-              }
-            : inv
-        )
-      );
-
-      toast({
-        title: 'Invitation Resent',
-        description: 'Invitation has been resent',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to resend invitation',
-        variant: 'destructive',
-      });
+      await resendInvitation(inviteId);
     } finally {
       setResendingInvite(null);
     }
   };
 
+  // Use context action for cancelling invites
   const handleCancelInvite = async (inviteId: string) => {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setInvitations((prev) => prev.filter((inv) => inv.id !== inviteId));
-
-      toast({
-        title: 'Invitation Cancelled',
-        description: 'Invitation has been cancelled',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to cancel invitation',
-        variant: 'destructive',
-      });
-    }
+    await cancelInvitation(inviteId);
   };
+
+  // Check if no organization selected
+  if (!currentOrganization) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Building2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">No Organization Selected</h3>
+          <p className="text-slate-400 mb-4">
+            Create or select an organization in the Businesses tab to manage your team.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const roleStats = {
     owners: members.filter((m) => m.role === 'owner').length,
@@ -675,7 +533,7 @@ export function CloudTeams({ userId, organizationId }: CloudTeamsProps) {
     viewers: members.filter((m) => m.role === 'viewer').length,
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
@@ -779,7 +637,7 @@ export function CloudTeams({ userId, organizationId }: CloudTeamsProps) {
                 currentUserId={userId}
                 canManage={canManage}
                 onRoleChange={(role) => handleRoleChange(member.id, role)}
-                onRemove={() => setRemoveMember(member)}
+                onRemove={() => setRemoveMemberDialog(member)}
                 onTransferOwnership={() => setTransferTo(member)}
               />
             ))}
@@ -887,12 +745,12 @@ export function CloudTeams({ userId, organizationId }: CloudTeamsProps) {
       </Dialog>
 
       {/* Remove Member Dialog */}
-      <AlertDialog open={!!removeMember} onOpenChange={() => setRemoveMember(null)}>
+      <AlertDialog open={!!removeMemberDialog} onOpenChange={() => setRemoveMemberDialog(null)}>
         <AlertDialogContent className="bg-slate-900 border-white/10">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Remove Team Member</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove {removeMember?.fullName || removeMember?.email} from
+              Are you sure you want to remove {removeMemberDialog?.fullName || removeMemberDialog?.email} from
               the team? They will lose access to all team resources.
             </AlertDialogDescription>
           </AlertDialogHeader>
