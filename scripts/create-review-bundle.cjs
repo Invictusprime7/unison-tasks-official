@@ -68,15 +68,18 @@ function shouldExclude(filePath) {
 }
 
 function matchesPattern(filePath, pattern) {
+  // Normalize path separators for cross-platform compatibility
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  
   // Convert glob pattern to regex
   let regexPattern = pattern
     .replace(/\./g, '\\.')
     .replace(/\*\*/g, '{{DOUBLESTAR}}')
-    .replace(/\*/g, '[^/\\\\]*')
+    .replace(/\*/g, '[^/]+')
     .replace(/{{DOUBLESTAR}}/g, '.*');
   
   const regex = new RegExp(`^${regexPattern}$`);
-  return regex.test(filePath) || regex.test(path.basename(filePath));
+  return regex.test(normalizedPath) || regex.test(path.basename(filePath));
 }
 
 function copyFiles(srcDir, destDir) {
@@ -134,7 +137,13 @@ function createZip() {
     console.log(`Created: ${zipFile}`);
   } catch (error) {
     console.error('Error creating zip file:', error.message);
-    console.error('\nPlease ensure zip utility is installed on your system.');
+    
+    const isWindows = process.platform === 'win32';
+    if (isWindows) {
+      console.error('\nPlease ensure PowerShell is available on your system.');
+    } else {
+      console.error('\nPlease ensure zip utility is installed on your system.');
+    }
     process.exit(1);
   }
 }
