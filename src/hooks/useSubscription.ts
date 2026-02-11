@@ -207,6 +207,85 @@ export function useSubscription() {
     }
   }, [subscription, getLimits]);
 
+  const createCheckoutSession = useCallback(async (plan: PlanType, billingCycle: 'monthly' | 'yearly' = 'monthly'): Promise<{ url?: string; error?: string }> => {
+    if (!user) return { error: 'Not authenticated' };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          plan,
+          billingCycle,
+          successUrl: `${window.location.origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/checkout/cancel`,
+        },
+      });
+
+      if (error) throw error;
+      return { url: data?.url };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Failed to create checkout session' };
+    }
+  }, [user]);
+
+  const cancelSubscription = useCallback(async (immediately: boolean = false): Promise<{ success: boolean; error?: string }> => {
+    if (!user || !subscription?.stripe_subscription_id) {
+      return { success: false, error: 'No active subscription' };
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-subscription', {
+        body: {
+          action: 'cancel',
+          immediately,
+        },
+      });
+
+      if (error) throw error;
+      await fetchSubscription(); // Refresh subscription data
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to cancel subscription' };
+    }
+  }, [user, subscription, fetchSubscription]);
+
+  const updatePaymentMethod = useCallback(async (): Promise<{ url?: string; error?: string }> => {
+    if (!user) return { error: 'Not authenticated' };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-subscription', {
+        body: {
+          action: 'update-payment',
+          returnUrl: window.location.origin + '/settings',
+        },
+      });
+
+      if (error) throw error;
+      return { url: data?.url };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Failed to create payment update session' };
+    }
+  }, [user]);
+
+  const reactivateSubscription = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!user || !subscription?.stripe_subscription_id) {
+      return { success: false, error: 'No subscription to reactivate' };
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-subscription', {
+        body: {
+          action: 'reactivate',
+        },
+      });
+
+      if (error) throw error;
+      await fetchSubscription();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to reactivate subscription' };
+    }
+  }, [user, subscription, fetchSubscription]);
+
   return {
     subscription,
     loading,
@@ -217,6 +296,10 @@ export function useSubscription() {
     incrementAIUsage,
     incrementProjectCount,
     getUsagePercentage,
-    refetch: fetchSubscription
+    refetch: fetchSubscription,
+    createCheckoutSession,
+    cancelSubscription,
+    updatePaymentMethod,
+    reactivateSubscription,
   };
 }

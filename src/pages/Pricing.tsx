@@ -1,8 +1,15 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { loadStripe } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckSquare, Check, Star, ArrowLeft, Zap } from "lucide-react";
+import { CheckSquare, Check, Star, ArrowLeft, Zap, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+// Initialize Stripe - use the publishable key from environment
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
 const pricingTiers = [
   {
@@ -97,13 +104,85 @@ const faqs = [
 
 const Pricing = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const handleSubscribe = (tier: typeof pricingTiers[0]) => {
-    if (tier.stripePriceId) {
-      // TODO: Implement Stripe checkout
+  useEffect(() => {
+    // Check if user is authenticated
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSubscribe = async (tier: typeof pricingTiers[0]) => {
+    // Free plan - just redirect to auth/dashboard
+    if (!tier.stripePriceId) {
+      navigate(isAuthenticated ? "/dashboard" : "/auth");
+      return;
+    }
+
+    // Business plan - contact sales
+    if (tier.name === "Business") {
+      window.open("mailto:sales@unisontasks.com?subject=Business Plan Inquiry", "_blank");
+      return;
+    }
+
+    // Check authentication
+    if (!isAuthenticated) {
+      // Store intent and redirect to auth
+      sessionStorage.setItem("checkout_plan", tier.name.toLowerCase());
+      toast({
+        title: "Sign in required",
+        description: "Please sign in or create an account to subscribe.",
+      });
       navigate("/auth");
-    } else {
-      navigate("/auth");
+      return;
+    }
+
+    setLoadingPlan(tier.name);
+
+    try {
+      // Get session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+        return;
+      }
+
+      // Call create-checkout function
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          plan: tier.name.toLowerCase(),
+          priceId: tier.stripePriceId,
+          successUrl: `${window.location.origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/checkout/cancel`,
+        },
+      });
+
+      if (error) throw error;
+
+      // Redirect to Stripe Checkout (URL is returned from edge function)
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast({
+        title: "Checkout failed",
+        description: error instanceof Error ? error.message : "Unable to start checkout. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPlan(null);
     }
   };
 
@@ -186,8 +265,16 @@ const Pricing = () => {
                   variant={tier.popular ? "default" : "outline"}
                   size="lg"
                   onClick={() => handleSubscribe(tier)}
+                  disabled={loadingPlan !== null}
                 >
-                  {tier.cta}
+                  {loadingPlan === tier.name ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    tier.cta
+                  )}
                 </Button>
               </CardFooter>
             </Card>

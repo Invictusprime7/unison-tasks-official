@@ -15,6 +15,8 @@ import WebBuilderPage from "./pages/WebBuilderPage";
 // Dynamic imports for heavy pages
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Index = lazy(() => import("./pages/Index"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const CheckoutCancel = lazy(() => import("./pages/CheckoutCancel"));
 
 // Dynamic imports for heavy pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -142,6 +144,16 @@ const App = () => (
             <Route path="/auth/callback" element={
               <AsyncBoundary loading={<PageLoader />}>
                 <AuthCallback />
+              </AsyncBoundary>
+            } />
+            <Route path="/checkout/success" element={
+              <AsyncBoundary loading={<PageLoader />}>
+                <CheckoutSuccess />
+              </AsyncBoundary>
+            } />
+            <Route path="/checkout/cancel" element={
+              <AsyncBoundary loading={<PageLoader />}>
+                <CheckoutCancel />
               </AsyncBoundary>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
