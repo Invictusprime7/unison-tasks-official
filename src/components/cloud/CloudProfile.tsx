@@ -287,14 +287,16 @@ export function CloudProfile({ user }: CloudProfileProps) {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      // Always update - profile should exist (created on signup)
+      // Use upsert to handle both insert and update cases
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
           full_name: fullName,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+        }, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
 

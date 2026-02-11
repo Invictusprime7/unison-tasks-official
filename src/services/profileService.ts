@@ -165,14 +165,16 @@ class ProfileService {
 
     const oldProfile = await this.getCurrentProfile();
 
-    // Update profiles table
+    // Upsert profiles table to handle both insert and update cases
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: user.id,
         full_name: updates.fullName,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
+      }, {
+        onConflict: 'id'
+      });
 
     if (profileError) {
       return { success: false, error: profileError.message };
