@@ -44,9 +44,14 @@ import { PrebuiltWorkflows } from '@/components/crm/PrebuiltWorkflows';
 // Cloud Automations (moved here from standalone tab)
 import { CloudAutomations } from './CloudAutomations';
 
+// Cloud Teams (accessible within business context)
+import { CloudTeams } from './CloudTeams';
+
 interface CloudBusinessesProps {
   userId: string;
 }
+
+import type { Json } from '@/integrations/supabase/types';
 
 interface Business {
   id: string;
@@ -58,11 +63,25 @@ interface Business {
   owner_id: string;
   notification_email?: string;
   notification_phone?: string;
-  settings?: Record<string, unknown>;
+  settings?: Json;
 }
 
+// Helper to transform database response to Business type
+const transformBusiness = (data: Record<string, unknown>): Business => ({
+  id: data.id as string,
+  name: data.name as string,
+  slug: data.slug as string | undefined,
+  industry: data.industry as string | undefined,
+  website: data.website as string | undefined,
+  created_at: data.created_at as string,
+  owner_id: data.owner_id as string,
+  notification_email: data.notification_email as string | undefined,
+  notification_phone: data.notification_phone as string | undefined,
+  settings: data.settings as Json | undefined,
+});
+
 type BusinessView = 'list' | 'detail';
-type BusinessTab = 'overview' | 'crm' | 'automations' | 'settings';
+type BusinessTab = 'overview' | 'crm' | 'automations' | 'team' | 'settings';
 type CRMSubTab = 'overview' | 'contacts' | 'leads' | 'pipeline' | 'workflows' | 'recipes' | 'automations' | 'forms';
 
 const crmSubTabs = [
@@ -137,7 +156,7 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
         console.log('Businesses table not available:', error.message);
         setBusinesses([]);
       } else {
-        setBusinesses(data || []);
+        setBusinesses((data || []).map(transformBusiness));
       }
     } catch (error) {
       console.error('Error loading businesses:', error);
@@ -162,7 +181,7 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
 
       if (error) throw error;
 
-      setBusinesses([data, ...businesses]);
+      setBusinesses([transformBusiness(data), ...businesses]);
       setCreateOpen(false);
       setNewBusinessName('');
 
@@ -237,9 +256,10 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
 
       if (error) throw error;
 
-      setBusinesses(businesses.map(b => b.id === selectedBusiness.id ? data : b));
+      const updatedBusiness = transformBusiness(data);
+      setBusinesses(businesses.map(b => b.id === selectedBusiness.id ? updatedBusiness : b));
       if (activeBusiness?.id === selectedBusiness.id) {
-        setActiveBusiness(data);
+        setActiveBusiness(updatedBusiness);
       }
       setManageOpen(false);
       setSelectedBusiness(null);
@@ -339,6 +359,10 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
               <Zap className="h-4 w-4 mr-2" />
               Automations
             </TabsTrigger>
+            <TabsTrigger value="team" className="data-[state=active]:bg-white/10">
+              <Users className="h-4 w-4 mr-2" />
+              Team
+            </TabsTrigger>
             <TabsTrigger value="settings" className="data-[state=active]:bg-white/10">
               <Settings className="h-4 w-4 mr-2" />
               Settings
@@ -347,7 +371,7 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-slate-900/50 border-white/10">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -401,6 +425,25 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
                     onClick={() => openInBuilder(activeBusiness)}
                   >
                     Open Builder
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-white/10">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="h-5 w-5 text-pink-400" />
+                    Team
+                  </CardTitle>
+                  <CardDescription>Manage members and roles</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => setActiveTab('team')}
+                  >
+                    Manage Team
                   </Button>
                 </CardContent>
               </Card>
@@ -472,6 +515,11 @@ export function CloudBusinesses({ userId }: CloudBusinessesProps) {
           {/* Automations Tab */}
           <TabsContent value="automations" className="mt-6">
             <CloudAutomations userId={userId} />
+          </TabsContent>
+
+          {/* Team Tab */}
+          <TabsContent value="team" className="mt-6">
+            <CloudTeams userId={userId} organizationId={activeBusiness.id} />
           </TabsContent>
 
           {/* Settings Tab */}

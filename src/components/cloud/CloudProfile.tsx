@@ -250,18 +250,33 @@ export function CloudProfile({ user }: CloudProfileProps) {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error loading profile:', error);
+        toast({
+          title: 'Error loading profile',
+          description: 'Could not load your profile data.',
+          variant: 'destructive',
+        });
       }
 
+      // If profile exists, use it; otherwise initialize with empty data
       if (data) {
         setProfile(data);
         setFullName(data.full_name || '');
+      } else {
+        // Profile doesn't exist yet - initialize empty state
+        setProfile(null);
+        setFullName('');
       }
     } catch (error) {
       console.error('Error:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -287,14 +302,16 @@ export function CloudProfile({ user }: CloudProfileProps) {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      // Always update - profile should exist (created on signup)
+      // Use upsert to handle both insert and update cases
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
           full_name: fullName,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+        }, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
 
@@ -381,85 +398,175 @@ export function CloudProfile({ user }: CloudProfileProps) {
 
   return (
     <div className="space-y-8">
-      {/* Profile Hero Card */}
-      <div className="relative overflow-hidden rounded-2xl">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-cyan-600/20" />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-50" />
+      {/* NEW Profile Hero Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl">
+        {/* Animated Background Effects */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))]" />
+        </div>
         
-        <div className="relative p-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            {/* Avatar */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-500" />
-              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-2xl">
-                {getInitials()}
+        {/* Content */}
+        <div className="relative p-6 sm:p-8 lg:p-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_auto] gap-6 lg:gap-8 items-start lg:items-center">
+            
+            {/* LEFT: Avatar & Quick Actions */}
+            <div className="flex items-center gap-6">
+              <div className="relative group">
+                {/* Glow effect */}
+                <div className="absolute -inset-2 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-full opacity-20 group-hover:opacity-40 blur-xl transition-all duration-500" />
+                
+                {/* Avatar */}
+                <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-cyan-500 p-1 shadow-2xl">
+                  <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
+                    <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-br from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                      {getInitials()}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Camera Button */}
+                <button 
+                  className="absolute -bottom-1 -right-1 p-2.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full border-2 border-slate-900 opacity-0 group-hover:opacity-100 hover:scale-110 transition-all duration-300 shadow-xl"
+                  onClick={() => toast({ title: 'Coming soon', description: 'Avatar upload will be available soon.' })}
+                >
+                  <Camera className="h-4 w-4 text-white" />
+                </button>
               </div>
-              <button className="absolute bottom-0 right-0 p-2 bg-slate-800 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera className="h-4 w-4 text-white" />
-              </button>
             </div>
 
-            {/* Info */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                {editing ? (
+            {/* CENTER: Profile Information */}
+            <div className="space-y-4 min-w-0">
+              {/* Name Section */}
+              {editing ? (
+                <div className="flex flex-col sm:flex-row items-start gap-3">
+                  <Input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && fullName.trim()) saveProfile();
+                      if (e.key === 'Escape') {
+                        setEditing(false);
+                        setFullName(profile?.full_name || '');
+                      }
+                    }}
+                    className="h-12 text-2xl font-bold bg-slate-800/50 border-blue-500/50 focus:border-blue-500 text-white placeholder:text-slate-500 rounded-xl"
+                    placeholder="Enter your name"
+                    autoFocus
+                    disabled={saving}
+                  />
                   <div className="flex items-center gap-2">
-                    <Input
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="bg-slate-800/80 border-white/20 text-xl font-bold h-10 max-w-xs"
-                      placeholder="Your name"
-                      autoFocus
-                    />
-                    <Button size="sm" onClick={saveProfile} disabled={saving} className="bg-green-600 hover:bg-green-500">
-                      <Check className="h-4 w-4" />
+                    <Button 
+                      size="lg"
+                      onClick={saveProfile} 
+                      disabled={saving || !fullName.trim()}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg"
+                    >
+                      {saving ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Check className="h-5 w-5 mr-2" />
+                          Save
+                        </>
+                      )}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                      <X className="h-4 w-4" />
+                    <Button 
+                      size="lg"
+                      variant="outline" 
+                      onClick={() => {
+                        setEditing(false);
+                        setFullName(profile?.full_name || '');
+                      }}
+                      disabled={saving}
+                      className="border-white/20 hover:bg-white/5"
+                    >
+                      <X className="h-5 w-5" />
                     </Button>
                   </div>
-                ) : (
-                  <>
-                    <h2 className="text-2xl font-bold text-white">
-                      {fullName || 'Set your name'}
-                    </h2>
-                    <button 
-                      onClick={() => setEditing(true)}
-                      className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <Edit2 className="h-4 w-4 text-slate-400" />
-                    </button>
-                  </>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 text-slate-400">
-                  <Mail className="h-4 w-4" />
-                  <span className="text-sm">{user?.email}</span>
                 </div>
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                  <Check className="h-3 w-3 mr-1" />
+              ) : (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white truncate">
+                    {fullName || (
+                      <span className="text-slate-400">Set your name</span>
+                    )}
+                  </h1>
+                  <button 
+                    onClick={() => setEditing(true)}
+                    className="p-2 hover:bg-white/10 rounded-xl transition-all duration-200 group flex-shrink-0"
+                    title="Edit name"
+                  >
+                    <Edit2 className="h-5 w-5 text-slate-400 group-hover:text-blue-400 transition-colors" />
+                  </button>
+                  {!fullName && (
+                    <Badge className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-300 border-yellow-500/30 px-3 py-1">
+                      <Sparkles className="h-4 w-4 mr-1.5" />
+                      Complete Your Profile
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Email & Badges */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <Mail className="h-4 w-4 text-slate-400" />
+                  <span className="text-sm text-slate-300">{user?.email}</span>
+                </div>
+                <Badge className="bg-green-500/20 text-green-300 border-green-500/30 px-3 py-1">
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
                   Verified
+                </Badge>
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 px-3 py-1">
+                  <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                  Joined {memberSince}
                 </Badge>
               </div>
             </div>
 
-            {/* Plan Badge */}
-            <div className="flex flex-col items-end gap-2">
-              <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r border", `${planConfig.color}/20`, `border-${planConfig.color.split(' ')[0].replace('from-', '')}/30`)}>
-                <Crown className="h-4 w-4 text-amber-400" />
-                <span className="text-sm font-medium text-amber-400">{planConfig.name} Plan</span>
+            {/* RIGHT: Subscription Plan Card */}
+            <div className="w-full lg:w-auto">
+              <div className="relative group">
+                {/* Glow effect */}
+                <div className={cn(
+                  "absolute -inset-1 bg-gradient-to-r opacity-50 group-hover:opacity-75 blur-xl transition-all duration-300 rounded-2xl",
+                  planConfig.color
+                )} />
+                
+                {/* Plan Card */}
+                <div className={cn(
+                  "relative px-6 py-4 rounded-2xl border-2 bg-slate-900/90 backdrop-blur-sm",
+                  "border-white/20 group-hover:border-white/30 transition-all duration-300"
+                )}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={cn(
+                      "p-2 rounded-lg bg-gradient-to-r",
+                      planConfig.color
+                    )}>
+                      <Crown className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wider">Current Plan</p>
+                      <p className="text-xl font-bold text-white">{planConfig.name}</p>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    size="sm"
+                    className={cn(
+                      "w-full bg-gradient-to-r text-white shadow-lg hover:shadow-xl transition-all duration-300",
+                      planConfig.color
+                    )}
+                    onClick={() => setUpgradeDialogOpen(true)}
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    Upgrade Plan
+                    <ArrowUpRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-xs border-white/10 text-slate-400 hover:text-white"
-                onClick={() => setUpgradeDialogOpen(true)}
-              >
-                <Zap className="h-3 w-3 mr-1" />
-                Upgrade
-              </Button>
             </div>
           </div>
         </div>

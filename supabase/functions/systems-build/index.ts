@@ -375,7 +375,7 @@ function hardenGeneratedHTML(code: string): string {
   if (hardened.includes('data-lucide') && !hardened.includes('lucide')) {
     // Add CDN to head
     if (hardened.includes('</head>')) {
-      hardened = hardened.replace('</head>', '<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"><\/script>\n</head>');
+      hardened = hardened.replace('</head>', '<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>\n</head>');
     }
   }
 

@@ -8,8 +8,8 @@
  * - Preferences
  */
 
-import { useState, useRef } from 'react';
-import { Camera, Save, Loader2, User, Mail, Phone, Briefcase, Building, Globe, Palette } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Camera, Save, Loader2, User, Mail, Phone, Briefcase, Building, Globe, Palette, AtSign, Check, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,9 +48,14 @@ const LOCALES = [
 ];
 
 export function ProfileSettings() {
-  const { profile, loading, updateProfile, uploadAvatar, deleteAvatar, refresh } = useProfile();
+  const { profile, loading, updateProfile, updateUsername, isUsernameAvailable, uploadAvatar, deleteAvatar, refresh } = useProfile();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameValue, setUsernameValue] = useState('');
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<UpdateProfileInput>({
@@ -70,7 +75,7 @@ export function ProfileSettings() {
   });
 
   // Sync form data when profile loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setFormData({
         fullName: profile.fullName ?? '',
@@ -81,8 +86,9 @@ export function ProfileSettings() {
         locale: profile.locale,
         preferences: profile.preferences,
       });
+      setUsernameValue(profile.username ?? '');
     }
-  });
+  }, [profile]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -137,6 +143,60 @@ export function ProfileSettings() {
       toast.error('Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Username validation
+  const validateUsername = (username: string): string | null => {
+    if (!username) return null;
+    if (username.length < 3) return 'Username must be at least 3 characters';
+    if (username.length > 30) return 'Username must be at most 30 characters';
+    if (!/^[a-zA-Z]/.test(username)) return 'Username must start with a letter';
+    if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(username)) return 'Username can only contain letters, numbers, and underscores';
+    return null;
+  };
+
+  const handleUsernameChange = async (value: string) => {
+    setUsernameValue(value);
+    setUsernameAvailable(null);
+    
+    const error = validateUsername(value);
+    setUsernameError(error);
+    
+    if (error || !value || value === profile?.username) {
+      return;
+    }
+    
+    // Debounced availability check
+    setCheckingUsername(true);
+    try {
+      const available = await isUsernameAvailable(value);
+      setUsernameAvailable(available);
+      if (!available) {
+        setUsernameError('Username is already taken');
+      }
+    } catch {
+      setUsernameError('Could not check availability');
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    if (usernameError || !usernameValue || usernameValue === profile?.username) return;
+    
+    setSavingUsername(true);
+    try {
+      const result = await updateUsername(usernameValue);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success('Username updated');
+      }
+    } catch {
+      toast.error('Failed to update username');
+    } finally {
+      setSavingUsername(false);
     }
   };
 
@@ -227,6 +287,51 @@ export function ProfileSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Username Section */}
+          <div className="space-y-2">
+            <Label htmlFor="username" className="flex items-center gap-2">
+              <AtSign className="h-4 w-4" />
+              Username
+            </Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="username"
+                  value={usernameValue}
+                  onChange={(e) => handleUsernameChange(e.target.value)}
+                  placeholder="Choose a unique username"
+                  className={usernameError ? 'border-destructive' : usernameAvailable ? 'border-green-500' : ''}
+                />
+                {checkingUsername && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                {!checkingUsername && usernameAvailable && usernameValue !== profile?.username && (
+                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                )}
+                {!checkingUsername && usernameError && (
+                  <X className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
+                )}
+              </div>
+              <Button
+                onClick={handleSaveUsername}
+                disabled={savingUsername || !!usernameError || !usernameValue || usernameValue === profile?.username || checkingUsername}
+                size="sm"
+              >
+                {savingUsername ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              </Button>
+            </div>
+            {usernameError && (
+              <p className="text-xs text-destructive">{usernameError}</p>
+            )}
+            {!usernameError && usernameValue && (
+              <p className="text-xs text-muted-foreground">
+                Your unique profile identifier. 3-30 characters, letters, numbers, and underscores.
+              </p>
+            )}
+          </div>
+
+          <Separator />
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>

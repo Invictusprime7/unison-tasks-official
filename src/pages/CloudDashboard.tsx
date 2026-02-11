@@ -32,11 +32,10 @@ import {
   CloudEmail, 
   CloudIntegrations,
   CloudSecurity,
-  CloudTeams,
 } from '@/components/cloud';
 
 // Types
-type CloudTab = 'profile' | 'businesses' | 'projects' | 'assets' | 'email' | 'integrations' | 'security' | 'teams';
+type CloudTab = 'profile' | 'businesses' | 'projects' | 'assets' | 'email' | 'integrations' | 'security';
 
 interface TabConfig {
   id: CloudTab;
@@ -95,13 +94,6 @@ const TABS: TabConfig[] = [
     icon: <Shield className="h-5 w-5" />,
     description: 'Account protection',
     gradient: 'from-green-500 to-emerald-500'
-  },
-  { 
-    id: 'teams', 
-    label: 'Teams', 
-    icon: <User className="h-5 w-5" />,
-    description: 'Members & roles',
-    gradient: 'from-pink-500 to-rose-500'
   },
 ];
 
@@ -330,8 +322,6 @@ export default function CloudDashboard() {
         return <CloudIntegrations userId={user.id} />;
       case 'security':
         return <CloudSecurity userId={user.id} />;
-      case 'teams':
-        return <CloudTeams userId={user.id} />;
       default:
         return <CloudProfile user={user} />;
     }

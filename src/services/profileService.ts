@@ -14,6 +14,7 @@ import { auditLogger } from '@/services/auditLogger';
 export interface UserProfile {
   id: string;
   email: string;
+  username: string | null;
   fullName: string | null;
   avatarUrl: string | null;
   phone: string | null;
@@ -139,6 +140,7 @@ class ProfileService {
     return {
       id: profile.id as string,
       email: user?.id === profile.id ? (user?.email ?? '') : '',
+      username: (profile.username as string) ?? null,
       fullName: (profile.full_name as string) ?? null,
       avatarUrl: (profile.avatar_url as string) ?? null,
       phone: null,
@@ -165,14 +167,16 @@ class ProfileService {
 
     const oldProfile = await this.getCurrentProfile();
 
-    // Update profiles table
+    // Upsert profiles table to handle both insert and update cases
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: user.id,
         full_name: updates.fullName,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
+      }, {
+        onConflict: 'id'
+      });
 
     if (profileError) {
       return { success: false, error: profileError.message };
@@ -336,6 +340,7 @@ class ProfileService {
       map.set(profile.id as string, {
         id: profile.id as string,
         email: '',
+        username: (profile.username as string) ?? null,
         fullName: (profile.full_name as string) ?? null,
         avatarUrl: (profile.avatar_url as string) ?? null,
         phone: null,
@@ -403,12 +408,59 @@ class ProfileService {
     return { success: true };
   }
 
+  /**
+   * Update the current user's username
+   */
+  async updateUsername(newUsername: string): Promise<{ success: boolean; error?: string }> {
+    const { data, error } = await supabase.rpc('update_username', {
+      new_username: newUsername
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const result = data as { success: boolean; error?: string };
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    await auditLogger.log({
+      action: 'update',
+      resourceType: 'user',
+      resourceId: (await supabase.auth.getUser()).data.user?.id ?? '',
+      changes: { username: { new: newUsername } },
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * Check if a username is available
+   */
+  async isUsernameAvailable(username: string): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase.rpc('is_username_available', {
+      desired_username: username,
+      excluding_user_id: user?.id ?? null
+    });
+
+    if (error) {
+      console.error('Error checking username availability:', error);
+      return false;
+    }
+
+    return data as boolean;
+  }
+
   private toUserProfile(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }, profile: Record<string, unknown>): UserProfile {
     const metadata = user.user_metadata ?? {};
     
     return {
       id: user.id,
       email: user.email ?? '',
+      username: (profile.username as string) ?? null,
       fullName: (profile.full_name as string) ?? (metadata.full_name as string) ?? null,
       avatarUrl: (profile.avatar_url as string) ?? (metadata.avatar_url as string) ?? null,
       phone: (metadata.phone as string) ?? null,
@@ -473,11 +525,25 @@ export function useProfile() {
     return result;
   };
 
+  const updateUsername = async (username: string) => {
+    const result = await profileService.updateUsername(username);
+    if (result.success) {
+      await fetchProfile();
+    }
+    return result;
+  };
+
+  const isUsernameAvailable = async (username: string) => {
+    return profileService.isUsernameAvailable(username);
+  };
+
   return {
     profile,
     loading,
     error,
     updateProfile,
+    updateUsername,
+    isUsernameAvailable,
     uploadAvatar,
     deleteAvatar: profileService.deleteAvatar.bind(profileService),
     refresh: fetchProfile,
