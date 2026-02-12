@@ -311,7 +311,13 @@ function collectDataAttributes(el: HTMLElement): Record<string, unknown> {
       
       // Try to parse as JSON for complex values
       try {
-        payload[key] = JSON.parse(attr.value);
+        const parsed = JSON.parse(attr.value);
+        // Special case: spread data-payload contents into result
+        if (key === 'payload' && typeof parsed === 'object' && parsed !== null) {
+          Object.assign(payload, parsed);
+        } else {
+          payload[key] = parsed;
+        }
       } catch {
         payload[key] = attr.value;
       }

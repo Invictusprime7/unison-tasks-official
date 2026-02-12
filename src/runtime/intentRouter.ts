@@ -386,7 +386,8 @@ function handleNavGoto(payload: IntentPayload): IntentResult {
  * Handle nav.anchor - Scroll to anchor within page
  */
 function handleNavAnchor(payload: IntentPayload): IntentResult {
-  const anchor = payload.anchor as string;
+  // Check multiple possible sources for the anchor value
+  const anchor = (payload.anchor || payload.utAnchor || payload.target || payload.href) as string;
   if (!anchor) {
     return { success: false, error: "nav.anchor requires an 'anchor' payload" };
   }
