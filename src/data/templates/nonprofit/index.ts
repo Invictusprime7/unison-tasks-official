@@ -35,7 +35,7 @@ ${NP_WARM_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold" style="color:#292524">🌱 Harvest Hope</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#mission" class="nav-link">Mission</a><a href="#impact" class="nav-link">Impact</a><a href="#stories" class="nav-link">Stories</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#mission" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#mission"}'>Mission</a><a href="#impact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#impact"}'>Impact</a><a href="#stories" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#stories"}'>Stories</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Donate Now</button>
   </div>
 </nav>
@@ -188,7 +188,7 @@ ${NP_CLEAN_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold" style="color:#1e3a5f">WaterFirst Foundation</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#work" class="nav-link">Our Work</a><a href="#impact" class="nav-link">Impact</a><a href="#support" class="nav-link">Support</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#work" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#work"}'>Our Work</a><a href="#impact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#impact"}'>Impact</a><a href="#support" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#support"}'>Support</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Support Our Mission</button>
   </div>
 </nav>
@@ -292,7 +292,7 @@ ${NP_BOLD_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-black tracking-tighter uppercase">🌍 Project Green</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#impact" class="nav-link">Impact</a><a href="#action" class="nav-link">Take Action</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#impact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#impact"}'>Impact</a><a href="#action" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#action"}'>Take Action</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Join the Movement</button>
   </div>
 </nav>

@@ -25,7 +25,7 @@ ${RE_DARK_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-semibold tracking-wide">STERLING REALTY</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#properties" class="nav-link">Properties</a><a href="#about" class="nav-link">About</a><a href="#contact" class="nav-link">Contact</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#properties" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#properties"}'>Properties</a><a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a><a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>Contact</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Schedule Viewing</button>
   </div>
 </nav>
@@ -155,7 +155,7 @@ ${RE_LIGHT_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold" style="color:#0f172a">🏠 HomeQuest Realty</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#listings" class="nav-link">Listings</a><a href="#agents" class="nav-link">Agents</a><a href="#contact" class="nav-link">Contact</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#listings" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#listings"}'>Listings</a><a href="#agents" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#agents"}'>Agents</a><a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>Contact</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Get Started</button>
   </div>
 </nav>
@@ -250,7 +250,7 @@ ${RE_BOLD_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-black tracking-tighter uppercase">Greenstone Capital</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#deals" class="nav-link">Active Deals</a><a href="#track" class="nav-link">Track Record</a><a href="#invest" class="nav-link">Invest</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#deals" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#deals"}'>Active Deals</a><a href="#track" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#track"}'>Track Record</a><a href="#invest" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#invest"}'>Invest</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Investor Inquiry</button>
   </div>
 </nav>

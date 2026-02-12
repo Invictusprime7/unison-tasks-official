@@ -85,6 +85,10 @@ CRITICAL RULES:
 7. ${sectionType ? `Generate ONLY a ${sectionType} section` : 'Generate a complete page with multiple sections'}
 ${theme ? `8. Use this theme: ${theme}` : ''}`;
 
+    // Use AbortController with extended timeout for page generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -99,7 +103,10 @@ ${theme ? `8. Use this theme: ${theme}` : ''}`;
         ],
         response_format: { type: "json_object" }
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 429) {

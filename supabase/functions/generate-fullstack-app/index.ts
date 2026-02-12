@@ -331,6 +331,10 @@ Generate a COMPLETE, PRODUCTION-READY application now. Include ALL components, p
 
     console.log('[Full-Stack Generator] Generating application:', { type, features, database, authentication });
 
+    // Use AbortController with extended timeout for full-stack app generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -346,7 +350,10 @@ Generate a COMPLETE, PRODUCTION-READY application now. Include ALL components, p
         response_format: { type: "json_object" },
         temperature: 0.7,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 429) {

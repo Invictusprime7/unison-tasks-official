@@ -166,6 +166,10 @@ PREMIUM QUALITY REQUIREMENTS:
 
 OUTPUT: Return ONLY valid JSON matching the schema above. No markdown, no explanations.`;
 
+    // Use AbortController with extended timeout for template generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -180,7 +184,10 @@ OUTPUT: Return ONLY valid JSON matching the schema above. No markdown, no explan
         ],
         response_format: { type: "json_object" }
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 429) {

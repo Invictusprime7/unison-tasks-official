@@ -325,6 +325,10 @@ This must be a COMPLETE, MULTI-SECTION website (minimum 8 sections) that looks l
 
 Return ONLY the complete HTML code. Make it look like a $5000 custom-built website.`;
 
+    // Use AbortController with extended timeout for template generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -338,7 +342,10 @@ Return ONLY the complete HTML code. Make it look like a $5000 custom-built websi
           { role: 'user', content: userPrompt }
         ],
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 429) {

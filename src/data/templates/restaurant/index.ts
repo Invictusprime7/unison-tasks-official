@@ -34,10 +34,10 @@ ${RESTAURANT_DARK_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-semibold tracking-tight">Aurum</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#menu" class="nav-link">Menu</a>
-      <a href="#about" class="nav-link">Our Story</a>
-      <a href="#chef" class="nav-link">The Chef</a>
-      <a href="#reviews" class="nav-link">Reviews</a>
+      <a href="#menu" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#menu"}'>Menu</a>
+      <a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>Our Story</a>
+      <a href="#chef" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#chef"}'>The Chef</a>
+      <a href="#reviews" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#reviews"}'>Reviews</a>
     </div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="booking.create">Reserve a Table</button>
   </div>
@@ -282,10 +282,10 @@ ${RESTAURANT_LIGHT_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold tracking-tight text-gray-900">Bella's Bistro</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#menu" class="nav-link">Menu</a>
-      <a href="#about" class="nav-link">About</a>
-      <a href="#gallery" class="nav-link">Gallery</a>
-      <a href="#contact" class="nav-link">Contact</a>
+      <a href="#menu" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#menu"}'>Menu</a>
+      <a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a>
+      <a href="#gallery" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#gallery"}'>Gallery</a>
+      <a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>Contact</a>
     </div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="booking.create">Book a Table</button>
   </div>
@@ -452,10 +452,10 @@ ${RESTAURANT_BOLD_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-black tracking-tighter uppercase">Roots & Harvest</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#philosophy" class="nav-link">Philosophy</a>
-      <a href="#menu" class="nav-link">Menu</a>
-      <a href="#farm" class="nav-link">Our Farm</a>
-      <a href="#events" class="nav-link">Events</a>
+      <a href="#philosophy" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#philosophy"}'>Philosophy</a>
+      <a href="#menu" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#menu"}'>Menu</a>
+      <a href="#farm" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#farm"}'>Our Farm</a>
+      <a href="#events" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#events"}'>Events</a>
     </div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="booking.create">Reserve</button>
   </div>

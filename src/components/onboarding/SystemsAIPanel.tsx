@@ -6,7 +6,7 @@
  * premium template references for quality baseline.
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,25 @@ import {
   Users,
   Home,
   Heart,
-  Code2
+  Code2,
+  Upload,
+  X,
+  Image as ImageIcon
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { getTemplatesByCategory } from "@/data/templates";
 import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
+import { cn } from "@/lib/utils";
+
+// Dropped file type
+interface DroppedFile {
+  id: string;
+  file: File;
+  name: string;
+  type: 'image' | 'text' | 'code' | 'other';
+  preview?: string;
+  content?: string;
+}
 
 // Map chip IDs to BusinessSystemType for template lookup
 const CHIP_TO_SYSTEM: Record<string, BusinessSystemType> = {
@@ -156,6 +170,106 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
   const [codePrompt, setCodePrompt] = useState("");
   const [selectedCodeChip, setSelectedCodeChip] = useState<string | null>(null);
   const [isCodeLoading, setIsCodeLoading] = useState(false);
+  
+  // File drop state
+  const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // File processing helpers
+  const getFileType = (file: File): DroppedFile['type'] => {
+    if (file.type.startsWith('image/')) return 'image';
+    if (
+      file.type === 'text/plain' ||
+      file.type === 'text/html' ||
+      file.type === 'text/css' ||
+      file.type === 'application/javascript' ||
+      file.name.match(/\.(tsx?|jsx?|html|css|json|md)$/i)
+    ) return 'code';
+    if (file.type.startsWith('text/')) return 'text';
+    return 'other';
+  };
+
+  const processFile = async (file: File): Promise<DroppedFile> => {
+    const type = getFileType(file);
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const droppedFile: DroppedFile = {
+      id,
+      file,
+      name: file.name,
+      type,
+    };
+
+    // Generate preview for images
+    if (type === 'image') {
+      droppedFile.preview = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Read text content for code/text files
+    if (type === 'code' || type === 'text') {
+      droppedFile.content = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsText(file);
+      });
+    }
+
+    return droppedFile;
+  };
+
+  // File drop handlers
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    // Filter for supported file types
+    const supportedFiles = files.filter(f => 
+      f.type.startsWith('image/') || 
+      f.type.startsWith('text/') ||
+      f.name.match(/\.(tsx?|jsx?|html|css|json|md)$/i)
+    );
+
+    if (supportedFiles.length === 0) {
+      toast({ title: "Unsupported file type", description: "Please drop images or code files", variant: "destructive" });
+      return;
+    }
+
+    const processedFiles = await Promise.all(supportedFiles.map(processFile));
+    setDroppedFiles(prev => [...prev, ...processedFiles]);
+    
+    // Add file context to prompt if images were dropped
+    const imageFiles = processedFiles.filter(f => f.type === 'image');
+    if (imageFiles.length > 0 && !codePrompt.includes('logo') && !codePrompt.includes('image')) {
+      const imageContext = imageFiles.length === 1 
+        ? `Include the uploaded image "${imageFiles[0].name}" as a logo or hero image. `
+        : `Include the ${imageFiles.length} uploaded images in the design. `;
+      setCodePrompt(prev => prev ? `${imageContext}${prev}` : imageContext);
+    }
+  }, [codePrompt, toast]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleRemoveFile = (id: string) => {
+    setDroppedFiles(prev => prev.filter(f => f.id !== id));
+  };
 
   // Handler for code chip click
   const handleCodeChipClick = (chipId: string) => {
@@ -176,20 +290,34 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
     setIsCodeLoading(true);
 
     try {
+      // Prepare attachments from dropped files
+      const attachments = droppedFiles.map(file => ({
+        name: file.name,
+        type: file.type,
+        content: file.content,
+        preview: file.preview,
+      }));
+
+      // Build enhanced prompt with file context
+      const fileContext = droppedFiles.length > 0
+        ? `\n\n[Attached files: ${droppedFiles.map(f => f.name).join(", ")}]\n${droppedFiles.filter(f => f.type === "text").map(f => `--- ${f.name} ---\n${f.content}`).join("\n\n")}`
+        : "";
+
       // If a chip is selected, use systems-build with template reference for premium quality
       if (selectedCodeChip) {
         const ref = getTemplateReference(selectedCodeChip);
         const blueprint = buildBlueprintFromChip(selectedCodeChip, codePrompt);
 
-        console.log(`[SystemsAIPanel] Using systems-build with${ref ? ` template reference: ${ref.templateId}` : 'out template reference'}`);
+        console.log(`[SystemsAIPanel] Using systems-build with${ref ? ` template reference: ${ref.templateId}` : 'out template reference'}, ${droppedFiles.length} attachments`);
 
         const { data, error } = await supabase.functions.invoke("systems-build", {
           body: {
             blueprint,
-            userPrompt: codePrompt,
+            userPrompt: codePrompt + fileContext,
             enhanceWithAI: true,
             templateId: ref?.templateId,
             templateHtml: ref?.templateHtml,
+            attachments: attachments.length > 0 ? attachments : undefined,
           },
         });
 
@@ -209,6 +337,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         if (generatedCode && generatedCode.length > 50) {
           console.log('[SystemsAIPanel] systems-build generated', generatedCode.length, 'chars');
           sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
+          setDroppedFiles([]); // Clear files on success
           navigate("/web-builder", {
             state: {
               generatedCode,
@@ -224,7 +353,9 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
       }
 
       // Fallback: use ai-code-assistant for free-form prompts without a chip selected
-      const enhancedPrompt = buildFreeformPrompt(codePrompt);
+      const enhancedPrompt = buildFreeformPrompt(codePrompt) + fileContext;
+
+      console.log(`[SystemsAIPanel] Using ai-code-assistant with ${droppedFiles.length} attachments`);
 
       const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
         body: {
@@ -232,6 +363,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
           mode: "code",
           templateAction: "full-control",
           editMode: false,
+          attachments: attachments.length > 0 ? attachments : undefined,
         },
       });
 
@@ -265,6 +397,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
 
       if (generatedCode) {
         sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
+        setDroppedFiles([]); // Clear files on success
         navigate("/web-builder", {
           state: { generatedCode, templateName: "AI Generated", aesthetic: "modern", startInPreview: true },
         });
@@ -308,10 +441,18 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
           {/* Main Input Card */}
           <Card className="border-2 shadow-lg bg-card/80 backdrop-blur">
             <CardContent className="p-6">
-              {/* Text Input */}
-              <div className="relative mb-6">
+              {/* Text Input with Drop Zone */}
+              <div 
+                className={cn(
+                  "relative mb-4 transition-all rounded-xl",
+                  isDragging && "ring-2 ring-primary ring-offset-2"
+                )}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+              >
                 <textarea
-                  placeholder="e.g., Create a modern landing page with a hero section, feature cards, testimonials carousel, and a contact form with email validation."
+                  placeholder="e.g., Create a modern landing page with a hero section, feature cards, testimonials carousel, and a contact form with email validation. Drop images here to include them!"
                   value={codePrompt}
                   onChange={(e) => setCodePrompt(e.target.value)}
                   onKeyDown={(e) => {
@@ -320,8 +461,22 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
                       handleCodeSubmit();
                     }
                   }}
-                  className="w-full min-h-[120px] p-4 pr-14 text-lg border-2 rounded-xl resize-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-background"
+                  className={cn(
+                    "w-full min-h-[120px] p-4 pr-14 text-lg border-2 rounded-xl resize-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-background",
+                    isDragging && "border-primary bg-primary/5"
+                  )}
                 />
+                
+                {/* Drop overlay indicator */}
+                {isDragging && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-xl border-2 border-dashed border-primary pointer-events-none">
+                    <div className="flex flex-col items-center gap-2 text-primary">
+                      <Upload className="h-8 w-8" />
+                      <span className="text-sm font-medium">Drop images or files here</span>
+                    </div>
+                  </div>
+                )}
+                
                 <Button 
                   size="icon"
                   className="absolute right-3 bottom-3 h-10 w-10 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
@@ -335,6 +490,51 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
                   )}
                 </Button>
               </div>
+              
+              {/* Dropped Files Preview */}
+              {droppedFiles.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Attached files ({droppedFiles.length})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {droppedFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border"
+                      >
+                        {file.type === 'image' && file.preview ? (
+                          <img
+                            src={file.preview}
+                            alt={file.name}
+                            className="h-8 w-8 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-8 w-8 flex items-center justify-center bg-primary/10 rounded">
+                            <Code2 className="h-4 w-4 text-primary" />
+                          </div>
+                        )}
+                        <span className="text-sm truncate max-w-[100px]">{file.name}</span>
+                        <button
+                          onClick={() => handleRemoveFile(file.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/20 rounded"
+                        >
+                          <X className="h-3 w-3 text-destructive" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Drop hint when no files */}
+              {droppedFiles.length === 0 && (
+                <div className="flex items-center justify-center gap-2 mb-4 text-xs text-muted-foreground">
+                  <Upload className="h-3 w-3" />
+                  <span>Drop images or code files to include in your website</span>
+                </div>
+              )}
 
               {/* Code Prompt Chips */}
               <div className="space-y-3">

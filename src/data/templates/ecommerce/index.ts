@@ -32,13 +32,13 @@ ${ECOM_DARK_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold tracking-[0.2em] uppercase">NOIR</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#new" class="nav-link">New In</a>
-      <a href="#collections" class="nav-link">Collections</a>
-      <a href="#about" class="nav-link">About</a>
+      <a href="#new" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#new"}'>New In</a>
+      <a href="#collections" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#collections"}'>Collections</a>
+      <a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a>
     </div>
     <div class="flex items-center gap-4">
       <button class="btn-ghost text-sm" data-ut-intent="nav.anchor" data-payload='{"anchor":"#newsletter"}'>Join Us</button>
-      <button class="btn-secondary text-sm px-4 py-2">Bag (0)</button>
+      <button class="btn-secondary text-sm px-4 py-2" data-ut-intent="cart.add" data-payload='{"action":"view"}'>Bag (0)</button>
     </div>
   </div>
 </nav>
@@ -71,25 +71,25 @@ ${ECOM_DARK_STYLES}
       <div class="product-card rounded-2xl overflow-hidden" data-reveal>
         <div class="aspect-[3/4]"><img src="https://images.unsplash.com/photo-1434389677669-e08b4cda3a00?w=600&q=80" alt="Jacket" class="w-full h-full object-cover"/></div>
         <div class="overlay"></div>
-        <div class="quick-add"><button class="w-full btn-primary text-sm py-3">Add to Bag — $395</button></div>
+        <div class="quick-add"><button class="w-full btn-primary text-sm py-3" data-ut-intent="cart.add" data-payload='{"product":"wool-overcoat","price":395}'>Add to Bag — $395</button></div>
         <div class="p-4"><h3 class="font-semibold">Wool Overcoat</h3><p class="text-white/60 text-sm">$395</p></div>
       </div>
       <div class="product-card rounded-2xl overflow-hidden" data-reveal>
         <div class="aspect-[3/4]"><img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&q=80" alt="Coat" class="w-full h-full object-cover"/></div>
         <div class="overlay"></div>
-        <div class="quick-add"><button class="w-full btn-primary text-sm py-3">Add to Bag — $275</button></div>
+        <div class="quick-add"><button class="w-full btn-primary text-sm py-3" data-ut-intent="cart.add" data-payload='{"product":"cashmere-sweater","price":275}'>Add to Bag — $275</button></div>
         <div class="p-4"><h3 class="font-semibold">Cashmere Sweater</h3><p class="text-white/60 text-sm">$275</p></div>
       </div>
       <div class="product-card rounded-2xl overflow-hidden" data-reveal>
         <div class="aspect-[3/4]"><img src="https://images.unsplash.com/photo-1542272604-787c3835535d?w=600&q=80" alt="Denim" class="w-full h-full object-cover"/></div>
         <div class="overlay"></div>
-        <div class="quick-add"><button class="w-full btn-primary text-sm py-3">Add to Bag — $185</button></div>
+        <div class="quick-add"><button class="w-full btn-primary text-sm py-3" data-ut-intent="cart.add" data-payload='{"product":"selvedge-denim","price":185}'>Add to Bag — $185</button></div>
         <div class="p-4"><h3 class="font-semibold">Selvedge Denim</h3><p class="text-white/60 text-sm">$185</p></div>
       </div>
       <div class="product-card rounded-2xl overflow-hidden" data-reveal>
         <div class="aspect-[3/4]"><img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&q=80" alt="Shoes" class="w-full h-full object-cover"/></div>
         <div class="overlay"></div>
-        <div class="quick-add"><button class="w-full btn-primary text-sm py-3">Add to Bag — $450</button></div>
+        <div class="quick-add"><button class="w-full btn-primary text-sm py-3" data-ut-intent="cart.add" data-payload='{"product":"leather-chelsea-boot","price":450}'>Add to Bag — $450</button></div>
         <div class="p-4"><h3 class="font-semibold">Leather Chelsea Boot</h3><p class="text-white/60 text-sm">$450</p></div>
       </div>
     </div>
@@ -200,9 +200,9 @@ ${ECOM_LIGHT_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold" style="color:#111827">Lumina</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#products" class="nav-link">Products</a>
-      <a href="#about" class="nav-link">About</a>
-      <a href="#reviews" class="nav-link">Reviews</a>
+      <a href="#products" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#products"}'>Products</a>
+      <a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a>
+      <a href="#reviews" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#reviews"}'>Reviews</a>
     </div>
     <button class="btn-primary text-sm px-6 py-2" data-ut-cta="cta.nav" data-ut-intent="nav.anchor" data-payload='{"anchor":"#products"}'>Shop Now</button>
   </div>
@@ -345,9 +345,9 @@ ${ECOM_BOLD_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-black tracking-tighter uppercase">SUMMIT</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#gear" class="nav-link">Gear</a>
-      <a href="#story" class="nav-link">Story</a>
-      <a href="#athletes" class="nav-link">Athletes</a>
+      <a href="#gear" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#gear"}'>Gear</a>
+      <a href="#story" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#story"}'>Story</a>
+      <a href="#athletes" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#athletes"}'>Athletes</a>
     </div>
     <button class="btn-primary text-sm px-6" data-ut-cta="cta.nav" data-ut-intent="nav.anchor" data-payload='{"anchor":"#gear"}'>Shop</button>
   </div>

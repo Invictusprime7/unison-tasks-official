@@ -125,10 +125,10 @@ ${SALON_DARK_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-semibold tracking-tight">Luxe Beauty</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#services" class="nav-link">Services</a>
-      <a href="#stylists" class="nav-link">Our Team</a>
-      <a href="#gallery" class="nav-link">Gallery</a>
-      <a href="#reviews" class="nav-link">Reviews</a>
+      <a href="#services" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#services"}'>Services</a>
+      <a href="#stylists" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#stylists"}'>Our Team</a>
+      <a href="#gallery" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#gallery"}'>Gallery</a>
+      <a href="#reviews" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#reviews"}'>Reviews</a>
     </div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="booking.create">Book Now</button>
   </div>
@@ -290,10 +290,10 @@ ${SALON_LIGHT_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-semibold tracking-tight" style="color:#d946a8;">Serenity Spa</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#services" class="nav-link">Treatments</a>
-      <a href="#about" class="nav-link">Our Story</a>
-      <a href="#team" class="nav-link">Therapists</a>
-      <a href="#reviews" class="nav-link">Reviews</a>
+      <a href="#services" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#services"}'>Treatments</a>
+      <a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>Our Story</a>
+      <a href="#team" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#team"}'>Therapists</a>
+      <a href="#reviews" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#reviews"}'>Reviews</a>
     </div>
     <button class="btn-primary px-6 py-2.5 rounded-full text-sm font-semibold" data-ut-cta="cta.nav" data-ut-intent="booking.create">Book Treatment</button>
   </div>
@@ -434,10 +434,10 @@ ${SALON_BOLD_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-2xl font-black tracking-tighter" style="color:#1a1a2e;">HAUS</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#services" class="nav-link">SERVICES</a>
-      <a href="#artists" class="nav-link">ARTISTS</a>
-      <a href="#editorial" class="nav-link">EDITORIAL</a>
-      <a href="#contact" class="nav-link">CONTACT</a>
+      <a href="#services" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#services"}'>SERVICES</a>
+      <a href="#artists" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#artists"}'>ARTISTS</a>
+      <a href="#editorial" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#editorial"}'>EDITORIAL</a>
+      <a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>CONTACT</a>
     </div>
     <button class="btn-primary px-6 py-2.5 text-sm" data-ut-cta="cta.nav" data-ut-intent="booking.create">BOOK NOW</button>
   </div>

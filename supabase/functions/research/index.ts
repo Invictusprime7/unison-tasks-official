@@ -175,6 +175,10 @@ async function callLovableAI(opts: {
     videos: opts.videos.slice(0, 5).map((v) => v.url),
   };
 
+  // Use AbortController with extended timeout for AI synthesis
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -190,7 +194,10 @@ async function callLovableAI(opts: {
       ],
       temperature: 0.3,
     }),
+    signal: controller.signal,
   });
+
+  clearTimeout(timeoutId);
 
   if (!resp.ok) {
     const t = await resp.text().catch(() => "");

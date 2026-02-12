@@ -24,7 +24,7 @@ ${COACHING_DARK_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-semibold">Elevate Executive</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#programs" class="nav-link">Programs</a><a href="#about" class="nav-link">About</a><a href="#results" class="nav-link">Results</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#programs" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#programs"}'>Programs</a><a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a><a href="#results" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#results"}'>Results</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="booking.create">Book Discovery Call</button>
   </div>
 </nav>
@@ -180,7 +180,7 @@ ${COACHING_LIGHT_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold" style="color:#292524">🌱 Sarah Wells Coaching</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#services" class="nav-link">Services</a><a href="#about" class="nav-link">About</a><a href="#testimonials" class="nav-link">Success Stories</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#services" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#services"}'>Services</a><a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a><a href="#testimonials" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#testimonials"}'>Success Stories</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="booking.create">Free Consultation</button>
   </div>
 </nav>
@@ -306,7 +306,7 @@ ${COACHING_BOLD_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-black tracking-tighter uppercase">Marcus Cole</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#programs" class="nav-link">Programs</a><a href="#speaking" class="nav-link">Speaking</a><a href="#book" class="nav-link">Book</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#programs" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#programs"}'>Programs</a><a href="#speaking" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#speaking"}'>Speaking</a><a href="#book" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#book"}'>Book</a></div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="booking.create">Work With Me</button>
   </div>
 </nav>

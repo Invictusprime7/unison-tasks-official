@@ -333,6 +333,10 @@ Respond ONLY with valid JSON in this exact format:
 }`;
 
   try {
+    // Use AbortController with extended timeout for AI classification
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+
     const response = await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
@@ -348,7 +352,10 @@ Respond ONLY with valid JSON in this exact format:
         temperature: 0.3,
         max_tokens: 1000,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error("[systems-classify] AI gateway error:", response.status);

@@ -16,6 +16,188 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============================================================================
+// WEB RESEARCH INTEGRATION
+// Searches the web to gather context for improved AI code generation
+// ============================================================================
+
+interface ResearchResult {
+  snippets: string[];
+  trends: string[];
+  keyPhrases: string[];
+}
+
+/**
+ * Decode HTML entities
+ */
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+/**
+ * Strip HTML tags
+ */
+function stripHtmlTags(input: string): string {
+  return decodeHtmlEntities(input.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
+}
+
+/**
+ * Fetch with timeout
+ */
+async function fetchWithTimeout(url: string, timeoutMs = 5000): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; WebBuilderAI/1.0)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+    });
+    if (!res.ok) return "";
+    return await res.text();
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Parse DuckDuckGo search results
+ */
+function parseDDGResults(html: string, max = 4): string[] {
+  const snippets: string[] = [];
+  const snippetRe = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>|<div[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/div>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = snippetRe.exec(html)) && snippets.length < max) {
+    const raw = match[1] || match[2] || "";
+    const snippet = stripHtmlTags(raw);
+    if (snippet && snippet.length > 30) {
+      snippets.push(snippet);
+    }
+  }
+  return snippets;
+}
+
+/**
+ * Extract key design/development insights from snippets
+ */
+function extractInsights(snippets: string[]): { trends: string[]; keyPhrases: string[] } {
+  const trends: string[] = [];
+  const keyPhrases: string[] = [];
+  
+  const trendKeywords = ["trend", "popular", "modern", "2025", "2024", "latest", "best practice"];
+  const featureKeywords = ["feature", "include", "component", "design", "layout", "responsive"];
+  
+  for (const snippet of snippets) {
+    const lower = snippet.toLowerCase();
+    if (trendKeywords.some(kw => lower.includes(kw))) {
+      const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      if (sentences[0] && trendKeywords.some(kw => sentences[0].toLowerCase().includes(kw))) {
+        trends.push(sentences[0].trim());
+      }
+    }
+    if (featureKeywords.some(kw => lower.includes(kw))) {
+      const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      if (sentences[0] && featureKeywords.some(kw => sentences[0].toLowerCase().includes(kw))) {
+        keyPhrases.push(sentences[0].trim());
+      }
+    }
+  }
+  
+  return { 
+    trends: [...new Set(trends)].slice(0, 3), 
+    keyPhrases: [...new Set(keyPhrases)].slice(0, 3) 
+  };
+}
+
+/**
+ * Perform web research based on user prompt
+ */
+async function performPromptResearch(userPrompt: string): Promise<ResearchResult> {
+  const result: ResearchResult = { snippets: [], trends: [], keyPhrases: [] };
+  
+  if (!userPrompt || userPrompt.length < 10) return result;
+  
+  try {
+    // Extract keywords from user prompt
+    const cleanPrompt = userPrompt
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replace(/<[^>]*>/g, '') // Remove HTML
+      .replace(/\b(create|make|build|add|change|update|generate|design|I want|I need|please|can you)\b/gi, '')
+      .trim();
+    
+    if (cleanPrompt.length < 5) return result;
+    
+    // Build targeted search query
+    const searchQuery = `web design ${cleanPrompt.split(/\s+/).slice(0, 5).join(' ')} best practices`;
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`;
+    
+    const html = await fetchWithTimeout(ddgUrl, 4000);
+    const snippets = parseDDGResults(html, 4);
+    
+    const seenSnippets = new Set<string>();
+    for (const snippet of snippets) {
+      const normalized = snippet.toLowerCase().substring(0, 40);
+      if (!seenSnippets.has(normalized)) {
+        seenSnippets.add(normalized);
+        result.snippets.push(snippet);
+      }
+    }
+    
+    const insights = extractInsights(result.snippets);
+    result.trends = insights.trends;
+    result.keyPhrases = insights.keyPhrases;
+    
+    console.log(`[ai-code-assistant] Research completed: ${result.snippets.length} snippets`);
+  } catch (error) {
+    console.warn("[ai-code-assistant] Research failed (non-blocking):", error);
+  }
+  
+  return result;
+}
+
+/**
+ * Format research for AI prompt injection
+ */
+function formatResearchContext(research: ResearchResult): string {
+  if (research.snippets.length === 0) return "";
+  
+  let context = "\n\n🔬 **LIVE WEB RESEARCH CONTEXT:**\n";
+  
+  if (research.trends.length > 0) {
+    context += "\n**Current Design Trends:**\n";
+    for (const trend of research.trends) {
+      context += `- ${trend}\n`;
+    }
+  }
+  
+  if (research.keyPhrases.length > 0) {
+    context += "\n**Recommended Approaches:**\n";
+    for (const phrase of research.keyPhrases) {
+      context += `- ${phrase}\n`;
+    }
+  }
+  
+  if (research.snippets.length > 0) {
+    context += "\n**Relevant Context:**\n";
+    for (const snippet of research.snippets.slice(0, 3)) {
+      const truncated = snippet.length > 150 ? snippet.substring(0, 150) + "..." : snippet;
+      context += `> ${truncated}\n`;
+    }
+  }
+  
+  return context;
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -1173,6 +1355,10 @@ Learn from every bug fix to become better at prevention!`
     const lastMessageContent = messages[messages.length - 1]?.content;
     const userPromptText = extractTextContent(lastMessageContent);
     const userPrompt = userPromptText.toLowerCase();
+    
+    // Perform web research in parallel (non-blocking) for design/code context
+    const researchPromise = performPromptResearch(userPromptText);
+    
     // More specific keywords - avoid triggering on general page generation requests
     const imageKeywords = ['generate image', 'create image', 'generate a logo', 'create a logo', 'make a logo', 'add logo image', 'insert image'];
     const shouldGenerateImage = generateImage || imageKeywords.some(kw => userPrompt.includes(kw));
@@ -1293,10 +1479,14 @@ Learn from every bug fix to become better at prevention!`
 
     console.log(`[AI-Code-Assistant] Processing ${processedMessages.length} messages (from ${messages.length} original)`);
 
+    // Wait for research results and format context
+    const research = await researchPromise;
+    const researchContext = formatResearchContext(research);
+
     const body: Record<string, unknown> = {
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: systemPrompt + (generatedImageUrl ? `
+        { role: 'system', content: systemPrompt + researchContext + (generatedImageUrl ? `
 
 **IMPORTANT: An AI-generated image has been created for this request. Include this image HTML in your response at the appropriate location:**
 ${imageHtml}
@@ -1306,9 +1496,9 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       ],
     };
 
-    // Main AI call with timeout
+    // Main AI call with extended timeout for complex generation
     const mainController = new AbortController();
-    const mainTimeoutId = setTimeout(() => mainController.abort(), 60000); // 60 second timeout
+    const mainTimeoutId = setTimeout(() => mainController.abort(), 120000); // 120 second timeout
     
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

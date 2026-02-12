@@ -26,10 +26,10 @@ ${SERVICE_DARK_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold tracking-tight">Apex Contracting</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#services" class="nav-link">Services</a>
-      <a href="#work" class="nav-link">Our Work</a>
-      <a href="#reviews" class="nav-link">Reviews</a>
-      <a href="#contact" class="nav-link">Contact</a>
+      <a href="#services" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#services"}'>Services</a>
+      <a href="#work" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#work"}'>Our Work</a>
+      <a href="#reviews" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#reviews"}'>Reviews</a>
+      <a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>Contact</a>
     </div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="quote.request">Get Free Quote</button>
   </div>
@@ -219,9 +219,9 @@ ${SERVICE_LIGHT_STYLES}
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-bold tracking-tight" style="color:#1e293b">🏠 GreenLeaf Plumbing</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#services" class="nav-link">Services</a>
-      <a href="#about" class="nav-link">About</a>
-      <a href="#reviews" class="nav-link">Reviews</a>
+      <a href="#services" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#services"}'>Services</a>
+      <a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a>
+      <a href="#reviews" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#reviews"}'>Reviews</a>
     </div>
     <button class="btn-primary" data-ut-cta="cta.nav" data-ut-intent="quote.request">Free Quote</button>
   </div>
@@ -239,7 +239,7 @@ ${SERVICE_LIGHT_STYLES}
       <p class="body-lg mb-10 animate-fade-in-up stagger-2">Fast, honest, affordable plumbing for your home. Same-day service, upfront pricing, and a smile.</p>
       <div class="flex flex-wrap gap-4 animate-fade-in-up stagger-3">
         <button class="btn-primary button-press" data-ut-cta="cta.primary" data-ut-intent="quote.request">Get Free Quote</button>
-        <a href="tel:5551234567" class="btn-secondary">📞 Call Now: (555) 123-4567</a>
+        <a href="tel:5551234567" class="btn-secondary" data-ut-intent="nav.external" data-payload='{"url":"tel:5551234567","type":"phone"}'>📞 Call Now: (555) 123-4567</a>
       </div>
     </div>
   </div>
@@ -386,16 +386,16 @@ ${ADVANCED_CSS}
 const serviceBold = `
 ${SERVICE_BOLD_STYLES}
 <div class="emergency-banner py-3 text-center font-bold" data-ut-section="banner">
-  🚨 24/7 EMERGENCY SERVICE — CALL NOW: <a href="tel:5559119111" class="underline">(555) 911-9111</a> 🚨
+  🚨 24/7 EMERGENCY SERVICE — CALL NOW: <a href="tel:5559119111" class="underline" data-ut-intent="nav.external" data-payload='{"url":"tel:5559119111","type":"phone"}'>(555) 911-9111</a> 🚨
 </div>
 
 <nav class="fixed top-12 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-black tracking-tighter uppercase">⚡ RapidFix Electric</a>
     <div class="hidden md:flex items-center gap-8">
-      <a href="#services" class="nav-link">Services</a>
-      <a href="#emergency" class="nav-link">Emergency</a>
-      <a href="#reviews" class="nav-link">Reviews</a>
+      <a href="#services" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#services"}'>Services</a>
+      <a href="#emergency" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#emergency"}'>Emergency</a>
+      <a href="#reviews" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#reviews"}'>Reviews</a>
     </div>
     <button class="btn-primary px-6" data-ut-cta="cta.nav" data-ut-intent="quote.request">⚡ Get Help Now</button>
   </div>
@@ -412,7 +412,7 @@ ${SERVICE_BOLD_STYLES}
       <h1 class="hero-editorial animate-fade-in-up stagger-1"><span class="gradient-text">Electrical</span> Emergency?</h1>
       <p class="body-lg mt-6 mb-10 animate-fade-in-up stagger-2">Don't wait. Our licensed electricians arrive in 30 minutes or less. Sparks, outages, burned outlets—we handle it all.</p>
       <div class="flex flex-wrap gap-4 animate-fade-in-up stagger-3">
-        <a href="tel:5559119111" class="btn-primary button-press text-lg px-8 py-4">📞 Call (555) 911-9111</a>
+        <a href="tel:5559119111" class="btn-primary button-press text-lg px-8 py-4" data-ut-intent="nav.external" data-payload='{"url":"tel:5559119111","type":"phone"}'>📞 Call (555) 911-9111</a>
         <button class="btn-secondary text-lg px-8 py-4" data-ut-cta="cta.secondary" data-ut-intent="quote.request">Request Callback</button>
       </div>
     </div>

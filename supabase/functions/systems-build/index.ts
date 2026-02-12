@@ -126,6 +126,257 @@ const BodySchema = z.object({
   templateHtml: z.string().max(200_000).optional(),
 });
 
+// ============================================================================
+// WEB RESEARCH INTEGRATION
+// Searches the web for industry-specific information to improve AI outputs
+// ============================================================================
+
+interface ResearchResult {
+  snippets: string[];
+  trends: string[];
+  competitors: string[];
+  keyPhrases: string[];
+}
+
+/**
+ * Simple HTML entity decoder for search results
+ */
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+/**
+ * Strip HTML tags from a string
+ */
+function stripHtmlTags(input: string): string {
+  return decodeHtmlEntities(input.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
+}
+
+/**
+ * Fetch text from a URL with timeout
+ */
+async function fetchWithTimeout(url: string, timeoutMs = 6000): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; SystemsAI/1.0; +https://lovable.dev)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    if (!res.ok) return "";
+    return await res.text();
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Parse DuckDuckGo search results to extract snippets
+ */
+function parseDuckDuckGoResults(html: string, maxResults = 5): string[] {
+  const snippets: string[] = [];
+  
+  // Extract result snippets from DuckDuckGo HTML
+  const snippetRe = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>|<div[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/div>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = snippetRe.exec(html)) && snippets.length < maxResults) {
+    const raw = match[1] || match[2] || "";
+    const snippet = stripHtmlTags(raw);
+    if (snippet && snippet.length > 30) {
+      snippets.push(snippet);
+    }
+  }
+  
+  return snippets;
+}
+
+/**
+ * Build search queries for industry research
+ */
+function buildSearchQueries(businessName: string, industry: string, location?: string, userPrompt?: string): string[] {
+  const queries: string[] = [];
+  const industryHuman = industry.replace(/_/g, " ");
+  
+  // Use business context for more targeted research
+  const businessContext = businessName.toLowerCase().includes(industryHuman) ? businessName : `${businessName} ${industryHuman}`;
+  
+  // Primary business and industry queries
+  queries.push(`${industryHuman} website design trends 2025`);
+  queries.push(`best ${industryHuman} business website examples`);
+  queries.push(`${businessContext} customer expectations`);
+  
+  // Add user prompt context if available
+  if (userPrompt && userPrompt.length > 10) {
+    const promptKeywords = userPrompt.split(/\s+/).slice(0, 4).join(" ");
+    queries.push(`${industryHuman} ${promptKeywords}`);
+  }
+  
+  // Location-specific query if available
+  if (location) {
+    queries.push(`${industryHuman} business ${location}`);
+  }
+  
+  // Industry-specific queries
+  const industryQueries: Record<string, string[]> = {
+    salon_spa: ["beauty salon services menu", "spa booking best practices"],
+    restaurant: ["restaurant menu design", "food ordering system features"],
+    local_service: ["home service business trust signals", "contractor website must haves"],
+    ecommerce: ["ecommerce conversion optimization", "product page best practices"],
+    coaching_consulting: ["coaching website lead generation", "consultant credibility factors"],
+    real_estate: ["real estate listing website features", "property showcase best practices"],
+    creator_portfolio: ["portfolio website design inspiration", "freelancer website essentials"],
+    nonprofit: ["nonprofit donation page optimization", "charity website trust elements"],
+  };
+  
+  const extra = industryQueries[industry] || [];
+  queries.push(...extra.slice(0, 2));
+  
+  return queries.slice(0, 3); // Limit to 3 queries for speed
+}
+
+/**
+ * Extract key phrases and trends from search snippets
+ */
+function extractKeyInsights(snippets: string[]): { trends: string[]; keyPhrases: string[] } {
+  const trends: string[] = [];
+  const keyPhrases: string[] = [];
+  
+  const trendKeywords = ["trend", "popular", "growing", "modern", "2025", "2024", "latest", "new"];
+  const featureKeywords = ["feature", "include", "offer", "provide", "essential", "must have", "important"];
+  
+  for (const snippet of snippets) {
+    const lower = snippet.toLowerCase();
+    
+    // Extract trend-related sentences
+    if (trendKeywords.some(kw => lower.includes(kw))) {
+      const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      for (const sentence of sentences.slice(0, 1)) {
+        if (trendKeywords.some(kw => sentence.toLowerCase().includes(kw))) {
+          trends.push(sentence.trim());
+        }
+      }
+    }
+    
+    // Extract feature-related phrases
+    if (featureKeywords.some(kw => lower.includes(kw))) {
+      const sentences = snippet.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      for (const sentence of sentences.slice(0, 1)) {
+        if (featureKeywords.some(kw => sentence.toLowerCase().includes(kw))) {
+          keyPhrases.push(sentence.trim());
+        }
+      }
+    }
+  }
+  
+  // Deduplicate
+  const uniqueTrends = [...new Set(trends)].slice(0, 3);
+  const uniquePhrases = [...new Set(keyPhrases)].slice(0, 3);
+  
+  return { trends: uniqueTrends, keyPhrases: uniquePhrases };
+}
+
+/**
+ * Perform web research for industry-specific information
+ * Returns relevant snippets, trends, and insights to enhance AI generation
+ */
+async function performWebResearch(
+  businessName: string,
+  industry: string,
+  userPrompt?: string
+): Promise<ResearchResult> {
+  const result: ResearchResult = {
+    snippets: [],
+    trends: [],
+    competitors: [],
+    keyPhrases: [],
+  };
+  
+  try {
+    const queries = buildSearchQueries(businessName, industry, undefined, userPrompt);
+    
+    // Fetch all queries in parallel for speed
+    const searchPromises = queries.map(async (query) => {
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      const html = await fetchWithTimeout(ddgUrl, 5000);
+      return parseDuckDuckGoResults(html, 3);
+    });
+    
+    const allResults = await Promise.all(searchPromises);
+    const allSnippets = allResults.flat();
+    
+    // Deduplicate snippets
+    const seenSnippets = new Set<string>();
+    for (const snippet of allSnippets) {
+      const normalized = snippet.toLowerCase().substring(0, 50);
+      if (!seenSnippets.has(normalized)) {
+        seenSnippets.add(normalized);
+        result.snippets.push(snippet);
+      }
+    }
+    
+    // Extract insights from snippets
+    const insights = extractKeyInsights(result.snippets);
+    result.trends = insights.trends;
+    result.keyPhrases = insights.keyPhrases;
+    
+    console.log(`[systems-build] Web research completed: ${result.snippets.length} snippets, ${result.trends.length} trends`);
+  } catch (error) {
+    console.warn("[systems-build] Web research failed (non-blocking):", error);
+    // Non-blocking - return empty result
+  }
+  
+  return result;
+}
+
+/**
+ * Format research results for injection into AI prompt
+ */
+function formatResearchContext(research: ResearchResult): string {
+  if (research.snippets.length === 0 && research.trends.length === 0) {
+    return "";
+  }
+  
+  let context = "\n\n🔬 **LIVE WEB RESEARCH (USE THESE INSIGHTS):**\n";
+  
+  if (research.trends.length > 0) {
+    context += "\n**Current Industry Trends:**\n";
+    for (const trend of research.trends) {
+      context += `- ${trend}\n`;
+    }
+  }
+  
+  if (research.keyPhrases.length > 0) {
+    context += "\n**Key Features to Include:**\n";
+    for (const phrase of research.keyPhrases) {
+      context += `- ${phrase}\n`;
+    }
+  }
+  
+  if (research.snippets.length > 0) {
+    context += "\n**Relevant Industry Information:**\n";
+    for (const snippet of research.snippets.slice(0, 4)) {
+      // Truncate long snippets
+      const truncated = snippet.length > 200 ? snippet.substring(0, 200) + "..." : snippet;
+      context += `> ${truncated}\n`;
+    }
+  }
+  
+  context += "\nUse these insights to make the website more relevant, modern, and aligned with industry best practices.\n";
+  
+  return context;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -214,13 +465,25 @@ serve(async (req) => {
 
     console.log(`[systems-build] Loaded ${mergedPatterns.length} design patterns (${industryPatterns?.length ?? 0} industry + ${universalPatterns?.length ?? 0} universal) for ${rawIndustry}`);
 
+    // Perform web research in parallel with pattern loading (non-blocking)
+    console.log(`[systems-build] Starting web research for ${blueprint.brand.business_name} (${rawIndustry})`);
+    const researchPromise = performWebResearch(blueprint.brand.business_name, rawIndustry, userPrompt);
+    
+    // Wait for research (with built-in timeout in performWebResearch)
+    const research = await researchPromise;
+    const researchContext = formatResearchContext(research);
+
     // Build comprehensive system prompt for business website generation
-    const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml);
+    const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml, researchContext);
     const userMessage = buildUserMessage(blueprint, userPrompt);
 
     console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})${templateId ? ` with reference template: ${templateId}` : ''}`);
 
-const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Use AbortController with extended timeout for complex AI generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
@@ -234,7 +497,10 @@ const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions
         ],
         temperature: 0.7,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -389,7 +655,7 @@ function hardenGeneratedHTML(code: string): string {
   return hardened;
 }
 
-function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = "", templateHtml?: string): string {
+function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = "", templateHtml?: string, researchContext = ""): string {
   const { brand, identity, design } = blueprint;
   const palette = brand.palette || {};
   const pages = blueprint.site?.pages || [];
@@ -1130,6 +1396,7 @@ These are proven, high-converting section patterns from our design system. Use t
 
 ${patternContext}
 ` : ""}
+${researchContext}
 ${templateReferenceBlock}`;
 }
 

@@ -774,6 +774,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Auto-save functionality
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedCodeRef = useRef<string>('');
   const AUTO_SAVE_KEY = 'webbuilder_autosave_draft';
@@ -1127,6 +1128,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         };
         localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(draft));
         lastSavedCodeRef.current = previewCode;
+        setLastSavedAt(new Date());
         setAutoSaveStatus('saved');
         setTimeout(() => setAutoSaveStatus('idle'), 2000);
       } catch (error) {
@@ -1182,6 +1184,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               setEditorCode(draft.editorCode);
             }
             lastSavedCodeRef.current = draft.code;
+            setLastSavedAt(savedTime);
             toast.info('Draft restored', {
               description: `Last saved ${format(savedTime, 'MMM d, h:mm a')}`,
               action: {
@@ -2959,22 +2962,30 @@ ${body.innerHTML}
 
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
-              {/* Auto-save status indicator */}
-              {autoSaveStatus !== 'idle' && (
-                <div className="flex items-center gap-1 text-xs text-white/50">
-                  {autoSaveStatus === 'saving' ? (
-                    <>
-                      <div className="animate-spin h-3 w-3 border border-white/30 border-t-white/70 rounded-full" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Cloud className="h-3 w-3 text-primary" />
-                      <span className="text-primary">Saved</span>
-                    </>
-                  )}
-                </div>
-              )}
+              {/* Auto-save status indicator - always visible */}
+              <div className="flex items-center gap-1 text-xs text-white/50">
+                {autoSaveStatus === 'saving' ? (
+                  <>
+                    <div className="animate-spin h-3 w-3 border border-white/30 border-t-white/70 rounded-full" />
+                    <span>Saving...</span>
+                  </>
+                ) : autoSaveStatus === 'saved' ? (
+                  <>
+                    <Cloud className="h-3 w-3 text-primary" />
+                    <span className="text-primary">Saved</span>
+                  </>
+                ) : lastSavedAt ? (
+                  <>
+                    <Cloud className="h-3 w-3" />
+                    <span>Saved {format(lastSavedAt, 'h:mm a')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Cloud className="h-3 w-3" />
+                    <span>Auto-save on</span>
+                  </>
+                )}
+              </div>
               
               <Button
                 variant="ghost"

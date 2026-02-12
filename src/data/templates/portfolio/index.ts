@@ -25,7 +25,7 @@ ${PORT_DARK_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-light tracking-[0.15em]">ELENA VOSS</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#work" class="nav-link">Work</a><a href="#about" class="nav-link">About</a><a href="#contact" class="nav-link">Contact</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#work" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#work"}'>Work</a><a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a><a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>Contact</a></div>
     <button class="btn-primary text-sm px-6" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Hire Me</button>
   </div>
 </nav>
@@ -152,7 +152,7 @@ ${PORT_LIGHT_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-light tracking-[0.1em]" style="color:#171717">JAMES MORRISON</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#portfolio" class="nav-link">Portfolio</a><a href="#about" class="nav-link">About</a><a href="#contact" class="nav-link">Contact</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#portfolio" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#portfolio"}'>Portfolio</a><a href="#about" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#about"}'>About</a><a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>Contact</a></div>
     <button class="btn-primary text-sm px-6" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Book a Shoot</button>
   </div>
 </nav>
@@ -238,7 +238,7 @@ ${PORT_BOLD_STYLES}
 <nav class="fixed top-0 left-0 right-0 z-50 nav-blur" data-ut-section="nav">
   <div class="container-wide flex items-center justify-between py-4">
     <a href="#" class="text-xl font-mono font-bold">kai.dev</a>
-    <div class="hidden md:flex items-center gap-8"><a href="#projects" class="nav-link">Projects</a><a href="#lab" class="nav-link">Lab</a><a href="#contact" class="nav-link">Contact</a></div>
+    <div class="hidden md:flex items-center gap-8"><a href="#projects" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#projects"}'>Projects</a><a href="#lab" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#lab"}'>Lab</a><a href="#contact" class="nav-link" data-ut-intent="nav.anchor" data-payload='{"anchor":"#contact"}'>Contact</a></div>
     <button class="btn-primary text-sm px-6" data-ut-cta="cta.nav" data-ut-intent="contact.submit">Let's Build</button>
   </div>
 </nav>

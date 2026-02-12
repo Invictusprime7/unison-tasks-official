@@ -908,6 +908,10 @@ Respond ONLY with valid JSON:
 }`;
 
   try {
+    // Use AbortController with extended timeout for AI enhancement
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+
     const response = await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
@@ -923,7 +927,10 @@ Respond ONLY with valid JSON:
         temperature: 0.7,
         max_tokens: 500,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error("[systems-compile] AI gateway error:", response.status);
