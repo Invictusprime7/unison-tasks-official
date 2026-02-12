@@ -1252,16 +1252,18 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
         selectionCleanupRef.current = null;
       }
     };
-  }, [enableSelection, previewUrl, attachSelectionListeners]);
+  }, [enableSelection, currentHtml, attachSelectionListeners]);
   
   const handleRefresh = () => {
-    if (iframeRef.current) {
-      iframeRef.current.src = previewUrl;
+    if (iframeRef.current && blobUrlRef.current) {
+      iframeRef.current.src = blobUrlRef.current;
     }
   };
   
   const handleOpenInNewTab = () => {
-    window.open(previewUrl, '_blank');
+    if (blobUrlRef.current) {
+      window.open(blobUrlRef.current, '_blank');
+    }
   };
   
   return (
@@ -1313,7 +1315,6 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
         >
         <iframe
           ref={iframeRef}
-          src={previewUrl}
           className="w-full h-full border-0 bg-white"
           title="Code Preview"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
