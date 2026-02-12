@@ -3036,15 +3036,41 @@ ${body.innerHTML}
                       {builderMode === 'select' ? 'Select Mode - Click elements to edit' : 'Preview Mode - Test interactions'}
                     </span>
                   </div>
-                  {builderMode === 'select' && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">Del</kbd>
-                      <span>Delete</span>
-                      <span className="mx-1">·</span>
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘D</kbd>
-                      <span>Duplicate</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Undo/Redo buttons */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleUndo}
+                      disabled={!codeHistory.canUndo}
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      title="Undo (Ctrl+Z)"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRedo}
+                      disabled={!codeHistory.canRedo}
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      title="Redo (Ctrl+Y)"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </Button>
+                    {builderMode === 'select' && (
+                      <>
+                        <span className="w-px h-4 bg-border mx-1" />
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">Del</kbd>
+                          <span>Delete</span>
+                          <span className="mx-1">·</span>
+                          <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘D</kbd>
+                          <span>Duplicate</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div 
                   ref={scrollContainerRef}
@@ -3229,9 +3255,33 @@ export default function App() {
               <div className="w-full h-full flex gap-4">
                 {/* Live Preview - Main viewing area */}
                 <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative flex flex-col">
-                  <div className="h-10 bg-muted border-b flex items-center px-4 flex-shrink-0">
-                    <Eye className="w-4 h-4 text-muted-foreground mr-2" />
-                    <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
+                  <div className="h-10 bg-muted border-b flex items-center justify-between px-4 flex-shrink-0">
+                    <div className="flex items-center">
+                      <Eye className="w-4 h-4 text-muted-foreground mr-2" />
+                      <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleUndo}
+                        disabled={!codeHistory.canUndo}
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        title="Undo (Ctrl+Z)"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleRedo}
+                        disabled={!codeHistory.canRedo}
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        title="Redo (Ctrl+Y)"
+                      >
+                        <Redo2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div 
                     ref={splitViewDropZoneRef}
