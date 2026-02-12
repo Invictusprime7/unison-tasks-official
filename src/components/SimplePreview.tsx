@@ -1045,6 +1045,11 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
   const selectedElementRef = useRef<HTMLElement | null>(null);
   
+  // Track whether iframe is initialized (first load)
+  const isInitializedRef = useRef(false);
+  const prevCodeRef = useRef<string | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+  
   // Expose imperative handle for delete/duplicate/update from parent
   useImperativeHandle(ref, () => ({
     getIframe: () => iframeRef.current,
@@ -1099,12 +1104,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       blobUrlRef.current = url;
       iframeRef.current.src = url;
     },
-  }));
-
-  // Track whether iframe is initialized (first load)
-  const isInitializedRef = useRef(false);
-  const prevCodeRef = useRef<string | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
+  }), [code]);
 
   // Convert code to HTML
   const currentHtml = useMemo(() => {
