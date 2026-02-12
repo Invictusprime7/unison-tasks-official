@@ -116,6 +116,14 @@ function codeToHtml(code: string): string {
  * Inject intent listener script into existing HTML document
  */
 function injectIntentListener(html: string): string {
+  // Enforce light color scheme to prevent browser dark mode inversion
+  const colorSchemeEnforcement = `
+  <meta name="color-scheme" content="light" />
+  <style>
+    :root { color-scheme: light; }
+    html, body { background-color: inherit; }
+  </style>`;
+  
   // Failsafe: force-reveal any animate-on-scroll elements that stay invisible
   const animationFailsafe = `
   <style>
@@ -641,7 +649,15 @@ function injectIntentListener(html: string): string {
     @keyframes intent-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
   </style>`;
   
-  // Try to inject before </body>, or before </html>, or at the end
+  // Inject color scheme enforcement early in head, animation failsafe before </head>,
+  // and intent listener before </body>
+  if (html.includes('<head>')) {
+    html = html.replace('<head>', '<head>\n' + colorSchemeEnforcement);
+  } else if (html.includes('<head ')) {
+    // Head tag with attributes
+    html = html.replace(/<head[^>]*>/, '$&\n' + colorSchemeEnforcement);
+  }
+  
   if (html.includes('</head>')) {
     html = html.replace('</head>', animationFailsafe + '\n</head>');
   }
@@ -650,7 +666,7 @@ function injectIntentListener(html: string): string {
   } else if (html.includes('</html>')) {
     return html.replace('</html>', intentListenerScript + '\n</html>');
   } else {
-    return html + animationFailsafe + intentListenerScript;
+    return html + colorSchemeEnforcement + animationFailsafe + intentListenerScript;
   }
 }
 
@@ -743,10 +759,12 @@ function wrapHtmlSnippet(html: string): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
   <title>Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           animation: {
@@ -766,6 +784,7 @@ function wrapHtmlSnippet(html: string): string {
   </script>
   <style>
     :root {
+      color-scheme: light;
       --background: 0 0% 100%;
       --foreground: 222.2 84% 4.9%;
       --primary: 221.2 83.2% 53.3%;
@@ -781,6 +800,8 @@ function wrapHtmlSnippet(html: string): string {
       font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
       margin: 0;
       min-height: 100vh;
+      background-color: white !important;
+      color: #1a1a2e !important;
     }
     .icon-ArrowRight::before { content: '→'; }
     .icon-Play::before { content: '▶'; }
@@ -1076,7 +1097,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     return codeToHtml(code);
   }, [code]);
 
-  // Update iframe content - use document.write for updates to preserve styles
+  // Update iframe content - use srcdoc for silent updates without full reload flicker
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe || !currentHtml) return;
@@ -1084,7 +1105,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     const prevCode = prevCodeRef.current;
     prevCodeRef.current = code;
 
-    // Initial load: create blob URL and navigate
+    // Initial load: create blob URL and navigate (more reliable for first load)
     if (!isInitializedRef.current) {
       console.log('[SimplePreview] Initial load - using blob URL');
       const blob = new Blob([currentHtml], { type: 'text/html' });
@@ -1095,30 +1116,31 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       return;
     }
 
-    // Subsequent updates: write directly to iframe document to avoid full reload
-    // This preserves runtime state, scroll position, and dynamic styles
+    // Subsequent updates: use srcdoc for smooth, silent updates
+    // This avoids full navigation and Tailwind re-initialization issues
     try {
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (iframeDoc) {
-        console.log('[SimplePreview] Incremental update - using document.write');
-        // Save scroll position
-        const scrollTop = iframeDoc.documentElement?.scrollTop || iframeDoc.body?.scrollTop || 0;
-        const scrollLeft = iframeDoc.documentElement?.scrollLeft || iframeDoc.body?.scrollLeft || 0;
-        
-        iframeDoc.open();
-        iframeDoc.write(currentHtml);
-        iframeDoc.close();
-        
-        // Restore scroll position
-        requestAnimationFrame(() => {
-          if (iframeDoc.documentElement) {
-            iframeDoc.documentElement.scrollTop = scrollTop;
-            iframeDoc.documentElement.scrollLeft = scrollLeft;
-          }
-        });
-      }
+      // Save scroll position before update
+      const scrollTop = iframeDoc?.documentElement?.scrollTop || iframeDoc?.body?.scrollTop || 0;
+      const scrollLeft = iframeDoc?.documentElement?.scrollLeft || iframeDoc?.body?.scrollLeft || 0;
+      
+      console.log('[SimplePreview] Incremental update - using srcdoc');
+      // Use srcdoc - more reliable than document.write and doesn't cause color inversion
+      iframe.srcdoc = currentHtml;
+      
+      // Restore scroll position after iframe loads
+      const restoreScroll = () => {
+        const newDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (newDoc?.documentElement) {
+          newDoc.documentElement.scrollTop = scrollTop;
+          newDoc.documentElement.scrollLeft = scrollLeft;
+        }
+      };
+      
+      // Wait for iframe to load new content
+      iframe.addEventListener('load', restoreScroll, { once: true });
     } catch (e) {
-      console.error('[SimplePreview] document.write failed, falling back to blob URL:', e);
+      console.error('[SimplePreview] srcdoc update failed, falling back to blob URL:', e);
       // Fallback: use blob URL if cross-origin issues
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
       const blob = new Blob([currentHtml], { type: 'text/html' });
