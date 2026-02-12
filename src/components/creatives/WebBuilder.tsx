@@ -415,6 +415,20 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       return;
     }
 
+    // 0. Ensure color scheme is enforced (prevent dark mode inversion)
+    if (!iframeDoc.querySelector('meta[name="color-scheme"]')) {
+      const colorSchemeMeta = iframeDoc.createElement('meta');
+      colorSchemeMeta.name = 'color-scheme';
+      colorSchemeMeta.content = 'light';
+      iframeDoc.head.insertBefore(colorSchemeMeta, iframeDoc.head.firstChild);
+    }
+    if (!iframeDoc.getElementById('color-scheme-enforcement')) {
+      const colorSchemeStyle = iframeDoc.createElement('style');
+      colorSchemeStyle.id = 'color-scheme-enforcement';
+      colorSchemeStyle.textContent = ':root { color-scheme: light; }';
+      iframeDoc.head.appendChild(colorSchemeStyle);
+    }
+
     // 1. Inject / update the customizer override CSS in-place
     const overrideCSS = templateCustomizer.generateOverrideCSS();
     let styleEl = iframeDoc.getElementById('customizer-overrides') as HTMLStyleElement | null;

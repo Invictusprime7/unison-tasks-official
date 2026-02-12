@@ -40,14 +40,16 @@ export interface SimplePreviewProps {
  */
 function isVanillaHtml(code: string): boolean {
   const trimmed = code.trim();
+  const trimmedLower = trimmed.toLowerCase();
   
-  // Complete HTML document
-  if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
+  // Complete HTML document (case-insensitive because XMLSerializer may change casing)
+  if (trimmedLower.startsWith('<!doctype') || trimmedLower.startsWith('<html')) {
     return true;
   }
   
   // Has <script> tags with vanilla JS (not JSX) - AI generates this format
-  if (code.includes('<script>') || code.includes('<script ')) {
+  const lowerCode = code.toLowerCase();
+  if (lowerCode.includes('<script>') || lowerCode.includes('<script ')) {
     // If it has script tags but NO React imports/JSX patterns, it's vanilla
     const hasReactImport = code.includes('import React') || code.includes("from 'react'") || code.includes('from "react"');
     const hasJsxSyntax = code.includes('className={') || code.includes('onClick={') || code.includes('useState(');
@@ -72,7 +74,6 @@ function isVanillaHtml(code: string): boolean {
   
   return false;
 }
-
 /**
  * Convert any code (HTML, JSX, React) to a renderable HTML document
  */
@@ -82,9 +83,11 @@ function codeToHtml(code: string): string {
   }
   
   const trimmedCode = code.trim();
+  const trimmedLower = trimmedCode.toLowerCase();
   
   // Case 1: Already a complete HTML document - inject intent listener before </body>
-  if (trimmedCode.startsWith('<!DOCTYPE') || trimmedCode.startsWith('<html')) {
+  // Use case-insensitive check because XMLSerializer may change casing
+  if (trimmedLower.startsWith('<!doctype') || trimmedLower.startsWith('<html')) {
     console.log('[SimplePreview] Code is complete HTML document - injecting intent listener');
     return injectIntentListener(code);
   }
@@ -651,20 +654,22 @@ function injectIntentListener(html: string): string {
   
   // Inject color scheme enforcement early in head, animation failsafe before </head>,
   // and intent listener before </body>
-  if (html.includes('<head>')) {
-    html = html.replace('<head>', '<head>\n' + colorSchemeEnforcement);
-  } else if (html.includes('<head ')) {
-    // Head tag with attributes
-    html = html.replace(/<head[^>]*>/, '$&\n' + colorSchemeEnforcement);
+  // Use case-insensitive matching because XMLSerializer may uppercase tags
+  const lowerHtml = html.toLowerCase();
+  
+  if (lowerHtml.includes('<head>') || lowerHtml.includes('<head ')) {
+    // Use regex for case-insensitive replacement
+    html = html.replace(/<head(\s[^>]*)?>/i, '$&\n' + colorSchemeEnforcement);
   }
   
-  if (html.includes('</head>')) {
-    html = html.replace('</head>', animationFailsafe + '\n</head>');
+  if (lowerHtml.includes('</head>')) {
+    html = html.replace(/<\/head>/i, animationFailsafe + '\n</head>');
   }
-  if (html.includes('</body>')) {
-    return html.replace('</body>', intentListenerScript + '\n</body>');
-  } else if (html.includes('</html>')) {
-    return html.replace('</html>', intentListenerScript + '\n</html>');
+  
+  if (lowerHtml.includes('</body>')) {
+    return html.replace(/<\/body>/i, intentListenerScript + '\n</body>');
+  } else if (lowerHtml.includes('</html>')) {
+    return html.replace(/<\/html>/i, intentListenerScript + '\n</html>');
   } else {
     return html + colorSchemeEnforcement + animationFailsafe + intentListenerScript;
   }
