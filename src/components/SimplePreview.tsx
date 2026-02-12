@@ -1063,45 +1063,75 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     },
   }));
 
-  // Convert code to HTML and create blob URL
-  const previewUrl = useMemo(() => {
-    console.log('[SimplePreview] ===== GENERATING PREVIEW =====');
+  // Track whether iframe is initialized (first load)
+  const isInitializedRef = useRef(false);
+  const prevCodeRef = useRef<string | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  // Convert code to HTML
+  const currentHtml = useMemo(() => {
+    console.log('[SimplePreview] ===== GENERATING HTML =====');
     console.log('[SimplePreview] Input code length:', code?.length || 0);
     console.log('[SimplePreview] Input code preview:', code?.substring(0, 200) || 'EMPTY');
-    
-    const html = codeToHtml(code);
-    console.log('[SimplePreview] Generated HTML length:', html.length);
-    
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    console.log('[SimplePreview] Blob URL created:', url);
-    
-    return url;
+    return codeToHtml(code);
   }, [code]);
-  
-  // When previewUrl changes (i.e. base code changed), navigate the existing iframe
-  // without remounting it.  Also clean up the previous blob URL.
-  const prevUrlRef = useRef<string | null>(null);
 
+  // Update iframe content - use document.write for updates to preserve styles
   useEffect(() => {
-    const prev = prevUrlRef.current;
-    prevUrlRef.current = previewUrl;
+    const iframe = iframeRef.current;
+    if (!iframe || !currentHtml) return;
 
-    // Revoke old blob URL
-    if (prev && prev !== previewUrl) {
-      URL.revokeObjectURL(prev);
+    const prevCode = prevCodeRef.current;
+    prevCodeRef.current = code;
+
+    // Initial load: create blob URL and navigate
+    if (!isInitializedRef.current) {
+      console.log('[SimplePreview] Initial load - using blob URL');
+      const blob = new Blob([currentHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      iframe.src = url;
+      isInitializedRef.current = true;
+      return;
     }
 
-    // Navigate the iframe imperatively so it doesn't remount
-    if (iframeRef.current && previewUrl) {
-      iframeRef.current.src = previewUrl;
+    // Subsequent updates: write directly to iframe document to avoid full reload
+    // This preserves runtime state, scroll position, and dynamic styles
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (iframeDoc) {
+        console.log('[SimplePreview] Incremental update - using document.write');
+        // Save scroll position
+        const scrollTop = iframeDoc.documentElement?.scrollTop || iframeDoc.body?.scrollTop || 0;
+        const scrollLeft = iframeDoc.documentElement?.scrollLeft || iframeDoc.body?.scrollLeft || 0;
+        
+        iframeDoc.open();
+        iframeDoc.write(currentHtml);
+        iframeDoc.close();
+        
+        // Restore scroll position
+        requestAnimationFrame(() => {
+          if (iframeDoc.documentElement) {
+            iframeDoc.documentElement.scrollTop = scrollTop;
+            iframeDoc.documentElement.scrollLeft = scrollLeft;
+          }
+        });
+      }
+    } catch (e) {
+      console.error('[SimplePreview] document.write failed, falling back to blob URL:', e);
+      // Fallback: use blob URL if cross-origin issues
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      const blob = new Blob([currentHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      iframe.src = url;
     }
 
     return () => {
       // On unmount, revoke current URL
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
     };
-  }, [previewUrl]);
+  }, [currentHtml, code]);
 
   // ---- Element selection for Edit mode ----
   const attachSelectionListeners = useCallback(() => {
