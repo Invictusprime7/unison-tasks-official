@@ -254,21 +254,41 @@ export function CloudProfile({ user }: CloudProfileProps) {
 
       if (error) {
         console.error('Error loading profile:', error);
-        toast({
-          title: 'Error loading profile',
-          description: 'Could not load your profile data.',
-          variant: 'destructive',
-        });
+        // Only show error toast for actual errors (not missing profiles)
+        if (error.code !== 'PGRST116') {
+          toast({
+            title: 'Error loading profile',
+            description: 'Could not load your profile data.',
+            variant: 'destructive',
+          });
+        }
       }
 
-      // If profile exists, use it; otherwise initialize with empty data
+      // If profile exists, use it; otherwise try to create one
       if (data) {
         setProfile(data);
         setFullName(data.full_name || '');
       } else {
-        // Profile doesn't exist yet - initialize empty state
-        setProfile(null);
-        setFullName('');
+        // Profile doesn't exist yet - try to create it
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({ 
+            id: user.id, 
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+            avatar_url: user.user_metadata?.avatar_url || null
+          })
+          .select()
+          .single();
+        
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          // Profile might already exist or another error - just set empty state
+          setProfile(null);
+          setFullName('');
+        } else if (newProfile) {
+          setProfile(newProfile);
+          setFullName(newProfile.full_name || '');
+        }
       }
     } catch (error) {
       console.error('Error:', error);

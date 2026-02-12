@@ -7,6 +7,7 @@
   "imports": {
     "serve": "https://deno.land/std@0.168.0/http/server.ts",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.7",
+    "stripe": "https://esm.sh/stripe@14.14.0?target=deno",
     "zod": "https://deno.land/x/zod@v3.22.4/mod.ts",
     "xhr": "https://deno.land/x/xhr@0.1.0/mod.ts"
   }

@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
+import { serve } from "serve";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,8 +91,9 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("Webhook error:", error);
+    const message = error instanceof Error ? error.message : "Webhook processing failed";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: message }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
@@ -102,7 +103,7 @@ serve(async (req) => {
 });
 
 async function handleCheckoutComplete(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   stripe: Stripe,
   session: Stripe.Checkout.Session
 ) {
@@ -145,7 +146,7 @@ async function handleCheckoutComplete(
 }
 
 async function handleSubscriptionUpdate(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   subscription: Stripe.Subscription
 ) {
   const userId = subscription.metadata?.supabase_user_id;
@@ -162,14 +163,14 @@ async function handleSubscriptionUpdate(
       return;
     }
 
-    await updateSubscriptionInDb(supabase, existingSub.user_id, subscription);
+    await updateSubscriptionInDb(supabase, existingSub.user_id as string, subscription);
   } else {
     await updateSubscriptionInDb(supabase, userId, subscription);
   }
 }
 
 async function updateSubscriptionInDb(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   userId: string,
   subscription: Stripe.Subscription
 ) {
@@ -219,7 +220,7 @@ async function updateSubscriptionInDb(
 }
 
 async function handleSubscriptionDeleted(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   subscription: Stripe.Subscription
 ) {
   const userId = subscription.metadata?.supabase_user_id;
@@ -264,7 +265,7 @@ async function handleSubscriptionDeleted(
 }
 
 async function handlePaymentSucceeded(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   invoice: Stripe.Invoice
 ) {
   if (!invoice.subscription) return;
@@ -292,7 +293,7 @@ async function handlePaymentSucceeded(
 }
 
 async function handlePaymentFailed(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   invoice: Stripe.Invoice
 ) {
   if (!invoice.subscription) return;

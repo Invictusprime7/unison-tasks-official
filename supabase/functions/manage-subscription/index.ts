@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
+import { serve } from "serve";
+import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -151,7 +151,7 @@ serve(async (req) => {
           limit: 12,
         });
 
-        const formattedInvoices = invoices.data.map((inv) => ({
+        const formattedInvoices = invoices.data.map((inv: Stripe.Invoice) => ({
           id: inv.id,
           amount: (inv.amount_paid || 0) / 100,
           currency: inv.currency,
@@ -172,8 +172,9 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Manage subscription error:", error);
+    const message = error instanceof Error ? error.message : "Subscription management failed";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: message }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
