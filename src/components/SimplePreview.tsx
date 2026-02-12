@@ -18,6 +18,7 @@ export interface SimplePreviewHandle {
   deleteElement: (selector: string) => boolean;
   duplicateElement: (selector: string) => boolean;
   updateElement: (selector: string, updates: any) => boolean;
+  refresh: () => void;
 }
 
 export interface SimplePreviewProps {
@@ -1086,6 +1087,17 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
         return true;
       } catch (e) { console.error('[SimplePreview] Update failed:', e); }
       return false;
+    },
+    refresh: () => {
+      // Force a full reload by regenerating the blob URL
+      if (!iframeRef.current) return;
+      console.log('[SimplePreview] Manual refresh triggered');
+      const html = codeToHtml(code);
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      iframeRef.current.src = url;
     },
   }));
 

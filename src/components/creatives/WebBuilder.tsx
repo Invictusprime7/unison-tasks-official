@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { 
   Plus, Layout, Type, Square, Eye, Play,
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
-  Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap,
+  Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap, RefreshCcw,
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
   FolderOpen, Cloud, CloudOff
 } from "lucide-react";
@@ -1832,6 +1832,14 @@ ${html}
     }
   }, [codeHistory, canvasHistory]);
 
+  // Manual refresh handler
+  const handleRefreshPreview = useCallback(() => {
+    if (simplePreviewRef.current) {
+      simplePreviewRef.current.refresh();
+      toast.success('Preview refreshed');
+    }
+  }, []);
+
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -1917,6 +1925,11 @@ ${html}
       key: 'F1',
       description: 'Show Interactive Mode Help',
       action: () => setIsInteractiveModeHelpOpen(true),
+    },
+    {
+      key: 'F5',
+      description: 'Refresh preview',
+      action: handleRefreshPreview,
     },
     {
       key: 'v',
@@ -3051,7 +3064,7 @@ ${body.innerHTML}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Undo/Redo buttons */}
+                    {/* Undo/Redo/Refresh buttons */}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -3071,6 +3084,15 @@ ${body.innerHTML}
                       title="Redo (Ctrl+Y)"
                     >
                       <Redo2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRefreshPreview}
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      title="Refresh Preview (F5)"
+                    >
+                      <RefreshCcw className="h-4 w-4" />
                     </Button>
                     {builderMode === 'select' && (
                       <>
@@ -3294,6 +3316,15 @@ export default function App() {
                         title="Redo (Ctrl+Y)"
                       >
                         <Redo2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleRefreshPreview}
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        title="Refresh Preview (F5)"
+                      >
+                        <RefreshCcw className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
