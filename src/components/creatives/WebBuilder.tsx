@@ -356,6 +356,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [viewMode, setViewMode] = useState<'canvas' | 'code' | 'split'>('canvas');
   const [isInteractiveMode, setIsInteractiveMode] = useState(false);
   const [isInteractiveModeHelpOpen, setIsInteractiveModeHelpOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [editorCode, setEditorCode] = useState('// AI Web Builder - JavaScript Mode\n// Use vanilla JavaScript to create interactive web experiences\n\n// Example: Create a simple interactive button\nconst createButton = () => {\n  const button = document.createElement("button");\n  button.textContent = "Click Me!";\n  button.style.padding = "12px 24px";\n  button.style.fontSize = "16px";\n  button.style.cursor = "pointer";\n  \n  button.onclick = () => {\n    alert("Hello from Web Builder!");\n  };\n  \n  return button;\n};\n\n// Usage: Uncomment to test\n// document.body.appendChild(createButton());');
   const [previewCode, setPreviewCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1835,8 +1836,10 @@ ${html}
   // Manual refresh handler
   const handleRefreshPreview = useCallback(() => {
     if (simplePreviewRef.current) {
+      setIsRefreshing(true);
       simplePreviewRef.current.refresh();
-      toast.success('Preview refreshed');
+      // Clear loading state after iframe has time to load
+      setTimeout(() => setIsRefreshing(false), 600);
     }
   }, []);
 
@@ -3089,10 +3092,11 @@ ${body.innerHTML}
                       variant="ghost"
                       size="icon"
                       onClick={handleRefreshPreview}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      disabled={isRefreshing}
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
                       title="Refresh Preview (F5)"
                     >
-                      <RefreshCcw className="h-4 w-4" />
+                      <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
                     {builderMode === 'select' && (
                       <>
@@ -3321,10 +3325,11 @@ export default function App() {
                         variant="ghost"
                         size="icon"
                         onClick={handleRefreshPreview}
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        disabled={isRefreshing}
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
                         title="Refresh Preview (F5)"
                       >
-                        <RefreshCcw className="h-4 w-4" />
+                        <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                       </Button>
                     </div>
                   </div>
