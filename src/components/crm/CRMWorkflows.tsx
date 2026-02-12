@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { generateUUID } from "@/utils/uuid";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -191,7 +192,7 @@ export function CRMWorkflows() {
     });
     // Convert stored steps to WorkflowStep format
     const existingSteps: WorkflowStep[] = (workflow.steps || []).map((s: any, i: number) => ({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       action_type: s.action_type || "send_email",
       action_config: s.action_config || {},
       order: s.order ?? i,

@@ -68,18 +68,19 @@ import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
 import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
+import { generateUUID } from "@/utils/uuid";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
   try {
     const existing = localStorage.getItem(key);
     if (existing) return existing;
-    const id = crypto.randomUUID();
+    const id = generateUUID();
     localStorage.setItem(key, id);
     return id;
   } catch {
     // Fallback when localStorage is unavailable
-    return crypto.randomUUID();
+    return generateUUID();
   }
 }
 

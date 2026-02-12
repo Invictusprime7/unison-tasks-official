@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { generateUUID } from '@/utils/uuid';
 
 // Generate or retrieve session ID for anonymous users
 const getSessionId = () => {
   let sessionId = localStorage.getItem('template_session_id');
   if (!sessionId) {
-    sessionId = crypto.randomUUID();
+    sessionId = generateUUID();
     localStorage.setItem('template_session_id', sessionId);
   }
   return sessionId;

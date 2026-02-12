@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { generateUUID } from '@/utils/uuid';
 
 export interface BuilderProject {
   id: string;
@@ -46,11 +47,11 @@ export const useWebBuilder = () => {
     setLoading(true);
     try {
       const newProject: BuilderProject = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         name,
         description,
         pages: [{
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           name: 'Home',
           path: '/',
           components: [],
@@ -86,7 +87,7 @@ export const useWebBuilder = () => {
     if (!currentProject) return;
 
     const newPage: BuilderPage = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: pageName,
       path,
       components: [],

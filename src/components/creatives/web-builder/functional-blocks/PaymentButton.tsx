@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useWorkflowTrigger } from '@/hooks/useWorkflowTrigger';
+import { generateUUID } from '@/utils/uuid';
 
 interface PaymentButtonProps {
   amount: number;
@@ -55,7 +56,7 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const paymentData = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       amount,
       currency,
       productName,

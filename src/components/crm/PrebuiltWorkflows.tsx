@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { generateUUID } from "@/utils/uuid";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -199,7 +200,7 @@ export function PrebuiltWorkflows() {
       setInstalledPacks(prev => {
         const next = new Map(prev);
         next.set(pack.pack_id, {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           pack_id: pack.pack_id,
           enabled: true,
           installed_at: new Date().toISOString(),

@@ -12,6 +12,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { generateUUID } from '@/utils/uuid';
 import { 
   TemplateManifest, 
   ProvisioningStatus, 
@@ -70,7 +71,7 @@ export async function provisionTemplate(
   console.log('[Provisioner] Starting provisioning for:', manifest.id, 'system:', systemType);
   
   // 2. Create or verify business ID
-  const businessId = existingBusinessId || crypto.randomUUID();
+  const businessId = existingBusinessId || generateUUID();
   console.log('[Provisioner] Using businessId:', businessId);
   
   // 3. Initialize provisioning status
@@ -303,7 +304,7 @@ export function quickProvision(systemType: BusinessSystemType): {
   businessId: string;
   manifest: TemplateManifest;
 } {
-  const businessId = crypto.randomUUID();
+  const businessId = generateUUID();
   const manifest = getDefaultManifestForSystem(systemType);
   
   // Store minimal provisioning record
