@@ -12,6 +12,6 @@
     "declaration": false,
     "isolatedModules": true
   },
-  "include": ["preview/**/*"],
+  "include": ["**/*"],
   "exclude": ["node_modules"]
 }
