@@ -399,7 +399,13 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
         setDroppedFiles([]); // Clear files on success
         navigate("/web-builder", {
-          state: { generatedCode, templateName: "AI Generated", aesthetic: "modern", startInPreview: true },
+          state: { 
+            generatedCode, 
+            templateName: "AI Generated", 
+            aesthetic: "modern", 
+            startInPreview: true,
+            systemType: "content", // Default system type for freestyle AI generation
+          },
         });
         toast({ title: "Code generated!", description: "Opening in Web Builder..." });
       } else {

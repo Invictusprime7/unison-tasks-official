@@ -22,6 +22,8 @@ export const CreativeTaskSelector = ({ open, onOpenChange }: CreativeTaskSelecto
         generatedCode: code,
         templateName: name,
         aesthetic: aesthetic,
+        systemType: "content", // Default system type for creative templates
+        startInPreview: true,
       },
     });
     setSelectedTask(null);

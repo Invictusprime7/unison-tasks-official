@@ -53,7 +53,7 @@ import { EditorTabs } from "./code-editor/EditorTabs";
 import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
-import { setDefaultBusinessId, handleIntent, IntentPayload } from "@/runtime/intentRouter";
+import { setDefaultBusinessId, setCurrentSystemType, setDemoMode, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 import { DemoIntentOverlay, type DemoIntentOverlayConfig } from "./web-builder/DemoIntentOverlay";
 import { ResearchOverlay, type ResearchOverlayPayload } from "./web-builder/ResearchOverlay";
@@ -1050,12 +1050,22 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setDefaultBusinessId(effectiveBusinessId);
       console.log('[WebBuilder] Set default businessId for intents:', effectiveBusinessId);
     }
+
+    // Set up system type and demo mode for AI-generated content
+    if (activeSystemType) {
+      setCurrentSystemType(activeSystemType);
+      // Enable demo mode for preview - intents will show mock success responses
+      setDemoMode(true);
+      console.log('[WebBuilder] Enabled demo mode for system type:', activeSystemType);
+    }
     
     // Cleanup on unmount
     return () => {
       setDefaultBusinessId(null);
+      setCurrentSystemType(null);
+      setDemoMode(false);
     };
-  }, [businessId, systemType]);
+  }, [businessId, systemType, activeSystemType]);
 
   // Production readiness signal: check if this businessId has been installed
   useEffect(() => {
@@ -1474,11 +1484,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
 
     if (location.state?.generatedCode) {
-      const { generatedCode, templateName, aesthetic, startInPreview } = location.state;
-      console.log('[WebBuilder] Loading template code:', templateName, 'startInPreview:', startInPreview);
+      const { generatedCode, templateName, aesthetic, startInPreview, systemType: navSystemType } = location.state;
+      console.log('[WebBuilder] Loading template code:', templateName, 'startInPreview:', startInPreview, 'systemType:', navSystemType);
       if (templateName) setCurrentTemplateName(templateName);
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
+      
+      // Set system type for intent routing if AI generated with system context
+      if (navSystemType && !activeSystemType) {
+        setActiveSystemType(navSystemType as BusinessSystemType);
+        console.log('[WebBuilder] Set active system type from AI generation:', navSystemType);
+      }
       
       // Start in canvas/preview mode if coming from homepage AI panel, otherwise code mode
       if (startInPreview) {

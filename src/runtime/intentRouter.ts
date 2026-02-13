@@ -25,6 +25,7 @@ import {
   isNavIntent,
   isPayIntent,
   isActionIntent,
+  isAutomationIntent,
 } from "@/coreIntents";
 
 
@@ -562,8 +563,8 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     }
   }
   
-  // Handle demo mode - return mocked responses for action intents
-  if (isDemoMode && currentSystemType && isActionIntent(intent)) {
+  // Handle demo mode - return mocked responses for action and automation intents
+  if (isDemoMode && currentSystemType && (isActionIntent(intent) || isAutomationIntent(intent))) {
     const demoResponse = getDemoResponse(currentSystemType, intent);
     if (demoResponse) {
       console.log("[IntentRouter] Demo mode response:", demoResponse);
@@ -574,6 +575,13 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
         error: demoResponse.success ? undefined : demoResponse.message,
       };
     }
+    // Fallback mock for automation intents without specific demo response
+    console.log("[IntentRouter] Demo mode fallback for:", intent);
+    return {
+      success: true,
+      data: { demo: true, intent },
+      message: `Demo: ${intent} triggered successfully`,
+    };
   }
   
   // Inject default businessId if not provided

@@ -9,9 +9,10 @@
 
 import React, { useMemo, useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { FileCode, RefreshCw, ExternalLink } from 'lucide-react';
+import { FileCode, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSelectedElementData, highlightElement, removeHighlight } from '@/utils/htmlElementSelector';
+import { toast } from 'sonner';
 
 export interface SimplePreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
@@ -160,39 +161,97 @@ function injectIntentListener(html: string): string {
     });
   </script>`;
 
+  // Error capture script - captures JS errors, unhandled rejections, and crashes
+  const errorCaptureScript = `
+  <script>
+  (function(){
+    var errors = [];
+    var maxErrors = 50;
+    
+    function captureError(type, message, source, line, col, stack) {
+      if (errors.length >= maxErrors) return;
+      var err = {
+        type: type,
+        message: String(message || 'Unknown error'),
+        source: source || '',
+        line: line || 0,
+        col: col || 0,
+        stack: stack || '',
+        timestamp: Date.now()
+      };
+      errors.push(err);
+      console.log('[Preview iframe] Captured error:', message);
+      try {
+        window.parent.postMessage({ type: 'PREVIEW_ERROR', error: err }, '*');
+      } catch(e) {}
+    }
+    
+    window.onerror = function(msg, src, line, col, err) {
+      captureError('error', msg, src, line, col, err ? err.stack : '');
+      return false;
+    };
+    
+    window.onunhandledrejection = function(e) {
+      var reason = e.reason || {};
+      captureError('unhandledrejection', reason.message || String(reason), '', 0, 0, reason.stack || '');
+    };
+    };
+    
+    window.addEventListener('message', function(evt) {
+      try {
+        console.log('[Preview iframe] Received message:', evt.data?.type);
+        if (evt.data && evt.data.type === 'GET_PREVIEW_ERRORS') {
+          console.log('[Preview iframe] Responding with', errors.length, 'errors');
+          window.parent.postMessage({ type: 'PREVIEW_ERRORS_RESPONSE', errors: errors, requestId: evt.data.requestId }, '*');
+        }
+        if (evt.data && evt.data.type === 'CLEAR_PREVIEW_ERRORS') {
+          console.log('[Preview iframe] Clearing errors');
+          errors = [];
+        }
+      } catch(e) { console.error('[Preview iframe] Message handler error:', e); }
+    });
+    
+    // Capture initial load errors
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('[Preview iframe] Ready, error count:', errors.length);
+      window.parent.postMessage({ type: 'PREVIEW_READY', errorCount: errors.length }, '*');
+    });
+  })();
+  </script>`;
+
   const intentListenerScript = `
   <script>
   (function(){
     const LABEL_INTENTS = {
-      // AUTH
-      'sign in':'auth.signin','log in':'auth.signin','login':'auth.signin','member login':'auth.signin',
-      'sign up':'auth.signup','register':'auth.signup','get started':'auth.signup','create account':'auth.signup',
-      'join now':'auth.signup','sign up free':'auth.signup','start now':'auth.signup','join free':'auth.signup',
-      // TRIALS & DEMOS
-      'start free trial':'trial.start','free trial':'trial.start','try free':'trial.start','try it free':'trial.start',
-      'watch demo':'demo.request','request demo':'demo.request','book demo':'demo.request','schedule demo':'demo.request',
-      // NEWSLETTER & WAITLIST
+      // AUTH (CoreIntent: auth.login, auth.register)
+      'sign in':'auth.login','log in':'auth.login','login':'auth.login','member login':'auth.login',
+      'sign up':'auth.register','register':'auth.register','get started':'auth.register','create account':'auth.register',
+      'join now':'auth.register','sign up free':'auth.register','start now':'auth.register','join free':'auth.register',
+      // TRIALS & DEMOS (CoreIntent: lead.capture, booking.create)
+      'start free trial':'lead.capture','free trial':'lead.capture','try free':'lead.capture','try it free':'lead.capture',
+      'watch demo':'booking.create','request demo':'booking.create','book demo':'booking.create','schedule demo':'booking.create',
+      // NEWSLETTER & WAITLIST (CoreIntent: newsletter.subscribe)
       'subscribe':'newsletter.subscribe','get updates':'newsletter.subscribe','join newsletter':'newsletter.subscribe',
-      'join waitlist':'join.waitlist','join the waitlist':'join.waitlist','get early access':'join.waitlist',
-      // CONTACT
+      'join waitlist':'newsletter.subscribe','join the waitlist':'newsletter.subscribe','get early access':'newsletter.subscribe',
+      // CONTACT (CoreIntent: contact.submit, lead.capture)
       'contact':'contact.submit','contact us':'contact.submit','get in touch':'contact.submit','send message':'contact.submit',
       'reach out':'contact.submit','talk to us':'contact.submit',"let's talk":'contact.submit',
-      'contact sales':'sales.contact','talk to sales':'sales.contact',
-      // E-COMMERCE
-      'add to cart':'cart.add','add to bag':'cart.add','buy now':'checkout.start','purchase':'checkout.start',
-      'shop now':'shop.browse','checkout':'checkout.start','view cart':'cart.view',
-      // BOOKING
+      'contact sales':'lead.capture','talk to sales':'lead.capture',
+      // E-COMMERCE (CoreIntent: cart.add, cart.checkout, pay.checkout)
+      'add to cart':'cart.add','add to bag':'cart.add','buy now':'pay.checkout','purchase':'pay.checkout',
+      'shop now':'lead.capture','checkout':'cart.checkout','view cart':'cart.checkout',
+      // BOOKING (CoreIntent: booking.create)
       'book now':'booking.create','reserve':'booking.create','reserve table':'booking.create','book appointment':'booking.create',
       'make reservation':'booking.create','schedule now':'booking.create','book a table':'booking.create',
-      'book a call':'calendar.book','schedule call':'calendar.book','book consultation':'consultation.book',
-      // QUOTES
+      'book a call':'booking.create','schedule call':'booking.create','book consultation':'booking.create',
+      // QUOTES (CoreIntent: quote.request)
       'get quote':'quote.request','get free quote':'quote.request','request quote':'quote.request','free estimate':'quote.request',
-      // PORTFOLIO
-      'hire me':'project.inquire','work with me':'project.inquire','start a project':'project.start',
-      'view work':'portfolio.view','view portfolio':'portfolio.view',
-      // RESTAURANT
-      'order online':'order.online','order now':'order.online','view menu':'menu.view','call now':'call.now',
-      'order pickup':'order.pickup','order delivery':'order.delivery'
+      // PORTFOLIO (CoreIntent: lead.capture)
+      'hire me':'lead.capture','work with me':'lead.capture','start a project':'lead.capture',
+      'view work':'lead.capture','view portfolio':'lead.capture',
+      // RESTAURANT (CoreIntent: order.created, lead.capture)
+      'order online':'order.created','order now':'order.created','view menu':'lead.capture','call now':'lead.capture',
+      'order pickup':'order.created','order delivery':'order.created'
     };
     
     function inferIntent(t){
@@ -608,6 +667,37 @@ function injectIntentListener(html: string): string {
          }
        }
 
+      // Handle nav intents inline (don't post to parent - it would scroll parent window)
+      if(intent === 'nav.anchor'){
+        e.preventDefault();e.stopPropagation();
+        const anchor = (el.getAttribute('data-ut-anchor') || el.getAttribute('href') || '').replace('#', '');
+        const targetEl = anchor ? (document.getElementById(anchor) || document.querySelector('[name="' + anchor + '"]')) : null;
+        if(targetEl){
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        el.classList.add('intent-success');
+        setTimeout(()=>el.classList.remove('intent-success'),2000);
+        return;
+      }
+      
+      if(intent === 'nav.external'){
+        e.preventDefault();e.stopPropagation();
+        const url = el.getAttribute('data-ut-url') || el.getAttribute('href') || '';
+        if(url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('tel:') || url.startsWith('mailto:'))){
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+        el.classList.add('intent-success');
+        setTimeout(()=>el.classList.remove('intent-success'),2000);
+        return;
+      }
+      
+      if(intent === 'nav.goto'){
+        e.preventDefault();e.stopPropagation();
+        const path = el.getAttribute('data-ut-path') || el.getAttribute('href') || '/';
+        executeNavIntent('nav.goto', path);
+        return;
+      }
+
       e.preventDefault();e.stopPropagation();
       el.classList.add('intent-loading');
       if(el.disabled!==undefined)el.disabled=true;
@@ -660,7 +750,7 @@ function injectIntentListener(html: string): string {
   
   if (lowerHtml.includes('<head>') || lowerHtml.includes('<head ')) {
     // Use regex for case-insensitive replacement
-    html = html.replace(/<head(\s[^>]*)?>/i, '$&\n' + colorSchemeEnforcement);
+    html = html.replace(/<head(\s[^>]*)?>/i, '$&\n' + colorSchemeEnforcement + errorCaptureScript);
   }
   
   if (lowerHtml.includes('</head>')) {
@@ -760,6 +850,38 @@ function jsxToHtml(jsxCode: string): string {
  * Wrap an HTML snippet in a complete document
  */
 function wrapHtmlSnippet(html: string): string {
+  // Error capture script - inject early to catch all errors
+  const errorCaptureScriptInline = `
+  <script>
+  (function(){
+    var errors = [];
+    var maxErrors = 50;
+    function captureError(type, msg, src, line, col, stack) {
+      if (errors.length >= maxErrors) return;
+      var err = { type: type, message: String(msg || 'Unknown'), source: src || '', line: line || 0, col: col || 0, stack: stack || '', timestamp: Date.now() };
+      errors.push(err);
+      console.log('[Preview iframe] Captured error:', msg);
+      try { window.parent.postMessage({ type: 'PREVIEW_ERROR', error: err }, '*'); } catch(e) {}
+    }
+    window.onerror = function(m, s, l, c, e) { captureError('error', m, s, l, c, e ? e.stack : ''); return false; };
+    window.onunhandledrejection = function(e) { var r = e.reason || {}; captureError('unhandledrejection', r.message || String(r), '', 0, 0, r.stack || ''); };
+    window.addEventListener('message', function(evt) {
+      try {
+        console.log('[Preview iframe] Received message:', evt.data?.type);
+        if (evt.data && evt.data.type === 'GET_PREVIEW_ERRORS') {
+          console.log('[Preview iframe] Responding with', errors.length, 'errors');
+          window.parent.postMessage({ type: 'PREVIEW_ERRORS_RESPONSE', errors: errors, requestId: evt.data.requestId }, '*');
+        }
+        if (evt.data && evt.data.type === 'CLEAR_PREVIEW_ERRORS') errors = [];
+      } catch(e) { console.error('[Preview iframe] Message error:', e); }
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('[Preview iframe] Ready, error count:', errors.length);
+      window.parent.postMessage({ type: 'PREVIEW_READY', errorCount: errors.length }, '*');
+    });
+  })();
+  </script>`;
+  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -767,6 +889,7 @@ function wrapHtmlSnippet(html: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light" />
   <title>Preview</title>
+  ${errorCaptureScriptInline}
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -833,16 +956,16 @@ function wrapHtmlSnippet(html: string): string {
   <script>
   (function(){
     const LABEL_INTENTS = {
-      'sign in':'auth.signin','log in':'auth.signin','login':'auth.signin',
-      'sign up':'auth.signup','register':'auth.signup','get started':'auth.signup',
-      'start free trial':'trial.start','free trial':'trial.start','try free':'trial.start',
-      'join waitlist':'join.waitlist','subscribe':'newsletter.subscribe',
+      'sign in':'auth.login','log in':'auth.login','login':'auth.login',
+      'sign up':'auth.register','register':'auth.register','get started':'auth.register',
+      'start free trial':'lead.capture','free trial':'lead.capture','try free':'lead.capture',
+      'join waitlist':'newsletter.subscribe','subscribe':'newsletter.subscribe',
       'contact us':'contact.submit','get in touch':'contact.submit','send message':'contact.submit',
-      'add to cart':'cart.add','buy now':'checkout.start','shop now':'shop.browse',
+      'add to cart':'cart.add','buy now':'pay.checkout','shop now':'lead.capture',
       'book now':'booking.create','reserve':'booking.create','reserve table':'booking.create',
       'get quote':'quote.request','get free quote':'quote.request',
-      'watch demo':'demo.request','hire me':'project.inquire',
-      'order online':'order.online','view menu':'menu.view','call now':'call.now'
+      'watch demo':'booking.create','hire me':'lead.capture',
+      'order online':'order.created','view menu':'lead.capture','call now':'lead.capture'
     };
     function inferIntent(t){if(!t)return null;const l=t.toLowerCase().trim();if(LABEL_INTENTS[l])return LABEL_INTENTS[l];for(const[k,v]of Object.entries(LABEL_INTENTS))if(l.includes(k))return v;return null;}
     function shouldInferIntentFromElement(el){
@@ -978,6 +1101,23 @@ function wrapHtmlSnippet(html: string): string {
         }
       }
 
+      // Handle nav intents inline (don't post to parent)
+      if(intent==='nav.anchor'){
+        e.preventDefault();e.stopPropagation();
+        const anchor=(el.getAttribute('data-ut-anchor')||el.getAttribute('href')||'').replace('#','');
+        const targetEl=anchor?(document.getElementById(anchor)||document.querySelector('[name="'+anchor+'"]')):null;
+        if(targetEl)targetEl.scrollIntoView({behavior:'smooth',block:'start'});
+        el.classList.add('intent-success');setTimeout(()=>el.classList.remove('intent-success'),2000);
+        return;
+      }
+      if(intent==='nav.external'){
+        e.preventDefault();e.stopPropagation();
+        const url=el.getAttribute('data-ut-url')||el.getAttribute('href')||'';
+        if(url&&(url.startsWith('http://')||url.startsWith('https://')||url.startsWith('tel:')||url.startsWith('mailto:')))window.open(url,'_blank','noopener,noreferrer');
+        el.classList.add('intent-success');setTimeout(()=>el.classList.remove('intent-success'),2000);
+        return;
+      }
+
       e.preventDefault();e.stopPropagation();
       el.classList.add('intent-loading');el.disabled=true;
       window.parent.postMessage({type:'INTENT_TRIGGER',intent:intent,payload:collectPayload(el)},'*');
@@ -1049,6 +1189,45 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   const isInitializedRef = useRef(false);
   const prevCodeRef = useRef<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  
+  // Error tracking state
+  const [previewErrors, setPreviewErrors] = useState<Array<{
+    type: string;
+    message: string;
+    source?: string;
+    line?: number;
+    col?: number;
+    stack?: string;
+    timestamp: number;
+  }>>([]);
+  const [hasErrors, setHasErrors] = useState(false);
+  
+  // Listen for errors from the iframe
+  useEffect(() => {
+    const handlePreviewMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'PREVIEW_ERROR') {
+        const error = event.data.error;
+        setPreviewErrors(prev => [...prev.slice(-49), error]);
+        setHasErrors(true);
+        console.warn('[SimplePreview] Captured error:', error.message);
+      }
+      if (event.data?.type === 'PREVIEW_ERRORS_RESPONSE') {
+        const errors = event.data.errors || [];
+        if (errors.length > 0) {
+          setPreviewErrors(errors);
+          setHasErrors(true);
+        }
+      }
+      if (event.data?.type === 'PREVIEW_READY') {
+        if (event.data.errorCount > 0) {
+          setHasErrors(true);
+        }
+      }
+    };
+    
+    window.addEventListener('message', handlePreviewMessage);
+    return () => window.removeEventListener('message', handlePreviewMessage);
+  }, []);
   
   // Expose imperative handle for delete/duplicate/update from parent
   useImperativeHandle(ref, () => ({
@@ -1294,10 +1473,111 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   }, [enableSelection, currentHtml, attachSelectionListeners]);
   
   const handleRefresh = () => {
-    if (iframeRef.current && blobUrlRef.current) {
-      iframeRef.current.src = blobUrlRef.current;
+    console.log('[SimplePreview] Refresh clicked - running diagnostics');
+    
+    // Helper to do the actual refresh
+    const performRefresh = () => {
+      setPreviewErrors([]);
+      setHasErrors(false);
+      
+      if (iframeRef.current && blobUrlRef.current) {
+        iframeRef.current.contentWindow?.postMessage({ type: 'CLEAR_PREVIEW_ERRORS' }, '*');
+        iframeRef.current.src = blobUrlRef.current;
+      }
+    };
+    
+    // Request errors from iframe before refreshing
+    if (iframeRef.current?.contentWindow) {
+      const requestId = `diag-${Date.now()}`;
+      let responseReceived = false;
+      
+      console.log('[SimplePreview] Sending GET_PREVIEW_ERRORS to iframe, requestId:', requestId);
+      
+      const handleErrorResponse = (event: MessageEvent) => {
+        console.log('[SimplePreview] Received message:', event.data?.type);
+        
+        if (event.data?.type === 'PREVIEW_ERRORS_RESPONSE' && event.data?.requestId === requestId) {
+          responseReceived = true;
+          window.removeEventListener('message', handleErrorResponse);
+          const errors = event.data.errors || [];
+          
+          console.log('[SimplePreview] Got errors response, count:', errors.length);
+          
+          if (errors.length === 0) {
+            toast.success('Preview Diagnostics', {
+              description: '✓ No JavaScript errors detected',
+              duration: 3000,
+            });
+          } else {
+            // Group errors by type
+            const errorsByType = errors.reduce((acc: Record<string, number>, err: any) => {
+              acc[err.type] = (acc[err.type] || 0) + 1;
+              return acc;
+            }, {});
+            
+            const summary = Object.entries(errorsByType)
+              .map(([type, count]) => `${count} ${type}${(count as number) > 1 ? 's' : ''}`)
+              .join(', ');
+            
+            // Log detailed errors to console
+            console.group('[SimplePreview] Diagnostics - Errors Found');
+            errors.forEach((err: any, i: number) => {
+              console.error(`Error ${i + 1}:`, {
+                type: err.type,
+                message: err.message,
+                source: err.source,
+                line: err.line,
+                stack: err.stack,
+              });
+            });
+            console.groupEnd();
+            
+            toast.error('Preview Diagnostics', {
+              description: `Found ${errors.length} issue(s): ${summary}. Check console for details.`,
+              duration: 5000,
+            });
+          }
+          
+          // Perform refresh after showing diagnostics
+          performRefresh();
+        }
+      };
+      
+      window.addEventListener('message', handleErrorResponse);
+      iframeRef.current.contentWindow.postMessage({ type: 'GET_PREVIEW_ERRORS', requestId }, '*');
+      
+      // Timeout fallback - refresh anyway if no response received
+      setTimeout(() => {
+        window.removeEventListener('message', handleErrorResponse);
+        if (!responseReceived) {
+          console.log('[SimplePreview] No response from iframe - refreshing anyway');
+          toast('Preview Refreshed', {
+            description: 'Preview reloaded',
+            duration: 2000,
+          });
+          performRefresh();
+        }
+      }, 1000);
+    } else {
+      console.log('[SimplePreview] No iframe contentWindow available - refreshing directly');
+      toast('Preview Refreshed', {
+        description: 'Preview reloaded',
+        duration: 2000,
+      });
+      performRefresh();
     }
   };
+  
+  // Separate function to do the actual refresh (for external use)
+  const doRefresh = useCallback(() => {
+    setPreviewErrors([]);
+    setHasErrors(false);
+    
+    if (iframeRef.current && blobUrlRef.current) {
+      iframeRef.current.contentWindow?.postMessage({ type: 'CLEAR_PREVIEW_ERRORS' }, '*');
+      iframeRef.current.src = blobUrlRef.current;
+    }
+  }, []);
   
   const handleOpenInNewTab = () => {
     if (blobUrlRef.current) {
@@ -1325,10 +1605,20 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
               size="sm"
               variant="ghost"
               onClick={handleRefresh}
-              className="h-7 w-7 p-0"
-              title="Refresh preview"
+              className={cn(
+                "h-7 w-7 p-0 relative",
+                hasErrors && "text-amber-500 hover:text-amber-400"
+              )}
+              title={hasErrors ? "Run diagnostics & refresh (errors detected)" : "Run diagnostics & refresh preview"}
             >
-              <RefreshCw className="h-4 w-4" />
+              {hasErrors ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              {hasErrors && (
+                <span className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
+              )}
             </Button>
             <Button
               size="sm"
