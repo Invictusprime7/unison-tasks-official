@@ -2,9 +2,7 @@ import type { TriggerConfig } from "@trigger.dev/sdk/v3";
 
 export const config: TriggerConfig = {
   project: "unison-tasks",
-  // Set this to your Trigger.dev project ref
-  // Get it from: https://cloud.trigger.dev
-  // projectRef: "proj_xxxxxxxxxxxx",
+  projectRef: "proj_aaksoijlysnjimgbcexh",
   
   // Retry configuration
   retries: {
