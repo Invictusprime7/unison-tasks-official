@@ -5,8 +5,9 @@
  * Deploy to Vercel: /api/inngest
  */
 
-import { Inngest, EventSchemas } from "inngest";
-import { serve } from "inngest/vercel";
+import { Inngest } from "inngest";
+import { serve } from "inngest/express";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // Define event schemas
 type Events = {
