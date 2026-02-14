@@ -13,6 +13,9 @@ import { FileCode, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSelectedElementData, highlightElement, removeHighlight } from '@/utils/htmlElementSelector';
 import { toast } from 'sonner';
+import { executeIntent, type IntentContext } from '@/runtime/intentExecutor';
+import { supabase } from '@/integrations/supabase/client';
+import { PreviewOverlayManager, type OverlayConfig, type OverlayType } from '@/components/preview/PreviewOverlayManager';
 
 export interface SimplePreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
@@ -35,6 +38,12 @@ export interface SimplePreviewProps {
   enableSelection?: boolean;
   /** Callback when an element is selected */
   onElementSelect?: (elementData: any) => void;
+  /** Business ID for intent execution context */
+  businessId?: string;
+  /** Site/Project ID for intent execution context */
+  siteId?: string;
+  /** Callback when an intent is triggered (for external handling) */
+  onIntentTrigger?: (intent: string, payload: Record<string, unknown>, result: unknown) => void;
 }
 
 /**
@@ -1180,6 +1189,9 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   device = 'desktop',
   enableSelection = false,
   onElementSelect,
+  businessId,
+  siteId,
+  onIntentTrigger,
 }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
@@ -1202,9 +1214,25 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   }>>([]);
   const [hasErrors, setHasErrors] = useState(false);
   
+  // Overlay state for auth, booking, checkout modals
+  const [activeOverlay, setActiveOverlay] = useState<OverlayConfig | null>(null);
+  
+  // Map intents to overlay types
+  const intentToOverlayMap: Record<string, OverlayType> = {
+    'auth.login': 'auth-login',
+    'auth.register': 'auth-register',
+    'booking.create': 'booking',
+    'contact.submit': 'contact',
+    'lead.capture': 'contact',
+    'quote.request': 'contact',
+    'newsletter.subscribe': 'contact',
+    'pay.checkout': 'checkout',
+    'cart.checkout': 'checkout',
+  };
+  
   // Listen for errors from the iframe
   useEffect(() => {
-    const handlePreviewMessage = (event: MessageEvent) => {
+    const handlePreviewMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'PREVIEW_ERROR') {
         const error = event.data.error;
         setPreviewErrors(prev => [...prev.slice(-49), error]);
@@ -1223,11 +1251,108 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
           setHasErrors(true);
         }
       }
+      
+      // Handle intent triggers from preview iframe
+      if (event.data?.type === 'INTENT_TRIGGER') {
+        const { intent, payload } = event.data;
+        console.log('[SimplePreview] Intent triggered:', intent, payload);
+        
+        try {
+          // Check if this intent should open an overlay first
+          const overlayType = intentToOverlayMap[intent];
+          if (overlayType) {
+            console.log('[SimplePreview] Opening overlay for intent:', intent, overlayType);
+            setActiveOverlay({
+              type: overlayType,
+              payload: payload || {},
+              businessId: businessId,
+              siteId: siteId,
+              onSuccess: (result) => {
+                console.log('[SimplePreview] Overlay success:', result);
+                // Send success back to iframe
+                const iframe = iframeRef.current;
+                if (iframe?.contentWindow) {
+                  iframe.contentWindow.postMessage({
+                    type: 'INTENT_RESULT',
+                    intent,
+                    result: { ok: true, data: result },
+                  }, '*');
+                }
+                onIntentTrigger?.(intent, payload || {}, result);
+              },
+              onCancel: () => {
+                console.log('[SimplePreview] Overlay cancelled');
+              },
+            });
+            return;
+          }
+          
+          // Build context with business info
+          const context: IntentContext = {
+            payload: payload || {},
+            businessId: businessId || payload?.businessId as string,
+            siteId: siteId || payload?.siteId as string,
+          };
+          
+          // Execute the intent
+          const result = await executeIntent(intent, context);
+          console.log('[SimplePreview] Intent result:', result);
+          
+          // Handle UI directives
+          if (result.toast) {
+            if (result.toast.type === 'success') {
+              toast.success(result.toast.message);
+            } else if (result.toast.type === 'error') {
+              toast.error(result.toast.message);
+            } else {
+              toast(result.toast.message);
+            }
+          }
+          
+          // Handle navigation redirect (e.g., Stripe checkout)
+          if (result.ui?.navigate) {
+            const url = result.ui.navigate;
+            if (url.startsWith('http')) {
+              window.location.href = url;
+            }
+          }
+          
+          // Handle overlay directives from intent result
+          if (result.ui?.openModal) {
+            const modalType = result.ui.openModal as string;
+            if (modalType.startsWith('auth-') || modalType === 'booking' || modalType === 'contact' || modalType === 'checkout' || modalType === 'upgrade') {
+              setActiveOverlay({
+                type: modalType as OverlayType,
+                payload: payload || {},
+                businessId: businessId,
+                siteId: siteId,
+              });
+            }
+          }
+          
+          // Send result back to iframe
+          const iframe = iframeRef.current;
+          if (iframe?.contentWindow) {
+            iframe.contentWindow.postMessage({
+              type: 'INTENT_RESULT',
+              intent,
+              result,
+            }, '*');
+          }
+          
+          // Call external handler if provided
+          onIntentTrigger?.(intent, payload || {}, result);
+          
+        } catch (error) {
+          console.error('[SimplePreview] Intent execution failed:', error);
+          toast.error('Action failed. Please try again.');
+        }
+      }
     };
     
     window.addEventListener('message', handlePreviewMessage);
     return () => window.removeEventListener('message', handlePreviewMessage);
-  }, []);
+  }, [businessId, siteId, onIntentTrigger]);
   
   // Expose imperative handle for delete/duplicate/update from parent
   useImperativeHandle(ref, () => ({
@@ -1650,6 +1775,14 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
         />
         </div>
       </div>
+      
+      {/* Overlay Manager for Auth/Booking/Checkout modals */}
+      <PreviewOverlayManager
+        activeOverlay={activeOverlay}
+        onClose={() => setActiveOverlay(null)}
+        businessId={businessId}
+        siteId={siteId}
+      />
     </div>
   );
 });

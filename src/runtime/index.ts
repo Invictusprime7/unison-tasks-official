@@ -40,6 +40,25 @@ export {
   type EmittedEvent,
 } from './intentExecutor';
 
+// Template Runtime Provider - Pre-wired context for previews
+export {
+  TemplateRuntimeProvider,
+  useTemplateRuntime,
+  generateRuntimeInjectionScript,
+  type TemplateRuntimeConfig,
+  type TemplateRuntimeContextValue,
+} from './TemplateRuntimeProvider';
+
+// Subscription Enforcement - Limit checking for intents
+export {
+  getSubscriptionStatus,
+  checkIntentAllowed,
+  incrementUsage,
+  withSubscriptionCheck,
+  clearSubscriptionCache,
+  type SubscriptionStatus,
+} from './subscriptionEnforcement';
+
 // AutoBinder - Build-time intent assignment
 export {
   bindIntent,

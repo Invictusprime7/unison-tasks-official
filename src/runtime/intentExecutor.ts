@@ -209,6 +209,7 @@ export interface CheckoutOptions {
   successUrl?: string;
   cancelUrl?: string;
   mode?: 'payment' | 'subscription';
+  priceId?: string;
 }
 
 // ============ HANDLER REGISTRY ============
