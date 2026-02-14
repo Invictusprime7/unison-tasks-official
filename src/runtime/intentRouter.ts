@@ -46,6 +46,12 @@ export type IntentResult = {
   data?: unknown;
   error?: string;
   redirectUrl?: string;
+  /** UI directives for the caller */
+  ui?: {
+    openModal?: string;
+    navigate?: string;
+    toast?: { type: 'success' | 'error' | 'info'; message: string };
+  };
 };
 
 type BackendHandler = 'create-lead' | 'create-booking' | 'create-checkout';
@@ -561,6 +567,21 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
       case 'nav.external':
         return handleNavExternal(payload);
     }
+  }
+  
+  // ========================================================================
+  // AUTH INTENTS - Client-side UI directives (open overlay)
+  // ========================================================================
+  if (intent === 'auth.login' || intent === 'auth.register') {
+    console.log("[IntentRouter] Auth intent - returning UI directive:", intent);
+    const overlayType = intent === 'auth.login' ? 'auth-login' : 'auth-register';
+    return {
+      success: true,
+      status: 'ok',
+      message: `Opening ${intent === 'auth.login' ? 'sign in' : 'sign up'} form`,
+      data: { openModal: overlayType },
+      ui: { openModal: overlayType },
+    };
   }
   
   // Handle demo mode - return mocked responses for action and automation intents

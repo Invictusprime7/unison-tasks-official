@@ -576,6 +576,51 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
     // Clear loading
     if (clearLoading) clearLoading();
     
+    // Handle UI directives from intent result
+    if (result.ui) {
+      // Handle modal opening directive
+      if (result.ui.openModal) {
+        // Post message to parent window for overlay handling
+        if (window.parent !== window) {
+          window.parent.postMessage({
+            type: 'INTENT_TRIGGER',
+            intent: intent,
+            payload: payload,
+            ui: result.ui,
+          }, '*');
+        }
+        // Also dispatch local event for React components
+        window.dispatchEvent(new CustomEvent('intent:openModal', {
+          detail: { intent, modal: result.ui.openModal, payload }
+        }));
+        if (config.showFeedback !== false) {
+          showSuccess(el);
+        }
+        config.onIntentTriggered?.(intent, payload, result.data);
+        return;
+      }
+      
+      // Handle navigation directive
+      if (result.ui.navigate) {
+        const url = result.ui.navigate;
+        if (url.startsWith('http')) {
+          window.location.href = url;
+        } else if (config.onNavigate) {
+          config.onNavigate('goto', url);
+        } else {
+          window.location.href = url;
+        }
+        return;
+      }
+      
+      // Handle toast directive
+      if (result.ui.toast) {
+        window.dispatchEvent(new CustomEvent('intent:toast', {
+          detail: result.ui.toast
+        }));
+      }
+    }
+    
     if (result.success) {
       if (config.showFeedback !== false) {
         showSuccess(el);
