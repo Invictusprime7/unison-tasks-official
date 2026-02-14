@@ -825,10 +825,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       console.log('[WebBuilder] Content type detection - isHTML:', isHTML, 'isTSX:', isTSX);
       
       if (isHTML) {
-        // For HTML templates, sync to index.html
-        console.log('[WebBuilder] Importing as /index.html');
+        // For HTML templates, sync to the active page path (supports multi-page)
+        const targetPath = activePagePath || '/index.html';
+        console.log('[WebBuilder] Importing as', targetPath);
         virtualFS.importFiles({
-          '/index.html': previewCode,
+          [targetPath]: previewCode,
         });
       } else if (isTSX) {
         // For React/TSX, sync to App.tsx
@@ -837,9 +838,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           '/src/App.tsx': previewCode,
         });
       } else {
-        // Default to index.html for simple HTML snippets
+        // Default to active page path for simple HTML snippets
+        const targetPath = activePagePath || '/index.html';
         virtualFS.importFiles({
-          '/index.html': `<!DOCTYPE html>
+          [targetPath]: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -855,22 +857,26 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       }
       lastSyncedCodeRef.current = previewCode;
     }
-  }, [previewCode, virtualFS]);
+  }, [previewCode, virtualFS, activePagePath]);
   
   // Sync VFS changes back to previewCode (for code editor edits)
   // This keeps the legacy previewCode state in sync with VFS
   useEffect(() => {
     const activeFile = virtualFS.getActiveFile();
     if (activeFile && activeFile.content !== lastSyncedCodeRef.current) {
-      // Check if this is a main file that should update previewCode
+      // Check if this is a file that should update previewCode
       const isMainFile = activeFile.path === '/src/App.tsx' || 
-                         activeFile.path === '/index.html' ||
-                         activeFile.path === '/App.tsx';
+                         activeFile.path === '/App.tsx' ||
+                         (activeFile.path?.endsWith('.html') && !activeFile.path?.includes('/src/'));
       if (isMainFile) {
         console.log('[WebBuilder] Syncing VFS to previewCode:', activeFile.path);
         syncingFromVFSRef.current = true;
         setPreviewCode(activeFile.content);
         lastSyncedCodeRef.current = activeFile.content;
+        // Update activePagePath if it's an HTML file
+        if (activeFile.path?.endsWith('.html')) {
+          setActivePagePath(activeFile.path);
+        }
         // Reset the flag after state update
         setTimeout(() => {
           syncingFromVFSRef.current = false;
