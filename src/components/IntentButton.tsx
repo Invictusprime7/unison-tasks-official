@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import { handleIntent, IntentPayload } from '@/runtime/intentRouter';
-import { isCoreIntent } from '@/coreIntents';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -43,14 +42,7 @@ export function IntentButton({
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handleClick = async () => {
-    if (!isCoreIntent(intent)) {
-      const error = `This action is preview-only (unsupported intent): ${intent}`;
-      console.error(error);
-      if (showToast) toast.error(error);
-      onError?.(error);
-      return;
-    }
-
+    // Don't hard-fail on non-core intents - let alias normalization handle messy names
     setLoading(true);
     setStatus('idle');
     
