@@ -104,7 +104,7 @@ export async function getSubscriptionStatus(userId?: string): Promise<Subscripti
     // Get subscription from user_subscriptions table
     const { data: subscription, error } = await supabase
       .from('user_subscriptions')
-      .select('plan, status, usage, current_period_start')
+      .select('*')
       .eq('user_id', userId)
       .single();
 
@@ -112,12 +112,12 @@ export async function getSubscriptionStatus(userId?: string): Promise<Subscripti
       return defaultStatus;
     }
 
-    const plan = (subscription.plan || 'free') as SubscriptionStatus['plan'];
-    const usage = (subscription.usage || {}) as SubscriptionStatus['usage'];
+    const plan = ((subscription as any).plan || 'free') as SubscriptionStatus['plan'];
+    const usage = ((subscription as any).usage || {}) as SubscriptionStatus['usage'];
 
     cachedStatus = {
       plan,
-      status: (subscription.status || 'none') as SubscriptionStatus['status'],
+      status: ((subscription as any).status || 'none') as SubscriptionStatus['status'],
       limits: PLAN_LIMITS[plan] || PLAN_LIMITS.free,
       usage: {
         checkouts_this_month: usage.checkouts_this_month ?? 0,
@@ -229,17 +229,17 @@ export async function incrementUsage(
     // If RPC doesn't exist, fall back to direct update
     const { data: sub } = await supabase
       .from('user_subscriptions')
-      .select('usage')
+      .select('*')
       .eq('user_id', context.userId)
       .single();
 
     if (sub) {
-      const usage = (sub.usage as Record<string, number>) || {};
+      const usage = ((sub as any).usage as Record<string, number>) || {};
       usage[usageKey] = (usage[usageKey] || 0) + 1;
 
       await supabase
         .from('user_subscriptions')
-        .update({ usage })
+        .update({ usage } as any)
         .eq('user_id', context.userId);
     }
 

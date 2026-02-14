@@ -89,6 +89,7 @@ const SANDPACK_TIMEOUT_MS = 30000; // 30 seconds timeout for Sandpack
 const BUNDLED_DEPENDENCIES = {
   "react": "^18.2.0",
   "react-dom": "^18.2.0",
+  "react-router-dom": "^6.20.0",
   "lucide-react": "latest",
   "clsx": "latest",
   "tailwind-merge": "latest",

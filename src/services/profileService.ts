@@ -140,7 +140,7 @@ class ProfileService {
     return {
       id: profile.id as string,
       email: user?.id === profile.id ? (user?.email ?? '') : '',
-      username: (profile.username as string) ?? null,
+      username: ((profile as any).username as string) ?? null,
       fullName: (profile.full_name as string) ?? null,
       avatarUrl: (profile.avatar_url as string) ?? null,
       phone: null,
@@ -340,7 +340,7 @@ class ProfileService {
       map.set(profile.id as string, {
         id: profile.id as string,
         email: '',
-        username: (profile.username as string) ?? null,
+        username: ((profile as any).username as string) ?? null,
         fullName: (profile.full_name as string) ?? null,
         avatarUrl: (profile.avatar_url as string) ?? null,
         phone: null,
@@ -412,24 +412,23 @@ class ProfileService {
    * Update the current user's username
    */
   async updateUsername(newUsername: string): Promise<{ success: boolean; error?: string }> {
-    const { data, error } = await supabase.rpc('update_username', {
-      new_username: newUsername
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: newUsername } as any)
+      .eq('id', user.id);
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    const result = data as { success: boolean; error?: string };
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
     await auditLogger.log({
       action: 'update',
       resourceType: 'user',
-      resourceId: (await supabase.auth.getUser()).data.user?.id ?? '',
-      changes: { username: { new: newUsername } },
+      resourceId: user.id,
+      changes: { username: { old: '', new: newUsername } },
     });
 
     return { success: true };
@@ -441,17 +440,19 @@ class ProfileService {
   async isUsernameAvailable(username: string): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
     
-    const { data, error } = await supabase.rpc('is_username_available', {
-      desired_username: username,
-      excluding_user_id: user?.id ?? null
-    });
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('full_name', username)
+      .neq('id', user?.id ?? '')
+      .maybeSingle();
 
     if (error) {
       console.error('Error checking username availability:', error);
       return false;
     }
 
-    return data as boolean;
+    return !data;
   }
 
   private toUserProfile(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }, profile: Record<string, unknown>): UserProfile {
