@@ -1,0 +1,112 @@
+/**
+ * RecentProjectCard - Live preview thumbnail card for recent projects
+ * 
+ * Renders the template HTML inside a scaled-down iframe once on load,
+ * giving users a real "window" into their project.
+ */
+
+import { useRef, useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { Clock, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+interface RecentProjectCardProps {
+  id: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  updatedAt: string;
+  /** Raw HTML from canvas_data to render in the preview iframe */
+  previewHtml: string | null;
+  onClick: () => void;
+}
+
+export function RecentProjectCard({
+  id,
+  name,
+  description,
+  isPublic,
+  updatedAt,
+  previewHtml,
+  onClick,
+}: RecentProjectCardProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Build a blob URL for the preview HTML (rendered once)
+  const previewSrc = useMemo(() => {
+    if (!previewHtml) return null;
+    const blob = new Blob([previewHtml], { type: "text/html" });
+    return URL.createObjectURL(blob);
+  }, [previewHtml]);
+
+  const formattedDate = new Date(updatedAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "group relative flex flex-col rounded-xl border border-border bg-card text-left",
+        "overflow-hidden transition-all duration-200",
+        "hover:shadow-lg hover:border-primary/40 hover:-translate-y-0.5",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      )}
+    >
+      {/* Live preview window */}
+      <div className="relative w-full aspect-[16/10] bg-muted overflow-hidden">
+        {previewSrc ? (
+          <iframe
+            ref={iframeRef}
+            src={previewSrc}
+            title={`Preview of ${name}`}
+            className="absolute inset-0 w-[1280px] h-[800px] origin-top-left border-0 pointer-events-none"
+            style={{
+              transform: "scale(0.22)",
+              transformOrigin: "top left",
+            }}
+            sandbox="allow-same-origin"
+            loading="lazy"
+            tabIndex={-1}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-lg bg-muted-foreground/10 flex items-center justify-center mx-auto mb-2">
+                <ExternalLink className="h-5 w-5" />
+              </div>
+              <span className="text-xs">No preview</span>
+            </div>
+          </div>
+        )}
+
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/5 transition-colors duration-200 flex items-center justify-center">
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 text-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-sm border border-border">
+            Open in Builder
+          </span>
+        </div>
+      </div>
+
+      {/* Card info */}
+      <div className="flex-1 p-3 flex flex-col gap-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-sm font-semibold text-card-foreground truncate group-hover:text-primary transition-colors">
+            {name || "Untitled Project"}
+          </h3>
+          <Badge
+            variant={isPublic ? "default" : "secondary"}
+            className="text-[10px] px-1.5 py-0 shrink-0"
+          >
+            {isPublic ? "Public" : "Private"}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {formattedDate}
+        </p>
+      </div>
+    </button>
+  );
+}

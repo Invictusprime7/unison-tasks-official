@@ -27,6 +27,7 @@ import {
   Paintbrush,
   Menu
 } from "lucide-react";
+import { RecentProjectCard } from "@/components/home/RecentProjectCard";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { businessSystems } from "@/data/templates/types";
@@ -135,6 +136,7 @@ interface RecentProject {
   is_public: boolean;
   updated_at: string;
   created_at: string;
+  canvas_data: any;
 }
 
 const Index = () => {
@@ -173,10 +175,10 @@ const Index = () => {
       try {
         const { data, error } = await supabase
           .from('design_templates')
-          .select('id, name, description, is_public, updated_at, created_at')
+          .select('id, name, description, is_public, updated_at, created_at, canvas_data')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
-          .limit(6);
+          .limit(4);
 
         if (error) {
           console.error('Error loading recent projects:', error);
@@ -374,66 +376,33 @@ const Index = () => {
               Loading projects...
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentProjects.map((project) => (
-              <Card 
-                key={project.id}
-                className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
-                onClick={() => navigate(`/web-builder?id=${project.id}`)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {recentProjects.map((project) => {
+                const canvasData = project.canvas_data as { html?: string; previewCode?: string; css?: string } | null;
+                const previewHtml = canvasData?.previewCode || canvasData?.html || null;
+                return (
+                  <RecentProjectCard
+                    key={project.id}
+                    id={project.id}
+                    name={project.name}
+                    description={project.description}
+                    isPublic={project.is_public}
+                    updatedAt={project.updated_at}
+                    previewHtml={previewHtml}
+                    onClick={() => navigate(`/web-builder?id=${project.id}`)}
+                  />
+                );
+              })}
+              
+              {/* Quick Add New Project Card */}
+              <button
+                onClick={handleStartLauncher}
+                className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card min-h-[200px] cursor-pointer hover:shadow-md hover:border-primary/50 transition-all text-muted-foreground hover:text-primary"
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-base truncate group-hover:text-primary transition-colors">
-                        {project.name || 'Untitled Project'}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-2 mt-1">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-xs">
-                          {new Date(project.updated_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </CardDescription>
-                    </div>
-                    <Badge 
-                      variant={project.is_public ? 'default' : 'secondary'}
-                      className="text-xs shrink-0"
-                    >
-                      {project.is_public ? 'Public' : 'Private'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardFooter className="pt-0 gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/web-builder?id=${project.id}`);
-                    }}
-                  >
-                    <Paintbrush className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-            
-            {/* Quick Add New Project Card */}
-            <Card 
-              className="cursor-pointer hover:shadow-md transition-all border-dashed hover:border-primary/50 flex items-center justify-center min-h-[140px]"
-              onClick={handleStartLauncher}
-            >
-              <CardContent className="flex flex-col items-center justify-center py-6 text-muted-foreground hover:text-primary transition-colors">
                 <Plus className="h-8 w-8 mb-2" />
                 <span className="text-sm font-medium">New Project</span>
-              </CardContent>
-            </Card>
-          </div>
+              </button>
+            </div>
           )}
         </section>
       )}
