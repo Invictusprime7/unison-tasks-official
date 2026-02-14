@@ -1395,6 +1395,46 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setDemoOverlayOpen(false);
       setDemoConfig(null);
 
+      // ── Navigation intents: handle directly without hitting handleIntent ──
+      if (intent === 'nav.goto') {
+        const path = (payload as any)?.path;
+        if (path && path.startsWith('#')) {
+          // Anchor scroll - already handled in iframe
+          sendResultToIframe({ success: true });
+        } else if (path) {
+          // Page navigation within multi-page VFS
+          const htmlPath = path.endsWith('.html') ? path : `${path}.html`;
+          const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
+          const existingPage = virtualFS.nodes[vfsPath];
+          if (existingPage) {
+            // Switch to the page in the builder
+            setActivePagePath(vfsPath);
+            toast(`Navigated to ${(payload as any)?.text || path}`);
+          } else {
+            toast(`Page ${path} — would navigate in production`);
+          }
+          sendResultToIframe({ success: true });
+        }
+        return;
+      }
+
+      if (intent === 'nav.external') {
+        const url = (payload as any)?.url;
+        if (url) {
+          toast(`External link: ${url}`, { description: 'Opens in new tab in production' });
+        }
+        sendResultToIframe({ success: true });
+        return;
+      }
+
+      if (intent === 'button.click') {
+        // Generic button click - just acknowledge, no overlay needed
+        const label = (payload as any)?.buttonLabel || 'Button';
+        toast(`${label} clicked`);
+        sendResultToIframe({ success: true });
+        return;
+      }
+
       const decision = decideIntentUx(intent, payload as Record<string, unknown> | undefined);
 
       // Booking: always prefer scrolling within the preview iframe.
