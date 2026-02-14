@@ -2216,6 +2216,120 @@ export type Database = {
           },
         ]
       }
+      project_page_seo: {
+        Row: {
+          canonical_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          json_ld_data: Json | null
+          json_ld_type: string | null
+          keywords: string[] | null
+          no_index: boolean | null
+          og_description: string | null
+          og_image_url: string | null
+          og_title: string | null
+          page_key: string
+          project_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          json_ld_data?: Json | null
+          json_ld_type?: string | null
+          keywords?: string[] | null
+          no_index?: boolean | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          page_key: string
+          project_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          json_ld_data?: Json | null
+          json_ld_type?: string | null
+          keywords?: string[] | null
+          no_index?: boolean | null
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          page_key?: string
+          project_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_seo: {
+        Row: {
+          business_id: string
+          canonical_base_url: string | null
+          created_at: string
+          facebook_app_id: string | null
+          favicon_url: string | null
+          generate_sitemap: boolean | null
+          id: string
+          json_ld_data: Json | null
+          json_ld_type: string | null
+          og_image_url: string | null
+          project_id: string
+          robots_txt: string | null
+          site_description: string
+          site_keywords: string[] | null
+          site_title: string
+          twitter_handle: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          canonical_base_url?: string | null
+          created_at?: string
+          facebook_app_id?: string | null
+          favicon_url?: string | null
+          generate_sitemap?: boolean | null
+          id?: string
+          json_ld_data?: Json | null
+          json_ld_type?: string | null
+          og_image_url?: string | null
+          project_id: string
+          robots_txt?: string | null
+          site_description?: string
+          site_keywords?: string[] | null
+          site_title?: string
+          twitter_handle?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          canonical_base_url?: string | null
+          created_at?: string
+          facebook_app_id?: string | null
+          favicon_url?: string | null
+          generate_sitemap?: boolean | null
+          id?: string
+          json_ld_data?: Json | null
+          json_ld_type?: string | null
+          og_image_url?: string | null
+          project_id?: string
+          robots_txt?: string | null
+          site_description?: string
+          site_keywords?: string[] | null
+          site_title?: string
+          twitter_handle?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string | null

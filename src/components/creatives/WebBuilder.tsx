@@ -68,6 +68,8 @@ import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
 import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
+import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
+import { usePageSEO } from "@/hooks/usePageSEO";
 import { generateUUID } from "@/utils/uuid";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
@@ -949,6 +951,15 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   });
 
   const [backendInstalled, setBackendInstalled] = useState(false);
+
+  // SEO settings hook
+  const effectiveBusinessId = businessId || getOrCreatePreviewBusinessId(systemType);
+  const effectiveProjectId = projectId || "preview";
+  const pageSEO = usePageSEO({
+    projectId: effectiveProjectId,
+    businessId: effectiveBusinessId,
+    autoFetch: !!(projectId && effectiveBusinessId),
+  });
 
   // AI context (page structure + backend state + business data)
   const pageStructureContext = useMemo(() => buildPageStructureContext(previewCode), [previewCode]);
@@ -2680,6 +2691,7 @@ ${body.innerHTML}
               <TabsList className="w-full justify-start rounded-none border-b border-border/20 bg-card px-2 h-10 shrink-0">
                 <TabsTrigger value="elements" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Elements</TabsTrigger>
                 <TabsTrigger value="functional" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Functional</TabsTrigger>
+                <TabsTrigger value="seo" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SEO</TabsTrigger>
                 <TabsTrigger value="ai-plugins" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">AI Plugins</TabsTrigger>
                 <TabsTrigger value="health" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Health</TabsTrigger>
               </TabsList>
@@ -2768,6 +2780,17 @@ ${body.innerHTML}
                     
                     toast.success('Functional block added to VFS');
                   }}
+                />
+              </TabsContent>
+              <TabsContent value="seo" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <SEOSettingsPanel
+                  siteSEO={pageSEO.siteSEO}
+                  pageSEOMap={pageSEO.pageSEOMap}
+                  isSaving={pageSEO.isSaving}
+                  activePageKey="home"
+                  pageKeys={["home", "about", "services", "contact", "pricing", "gallery", "faq"]}
+                  onUpdateSiteSEO={pageSEO.updateSiteSEO}
+                  onUpdatePageSEO={pageSEO.updatePageSEO}
                 />
               </TabsContent>
               <TabsContent value="ai-plugins" className="flex-1 m-0 min-h-0 overflow-hidden">
