@@ -40,6 +40,13 @@ export {
   type EmittedEvent,
 } from './intentExecutor';
 
+// Intent Failure Bus - AI auto-diagnosis
+export {
+  emitIntentFailure,
+  onIntentFailure,
+  type IntentFailureEvent,
+} from './intentFailureBus';
+
 // Template Runtime Provider - Pre-wired context for previews
 export {
   TemplateRuntimeProvider,

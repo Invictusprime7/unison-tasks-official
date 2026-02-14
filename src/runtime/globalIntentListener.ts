@@ -12,6 +12,7 @@
  */
 
 import { handleIntent, IntentPayload } from './intentRouter';
+import { emitIntentFailure } from './intentFailureBus';
 import { isCoreIntent, isNavIntent, isPayIntent, type CoreIntent } from '@/coreIntents';
 import { matchLabelToIntent, TemplateCategory } from './templateIntentConfig';
 import { 
@@ -642,6 +643,14 @@ async function handleClick(e: MouseEvent, config: GlobalListenerConfig): Promise
       if (config.showFeedback !== false) {
         showError(el);
       }
+      emitIntentFailure({
+        intent,
+        normalizedIntent: intent,
+        error: { code: 'INTENT_FAILED', message: result.error || 'Unknown error' },
+        payload: payload as Record<string, unknown>,
+        source: 'listener',
+        userAction: el.textContent?.trim() || undefined,
+      });
       config.onIntentError?.(intent, result.error || 'Unknown error');
     }
   } catch (error) {

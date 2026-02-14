@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Send, Sparkles, Loader2, Hammer, Image, Paperclip } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Hammer, Image, Paperclip, AlertTriangle } from 'lucide-react';
 import { Canvas as FabricCanvas } from 'fabric';
 import { useWebBuilderAI } from '@/hooks/useWebBuilderAI';
 import { useAIFileAnalysis } from '@/hooks/useAIFileAnalysis';
+import { useIntentFailureWatcher, type IntentDiagnosisRequest } from '@/hooks/useIntentFailureWatcher';
 import { FileDropZone, DroppedFile } from './FileDropZone';
 import type { AIGeneratedTemplate } from '@/types/template';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,39 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   const { analyzing, analyzeAndGenerate } = useAIFileAnalysis();
 
   const isProcessing = loading || analyzing;
+
+  // Auto-diagnosis: watch for intent failures and inject them into chat
+  const handleDiagnosisRequest = useCallback((request: IntentDiagnosisRequest) => {
+    // Add a system-initiated message showing the failure
+    const failureMessage: Message = {
+      role: 'assistant',
+      content: request.prompt,
+    };
+    setMessages(prev => [...prev, failureMessage]);
+
+    // Auto-trigger the AI to analyze and fix
+    const autoPrompt = `Intent "${request.failure.intent}" failed with error: ${request.failure.error.code} — ${request.failure.error.message}. Source: ${request.failure.source}. Payload keys: ${Object.keys(request.failure.payload || {}).join(', ') || 'none'}. Please diagnose the root cause and generate a fix. If it's a missing alias, add it. If it's a missing handler, create one. If it's a missing business context, set up defaults.`;
+    
+    // Queue the auto-fix request
+    setTimeout(async () => {
+      setMessages(prev => [...prev, { role: 'user', content: '🤖 Auto-diagnosing intent failure...' }]);
+      const response = await generateTemplate(autoPrompt);
+      if (response) {
+        const messageIndex = messages.length + 3;
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `🔧 **Auto-Fix Applied:**\n\n${response.explanation || 'Fix generated. Review the changes below.'}`
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: '⚠️ Could not auto-fix this issue. Please describe the intended behavior and I\'ll try a different approach.'
+        }]);
+      }
+    }, 500);
+  }, [generateTemplate, messages.length]);
+
+  useIntentFailureWatcher(handleDiagnosisRequest, isOpen);
 
   useEffect(() => {
     if (scrollRef.current) {
