@@ -1,13 +1,57 @@
 /**
  * Unison Tasks Runtime Module
  * 
- * Universal Intent System - Deterministic click handling for generated UIs
+ * Universal Intent System - "Lovable-level" no-config click handling
  * 
  * Architecture:
- * 1. ACTION_CATALOG - Fixed, deterministic handlers (runtime execution)
- * 2. Intent Resolver - Rules-first, AI-fallback (build-time resolution)
- * 3. Universal Intent Router - Event delegation, single click handler
+ * 1. CORE_INTENTS - Canonical intent namespace (single source of truth)
+ * 2. INTENT_ALIASES - Normalizes legacy/alternate intents to canonical
+ * 3. Intent Executor - Unified execution with UI directives + context hydration
+ * 4. AutoBinder - Build-time intent assignment (buttons just work)
+ * 5. ACTION_CATALOG - Legacy execution layer (being deprecated)
+ * 
+ * The "Lovable feeling" formula:
+ * Intent System + AutoBinder + Default Provisioning + UI Directives
  */
+
+// ============ NEW: Unified Intent System ============
+
+// Intent Aliases - Normalize everything to CORE_INTENTS
+export {
+  INTENT_ALIASES,
+  normalizeIntent,
+  isNormalizedCoreIntent,
+  getCanonicalIntent,
+  getAliasesFor,
+} from './intentAliases';
+
+// Intent Executor - Unified execution with UI directives
+export {
+  executeIntent,
+  configureIntentExecutor,
+  canHandleIntent,
+  getSupportedIntents,
+  type IntentResult,
+  type IntentContext,
+  type IntentManagers,
+  type UIDirective,
+  type ToastDirective,
+  type MissingFieldsDirective,
+  type EmittedEvent,
+} from './intentExecutor';
+
+// AutoBinder - Build-time intent assignment
+export {
+  bindIntent,
+  bindAllIntents,
+  autoBindElement,
+  extractBindableNodes,
+  type BindableNode,
+  type BindingResult,
+  type TemplateContext,
+} from './autoBinder';
+
+// ============ LEGACY: Action Catalog (use executeIntent instead) ============
 
 // Action Catalog - The deterministic execution layer
 export {

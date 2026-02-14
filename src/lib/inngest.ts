@@ -3,13 +3,18 @@
  * 
  * Serverless workflow orchestration for CRM automations.
  * Works natively with Supabase Edge Functions and Vercel.
+ * 
+ * ARCHITECTURE:
+ * - Event-driven: Intent Executor emits events → Inngest picks them up
+ * - Durable execution: Steps survive serverless timeouts
+ * - Automatic retries: Built-in retry logic with backoff
  */
 
 import { Inngest, EventSchemas } from "inngest";
 
 // Define event schemas for type safety
 type Events = {
-  // CRM Events
+  // ============ CRM EVENTS ============
   "crm/deal.created": {
     data: {
       dealId: string;
@@ -37,6 +42,7 @@ type Events = {
       email?: string;
       phone?: string;
       source?: string;
+      timestamp?: string;
     };
   };
   "crm/lead.status.changed": {
@@ -58,7 +64,7 @@ type Events = {
     };
   };
 
-  // Booking Events
+  // ============ BOOKING EVENTS ============
   "booking/created": {
     data: {
       bookingId: string;
@@ -68,6 +74,7 @@ type Events = {
       contactPhone?: string;
       service: string;
       scheduledAt: string;
+      timestamp?: string;
     };
   };
   "booking/reminded": {
@@ -94,7 +101,7 @@ type Events = {
     };
   };
 
-  // Form Events
+  // ============ FORM EVENTS ============
   "form/submitted": {
     data: {
       formId: string;
@@ -106,7 +113,7 @@ type Events = {
     };
   };
 
-  // Automation Events
+  // ============ AUTOMATION EVENTS (from Intent Executor) ============
   "automation/trigger": {
     data: {
       automationId: string;
@@ -114,6 +121,71 @@ type Events = {
       triggerId: string;
       triggerType: string;
       payload: Record<string, unknown>;
+      timestamp?: string;
+      source?: string;
+    };
+  };
+  
+  // ============ CHECKOUT/ORDER EVENTS ============
+  "checkout/started": {
+    data: {
+      checkoutId: string;
+      businessId: string;
+      cartId?: string;
+      items: Array<{ productId: string; quantity: number }>;
+      total?: number;
+      customerEmail?: string;
+      timestamp?: string;
+    };
+  };
+  "order/created": {
+    data: {
+      orderId: string;
+      businessId: string;
+      customerId?: string;
+      customerEmail?: string;
+      items: Array<{ productId: string; quantity: number; price: number }>;
+      total: number;
+      timestamp?: string;
+    };
+  };
+  "order/shipped": {
+    data: {
+      orderId: string;
+      businessId: string;
+      customerEmail?: string;
+      trackingNumber?: string;
+      carrier?: string;
+    };
+  };
+  "order/delivered": {
+    data: {
+      orderId: string;
+      businessId: string;
+      customerEmail?: string;
+    };
+  };
+
+  // ============ CART EVENTS ============
+  "cart/abandoned": {
+    data: {
+      cartId: string;
+      businessId: string;
+      customerEmail?: string;
+      items: Array<{ productId: string; quantity: number }>;
+      total?: number;
+      lastActivityAt: string;
+    };
+  };
+
+  // ============ NEWSLETTER EVENTS ============
+  "newsletter/subscribed": {
+    data: {
+      subscriptionId: string;
+      businessId: string;
+      email: string;
+      lists?: string[];
+      source?: string;
     };
   };
 };

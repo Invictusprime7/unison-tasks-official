@@ -10,6 +10,9 @@
  * - PAY_INTENTS: Payment redirects (backend creates checkout session)
  * - ACTION_INTENTS: Business workflows (CRM, notifications, etc.)
  * - AUTOMATION_INTENTS: Event-driven automation triggers
+ * 
+ * RULE: All templates use only CORE_INTENTS. Legacy intents are normalized
+ * via INTENT_ALIASES (see runtime/intentAliases.ts).
  */
 
 // Navigation intents - handle routing within projects (CLIENT-SIDE)
@@ -28,22 +31,22 @@ export const PAY_INTENTS = [
 
 // Business/action intents - trigger backend workflows
 export const ACTION_INTENTS = [
-  'contact.submit',
-  'newsletter.subscribe',
-  'booking.create',
-  'quote.request',
-  'lead.capture',
+  'contact.submit',        // Submit contact form
+  'newsletter.subscribe',  // Subscribe to newsletter/waitlist
+  'booking.create',        // Create booking/appointment
+  'quote.request',         // Request a quote/estimate
+  'lead.capture',          // Capture lead data
 ] as const;
 
 // Automation intents - event-driven workflow triggers
 export const AUTOMATION_INTENTS = [
-  'button.click',     // Generic button automation trigger
-  'form.submit',      // Generic form automation trigger  
-  'auth.login',       // Auth form submission
-  'auth.register',    // Registration form
-  'cart.add',         // Add to cart
-  'cart.checkout',    // Begin checkout
-  'cart.abandoned',   // Cart abandonment (timer-based)
+  'button.click',      // Generic button automation trigger
+  'form.submit',       // Generic form automation trigger  
+  'auth.login',        // Auth form submission
+  'auth.register',     // Registration form
+  'cart.add',          // Add to cart
+  'cart.checkout',     // Begin checkout
+  'cart.abandoned',    // Cart abandonment (timer-based)
   'booking.confirmed', // Booking confirmed
   'booking.reminder',  // Booking reminder trigger
   'booking.cancelled', // Booking cancelled

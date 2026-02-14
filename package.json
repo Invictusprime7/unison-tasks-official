@@ -13,7 +13,10 @@
     "build:analyze": "vite build --mode analyze",
     "lint": "eslint .",
     "type-check": "tsc --build --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
+    "inngest:deploy": "npx inngest-cli@latest deploy",
+    "automation:dev": "concurrently \"npm run dev\" \"npm run inngest:dev\""
   },
   "dependencies": {
     "@babel/standalone": "^7.28.4",

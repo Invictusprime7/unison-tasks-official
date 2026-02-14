@@ -6,11 +6,19 @@
  * 
  * Two modes:
  * 1. BUILDER MODE: Lazy-annotate buttons, resolve intents via rules+AI
- * 2. PRODUCTION MODE: Deterministic execution from ACTION_CATALOG only
+ * 2. PRODUCTION MODE: Deterministic execution from CORE_INTENTS only
+ * 
+ * Architecture (NEW - "Lovable feeling"):
+ * - All intents normalized to CORE_INTENTS via INTENT_ALIASES
+ * - executeIntent() handles routing, UI directives, context hydration
+ * - AutoBinder pre-assigns intents at template generation time
  */
 
 import { executeAction, isValidIntent, configureActionCatalog, type ActionContext } from './actionCatalog';
 import { resolveIntent, extractButtonContext, type ResolvedIntent } from './intentResolver';
+import { normalizeIntent } from './intentAliases';
+import { executeIntent, configureIntentExecutor, type IntentContext, type IntentResult } from './intentExecutor';
+import { autoBindElement, type TemplateContext } from './autoBinder';
 
 export interface IntentRouterConfig {
   mode: 'builder' | 'production';
@@ -223,6 +231,8 @@ export class UniversalIntentRouter {
   
   /**
    * Route the click to the appropriate action
+   * 
+   * NEW: Uses unified executeIntent() with alias normalization
    */
   private async routeClick(element: HTMLElement): Promise<void> {
     // Step 1: Get or resolve intent
@@ -247,16 +257,38 @@ export class UniversalIntentRouter {
       }
     }
     
-    // Step 2: Execute action if we have a valid intent
-    if (resolved.intent && isValidIntent(resolved.intent)) {
-      const actionContext: ActionContext = {
+    // Step 2: Normalize intent via aliases (NEW)
+    const rawIntent = resolved.intent;
+    const normalizedIntent = rawIntent ? normalizeIntent(rawIntent) : null;
+    
+    // Step 3: Execute via unified executor (NEW) or legacy catalog
+    if (normalizedIntent) {
+      // Build intent context
+      const intentContext: IntentContext = {
         payload: resolved.payload || {},
         element,
+        // Business context will be hydrated by executor
       };
       
-      const result = await executeAction(resolved.intent, actionContext);
-      this.config.onActionExecuted?.(resolved.intent, actionContext, result);
-    } else if (!resolved.intent) {
+      // Try new unified executor first
+      const result: IntentResult = await executeIntent(normalizedIntent, intentContext);
+      
+      if (result.ok) {
+        console.log('[IntentRouter] Executed via unified executor:', normalizedIntent, result);
+      } else if (result.error?.code === 'UNKNOWN_INTENT') {
+        // Fallback to legacy ACTION_CATALOG
+        if (isValidIntent(rawIntent)) {
+          console.log('[IntentRouter] Falling back to legacy catalog:', rawIntent);
+          const actionContext: ActionContext = {
+            payload: resolved.payload || {},
+            element,
+          };
+          await executeAction(rawIntent, actionContext);
+        }
+      }
+      
+      this.config.onActionExecuted?.(normalizedIntent, { payload: resolved.payload, element }, result);
+    } else {
       console.log('[IntentRouter] No intent resolved for:', element.textContent?.trim());
     }
   }
@@ -309,6 +341,37 @@ export class UniversalIntentRouter {
       }
     }
     
+    return results;
+  }
+  
+  /**
+   * NEW: Auto-bind all buttons using the AutoBinder (deterministic, build-time)
+   * 
+   * This is the preferred method for "no-config" behavior.
+   * Runs the AutoBinder which uses heuristics to assign intents without AI.
+   */
+  autoBindAll(templateCtx?: TemplateContext): Map<HTMLElement, import('./autoBinder').BindingResult> {
+    if (!this.rootElement) {
+      throw new Error('Router not attached to any element');
+    }
+    
+    console.log('[IntentRouter] Running AutoBinder on all elements...');
+    const results = autoBindElement(this.rootElement, templateCtx);
+    
+    // Also cache them in the resolver cache
+    for (const [element, binding] of results) {
+      const resolved: ResolvedIntent = {
+        intent: binding.intent,
+        confidence: binding.confidence,
+        payload: binding.intentPayload,
+        source: binding.bindSource === 'explicit' ? 'explicit' : 
+                binding.bindSource === 'inferred' ? 'rule' : 
+                binding.bindSource === 'default' ? 'fallback' : 'rule',
+      };
+      resolvedIntentCache.set(element, resolved);
+    }
+    
+    console.log(`[IntentRouter] AutoBinder bound ${results.size} elements`);
     return results;
   }
   
@@ -366,10 +429,12 @@ export function getActiveRouter(): UniversalIntentRouter | null {
 
 /**
  * Quick setup for preview/iframe contexts
+ * 
+ * NEW: Automatically runs AutoBinder for "no-config" button behavior
  */
 export function setupPreviewRouter(
   iframeDocument: Document,
-  config: Omit<IntentRouterConfig, 'mode'>
+  config: Omit<IntentRouterConfig, 'mode'> & { templateContext?: TemplateContext }
 ): UniversalIntentRouter {
   const router = new UniversalIntentRouter({
     ...config,
@@ -378,6 +443,9 @@ export function setupPreviewRouter(
   
   if (iframeDocument.body) {
     router.attach(iframeDocument.body);
+    
+    // NEW: Auto-bind all buttons immediately (this is the "Lovable" behavior)
+    router.autoBindAll(config.templateContext);
   }
   
   return router;
@@ -385,10 +453,12 @@ export function setupPreviewRouter(
 
 /**
  * Quick setup for production deployments
+ * 
+ * NEW: Runs AutoBinder to ensure all buttons have intents assigned
  */
 export function setupProductionRouter(
   rootElement: HTMLElement,
-  config: Omit<IntentRouterConfig, 'mode'>
+  config: Omit<IntentRouterConfig, 'mode'> & { templateContext?: TemplateContext }
 ): UniversalIntentRouter {
   const router = new UniversalIntentRouter({
     ...config,
@@ -396,5 +466,9 @@ export function setupProductionRouter(
   });
   
   router.attach(rootElement);
+  
+  // NEW: Auto-bind any buttons that don't have explicit intents
+  router.autoBindAll(config.templateContext);
+  
   return router;
 }
