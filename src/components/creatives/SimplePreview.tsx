@@ -1938,7 +1938,9 @@ const SMART_NAVIGATION_SCRIPT = `
     }, '*');
     
     // For booking/contact/newsletter intents, wait for result to show confirmation
-    var isConfirmableIntent = intent.includes('booking') || intent.includes('contact') || intent.includes('newsletter') || intent.includes('quote') || intent.includes('form');
+    // Navigation and generic button intents should NEVER show confirmation overlays
+    var isNavOrButton = intent.startsWith('nav.') || intent === 'button.click';
+    var isConfirmableIntent = !isNavOrButton && (intent.includes('booking') || intent.includes('contact') || intent.includes('newsletter') || intent.includes('quote') || intent.includes('form'));
     
     if (isConfirmableIntent) {
       // Set timeout for fallback (if parent doesn't respond)
@@ -1989,8 +1991,9 @@ const SMART_NAVIGATION_SCRIPT = `
       pending.element.disabled = false;
     }
     
-    // Show confirmation page for successful confirmable intents
-    if (result.success !== false) {
+    // Show confirmation page for successful confirmable intents (not nav/button)
+    var isNavOrBtn = pending.intent.startsWith('nav.') || pending.intent === 'button.click';
+    if (result.success !== false && !isNavOrBtn) {
       if (!theme) theme = extractTheme();
       showConfirmationPage(pending.intent, pending.payload, result, theme);
     }
