@@ -54,6 +54,7 @@ import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, setCurrentSystemType, setDemoMode, handleIntent, IntentPayload } from "@/runtime/intentRouter";
+import { hasMultiPageMarkers, parseMultiPageOutput, generateMultiPageVFS, buildRedirectPageContext } from "@/utils/redirectPageGenerator";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 import { DemoIntentOverlay, type DemoIntentOverlayConfig } from "./web-builder/DemoIntentOverlay";
 import { ResearchOverlay, type ResearchOverlayPayload } from "./web-builder/ResearchOverlay";
@@ -961,8 +962,25 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     autoFetch: !!(projectId && effectiveBusinessId),
   });
 
-  // AI context (page structure + backend state + business data)
+  // AI context (page structure + backend state + business data + redirect pages)
   const pageStructureContext = useMemo(() => buildPageStructureContext(previewCode), [previewCode]);
+  
+  // Build redirect page context from VFS for in-builder AI awareness
+  const redirectPageContext = useMemo(() => {
+    const vfsFiles = virtualFS.getSandpackFiles();
+    const htmlPages = Object.keys(vfsFiles).filter(p => p.endsWith('.html') && p !== '/index.html');
+    if (htmlPages.length === 0) return '';
+    
+    const lines = ['\n=== REDIRECT PAGES IN VFS ==='];
+    htmlPages.forEach(p => {
+      const content = vfsFiles[p] || '';
+      const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
+      lines.push(`- ${p} (${titleMatch?.[1] || 'Untitled'}, ${content.length} chars)`);
+    });
+    lines.push('You can edit any page. Apply nav/footer/brand changes across ALL pages.');
+    return lines.join('\n');
+  }, [virtualFS.nodes]);
+  
   const backendStateContext = useMemo(() => {
     const lines: string[] = [];
     lines.push(`- backendInstalled: ${backendInstalled ? "yes" : "no"}`);
@@ -970,8 +988,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (currentTemplateId) lines.push(`- templateId: ${currentTemplateId}`);
     if (manifestIdFromState || currentManifestId) lines.push(`- manifestId: ${manifestIdFromState || currentManifestId}`);
     if (businessId) lines.push(`- businessId: ${businessId}`);
+    if (redirectPageContext) lines.push(redirectPageContext);
     return lines.join("\n");
-  }, [backendInstalled, activeSystemType, currentTemplateId, manifestIdFromState, currentManifestId, businessId]);
+  }, [backendInstalled, activeSystemType, currentTemplateId, manifestIdFromState, currentManifestId, businessId, redirectPageContext]);
 
   const [businessDataContext, setBusinessDataContext] = useState<string | null>(null);
 

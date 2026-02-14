@@ -1388,6 +1388,37 @@ CartManager.updateUI();
 13. Include social proof elements
 14. No markdown, no explanations - ONLY the complete HTML code
 
+📄 **MULTI-PAGE OUTPUT (REDIRECT PAGES):**
+
+You MUST generate MULTIPLE pages for the website, not just a single page. Analyze the navigation menu and business type to determine which redirect pages are needed.
+
+**PAGE MARKER FORMAT:**
+Use \`<!-- PAGE: /path.html label="Page Label" -->\` to separate pages. Each page after the marker must be a COMPLETE HTML document.
+
+**REQUIRED PAGES (generate ALL that apply):**
+${getRequiredPagesForIndustry(identity.industry)}
+
+**EXAMPLE MULTI-PAGE OUTPUT:**
+\`\`\`
+<!-- PAGE: /index.html label="Home" -->
+<!DOCTYPE html>
+<html>...(main page)...</html>
+<!-- PAGE: /about.html label="About Us" -->
+<!DOCTYPE html>
+<html>...(about page)...</html>
+<!-- PAGE: /contact.html label="Contact" -->
+<!DOCTYPE html>
+<html>...(contact page)...</html>
+\`\`\`
+
+**MULTI-PAGE RULES:**
+1. EVERY page must be a COMPLETE HTML doc with its own Tailwind CDN + config
+2. ALL pages must share the SAME nav bar, footer, brand colors, and design tokens
+3. Nav links must use \`data-ut-intent="nav.goto" data-ut-path="/pagename.html"\`
+4. Each page must have UNIQUE, full content — not placeholder stubs
+5. Generate 3-6 pages depending on the business type
+6. The main page (index.html) must link to all sub-pages in its navigation
+
 🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL website for ${brand.business_name} that would impress any business owner and drive real conversions.
 
 ${patternContext ? `
@@ -1461,18 +1492,19 @@ ${userPrompt}`;
   
   message += `
 
-⚡ **OUTPUT FORMAT:**
-- Return ONLY the complete HTML code
-- NO markdown wrappers
-- NO explanations or comments
-- Start with <!DOCTYPE html>
-- Include all CSS in <style> block
-- Include all JS before </body>
-- Make it look like a real, launched business website
+⚡ **OUTPUT FORMAT (MULTI-PAGE):**
+- Use \`<!-- PAGE: /path.html label="Label" -->\` markers to separate pages
+- Start with \`<!-- PAGE: /index.html label="Home" -->\` for the main page
+- Each page is a COMPLETE HTML doc (<!DOCTYPE html> to </html>)
+- Generate 3-6 pages based on the business type and navigation
+- NO markdown wrappers, NO explanations
+- Include all CSS in <style> block per page
+- Include all JS before </body> per page
+- ALL pages must share consistent nav, footer, and brand styling
 - Write compelling, realistic copy (NOT placeholder text)
 - Use Unsplash for high-quality images
 
-Make this website IMPRESSIVE - the kind that wins design awards and converts visitors into customers.`;
+Make this a COMPLETE MULTI-PAGE WEBSITE — the kind that wins design awards and converts visitors into customers.`;
   
   return message;
 }
@@ -1690,6 +1722,21 @@ function getLucideIconsForIndustry(industry: string): string {
   };
 
   return iconSets[industry] || iconSets.other;
+}
+
+function getRequiredPagesForIndustry(industry: string): string {
+  const pageMap: Record<string, string> = {
+    salon_spa: `- /index.html (Home) - /services.html (Services & Prices) - /about.html (Team & Story) - /booking.html (Book Appointment) - /contact.html (Contact)`,
+    restaurant: `- /index.html (Home) - /menu.html (Full Menu) - /about.html (Our Story) - /reservations.html (Reservations) - /contact.html (Contact)`,
+    ecommerce: `- /index.html (Home) - /products.html (Shop) - /cart.html (Cart) - /checkout.html (Checkout) - /about.html (About) - /contact.html (Contact)`,
+    local_service: `- /index.html (Home) - /services.html (Services) - /about.html (About) - /contact.html (Contact/Quote) - /gallery.html (Our Work)`,
+    coaching_consulting: `- /index.html (Home) - /services.html (Services) - /about.html (About) - /booking.html (Book a Call) - /contact.html (Contact)`,
+    real_estate: `- /index.html (Home) - /listings.html (Listings) - /about.html (About) - /contact.html (Contact)`,
+    creator_portfolio: `- /index.html (Home) - /portfolio.html (Portfolio) - /about.html (About) - /contact.html (Contact)`,
+    nonprofit: `- /index.html (Home) - /about.html (About) - /donate.html (Donate) - /volunteer.html (Volunteer) - /contact.html (Contact)`,
+    other: `- /index.html (Home) - /about.html (About) - /services.html (Services) - /contact.html (Contact)`,
+  };
+  return pageMap[industry] || pageMap.other;
 }
 
 function generateFallbackHTML(blueprint: z.infer<typeof BlueprintSchema>): string {
