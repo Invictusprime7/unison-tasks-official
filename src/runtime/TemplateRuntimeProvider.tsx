@@ -14,6 +14,8 @@
  * - Booking buttons create real appointments
  */
 
+/* eslint-disable react-refresh/only-export-components */
+
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
