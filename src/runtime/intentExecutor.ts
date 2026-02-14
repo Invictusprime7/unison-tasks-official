@@ -13,6 +13,7 @@
  */
 
 import type { CoreIntent } from '@/coreIntents';
+import { emitIntentFailure } from './intentFailureBus';
 import { 
   isNavIntent, 
   isPayIntent, 
@@ -665,9 +666,17 @@ export async function executeIntent(
   
   if (!handler) {
     console.warn(`[IntentExecutor] No handler for: ${normalized}`);
+    const error = { code: 'UNKNOWN_INTENT', message: `Unknown intent: ${normalized}` };
+    emitIntentFailure({
+      intent: rawIntent,
+      normalizedIntent: normalized,
+      error,
+      payload: (ctx.payload ?? {}) as Record<string, unknown>,
+      source: 'executor',
+    });
     return {
       ok: false,
-      error: { code: 'UNKNOWN_INTENT', message: `Unknown intent: ${normalized}` },
+      error,
       _normalized: normalized,
       _source: 'executor',
     };
@@ -701,9 +710,17 @@ export async function executeIntent(
     };
   } catch (error) {
     console.error(`[IntentExecutor] Error executing ${normalized}:`, error);
+    const errObj = { code: 'EXECUTION_ERROR', message: (error as Error).message };
+    emitIntentFailure({
+      intent: rawIntent,
+      normalizedIntent: normalized,
+      error: errObj,
+      payload: (ctx.payload ?? {}) as Record<string, unknown>,
+      source: 'executor',
+    });
     return {
       ok: false,
-      error: { code: 'EXECUTION_ERROR', message: (error as Error).message },
+      error: errObj,
       toast: { type: 'error', message: 'Something went wrong. Please try again.' },
       _normalized: normalized,
       _source: 'executor',
