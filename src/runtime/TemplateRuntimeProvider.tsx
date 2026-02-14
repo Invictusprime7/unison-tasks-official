@@ -112,14 +112,14 @@ async function getCart(sessionId: string, userId?: string): Promise<CartState> {
       return { items: [], total: 0 };
     }
 
-    const total = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+    const total = items.reduce((sum, item) => sum + ((item as any).price || 0) * (item.quantity || 1), 0);
     
     return {
       items: items.map(item => ({
         id: item.id,
         productId: item.product_id,
-        name: item.name || 'Unknown',
-        price: item.price || 0,
+        name: (item as any).name || 'Unknown',
+        price: (item as any).price || 0,
         quantity: item.quantity || 1,
       })),
       total,
@@ -668,11 +668,13 @@ function createBookingManagerWired(businessId: string): IntentManagers['booking'
         const { data: booking } = await supabase
           .from('bookings')
           .insert({
-            business_id: businessId,
-            service_id: data.serviceId,
-            scheduled_at: data.datetime,
+            booking_date: new Date(data.datetime).toISOString().split('T')[0],
+            booking_time: new Date(data.datetime).toISOString().split('T')[1]?.slice(0, 5) || '09:00',
+            service_name: (data as any).serviceName || 'General Appointment',
             customer_name: data.customerName,
             customer_email: data.customerEmail,
+            business_id: businessId,
+            service_id: data.serviceId,
             status: 'pending',
           })
           .select()
@@ -697,7 +699,7 @@ function createBookingManagerWired(businessId: string): IntentManagers['booking'
         id: s.id,
         name: s.name,
         duration: s.duration_minutes || 60,
-        price: s.price || 0,
+        price: s.price_cents ? s.price_cents / 100 : 0,
       }));
     },
 
