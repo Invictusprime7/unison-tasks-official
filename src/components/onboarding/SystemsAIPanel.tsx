@@ -336,18 +336,30 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         const generatedCode = data?.code || "";
         if (generatedCode && generatedCode.length > 50) {
           console.log('[SystemsAIPanel] systems-build generated', generatedCode.length, 'chars');
+          
+          // Parse multi-page output if PAGE markers present
+          const { hasMultiPageMarkers, parseMultiPageOutput, generateMultiPageVFS } = await import('@/utils/redirectPageGenerator');
+          let vfsFiles: Record<string, string> | undefined;
+          
+          if (hasMultiPageMarkers(generatedCode)) {
+            const parsed = parseMultiPageOutput(generatedCode);
+            vfsFiles = generateMultiPageVFS(parsed);
+            console.log('[SystemsAIPanel] Multi-page output detected:', parsed.allPages.length, 'pages');
+          }
+          
           sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
           setDroppedFiles([]); // Clear files on success
           navigate("/web-builder", {
             state: {
-              generatedCode,
+              generatedCode: vfsFiles ? undefined : generatedCode,
+              vfsFiles: vfsFiles,
               templateName: `AI ${codePromptChips.find(c => c.id === selectedCodeChip)?.label || "Generated"}`,
               aesthetic: "modern",
               startInPreview: true,
               systemType: ref?.systemType,
             },
           });
-          toast({ title: "Website generated!", description: "Opening in Web Builder..." });
+          toast({ title: "Website generated!", description: vfsFiles ? `Multi-page site with ${Object.keys(vfsFiles).length} files` : "Opening in Web Builder..." });
           return;
         }
       }
