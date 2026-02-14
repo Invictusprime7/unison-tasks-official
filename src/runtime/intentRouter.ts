@@ -15,6 +15,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getDemoResponse, type BusinessSystemType } from "@/data/templates";
+import { normalizeIntent } from './intentAliases';
 import { 
   CORE_INTENTS, 
   type CoreIntent, 
@@ -554,39 +555,14 @@ function handlePayCancel(payload: IntentPayload): IntentResult {
  */
 export async function handleIntent(intent: string, payload: IntentPayload): Promise<IntentResult> {
   console.log("[IntentRouter] Handling intent:", intent, payload, { isDemoMode, currentSystemType, useUnifiedRouter });
+
+  // Step 1: Normalize via alias system (handles messy template intents)
+  const normalized = normalizeIntent(intent);
+  console.log(`[IntentRouter] Normalized: "${intent}" → "${normalized}"`);
   
-  // ========================================================================
-  // NAVIGATION INTENTS - Handled client-side (no backend needed)
-  // ========================================================================
-  if (isNavIntent(intent)) {
-    switch (intent) {
-      case 'nav.goto':
-        return handleNavGoto(payload);
-      case 'nav.anchor':
-        return handleNavAnchor(payload);
-      case 'nav.external':
-        return handleNavExternal(payload);
-    }
-  }
-  
-  // ========================================================================
-  // AUTH INTENTS - Client-side UI directives (open overlay)
-  // ========================================================================
-  if (intent === 'auth.login' || intent === 'auth.register') {
-    console.log("[IntentRouter] Auth intent - returning UI directive:", intent);
-    const overlayType = intent === 'auth.login' ? 'auth-login' : 'auth-register';
-    return {
-      success: true,
-      status: 'ok',
-      message: `Opening ${intent === 'auth.login' ? 'sign in' : 'sign up'} form`,
-      data: { openModal: overlayType },
-      ui: { openModal: overlayType },
-    };
-  }
-  
-  // Handle demo mode - return mocked responses for action and automation intents
-  if (isDemoMode && currentSystemType && (isActionIntent(intent) || isAutomationIntent(intent))) {
-    const demoResponse = getDemoResponse(currentSystemType, intent);
+  // Step 2: Handle demo mode - return mocked responses
+  if (isDemoMode && currentSystemType && (isActionIntent(normalized) || isAutomationIntent(normalized))) {
+    const demoResponse = getDemoResponse(currentSystemType, normalized);
     if (demoResponse) {
       console.log("[IntentRouter] Demo mode response:", demoResponse);
       return {
@@ -596,170 +572,154 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
         error: demoResponse.success ? undefined : demoResponse.message,
       };
     }
-    // Fallback mock for automation intents without specific demo response
-    console.log("[IntentRouter] Demo mode fallback for:", intent);
     return {
       success: true,
-      data: { demo: true, intent },
-      message: `Demo: ${intent} triggered successfully`,
+      data: { demo: true, intent: normalized },
+      message: `Demo: ${normalized} triggered successfully`,
     };
   }
-  
-  // Inject default businessId if not provided
+
+  // Step 3: Inject defaults
   if (!payload.businessId && defaultBusinessId) {
     payload.businessId = defaultBusinessId;
-    console.log("[IntentRouter] Injected default businessId:", defaultBusinessId);
   }
-
-  // Inject default projectId if not provided
   if (!payload.projectId && defaultProjectId) {
     payload.projectId = defaultProjectId;
-    console.log("[IntentRouter] Injected default projectId:", defaultProjectId);
   }
 
-  // Locked surface (authoritative).
-  // Non-core intents may still exist in templates, but they are preview-only and cannot persist/publish.
-  if (!isCoreIntent(intent)) {
-    const message = "This intent is not production-supported yet";
-    console.warn("[IntentRouter] Unsupported intent (not CoreIntent):", intent);
-    return { success: false, status: "unsupported", message, error: message };
+  // Step 4: Build IntentContext for executeIntent
+  const ctx: import('./intentExecutor').IntentContext = {
+    payload: { ...payload },
+    businessId: payload.businessId as string,
+    sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : undefined,
+    managers: {
+      navigation: {
+        goto: (path, p) => {
+          setCurrentPath(path);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('intent:nav.goto', { detail: { path, ...p } }));
+          }
+        },
+        external: (url) => {
+          if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener,noreferrer');
+        },
+        back: () => { if (typeof window !== 'undefined') window.history.back(); },
+        scrollTo: (anchor) => {
+          const targetId = anchor.startsWith('#') ? anchor.slice(1) : anchor;
+          const el = document.getElementById(targetId) || document.querySelector(`[data-section="${targetId}"]`);
+          el?.scrollIntoView({ behavior: 'smooth' });
+        },
+      },
+    },
+  };
+
+  // Step 5: For action intents that need backend, check businessId gracefully
+  if ((isActionIntent(normalized) || isPayIntent(normalized)) && !payload.businessId) {
+    console.warn("[IntentRouter] Missing businessId for action intent, returning missing directive");
+    return {
+      success: false,
+      error: 'Business profile not configured yet',
+      ui: {
+        toast: { type: 'info', message: 'Setting up your business profile…' },
+      },
+    };
   }
 
-  // Production safety: require real businessId for action/pay intents
-  const biz = assertBusinessId(payload);
-  if (!biz.ok) return { success: false, error: ('error' in biz ? biz.error : 'Invalid businessId') };
-  
-  // Validate email for action intents that require it (lead capture, contact, newsletter, quote)
-  if (isActionIntent(intent) && intent !== 'booking.create') {
-    const email = String(payload.email ?? payload.customerEmail ?? '').trim();
-    if (!email) {
-      return { success: false, error: 'Email is required' };
+  // Step 6: For action intents with businessId, use the unified backend router
+  if (isCoreIntent(normalized) && (isActionIntent(normalized) || isPayIntent(normalized))) {
+    // Navigation intents skip backend
+    if (isNavIntent(normalized)) {
+      const { executeIntent } = await import('./intentExecutor');
+      const result = await executeIntent(normalized, ctx);
+      return adaptExecutorResult(result);
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return { success: false, error: 'Please enter a valid email address' };
-    }
-  }
-  
-  // ========================================================================
-  // PAYMENT INTENTS - Backend creates checkout session
-  // ========================================================================
-  if (isPayIntent(intent)) {
-    switch (intent) {
-      case 'pay.checkout':
-        return handlePayCheckout(payload, biz.businessId);
-      case 'pay.success':
-        return handlePaySuccess(payload);
-      case 'pay.cancel':
-        return handlePayCancel(payload);
-    }
-  }
-  
-  try {
-    // Determine source context
-    const source = isDemoMode ? 'preview' : 'published';
-    const sourceUrl = typeof window !== 'undefined' ? window.location.href : undefined;
 
-    // ========================================================================
-    // UNIFIED INTENT ROUTER - Single backend entrypoint for all CoreIntents
-    // ========================================================================
-    // This is the canonical execution surface that:
-    // - Validates businessId and CoreIntent
-    // - Persists CRM records (leads, contacts, etc.)
-    // - Sends notifications using business settings
-    // - Records analytics
+    // Payment intents
+    if (isPayIntent(normalized)) {
+      switch (normalized) {
+        case 'pay.checkout':
+          return handlePayCheckout(payload, payload.businessId as string);
+        case 'pay.success':
+          return handlePaySuccess(payload);
+        case 'pay.cancel':
+          return handlePayCancel(payload);
+      }
+    }
+
+    // Action intents → unified backend router
     if (useUnifiedRouter) {
-      console.log("[IntentRouter] Using unified intent-router Edge Function");
-      
-      const routerPayload = {
-        intent,
-        businessId: biz.businessId,
-        projectId: (payload.projectId as string) || defaultProjectId || undefined,
-        data: payload,
-        source,
-        sourceUrl,
-        visitorId: (payload.visitorId as string) || undefined,
-      };
-      
-      const { data, error } = await supabase.functions.invoke('intent-router', {
-        body: routerPayload,
-      });
-      
-      if (error) {
-        console.error("[IntentRouter] Unified router error:", error);
-        // Fall back to legacy handlers if unified router fails
-        console.log("[IntentRouter] Falling back to legacy handlers...");
-      } else {
-        // Unified router returns { success, message, data, error }
-        if (data && typeof data === 'object') {
+      try {
+        const routerPayload = {
+          intent: normalized,
+          businessId: payload.businessId,
+          projectId: (payload.projectId as string) || defaultProjectId || undefined,
+          data: payload,
+          source: isDemoMode ? 'preview' : 'published',
+          sourceUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+        };
+        
+        const { data, error } = await supabase.functions.invoke('intent-router', {
+          body: routerPayload,
+        });
+        
+        if (!error && data && typeof data === 'object') {
           console.log("[IntentRouter] Unified router success:", data);
           return data as IntentResult;
         }
-        return { success: true, data };
+        if (error) console.error("[IntentRouter] Unified router error, falling back:", error);
+      } catch (err) {
+        console.error("[IntentRouter] Unified router exception:", err);
       }
     }
 
-    // ========================================================================
-    // LEGACY HANDLERS (fallback for action intents only)
-    // ========================================================================
-    if (!isActionIntent(intent)) {
-      return { success: false, error: `Intent ${intent} not handled by legacy router` };
-    }
-    
-    const handler = ACTION_HANDLERS[intent];
-
-    // Normalize payload per intent, then call authoritative backend handler.
-    let body: Record<string, unknown> = { ...payload };
-    if (intent === 'contact.submit' || intent === 'newsletter.subscribe' || intent === 'quote.request') {
-      body = normalizeLeadPayload(intent, payload);
-    }
-
-    if (intent === 'booking.create') {
-      body = {
-        ...payload,
-        businessId: payload.businessId,
-        action: 'create',
-        // Transform pipeline field names to edge function expected format
-        customerName: (payload.customerName || payload.name) ?? undefined,
-        customerEmail: (payload.customerEmail || payload.email) ?? undefined,
-        customerPhone: (payload.customerPhone || payload.phone) ?? undefined,
-        startsAt:
-          payload.startsAt ||
-          (payload.date && payload.time ? new Date(`${payload.date}T${payload.time}:00`).toISOString() : undefined),
-        serviceName: (payload.serviceName || payload.service) ?? undefined,
-        metadata: {
-          intent,
-          timestamp: new Date().toISOString(),
-          page: typeof window !== 'undefined' ? window.location.href : undefined,
-          templateId: typeof payload.templateId === 'string' ? payload.templateId : undefined,
-          source: payload._source ?? undefined,
-        },
-      };
-    }
-
-    const { data, error } = await supabase.functions.invoke(handler, { body });
-    
-    if (error) {
-      console.error("[IntentRouter] Edge function error:", error);
-      return { success: false, error: error.message };
-    }
-    
-    // Edge functions return { success, data, error } format
-    if (data && typeof data === 'object') {
-      if ('success' in data) {
-        return data as IntentResult;
+    // Legacy fallback for action intents
+    if (isActionIntent(normalized)) {
+      const handler = ACTION_HANDLERS[normalized];
+      let body: Record<string, unknown> = { ...payload };
+      if (normalized === 'contact.submit' || normalized === 'newsletter.subscribe' || normalized === 'quote.request') {
+        body = normalizeLeadPayload(normalized, payload);
       }
+      if (normalized === 'booking.create') {
+        body = {
+          ...payload,
+          businessId: payload.businessId,
+          action: 'create',
+          customerName: (payload.customerName || payload.name) ?? undefined,
+          customerEmail: (payload.customerEmail || payload.email) ?? undefined,
+          customerPhone: (payload.customerPhone || payload.phone) ?? undefined,
+          startsAt: payload.startsAt || (payload.date && payload.time ? new Date(`${payload.date}T${payload.time}:00`).toISOString() : undefined),
+          serviceName: (payload.serviceName || payload.service) ?? undefined,
+          metadata: { intent: normalized, timestamp: new Date().toISOString(), page: typeof window !== 'undefined' ? window.location.href : undefined },
+        };
+      }
+      const { data, error } = await supabase.functions.invoke(handler, { body });
+      if (error) return { success: false, error: error.message };
+      if (data && typeof data === 'object' && 'success' in data) return data as IntentResult;
       return { success: true, data };
     }
-    
-    return { success: true, data };
-  } catch (error) {
-    console.error("[IntentRouter] Error:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    };
   }
+
+  // Step 7: For everything else (auth, automation, nav, etc.) → executeIntent
+  const { executeIntent } = await import('./intentExecutor');
+  const result = await executeIntent(normalized, ctx);
+  return adaptExecutorResult(result);
+}
+
+/**
+ * Adapt IntentExecutor result (ok-based) to IntentRouter result (success-based)
+ */
+function adaptExecutorResult(result: import('./intentExecutor').IntentResult): IntentResult {
+  return {
+    success: result.ok,
+    data: result.data,
+    error: result.error?.message,
+    message: result.toast?.message,
+    ui: result.ui ? {
+      openModal: result.ui.openModal,
+      navigate: result.ui.navigate,
+      toast: result.toast ? { type: result.toast.type === 'warning' ? 'info' as const : result.toast.type, message: result.toast.message } : undefined,
+    } : undefined,
+  };
 }
 
 /**

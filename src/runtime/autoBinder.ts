@@ -22,7 +22,27 @@
  */
 
 import type { CoreIntent } from '@/coreIntents';
-import { CORE_INTENTS } from '@/coreIntents';
+import { CORE_INTENTS, NAV_INTENTS, PAY_INTENTS, ACTION_INTENTS } from '@/coreIntents';
+
+// ============ CLICKABLE INTENTS ============
+// These intents can be auto-bound to buttons. Automation-only intents
+// (order.shipped, deal.won, booking.reminder, etc.) should NEVER be
+// assigned to clickable elements — they are backend event emitters.
+const CLICKABLE_AUTOMATION_INTENTS: CoreIntent[] = [
+  'button.click',
+  'form.submit',
+  'auth.login',
+  'auth.register',
+  'cart.add',
+  'cart.checkout',
+];
+
+const CLICKABLE_INTENTS: ReadonlySet<string> = new Set([
+  ...NAV_INTENTS,
+  ...PAY_INTENTS,
+  ...ACTION_INTENTS,
+  ...CLICKABLE_AUTOMATION_INTENTS,
+]);
 
 // ============ TYPES ============
 
@@ -545,6 +565,14 @@ export function bindIntent(node: BindableNode, templateCtx?: TemplateContext): B
         bindSource: 'default',
       };
     }
+  }
+
+  // GUARD: Never bind automation-only intents to clickable elements
+  if (bestMatch && !CLICKABLE_INTENTS.has(bestMatch.intent)) {
+    console.warn(`[AutoBinder] Blocked non-clickable intent "${bestMatch.intent}" for node "${bestMatch.id}", falling back to button.click`);
+    bestMatch.intent = 'button.click';
+    bestMatch.confidence = 0.3;
+    bestMatch.bindSource = 'default';
   }
 
   return bestMatch;
