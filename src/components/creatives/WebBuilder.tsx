@@ -72,6 +72,7 @@ import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
 import { usePageSEO } from "@/hooks/usePageSEO";
 import { generateUUID } from "@/utils/uuid";
+import { PageNavigationBar, extractPageTabs, type PageTab } from "./web-builder/PageNavigationBar";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -652,6 +653,109 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [recentlyChangedFiles, setRecentlyChangedFiles] = useState<Set<string>>(new Set());
   const originalFileContents = useRef<Map<string, string>>(new Map());
   
+  // Multi-page navigation state
+  const [activePagePath, setActivePagePath] = useState<string>('/index.html');
+  
+  // Derive page tabs from VFS
+  const pageTabs = useMemo(() => {
+    const vfsFiles = virtualFS.getSandpackFiles();
+    return extractPageTabs(vfsFiles);
+  }, [virtualFS.nodes]);
+  
+  // Dynamic page keys for SEO panel (derived from VFS)
+  const vfsPageKeys = useMemo(() => {
+    if (pageTabs.length <= 1) return ["home"];
+    return pageTabs.map(p => 
+      p.isMain ? "home" : p.path.replace(/^\//, '').replace(/\.html$/, '')
+    );
+  }, [pageTabs]);
+  
+  // Handle page switching in multi-page preview
+  const handleSelectPage = useCallback((path: string) => {
+    setActivePagePath(path);
+    const vfsFiles = virtualFS.getSandpackFiles();
+    const pageContent = vfsFiles[path];
+    if (pageContent) {
+      // Temporarily flag to avoid VFS sync loop
+      syncingFromVFSRef.current = true;
+      setPreviewCode(pageContent);
+      setEditorCode(pageContent);
+      lastSyncedCodeRef.current = pageContent;
+      setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+    }
+  }, [virtualFS]);
+  
+  // Handle adding a new page
+  const handleAddPage = useCallback(() => {
+    const name = prompt('Enter page name (e.g. "about", "contact"):');
+    if (!name) return;
+    const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/\.html$/, '');
+    const path = `/${sanitized}.html`;
+    const vfsFiles = virtualFS.getSandpackFiles();
+    if (vfsFiles[path]) {
+      toast.error(`Page "${sanitized}" already exists`);
+      return;
+    }
+    // Get styling cues from main page
+    const mainContent = vfsFiles['/index.html'] || previewCode;
+    const label = sanitized.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const newPageHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${label}</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen">
+  <header class="border-b border-white/10 px-6 py-4">
+    <nav class="flex items-center gap-6">
+      <a href="/index.html" class="text-sm text-white/70 hover:text-white" data-ut-intent="nav.goto" data-ut-path="/index.html">Home</a>
+      <span class="text-sm text-white font-medium">${label}</span>
+    </nav>
+  </header>
+  <main class="max-w-4xl mx-auto px-6 py-16">
+    <h1 class="text-4xl font-bold mb-6">${label}</h1>
+    <p class="text-white/70 text-lg">This is the ${label} page. Start editing to add your content.</p>
+  </main>
+</body>
+</html>`;
+    virtualFS.importFiles({ [path]: newPageHtml });
+    setActivePagePath(path);
+    syncingFromVFSRef.current = true;
+    setPreviewCode(newPageHtml);
+    setEditorCode(newPageHtml);
+    lastSyncedCodeRef.current = newPageHtml;
+    setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+    toast.success(`Page "${label}" created`);
+  }, [virtualFS, previewCode]);
+  
+  // Handle removing a page
+  const handleRemovePage = useCallback((path: string) => {
+    if (!confirm(`Delete page "${path}"?`)) return;
+    // Find and delete the VFS node
+    const allFiles = virtualFS.getSandpackFiles();
+    delete allFiles[path];
+    // Re-import without the deleted page
+    virtualFS.importFiles(allFiles);
+    // Switch back to main page if we deleted the active one
+    if (activePagePath === path) {
+      handleSelectPage('/index.html');
+    }
+    toast.success('Page removed');
+  }, [virtualFS, activePagePath, handleSelectPage]);
+  
+  // Sync previewCode changes back to the active page's VFS entry
+  // This ensures edits in code view or AI apply to the correct page
+  useEffect(() => {
+    if (syncingFromVFSRef.current) return;
+    if (!previewCode || pageTabs.length <= 1) return;
+    const vfsFiles = virtualFS.getSandpackFiles();
+    if (vfsFiles[activePagePath] && vfsFiles[activePagePath] !== previewCode) {
+      virtualFS.importFiles({ ...vfsFiles, [activePagePath]: previewCode });
+    }
+  }, [previewCode, activePagePath, pageTabs.length]);
+
   // Intent Pipeline Overlay state
   const [pipelineOverlayOpen, setPipelineOverlayOpen] = useState(false);
   const [pipelineConfig, setPipelineConfig] = useState<PipelineConfig | null>(null);
@@ -2806,8 +2910,8 @@ ${body.innerHTML}
                   siteSEO={pageSEO.siteSEO}
                   pageSEOMap={pageSEO.pageSEOMap}
                   isSaving={pageSEO.isSaving}
-                  activePageKey="home"
-                  pageKeys={["home", "about", "services", "contact", "pricing", "gallery", "faq"]}
+                  activePageKey={activePagePath === '/index.html' ? 'home' : activePagePath.replace(/^\//, '').replace(/\.html$/, '')}
+                  pageKeys={vfsPageKeys}
                   onUpdateSiteSEO={pageSEO.updateSiteSEO}
                   onUpdatePageSEO={pageSEO.updatePageSEO}
                 />
@@ -3181,6 +3285,13 @@ ${body.innerHTML}
                     )}
                   </div>
                 </div>
+                <PageNavigationBar
+                  pages={pageTabs}
+                  activePage={activePagePath}
+                  onSelectPage={handleSelectPage}
+                  onAddPage={handleAddPage}
+                  onRemovePage={handleRemovePage}
+                />
                 <div 
                   ref={scrollContainerRef}
                   data-drop-zone="true"
@@ -3402,6 +3513,13 @@ export default function App() {
                       </Button>
                     </div>
                   </div>
+                  <PageNavigationBar
+                    pages={pageTabs}
+                    activePage={activePagePath}
+                    onSelectPage={handleSelectPage}
+                    onAddPage={handleAddPage}
+                    onRemovePage={handleRemovePage}
+                  />
                   <div 
                     ref={splitViewDropZoneRef}
                     data-drop-zone="true"
