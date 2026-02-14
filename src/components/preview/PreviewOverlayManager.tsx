@@ -48,12 +48,14 @@ export interface PreviewOverlayManagerProps {
 
 interface AuthOverlayProps {
   mode: 'login' | 'register';
+  siteId?: string;
+  businessId?: string;
   onSuccess: (user: unknown) => void;
   onClose: () => void;
   onModeSwitch: () => void;
 }
 
-const AuthOverlay: React.FC<AuthOverlayProps> = ({ mode, onSuccess, onClose, onModeSwitch }) => {
+const AuthOverlay: React.FC<AuthOverlayProps> = ({ mode, siteId, businessId, onSuccess, onClose, onModeSwitch }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -74,28 +76,74 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ mode, onSuccess, onClose, onM
           return;
         }
         
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: name },
-          },
-        });
-        
-        if (signUpError) throw signUpError;
-        
-        toast.success('Account created! Check your email to confirm.');
-        onSuccess(data.user);
+        // Use site-scoped auth when siteId is available
+        if (siteId) {
+          const { data, error: authError } = await supabase.functions.invoke('site-auth', {
+            body: {
+              action: 'register',
+              siteId,
+              businessId,
+              email,
+              password,
+              name,
+            },
+          });
+          
+          if (authError) throw new Error(authError.message);
+          if (!data?.success) throw new Error(data?.error || 'Registration failed');
+          
+          // Store site session in localStorage
+          localStorage.setItem(`site_session:${siteId}`, JSON.stringify(data.session));
+          
+          toast.success('Account created successfully!');
+          onSuccess(data.user);
+        } else {
+          // Fall back to global Supabase auth if no siteId
+          const { data, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { full_name: name },
+            },
+          });
+          
+          if (signUpError) throw signUpError;
+          
+          toast.success('Account created! Check your email to confirm.');
+          onSuccess(data.user);
+        }
       } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (signInError) throw signInError;
-        
-        toast.success('Welcome back!');
-        onSuccess(data.user);
+        // Login
+        if (siteId) {
+          const { data, error: authError } = await supabase.functions.invoke('site-auth', {
+            body: {
+              action: 'login',
+              siteId,
+              email,
+              password,
+            },
+          });
+          
+          if (authError) throw new Error(authError.message);
+          if (!data?.success) throw new Error(data?.error || 'Login failed');
+          
+          // Store site session in localStorage
+          localStorage.setItem(`site_session:${siteId}`, JSON.stringify(data.session));
+          
+          toast.success('Welcome back!');
+          onSuccess(data.user);
+        } else {
+          // Fall back to global Supabase auth
+          const { data, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (signInError) throw signInError;
+          
+          toast.success('Welcome back!');
+          onSuccess(data.user);
+        }
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Authentication failed';
@@ -747,6 +795,8 @@ export const PreviewOverlayManager: React.FC<PreviewOverlayManagerProps> = ({
         return (
           <AuthOverlay
             mode={authMode}
+            siteId={siteId || activeOverlay.siteId}
+            businessId={businessId || activeOverlay.businessId}
             onSuccess={handleSuccess}
             onClose={onClose}
             onModeSwitch={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}

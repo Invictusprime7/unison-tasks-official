@@ -381,6 +381,28 @@ export function TemplateRuntimeProvider({ config, children }: TemplateRuntimePro
       return { ok: false, error: 'Auth not configured' };
     }
 
+    // Use site-scoped auth when siteId is available
+    if (config.siteId) {
+      const { data, error } = await supabase.functions.invoke('site-auth', {
+        body: { 
+          action: 'login', 
+          siteId: config.siteId, 
+          email, 
+          password 
+        },
+      });
+      
+      if (error || !data?.success) {
+        return { ok: false, error: data?.error || error?.message || 'Login failed' };
+      }
+      
+      // Store site session in localStorage
+      localStorage.setItem(`site_session:${config.siteId}`, JSON.stringify(data.session));
+      
+      return { ok: true };
+    }
+
+    // Fall back to global Supabase auth
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       return { ok: false, error: error.message };
@@ -393,6 +415,31 @@ export function TemplateRuntimeProvider({ config, children }: TemplateRuntimePro
       return { ok: false, error: 'Auth not configured' };
     }
 
+    // Use site-scoped auth when siteId is available
+    if (config.siteId) {
+      const { data, error } = await supabase.functions.invoke('site-auth', {
+        body: { 
+          action: 'register', 
+          siteId: config.siteId, 
+          businessId: config.businessId,
+          email, 
+          password,
+          name: metadata?.full_name || metadata?.name,
+          metadata,
+        },
+      });
+      
+      if (error || !data?.success) {
+        return { ok: false, error: data?.error || error?.message || 'Registration failed' };
+      }
+      
+      // Store site session in localStorage
+      localStorage.setItem(`site_session:${config.siteId}`, JSON.stringify(data.session));
+      
+      return { ok: true };
+    }
+
+    // Fall back to global Supabase auth
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -406,6 +453,12 @@ export function TemplateRuntimeProvider({ config, children }: TemplateRuntimePro
 
   const signOut = async () => {
     if (!supabase) return;
+    
+    // Clear site session if exists
+    if (config.siteId) {
+      localStorage.removeItem(`site_session:${config.siteId}`);
+    }
+    
     await supabase.auth.signOut();
   };
 
