@@ -559,6 +559,10 @@ serve(async (req) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
 
+    // Use gemini-2.5-flash for speed (pro times out on large prompts)
+    const model = variantMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash";
+    console.log(`[systems-build] Calling AI gateway with model=${model}`);
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -566,12 +570,13 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
         ],
         temperature: 0.7,
+        max_tokens: 32000,
       }),
       signal: controller.signal,
     });
@@ -618,7 +623,7 @@ serve(async (req) => {
       JSON.stringify({ 
         code: generatedCode,
         blueprint,
-        _meta: { ai_generated: true, model: "google/gemini-2.5-pro" }
+        _meta: { ai_generated: true, model }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
