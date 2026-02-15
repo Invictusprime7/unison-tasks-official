@@ -16,7 +16,8 @@ export type LayoutCategory =
   | "content"     // Content/blog templates
   | "coaching"    // Coaching/consulting templates
   | "realestate"  // Real estate templates
-  | "nonprofit";  // Nonprofit/charity templates
+  | "nonprofit"   // Nonprofit/charity templates
+  | "saved";      // User's saved templates
 
 // Business System Types
 export type BusinessSystemType =
