@@ -322,12 +322,17 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         });
 
         if (error) {
-          if (error.message?.includes('429')) {
+          const msg = error.message || '';
+          if (msg.includes('429')) {
             toast({ title: "Rate limit exceeded", description: "Please wait a moment before trying again.", variant: "destructive" });
             return;
           }
-          if (error.message?.includes('402')) {
+          if (msg.includes('402')) {
             toast({ title: "Credits required", description: "Please add credits to continue using AI features.", variant: "destructive" });
+            return;
+          }
+          if (msg.includes('Failed to fetch') || msg.includes('Failed to send')) {
+            toast({ title: "Generation timed out", description: "The AI took too long. Please try again with a simpler prompt.", variant: "destructive" });
             return;
           }
           throw error;
