@@ -55,6 +55,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, setCurrentSystemType, setDemoMode, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { hasMultiPageMarkers, parseMultiPageOutput, generateMultiPageVFS, buildRedirectPageContext } from "@/utils/redirectPageGenerator";
+import { classifyLabel, type ElementContext } from "@/utils/redirectLabelClassifier";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 import { DemoIntentOverlay, type DemoIntentOverlayConfig } from "./web-builder/DemoIntentOverlay";
 import { ResearchOverlay, type ResearchOverlayPayload } from "./web-builder/ResearchOverlay";
@@ -1506,25 +1507,50 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setDemoOverlayOpen(false);
       setDemoConfig(null);
 
+      // ── Label-aware intent classification ──
+      const buttonLabel = (payload as any)?.buttonLabel || (payload as any)?.text || (payload as any)?.label || '';
+      const elementCtx: ElementContext = {
+        isInNav: !!(payload as any)?.isInNav || !!(payload as any)?.inNav,
+        isInFooter: !!(payload as any)?.isInFooter || !!(payload as any)?.inFooter,
+        utIntent: intent,
+        noIntent: !!(payload as any)?.noIntent,
+        href: (payload as any)?.href || (payload as any)?.path,
+      };
+      
+      // Classify the label to decide behavior
+      const classification = classifyLabel(buttonLabel, elementCtx);
+      console.log('[WebBuilder] Label classification:', buttonLabel, classification);
+
       // ── Navigation intents: handle directly without hitting handleIntent ──
       if (intent === 'nav.goto') {
         const path = (payload as any)?.path;
         if (path && path.startsWith('#')) {
           // Anchor scroll - already handled in iframe
           sendResultToIframe({ success: true });
-        } else if (path) {
+          return;
+        }
+        
+        if (path) {
           // Page navigation within multi-page VFS
           const htmlPath = path.endsWith('.html') ? path : `${path}.html`;
           const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
           const existingPage = virtualFS.nodes[vfsPath];
+          
           if (existingPage) {
-            // Switch to the page in the builder
+            // Page exists — switch to it
             setActivePagePath(vfsPath);
-            toast(`Navigated to ${(payload as any)?.text || path}`);
+            toast(`Navigated to ${buttonLabel || path}`);
+            sendResultToIframe({ success: true });
+          } else if (classification.category === 'redirect') {
+            // Redirect-worthy label + page doesn't exist → generate it
+            console.log('[WebBuilder] Redirect-worthy click, generating page:', classification.suggestedPageType, buttonLabel);
+            const pageName = classification.suggestedPageType || path.replace(/^\//, '').replace(/\.html$/, '') || 'details';
+            triggerPageGeneration(pageName, buttonLabel, source, requestId);
           } else {
-            toast(`Page ${path} — would navigate in production`);
+            // Nav link — just acknowledge, don't generate
+            toast(`${buttonLabel || path}`, { description: 'Page will be available in production' });
+            sendResultToIframe({ success: true });
           }
-          sendResultToIframe({ success: true });
         }
         return;
       }
@@ -1539,9 +1565,32 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       }
 
       if (intent === 'button.click') {
+        // Check if this button label warrants page generation
+        if (classification.category === 'redirect') {
+          const pageName = classification.suggestedPageType || 'details';
+          console.log('[WebBuilder] Redirect-worthy button.click, generating:', pageName, buttonLabel);
+          triggerPageGeneration(pageName, buttonLabel, source, requestId);
+          return;
+        }
         // Generic button click - just acknowledge, no overlay needed
-        const label = (payload as any)?.buttonLabel || 'Button';
-        toast(`${label} clicked`);
+        toast(`${buttonLabel || 'Button'} clicked`);
+        sendResultToIframe({ success: true });
+        return;
+      }
+      
+      // Check for redirect-worthy intents that aren't nav.goto/button.click
+      if (classification.category === 'redirect' && !['booking.create', 'contact.submit', 'newsletter.subscribe', 'quote.request', 'lead.capture'].includes(intent)) {
+        const pageName = classification.suggestedPageType || 'details';
+        const vfsPath = `/${pageName}.html`;
+        const existingPage = virtualFS.nodes[vfsPath];
+        if (!existingPage) {
+          console.log('[WebBuilder] Redirect-worthy intent, generating page:', pageName, buttonLabel);
+          triggerPageGeneration(pageName, buttonLabel, source, requestId);
+          return;
+        }
+        // Page exists, navigate to it
+        setActivePagePath(vfsPath);
+        toast(`Navigated to ${buttonLabel || pageName}`);
         sendResultToIframe({ success: true });
         return;
       }
@@ -1647,108 +1696,102 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [isGeneratingPage, setIsGeneratingPage] = useState(false);
   const [currentNavPage, setCurrentNavPage] = useState<string | null>(null);
 
-  // Listen for NAV_PAGE_GENERATE messages from iframe for dynamic page creation
+  /**
+   * Trigger AI page generation with full context injection.
+   * Called by the label classifier when a redirect-worthy button is clicked
+   * and the target page doesn't exist in VFS.
+   */
+  const triggerPageGeneration = useCallback(async (
+    pageName: string,
+    navLabel: string,
+    source: Window | null,
+    requestId?: string,
+  ) => {
+    // Check cache first
+    const vfsPath = `/${pageName}.html`;
+    const existing = virtualFS.nodes[vfsPath] || generatedPages[pageName];
+    if (existing) {
+      const content = typeof existing === 'string' ? existing : (existing as any).content;
+      setActivePagePath(vfsPath);
+      toast(`Navigated to ${navLabel || pageName}`);
+      if (source && requestId) {
+        source.postMessage({ type: 'INTENT_RESULT', requestId, result: { success: true } }, '*');
+      }
+      return;
+    }
+
+    setIsGeneratingPage(true);
+    setCurrentNavPage(navLabel || pageName);
+
+    try {
+      const pagePrompt = buildDynamicPagePrompt(pageName, '', navLabel, previewCode);
+      
+      const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
+        body: {
+          messages: [{ role: "user", content: pagePrompt }],
+          mode: "code",
+          templateAction: "full-control",
+          editMode: false,
+        },
+      });
+
+      if (error) throw error;
+
+      const content = data?.content || "";
+      let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
+      if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
+      
+      let pageCode = codeMatch ? codeMatch[1].trim() : content.trim();
+      pageCode = pageCode
+        .replace(/^#{1,6}\s+.*$/gm, '')
+        .replace(/```[\w]*\n?/g, '')
+        .replace(/<<<|>>>|---/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      if (pageCode) {
+        virtualFS.importFiles({ [vfsPath]: pageCode });
+        setGeneratedPages(prev => ({ ...prev, [pageName]: pageCode }));
+        setActivePagePath(vfsPath);
+        
+        // Also update editor
+        syncingFromVFSRef.current = true;
+        setPreviewCode(pageCode);
+        setEditorCode(pageCode);
+        lastSyncedCodeRef.current = pageCode;
+        setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+
+        toast.success(`${navLabel || pageName} page created!`);
+        if (source && requestId) {
+          source.postMessage({ type: 'INTENT_RESULT', requestId, result: { success: true } }, '*');
+        }
+      } else {
+        throw new Error('No page content generated');
+      }
+    } catch (err) {
+      console.error('[WebBuilder] Page generation failed:', err);
+      toast.error(`Failed to generate ${navLabel || pageName} page`);
+      if (source && requestId) {
+        source.postMessage({ type: 'INTENT_RESULT', requestId, result: { success: false, error: 'Generation failed' } }, '*');
+      }
+    } finally {
+      setIsGeneratingPage(false);
+      setCurrentNavPage(null);
+    }
+  }, [virtualFS, previewCode, generatedPages]);
+
+  // Listen for NAV_PAGE_GENERATE messages from iframe for dynamic page creation (legacy)
   useEffect(() => {
     const handleNavPageGenerate = async (event: MessageEvent) => {
       if (event.data?.type !== 'NAV_PAGE_GENERATE') return;
-      
-      const { pageName, pageContext, navLabel, requestId } = event.data;
-      console.log('[WebBuilder] Dynamic page generation requested:', pageName, pageContext);
-      
+      const { pageName, navLabel, requestId } = event.data;
       const source = (event.source && typeof (event.source as any).postMessage === 'function')
-        ? (event.source as Window)
-        : null;
-
-      // Check if page already exists in VFS or cache
-      const existingPage = virtualFS.nodes[`/${pageName}.html`] || generatedPages[pageName];
-      if (existingPage) {
-        console.log('[WebBuilder] Page already exists:', pageName);
-        const pageContent = typeof existingPage === 'string' ? existingPage : (existingPage as any).content;
-        if (source) {
-          source.postMessage({
-            type: 'NAV_PAGE_READY',
-            requestId,
-            pageName,
-            pageContent
-          }, '*');
-        }
-        return;
-      }
-
-      // Generate new page with AI
-      setIsGeneratingPage(true);
-      setCurrentNavPage(pageName);
-
-      try {
-        // Build context-aware prompt for the page
-        const pagePrompt = buildDynamicPagePrompt(pageName, pageContext, navLabel, previewCode);
-        
-        const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
-          body: {
-            messages: [{ role: "user", content: pagePrompt }],
-            mode: "code",
-            templateAction: "full-control",
-            editMode: false,
-          },
-        });
-
-        if (error) throw error;
-
-        const content = data?.content || "";
-        let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
-        if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
-        
-        let pageCode = codeMatch ? codeMatch[1].trim() : content.trim();
-        
-        // Clean markdown artifacts
-        pageCode = pageCode
-          .replace(/^#{1,6}\s+.*$/gm, '')
-          .replace(/```[\w]*\n?/g, '')
-          .replace(/<<<|>>>|---/g, '')
-          .replace(/\n{3,}/g, '\n\n')
-          .trim();
-
-        if (pageCode) {
-          // Store in VFS and cache
-          virtualFS.importFiles({ [`/${pageName}.html`]: pageCode });
-          setGeneratedPages(prev => ({ ...prev, [pageName]: pageCode }));
-
-          console.log('[WebBuilder] Dynamic page generated:', pageName, pageCode.length, 'chars');
-          
-          if (source) {
-            source.postMessage({
-              type: 'NAV_PAGE_READY',
-              requestId,
-              pageName,
-              pageContent: pageCode
-            }, '*');
-          }
-
-          toast.success(`${navLabel || pageName} page created!`);
-        } else {
-          throw new Error('No page content generated');
-        }
-      } catch (err) {
-        console.error('[WebBuilder] Page generation failed:', err);
-        toast.error(`Failed to generate ${navLabel || pageName} page`);
-        
-        if (source) {
-          source.postMessage({
-            type: 'NAV_PAGE_ERROR',
-            requestId,
-            pageName,
-            error: err instanceof Error ? err.message : 'Generation failed'
-          }, '*');
-        }
-      } finally {
-        setIsGeneratingPage(false);
-        setCurrentNavPage(null);
-      }
+        ? (event.source as Window) : null;
+      await triggerPageGeneration(pageName, navLabel || pageName, source, requestId);
     };
-
     window.addEventListener('message', handleNavPageGenerate);
     return () => window.removeEventListener('message', handleNavPageGenerate);
-  }, [virtualFS, previewCode, generatedPages]);
+  }, [triggerPageGeneration]);
   
   // Clear draft when template is saved
   const clearDraft = useCallback(() => {
@@ -3474,6 +3517,20 @@ ${body.innerHTML}
                       });
                     } : undefined}
                   />
+                  {/* Inline loading overlay for AI page generation */}
+                  {isGeneratingPage && (
+                    <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-3 p-6 rounded-xl bg-card/90 border border-border shadow-2xl">
+                        <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                        <p className="text-sm font-medium text-foreground">Generating {currentNavPage}…</p>
+                        <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full animate-[loading_2s_ease-in-out_infinite]" 
+                               style={{ width: '60%', animation: 'loading 2s ease-in-out infinite' }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground">AI is building a matching page with full design context</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
