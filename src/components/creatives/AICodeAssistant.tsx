@@ -685,7 +685,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   }, [isLoading, analyzing]);
 
   // Ref to access handleSend from callbacks
-  const handleSendRef = useRef<(opts?: { overrideInput?: string; skipBuilderActions?: boolean }) => Promise<void>>();
+  const handleSendRef = useRef<((opts?: { overrideInput?: string; skipBuilderActions?: boolean }) => Promise<void>) | null>(null);
 
   const handleSend = async (opts?: { overrideInput?: string; skipBuilderActions?: boolean }) => {
     const content = (opts?.overrideInput ?? input).trim();
