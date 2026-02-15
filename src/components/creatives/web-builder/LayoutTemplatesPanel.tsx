@@ -53,6 +53,7 @@ const categoryLabels: Record<LayoutCategory, string> = {
   coaching: 'Coaching',
   realestate: 'Real Estate',
   nonprofit: 'Nonprofit',
+  saved: 'My Designs',
 };
 
 const categoryIcons: Record<LayoutCategory, string> = {
@@ -68,6 +69,7 @@ const categoryIcons: Record<LayoutCategory, string> = {
   coaching: '🎯',
   realestate: '🏠',
   nonprofit: '💚',
+  saved: '💾',
 };
 
 export const LayoutTemplatesPanel: React.FC<LayoutTemplatesPanelProps> = ({

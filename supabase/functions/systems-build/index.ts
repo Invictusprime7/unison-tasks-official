@@ -124,6 +124,7 @@ const BodySchema = z.object({
   enhanceWithAI: z.boolean().optional().default(true),
   templateId: z.string().optional(),
   templateHtml: z.string().max(200_000).optional(),
+  variantMode: z.boolean().optional().default(false),
 });
 
 // ============================================================================
@@ -464,7 +465,7 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -547,8 +548,10 @@ serve(async (req) => {
     const researchContext = formatResearchContext(research);
 
     // Build comprehensive system prompt for business website generation
-    const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml, researchContext);
-    const userMessage = buildUserMessage(blueprint, userPrompt);
+    const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml, researchContext, variantMode);
+    const userMessage = variantMode && templateHtml
+      ? buildVariantUserMessage(blueprint, userPrompt)
+      : buildUserMessage(blueprint, userPrompt);
 
     console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})${templateId ? ` with reference template: ${templateId}` : ''}`);
 
@@ -728,7 +731,7 @@ function hardenGeneratedHTML(code: string): string {
   return hardened;
 }
 
-function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = "", templateHtml?: string, researchContext = ""): string {
+function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = "", templateHtml?: string, researchContext = "", variantMode = false): string {
   const { brand, identity, design } = blueprint;
   const palette = brand.palette || {};
   const pages = blueprint.site?.pages || [];
@@ -743,8 +746,39 @@ function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternCo
   const sections = design?.sections || {};
   const content = design?.content || {};
 
-  // Build template reference context if a premium template was provided
-  const templateReferenceBlock = templateHtml ? `
+  // Build template reference context — variant mode uses stricter rules
+  const templateReferenceBlock = templateHtml ? (variantMode ? `
+
+🔒 **VARIANT GENERATION MODE — STRICT INTENT PRESERVATION**
+
+You are generating a DESIGN VARIANT of an existing template. The source template is provided below.
+
+⚠️ ABSOLUTE RULES (VIOLATION = FAILURE):
+1. NEVER change any button label text — keep every single button label EXACTLY as-is
+2. NEVER change, remove, or add any data-ut-intent, data-ut-cta, data-ut-label, data-intent, or data-no-intent attributes
+3. NEVER change form field names or form structure
+4. NEVER remove or rename any data-ut-path values
+5. KEEP the exact same number and types of CTA buttons
+6. KEEP all navigation links with their exact labels and paths
+
+✅ WHAT YOU CAN CHANGE:
+- Color palette, gradients, shadows, backgrounds
+- Typography (fonts, sizes, weights, line heights)
+- Layout structure (grid arrangements, section order, hero style)
+- Section mix-and-match (swap hero styles, card layouts, testimonial formats)
+- Spacing and padding
+- Image URLs (use different Unsplash photos)
+- Decorative elements (shapes, blurs, ornaments)
+- Animation styles and timing
+- Border styles and border-radius
+- Body copy and descriptions (NOT button labels or nav links)
+
+SOURCE TEMPLATE (preserve all intents/labels, redesign everything else):
+\`\`\`html
+${templateHtml.substring(0, 20000)}
+\`\`\`
+${templateHtml.length > 20000 ? `\n[Template continues for ${templateHtml.length} total characters — maintain ALL intents and button labels throughout]` : ''}
+` : `
 
 🏆 **PREMIUM REFERENCE TEMPLATE (QUALITY BASELINE):**
 
@@ -765,7 +799,7 @@ Reference template (first 15000 chars for context):
 ${templateHtml.substring(0, 15000)}
 \`\`\`
 ${templateHtml.length > 15000 ? `\n[Template continues for ${templateHtml.length} total characters — maintain this level of density and quality throughout]` : ''}
-` : '';
+`) : '';
 
   return `You are an ELITE "Super Web Builder Expert" AI for a Web Builder that supports a built-in backend (database, authentication, and backend functions) - like GitHub Copilot and Lovable AI combined.
 
@@ -1599,6 +1633,53 @@ ${userPrompt}`;
 - Use Unsplash for high-quality images
 
 Make this a COMPLETE MULTI-PAGE WEBSITE — the kind that wins design awards and converts visitors into customers.`;
+  
+  return message;
+}
+
+/**
+ * Build user message for VARIANT generation mode.
+ * Emphasizes visual transformation while strictly preserving functional elements.
+ */
+function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, userPrompt?: string): string {
+  const { brand, identity } = blueprint;
+  
+  let message = `🎨 CREATE A DESIGN VARIANT of the provided template for "${brand.business_name}" (${identity.industry.replace(/_/g, " ")}).
+
+📋 **VARIANT REQUIREMENTS:**
+
+1. **PRESERVE ALL FUNCTIONAL ELEMENTS EXACTLY:**
+   - Every button label must remain IDENTICAL (character for character)
+   - Every data-ut-intent, data-ut-cta, data-intent, data-no-intent attribute must be preserved
+   - Every form structure, field name, and form action must stay the same
+   - Every nav link text and data-ut-path must be unchanged
+
+2. **TRANSFORM THE VISUAL DESIGN:**
+   - Use completely different color scheme and gradients
+   - Different typography pairing (choose from: Plus Jakarta Sans, Space Grotesk, Manrope, Outfit, Sora, Clash Display + body: Inter, DM Sans, Nunito)
+   - Different layout arrangements (if hero was split, try centered or fullscreen)
+   - Different section ordering where it makes sense
+   - Different card styles (if rounded, try sharp; if dark, try light)
+   - Different image treatment (different Unsplash photos, different overlays)
+   - Different animation timing and styles
+   - Different decorative elements (blob shapes, gradients, patterns)
+
+3. **MAINTAIN QUALITY:**
+   - Same or more sections
+   - Same content density
+   - Same mobile responsiveness
+   - Production-ready code quality
+
+4. **OUTPUT FORMAT:**
+   - Use <!-- PAGE: /path.html label="Label" --> markers for multi-page output
+   - Complete HTML documents with Tailwind CDN
+   - NO markdown, NO explanations`;
+
+  if (userPrompt) {
+    message += `\n\n📝 **STYLE DIRECTION:**\n${userPrompt}`;
+  }
+
+  message += `\n\n⚡ Generate a visually distinct variant that looks like a completely different website but functions IDENTICALLY to the source.`;
   
   return message;
 }

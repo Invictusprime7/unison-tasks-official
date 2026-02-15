@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -57,6 +57,38 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
   const [editedTemplateCode, setEditedTemplateCode] = useState<string | null>(null);
   const [editedTemplateFiles, setEditedTemplateFiles] = useState<Record<string, string> | null>(null);
 
+  // Load user's saved templates from database
+  const [userSavedTemplates, setUserSavedTemplates] = useState<LayoutTemplate[]>([]);
+  useEffect(() => {
+    const loadUserTemplates = async () => {
+      const { data } = await supabase
+        .from('design_templates')
+        .select('id, name, description, canvas_data')
+        .order('updated_at', { ascending: false })
+        .limit(12);
+      if (data) {
+        const mapped: LayoutTemplate[] = data
+          .filter(t => {
+            const cd = t.canvas_data as Record<string, unknown> | null;
+            return cd && (typeof cd === 'object') && ('code' in cd || 'html' in cd || 'previewHtml' in cd);
+          })
+          .map(t => {
+            const cd = t.canvas_data as Record<string, string>;
+            return {
+              id: `saved-${t.id}`,
+              name: t.name,
+              description: t.description || 'Your saved template',
+              category: 'saved' as LayoutCategory,
+              code: cd.code || cd.html || cd.previewHtml || '',
+              tags: ['saved'],
+            };
+          });
+        setUserSavedTemplates(mapped);
+      }
+    };
+    if (open) loadUserTemplates();
+  }, [open]);
+
   // All templates are now production-ready with CoreIntent wiring
   // Get templates for the selected system
   const systemTemplates = useMemo(() => {
@@ -66,16 +98,21 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     return system.templateCategories.flatMap(cat => getTemplatesByCategory(cat));
   }, [selectedSystem]);
 
+  // Merge premium + user saved templates
+  const allTemplates = useMemo(() => {
+    return [...systemTemplates, ...userSavedTemplates];
+  }, [systemTemplates, userSavedTemplates]);
+
   const availableCategories = useMemo(() => {
     const cats = new Set<LayoutCategory>();
-    systemTemplates.forEach((t) => cats.add(t.category));
+    allTemplates.forEach((t) => cats.add(t.category));
     return Array.from(cats);
-  }, [systemTemplates]);
+  }, [allTemplates]);
 
   const visibleTemplates = useMemo(() => {
-    if (categoryFilter === "all") return systemTemplates;
-    return systemTemplates.filter((t) => t.category === categoryFilter);
-  }, [systemTemplates, categoryFilter]);
+    if (categoryFilter === "all") return allTemplates;
+    return allTemplates.filter((t) => t.category === categoryFilter);
+  }, [allTemplates, categoryFilter]);
 
   // Get manifest for selected template to show backend info
   const selectedManifest = useMemo(() => {
@@ -247,6 +284,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
           enhanceWithAI: true,
           templateId: selectedTemplate.id,
           templateHtml: selectedTemplate.code,
+          variantMode: true,
         },
       });
 
@@ -341,6 +379,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     agency: "Agency",
     content: "Content",
     saas: "SaaS",
+    saved: "My Designs",
   };
 
   return (
