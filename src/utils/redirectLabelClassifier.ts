@@ -8,7 +8,7 @@
  * - nav:      Header/footer navigation links → route to existing page or scroll
  * - redirect: Action buttons implying a new destination → generate page if missing
  * - form:     Form/overlay actions → existing overlay/form flow
- * - external: External links → open in new tab
+ * - external: External links → generate in-place page (no new tabs)
  * - ignore:   UI controls (filters, tabs, toggles) → do nothing
  */
 
@@ -212,10 +212,10 @@ export function classifyLabel(
     }
   }
   
-  // 3. External patterns
+  // 3. External patterns — treat as redirect (generate in-place, no new tabs)
   for (const re of EXTERNAL_PATTERNS) {
     if (re.test(trimmed)) {
-      return { category: 'external', confidence: 0.9, reason: `Matches external pattern` };
+      return { category: 'redirect', confidence: 0.9, suggestedPageType: 'details', reason: `External pattern → in-place redirect` };
     }
   }
   
@@ -245,7 +245,7 @@ export function classifyLabel(
     const href = context.href;
     if (href.startsWith('#')) return { category: 'nav', confidence: 0.9, reason: 'Anchor link' };
     if (href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) {
-      return { category: 'external', confidence: 0.85, reason: 'External URL' };
+      return { category: 'redirect', confidence: 0.85, suggestedPageType: 'details', reason: 'External URL → in-place redirect' };
     }
     if (href.endsWith('.html') || href.startsWith('/')) {
       return { category: 'nav', confidence: 0.8, reason: 'Internal path link' };

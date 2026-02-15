@@ -764,7 +764,9 @@ function createNavigationManager(): IntentManagers['navigation'] {
       window.postMessage({ type: 'NAV_PAGE_GENERATE', pageName: path.replace(/^\/|\.html$/g, ''), payload }, '*');
     },
     external: (url) => {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      // Never open new tabs — route as in-page navigation
+      const pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+      window.postMessage({ type: 'NAV_PAGE_GENERATE', pageName, payload: { url } }, '*');
     },
     back: () => {
       window.history.back();

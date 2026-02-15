@@ -445,12 +445,13 @@ function injectIntentListener(html: string): string {
         }
       }
       
-      // Handle external links
+      // Handle external links — treat as in-page navigation (generate page), never open new tabs
       if(intent === 'nav.external' || (target && (target.startsWith('http://') || target.startsWith('https://')))){
+        // Route through nav.goto so the parent generates the page in-place
         window.parent.postMessage({
-          type: 'NAV_EXTERNAL',
-          intent: intent,
-          target: target
+          type: 'INTENT_TRIGGER',
+          intent: 'nav.goto',
+          payload: { path: '/' + (target || 'external').replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.html', buttonLabel: target, text: target, isExternal: true }
         }, '*');
         return;
       }
@@ -769,10 +770,10 @@ function injectIntentListener(html: string): string {
       
       if(intent === 'nav.external'){
         e.preventDefault();e.stopPropagation();
-        const url = el.getAttribute('data-ut-url') || el.getAttribute('href') || '';
-        if(url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('tel:') || url.startsWith('mailto:'))){
-          window.open(url, '_blank', 'noopener,noreferrer');
-        }
+        var url = el.getAttribute('data-ut-url') || el.getAttribute('href') || '';
+        // Instead of opening new tab, route as in-page navigation
+        var pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+        executeNavIntent('nav.goto', '/' + pageName);
         el.classList.add('intent-success');
         setTimeout(()=>el.classList.remove('intent-success'),2000);
         return;

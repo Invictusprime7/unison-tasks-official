@@ -210,11 +210,13 @@ ${specificPrompt}
 
 1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html>, include Tailwind CSS
 2. **MATCH MAIN PAGE STYLING** - Use similar colors: ${colors}
-3. **NAVIGATION** - Include header with nav links back to main page and other pages
-4. **REAL CONTENT** - Write actual text, not placeholders
-5. **WORKING INTENTS** - Wire all CTAs with data-ut-intent, data-ut-cta, data-intent attributes
-6. **RESPONSIVE** - Mobile-first with md: and lg: breakpoints
-7. **FOOTER** - Match the main page footer style
+3. **BACK BUTTON** - MUST include a prominent "← Back to Home" button/link at the top of the page with data-ut-intent="nav.goto" data-ut-path="/index.html". This is MANDATORY.
+4. **NAVIGATION** - Include header with nav links back to main page and other pages
+5. **REAL CONTENT** - Write actual text, not placeholders
+6. **WORKING INTENTS** - Wire all CTAs with data-ut-intent, data-ut-cta, data-intent attributes
+7. **RESPONSIVE** - Mobile-first with md: and lg: breakpoints
+8. **FOOTER** - Match the main page footer style
+9. **NO NEW TABS** - NEVER use target="_blank" or window.open. All links must navigate in-place.
 
 🔌 INTENT WIRING:
 - Navigation: data-ut-intent="nav.goto" data-ut-path="/index.html"
@@ -222,6 +224,7 @@ ${specificPrompt}
 - E-commerce: cart.add, cart.view, checkout.start, checkout.complete
 - Auth: auth.signin, auth.signup, auth.signout
 - Add data-no-intent to UI controls that shouldn't trigger actions (filters, tabs, quantity adjusters)
+- IMPORTANT: All navigation MUST use data-ut-intent="nav.goto" with data-ut-path. NEVER use target="_blank".
 
 CONTEXT FROM MAIN PAGE (extract styling patterns):
 ${mainPageCode.substring(0, 2000)}
@@ -1556,11 +1559,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       }
 
       if (intent === 'nav.external') {
-        const url = (payload as any)?.url;
-        if (url) {
-          toast(`External link: ${url}`, { description: 'Opens in new tab in production' });
-        }
-        sendResultToIframe({ success: true });
+        // Treat external links as in-page navigation — generate a page for it
+        const url = (payload as any)?.url || (payload as any)?.path || '';
+        const pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+        const label = buttonLabel || url || 'External Page';
+        triggerPageGeneration(pageName, label, source, requestId);
         return;
       }
 
@@ -1643,15 +1646,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         return;
       }
 
-      // Demo intents: open in new tab (no overlay).
+      // Demo intents: generate in-place (no new tabs).
       if (decision.mode === 'demo') {
-        const url = decision.demoUrl || (payload as any)?.demoUrl || (payload as any)?.supademoUrl;
-        if (typeof url === 'string' && url.trim().length > 0) {
-          window.open(url, '_blank', 'noopener,noreferrer');
-          toast('Opening demo…');
-        } else {
-          toast('Demo requested');
-        }
+        const pageName = 'demo';
+        const label = buttonLabel || 'Demo';
+        triggerPageGeneration(pageName, label, source, requestId);
         return;
       }
 

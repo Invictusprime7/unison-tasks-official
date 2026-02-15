@@ -109,12 +109,12 @@ export function useIntentRouter(options: UseIntentRouterOptions = {}): UseIntent
                         document.querySelector(`[name="${anchor}"]`);
           target?.scrollIntoView({ behavior: 'smooth' });
         },
-        external: (url, newTab = true) => {
-          if (debug) console.log('[IntentRouter] External:', url);
-          if (newTab) {
-            window.open(url, '_blank', 'noopener,noreferrer');
-          } else {
-            window.location.href = url;
+        external: (url, _newTab = true) => {
+          if (debug) console.log('[IntentRouter] External (in-place):', url);
+          // Never open new tabs — route as internal navigation
+          if (onNavigate) {
+            const pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+            onNavigate(`/${pageName}`, {});
           }
         },
       },
