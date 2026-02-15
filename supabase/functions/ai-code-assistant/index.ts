@@ -1484,7 +1484,8 @@ Learn from every bug fix to become better at prevention!`
     const researchContext = formatResearchContext(research);
 
     const body: Record<string, unknown> = {
-      model: 'google/gemini-2.5-pro',
+      model: 'google/gemini-2.5-flash',
+      max_tokens: 16000,
       messages: [
         { role: 'system', content: systemPrompt + researchContext + (generatedImageUrl ? `
 
