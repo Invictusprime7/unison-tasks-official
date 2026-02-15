@@ -13,6 +13,9 @@ WORKDIR /app
 RUN addgroup -g 1001 -S preview && \
     adduser -S preview -u 1001 -G preview
 
+# Create sessions directory with correct ownership
+RUN mkdir -p /sessions && chown -R preview:preview /sessions
+
 # Install pnpm for faster installs
 RUN npm install -g pnpm vite @vitejs/plugin-react
 

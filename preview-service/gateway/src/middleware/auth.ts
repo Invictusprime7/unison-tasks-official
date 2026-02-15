@@ -6,7 +6,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '../server.js';
 
 // ============================================
@@ -15,15 +15,27 @@ import { logger } from '../server.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
-const BYPASS_AUTH = process.env.BYPASS_AUTH === 'true'; // Only for local dev
+const BYPASS_AUTH = process.env.BYPASS_AUTH === 'true' || process.env.NODE_ENV === 'development'; // Auto-bypass in dev
 
 // ============================================
-// SUPABASE CLIENT
+// SUPABASE CLIENT (lazy-loaded)
 // ============================================
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false }
-});
+let _supabase: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient | null {
+  if (_supabase) return _supabase;
+  
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    logger.warn('Supabase credentials not configured - auth features disabled');
+    return null;
+  }
+  
+  _supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false }
+  });
+  return _supabase;
+}
 
 // ============================================
 // TYPES
@@ -82,6 +94,11 @@ export async function authMiddleware(
     const token = authHeader.split(' ')[1];
     
     // Verify token with Supabase
+    const supabase = getSupabase();
+    if (!supabase) {
+      res.status(503).json({ error: 'Auth service not configured' });
+      return;
+    }
     const { data: { user }, error } = await supabase.auth.getUser(token);
     
     if (error || !user) {
@@ -150,7 +167,8 @@ export function requirePermission(permission: string) {
     }
 
     // Check permission in database
-    if (req.user.organizationId) {
+    const supabase = getSupabase();
+    if (req.user.organizationId && supabase) {
       const { data } = await supabase.rpc('user_has_permission', {
         p_user_id: req.user.id,
         p_organization_id: req.user.organizationId,
@@ -185,6 +203,10 @@ export function checkQuota(resourceType: string, increment: number = 1) {
     }
 
     try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        return next(); // No supabase = skip quota check
+      }
       const { data, error } = await supabase.rpc('check_org_quota', {
         p_organization_id: req.user.organizationId,
         p_resource_type: resourceType,
@@ -235,9 +257,20 @@ export async function verifySessionOwnership(
     return next();
   }
 
+  // Bypass in dev mode
+  if (BYPASS_AUTH) {
+    return next();
+  }
+
   if (!req.user) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) {
+    // No supabase = allow (local dev mode)
+    return next();
   }
 
   try {
@@ -296,6 +329,8 @@ async function logSecurityEvent(
   details: Record<string, unknown>
 ): Promise<void> {
   try {
+    const supabase = getSupabase();
+    if (!supabase) return; // Skip logging if no supabase
     await supabase.from('security_events').insert({
       event_type: eventType,
       user_id: userId,
@@ -346,6 +381,12 @@ export async function apiKeyAuth(
   
   if (!apiKey) {
     return authMiddleware(req, res, next); // Fall back to JWT auth
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) {
+    // No supabase = skip API key auth, fall back to JWT
+    return authMiddleware(req, res, next);
   }
 
   try {

@@ -127,6 +127,79 @@ const BodySchema = z.object({
 });
 
 // ============================================================================
+// APPROVED BUTTON LABELS BY INDUSTRY
+// These labels are recognized by the intent auto-wiring system
+// ============================================================================
+
+const INDUSTRY_BUTTON_LABELS: Record<string, { primary: string[]; secondary: string[] }> = {
+  restaurant: {
+    primary: ['Reserve Your Table', 'Book Now', 'Order Now', 'Order Online'],
+    secondary: ['View Menu', 'See Menu', 'Buy Gift Card', 'Book Event'],
+  },
+  salon: {
+    primary: ['Book Appointment', 'Book Now', 'Reserve', 'Book Your Appointment'],
+    secondary: ['View Services', 'Our Services', 'Contact Us', 'Gift Cards'],
+  },
+  ecommerce: {
+    primary: ['Shop Now', 'Add to Cart', 'Buy Now', 'Shop Collection'],
+    secondary: ['View Cart', 'Subscribe', 'Contact Us'],
+  },
+  portfolio: {
+    primary: ['Hire Me', 'Work With Me', "Let's Build", 'Start a Project'],
+    secondary: ['View Work', 'Download Resume', 'Contact', 'Book a Call'],
+  },
+  coaching: {
+    primary: ['Book Session', 'Book a Session', 'Get Started', 'Book Consultation'],
+    secondary: ['Learn More', 'View Plans', 'Contact', 'Subscribe'],
+  },
+  nonprofit: {
+    primary: ['Donate Now', 'Support Us', 'Give Now'],
+    secondary: ['Volunteer', 'Subscribe', 'Contact Us', 'Learn More'],
+  },
+  'real-estate': {
+    primary: ['Schedule Viewing', 'Book Viewing', 'Contact', 'Get in Touch'],
+    secondary: ['View Listing', 'Search Properties', 'Request Quote'],
+  },
+  'local-service': {
+    primary: ['Get Quote', 'Get Free Quote', 'Request Service', 'Call Now'],
+    secondary: ['Contact Us', 'View Services', 'Schedule Service'],
+  },
+  contractor: {
+    primary: ['Get Free Quote', 'Request Estimate', 'Call Now', 'Get Quote'],
+    secondary: ['View Services', 'Contact Us', 'See Our Work'],
+  },
+  saas: {
+    primary: ['Get Started', 'Start Free Trial', 'Try It Free', 'Sign Up'],
+    secondary: ['Watch Demo', 'See Plans', 'Contact Sales', 'Learn More'],
+  },
+  agency: {
+    primary: ['Start a Project', 'Get in Touch', 'Hire Us', 'Contact'],
+    secondary: ['View Work', 'See Case Study', 'Learn More'],
+  },
+  fitness: {
+    primary: ['Join Now', 'Get Started', 'Book Session', 'Start Free Trial'],
+    secondary: ['View Classes', 'See Plans', 'Contact Us'],
+  },
+  medical: {
+    primary: ['Book Appointment', 'Schedule Visit', 'Contact Us', 'Get Started'],
+    secondary: ['View Services', 'Learn More', 'Call Now'],
+  },
+  event: {
+    primary: ['Get Tickets', 'Register Now', 'RSVP', 'Book Now'],
+    secondary: ['View Schedule', 'Learn More', 'Contact'],
+  },
+};
+
+function getIndustryLabels(industry: string): string {
+  const normalizedIndustry = industry.toLowerCase().replace(/[\s_]/g, '-');
+  const labels = INDUSTRY_BUTTON_LABELS[normalizedIndustry] || {
+    primary: ['Get Started', 'Contact Us', 'Learn More'],
+    secondary: ['Subscribe', 'View Services'],
+  };
+  return `Primary: ${labels.primary.join(', ')} | Secondary: ${labels.secondary.join(', ')}`;
+}
+
+// ============================================================================
 // WEB RESEARCH INTEGRATION
 // Searches the web for industry-specific information to improve AI outputs
 // ============================================================================
@@ -778,6 +851,27 @@ ${intents.map(i => `- data-ut-intent="${i.intent}" for ${i.intent.replace(/\./g,
   - Only add data-ut-intent on real conversion CTAs ("Book", "Submit", "Buy", "Join", "Request quote", etc.)
 - For e-commerce: use intents like cart.add, cart.view, checkout.start.
 - For auth: use intents like auth.signup, auth.signin, auth.signout.
+
+🏷️ **APPROVED BUTTON LABELS (USE ONLY THESE FOR CTA BUTTONS):**
+
+DO NOT use abstracted or generic labels like "CTA_BTN_1", "Click Here", "Submit Form", "Action", etc.
+Instead, use one of these approved labels that the intent auto-wiring system can detect:
+
+**Auth:** Sign In, Log In, Sign Up, Get Started, Create Account, Join Now, Join Free
+**Trials & Demos:** Start Free Trial, Try It Free, Watch Demo, Request Demo, Book Demo
+**Newsletter:** Subscribe, Get Updates, Subscribe Now, Stay Updated, Get Notified
+**Contact:** Contact Us, Get in Touch, Send Message, Contact Sales, Let's Talk
+**E-Commerce:** Shop Now, Add to Cart, Add to Bag, Buy Now, View Cart, Checkout, Shop Collection
+**Booking:** Book Now, Reserve, Book Appointment, Reserve Your Table, Schedule Now, Book Online
+**Quotes:** Get Quote, Get Free Quote, Request Estimate, Free Quote, Get Pricing
+**Portfolio:** Hire Me, Work With Me, Let's Build, Start a Project, View Work
+**Restaurant:** Order Now, Order Online, View Menu, Book Event, Buy Gift Card
+**Services:** View Services, Request Service, Call Now, Get Quote, Schedule Service
+**Nonprofit:** Donate Now, Support Us, Give Now, Volunteer
+**Pricing:** See Plans, View Pricing, View Plans, Compare Plans
+
+**INDUSTRY-SPECIFIC PREFERRED LABELS:**
+${getIndustryLabels(identity.industry)}
 
 **DESIGN SYSTEM RULES (CRITICAL):**
 - Use design tokens via Tailwind config: bg-primary, text-foreground, bg-secondary, text-primary, border-primary.

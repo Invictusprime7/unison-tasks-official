@@ -1937,10 +1937,15 @@ const SMART_NAVIGATION_SCRIPT = `
       requestId: requestId
     }, '*');
     
-    // For booking/contact/newsletter intents, wait for result to show confirmation
-    // Navigation and generic button intents should NEVER show confirmation overlays
+    // For actual form submission intents, wait for result to show confirmation
+    // Navigation, scroll, open, and generic button intents should NEVER show confirmation overlays
     var isNavOrButton = intent.startsWith('nav.') || intent === 'button.click';
-    var isConfirmableIntent = !isNavOrButton && (intent.includes('booking') || intent.includes('contact') || intent.includes('newsletter') || intent.includes('quote') || intent.includes('form'));
+    // Only match submission actions, not scroll/open/view intents
+    var isSubmissionIntent = intent.includes('.submit') || intent.includes('.create') || 
+                              intent.includes('.subscribe') || intent.includes('.request') || 
+                              intent.includes('.capture') || intent.includes('.send') ||
+                              intent === 'newsletter.subscribe' || intent === 'quote.request';
+    var isConfirmableIntent = !isNavOrButton && isSubmissionIntent;
     
     if (isConfirmableIntent) {
       // Set timeout for fallback (if parent doesn't respond)

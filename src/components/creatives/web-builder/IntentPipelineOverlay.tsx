@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { handleIntent, IntentPayload, getIntentPack, isDemoModeActive } from '@/runtime/intentRouter';
+import { emitIntentSuccess } from '@/runtime/intentSuccessBus';
 import { toast } from 'sonner';
 
 export interface PipelineConfig {
@@ -431,6 +432,15 @@ export const IntentPipelineOverlay: React.FC<IntentPipelineOverlayProps> = ({
         if (result.success) {
           setIsComplete(true);
           onSuccess?.(result.data);
+          
+          // Emit success event so AI can auto-continue iterating
+          emitIntentSuccess({
+            intent: config.intent,
+            payload: formData,
+            result: result.data,
+            source: 'overlay',
+            actionLabel: pipelineConfig?.title || config.intent,
+          });
           
           // Auto-close after success animation
           setTimeout(() => {

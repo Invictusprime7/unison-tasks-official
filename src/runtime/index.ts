@@ -47,6 +47,13 @@ export {
   type IntentFailureEvent,
 } from './intentFailureBus';
 
+// Intent Success Bus - AI auto-continuation
+export {
+  emitIntentSuccess,
+  onIntentSuccess,
+  type IntentSuccessEvent,
+} from './intentSuccessBus';
+
 // Template Runtime Provider - Pre-wired context for previews
 export {
   TemplateRuntimeProvider,

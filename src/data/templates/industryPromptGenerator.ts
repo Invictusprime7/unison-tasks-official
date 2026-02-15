@@ -7,6 +7,7 @@
  * - CTAs use correct intents
  * - Theme tokens are applied
  * - Required data is requested
+ * - Button labels use approved standardized labels
  */
 
 import type { ActionIntent } from '@/coreIntents';
@@ -24,6 +25,11 @@ import {
   getImageryGuidance,
   getColorMoodPalette,
 } from './industryTheme';
+import {
+  generateLabelRequirementsForAI,
+  getIndustryLabels,
+  INTENT_RECOMMENDED_LABELS,
+} from '../buttonLabels';
 
 // ============================================================================
 // PROMPT TYPES
@@ -212,6 +218,8 @@ Apply these visual characteristics:
 - Primary CTA: "${themePreset.ctaTone.primary}"
 - Secondary CTA: "${themePreset.ctaTone.secondary}"
 
+${generateLabelRequirementsForAI(industryType)}
+
 ### Imagery Style:
 ${imageryGuidance.description}
 Keywords: ${imageryGuidance.keywords.join(', ')}
@@ -256,6 +264,8 @@ Requirements:
 3. Primary CTA must use intent: ${conversionObject.primaryIntent}
 4. Apply ${themePreset.typographyScale} typography with ${themePreset.spacingDensity} spacing
 5. CTA text style: "${themePreset.ctaTone.primary}" for primary, "${themePreset.ctaTone.secondary}" for secondary
+6. Use ONLY approved button labels from the list provided - no abstracted labels like "CTA_BTN_1" or "Click Here"
+7. Preferred labels for ${industryType}: ${getIndustryLabels(industryType).primary.slice(0, 3).join(', ')}
 
 Generate the complete HTML now.`;
 
@@ -267,6 +277,8 @@ Generate the complete HTML now.`;
     `Must include data-ut-cta="cta.primary" attribute`,
     `Sections must follow order: ${layoutGrammar.join(' → ')}`,
     `Must not include exclusive sections from other industries`,
+    `Button labels must use approved labels - no abstracted/obscure labels`,
+    `Preferred primary CTA labels: ${getIndustryLabels(industryType).primary.join(', ')}`,
   ];
 
   return {

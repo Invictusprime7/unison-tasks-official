@@ -913,21 +913,50 @@ export function generateIntentListenerScript(config: GlobalListenerConfig = {}):
   // Intent Listener - Auto-wires buttons to backend
   const CONFIG = ${JSON.stringify(config)};
   
-  // Label to intent mapping
+  // Label to intent mapping (comprehensive list for auto-wiring)
   const LABEL_INTENTS = {
-    'subscribe': 'newsletter.subscribe',
-    'get updates': 'newsletter.subscribe',
-    'join waitlist': 'newsletter.subscribe',
-    'contact': 'contact.submit',
-    'contact us': 'contact.submit',
-    'get in touch': 'contact.submit',
-    'send message': 'contact.submit',
-    'book now': 'booking.create',
-    'reserve': 'booking.create',
-    'reserve table': 'booking.create',
-    'get quote': 'quote.request',
-    'request quote': 'quote.request',
-    'free estimate': 'quote.request'
+    // Auth
+    'sign in': 'auth.signin', 'log in': 'auth.signin', 'login': 'auth.signin', 'member login': 'auth.signin',
+    'sign up': 'auth.signup', 'register': 'auth.signup', 'get started': 'auth.signup', 'create account': 'auth.signup',
+    'join now': 'auth.signup', 'sign up free': 'auth.signup', 'start now': 'auth.signup', 'join free': 'auth.signup',
+    // Trials & Demos
+    'start free trial': 'trial.start', 'try it free': 'trial.start', 'free trial': 'trial.start',
+    'watch demo': 'demo.request', 'request demo': 'demo.request', 'book demo': 'demo.request',
+    // Newsletter
+    'subscribe': 'newsletter.subscribe', 'get updates': 'newsletter.subscribe', 'join waitlist': 'newsletter.subscribe',
+    'subscribe now': 'newsletter.subscribe', 'join us': 'newsletter.subscribe', 'join the crew': 'newsletter.subscribe',
+    'get 15% off': 'newsletter.subscribe', 'join the movement': 'newsletter.subscribe',
+    // Contact
+    'contact': 'contact.submit', 'contact us': 'contact.submit', 'get in touch': 'contact.submit',
+    'send message': 'contact.submit', 'send inquiry': 'contact.submit', "let's talk": 'contact.submit',
+    // E-Commerce
+    'shop now': 'shop.browse', 'add to cart': 'cart.add', 'add to bag': 'cart.add', 'buy now': 'checkout.start',
+    'view cart': 'cart.view', 'checkout': 'checkout.start', 'shop collection': 'shop.browse',
+    'shop the collection': 'shop.browse', 'shop new arrivals': 'shop.browse',
+    // Booking
+    'book now': 'booking.create', 'reserve': 'booking.create', 'reserve table': 'booking.create',
+    'reserve your table': 'booking.create', 'book appointment': 'booking.create', 'book your appointment': 'booking.create',
+    'reserve now': 'booking.create', 'book a session': 'booking.create', 'book session': 'booking.create',
+    'book consultation': 'consultation.book', 'free consultation': 'consultation.book',
+    'book discovery call': 'booking.create', 'book free chat': 'booking.create',
+    // Quotes
+    'get quote': 'quote.request', 'request quote': 'quote.request', 'free estimate': 'quote.request',
+    'get free quote': 'quote.request', 'request estimate': 'quote.request',
+    // Portfolio
+    'hire me': 'project.inquire', 'work with me': 'project.inquire', "let's build": 'project.start',
+    'start a project': 'project.start', 'view work': 'portfolio.view', 'view portfolio': 'portfolio.view',
+    // Restaurant
+    'order now': 'order.online', 'order online': 'order.online', 'view menu': 'menu.view', 'see menu': 'menu.view',
+    'buy gift card': 'gift.purchase', 'book event': 'event.inquire',
+    // Services
+    'view services': 'services.view', 'call now': 'call.now', 'request service': 'service.request',
+    // Nonprofit
+    'donate now': 'donate.now', 'donate today': 'donate.now', 'support us': 'donate.now',
+    'volunteer': 'volunteer.signup', 'plant a tree': 'donate.now',
+    // Content
+    'read more': 'content.read', 'learn more': 'content.read',
+    // Pricing
+    'see plans': 'pricing.view', 'view plans': 'pricing.view', 'view pricing': 'pricing.view'
   };
   
   function inferIntent(text) {

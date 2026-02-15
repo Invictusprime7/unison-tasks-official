@@ -46,6 +46,7 @@ import {
 } from "@/services/imageSlotService";
 import { FileDropZone, DroppedFile } from "./web-builder/FileDropZone";
 import { useAIFileAnalysis } from "@/hooks/useAIFileAnalysis";
+import { useIntentSuccessWatcher, type IntentContinuationRequest } from "@/hooks/useIntentSuccessWatcher";
 import { rewriteDemoEmbeds } from "@/utils/demoEmbedRewriter";
 import type { BusinessSystemType } from "@/data/templates/types";
 import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
@@ -58,6 +59,7 @@ interface Message {
   timestamp: Date;
   hasCode?: boolean;
   componentData?: Json;
+  suggestions?: string[];
 }
 
 interface AITheme {
@@ -235,6 +237,54 @@ const AI_THEMES: AITheme[] = [
   },
 ];
 
+// Get contextual suggestions based on the completed intent type
+function getSuggestionsForIntentType(intent: string): string[] {
+  if (intent.includes('booking') || intent.includes('calendar')) {
+    return [
+      'Add confirmation email',
+      'Customize booking form',
+      'Add availability calendar',
+      'Style the booking widget',
+      'Add payment flow',
+    ];
+  }
+  if (intent.includes('contact') || intent.includes('lead')) {
+    return [
+      'Add follow-up automation',
+      'Customize form fields',
+      'Add form validation',
+      'Style the contact form',
+      'Add captcha',
+    ];
+  }
+  if (intent.includes('newsletter') || intent.includes('subscribe')) {
+    return [
+      'Add welcome email',
+      'Customize signup form',
+      'Add double opt-in',
+      'Style the widget',
+      'Add subscriber tags',
+    ];
+  }
+  if (intent.includes('checkout') || intent.includes('cart') || intent.includes('payment')) {
+    return [
+      'Add order confirmation',
+      'Customize checkout flow',
+      'Add discount codes',
+      'Style the cart',
+      'Add shipping options',
+    ];
+  }
+  // Default suggestions
+  return [
+    'Add another section',
+    'Improve the styling',
+    'Add animations',
+    'Wire up more buttons',
+    'Test another flow',
+  ];
+}
+
 interface AICodeAssistantProps {
   className?: string;
   fabricCanvas?: FabricCanvas | null;
@@ -350,6 +400,20 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       onAIEditDismissed();
     }
   }, [isExpanded, isEditingElement, onAIEditDismissed]);
+
+  // Auto-continue: watch for intent successes and offer iteration suggestions
+  const handleIntentContinuation = useCallback((request: IntentContinuationRequest) => {
+    const successMessage: Message = {
+      role: "assistant",
+      content: request.prompt,
+      timestamp: new Date(),
+      hasCode: false,
+      suggestions: getSuggestionsForIntentType(request.success.intent),
+    };
+    setMessages((prev) => [...prev, successMessage]);
+  }, []);
+
+  useIntentSuccessWatcher(handleIntentContinuation, isExpanded);
 
   const handleThemeChange = (theme: AITheme) => {
     setCurrentTheme(theme);
@@ -609,6 +673,19 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   };
 
   const [postInstallPrompt, setPostInstallPrompt] = useState<string | null>(null);
+
+  // Handle clicking a suggestion to auto-continue iteration
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    if (isLoading || analyzing) return;
+    setInput(suggestion);
+    // Use setTimeout to ensure state is updated before sending
+    setTimeout(() => {
+      handleSendRef.current?.({ overrideInput: suggestion });
+    }, 0);
+  }, [isLoading, analyzing]);
+
+  // Ref to access handleSend from callbacks
+  const handleSendRef = useRef<(opts?: { overrideInput?: string; skipBuilderActions?: boolean }) => Promise<void>>();
 
   const handleSend = async (opts?: { overrideInput?: string; skipBuilderActions?: boolean }) => {
     const content = (opts?.overrideInput ?? input).trim();
@@ -1020,6 +1097,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     }
   };
 
+  // Keep ref updated for use in callbacks
+  handleSendRef.current = handleSend;
+
   const quickPrompts = {
     code: isEditingElement && selectedElement ? [
       "Add a 3-column grid layout",
@@ -1232,9 +1312,41 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
                   toast({ title: "Element updated", description: "Approved changes applied." });
                   setIsEditingElement(false);
+                  
+                  // Auto-continue: Add follow-up message after element update
+                  const followUpMessage: Message = {
+                    role: "assistant",
+                    content: "✅ **Element updated!** I've applied your changes.\n\n**Click to continue:**",
+                    timestamp: new Date(),
+                    hasCode: false,
+                    suggestions: [
+                      "Refine this section further",
+                      "Move on to another element",
+                      "Add new components",
+                      "Adjust styling or layout",
+                      "Add animations",
+                    ],
+                  };
+                  setMessages((prev) => [...prev, followUpMessage]);
                 } else if (onCodeGenerated) {
                   onCodeGenerated(pendingCode);
                   toast({ title: "Template updated", description: "Approved changes applied." });
+                  
+                  // Auto-continue: Add follow-up message after code generation
+                  const followUpMessage: Message = {
+                    role: "assistant",
+                    content: "✅ **Applied!** Your code is now live.\n\n**Click to continue:**",
+                    timestamp: new Date(),
+                    hasCode: false,
+                    suggestions: [
+                      "Add more sections",
+                      "Tweak colors & typography",
+                      "Add animations",
+                      "Make it more responsive",
+                      "Wire up backend logic",
+                    ],
+                  };
+                  setMessages((prev) => [...prev, followUpMessage]);
                 }
                 setPendingCodeApplyOpen(false);
               }}
@@ -1321,6 +1433,22 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
                 toast({ title: "Files updated", description: "Approved changes applied." });
                 setPendingFilesApplyOpen(false);
+                
+                // Auto-continue: Add follow-up message after file patch
+                const followUpMessage: Message = {
+                  role: "assistant",
+                  content: `✅ **Files applied!** ${Object.keys(pendingFiles).length} file(s) updated.\n\n**Click to continue:**`,
+                  timestamp: new Date(),
+                  hasCode: false,
+                  suggestions: [
+                    "Make additional changes",
+                    "Create new pages",
+                    "Add components",
+                    "Add styling",
+                    "Set up API routes",
+                  ],
+                };
+                setMessages((prev) => [...prev, followUpMessage]);
               }}
             >
               Apply
@@ -1643,6 +1771,31 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                         </div>
                       )}
                     </div>
+                    
+                    {/* Clickable suggestions for AI to continue iterating */}
+                    {message.role === 'assistant' && message.suggestions && message.suggestions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5 px-3 pb-2">
+                        {message.suggestions.map((suggestion, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            disabled={isLoading}
+                            className={cn(
+                              "text-xs px-2.5 py-1 rounded-full border transition-all",
+                              "bg-gradient-to-r from-purple-500/10 to-blue-500/10",
+                              "border-purple-400/30 hover:border-purple-400/60",
+                              "hover:from-purple-500/20 hover:to-blue-500/20",
+                              "hover:shadow-sm hover:scale-105",
+                              "text-purple-300",
+                              isLoading && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <Sparkles className="w-2.5 h-2.5 inline mr-1" />
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
 

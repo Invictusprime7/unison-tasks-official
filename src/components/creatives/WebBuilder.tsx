@@ -653,6 +653,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [recentlyChangedFiles, setRecentlyChangedFiles] = useState<Set<string>>(new Set());
   const originalFileContents = useRef<Map<string, string>>(new Map());
   
+  // Debounce timer for automatic intent re-wiring when button labels change
+  const intentRewireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Store latest rewire function in ref to avoid stale closures in setTimeout
+  const autoRewireHtmlIntentsRef = useRef<((fileId: string, content: string) => void) | null>(null);
+  
   // Multi-page navigation state
   const [activePagePath, setActivePagePath] = useState<string>('/index.html');
   
@@ -669,6 +674,26 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       p.isMain ? "home" : p.path.replace(/^\//, '').replace(/\.html$/, '')
     );
   }, [pageTabs]);
+  
+  // Page manifest for async multi-page navigation (all HTML pages from VFS)
+  const pageManifest = useMemo(() => {
+    const vfsFiles = virtualFS.getSandpackFiles();
+    const manifest: Record<string, string> = {};
+    Object.entries(vfsFiles).forEach(([path, content]) => {
+      if (path.endsWith('.html')) {
+        manifest[path] = content;
+      }
+    });
+    return manifest;
+  }, [virtualFS.nodes]);
+  
+  // Sync page manifest to preview iframe when VFS changes
+  useEffect(() => {
+    if (Object.keys(pageManifest).length > 1) {
+      // Only sync if there are multiple pages
+      simplePreviewRef.current?.syncPageManifest(pageManifest);
+    }
+  }, [pageManifest]);
   
   // Handle page switching in multi-page preview
   const handleSelectPage = useCallback((path: string) => {
@@ -795,6 +820,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         return next;
       });
     }, 2000);
+    
+    // Debounced HTML intent re-wiring (uses ref to avoid stale closures)
+    if (fileId.endsWith('.html') || fileId.endsWith('.htm')) {
+      // Clear existing timer
+      if (intentRewireTimerRef.current) {
+        clearTimeout(intentRewireTimerRef.current);
+      }
+      // Schedule new re-wire (debounced 1.5s after last edit)
+      intentRewireTimerRef.current = setTimeout(() => {
+        autoRewireHtmlIntentsRef.current?.(fileId, content);
+      }, 1500);
+    }
   }, [modifiedFiles]);
   
   // Mark files as AI-generated when importing from templates
@@ -1062,6 +1099,60 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   });
 
   const [backendInstalled, setBackendInstalled] = useState(false);
+
+  // Automatically re-wire intents when HTML content changes
+  // This ensures button labels map to correct intents after manual edits
+  // NOTE: This callback uses activeSystemType, so it must be defined after activeSystemType
+  const autoRewireHtmlIntents = useCallback((fileId: string, content: string) => {
+    // Only process HTML files
+    if (!content.includes('<button') && !content.includes('<a ')) {
+      return; // No actionable elements to rewire
+    }
+    
+    try {
+      const { code: normalizedCode, analysis } = normalizeTemplateForCtaContract({
+        code: content,
+        systemType: activeSystemType,
+      });
+      
+      // Only update if normalization changed something
+      if (normalizedCode !== content && analysis.intents.length > 0) {
+        console.log('[WebBuilder] Auto-rewired intents:', analysis.intents);
+        virtualFS.updateFileContent(fileId, normalizedCode);
+        
+        // Update preview if this is the active page
+        const file = virtualFS.nodes.find(n => n.id === fileId && n.type === 'file');
+        if (file && file.path === activePagePath) {
+          syncingFromVFSRef.current = true;
+          setPreviewCode(normalizedCode);
+          setEditorCode(normalizedCode);
+          lastSyncedCodeRef.current = normalizedCode;
+          setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+        }
+        
+        toast.success(`Auto-wired ${analysis.intents.length} button intent(s)`, {
+          description: 'Button labels mapped to backend actions',
+          duration: 3000,
+        });
+      }
+    } catch (err) {
+      console.warn('[WebBuilder] Intent rewire failed:', err);
+    }
+  }, [activeSystemType, virtualFS, activePagePath]);
+  
+  // Keep the ref updated with the latest function (avoids stale closures in setTimeout)
+  useEffect(() => {
+    autoRewireHtmlIntentsRef.current = autoRewireHtmlIntents;
+  }, [autoRewireHtmlIntents]);
+  
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (intentRewireTimerRef.current) {
+        clearTimeout(intentRewireTimerRef.current);
+      }
+    };
+  }, []);
 
   // SEO settings hook
   const effectiveBusinessId = businessId || getOrCreatePreviewBusinessId(systemType);
@@ -1362,6 +1453,26 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         if (!payload?.query) return;
         setResearchPayload(payload);
         setResearchOverlayOpen(true);
+        return;
+      }
+      
+      // Handle multi-page navigation sync (instant navigation from cached pages)
+      if (event.data?.type === 'NAV_PAGE_SWITCH') {
+        const { pagePath, pageName } = event.data;
+        console.log('[WebBuilder] Page switch from iframe:', pagePath, pageName);
+        const targetPath = pagePath || `/${pageName}.html`;
+        // Sync the editor to the navigated page
+        const vfsFiles = virtualFS.getSandpackFiles();
+        const pageContent = vfsFiles[targetPath];
+        if (pageContent) {
+          setActivePagePath(targetPath);
+          syncingFromVFSRef.current = true;
+          setPreviewCode(pageContent);
+          setEditorCode(pageContent);
+          lastSyncedCodeRef.current = pageContent;
+          setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+          toast(`Viewing ${pageName || targetPath}`, { description: 'Page switched' });
+        }
         return;
       }
 
@@ -3956,9 +4067,18 @@ export default function App() {
           console.log('[WebBuilder] Code length:', code.length);
           console.log('[WebBuilder] Code preview:', code.substring(0, 200));
           
-          // Set the code - SimplePreview will render it directly
-          setEditorCode(code);
-          setPreviewCode(code);
+          // Auto-wire all button intents using CTA contract normalization
+          const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
+          const normalized = normalizeTemplateForCtaContract({
+            code,
+            systemType: effectiveSystemType,
+          });
+          setTemplateCtaAnalysis(normalized.analysis);
+          console.log('[WebBuilder] Auto-wired intents:', normalized.analysis.intents);
+          
+          // Set the normalized code - SimplePreview will render it directly
+          setEditorCode(normalized.code);
+          setPreviewCode(normalized.code);
           
           // Switch to canvas view to show the preview
           setViewMode('canvas');
@@ -3970,12 +4090,28 @@ export default function App() {
         onFilesPatch={(files) => {
           if (!files || Object.keys(files).length === 0) return false;
 
-          virtualFS.importFiles(files);
-
+          // Auto-wire intents in HTML files before importing
+          const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
+          const normalizedFiles = { ...files };
           const entry = files["/index.html"] || files["/src/App.tsx"] || files["/App.tsx"];
+          
+          // Normalize HTML files for CTA auto-wiring
+          if (files["/index.html"]) {
+            const normalized = normalizeTemplateForCtaContract({
+              code: files["/index.html"],
+              systemType: effectiveSystemType,
+            });
+            normalizedFiles["/index.html"] = normalized.code;
+            setTemplateCtaAnalysis(normalized.analysis);
+            console.log('[WebBuilder] Auto-wired intents in file patch:', normalized.analysis.intents);
+          }
+          
+          virtualFS.importFiles(normalizedFiles);
+
           if (entry) {
-            setEditorCode(entry);
-            setPreviewCode(entry);
+            const finalEntry = normalizedFiles["/index.html"] || normalizedFiles["/src/App.tsx"] || normalizedFiles["/App.tsx"];
+            setEditorCode(finalEntry);
+            setPreviewCode(finalEntry);
           }
 
           setViewMode('canvas');

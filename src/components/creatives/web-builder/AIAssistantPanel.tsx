@@ -7,6 +7,7 @@ import { Canvas as FabricCanvas } from 'fabric';
 import { useWebBuilderAI } from '@/hooks/useWebBuilderAI';
 import { useAIFileAnalysis } from '@/hooks/useAIFileAnalysis';
 import { useIntentFailureWatcher, type IntentDiagnosisRequest } from '@/hooks/useIntentFailureWatcher';
+import { useIntentSuccessWatcher, type IntentContinuationRequest } from '@/hooks/useIntentSuccessWatcher';
 import { FileDropZone, DroppedFile } from './FileDropZone';
 import type { AIGeneratedTemplate } from '@/types/template';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ interface Message {
   template?: AIGeneratedTemplate;
   code?: string;
   files?: { name: string; type: string; preview?: string }[];
+  suggestions?: string[];
 }
 
 interface AIAssistantPanelProps {
@@ -25,6 +27,54 @@ interface AIAssistantPanelProps {
   fabricCanvas: FabricCanvas | null;
   onTemplateGenerated?: (template: any) => void;
   onCodeGenerated?: (code: string) => void;
+}
+
+// Get contextual suggestions based on the completed intent
+function getSuggestionsForIntent(intent: string): string[] {
+  if (intent.includes('booking') || intent.includes('calendar')) {
+    return [
+      'Add confirmation email template',
+      'Customize booking form fields',
+      'Add availability calendar',
+      'Style the booking widget',
+      'Add payment integration',
+    ];
+  }
+  if (intent.includes('contact') || intent.includes('lead')) {
+    return [
+      'Add follow-up automation',
+      'Customize form fields',
+      'Add form validation',
+      'Style the contact form',
+      'Add captcha protection',
+    ];
+  }
+  if (intent.includes('newsletter') || intent.includes('subscribe')) {
+    return [
+      'Add welcome email template',
+      'Customize subscription form',
+      'Add double opt-in',
+      'Style the signup widget',
+      'Add subscriber tags',
+    ];
+  }
+  if (intent.includes('checkout') || intent.includes('cart') || intent.includes('payment')) {
+    return [
+      'Add order confirmation page',
+      'Customize checkout flow',
+      'Add discount code field',
+      'Style the cart widget',
+      'Add shipping calculator',
+    ];
+  }
+  // Default suggestions
+  return [
+    'Add another section',
+    'Improve the styling',
+    'Add animations',
+    'Wire up more buttons',
+    'Test another intent',
+  ];
 }
 
 export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ 
@@ -84,6 +134,19 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   }, [generateTemplate, messages.length]);
 
   useIntentFailureWatcher(handleDiagnosisRequest, isOpen);
+
+  // Auto-continue: watch for intent successes and offer iteration suggestions
+  const handleContinuationRequest = useCallback((request: IntentContinuationRequest) => {
+    // Add a success message with clickable suggestions
+    const successMessage: Message = {
+      role: 'assistant',
+      content: request.prompt,
+      suggestions: getSuggestionsForIntent(request.success.intent),
+    };
+    setMessages(prev => [...prev, successMessage]);
+  }, []);
+
+  useIntentSuccessWatcher(handleContinuationRequest, isOpen);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -184,11 +247,69 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
     }
   };
 
+  // Handle clicking a suggestion to auto-continue iteration
+  const handleSuggestionClick = useCallback(async (suggestion: string) => {
+    if (isProcessing) return;
+    
+    // Add user message showing the clicked suggestion
+    const userMessage: Message = {
+      role: 'user',
+      content: suggestion,
+    };
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Trigger AI to continue with the suggestion
+    const response = await generateTemplate(suggestion);
+    
+    if (response && response.template) {
+      const messageIndex = messages.length + 2;
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: `✨ **Done!**\n\n${response.explanation || 'Changes applied'}\n\nClick "Build to Canvas" to apply!`,
+        template: response.template,
+        suggestions: [
+          'Add another section',
+          'Improve the styling',
+          'Add animations',
+          'Wire up the forms',
+        ],
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      setPendingTemplates(prev => new Map(prev).set(messageIndex, response.template));
+    } else {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `I couldn't complete that change. Try describing it differently or break it into smaller steps.`,
+        suggestions: [
+          'Try a simpler change',
+          'Add a hero section',
+          'Adjust colors',
+        ],
+      }]);
+    }
+  }, [isProcessing, generateTemplate, messages.length]);
+
   const handleBuildToCanvas = async (messageIndex: number) => {
     const template = pendingTemplates.get(messageIndex);
     if (template && onTemplateGenerated) {
       console.log('[AIAssistantPanel] Building template to canvas:', template);
       await onTemplateGenerated(template);
+      
+      // Auto-continue: Add follow-up message with clickable suggestions
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `✅ **Applied!** Template is now live on your canvas.\n\n**Click a suggestion to continue:**`,
+          suggestions: [
+            'Add testimonials section',
+            'Add FAQ section',
+            'Add pricing cards',
+            'Refine colors & typography',
+            'Add animations & hover effects',
+            'Wire up form handlers',
+          ],
+        }]);
+      }, 500);
     }
   };
 
@@ -197,6 +318,22 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
     if (code && onCodeGenerated) {
       console.log('[AIAssistantPanel] Applying code to canvas');
       onCodeGenerated(code);
+      
+      // Auto-continue: Add follow-up message with clickable suggestions
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `✅ **Applied!** Code is now rendering in your preview.\n\n**Click to continue iterating:**`,
+          suggestions: [
+            'Improve the layout',
+            'Add a new section',
+            'Make it more responsive',
+            'Add hover animations',
+            'Change the color scheme',
+            'Add form validation',
+          ],
+        }]);
+      }, 500);
     }
   };
 
@@ -347,6 +484,32 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                   <Image className="w-4 h-4 mr-2" />
                   Apply to Canvas
                 </Button>
+              )}
+
+              {/* Clickable suggestions for AI to continue iterating */}
+              {message.role === 'assistant' && message.suggestions && message.suggestions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 max-w-[90%]">
+                  {message.suggestions.map((suggestion, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      disabled={isProcessing}
+                      className={cn(
+                        "text-xs px-3 py-1.5 rounded-full border transition-all",
+                        "bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30",
+                        "border-purple-200 dark:border-purple-800",
+                        "hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-900/40 dark:hover:to-blue-900/40",
+                        "hover:border-purple-400 dark:hover:border-purple-600",
+                        "hover:shadow-sm hover:scale-105",
+                        "text-purple-700 dark:text-purple-300",
+                        isProcessing && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      <Sparkles className="w-3 h-3 inline mr-1" />
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           ))}

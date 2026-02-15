@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { executeIntent, type IntentContext } from '@/runtime/intentExecutor';
 import { supabase } from '@/integrations/supabase/client';
 import { PreviewOverlayManager, type OverlayConfig, type OverlayType } from '@/components/preview/PreviewOverlayManager';
+import { ENABLE_OVERLAYS } from '@/runtime/intentUx';
 
 export interface SimplePreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
@@ -23,6 +24,8 @@ export interface SimplePreviewHandle {
   duplicateElement: (selector: string) => boolean;
   updateElement: (selector: string, updates: any) => boolean;
   refresh: () => void;
+  /** Sync multi-page manifest to iframe for instant navigation */
+  syncPageManifest: (pages: Record<string, string>) => void;
 }
 
 export interface SimplePreviewProps {
@@ -44,6 +47,8 @@ export interface SimplePreviewProps {
   siteId?: string;
   /** Callback when an intent is triggered (for external handling) */
   onIntentTrigger?: (intent: string, payload: Record<string, unknown>, result: unknown) => void;
+  /** Multi-page manifest for async navigation (path -> html content) */
+  pageManifest?: Record<string, string>;
 }
 
 /**
@@ -236,31 +241,44 @@ function injectIntentListener(html: string): string {
       'sign in':'auth.login','log in':'auth.login','login':'auth.login','member login':'auth.login',
       'sign up':'auth.register','register':'auth.register','get started':'auth.register','create account':'auth.register',
       'join now':'auth.register','sign up free':'auth.register','start now':'auth.register','join free':'auth.register',
+      'sign out':'auth.logout','log out':'auth.logout','logout':'auth.logout',
       // TRIALS & DEMOS (CoreIntent: lead.capture, booking.create)
       'start free trial':'lead.capture','free trial':'lead.capture','try free':'lead.capture','try it free':'lead.capture',
       'watch demo':'booking.create','request demo':'booking.create','book demo':'booking.create','schedule demo':'booking.create',
+      'see demo':'booking.create','view demo':'booking.create',
       // NEWSLETTER & WAITLIST (CoreIntent: newsletter.subscribe)
       'subscribe':'newsletter.subscribe','get updates':'newsletter.subscribe','join newsletter':'newsletter.subscribe',
       'join waitlist':'newsletter.subscribe','join the waitlist':'newsletter.subscribe','get early access':'newsletter.subscribe',
+      'sign me up':'newsletter.subscribe','notify me':'newsletter.subscribe','stay updated':'newsletter.subscribe',
+      'keep me posted':'newsletter.subscribe','count me in':'newsletter.subscribe',
       // CONTACT (CoreIntent: contact.submit, lead.capture)
       'contact':'contact.submit','contact us':'contact.submit','get in touch':'contact.submit','send message':'contact.submit',
       'reach out':'contact.submit','talk to us':'contact.submit',"let's talk":'contact.submit',
       'contact sales':'lead.capture','talk to sales':'lead.capture',
+      'send':'contact.submit','submit':'contact.submit','send inquiry':'contact.submit','enquire':'contact.submit',
       // E-COMMERCE (CoreIntent: cart.add, cart.checkout, pay.checkout)
       'add to cart':'cart.add','add to bag':'cart.add','buy now':'pay.checkout','purchase':'pay.checkout',
       'shop now':'lead.capture','checkout':'cart.checkout','view cart':'cart.checkout',
+      'buy':'pay.checkout','order':'pay.checkout','proceed to checkout':'cart.checkout',
       // BOOKING (CoreIntent: booking.create)
       'book now':'booking.create','reserve':'booking.create','reserve table':'booking.create','book appointment':'booking.create',
       'make reservation':'booking.create','schedule now':'booking.create','book a table':'booking.create',
       'book a call':'booking.create','schedule call':'booking.create','book consultation':'booking.create',
+      'book':'booking.create','schedule':'booking.create','reserve now':'booking.create',
+      'book session':'booking.create','schedule appointment':'booking.create','make appointment':'booking.create',
       // QUOTES (CoreIntent: quote.request)
       'get quote':'quote.request','get free quote':'quote.request','request quote':'quote.request','free estimate':'quote.request',
-      // PORTFOLIO (CoreIntent: lead.capture)
+      'get estimate':'quote.request','request estimate':'quote.request','get pricing':'quote.request',
+      // PORTFOLIO / SERVICES (CoreIntent: lead.capture)
       'hire me':'lead.capture','work with me':'lead.capture','start a project':'lead.capture',
-      'view work':'lead.capture','view portfolio':'lead.capture',
+      'view work':'lead.capture','view portfolio':'lead.capture','see work':'lead.capture',
+      'learn more':'lead.capture','read more':'lead.capture','explore':'lead.capture','discover':'lead.capture',
       // RESTAURANT (CoreIntent: order.created, lead.capture)
       'order online':'order.created','order now':'order.created','view menu':'lead.capture','call now':'lead.capture',
-      'order pickup':'order.created','order delivery':'order.created'
+      'order pickup':'order.created','order delivery':'order.created',
+      // GENERIC ACTIONS (CoreIntent: lead.capture)
+      'download':'lead.capture','claim':'lead.capture','apply':'lead.capture','continue':'lead.capture',
+      'next':'lead.capture','save':'lead.capture','confirm':'lead.capture','complete':'lead.capture'
     };
     
     function inferIntent(t){
@@ -364,12 +382,55 @@ function injectIntentListener(html: string): string {
         return { intent: 'nav.anchor', target: el.getAttribute('data-ut-anchor') };
       }
       
+      // CATCH-ALL: Detect navigation from plain anchor tags with href
+      const tag = (el.tagName || '').toLowerCase();
+      if(tag === 'a'){
+        const href = el.getAttribute('href') || '';
+        if(!href) return null;
+        
+        // Skip non-navigation hrefs
+        if(href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return null;
+        
+        // Anchor links (scroll within page)
+        if(href.startsWith('#')){
+          return { intent: 'nav.anchor', target: href };
+        }
+        
+        // External links
+        if(href.startsWith('http://') || href.startsWith('https://')){
+          return { intent: 'nav.external', target: href };
+        }
+        
+        // Internal page links (relative paths, absolute paths starting with /)
+        // This is the catch-all that prevents 404 errors in Sandpack preview
+        if(href.startsWith('/') || href.endsWith('.html') || !href.includes('://')){
+          return { intent: 'nav.goto', target: href };
+        }
+      }
+      
       return null;
     }
 
     // Store for dynamically generated pages
+    // Page manifest cache for async multi-page navigation
     const dynamicPageCache = {};
     let isLoadingPage = false;
+    
+    // Listen for page manifest sync from parent (async multi-page wiring)
+    window.addEventListener('message', function(evt) {
+      if (!evt.data || evt.data.type !== 'PAGE_MANIFEST_SYNC') return;
+      const pages = evt.data.pages || {};
+      console.log('[Intent] Page manifest received:', Object.keys(pages).length, 'pages');
+      
+      // Store all pages in cache for instant navigation
+      Object.entries(pages).forEach(function(entry) {
+        const path = entry[0];
+        const content = entry[1];
+        const pageName = path.replace(/^\\//, '').replace(/\\.html$/, '').replace(/\\/$/, '') || 'index';
+        dynamicPageCache[pageName] = content;
+        dynamicPageCache[path] = content; // Also store by full path
+      });
+    });
 
     function executeNavIntent(intent, target){
       console.log('[Intent] Navigation:', intent, target);
@@ -394,7 +455,7 @@ function injectIntentListener(html: string): string {
         return;
       }
       
-      // Handle internal page navigation - request dynamic page generation
+      // Handle internal page navigation - check cache first, then request generation
       if(intent === 'nav.goto' || target){
         // Extract page name from path (e.g., "/checkout.html" -> "checkout")
         const pagePath = target || '';
@@ -404,7 +465,24 @@ function injectIntentListener(html: string): string {
         const clickedEl = document.activeElement || document.querySelector('[data-ut-path="' + target + '"]');
         const navLabel = clickedEl ? (clickedEl.textContent || '').trim() : pageName;
         
-        // Show loading indicator
+        // CHECK CACHE FIRST - instant navigation if page already exists
+        const cachedPage = dynamicPageCache[pageName] || dynamicPageCache[pagePath] || dynamicPageCache['/' + pageName + '.html'];
+        if (cachedPage) {
+          console.log('[Intent] Instant navigation from cache:', pageName);
+          // Notify parent about navigation (for editor sync)
+          window.parent.postMessage({
+            type: 'NAV_PAGE_SWITCH',
+            pageName: pageName,
+            pagePath: '/' + pageName + '.html'
+          }, '*');
+          // Replace page content instantly
+          document.open();
+          document.write(cachedPage);
+          document.close();
+          return;
+        }
+        
+        // Show loading indicator (only if not cached)
         if(isLoadingPage) return;
         isLoadingPage = true;
         
@@ -1091,6 +1169,57 @@ function wrapHtmlSnippet(html: string): string {
       const el=e.target.closest('button,a,[role="button"],[data-ut-intent],[data-intent]');if(!el)return;
       const ia=el.getAttribute('data-ut-intent')||el.getAttribute('data-intent');if(ia==='none'||ia==='ignore')return;
       if(el.hasAttribute('data-no-intent'))return;
+      
+      // PRIORITY: Handle anchor tag navigation to prevent 404 errors
+      const tag=(el.tagName||'').toLowerCase();
+      if(tag==='a'){
+        const href=el.getAttribute('href')||'';
+        // Skip non-navigation hrefs
+        if(href && !href.startsWith('mailto:') && !href.startsWith('tel:') && !href.startsWith('javascript:')){
+          // Anchor links
+          if(href.startsWith('#')){
+            e.preventDefault();e.stopPropagation();
+            const anchor=href.replace('#','');
+            const targetEl=anchor?(document.getElementById(anchor)||document.querySelector('[name="'+anchor+'"]')):null;
+            if(targetEl)targetEl.scrollIntoView({behavior:'smooth',block:'start'});
+            return;
+          }
+          // External links
+          if(href.startsWith('http://')||href.startsWith('https://')){
+            e.preventDefault();e.stopPropagation();
+            window.open(href,'_blank','noopener,noreferrer');
+            return;
+          }
+          // Internal page links - intercept to prevent 404
+          if(href.startsWith('/')||href.endsWith('.html')||!href.includes('://')){
+            e.preventDefault();e.stopPropagation();
+            const pagePath=href;
+            const pageName=pagePath.replace(/^\\//, '').replace(/\\.html$/, '').replace(/\\/$/, '')||'index';
+            const navLabel=(el.textContent||'').trim()||pageName;
+            // Request dynamic page generation from parent
+            const requestId=Date.now()+'-'+Math.random().toString(36).slice(2);
+            // Show loading
+            const loadingOverlay=document.createElement('div');
+            loadingOverlay.id='nav-loading-overlay';
+            loadingOverlay.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:white;padding:24px 48px;border-radius:12px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);"><div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div><div style="font-weight:600;color:#111;">Generating '+navLabel+' page...</div></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+            document.body.appendChild(loadingOverlay);
+            window.parent.postMessage({type:'NAV_PAGE_GENERATE',requestId:requestId,pageName:pageName,navLabel:navLabel},'*');
+            window.addEventListener('message',function handler(evt){
+              if(evt.data&&evt.data.type==='NAV_PAGE_READY'&&evt.data.requestId===requestId){
+                window.removeEventListener('message',handler);
+                const overlay=document.getElementById('nav-loading-overlay');if(overlay)overlay.remove();
+                if(evt.data.pageContent){document.open();document.write(evt.data.pageContent);document.close();}
+              }
+              if(evt.data&&evt.data.type==='NAV_PAGE_ERROR'&&evt.data.requestId===requestId){
+                window.removeEventListener('message',handler);
+                const overlay=document.getElementById('nav-loading-overlay');if(overlay)overlay.remove();
+              }
+            });
+            return;
+          }
+        }
+      }
+      
       const intent=ia||(shouldInferIntentFromElement(el)?inferIntent(el.textContent||el.getAttribute('aria-label')):null);
       if(!intent){
         if(shouldOpenResearch(el)){
@@ -1258,9 +1387,9 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
         console.log('[SimplePreview] Intent triggered:', intent, payload);
         
         try {
-          // Check if this intent should open an overlay first
+          // Check if this intent should open an overlay first (only when overlays are enabled)
           const overlayType = intentToOverlayMap[intent];
-          if (overlayType) {
+          if (ENABLE_OVERLAYS && overlayType) {
             console.log('[SimplePreview] Opening overlay for intent:', intent, overlayType);
             setActiveOverlay({
               type: overlayType,
@@ -1317,8 +1446,8 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
             }
           }
           
-          // Handle overlay directives from intent result
-          if (result.ui?.openModal) {
+          // Handle overlay directives from intent result (only when overlays are enabled)
+          if (ENABLE_OVERLAYS && result.ui?.openModal) {
             const modalType = result.ui.openModal as string;
             if (modalType.startsWith('auth-') || modalType === 'booking' || modalType === 'contact' || modalType === 'checkout' || modalType === 'upgrade') {
               setActiveOverlay({
@@ -1407,6 +1536,16 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;
       iframeRef.current.src = url;
+    },
+    syncPageManifest: (pages: Record<string, string>) => {
+      // Send page manifest to iframe for instant multi-page navigation
+      const iframe = iframeRef.current;
+      if (!iframe?.contentWindow) return;
+      console.log('[SimplePreview] Syncing page manifest:', Object.keys(pages).length, 'pages');
+      iframe.contentWindow.postMessage({
+        type: 'PAGE_MANIFEST_SYNC',
+        pages,
+      }, '*');
     },
   }), [code]);
 

@@ -79,7 +79,7 @@ export class SessionManager {
       session.containerId = container.id;
       
       // Wait for container to be ready
-      await this.waitForReady(port);
+      await this.waitForReady(sessionId, port);
       
       session.status = 'running';
       logger.info({ sessionId, containerId: container.id, port }, 'Session started');
@@ -227,7 +227,10 @@ export class SessionManager {
   }
 
   private async writeFilesToDisk(sessionId: string, files: FileMap): Promise<string> {
-    const workDir = path.join(os.tmpdir(), 'preview-sessions', sessionId);
+    // Use the shared volume path for Docker-in-Docker compatibility
+    // This volume is shared between gateway and worker containers
+    const volumeBasePath = process.env.SESSION_VOLUME_PATH || '/tmp/preview-sessions';
+    const workDir = path.join(volumeBasePath, sessionId);
     await fs.mkdir(workDir, { recursive: true });
 
     for (const [filePath, content] of Object.entries(files)) {
@@ -285,17 +288,21 @@ export class SessionManager {
 
   private async startContainer(sessionId: string, workDir: string, port: number): Promise<Docker.Container> {
     // Enterprise-grade container resource limits
-    const MEMORY_LIMIT = parseInt(process.env.CONTAINER_MEMORY_MB || '256', 10) * 1024 * 1024;
-    const MEMORY_SWAP = MEMORY_LIMIT; // No swap allowed (prevents OOM swapping)
+    const MEMORY_LIMIT = parseInt(process.env.CONTAINER_MEMORY_MB || '512', 10) * 1024 * 1024;
+    const MEMORY_SWAP = MEMORY_LIMIT * 2; // Allow some swap for npm install
     const CPU_PERIOD = 100000; // microseconds
     const CPU_QUOTA = parseInt(process.env.CONTAINER_CPU_PERCENT || '25', 10) * 1000; // 25% CPU by default
     const PIDS_LIMIT = 64; // Max number of processes
     const DISK_QUOTA = parseInt(process.env.CONTAINER_DISK_MB || '100', 10) * 1024 * 1024;
     
+    // Use named volume for Docker-in-Docker compatibility
+    const volumeName = process.env.SESSION_VOLUME_NAME || 'preview-service_preview-sessions';
+    
     const container = await this.docker.createContainer({
       Image: CONTAINER_IMAGE,
       name: `preview-${sessionId}`,
       Hostname: `preview-${sessionId}`,
+      WorkingDir: `/sessions/${sessionId}`,
       ExposedPorts: {
         '4173/tcp': {},
       },
@@ -303,7 +310,8 @@ export class SessionManager {
         PortBindings: {
           '4173/tcp': [{ HostPort: port.toString() }],
         },
-        Binds: [`${workDir}:/app:rw`],
+        // Use named volume with subpath via docker's volume syntax
+        Binds: [`${volumeName}:/sessions:rw`],
         
         // Memory limits
         Memory: MEMORY_LIMIT,
@@ -334,11 +342,11 @@ export class SessionManager {
           size: `${DISK_QUOTA}`,
         } : undefined,
         
-        // Cleanup
-        AutoRemove: true,
+        // Cleanup - disable in dev for debugging
+        AutoRemove: process.env.NODE_ENV !== 'development',
         
-        // Resource monitoring
-        BlkioWeight: 300, // Lower disk I/O priority
+        // Resource monitoring (only if supported by OS - not available on Windows Docker)
+        BlkioWeight: process.env.ENABLE_BLKIO_WEIGHT === 'true' ? 300 : undefined,
         
         // DNS - use internal resolver only (limits network access)
         Dns: process.env.CONTAINER_DNS ? [process.env.CONTAINER_DNS] : undefined,
@@ -346,8 +354,7 @@ export class SessionManager {
       Env: [
         `SESSION_ID=${sessionId}`,
         'NODE_ENV=development',
-        // Limit npm/node network access
-        'npm_config_offline=true', // Disable npm network calls
+        // Allow npm to fetch packages - worker might need to install deps
         'DISABLE_TELEMETRY=1',
         'DO_NOT_TRACK=1',
       ],
@@ -370,19 +377,32 @@ export class SessionManager {
     return container;
   }
 
-  private async waitForReady(port: number, timeout = 30000): Promise<void> {
+  private async waitForReady(sessionId: string, port: number, timeout = 60000): Promise<void> {
     const start = Date.now();
+    // Use the container hostname for internal Docker network resolution
+    const containerHost = `preview-${sessionId}`;
+    const checkPort = 4173; // Container internal port, not the mapped host port
+    
+    logger.debug({ containerHost, checkPort }, 'Waiting for container to be ready');
     
     while (Date.now() - start < timeout) {
       try {
-        const response = await fetch(`http://localhost:${port}`);
-        if (response.ok || response.status === 404) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(`http://${containerHost}:${checkPort}`, { signal: controller.signal });
+        clearTimeout(id);
+        // Accept any response as "ready" - Vite may return 403 for security reasons
+        const status = response.status;
+        logger.debug({ containerHost, status }, 'Got response from container');
+        if (status === 200 || status === 404 || status === 403 || status < 500) {
+          logger.info({ containerHost, checkPort, status }, 'Container is ready');
           return; // Vite is responding
         }
-      } catch {
-        // Not ready yet
+      } catch (err) {
+        // Not ready yet, will retry
+        logger.debug({ containerHost, err: (err as Error).message }, 'Container not ready yet');
       }
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 1000));
     }
     
     throw new Error('Container failed to become ready');

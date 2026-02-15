@@ -92,7 +92,7 @@ sessionRouter.patch('/:sessionId/file',
   verifySessionOwnership,
   async (req: AuthenticatedRequest, res) => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId as string;
     const { path, content } = req.body as PatchFileRequest;
 
     if (!path || content === undefined) {
@@ -126,8 +126,9 @@ sessionRouter.get('/:sessionId/logs',
   verifySessionOwnership,
   async (req: AuthenticatedRequest, res) => {
   try {
-    const { sessionId } = req.params;
-    const since = req.query.since as string | undefined;
+    const sessionId = req.params.sessionId as string;
+    const sinceQuery = req.query.since;
+    const since = typeof sinceQuery === 'string' ? sinceQuery : undefined;
 
     const logs = await sessionManager.getSessionLogs(sessionId, since);
 
@@ -151,7 +152,7 @@ sessionRouter.get('/:sessionId/logs',
 sessionRouter.post('/:sessionId/ping', 
   verifySessionOwnership,
   (req: AuthenticatedRequest, res) => {
-  const { sessionId } = req.params;
+  const sessionId = req.params.sessionId as string;
   const success = sessionManager.pingSession(sessionId);
   
   if (!success) {
@@ -171,7 +172,7 @@ sessionRouter.post('/:sessionId/stop',
   verifySessionOwnership,
   async (req: AuthenticatedRequest, res) => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId as string;
     await sessionManager.stopSession(sessionId);
     res.json({ success: true });
   } catch (error) {
@@ -192,7 +193,7 @@ sessionRouter.post('/:sessionId/stop',
 sessionRouter.get('/:sessionId', 
   verifySessionOwnership,
   (req: AuthenticatedRequest, res) => {
-  const { sessionId } = req.params;
+  const sessionId = req.params.sessionId as string;
   const session = sessionManager.getSession(sessionId);
 
   if (!session) {
