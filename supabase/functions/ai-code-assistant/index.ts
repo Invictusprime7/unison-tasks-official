@@ -1483,70 +1483,103 @@ Learn from every bug fix to become better at prevention!`
     const research = await researchPromise;
     const researchContext = formatResearchContext(research);
 
-    const body: Record<string, unknown> = {
-      model: 'google/gemini-2.5-flash',
-      max_tokens: 16000,
-      messages: [
-        { role: 'system', content: systemPrompt + researchContext + (generatedImageUrl ? `
+    const aiMessages = [
+      { role: 'system', content: systemPrompt + researchContext + (generatedImageUrl ? `
 
 **IMPORTANT: An AI-generated image has been created for this request. Include this image HTML in your response at the appropriate location:**
 ${imageHtml}
 
 The image is already styled for the "${imagePlacement || 'top-left'}" position. Make sure to include it in a relative-positioned container.` : '') },
-        ...processedMessages
-      ],
-    };
+      ...processedMessages
+    ];
 
-    // Main AI call with extended timeout for complex generation
-    const mainController = new AbortController();
-    const mainTimeoutId = setTimeout(() => mainController.abort(), 120000); // 120 second timeout
-    
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: mainController.signal
-    });
-    
-    clearTimeout(mainTimeoutId);
+    // Hybrid AI: try primary model, fallback to secondary
+    const models = [
+      { id: 'google/gemini-2.5-flash', maxTokens: 16000, label: 'Gemini Flash' },
+      { id: 'openai/gpt-5-mini', maxTokens: 16000, label: 'GPT-5 Mini' },
+    ];
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    let content = '';
+    let lastError = '';
+
+    for (const model of models) {
+      try {
+        console.log(`[AI-Hybrid] Trying ${model.label}...`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+        const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ model: model.id, max_tokens: model.maxTokens, messages: aiMessages }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (resp.status === 429) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        if (resp.status === 402) {
+          return new Response(
+            JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!resp.ok) {
+          const errText = await resp.text();
+          console.warn(`[AI-Hybrid] ${model.label} error ${resp.status}: ${errText.substring(0, 200)}`);
+          lastError = `${model.label}: ${resp.status}`;
+          continue;
+        }
+
+        const responseText = await resp.text();
+        if (!responseText || responseText.trim() === '') {
+          console.warn(`[AI-Hybrid] ${model.label} returned empty response, trying next...`);
+          lastError = `${model.label}: empty response`;
+          continue;
+        }
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          console.warn(`[AI-Hybrid] ${model.label} returned invalid JSON, trying next...`);
+          lastError = `${model.label}: invalid JSON`;
+          continue;
+        }
+
+        const parsed = data.choices?.[0]?.message?.content || '';
+        if (!parsed) {
+          console.warn(`[AI-Hybrid] ${model.label} returned no content, trying next...`);
+          lastError = `${model.label}: no content`;
+          continue;
+        }
+
+        content = parsed;
+        console.log(`[AI-Hybrid] Success with ${model.label}`);
+        break;
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.warn(`[AI-Hybrid] ${model.label} timed out, trying next...`);
+          lastError = `${model.label}: timeout`;
+          continue;
+        }
+        console.warn(`[AI-Hybrid] ${model.label} failed:`, err);
+        lastError = `${model.label}: ${err instanceof Error ? err.message : 'unknown'}`;
+        continue;
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    // Defensive JSON parsing - handle empty or invalid responses
-    const responseText = await response.text();
-    if (!responseText || responseText.trim() === '') {
-      console.error('AI gateway returned empty response');
-      throw new Error('AI gateway returned empty response. Please try again.');
+    if (!content) {
+      throw new Error(`All AI models failed. Last error: ${lastError}`);
     }
-    
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse AI gateway response:', responseText.substring(0, 500));
-      throw new Error('Invalid response from AI gateway. Please try again.');
-    }
-    
-    const content = data.choices?.[0]?.message?.content || '';
 
     // Save learning session (async, don't wait)
     const originalUserPrompt = extractTextContent(messages[messages.length - 1]?.content);
