@@ -63,7 +63,11 @@ let nav: NavigationManager = {
     window.postMessage({ type: 'NAV_PAGE_GENERATE', pageName: path.replace(/^\/|\.html$/g, ''), pageContext: 'nav.goto', navLabel: path }, '*');
   },
   external: (url) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    // Route through VFS - emit event for single-pane navigation
+    console.log('[ActionCatalog] External navigation (VFS):', url);
+    window.dispatchEvent(new CustomEvent('intent:nav.external', { 
+      detail: { url } 
+    }));
   },
   back: () => {
     window.history.back();

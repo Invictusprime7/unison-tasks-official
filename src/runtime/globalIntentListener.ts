@@ -236,11 +236,14 @@ function executeNavIntent(
       break;
       
     case 'nav.external':
-      // Open external URLs in new tab
+      // Route external URLs through VFS (no new tab in development)
       if (config.onNavigate) {
         config.onNavigate('external', target);
       } else {
-        window.open(target, '_blank', 'noopener,noreferrer');
+        // Emit event for VFS-based navigation
+        window.dispatchEvent(new CustomEvent('intent:nav.external', { 
+          detail: { url: target, target } 
+        }));
       }
       break;
       

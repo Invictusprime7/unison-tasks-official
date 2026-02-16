@@ -317,6 +317,8 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
             enhanceWithAI: true,
             templateId: ref?.templateId,
             templateHtml: ref?.templateHtml,
+            variantMode: true,
+            variationSeed: `v${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
             attachments: attachments.length > 0 ? attachments : undefined,
           },
         });
@@ -364,7 +366,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
               systemType: ref?.systemType,
             },
           });
-          toast({ title: "Website generated!", description: vfsFiles ? `Multi-page site with ${Object.keys(vfsFiles).length} files` : "Opening in Web Builder..." });
+          toast({ title: "Website generated!", description: vfsFiles ? `Multi-page site with ${Object.keys(vfsFiles).length} pages` : "Opening in Web Builder..." });
           return;
         }
       }
@@ -616,7 +618,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
  * Build an enhanced freeform prompt for ai-code-assistant (no chip selected)
  */
 function buildFreeformPrompt(prompt: string): string {
-  return `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY MULTI-PAGE WEBSITE
+  return `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY WEBSITE LANDING PAGE
 
 USER REQUEST: ${prompt}
 
@@ -625,7 +627,7 @@ USER REQUEST: ${prompt}
 1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html> and include full <html>, <head>, <body>
 2. **TAILWIND CSS** - Include <script src="https://cdn.tailwindcss.com"></script>
 3. **MULTI-SECTION LAYOUT** - Include AT MINIMUM:
-   - Navigation header with logo and menu links
+   - Navigation header with logo and menu links (use data-ut-intent="nav.goto" data-ut-path="/pagename.html" for nav links)
    - Hero section with compelling headline, subtext, and CTA button
    - Features/services section with 3-4 feature cards
    - Testimonials or social proof section
@@ -637,9 +639,12 @@ USER REQUEST: ${prompt}
 6. **INTERACTIVE ELEMENTS** - Working navigation, hover states, scroll animations
 7. **BACKEND INTENT WIRING** - data-ut-intent attributes on CTAs
 8. **UI CONTROLS WITHOUT INTENTS** - data-no-intent on non-conversion elements
+9. **ON-DEMAND NAVIGATION** - Nav links use data-ut-intent="nav.goto" so pages are generated when clicked
 
 OUTPUT FORMAT:
-- Return ONLY the complete HTML code
+- Return ONLY a single complete HTML page (index.html)
+- Navigation links use data-ut-intent for on-demand page generation
+- NO \`<!-- PAGE: -->\` markers - generate only the main page
 - NO markdown, NO explanations
 - Start with <!DOCTYPE html>`;
 }

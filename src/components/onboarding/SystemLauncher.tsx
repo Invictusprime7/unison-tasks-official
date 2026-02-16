@@ -285,6 +285,7 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
           templateId: selectedTemplate.id,
           templateHtml: selectedTemplate.code,
           variantMode: true,
+          variationSeed: `v${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
         },
       });
 

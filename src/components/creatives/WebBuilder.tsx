@@ -54,7 +54,7 @@ import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, setCurrentSystemType, setDemoMode, handleIntent, IntentPayload } from "@/runtime/intentRouter";
-import { hasMultiPageMarkers, parseMultiPageOutput, generateMultiPageVFS, buildRedirectPageContext } from "@/utils/redirectPageGenerator";
+import { buildRedirectPageContext } from "@/utils/redirectPageGenerator";
 import { classifyLabel, type ElementContext } from "@/utils/redirectLabelClassifier";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 import { DemoIntentOverlay, type DemoIntentOverlayConfig } from "./web-builder/DemoIntentOverlay";
@@ -73,7 +73,7 @@ import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
 import { usePageSEO } from "@/hooks/usePageSEO";
 import { generateUUID } from "@/utils/uuid";
-import { PageNavigationBar, extractPageTabs, type PageTab } from "./web-builder/PageNavigationBar";
+import { extractPageTabs, type PageTab } from "./web-builder/PageNavigationBar";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -692,12 +692,29 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [virtualFS.nodes]);
   
   // Sync page manifest to preview iframe when VFS changes
+  // This enables instant in-place navigation (no new tabs)
   useEffect(() => {
-    if (Object.keys(pageManifest).length > 1) {
-      // Only sync if there are multiple pages
-      simplePreviewRef.current?.syncPageManifest(pageManifest);
+    const pageCount = Object.keys(pageManifest).length;
+    if (pageCount >= 1) {
+      // Sync all HTML pages to iframe cache (with small delay to ensure iframe is ready)
+      const timeoutId = setTimeout(() => {
+        console.log('[WebBuilder] Syncing page manifest:', pageCount, 'pages');
+        simplePreviewRef.current?.syncPageManifest(pageManifest);
+      }, 200);
+      return () => clearTimeout(timeoutId);
     }
   }, [pageManifest]);
+  
+  // Re-sync manifest when preview code changes (iframe reloads)
+  useEffect(() => {
+    if (Object.keys(pageManifest).length >= 1 && previewCode) {
+      // Delay to let iframe finish loading the new content
+      const timeoutId = setTimeout(() => {
+        simplePreviewRef.current?.syncPageManifest(pageManifest);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [previewCode, pageManifest]);
   
   // Handle page switching in multi-page preview
   const handleSelectPage = useCallback((path: string) => {
@@ -1537,22 +1554,22 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           // Page navigation within multi-page VFS
           const htmlPath = path.endsWith('.html') ? path : `${path}.html`;
           const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
-          const existingPage = virtualFS.nodes[vfsPath];
+          const vfsFiles = virtualFS.getSandpackFiles();
+          const existingPage = vfsFiles[vfsPath];
           
           if (existingPage) {
-            // Page exists — switch to it
+            // Page exists in VFS — render in-place via iframe message
+            if (source && requestId) {
+              source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: existingPage }, '*');
+            }
             setActivePagePath(vfsPath);
             toast(`Navigated to ${buttonLabel || path}`);
             sendResultToIframe({ success: true });
-          } else if (classification.category === 'redirect') {
-            // Redirect-worthy label + page doesn't exist → generate it
-            console.log('[WebBuilder] Redirect-worthy click, generating page:', classification.suggestedPageType, buttonLabel);
-            const pageName = classification.suggestedPageType || path.replace(/^\//, '').replace(/\.html$/, '') || 'details';
-            triggerPageGenRef.current(pageName, buttonLabel, source, requestId);
           } else {
-            // Nav link — just acknowledge, don't generate
-            toast(`${buttonLabel || path}`, { description: 'Page will be available in production' });
-            sendResultToIframe({ success: true });
+            // Page doesn't exist in VFS → generate it with AI
+            console.log('[WebBuilder] Page not in VFS, generating:', path, buttonLabel);
+            const pageName = classification.suggestedPageType || path.replace(/^\//, '').replace(/\.html$/, '') || 'details';
+            triggerPageGenRef.current(pageName, buttonLabel || pageName, source, requestId);
           }
         }
         return;
@@ -1585,13 +1602,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (classification.category === 'redirect' && !['booking.create', 'contact.submit', 'newsletter.subscribe', 'quote.request', 'lead.capture'].includes(intent)) {
         const pageName = classification.suggestedPageType || 'details';
         const vfsPath = `/${pageName}.html`;
-        const existingPage = virtualFS.nodes[vfsPath];
+        const vfsFilesForCheck = virtualFS.getSandpackFiles();
+        const existingPage = vfsFilesForCheck[vfsPath];
         if (!existingPage) {
           console.log('[WebBuilder] Redirect-worthy intent, generating page:', pageName, buttonLabel);
           triggerPageGenRef.current(pageName, buttonLabel, source, requestId);
           return;
         }
-        // Page exists, navigate to it
+        // Page exists in VFS, render in-place
+        if (source && requestId) {
+          source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: existingPage }, '*');
+        }
         setActivePagePath(vfsPath);
         toast(`Navigated to ${buttonLabel || pageName}`);
         sendResultToIframe({ success: true });
@@ -1687,7 +1708,24 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     };
     
     window.addEventListener('message', handleIntentMessage);
-    return () => window.removeEventListener('message', handleIntentMessage);
+    
+    // Listen for VFS-based external navigation events (emitted by intent router, action catalog, etc.)
+    const handleExternalNavEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const url = detail?.url || detail?.target;
+      if (!url) return;
+      
+      console.log('[WebBuilder] External navigation event (VFS):', url);
+      const pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+      const label = detail?.buttonLabel || detail?.text || url;
+      triggerPageGenRef.current(pageName, label, null, undefined);
+    };
+    window.addEventListener('intent:nav.external', handleExternalNavEvent);
+    
+    return () => {
+      window.removeEventListener('message', handleIntentMessage);
+      window.removeEventListener('intent:nav.external', handleExternalNavEvent);
+    };
   }, []);
 
   // Dynamic page generation state
@@ -1706,11 +1744,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     source: Window | null,
     requestId?: string,
   ) => {
-    // Check cache first
+    // Check VFS cache first (getSandpackFiles returns path-keyed object)
     const vfsPath = `/${pageName}.html`;
-    const existing = virtualFS.nodes[vfsPath] || generatedPages[pageName];
-    if (existing) {
-      const content = typeof existing === 'string' ? existing : (existing as any).content;
+    const vfsFiles = virtualFS.getSandpackFiles();
+    const existingContent = vfsFiles[vfsPath] || generatedPages[pageName];
+    if (existingContent) {
+      const content = typeof existingContent === 'string' ? existingContent : (existingContent as any).content;
       if (source && requestId) {
         // In-place rendering via iframe message
         source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: content }, '*');
@@ -3502,13 +3541,7 @@ ${body.innerHTML}
                     )}
                   </div>
                 </div>
-                <PageNavigationBar
-                  pages={pageTabs}
-                  activePage={activePagePath}
-                  onSelectPage={handleSelectPage}
-                  onAddPage={handleAddPage}
-                  onRemovePage={handleRemovePage}
-                />
+                {/* Page tabs removed - navigation happens in-place within preview */}
                 <div 
                   ref={scrollContainerRef}
                   data-drop-zone="true"
@@ -3744,13 +3777,7 @@ export default function App() {
                       </Button>
                     </div>
                   </div>
-                  <PageNavigationBar
-                    pages={pageTabs}
-                    activePage={activePagePath}
-                    onSelectPage={handleSelectPage}
-                    onAddPage={handleAddPage}
-                    onRemovePage={handleRemovePage}
-                  />
+                  {/* Page tabs removed - navigation happens in-place within preview */}
                   <div 
                     ref={splitViewDropZoneRef}
                     data-drop-zone="true"

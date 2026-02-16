@@ -451,7 +451,7 @@ function injectIntentListener(html: string): string {
         window.parent.postMessage({
           type: 'INTENT_TRIGGER',
           intent: 'nav.goto',
-          payload: { path: '/' + (target || 'external').replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.html', buttonLabel: target, text: target, isExternal: true }
+          payload: { path: '/' + (target || 'external').replace(new RegExp('^https?://[^/]+/?'), '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.html', buttonLabel: target, text: target, isExternal: true }
         }, '*');
         return;
       }
@@ -772,7 +772,7 @@ function injectIntentListener(html: string): string {
         e.preventDefault();e.stopPropagation();
         var url = el.getAttribute('data-ut-url') || el.getAttribute('href') || '';
         // Instead of opening new tab, route as in-page navigation
-        var pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+        var pageName = url.replace(new RegExp('^https?://[^/]+/?'), '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
         executeNavIntent('nav.goto', '/' + pageName);
         el.classList.add('intent-success');
         setTimeout(()=>el.classList.remove('intent-success'),2000);
@@ -1185,10 +1185,14 @@ function wrapHtmlSnippet(html: string): string {
             if(targetEl)targetEl.scrollIntoView({behavior:'smooth',block:'start'});
             return;
           }
-          // External links
+          // External links - route through VFS instead of opening new tab
           if(href.startsWith('http://')||href.startsWith('https://')){
             e.preventDefault();e.stopPropagation();
-            window.open(href,'_blank','noopener,noreferrer');
+            // Generate an in-place redirect page via parent
+            var extPageName=href.replace(new RegExp('^https?://[^/]+/?'),'').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')||'external';
+            var extNavLabel=(el.textContent||'').trim()||href;
+            window.parent.postMessage({type:'INTENT_TRIGGER',intent:'nav.external',payload:{url:href,path:'/'+extPageName+'.html',buttonLabel:extNavLabel,text:extNavLabel}},'*');
+            el.classList.add('intent-success');setTimeout(function(){el.classList.remove('intent-success');},2000);
             return;
           }
           // Internal page links - intercept to prevent 404
@@ -1252,7 +1256,12 @@ function wrapHtmlSnippet(html: string): string {
       if(intent==='nav.external'){
         e.preventDefault();e.stopPropagation();
         const url=el.getAttribute('data-ut-url')||el.getAttribute('href')||'';
-        if(url&&(url.startsWith('http://')||url.startsWith('https://')||url.startsWith('tel:')||url.startsWith('mailto:')))window.open(url,'_blank','noopener,noreferrer');
+        // Route through VFS - generate in-place redirect page instead of opening new tab
+        if(url&&(url.startsWith('http://')||url.startsWith('https://'))){
+          var pageName=url.replace(new RegExp('^https?://[^/]+/?'),'').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')||'external';
+          var navLabel=(el.textContent||'').trim()||url;
+          window.parent.postMessage({type:'INTENT_TRIGGER',intent:'nav.external',payload:{url:url,path:'/'+pageName+'.html',buttonLabel:navLabel,text:navLabel}},'*');
+        }
         el.classList.add('intent-success');setTimeout(()=>el.classList.remove('intent-success'),2000);
         return;
       }

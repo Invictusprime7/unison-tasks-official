@@ -432,7 +432,7 @@ function handleNavAnchor(payload: IntentPayload): IntentResult {
 }
 
 /**
- * Handle nav.external - Open external URL
+ * Handle nav.external - Route external URL through VFS (no new tab)
  */
 function handleNavExternal(payload: IntentPayload): IntentResult {
   const url = payload.url as string;
@@ -440,14 +440,17 @@ function handleNavExternal(payload: IntentPayload): IntentResult {
     return { success: false, error: "nav.external requires a 'url' payload" };
   }
   
+  // Emit event for VFS-based navigation instead of opening new tab
   if (typeof window !== 'undefined') {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.dispatchEvent(new CustomEvent('intent:nav.external', { 
+      detail: { url, ...payload } 
+    }));
   }
   
   return { 
     success: true, 
     status: 'redirect',
-    message: `Opening ${url}`,
+    message: `Navigating to ${url}`,
     data: { url }
   };
 }
@@ -601,7 +604,10 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
           }
         },
         external: (url) => {
-          if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener,noreferrer');
+          // Emit event for VFS-based navigation instead of opening new tab
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('intent:nav.external', { detail: { url } }));
+          }
         },
         back: () => { if (typeof window !== 'undefined') window.history.back(); },
         scrollTo: (anchor) => {

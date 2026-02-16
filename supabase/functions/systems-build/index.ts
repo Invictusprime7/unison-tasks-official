@@ -125,6 +125,7 @@ const BodySchema = z.object({
   templateId: z.string().optional(),
   templateHtml: z.string().max(200_000).optional(),
   variantMode: z.boolean().optional().default(false),
+  variationSeed: z.string().optional(), // Random seed for visual diversity
 });
 
 // ============================================================================
@@ -465,7 +466,7 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -548,9 +549,9 @@ serve(async (req) => {
     const researchContext = formatResearchContext(research);
 
     // Build comprehensive system prompt for business website generation
-    const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml, researchContext, variantMode);
+    const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml, researchContext, variantMode, variationSeed);
     const userMessage = variantMode && templateHtml
-      ? buildVariantUserMessage(blueprint, userPrompt)
+      ? buildVariantUserMessage(blueprint, userPrompt, variationSeed)
       : buildUserMessage(blueprint, userPrompt);
 
     console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})${templateId ? ` with reference template: ${templateId}` : ''}`);
@@ -736,7 +737,7 @@ function hardenGeneratedHTML(code: string): string {
   return hardened;
 }
 
-function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = "", templateHtml?: string, researchContext = "", variantMode = false): string {
+function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternContext = "", templateHtml?: string, researchContext = "", variantMode = false, variationSeed?: string): string {
   const { brand, identity, design } = blueprint;
   const palette = brand.palette || {};
   const pages = blueprint.site?.pages || [];
@@ -750,6 +751,18 @@ function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternCo
   const buttons = design?.buttons || {};
   const sections = design?.sections || {};
   const content = design?.content || {};
+  
+  // Variation seed block for visual diversity
+  const variationSeedBlock = variationSeed ? `
+
+🎲 **VARIATION SEED: ${variationSeed}**
+Use this seed to inform creative decisions — choose a UNIQUE combination of:
+- Color temperature: ${parseInt(variationSeed, 36) % 3 === 0 ? 'warm (amber, orange, red)' : parseInt(variationSeed, 36) % 3 === 1 ? 'cool (blue, teal, purple)' : 'neutral (slate, gray, emerald)'}
+- Layout style: ${parseInt(variationSeed, 36) % 4 === 0 ? 'asymmetric, bold' : parseInt(variationSeed, 36) % 4 === 1 ? 'centered, elegant' : parseInt(variationSeed, 36) % 4 === 2 ? 'grid-heavy, structured' : 'flowing, organic'}
+- Typography mood: ${parseInt(variationSeed, 36) % 3 === 0 ? 'modern sans-serif' : parseInt(variationSeed, 36) % 3 === 1 ? 'geometric display' : 'humanist friendly'}
+- Card style: ${parseInt(variationSeed, 36) % 2 === 0 ? 'rounded with shadows' : 'sharp with borders'}
+DO NOT generate the same design twice — this seed ensures visual uniqueness.
+` : '';
 
   // Build template reference context — variant mode uses stricter rules
   const templateReferenceBlock = templateHtml ? (variantMode ? `
@@ -1521,15 +1534,15 @@ CartManager.updateUI();
 13. Include social proof elements
 14. No markdown, no explanations - ONLY the complete HTML code
 
-📄 **MULTI-PAGE OUTPUT (REDIRECT PAGES):**
+📄 **MULTI-PAGE OUTPUT (ALL PAGES IN VFS):**
 
-You MUST generate MULTIPLE pages for the website, not just a single page. Analyze the navigation menu and business type to determine which redirect pages are needed.
+You MUST generate MULTIPLE pages for the website. All pages will be stored in the Virtual File System (VFS) and navigation between them will render IN-PLACE (same preview, no new tabs).
 
 **PAGE MARKER FORMAT:**
 Use \`<!-- PAGE: /path.html label="Page Label" -->\` to separate pages. Each page after the marker must be a COMPLETE HTML document.
 
-**REQUIRED PAGES (generate ALL that apply):**
-${getRequiredPagesForIndustry(identity.industry)}
+**REQUIRED PAGES (generate ALL that apply based on industry):**
+${_getRequiredPagesForIndustry(identity.industry)}
 
 **EXAMPLE MULTI-PAGE OUTPUT:**
 \`\`\`
@@ -1551,8 +1564,9 @@ ${getRequiredPagesForIndustry(identity.industry)}
 4. Each page must have UNIQUE, full content — not placeholder stubs
 5. Generate 3-6 pages depending on the business type
 6. The main page (index.html) must link to all sub-pages in its navigation
+7. Navigation renders pages IN-PLACE (same preview) - no tabs or new windows
 
-🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL website for ${brand.business_name} that would impress any business owner and drive real conversions.
+🎯 **YOUR GOAL:** Create a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL multi-page website for ${brand.business_name} that would impress any business owner and drive real conversions.
 
 ${patternContext ? `
 📚 **PRODUCTION DESIGN PATTERNS (USE THESE AS REFERENCE — adapt to match brand):**
@@ -1561,6 +1575,7 @@ These are proven, high-converting section patterns from our design system. Use t
 ${patternContext}
 ` : ""}
 ${researchContext}
+${variationSeedBlock}
 ${templateReferenceBlock}`;
 }
 
@@ -1634,10 +1649,11 @@ ${userPrompt}`;
 - Include all CSS in <style> block per page
 - Include all JS before </body> per page
 - ALL pages must share consistent nav, footer, and brand styling
+- Nav links use \`data-ut-intent="nav.goto" data-ut-path="/pagename.html"\` for IN-PLACE rendering
 - Write compelling, realistic copy (NOT placeholder text)
 - Use Unsplash for high-quality images
 
-Make this a COMPLETE MULTI-PAGE WEBSITE — the kind that wins design awards and converts visitors into customers.`;
+Make this a COMPLETE MULTI-PAGE WEBSITE — pages render IN-PLACE (no tabs) — the kind that wins design awards and converts visitors into customers.`;
   
   return message;
 }
@@ -1646,7 +1662,7 @@ Make this a COMPLETE MULTI-PAGE WEBSITE — the kind that wins design awards and
  * Build user message for VARIANT generation mode.
  * Emphasizes visual transformation while strictly preserving functional elements.
  */
-function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, userPrompt?: string): string {
+function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, userPrompt?: string, variationSeed?: string): string {
   const { brand, identity } = blueprint;
   
   let message = `🎨 CREATE A DESIGN VARIANT of the provided template for "${brand.business_name}" (${identity.industry.replace(/_/g, " ")}).
@@ -1676,12 +1692,18 @@ function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, use
    - Production-ready code quality
 
 4. **OUTPUT FORMAT:**
-   - Use <!-- PAGE: /path.html label="Label" --> markers for multi-page output
-   - Complete HTML documents with Tailwind CDN
+   - Output ONLY a single complete HTML document
+   - Navigation uses data-ut-intent="nav.goto" for on-demand page generation
+   - Complete HTML document with Tailwind CDN
+   - NO \`<!-- PAGE: -->\` markers
    - NO markdown, NO explanations`;
 
   if (userPrompt) {
     message += `\n\n📝 **STYLE DIRECTION:**\n${userPrompt}`;
+  }
+
+  if (variationSeed) {
+    message += `\n\n🎲 **UNIQUENESS SEED: ${variationSeed}**\nThis seed MUST result in a visually distinct design — different from any previous generation.`;
   }
 
   message += `\n\n⚡ Generate a visually distinct variant that looks like a completely different website but functions IDENTICALLY to the source.`;
@@ -1904,7 +1926,9 @@ function getLucideIconsForIndustry(industry: string): string {
   return iconSets[industry] || iconSets.other;
 }
 
-function getRequiredPagesForIndustry(industry: string): string {
+// NOTE: Multi-page generation disabled - pages are now generated on-demand when clicked.
+// Keeping this function for potential future use.
+function _getRequiredPagesForIndustry(industry: string): string {
   const pageMap: Record<string, string> = {
     salon_spa: `- /index.html (Home) - /services.html (Services & Prices) - /about.html (Team & Story) - /booking.html (Book Appointment) - /contact.html (Contact)`,
     restaurant: `- /index.html (Home) - /menu.html (Full Menu) - /about.html (Our Story) - /reservations.html (Reservations) - /contact.html (Contact)`,
