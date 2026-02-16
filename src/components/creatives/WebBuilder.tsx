@@ -1652,17 +1652,33 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             source.postMessage({ type: 'INTENT_COMMAND', command: 'booking.scroll', requestId: scrollRequestId }, '*');
           });
 
-          if (!handled) {
-            // Don't show error toast - form may already be visible or user can scroll manually
-            console.log('[WebBuilder] Booking form not found - user may need to scroll manually');
+          if (handled) {
+            // Form was found and scrolled to - wait for user to fill it out
+            toast.info('Fill out the booking form below');
+            // Don't send success yet - let the form submission handle it
+          } else {
+            // Form not found - execute booking intent directly
+            console.log('[WebBuilder] Booking form not found - executing intent directly');
+            try {
+              const res = await handleIntent(intent, payload as IntentPayload);
+              if (res.success) {
+                toast.success('Booking request submitted');
+                sendResultToIframe({
+                  success: true,
+                  bookingId: `BK-${Date.now().toString(36).toUpperCase()}`,
+                  ...res,
+                  message: 'Booking request submitted'
+                });
+              } else {
+                toast.error(res.error || 'Booking failed');
+                sendResultToIframe({ success: false, error: res.error || 'Booking failed' });
+              }
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : 'Unknown error';
+              toast.error(msg);
+              sendResultToIframe({ success: false, error: msg });
+            }
           }
-          
-          // Send success result for booking intent - iframe will show confirmation page
-          sendResultToIframe({
-            success: true,
-            bookingId: `BK-${Date.now().toString(36).toUpperCase()}`,
-            message: 'Appointment request received'
-          });
         })();
         return;
       }
@@ -1675,19 +1691,64 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         return;
       }
 
-      // Default: autorun everything else (no pipeline UI).
-      const toastLabel = decision.toastLabel || 'Action';
-      toast(`${toastLabel} running…`);
+      // Redirect intents: Navigate without showing "complete" toast
+      if (decision.mode === 'redirect') {
+        const target = decision.toastLabel || '/';
+        toast(`Navigating to ${target}...`);
+        // Trigger page generation or navigation
+        const pageName = target.replace(/^\//, '').replace(/\.html$/, '') || 'page';
+        triggerPageGenRef.current(pageName, buttonLabel || pageName, source, requestId);
+        return;
+      }
+
+      // All other modes (autorun, modal, confirm, pipeline): Execute intent directly.
+      const toastLabel = decision.toastLabel || buttonLabel || 'Action';
       void (async () => {
         try {
           const res = await handleIntent(intent, payload as IntentPayload);
-          if (res.success) {
-            toast.success(`${toastLabel} complete`);
-            // Send success result back to iframe for confirmation page
+          
+          // Check if result requests user interaction (modal, form, etc.)
+          // In this case, don't show "complete" - the workflow is pending user input
+          const hasUiDirective = res.ui?.openModal || res.ui?.navigate;
+          const hasMissingData = (res as any).missing?.fields?.length > 0;
+          
+          if (res.success && !hasUiDirective && !hasMissingData) {
+            // Workflow actually completed
+            toast.success(res.message || `${toastLabel} complete`);
             sendResultToIframe({
               success: true,
               ...res,
-              message: `${toastLabel} complete`
+              message: res.message || `${toastLabel} complete`
+            });
+          } else if (res.success && hasUiDirective) {
+            // Workflow needs user interaction - show info toast instead
+            const modalType = res.ui?.openModal;
+            if (modalType === 'booking' || modalType === 'booking-confirmation') {
+              toast.info('Complete the booking form');
+            } else if (modalType === 'quote') {
+              toast.info('Fill out the quote request form');
+            } else if (modalType === 'contact') {
+              toast.info('Fill out the contact form');
+            } else if (modalType?.startsWith('auth')) {
+              toast.info('Sign in to continue');
+            } else {
+              toast.info(`Complete ${toastLabel.toLowerCase()}`);
+            }
+            sendResultToIframe({
+              success: true,
+              ...res,
+              pending: true,
+              message: `${toastLabel} pending user input`
+            });
+          } else if (res.success && hasMissingData) {
+            // Missing required fields
+            const missingFields = (res as any).missing?.fields?.join(', ') || 'required fields';
+            toast.info(`Please provide: ${missingFields}`);
+            sendResultToIframe({
+              success: true,
+              ...res,
+              pending: true,
+              message: `Missing: ${missingFields}`
             });
           } else {
             toast.error(res.error || `${toastLabel} failed`);
