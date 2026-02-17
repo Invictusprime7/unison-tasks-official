@@ -10,7 +10,7 @@ import {
   Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap, RefreshCcw,
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
-  FolderOpen, Cloud, CloudOff
+  FolderOpen, Cloud, CloudOff, Server
 } from "lucide-react";
 import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
@@ -319,6 +319,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [selectedObject, setSelectedObject] = useState<FabricCanvas['_objects'][0] | null>(null);
   const [activeMode, setActiveMode] = useState<"insert" | "layout" | "text" | "vector">("insert");
   const [builderMode, setBuilderMode] = useState<SimpleBuilderMode>('select');
+  const [useReactPreview, setUseReactPreview] = useState(false); // Docker-based React preview mode
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(0.5);
   const [canvasHeight, setCanvasHeight] = useState(800);
@@ -3477,6 +3478,23 @@ ${body.innerHTML}
                 <span className="text-xs">{currentTemplateName ? 'Update' : 'Save'}</span>
               </Button>
               
+              {/* Docker/React Mode Toggle */}
+              <Button
+                variant={useReactPreview ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setUseReactPreview(!useReactPreview)}
+                className={cn(
+                  "h-7 px-2 gap-1",
+                  useReactPreview 
+                    ? "bg-green-600 hover:bg-green-700 text-white" 
+                    : "text-white/70 hover:text-white hover:bg-white/10"
+                )}
+                title={useReactPreview ? "React Mode (Docker HMR) - Click to disable" : "Enable React Mode (requires Docker)"}
+              >
+                <Server className="h-3.5 w-3.5" />
+                <span className="text-xs">{useReactPreview ? 'React' : 'HTML'}</span>
+              </Button>
+              
               <Button
                 variant="ghost"
                 size="icon"
@@ -3608,26 +3626,40 @@ ${body.innerHTML}
                   data-drop-zone="true"
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
-                  {/* Both modes use SimplePreview for consistent rendering */}
-                  <SimplePreview
-                    ref={simplePreviewRef}
-                    code={previewCode}
-                    className="w-full h-full min-h-0 flex-1"
-                    showToolbar={false}
-                    device={device}
-                    enableSelection={builderMode === 'select'}
-                    onElementSelect={builderMode === 'select' ? (el) => {
-                      setSelectedHTMLElement({
-                        tagName: el.tagName,
-                        textContent: el.textContent,
-                        styles: el.styles,
-                        attributes: el.attributes,
-                        selector: el.selector,
-                        html: el.html,
-                        section: el.section,
-                      });
-                    } : undefined}
-                  />
+                  {/* React mode uses VFSPreview with Docker HMR, HTML mode uses SimplePreview */}
+                  {useReactPreview ? (
+                    <VFSPreview
+                      ref={livePreviewRef}
+                      nodes={virtualFS.nodes}
+                      files={virtualFS.getSandpackFiles()}
+                      className="w-full h-full min-h-0 flex-1"
+                      showToolbar={true}
+                      autoStart={true}
+                      showBackendIndicator={true}
+                      onReady={() => console.log('[WebBuilder] VFSPreview ready')}
+                      onError={(err) => toast.error(`Preview error: ${err}`)}
+                    />
+                  ) : (
+                    <SimplePreview
+                      ref={simplePreviewRef}
+                      code={previewCode}
+                      className="w-full h-full min-h-0 flex-1"
+                      showToolbar={false}
+                      device={device}
+                      enableSelection={builderMode === 'select'}
+                      onElementSelect={builderMode === 'select' ? (el) => {
+                        setSelectedHTMLElement({
+                          tagName: el.tagName,
+                          textContent: el.textContent,
+                          styles: el.styles,
+                          attributes: el.attributes,
+                          selector: el.selector,
+                          html: el.html,
+                          section: el.section,
+                        });
+                      } : undefined}
+                    />
+                  )}
                   {/* Inline loading overlay for AI page generation */}
                   {isGeneratingPage && (
                     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -3844,25 +3876,39 @@ export default function App() {
                     data-drop-zone="true"
                     className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
-                    {/* Both modes use SimplePreview for consistent rendering */}
-                    <SimplePreview
-                      ref={simplePreviewRef}
-                      code={previewCode}
-                      className="w-full h-full min-h-0 flex-1"
-                      showToolbar={false}
-                      enableSelection={builderMode === 'select'}
-                      onElementSelect={builderMode === 'select' ? (el) => {
-                        setSelectedHTMLElement({
-                          tagName: el.tagName,
-                          textContent: el.textContent,
-                          styles: el.styles,
-                          attributes: el.attributes,
-                          selector: el.selector,
-                          html: el.html,
-                          section: el.section,
-                        });
-                      } : undefined}
-                    />
+                    {/* React mode uses VFSPreview with Docker HMR, HTML mode uses SimplePreview */}
+                    {useReactPreview ? (
+                      <VFSPreview
+                        ref={livePreviewRef}
+                        nodes={virtualFS.nodes}
+                        files={virtualFS.getSandpackFiles()}
+                        className="w-full h-full min-h-0 flex-1"
+                        showToolbar={true}
+                        autoStart={true}
+                        showBackendIndicator={true}
+                        onReady={() => console.log('[WebBuilder] VFSPreview ready')}
+                        onError={(err) => toast.error(`Preview error: ${err}`)}
+                      />
+                    ) : (
+                      <SimplePreview
+                        ref={simplePreviewRef}
+                        code={previewCode}
+                        className="w-full h-full min-h-0 flex-1"
+                        showToolbar={false}
+                        enableSelection={builderMode === 'select'}
+                        onElementSelect={builderMode === 'select' ? (el) => {
+                          setSelectedHTMLElement({
+                            tagName: el.tagName,
+                            textContent: el.textContent,
+                            styles: el.styles,
+                            attributes: el.attributes,
+                            selector: el.selector,
+                            html: el.html,
+                            section: el.section,
+                          });
+                        } : undefined}
+                      />
+                    )}
                   </div>
                 </div>
 
