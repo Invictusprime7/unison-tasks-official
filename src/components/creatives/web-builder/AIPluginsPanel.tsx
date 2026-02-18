@@ -47,11 +47,11 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId: propPluginInstanc
   const effectivePluginInstanceId = propPluginInstanceId || localPluginInstanceId;
 
   return (
-    <div className="h-full flex flex-col bg-card">
-      <div className="p-3 border-b border-border/20 shrink-0">
+    <div className="h-full flex flex-col bg-white/[0.04]">
+      <div className="p-3 border-b border-white/[0.08]/20 shrink-0">
         <div className="flex items-center gap-2 mb-2">
           <Brain className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium text-foreground">AI Plugins</span>
+          <span className="text-sm font-medium text-white">AI Plugins</span>
           <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
             Beta
           </Badge>
@@ -59,7 +59,7 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId: propPluginInstanc
             <Loader2 className="h-3 w-3 animate-spin text-primary ml-auto" />
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-white/50">
           Embed AI agents in templates for lead scoring, booking, and automation.
         </p>
       </div>
@@ -118,18 +118,18 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId: propPluginInstanc
             <div className="p-3 space-y-2">
               {isLoadingEvents && (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-5 w-5 animate-spin text-white/50" />
                 </div>
               )}
               
               {!isLoadingEvents && events.length === 0 && (
                 <Card className="bg-muted/30 border-dashed">
                   <CardContent className="p-4 text-center">
-                    <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <Activity className="h-8 w-8 mx-auto mb-2 text-white/50/50" />
+                    <p className="text-xs text-white/50 mb-2">
                       No AI activity yet
                     </p>
-                    <p className="text-[10px] text-muted-foreground/70 mb-3">
+                    <p className="text-[10px] text-white/50/70 mb-3">
                       Switch to the "Test" tab and submit a form to trigger AI processing.
                     </p>
                     <Button 
@@ -162,7 +162,7 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId: propPluginInstanc
                     </div>
                     {event.score !== undefined && (
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] text-muted-foreground">Score:</span>
+                        <span className="text-[10px] text-white/50">Score:</span>
                         <Badge variant="outline" className="text-[9px] h-4">{event.score}%</Badge>
                       </div>
                     )}
@@ -173,7 +173,7 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId: propPluginInstanc
                         ))}
                       </div>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-[10px] text-white/50 mt-1">
                       {new Date(event.timestamp).toLocaleTimeString()}
                     </p>
                   </CardContent>
@@ -209,11 +209,11 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId: propPluginInstanc
               ) : (
                 <Card className="bg-muted/30 border-dashed">
                   <CardContent className="p-4 text-center">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-white/50/50" />
+                    <p className="text-xs text-white/50 mb-2">
                       Business context required
                     </p>
-                    <p className="text-[10px] text-muted-foreground/70">
+                    <p className="text-[10px] text-white/50/70">
                       Open a project from Cloud Dashboard to test AI event triggers with a real business ID.
                     </p>
                   </CardContent>
@@ -234,11 +234,11 @@ export const AIPluginsPanel = ({ businessId, pluginInstanceId: propPluginInstanc
               ) : (
                 <Card className="bg-muted/30 border-dashed">
                   <CardContent className="p-4 text-center">
-                    <Bot className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <Bot className="h-8 w-8 mx-auto mb-2 text-white/50/50" />
+                    <p className="text-xs text-white/50 mb-2">
                       No active plugin instance
                     </p>
-                    <p className="text-[10px] text-muted-foreground/70">
+                    <p className="text-[10px] text-white/50/70">
                       Configure an AI plugin in your template to see real-time state updates here.
                     </p>
                   </CardContent>

@@ -80,7 +80,7 @@ export const FloatingDock = ({
   return (
     <div className="relative">
       {/* Dock Bar - inline within the topbar */}
-      <div className="flex items-center gap-1 px-2 py-1 bg-card/80 backdrop-blur-md border border-border/40 rounded-full">
+      <div className="flex items-center gap-1 px-2.5 py-1.5 bg-[#0d0d18] rounded-lg shadow-[0_0_15px_rgba(255,255,0,0.15)]">
         {dockItems.map((item) => {
           const Icon = item.icon;
           const isActive = activePanel === item.id;
@@ -91,10 +91,10 @@ export const FloatingDock = ({
               size="sm"
               onClick={() => togglePanel(item.id)}
               className={cn(
-                "h-7 px-3 rounded-full text-xs font-medium transition-all duration-200",
+                "h-7 px-3 rounded-md text-xs font-bold transition-all duration-200",
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  ? "bg-yellow-400 text-black shadow-[0_0_15px_rgba(255,255,0,0.6)]"
+                  : "text-yellow-400/70 hover:text-yellow-300 hover:bg-yellow-500/20"
               )}
             >
               <Icon className="h-3.5 w-3.5 mr-1.5" />
@@ -106,17 +106,17 @@ export const FloatingDock = ({
 
       {/* Expandable Panel - positioned absolutely below the dock */}
       {activePanel && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 w-[520px] max-h-[70vh] bg-card/98 backdrop-blur-lg border border-border/40 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 w-[520px] max-h-[70vh] bg-[#0a0a12] rounded-xl shadow-[0_0_30px_rgba(0,255,255,0.2)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Panel Header with Device Toggle */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 bg-muted/30">
-            <span className="text-sm font-medium text-foreground">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#0d0d18]">
+            <span className="text-sm font-bold text-cyan-400 drop-shadow-[0_0_5px_rgba(0,255,255,0.5)]">
               {dockItems.find((d) => d.id === activePanel)?.label}
             </span>
             
             <div className="flex items-center gap-2">
               {/* Device Toggle for Templates */}
               {activePanel === "templates" && (
-                <div className="flex items-center gap-0.5 p-0.5 bg-background/50 rounded-full border border-border/30">
+                <div className="flex items-center gap-0.5 p-0.5 bg-[#0a0a14] rounded-lg">
                   {deviceOptions.map((device) => {
                     const DeviceIcon = device.icon;
                     const isActiveDevice = previewDevice === device.id;
@@ -127,10 +127,10 @@ export const FloatingDock = ({
                         size="icon"
                         onClick={() => setPreviewDevice(device.id)}
                         className={cn(
-                          "h-6 w-6 rounded-full transition-all",
+                          "h-6 w-6 rounded-md transition-all duration-200",
                           isActiveDevice
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_10px_rgba(255,0,255,0.5)]"
+                            : "text-fuchsia-400/60 hover:text-fuchsia-300 hover:bg-fuchsia-500/20"
                         )}
                         title={device.label}
                       >
@@ -145,7 +145,7 @@ export const FloatingDock = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => setActivePanel(null)}
-                className="h-6 w-6 rounded-full hover:bg-accent"
+                className="h-6 w-6 rounded-md text-red-500/70 hover:text-red-400 hover:bg-red-500/20 hover:shadow-[0_0_10px_rgba(255,0,0,0.4)] transition-all duration-200"
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -153,7 +153,7 @@ export const FloatingDock = ({
           </div>
 
           {/* Panel Content */}
-          <ScrollArea className="h-[calc(70vh-48px)]">
+          <ScrollArea className="h-[calc(70vh-48px)] bg-[#0a0a12]">
             {activePanel === "templates" && (
               <LayoutTemplatesPanel 
                 onSelectTemplate={onSelectTemplate}

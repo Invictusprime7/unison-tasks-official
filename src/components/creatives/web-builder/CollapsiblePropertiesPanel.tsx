@@ -67,19 +67,19 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-b border-border">
+    <div className="">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-fuchsia-500/10 transition-colors"
       >
-        <div className="flex items-center gap-2 text-foreground">
+        <div className="flex items-center gap-2 text-fuchsia-300">
           {icon}
-          <span className="text-sm font-medium">{title}</span>
+          <span className="text-sm font-bold drop-shadow-[0_0_3px_rgba(255,0,255,0.4)]">{title}</span>
         </div>
         {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          <ChevronUp className="w-4 h-4 text-fuchsia-400" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4 text-fuchsia-400/60" />
         )}
       </button>
       {isOpen && <div className="px-4 pb-4 space-y-3">{children}</div>}
@@ -255,36 +255,36 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
       {/* Toggle Button */}
       <button
         onClick={onToggleCollapse}
-        className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-6 h-16 bg-secondary border border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors"
+        className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-5 h-14 bg-[#0d0d18] rounded-r-lg flex items-center justify-center hover:bg-fuchsia-500/20 hover:shadow-[0_0_10px_rgba(255,0,255,0.3)] transition-all duration-200"
         title={isCollapsed ? 'Show properties' : 'Hide properties'}
       >
         {isCollapsed ? (
-          <ChevronLeft className="w-4 h-4 text-foreground" />
+          <ChevronLeft className="w-3.5 h-3.5 text-fuchsia-400" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-foreground" />
+          <ChevronRight className="w-3.5 h-3.5 text-fuchsia-400" />
         )}
       </button>
 
       {/* Panel Content */}
       {!isCollapsed && (
-        <div className="w-72 bg-card border-l border-border flex flex-col h-full">
-          <div className="px-4 py-3 border-b border-border bg-secondary">
-            <h3 className="font-semibold text-sm flex items-center gap-2 text-foreground">
-              <Layers className="w-4 h-4 text-muted-foreground" />
+        <div className="w-72 bg-[#0d0d18] flex flex-col h-full shadow-[-10px_0_30px_rgba(255,0,255,0.1)]">
+          <div className="px-4 py-3 bg-[#0a0a14]">
+            <h3 className="font-bold text-sm flex items-center gap-2 text-fuchsia-400 drop-shadow-[0_0_5px_rgba(255,0,255,0.5)]">
+              <Layers className="w-4 h-4 text-fuchsia-500" />
               Properties
             </h3>
             {selectedHTMLElement && (
               <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-muted-foreground capitalize">
+                <p className="text-xs text-cyan-400/70 capitalize font-mono">
                   {selectedHTMLElement.tagName || 'Element'}
                 </p>
-                <Button variant="ghost" size="sm" onClick={onClearHTMLSelection} className="h-5 px-2 text-xs bg-primary/20 text-primary-foreground hover:bg-primary/30">
+                <Button variant="ghost" size="sm" onClick={onClearHTMLSelection} className="h-5 px-2 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:shadow-[0_0_8px_rgba(255,0,0,0.4)] rounded-md">
                   Clear
                 </Button>
               </div>
             )}
             {selectedObject && !selectedHTMLElement && (
-              <p className="text-xs text-muted-foreground mt-1 capitalize">
+              <p className="text-xs text-cyan-400/70 mt-1 capitalize font-mono">
                 {selectedObject.type || 'Object'}
               </p>
             )}
@@ -294,7 +294,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
             <ScrollArea className="flex-1">
               <CollapsibleSection title="Content" icon={<Type className="w-4 h-4" />}>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Text Content</Label>
+                  <Label className="text-xs text-white/50">Text Content</Label>
                   <Input
                     value={htmlTextContent}
                     onChange={(e) => {
@@ -309,7 +309,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
 
               <CollapsibleSection title="Colors" icon={<Palette className="w-4 h-4" />}>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Text Color</Label>
+                  <Label className="text-xs text-white/50">Text Color</Label>
                   <div className="flex gap-2 items-center">
                     <input
                       type="color"
@@ -318,7 +318,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                         setHtmlTextColor(e.target.value);
                         updateHTMLElement('color', e.target.value);
                       }}
-                      className="w-10 h-8 rounded border border-border cursor-pointer"
+                      className="w-10 h-8 rounded border border-white/[0.08] cursor-pointer"
                     />
                     <Input
                       value={htmlTextColor}
@@ -331,7 +331,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Background Color</Label>
+                  <Label className="text-xs text-white/50">Background Color</Label>
                   <div className="flex gap-2 items-center">
                     <input
                       type="color"
@@ -340,7 +340,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                         setHtmlBgColor(e.target.value);
                         updateHTMLElement('backgroundColor', e.target.value);
                       }}
-                      className="w-10 h-8 rounded border border-border cursor-pointer"
+                      className="w-10 h-8 rounded border border-white/[0.08] cursor-pointer"
                     />
                     <Input
                       value={htmlBgColor}
@@ -356,7 +356,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
 
               <CollapsibleSection title="Typography" icon={<Type className="w-4 h-4" />}>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Font Size (px)</Label>
+                  <Label className="text-xs text-white/50">Font Size (px)</Label>
                   <div className="flex gap-2 items-center">
                     <Slider
                       value={[parseInt(htmlFontSize) || 16]}
@@ -377,7 +377,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
               <CollapsibleSection title="Spacing" icon={<Move className="w-4 h-4" />}>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Padding (px)</Label>
+                    <Label className="text-xs text-white/50">Padding (px)</Label>
                     <Input
                       type="number"
                       value={htmlPadding}
@@ -389,7 +389,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Margin (px)</Label>
+                    <Label className="text-xs text-white/50">Margin (px)</Label>
                     <Input
                       type="number"
                       value={htmlMargin}
@@ -402,7 +402,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Border Radius (px)</Label>
+                  <Label className="text-xs text-white/50">Border Radius (px)</Label>
                   <div className="flex gap-2 items-center">
                     <Slider
                       value={[parseInt(htmlBorderRadius) || 0]}
@@ -422,7 +422,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
             </ScrollArea>
           ) : selectedObject ? (
             <ScrollArea className="flex-1">
-              <div className="px-4 py-3 border-b border-border/50 flex gap-2">
+              <div className="px-4 py-3 border-b border-white/[0.08]/50 flex gap-2">
                 <Button variant="outline" size="sm" onClick={onDuplicate} className="flex-1 h-8">
                   <Copy className="w-3 h-3 mr-1" />
                   Duplicate
@@ -436,7 +436,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
               <CollapsibleSection title="Transform" icon={<Move className="w-4 h-4" />}>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">X</Label>
+                    <Label className="text-xs text-white/50">X</Label>
                     <Input
                       type="number"
                       value={position.x}
@@ -449,7 +449,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Y</Label>
+                    <Label className="text-xs text-white/50">Y</Label>
                     <Input
                       type="number"
                       value={position.y}
@@ -462,7 +462,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Width</Label>
+                    <Label className="text-xs text-white/50">Width</Label>
                     <Input
                       type="number"
                       value={size.width}
@@ -475,7 +475,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Height</Label>
+                    <Label className="text-xs text-white/50">Height</Label>
                     <Input
                       type="number"
                       value={size.height}
@@ -489,7 +489,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Rotation</Label>
+                  <Label className="text-xs text-white/50">Rotation</Label>
                   <div className="flex gap-2 items-center">
                     <Slider
                       value={[rotation]}
@@ -513,7 +513,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
 
               <CollapsibleSection title="Appearance" icon={<Palette className="w-4 h-4" />}>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Fill Color</Label>
+                  <Label className="text-xs text-white/50">Fill Color</Label>
                   <div className="flex gap-2 items-center">
                     <input
                       type="color"
@@ -522,7 +522,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                         setFill(e.target.value);
                         updateObject('fill', e.target.value);
                       }}
-                      className="w-10 h-8 rounded border border-border cursor-pointer"
+                      className="w-10 h-8 rounded border border-white/[0.08] cursor-pointer"
                     />
                     <Input
                       value={fill}
@@ -535,7 +535,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Opacity</Label>
+                  <Label className="text-xs text-white/50">Opacity</Label>
                   <div className="flex gap-2 items-center">
                     <Slider
                       value={[opacity]}
@@ -556,7 +556,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
               {(selectedObject?.type === 'i-text' || selectedObject?.type === 'text' || selectedObject?.type === 'textbox') && (
                 <CollapsibleSection title="Typography" icon={<Type className="w-4 h-4" />}>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Font Size</Label>
+                    <Label className="text-xs text-white/50">Font Size</Label>
                     <div className="flex gap-2 items-center">
                       <Slider
                         value={[fontSize]}
@@ -573,14 +573,14 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Font Family</Label>
+                    <Label className="text-xs text-white/50">Font Family</Label>
                     <select
                       value={fontFamily}
                       onChange={(e) => {
                         setFontFamily(e.target.value);
                         updateObject('fontFamily', e.target.value);
                       }}
-                      className="w-full h-8 text-sm rounded border border-border px-2 bg-background"
+                      className="w-full h-8 text-sm rounded border border-white/[0.08] px-2 bg-background"
                     >
                       <option value="Arial">Arial</option>
                       <option value="Helvetica">Helvetica</option>
@@ -626,7 +626,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
             </ScrollArea>
           ) : (
             <div className="flex-1 flex items-center justify-center p-6">
-              <div className="text-center text-muted-foreground">
+              <div className="text-center text-white/50">
                 <Layers className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-medium">No element selected</p>
                 <p className="text-xs mt-1">Click an element on the canvas or add a component from the sidebar</p>

@@ -389,32 +389,34 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-96 bg-background shadow-2xl z-50 flex flex-col border-l">
+    <div className="fixed right-0 top-0 bottom-0 w-96 bg-[#0a0a12] shadow-[0_0_30px_rgba(0,255,0,0.2)] z-50 flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between bg-gradient-to-r from-purple-600 to-blue-600">
+      <div className="p-4 flex items-center justify-between bg-[#0d0d18]">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-white" />
-          <h2 className="font-semibold text-white">AI Design Assistant</h2>
+          <div className="p-1.5 rounded-lg bg-lime-500 shadow-[0_0_10px_rgba(0,255,0,0.5)]">
+            <Sparkles className="w-4 h-4 text-black" />
+          </div>
+          <h2 className="font-bold text-lime-400 drop-shadow-[0_0_5px_rgba(0,255,0,0.5)]">AI Design Assistant</h2>
         </div>
         <Button
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="text-white hover:bg-white/20"
+          className="text-red-400 hover:bg-red-500/20"
         >
           <X className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Quick Prompts */}
-      <div className="p-3 border-b bg-muted/50">
-        <p className="text-xs text-muted-foreground mb-2">Quick actions:</p>
+      <div className="p-3 bg-[#0d0d18]">
+        <p className="text-xs text-lime-400/60 mb-2 font-medium">Quick actions:</p>
         <div className="flex flex-wrap gap-2">
           {quickPrompts.map((prompt) => (
             <button
               key={prompt}
               onClick={() => setInput(prompt)}
-              className="text-xs px-2 py-1 bg-background border rounded-full hover:bg-primary/10 hover:border-primary/30 transition-colors"
+              className="text-xs px-2 py-1 bg-lime-500/10 rounded-full hover:bg-lime-500/20 transition-colors text-lime-300 font-medium"
             >
               {prompt}
             </button>
@@ -442,8 +444,8 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                           className="w-12 h-12 object-cover rounded border"
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-muted rounded border flex items-center justify-center">
-                          <Paperclip className="w-4 h-4 text-muted-foreground" />
+                        <div className="w-12 h-12 bg-white/[0.04] rounded border flex items-center justify-center">
+                          <Paperclip className="w-4 h-4 text-white/50" />
                         </div>
                       )}
                     </div>
@@ -456,7 +458,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                   "max-w-[80%] rounded-lg p-3",
                   message.role === 'user'
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-foreground'
+                    : 'bg-white/[0.04] text-white'
                 )}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -466,7 +468,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               {message.role === 'assistant' && message.template && (
                 <Button
                   onClick={() => handleBuildToCanvas(index)}
-                  className="mt-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                  className="mt-2 bg-fuchsia-500 hover:bg-fuchsia-400 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.4)]"
                   size="sm"
                 >
                   <Hammer className="w-4 h-4 mr-2" />
@@ -478,7 +480,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               {message.role === 'assistant' && message.code && (
                 <Button
                   onClick={() => handleApplyCode(index)}
-                  className="mt-2 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
+                  className="mt-2 bg-lime-500 hover:bg-lime-400 text-black font-bold shadow-[0_0_15px_rgba(0,255,0,0.4)]"
                   size="sm"
                 >
                   <Image className="w-4 h-4 mr-2" />
@@ -495,13 +497,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
                       onClick={() => handleSuggestionClick(suggestion)}
                       disabled={isProcessing}
                       className={cn(
-                        "text-xs px-3 py-1.5 rounded-full border transition-all",
-                        "bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30",
-                        "border-purple-200 dark:border-purple-800",
-                        "hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-900/40 dark:hover:to-blue-900/40",
-                        "hover:border-purple-400 dark:hover:border-purple-600",
-                        "hover:shadow-sm hover:scale-105",
-                        "text-purple-700 dark:text-purple-300",
+                        "text-xs px-3 py-1.5 rounded-full transition-all",
+                        "bg-cyan-500/10",
+                        "hover:bg-cyan-500/20",
+                        "hover:shadow-[0_0_10px_rgba(0,255,255,0.3)] hover:scale-105",
+                        "text-cyan-300 font-medium",
                         isProcessing && "opacity-50 cursor-not-allowed"
                       )}
                     >
@@ -516,9 +516,9 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
           
           {isProcessing && (
             <div className="flex justify-start">
-              <div className="bg-muted rounded-lg p-3 flex items-center gap-2">
+              <div className="bg-white/[0.04] rounded-lg p-3 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-white/50">
                   {analyzing ? 'Analyzing files...' : 'Creating your design...'}
                 </p>
               </div>
@@ -572,7 +572,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
             )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-white/50 mt-2">
           📎 Paste images or drop files • Powered by Lovable AI
         </p>
       </div>

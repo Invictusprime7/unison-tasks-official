@@ -287,6 +287,12 @@ function getSuggestionsForIntentType(intent: string): string[] {
 
 interface AICodeAssistantProps {
   className?: string;
+  /** Display mode: 'floating' (fixed bottom-right) or 'dock' (inline bottom panel) */
+  displayMode?: 'floating' | 'dock';
+  /** When in dock mode, whether the panel is expanded */
+  isOpen?: boolean;
+  /** Callback when dock panel is toggled */
+  onToggle?: () => void;
   fabricCanvas?: FabricCanvas | null;
   onCodeGenerated?: (code: string) => void;
   /** Apply a multi-file patch plan (preferred for full context-aware edits). Return true if applied. */
@@ -314,6 +320,9 @@ interface AICodeAssistantProps {
 
 export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   className,
+  displayMode = 'floating',
+  isOpen: externalIsOpen,
+  onToggle,
   fabricCanvas,
   onCodeGenerated,
   onFilesPatch,
@@ -334,8 +343,17 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"code" | "design" | "review" | "debug">("code");
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [internalExpanded, setInternalExpanded] = useState(false);
   const [learningEnabled, setLearningEnabled] = useState(true);
+  
+  // In dock mode, use external control; in floating mode, use internal state
+  const isExpanded = displayMode === 'dock' ? (externalIsOpen ?? true) : internalExpanded;
+  const setIsExpanded = displayMode === 'dock' 
+    ? (val: boolean | ((prev: boolean) => boolean)) => {
+        const newVal = typeof val === 'function' ? val(isExpanded) : val;
+        onToggle?.();
+      }
+    : setInternalExpanded;
   const [autoDetectErrors, setAutoDetectErrors] = useState(true);
   const [isEditingElement, setIsEditingElement] = useState(false);
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
@@ -1457,8 +1475,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Floating AI Button */}
-      {!isExpanded && (
+      {/* Floating AI Button - only in floating mode */}
+      {displayMode === 'floating' && !isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
           className={cn(
@@ -1478,25 +1496,27 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         </button>
       )}
 
-      {/* Floating AI Panel */}
+      {/* AI Panel - floating or dock mode */}
       {isExpanded && (
         <div className={cn(
-          "fixed bottom-6 right-6 z-50 w-[480px] h-[600px] rounded-2xl shadow-2xl backdrop-blur-xl bg-black/90 border border-white/10 flex flex-col overflow-hidden transition-all duration-300",
+          "bg-[#0a0a12] flex flex-col overflow-hidden transition-all duration-200",
+          displayMode === 'floating' 
+            ? "fixed bottom-6 right-6 z-50 w-[480px] h-[600px] rounded-xl shadow-[0_0_40px_rgba(0,255,0,0.2)]" 
+            : "w-full h-full",
           className
         )}>
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+          <div className="flex items-center justify-between px-4 py-3 bg-[#0d0d18]">
             <div className="flex items-center gap-2">
               <div className={cn(
-                "p-1.5 rounded-lg",
-                `bg-gradient-to-br ${currentTheme.gradient.button}`
+                "p-1.5 rounded-lg bg-lime-500 shadow-[0_0_15px_rgba(0,255,0,0.5)]"
               )}>
-                <Sparkles className="w-4 h-4 text-white" />
+                <Sparkles className="w-4 h-4 text-black" />
               </div>
-              <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+              <h3 className="text-lime-400 font-bold text-sm flex items-center gap-2 drop-shadow-[0_0_5px_rgba(0,255,0,0.5)]">
                 {currentTheme.emoji} AI Assistant
                 {isEditingElement && selectedElement && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <span className="text-xs px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-400 font-mono">
                     ✏️ Editing: {selectedElement.section || 'element'}
                   </span>
                 )}
@@ -1588,8 +1608,15 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsExpanded(false)}
+                onClick={() => {
+                  if (displayMode === 'dock' && onToggle) {
+                    onToggle();
+                  } else {
+                    setIsExpanded(false);
+                  }
+                }}
                 className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                title={displayMode === 'dock' ? "Close AI Panel" : "Minimize"}
               >
                 <ChevronDown className="w-4 h-4" />
               </Button>
@@ -1599,43 +1626,31 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           {/* Mode Tabs */}
           <div className="flex-1 flex flex-col min-h-0">
             <Tabs value={mode} onValueChange={(v: string) => setMode(v as typeof mode)} className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full grid grid-cols-4 rounded-none h-9 bg-transparent border-0 border-b border-white/10">
+              <TabsList className="w-full grid grid-cols-4 rounded-none h-9 bg-[#0a0a12]">
                 <TabsTrigger 
                   value="code" 
-                  className={cn(
-                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
-                    `data-[state=active]:border-${currentTheme.colors.primary}`
-                  )}
+                  className="text-xs gap-1.5 text-white/60 hover:text-lime-400 data-[state=active]:text-black data-[state=active]:bg-lime-400 transition-all data-[state=active]:shadow-[0_0_10px_rgba(0,255,0,0.5)] rounded-none font-bold"
                 >
                   <Code2 className="w-3.5 h-3.5" />
                   <span>Code</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="design" 
-                  className={cn(
-                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
-                    `data-[state=active]:border-${currentTheme.colors.secondary}`
-                  )}
+                  className="text-xs gap-1.5 text-white/60 hover:text-cyan-400 data-[state=active]:text-black data-[state=active]:bg-cyan-400 transition-all data-[state=active]:shadow-[0_0_10px_rgba(0,255,255,0.5)] rounded-none font-bold"
                 >
                   <Palette className="w-3.5 h-3.5" />
                   <span>Design</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="review" 
-                  className={cn(
-                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
-                    `data-[state=active]:border-${currentTheme.colors.accent}`
-                  )}
+                  className="text-xs gap-1.5 text-white/60 hover:text-yellow-400 data-[state=active]:text-black data-[state=active]:bg-yellow-400 transition-all data-[state=active]:shadow-[0_0_10px_rgba(255,255,0,0.5)] rounded-none font-bold"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Review</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="debug" 
-                  className={cn(
-                    "text-xs gap-1.5 text-white/60 hover:text-white data-[state=active]:text-white transition-all data-[state=active]:border-b-2 rounded-none",
-                    "data-[state=active]:border-red-500"
-                  )}
+                  className="text-xs gap-1.5 text-white/60 hover:text-fuchsia-400 data-[state=active]:text-black data-[state=active]:bg-fuchsia-400 transition-all data-[state=active]:shadow-[0_0_10px_rgba(255,0,255,0.5)] rounded-none font-bold"
                   title="Debug & fix code issues"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
@@ -1644,14 +1659,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               </TabsList>
 
             {messages.length === 0 && (mode === "code" || mode === "debug") && (
-              <div className="px-3 py-2 border-b border-white/10">
-                <p className="text-xs font-medium text-white/60 mb-1.5">Quick start:</p>
+              <div className="px-3 py-2">
+                <p className="text-xs font-bold text-lime-400/80 mb-1.5 drop-shadow-[0_0_3px_rgba(0,255,0,0.3)]">Quick start:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {quickPrompts[mode].slice(0, 4).map((prompt, i) => (
                     <button
                       key={i}
                       onClick={() => setInput(prompt)}
-                      className="text-xs px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white/70 hover:text-white transition-all"
+                      className="text-xs px-2.5 py-1 bg-lime-500/10 hover:bg-lime-500/20 rounded-lg text-lime-300 hover:text-lime-200 transition-all font-medium"
                     >
                       {prompt}
                     </button>
@@ -1664,19 +1679,16 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               <div className="space-y-2.5 py-3">
                 {messages.length === 0 && (
                   <div className="text-center py-12">
-                    <div className={cn(
-                      "inline-flex p-3 rounded-2xl mb-3",
-                      `bg-gradient-to-br ${currentTheme.gradient.button}`
-                    )}>
-                      <span className="text-3xl">{currentTheme.emoji}</span>
+                    <div className="inline-flex p-3 rounded-2xl mb-3 bg-lime-500 shadow-[0_0_20px_rgba(0,255,0,0.4)]">
+                      <span className="text-3xl">🕹️</span>
                     </div>
-                    <h4 className="text-sm font-semibold text-white mb-1">
+                    <h4 className="text-sm font-bold text-lime-400 mb-1 drop-shadow-[0_0_5px_rgba(0,255,0,0.5)]">
                       {mode === "code" && "Let's Build Something"}
                       {mode === "design" && "Design Excellence"}
                       {mode === "review" && "Code Quality"}
                       {mode === "debug" && "Debug & Fix Issues"}
                     </h4>
-                    <p className="text-xs text-white/50">
+                    <p className="text-xs text-lime-300/60">
                       {mode === "code" && "Generate web components & code"}
                       {mode === "design" && "Get expert design tips"}
                       {mode === "review" && "Submit code for review"}
@@ -1697,8 +1709,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                       className={cn(
                         "max-w-[90%] rounded-xl text-sm",
                         message.role === "user" 
-                          ? `bg-gradient-to-br ${currentTheme.gradient.button} text-white px-3 py-2` 
-                          : "bg-white/5 border border-white/10 overflow-hidden",
+                          ? "bg-lime-500 text-black px-3 py-2 font-medium shadow-[0_0_10px_rgba(0,255,0,0.3)]" 
+                          : "bg-[#0d0d18] border-2 border-cyan-500/30 overflow-hidden",
                       )}
                     >
                       {message.content.includes("```") ? (
@@ -1865,12 +1877,12 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                   size="icon"
                   onClick={() => setShowFileZone(!showFileZone)}
                   className={cn(
-                    "h-11 w-11 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10",
-                    showFileZone && "bg-white/15 border-white/30"
+                    "h-11 w-11 rounded-lg bg-lime-500/10 hover:bg-lime-500/20",
+                    showFileZone && "bg-lime-500/20"
                   )}
                   title="Attach files or images"
                 >
-                  <Paperclip className="w-4 h-4 text-white/70" />
+                  <Paperclip className="w-4 h-4 text-lime-400" />
                 </Button>
                 <Textarea
                     value={input}
@@ -1889,15 +1901,12 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                       mode === "review" ? "Paste code for review..." :
                       "Describe the issue or error..."
                     }
-                    className="min-h-[44px] max-h-[120px] bg-white/5 border-white/10 focus:border-white/20 rounded-lg resize-none text-sm text-white placeholder:text-white/40"
+                    className="min-h-[44px] max-h-[120px] bg-[#0a0a12] rounded-lg resize-none text-sm text-lime-100 placeholder:text-lime-400/40"
                   />
                 <Button
                   onClick={() => handleSend()}
                   disabled={(isLoading || analyzing) || (!input.trim() && droppedFiles.length === 0)}
-                  className={cn(
-                    "h-11 w-11 rounded-lg",
-                    `bg-gradient-to-br ${currentTheme.gradient.button} hover:opacity-90 transition-opacity`
-                  )}
+                  className="h-11 w-11 rounded-lg bg-lime-500 hover:bg-lime-400 text-black shadow-[0_0_15px_rgba(0,255,0,0.4)] hover:shadow-[0_0_20px_rgba(0,255,0,0.6)] transition-all"
                 >
                   {(isLoading || analyzing) ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1906,7 +1915,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                   )}
                 </Button>
               </div>
-              <p className="text-[10px] text-white/40 mt-1.5 text-center">
+              <p className="text-[10px] text-lime-400/50 mt-1.5 text-center font-medium">
                 📎 Paste images or drop files • Ctrl+Enter to send
               </p>
             </div>

@@ -109,14 +109,14 @@ export const DirectEditToolbar = ({ fabricCanvas, selectedObject, onPropertyChan
 
   if (!selectedObject) {
     return (
-      <div className="h-12 bg-background/95 backdrop-blur border-b flex items-center justify-center px-4">
-        <p className="text-sm text-muted-foreground">Select an object to edit</p>
+      <div className="h-12 bg-[#0d0d18] border-b-2 border-yellow-500/30 flex items-center justify-center px-4">
+        <p className="text-sm text-yellow-400/60 font-medium">Select an object to edit</p>
       </div>
     );
   }
 
   return (
-    <div className="h-auto min-h-12 bg-background/95 backdrop-blur border-b">
+    <div className="h-auto min-h-12 bg-[#0d0d18] border-b-2 border-yellow-500/40">
       <div className="flex items-center gap-2 px-4 py-2 flex-wrap">
         {/* Text Content Input */}
         {isTextObject && (

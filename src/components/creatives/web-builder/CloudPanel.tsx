@@ -119,9 +119,9 @@ export function CloudPanel({ businessId, businessName, onNavigateToCloud }: Clou
   if (!businessId) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-        <Cloud className="h-12 w-12 text-muted-foreground/50 mb-4" />
-        <h3 className="font-semibold text-foreground mb-2">No Business Connected</h3>
-        <p className="text-sm text-muted-foreground mb-4">
+        <Cloud className="h-12 w-12 text-white/50/50 mb-4" />
+        <h3 className="font-semibold text-white mb-2">No Business Connected</h3>
+        <p className="text-sm text-white/50 mb-4">
           Open a project from Cloud to access business settings here.
         </p>
         {onNavigateToCloud && (
@@ -153,18 +153,18 @@ export function CloudPanel({ businessId, businessName, onNavigateToCloud }: Clou
             </div>
             <div>
               <h3 className="font-semibold text-sm">Cloud Settings</h3>
-              <p className="text-xs text-muted-foreground">Quick access to business config</p>
+              <p className="text-xs text-white/50">Quick access to business config</p>
             </div>
           </div>
         </div>
 
         {/* Business Info */}
-        <div className="p-3 rounded-lg bg-card border border-border/50">
+        <div className="p-3 rounded-lg bg-white/[0.04] border border-white/[0.08]/50">
           <div className="flex items-center gap-3">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-white/50" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{businessName || settings?.name || 'Business'}</p>
-              <p className="text-xs text-muted-foreground truncate">{businessId}</p>
+              <p className="text-xs text-white/50 truncate">{businessId}</p>
             </div>
             <Badge variant="outline" className="text-green-400 border-green-500/30 text-xs">
               Active
@@ -177,7 +177,7 @@ export function CloudPanel({ businessId, businessName, onNavigateToCloud }: Clou
         {/* Notification Settings */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-muted-foreground" />
+            <Bell className="h-4 w-4 text-white/50" />
             <h4 className="text-sm font-medium">Notifications</h4>
           </div>
 
@@ -195,7 +195,7 @@ export function CloudPanel({ businessId, businessName, onNavigateToCloud }: Clou
                 placeholder="bookings@yourdomain.com"
                 className="h-8 text-sm bg-background"
               />
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[10px] text-white/50">
                 Leads and bookings will be sent here
               </p>
             </div>
@@ -256,7 +256,7 @@ export function CloudPanel({ businessId, businessName, onNavigateToCloud }: Clou
         {/* Quick Actions */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium flex items-center gap-2">
-            <Settings className="h-4 w-4 text-muted-foreground" />
+            <Settings className="h-4 w-4 text-white/50" />
             Quick Actions
           </h4>
           

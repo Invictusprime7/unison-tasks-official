@@ -119,7 +119,7 @@ export const ArrangementTools = ({ fabricCanvas, selectedObject }: ArrangementTo
   };
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-background/95 backdrop-blur border-b flex-wrap">
+    <div className="flex items-center gap-2 px-4 py-2 bg-[#0d0d18] border-b-2 border-cyan-500/30 flex-wrap">
       {/* Layer Order */}
       <div className="flex items-center gap-1">
         <Button

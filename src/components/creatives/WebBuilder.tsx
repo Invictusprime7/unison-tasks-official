@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { 
   Plus, Layout, Type, Square, Eye, Play,
-  Monitor, Tablet, Smartphone, ZoomIn, ZoomOut,
+  Monitor, Tablet, Smartphone,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap, RefreshCcw,
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
   FolderOpen, Cloud, CloudOff, Server
@@ -87,6 +87,79 @@ function getOrCreatePreviewBusinessId(systemType?: string): string {
     // Fallback when localStorage is unavailable
     return generateUUID();
   }
+}
+
+/**
+ * Escape special characters in CSS selectors (e.g., Tailwind brackets like `min-h-[85vh]`)
+ */
+function escapeCSSSelector(selector: string): string {
+  return selector.replace(/(\.)([^.\s#>+~:[\]]+)/g, (match, dot, className) => {
+    const escaped = className
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/:/g, '\\:')
+      .replace(/\//g, '\\/');
+    return dot + escaped;
+  });
+}
+
+/**
+ * Safely query a selector with escaping, trying multiple fallback strategies
+ */
+function safeFindElement(doc: Document, selector: string): Element | null {
+  // Strategy 1: Try escaped selector
+  try {
+    const escaped = escapeCSSSelector(selector);
+    const el = doc.querySelector(escaped);
+    if (el) return el;
+  } catch { /* noop */ }
+
+  // Strategy 2: Strip html > body prefix with escaping
+  try {
+    const stripped = selector
+      .replace(/^html\s*>\s*body[^\s>]*\s*>\s*/, '')
+      .replace(/^body[^\s>]*\s*>\s*/, '');
+    if (stripped !== selector) {
+      const escaped = escapeCSSSelector(stripped);
+      const el = doc.querySelector(escaped);
+      if (el) return el;
+    }
+  } catch { /* noop */ }
+
+  // Strategy 3: Remove all :nth-child() qualifiers with escaping
+  try {
+    const noNth = selector.replace(/:nth-child\(\d+\)/g, '');
+    const escaped = escapeCSSSelector(noNth);
+    const el = doc.querySelector(escaped);
+    if (el) return el;
+    
+    const strippedNoNth = noNth
+      .replace(/^html\s*>\s*body[^\s>]*\s*>\s*/, '')
+      .replace(/^body[^\s>]*\s*>\s*/, '');
+    if (strippedNoNth !== noNth) {
+      const escapedStripped = escapeCSSSelector(strippedNoNth);
+      const el2 = doc.querySelector(escapedStripped);
+      if (el2) return el2;
+    }
+  } catch { /* noop */ }
+
+  // Strategy 4: Tag-only path fallback (most permissive)
+  try {
+    const tagPath = selector
+      .split(/\s*>\s*/)
+      .map(part => part.replace(/[.#:[][^\s>]*/g, '').trim())
+      .filter(Boolean)
+      .filter(t => t !== 'html' && t !== 'body')
+      .join(' > ');
+    if (tagPath) {
+      const el = doc.querySelector(tagPath);
+      if (el) return el;
+    }
+  } catch { /* noop */ }
+
+  return null;
 }
 
 /**
@@ -353,6 +426,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [performancePanelOpen, setPerformancePanelOpen] = useState(false);
@@ -409,11 +483,16 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Auto-apply overrides when customizer state changes (e.g. after image replacement)
   // Patches the iframe DOM in-place to avoid scroll-reset & blink.
   useEffect(() => {
-    if (templateCustomizer.overrideVersion <= 0 || !templateCustomizer.isDirty) return;
+    console.log('[WebBuilder] Override useEffect triggered, version:', templateCustomizer.overrideVersion, 'isDirty:', templateCustomizer.isDirty);
+    if (templateCustomizer.overrideVersion <= 0 || !templateCustomizer.isDirty) {
+      console.log('[WebBuilder] Override useEffect skipped - conditions not met');
+      return;
+    }
 
     const iframe = simplePreviewRef.current?.getIframe();
     const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
     if (!iframeDoc || !iframeDoc.head) {
+      console.log('[WebBuilder] Iframe not ready, falling back to full HTML replace');
       // Iframe not ready — fall back to full HTML replace (initial load)
       const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
       if (!baseHtml) return;
@@ -424,6 +503,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       }
       return;
     }
+
+    console.log('[WebBuilder] Patching iframe DOM, elementOverrides count:', templateCustomizer.elementOverrides.size);
+    console.log('[WebBuilder] elementOverrides keys:', Array.from(templateCustomizer.elementOverrides.keys()));
 
     // 0. Ensure color scheme is enforced (prevent dark mode inversion)
     if (!iframeDoc.querySelector('meta[name="color-scheme"]')) {
@@ -449,20 +531,27 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
     styleEl.textContent = overrideCSS;
 
+    // Helper to safely query selectors - use the robust safeFindElement with fallbacks
+    const safeQuery = (selector: string): Element | null => safeFindElement(iframeDoc, selector);
+
     // 2. Apply text / image element overrides directly on DOM nodes
     templateCustomizer.elementOverrides.forEach((override) => {
       try {
+        console.log('[WebBuilder] Processing override for selector:', override.selector, override);
         if (override.textContent !== undefined) {
-          const el = iframeDoc.querySelector(override.selector);
+          const el = safeQuery(override.selector);
+          console.log('[WebBuilder] TextContent update - element found:', !!el);
           if (el) el.textContent = override.textContent;
         }
         if (override.imageSrc) {
-          const el = iframeDoc.querySelector(override.selector) as HTMLImageElement | null;
+          const el = safeQuery(override.selector) as HTMLImageElement | null;
+          console.log('[WebBuilder] ImageSrc update - element found:', !!el);
           if (el) el.setAttribute('src', override.imageSrc);
         }
         // Inline style overrides (for per-element tweaks beyond the CSS sheet)
         if (override.styles && Object.keys(override.styles).length) {
-          const el = iframeDoc.querySelector(override.selector) as HTMLElement | null;
+          const el = safeQuery(override.selector) as HTMLElement | null;
+          console.log('[WebBuilder] Style update - element found:', !!el, 'styles:', override.styles);
           if (el) {
             Object.entries(override.styles).forEach(([k, v]) => {
               el.style.setProperty(
@@ -481,7 +570,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     // 3. Apply image replacements
     templateCustomizer.images.forEach((img) => {
       try {
-        let el = iframeDoc.querySelector(img.selector) as HTMLImageElement | null;
+        let el = safeQuery(img.selector) as HTMLImageElement | null;
         if (!el) {
           const allImgs = iframeDoc.querySelectorAll('img');
           const idx = parseInt(img.id.replace('img-', ''), 10);
@@ -506,16 +595,19 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   // Handle element-level edits from floating toolbar
   const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
+    console.log('[WebBuilder] handleFloatingStyleUpdate called:', selector, styles);
     templateCustomizer.setElementOverride(selector, { styles });
     // Don't call applyCustomizerOverrides synchronously — setElementOverride
     // increments overrideVersion which triggers the reactive useEffect
   }, [templateCustomizer]);
 
   const handleFloatingTextUpdate = useCallback((selector: string, text: string) => {
+    console.log('[WebBuilder] handleFloatingTextUpdate called:', selector, text);
     templateCustomizer.setElementOverride(selector, { textContent: text });
   }, [templateCustomizer]);
 
   const handleFloatingImageReplace = useCallback((selector: string, src: string) => {
+    console.log('[WebBuilder] handleFloatingImageReplace called:', selector, src.substring(0, 50));
     templateCustomizer.setElementOverride(selector, { imageSrc: src });
   }, [templateCustomizer]);
 
@@ -532,49 +624,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       const parser = new DOMParser();
       const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
 
-      // Try multiple selector strategies to handle DOM structure differences
-      // between the live preview iframe and the re-parsed source HTML
-      let target: Element | null = null;
-
-      // 1. Try the exact selector
-      try { target = doc.querySelector(selector); } catch { /* invalid selector */ }
-
-      // 2. Strip html > body prefix (live DOM includes injected elements that shift nth-child)
-      if (!target) {
-        const stripped = selector
-          .replace(/^html\s*>\s*body[^\s>]*\s*>\s*/, '')
-          .replace(/^body[^\s>]*\s*>\s*/, '');
-        if (stripped !== selector) {
-          try { target = doc.querySelector(stripped); } catch { /* noop */ }
-        }
-      }
-
-      // 3. Remove all :nth-child() qualifiers (index mismatch from injected elements)
-      if (!target) {
-        const noNth = selector.replace(/:nth-child\(\d+\)/g, '');
-        try { target = doc.querySelector(noNth); } catch { /* noop */ }
-        if (!target) {
-          const strippedNoNth = noNth
-            .replace(/^html\s*>\s*body[^\s>]*\s*>\s*/, '')
-            .replace(/^body[^\s>]*\s*>\s*/, '');
-          if (strippedNoNth !== noNth) {
-            try { target = doc.querySelector(strippedNoNth); } catch { /* noop */ }
-          }
-        }
-      }
-
-      // 4. Tag-only path fallback (most permissive)
-      if (!target) {
-        const tagPath = selector
-          .split(/\s*>\s*/)
-          .map(part => part.replace(/[.#:[][^\s>]*/g, '').trim())
-          .filter(Boolean)
-          .filter(t => t !== 'html' && t !== 'body')
-          .join(' > ');
-        if (tagPath) {
-          try { target = doc.querySelector(tagPath); } catch { /* noop */ }
-        }
-      }
+      // Use safe selector finding with escaping and fallbacks
+      const target = safeFindElement(doc, selector);
 
       if (!target) {
         console.warn('[applyElementHtmlUpdate] No match for selector:', selector);
@@ -597,6 +648,100 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       return { ok: false as const, code };
     }
   }, []);
+
+  // Delete an element from HTML source by selector
+  const applyElementDelete = useCallback((code: string, selector: string) => {
+    try {
+      const trimmed = (code || '').trim();
+      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
+      if (!trimmed.startsWith('<') || trimmed.includes('export default') || trimmed.includes('import React')) {
+        return { ok: false as const, code };
+      }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+
+      // Use safe selector finding with escaping and fallbacks
+      const target = safeFindElement(doc, selector);
+
+      if (!target) {
+        console.warn('[applyElementDelete] No match for selector:', selector);
+        return { ok: false as const, code };
+      }
+
+      target.remove();
+
+      const next = isDoc
+        ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`
+        : doc.body.innerHTML;
+      return { ok: true as const, code: next };
+    } catch (err) {
+      console.error('[applyElementDelete] Error:', err);
+      return { ok: false as const, code };
+    }
+  }, []);
+
+  // Duplicate an element in HTML source by selector
+  const applyElementDuplicate = useCallback((code: string, selector: string) => {
+    try {
+      const trimmed = (code || '').trim();
+      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
+      if (!trimmed.startsWith('<') || trimmed.includes('export default') || trimmed.includes('import React')) {
+        return { ok: false as const, code };
+      }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+
+      // Use safe selector finding with escaping and fallbacks
+      const target = safeFindElement(doc, selector);
+
+      if (!target || !target.parentNode) {
+        console.warn('[applyElementDuplicate] No match for selector:', selector);
+        return { ok: false as const, code };
+      }
+
+      const clone = target.cloneNode(true) as Element;
+      // Update id if present to avoid duplicates
+      if (clone.id) {
+        clone.id = `${clone.id}-copy-${Date.now()}`;
+      }
+      target.parentNode.insertBefore(clone, target.nextSibling);
+
+      const next = isDoc
+        ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`
+        : doc.body.innerHTML;
+      return { ok: true as const, code: next };
+    } catch (err) {
+      console.error('[applyElementDuplicate] Error:', err);
+      return { ok: false as const, code };
+    }
+  }, []);
+
+  // Handle delete from floating toolbar - updates source code
+  const handleFloatingDelete = useCallback((selector: string) => {
+    const res = applyElementDelete(previewCode, selector);
+    if (!res.ok) {
+      toast.error('Delete not supported for this template type (HTML only)');
+      return;
+    }
+    setEditorCode(res.code);
+    setPreviewCode(res.code);
+    setSelectedHTMLElement(null);
+    toast.success('Element deleted');
+  }, [previewCode, applyElementDelete]);
+
+  // Handle duplicate from floating toolbar - updates source code
+  const handleFloatingDuplicate = useCallback((selector: string) => {
+    const res = applyElementDuplicate(previewCode, selector);
+    if (!res.ok) {
+      toast.error('Duplicate not supported for this template type (HTML only)');
+      return;
+    }
+    setEditorCode(res.code);
+    setPreviewCode(res.code);
+    toast.success('Element duplicated');
+  }, [previewCode, applyElementDuplicate]);
   
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
@@ -2775,19 +2920,18 @@ ${body.innerHTML}
   };
 
   // Handle delete for HTML elements in the live preview
-  // Note: Direct DOM manipulation not supported in Sandpack preview
+  // Updates both DOM and source code
   const handleDeleteHTMLElement = useCallback(() => {
     if (!selectedHTMLElement?.selector) return;
-    toast.info('Direct element deletion not available in preview mode. Edit the code instead.');
-    setSelectedHTMLElement(null);
-  }, [selectedHTMLElement]);
+    handleFloatingDelete(selectedHTMLElement.selector);
+  }, [selectedHTMLElement, handleFloatingDelete]);
 
   // Handle duplicate for HTML elements in the live preview
-  // Note: Direct DOM manipulation not supported in Sandpack preview
+  // Updates both DOM and source code
   const handleDuplicateHTMLElement = useCallback(() => {
     if (!selectedHTMLElement?.selector) return;
-    toast.info('Direct element duplication not available in preview mode. Edit the code instead.');
-  }, [selectedHTMLElement]);
+    handleFloatingDuplicate(selectedHTMLElement.selector);
+  }, [selectedHTMLElement, handleFloatingDuplicate]);
 
   const addBlock = (blockId: string) => {
     if (!fabricCanvas) return;
@@ -3119,22 +3263,136 @@ ${body.innerHTML}
   console.log('[WebBuilder] About to return JSX...');
 
   return (
-    <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#0a0a0a]">
+    <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#0a0a12]">
       {/* Interactive Element Highlighting Styles */}
       <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
+        {/* AI Panel Toggle Tab - when collapsed */}
+        {!aiPanelOpen && (
+          <div className="w-11 border-r border-white/[0.06] backdrop-blur-md bg-gradient-to-b from-white/[0.02] via-white/[0.04] to-white/[0.02] flex flex-col items-center justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAiPanelOpen(true)}
+              className="text-white/60 hover:text-white hover:bg-white/[0.08] rounded-full p-2 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 writing-mode-vertical"
+              style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+            >
+              <Sparkles className="h-4 w-4 text-primary animate-pulse mb-2" />
+              <span className="text-xs">AI Assistant</span>
+            </Button>
+          </div>
+        )}
+
+        {/* AI Panel - docked at left */}
+        {aiPanelOpen && (
+          <>
+            <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
+              <AICodeAssistant
+                displayMode="dock"
+                isOpen={aiPanelOpen}
+                onToggle={() => setAiPanelOpen(!aiPanelOpen)}
+                fabricCanvas={fabricCanvas}
+                currentCode={previewCode}
+                systemType={activeSystemType}
+                templateName={currentTemplateName}
+                templateCtaAnalysis={templateCtaAnalysis}
+                pageStructureContext={pageStructureContext}
+                backendStateContext={backendStateContext}
+                businessDataContext={businessDataContext}
+                selectedElement={
+                  aiEditRequested && selectedHTMLElement?.selector && selectedHTMLElement?.html
+                    ? {
+                        selector: selectedHTMLElement.selector,
+                        html: selectedHTMLElement.html,
+                        section: selectedHTMLElement.section,
+                      }
+                    : undefined
+                }
+                requestAIEdit={aiEditRequested}
+                onAIEditDismissed={() => setAiEditRequested(false)}
+                onElementUpdate={(selector, newHtml) => {
+                  const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
+                  if (!res.ok) {
+                    toast.error('Section redesign currently supports HTML templates only (not React/TSX).');
+                    return false;
+                  }
+                  setEditorCode(res.code);
+                  setPreviewCode(res.code);
+                  toast.success('Section redesigned');
+                  return true;
+                }}
+                onCodeGenerated={(code) => {
+                  console.log('[WebBuilder] ========== AI CODE GENERATED ==========');
+                  console.log('[WebBuilder] Code length:', code.length);
+                  console.log('[WebBuilder] Code preview:', code.substring(0, 200));
+                  
+                  const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
+                  const normalized = normalizeTemplateForCtaContract({
+                    code,
+                    systemType: effectiveSystemType,
+                  });
+                  setTemplateCtaAnalysis(normalized.analysis);
+                  console.log('[WebBuilder] Auto-wired intents:', normalized.analysis.intents);
+                  
+                  setEditorCode(normalized.code);
+                  setPreviewCode(normalized.code);
+                  setViewMode('canvas');
+                  
+                  toast.success('Code Generated!', {
+                    description: 'Your AI-generated content is now in the preview'
+                  });
+                }}
+                onFilesPatch={(files) => {
+                  if (!files || Object.keys(files).length === 0) return false;
+
+                  const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
+                  const normalizedFiles = { ...files };
+                  const entry = files["/index.html"] || files["/src/App.tsx"] || files["/App.tsx"];
+                  
+                  if (files["/index.html"]) {
+                    const normalized = normalizeTemplateForCtaContract({
+                      code: files["/index.html"],
+                      systemType: effectiveSystemType,
+                    });
+                    normalizedFiles["/index.html"] = normalized.code;
+                    setTemplateCtaAnalysis(normalized.analysis);
+                    console.log('[WebBuilder] Auto-wired intents in file patch:', normalized.analysis.intents);
+                  }
+                  
+                  virtualFS.importFiles(normalizedFiles);
+
+                  if (entry) {
+                    const finalEntry = normalizedFiles["/index.html"] || normalizedFiles["/src/App.tsx"] || normalizedFiles["/App.tsx"];
+                    setEditorCode(finalEntry);
+                    setPreviewCode(finalEntry);
+                  }
+
+                  setViewMode('canvas');
+                  toast.success('Files updated', { description: 'Approved patch plan applied to project files' });
+                  return true;
+                }}
+                onSwitchToCanvasView={() => {
+                  setViewMode('canvas');
+                }}
+              />
+            </ResizablePanel>
+            <ResizableHandle className="w-1.5 bg-gradient-to-b from-transparent via-white/[0.08] to-transparent hover:via-primary/40 transition-all duration-300" />
+          </>
+        )}
+
+        <ResizablePanel defaultSize={aiPanelOpen ? 75 : 100} minSize={30}>
+          {/* Main Content */}
+          <div className="h-full flex overflow-hidden">
         {/* Left Panel - Elements Sidebar */}
         {!leftPanelCollapsed && (
-          <div className="w-80 bg-background border-r border-border/20 flex flex-col overflow-hidden">
+          <div className="w-72 bg-[#0d0d18] border-r-2 border-cyan-500/40 flex flex-col overflow-hidden shadow-[0_0_20px_rgba(0,255,255,0.15)]">
             <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full justify-start rounded-none border-b border-border/20 bg-card px-2 h-10 shrink-0">
-                <TabsTrigger value="elements" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Elements</TabsTrigger>
-                <TabsTrigger value="functional" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Functional</TabsTrigger>
-                <TabsTrigger value="seo" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SEO</TabsTrigger>
-                <TabsTrigger value="ai-plugins" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">AI Plugins</TabsTrigger>
-                <TabsTrigger value="health" className="text-xs text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Health</TabsTrigger>
+              <TabsList className="w-full justify-start rounded-none border-b-2 border-cyan-500/30 bg-[#0a0a14] px-2 h-11 shrink-0 gap-1">
+                <TabsTrigger value="elements" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,255,0.5)] transition-all duration-200">Elements</TabsTrigger>
+                <TabsTrigger value="functional" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-magenta-500 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,0,255,0.5)] transition-all duration-200">Logic</TabsTrigger>
+                <TabsTrigger value="seo" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,255,0,0.5)] transition-all duration-200">SEO</TabsTrigger>
+                <TabsTrigger value="ai-plugins" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-lime-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all duration-200">AI</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
@@ -3240,19 +3498,6 @@ ${body.innerHTML}
                   pluginInstanceId={cloudState.installedPacks?.[0]}
                 />
               </TabsContent>
-              <TabsContent value="health" className="flex-1 m-0 min-h-0 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="p-3">
-                    <SystemHealthPanel
-                      systemType={activeSystemType}
-                      preloadedIntents={templateCtaAnalysis.intents}
-                      templateSlots={templateCtaAnalysis.slots}
-                      backendInstalled={backendInstalled}
-                      onPublishCheck={handleRunPublishChecks}
-                    />
-                  </div>
-                </ScrollArea>
-              </TabsContent>
             </Tabs>
           </div>
         )}
@@ -3263,44 +3508,38 @@ ${body.innerHTML}
             variant="ghost"
             size="icon"
             onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-12 w-6 rounded-r-md rounded-l-none bg-[#1a1a1a] border-l-0 border border-white/10 text-white/70 hover:text-white hover:bg-[#252525]"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-12 w-5 rounded-r-lg rounded-l-none bg-[#0d0d18] text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 hover:shadow-[0_0_10px_rgba(0,255,255,0.4)] transition-all duration-200"
             title={leftPanelCollapsed ? "Show left panel" : "Hide left panel"}
           >
-            {leftPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {leftPanelCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
           </Button>
         </div>
 
         {/* Center Canvas Area */}
-        <div className="flex-1 flex flex-col bg-[#0a0a0a] relative">
-          {/* Unified Topbar with Dock */}
-          <div className="h-12 border-b border-white/10 flex items-center px-4 gap-2">
-            {/* Left Section: Back Button & Device Breakpoints */}
+        <div className="flex-1 flex flex-col bg-transparent relative">
+          {/* Unified Topbar */}
+          <div className="h-12 bg-[#0a0a14] border-b-2 border-fuchsia-500/50 flex items-center px-4 gap-3 shadow-[0_4px_20px_rgba(255,0,255,0.15)]">
+            {/* Left Section: Back, Device, Mode */}
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBackNavigation}
-                className="text-white/70 hover:text-white h-8 px-2"
+                className="text-cyan-400 hover:text-cyan-300 h-8 px-2.5 rounded-lg hover:bg-cyan-500/20 hover:shadow-[0_0_10px_rgba(0,255,255,0.3)] transition-all duration-200"
                 title={`Go back to ${referrerPageName}${hasUnsavedChanges ? ' (unsaved changes will be auto-saved)' : ''} - Alt+←`}
               >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                <span className="flex items-center gap-1">
-                  Back
-                  {hasUnsavedChanges && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" title="Unsaved changes" />
-                  )}
-                </span>
+                <ArrowLeft className="h-4 w-4" />
               </Button>
               
-              <div className="h-5 w-px bg-white/10" />
+              <div className="h-5 w-px bg-fuchsia-500/50" />
               
               {/* Device Breakpoints */}
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5 bg-[#0d0d18] rounded-lg p-1">
                 <Button
                   variant={device === "desktop" ? "secondary" : "ghost"}
                   size="icon"
                   onClick={() => setDevice("desktop")}
-                  className="h-7 w-7 text-white/70 hover:text-white"
+                  className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "desktop" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
                   title="Desktop"
                 >
                   <Monitor className="h-3.5 w-3.5" />
@@ -3309,7 +3548,7 @@ ${body.innerHTML}
                   variant={device === "tablet" ? "secondary" : "ghost"}
                   size="icon"
                   onClick={() => setDevice("tablet")}
-                  className="h-7 w-7 text-white/70 hover:text-white"
+                  className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "tablet" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
                   title="Tablet"
                 >
                   <Tablet className="h-3.5 w-3.5" />
@@ -3318,12 +3557,43 @@ ${body.innerHTML}
                   variant={device === "mobile" ? "secondary" : "ghost"}
                   size="icon"
                   onClick={() => setDevice("mobile")}
-                  className="h-7 w-7 text-white/70 hover:text-white"
+                  className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "mobile" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
                   title="Mobile"
                 >
                   <Smartphone className="h-3.5 w-3.5" />
                 </Button>
               </div>
+              
+              <div className="h-5 w-px bg-fuchsia-500/50" />
+              
+              {/* Mode Toggle */}
+              <SimpleModeToggle
+                currentMode={builderMode}
+                onModeChange={(mode) => {
+                  setBuilderMode(mode);
+                  setIsInteractiveMode(mode === 'preview');
+                  if (mode === 'preview') {
+                    setSelectedHTMLElement(null);
+                    setSelectedObject(null);
+                    setAiEditRequested(false);
+                  }
+                }}
+                hasSelection={!!selectedHTMLElement || !!selectedObject}
+                onDelete={() => {
+                  if (selectedHTMLElement?.selector) {
+                    handleDeleteHTMLElement();
+                  } else if (selectedObject) {
+                    handleDelete();
+                  }
+                }}
+                onDuplicate={() => {
+                  if (selectedHTMLElement?.selector) {
+                    handleDuplicateHTMLElement();
+                  } else if (selectedObject) {
+                    handleDuplicate();
+                  }
+                }}
+              />
             </div>
 
             {/* Center Section: Floating Dock */}
@@ -3342,48 +3612,70 @@ ${body.innerHTML}
               />
             </div>
 
-            {/* Right Section: View Mode & AI Activity */}
+            {/* Right Section: View Mode, Save & AI Activity */}
             <div className="flex items-center gap-2">
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-0.5 bg-white/5 rounded-lg p-0.5">
+              {/* View Mode Toggle - Icons only */}
+              <div className="flex items-center gap-0.5 bg-[#0d0d18] rounded-lg p-1">
                 <Button
                   variant={viewMode === "canvas" ? "secondary" : "ghost"}
-                  size="sm"
+                  size="icon"
                   onClick={() => setViewMode("canvas")}
-                  className="text-white/70 hover:text-white h-7 px-2"
+                  className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "canvas" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
+                  title="Canvas View"
                 >
-                  <Square className="h-3.5 w-3.5 mr-1" />
-                  Canvas
+                  <Square className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant={viewMode === "code" ? "secondary" : "ghost"}
-                  size="sm"
+                  size="icon"
                   onClick={() => setViewMode("code")}
-                  className="text-white/70 hover:text-white h-7 px-2"
+                  className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "code" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
+                  title="Code View"
                 >
-                  <FileCode className="h-3.5 w-3.5 mr-1" />
-                  Code
+                  <FileCode className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant={viewMode === "split" ? "secondary" : "ghost"}
-                  size="sm"
+                  size="icon"
                   onClick={() => setViewMode("split")}
-                  className="text-white/70 hover:text-white h-7 px-2"
+                  className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "split" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
+                  title="Split View"
                 >
-                  <Layout className="h-3.5 w-3.5 mr-1" />
-                  Split
+                  <Layout className="h-3.5 w-3.5" />
                 </Button>
               </div>
               
-              {/* AI Activity Indicator & Panel */}
-              <div className="h-5 w-px bg-white/10" />
+              <div className="h-5 w-px bg-cyan-500/50" />
+              
+              {/* Save with status */}
+              <div className="flex items-center gap-1.5">
+                {autoSaveStatus === 'saving' && (
+                  <div className="animate-spin h-3 w-3 border-2 border-yellow-500/30 border-t-yellow-400 rounded-full" />
+                )}
+                {autoSaveStatus === 'saved' && (
+                  <Cloud className="h-3.5 w-3.5 text-lime-400 drop-shadow-[0_0_5px_rgba(0,255,0,0.6)]" />
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSaveProjectDialogOpen(true)}
+                  className="h-7 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 px-2.5 rounded-lg hover:shadow-[0_0_10px_rgba(255,255,0,0.3)] transition-all duration-200"
+                  title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
+                >
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  <span className="text-xs font-bold">{currentTemplateName ? 'Update' : 'Save'}</span>
+                </Button>
+              </div>
+              
+              <div className="h-5 w-px bg-cyan-500/50" />
+              
+              {/* AI Activity Indicator */}
               <AIActivityPanel
                 events={aiActivity.events}
                 activityState={aiActivity.activityState}
                 attentionCount={aiActivity.attentionCount}
                 isLoading={aiActivity.isLoading}
                 onViewDetails={() => {
-                  // Navigate to AI plugins tab in sidebar
                   setLeftPanelCollapsed(false);
                   toast.info('View AI plugin details in the sidebar', {
                     description: 'Go to AI Plugins tab for full analysis',
@@ -3393,126 +3685,10 @@ ${body.innerHTML}
             </div>
           </div>
 
-          {/* Secondary Toolbar - Mode & Actions */}
-          <div className="h-10 border-b border-white/10 flex items-center justify-between px-4 bg-white/[0.02]">
-            {/* Left: Mode Toggle */}
-            <SimpleModeToggle
-              currentMode={builderMode}
-              onModeChange={(mode) => {
-              setBuilderMode(mode);
-                setIsInteractiveMode(mode === 'preview');
-                // Clear edit selection when entering preview mode
-                if (mode === 'preview') {
-                  setSelectedHTMLElement(null);
-                  setSelectedObject(null);
-                  setAiEditRequested(false);
-                }
-              }}
-              hasSelection={!!selectedHTMLElement || !!selectedObject}
-              onDelete={() => {
-                if (selectedHTMLElement?.selector) {
-                  handleDeleteHTMLElement();
-                } else if (selectedObject) {
-                  handleDelete();
-                }
-              }}
-              onDuplicate={() => {
-                if (selectedHTMLElement?.selector) {
-                  handleDuplicateHTMLElement();
-                } else if (selectedObject) {
-                  handleDuplicate();
-                }
-              }}
-            />
-
-            {/* Center: Template Info */}
-            {currentTemplateName && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/20 rounded text-xs text-primary">
-                  <Cloud className="h-3 w-3" />
-                  <span className="max-w-[150px] truncate">{currentTemplateName}</span>
-                </div>
-                {currentDesignPreset && (
-                  <Badge variant="secondary" className="h-5 px-2 text-[10px]">
-                    {currentDesignPreset}
-                  </Badge>
-                )}
-              </div>
-            )}
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-2">
-              {/* Auto-save status indicator - always visible */}
-              <div className="flex items-center gap-1 text-xs text-white/50">
-                {autoSaveStatus === 'saving' ? (
-                  <>
-                    <div className="animate-spin h-3 w-3 border border-white/30 border-t-white/70 rounded-full" />
-                    <span>Saving...</span>
-                  </>
-                ) : autoSaveStatus === 'saved' ? (
-                  <>
-                    <Cloud className="h-3 w-3 text-primary" />
-                    <span className="text-primary">Saved</span>
-                  </>
-                ) : lastSavedAt ? (
-                  <>
-                    <Cloud className="h-3 w-3" />
-                    <span>Saved {format(lastSavedAt, 'h:mm a')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Cloud className="h-3 w-3" />
-                    <span>Auto-save on</span>
-                  </>
-                )}
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSaveProjectDialogOpen(true)}
-                className="h-7 text-white/70 hover:text-white hover:bg-white/10 px-2"
-                title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
-              >
-                <Save className="h-3.5 w-3.5 mr-1" />
-                <span className="text-xs">{currentTemplateName ? 'Update' : 'Save'}</span>
-              </Button>
-              
-              {/* Docker/React Mode Toggle */}
-              <Button
-                variant={useReactPreview ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setUseReactPreview(!useReactPreview)}
-                className={cn(
-                  "h-7 px-2 gap-1",
-                  useReactPreview 
-                    ? "bg-green-600 hover:bg-green-700 text-white" 
-                    : "text-white/70 hover:text-white hover:bg-white/10"
-                )}
-                title={useReactPreview ? "React Mode (Docker HMR) - Click to disable" : "Enable React Mode (requires Docker)"}
-              >
-                <Server className="h-3.5 w-3.5" />
-                <span className="text-xs">{useReactPreview ? 'React' : 'HTML'}</span>
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClearCanvas}
-                className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/10"
-                title="Clear Canvas"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-              
-              <span className="text-xs text-white/40">{getCanvasWidth()}×{getCanvasHeight()}</span>
-            </div>
-          </div>
-
           {/* Main Content Area - Canvas/Code/Split View */}
           <div 
             ref={canvasContainerRef}
-            className="flex-1 overflow-hidden p-4 flex items-start justify-center bg-[#0a0a0a] relative"
+            className="flex-1 overflow-hidden p-4 flex items-start justify-center bg-gradient-to-br from-[#0a0a0f] via-[#0c0c12] to-[#0a0a0f] relative"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -3521,67 +3697,67 @@ ${body.innerHTML}
           >
             {/* Scroll Navigation Controls - Only for Canvas/Split Mode */}
             {(viewMode === 'canvas' || viewMode === 'split') && (
-              <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2">
+              <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5">
                 <Button
                   variant="secondary"
                   size="icon"
                   onClick={scrollToTop}
-                  className="h-10 w-10 bg-[#1a1a1a] border border-white/10 text-white/70 hover:text-white hover:bg-[#252525] shadow-lg"
+                  className="h-9 w-9 bg-[#0d0d18] text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(0,255,255,0.5)] rounded-lg transition-all duration-200"
                   title="Scroll to top"
                 >
-                  <ChevronsUp className="h-5 w-5" />
+                  <ChevronsUp className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="secondary"
                   size="icon"
                   onClick={scrollUp}
-                  className="h-10 w-10 bg-[#1a1a1a] border border-white/10 text-white/70 hover:text-white hover:bg-[#252525] shadow-lg"
+                  className="h-9 w-9 bg-[#0d0d18] text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(0,255,255,0.5)] rounded-lg transition-all duration-200"
                   title="Scroll up"
                 >
-                  <ArrowUp className="h-4 w-4" />
+                  <ArrowUp className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="secondary"
                   size="icon"
                   onClick={scrollDown}
-                  className="h-10 w-10 bg-[#1a1a1a] border border-white/10 text-white/70 hover:text-white hover:bg-[#252525] shadow-lg"
+                  className="h-9 w-9 bg-[#0d0d18] text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(0,255,255,0.5)] rounded-lg transition-all duration-200"
                   title="Scroll down"
                 >
-                  <ArrowDown className="h-4 w-4" />
+                  <ArrowDown className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="secondary"
                   size="icon"
                   onClick={scrollToBottom}
-                  className="h-10 w-10 bg-[#1a1a1a] border border-white/10 text-white/70 hover:text-white hover:bg-[#252525] shadow-lg"
+                  className="h-9 w-9 bg-[#0d0d18] text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(0,255,255,0.5)] rounded-lg transition-all duration-200"
                   title="Scroll to bottom"
                 >
-                  <ChevronsDown className="h-5 w-5" />
+                  <ChevronsDown className="h-4 w-4" />
                 </Button>
               </div>
             )}
             
             {/* Canvas Mode - AI Live Preview Only */}
             {viewMode === 'canvas' && (
-              <div className="w-full h-full flex flex-col bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
-                <div className="h-10 bg-muted/50 border-b flex items-center justify-between px-4">
+              <div className="w-full h-full flex flex-col bg-white rounded-xl overflow-hidden border-2 border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.15)] relative">
+                <div className="h-10 backdrop-blur-md bg-gradient-to-r from-slate-100/95 to-slate-50/95 border-b border-slate-200/50 flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
                     <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      builderMode === 'select' ? "bg-primary" : "bg-accent-foreground"
+                      "w-2 h-2 rounded-full shadow-sm",
+                      builderMode === 'select' ? "bg-emerald-500" : "bg-slate-400"
                     )} />
-                    <span className="text-xs font-medium text-muted-foreground">
+                    <span className="text-xs font-medium text-slate-500">
                       {builderMode === 'select' ? 'Select Mode - Click elements to edit' : 'Preview Mode - Test interactions'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     {/* Undo/Redo/Refresh buttons */}
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handleUndo}
                       disabled={!codeHistory.canUndo}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
                       title="Undo (Ctrl+Z)"
                     >
                       <Undo2 className="h-4 w-4" />
@@ -3591,7 +3767,7 @@ ${body.innerHTML}
                       size="icon"
                       onClick={handleRedo}
                       disabled={!codeHistory.canRedo}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
                       title="Redo (Ctrl+Y)"
                     >
                       <Redo2 className="h-4 w-4" />
@@ -3601,7 +3777,7 @@ ${body.innerHTML}
                       size="icon"
                       onClick={handleRefreshPreview}
                       disabled={isRefreshing}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
                       title="Refresh Preview (F5)"
                     >
                       <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -3662,15 +3838,17 @@ ${body.innerHTML}
                   )}
                   {/* Inline loading overlay for AI page generation */}
                   {isGeneratingPage && (
-                    <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-3 p-6 rounded-xl bg-card/90 border border-border shadow-2xl">
-                        <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-                        <p className="text-sm font-medium text-foreground">Generating {currentNavPage}…</p>
-                        <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-primary rounded-full animate-[loading_2s_ease-in-out_infinite]" 
+                    <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
+                      <div className="flex flex-col items-center gap-4 p-8 rounded-2xl backdrop-blur-xl bg-white/[0.08] border border-white/[0.12] shadow-2xl shadow-black/30">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+                          <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                        </div>
+                        <p className="text-sm font-medium text-white">Generating {currentNavPage}…</p>
+                        <div className="w-52 h-1.5 bg-white/[0.1] rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full animate-[loading_2s_ease-in-out_infinite]" 
                                style={{ width: '60%', animation: 'loading 2s ease-in-out infinite' }} />
                         </div>
-                        <p className="text-xs text-muted-foreground">AI is building a matching page with full design context</p>
+                        <p className="text-xs text-white/60">AI is building a matching page with full design context</p>
                       </div>
                     </div>
                   )}
@@ -3771,15 +3949,15 @@ ${body.innerHTML}
                           // Show empty state with options when no files exist
                           if (!virtualFS.hasFiles) {
                             return (
-                              <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-[#1a1a1a] p-8">
+                              <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0f] via-[#0d0d14] to-[#0a0a0f] p-8">
                                 <div className="text-center max-w-md">
                                   <h3 className="text-xl font-semibold text-white mb-2">No Project Loaded</h3>
-                                  <p className="text-sm mb-6">Load a template or generate code with AI to get started</p>
+                                  <p className="text-sm text-white/50 mb-6">Load a template or generate code with AI to get started</p>
                                   <div className="flex gap-3 justify-center flex-wrap">
                                     <Button
                                       variant="outline"
                                       onClick={() => virtualFS.loadDefaultTemplate()}
-                                      className="gap-2"
+                                      className="gap-2 bg-white/[0.04] border-white/[0.1] text-white/70 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
                                     >
                                       <Layout className="w-4 h-4" />
                                       Load React Template
@@ -3803,7 +3981,7 @@ export default function App() {
 }`,
                                         });
                                       }}
-                                      className="gap-2"
+                                      className="gap-2 bg-primary/90 hover:bg-primary shadow-lg shadow-primary/20"
                                     >
                                       <Plus className="w-4 h-4" />
                                       Create New File
@@ -3814,9 +3992,9 @@ export default function App() {
                             );
                           }
                           return (
-                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-[#1a1a1a]">
-                              <p className="text-lg font-medium">No file selected</p>
-                              <p className="text-sm mt-1">Select a file from the explorer to start editing</p>
+                            <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0f] via-[#0d0d14] to-[#0a0a0f]">
+                              <p className="text-lg font-medium text-white/70">No file selected</p>
+                              <p className="text-sm mt-1 text-white/40">Select a file from the explorer to start editing</p>
                             </div>
                           );
                         })()}
@@ -3831,11 +4009,11 @@ export default function App() {
             {viewMode === 'split' && (
               <div className="w-full h-full flex gap-4">
                 {/* Live Preview - Main viewing area */}
-                <div className="flex-1 bg-white rounded-lg overflow-hidden border border-white/10 shadow-2xl relative flex flex-col">
-                  <div className="h-10 bg-muted border-b flex items-center justify-between px-4 flex-shrink-0">
+                <div className="flex-1 bg-white rounded-xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-black/30 relative flex flex-col">
+                  <div className="h-10 backdrop-blur-md bg-gradient-to-r from-slate-100/95 to-slate-50/95 border-b border-slate-200/50 flex items-center justify-between px-4 flex-shrink-0">
                     <div className="flex items-center">
-                      <Eye className="w-4 h-4 text-muted-foreground mr-2" />
-                      <span className="text-sm text-muted-foreground">Live Preview - AI Generated Template</span>
+                      <Eye className="w-4 h-4 text-slate-400 mr-2" />
+                      <span className="text-sm text-slate-500">Live Preview - AI Generated Template</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
@@ -3843,7 +4021,7 @@ export default function App() {
                         size="icon"
                         onClick={handleUndo}
                         disabled={!codeHistory.canUndo}
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
                         title="Undo (Ctrl+Z)"
                       >
                         <Undo2 className="h-4 w-4" />
@@ -3853,7 +4031,7 @@ export default function App() {
                         size="icon"
                         onClick={handleRedo}
                         disabled={!codeHistory.canRedo}
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
                         title="Redo (Ctrl+Y)"
                       >
                         <Redo2 className="h-4 w-4" />
@@ -3863,7 +4041,7 @@ export default function App() {
                         size="icon"
                         onClick={handleRefreshPreview}
                         disabled={isRefreshing}
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
                         title="Refresh Preview (F5)"
                       >
                         <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -3995,49 +4173,6 @@ export default function App() {
               </div>
             )}
           </div>
-
-          {/* Bottom Controls - Zoom and Pan Reset */}
-          <div className="h-12 border-t border-white/10 flex items-center justify-center gap-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleZoomOut}
-                className="text-white/70 hover:text-white h-8 w-8 p-0"
-                title="Zoom out (or use scroll wheel)"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-white/50 min-w-[60px] text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleZoomIn}
-                className="text-white/70 hover:text-white h-8 w-8 p-0"
-                title="Zoom in (or use scroll wheel)"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setZoom(0.5);
-                  setPanOffset({ x: 0, y: 0 });
-                  if (fabricCanvas) {
-                    fabricCanvas.setZoom(0.5);
-                    fabricCanvas.renderAll();
-                  }
-                }}
-                className="text-white/70 hover:text-white text-xs"
-                title="Reset zoom and pan"
-              >
-                Reset View
-              </Button>
-            </div>
-          </div>
         </div>
 
         {/* Right Panel Toggle */}
@@ -4046,10 +4181,10 @@ export default function App() {
             variant="ghost"
             size="icon"
             onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-12 w-6 rounded-l-md rounded-r-none bg-[#1a1a1a] border-r-0 border border-white/10 text-white/70 hover:text-white hover:bg-[#252525]"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-12 w-5 rounded-l-lg rounded-r-none backdrop-blur-md bg-white/[0.04] border-r-0 border border-white/[0.08] text-white/40 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
             title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
           >
-            {rightPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {rightPanelCollapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </Button>
         </div>
 
@@ -4097,23 +4232,16 @@ export default function App() {
               onUpdateStyles={handleFloatingStyleUpdate}
               onUpdateText={handleFloatingTextUpdate}
               onReplaceImage={handleFloatingImageReplace}
-              onDelete={(selector) => {
-                if (simplePreviewRef.current) {
-                  simplePreviewRef.current.deleteElement(selector);
-                  setSelectedHTMLElement(null);
-                }
-              }}
-              onDuplicate={(selector) => {
-                if (simplePreviewRef.current) {
-                  simplePreviewRef.current.duplicateElement(selector);
-                }
-              }}
+              onDelete={handleFloatingDelete}
+              onDuplicate={handleFloatingDuplicate}
               onClear={() => { setSelectedHTMLElement(null); setAiEditRequested(false); }}
               onRequestAI={() => setAiEditRequested(true)}
             />
           </div>
         )}
-      </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Code Preview Dialog */}
       <CodePreviewDialog
@@ -4134,14 +4262,14 @@ export default function App() {
 
       {/* Performance Panel as Sidebar */}
       {performancePanelOpen && (
-        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[#1a1a1a] border-l border-white/10 shadow-2xl z-50 flex flex-col">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
+        <div className="fixed right-0 top-0 bottom-0 w-80 backdrop-blur-2xl bg-gradient-to-b from-[#0d0d14]/98 to-[#0a0a0f]/98 border-l border-white/[0.08] shadow-2xl shadow-black/50 z-50 flex flex-col">
+          <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="font-semibold text-white">Performance</h2>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setPerformancePanelOpen(false)}
-              className="text-white/70 hover:text-white"
+              className="text-white/50 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all duration-200"
             >
               ✕
             </Button>
@@ -4179,15 +4307,15 @@ export default function App() {
 
       {/* Secure HTML Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-6xl h-[90vh] bg-[#1a1a1a] border-white/10">
+        <DialogContent className="max-w-6xl h-[90vh] backdrop-blur-2xl bg-gradient-to-b from-[#0d0d14]/98 to-[#0a0a0f]/98 border-white/[0.08]">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
+                <Eye className="h-5 w-5 text-white/70" />
                 Live HTML Preview
               </span>
               {templateState.isRendering && (
-                <span className="text-xs text-white/50">Rendering...</span>
+                <span className="text-xs text-white/40">Rendering...</span>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -4195,7 +4323,7 @@ export default function App() {
             <SecureIframePreview
               html={sanitizeHTML(templateState.html)}
               css={templateState.css}
-              className="w-full h-full border border-white/10 rounded bg-white"
+              className="w-full h-full border border-white/[0.08] rounded-xl bg-white"
               onConsole={(type, args) => {
                 console.log(`[Preview ${type}]:`, ...args);
               }}
@@ -4210,10 +4338,10 @@ export default function App() {
 
       {/* Keyboard Shortcuts Dialog */}
       <Dialog open={shortcutsDialogOpen} onOpenChange={setShortcutsDialogOpen}>
-        <DialogContent className="bg-[#1a1a1a] border-white/10">
+        <DialogContent className="backdrop-blur-2xl bg-gradient-to-b from-[#0d0d14]/98 to-[#0a0a0f]/98 border-white/[0.08]">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
-              <Keyboard className="h-5 w-5" />
+              <Keyboard className="h-5 w-5 text-white/70" />
               Keyboard Shortcuts
             </DialogTitle>
           </DialogHeader>
@@ -4227,8 +4355,8 @@ export default function App() {
               
               return (
                 <div key={key} className="flex justify-between items-center text-sm">
-                  <span className="text-white/70">{shortcut.description}</span>
-                  <kbd className="px-2 py-1 bg-white/10 rounded text-white/90 text-xs font-mono">
+                  <span className="text-white/60">{shortcut.description}</span>
+                  <kbd className="px-2 py-1 bg-white/[0.06] border border-white/[0.08] rounded-md text-white/80 text-xs font-mono">
                     {parts.join("+")}
                   </kbd>
                 </div>
@@ -4237,99 +4365,6 @@ export default function App() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* AI Code Assistant */}
-      <AICodeAssistant
-        fabricCanvas={fabricCanvas}
-        currentCode={previewCode}
-        systemType={activeSystemType}
-        templateName={currentTemplateName}
-        templateCtaAnalysis={templateCtaAnalysis}
-        pageStructureContext={pageStructureContext}
-        backendStateContext={backendStateContext}
-        businessDataContext={businessDataContext}
-        selectedElement={
-          aiEditRequested && selectedHTMLElement?.selector && selectedHTMLElement?.html
-            ? {
-                selector: selectedHTMLElement.selector,
-                html: selectedHTMLElement.html,
-                section: selectedHTMLElement.section,
-              }
-            : undefined
-        }
-        requestAIEdit={aiEditRequested}
-        onAIEditDismissed={() => setAiEditRequested(false)}
-        onElementUpdate={(selector, newHtml) => {
-          const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
-          if (!res.ok) {
-            toast.error('Section redesign currently supports HTML templates only (not React/TSX).');
-            return false;
-          }
-          setEditorCode(res.code);
-          setPreviewCode(res.code);
-          toast.success('Section redesigned');
-          return true;
-        }}
-        onCodeGenerated={(code) => {
-          console.log('[WebBuilder] ========== AI CODE GENERATED ==========');
-          console.log('[WebBuilder] Code length:', code.length);
-          console.log('[WebBuilder] Code preview:', code.substring(0, 200));
-          
-          // Auto-wire all button intents using CTA contract normalization
-          const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
-          const normalized = normalizeTemplateForCtaContract({
-            code,
-            systemType: effectiveSystemType,
-          });
-          setTemplateCtaAnalysis(normalized.analysis);
-          console.log('[WebBuilder] Auto-wired intents:', normalized.analysis.intents);
-          
-          // Set the normalized code - SimplePreview will render it directly
-          setEditorCode(normalized.code);
-          setPreviewCode(normalized.code);
-          
-          // Switch to canvas view to show the preview
-          setViewMode('canvas');
-          
-          toast.success('Code Generated!', {
-            description: 'Your AI-generated content is now in the preview'
-          });
-        }}
-        onFilesPatch={(files) => {
-          if (!files || Object.keys(files).length === 0) return false;
-
-          // Auto-wire intents in HTML files before importing
-          const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
-          const normalizedFiles = { ...files };
-          const entry = files["/index.html"] || files["/src/App.tsx"] || files["/App.tsx"];
-          
-          // Normalize HTML files for CTA auto-wiring
-          if (files["/index.html"]) {
-            const normalized = normalizeTemplateForCtaContract({
-              code: files["/index.html"],
-              systemType: effectiveSystemType,
-            });
-            normalizedFiles["/index.html"] = normalized.code;
-            setTemplateCtaAnalysis(normalized.analysis);
-            console.log('[WebBuilder] Auto-wired intents in file patch:', normalized.analysis.intents);
-          }
-          
-          virtualFS.importFiles(normalizedFiles);
-
-          if (entry) {
-            const finalEntry = normalizedFiles["/index.html"] || normalizedFiles["/src/App.tsx"] || normalizedFiles["/App.tsx"];
-            setEditorCode(finalEntry);
-            setPreviewCode(finalEntry);
-          }
-
-          setViewMode('canvas');
-          toast.success('Files updated', { description: 'Approved patch plan applied to project files' });
-          return true;
-        }}
-        onSwitchToCanvasView={() => {
-          setViewMode('canvas');
-        }}
-      />
 
       {/* Interactive Mode Help Dialog */}
       <InteractiveModeHelp
@@ -4365,12 +4400,12 @@ export default function App() {
 
       {/* Save to Projects Dialog */}
       <Dialog open={saveProjectDialogOpen} onOpenChange={setSaveProjectDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[400px] backdrop-blur-2xl bg-gradient-to-b from-[#0d0d14]/98 to-[#0a0a0f]/98 border-white/[0.08]">
           <DialogHeader>
-            <DialogTitle className="text-base">
+            <DialogTitle className="text-base text-white">
               {templateFiles.currentTemplateId ? 'Update Template' : 'Save to Projects'}
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-xs text-white/50">
               {templateFiles.currentTemplateId 
                 ? `Updating "${currentTemplateName}" - or save as a new template`
                 : 'Save your current template design to access it later'
@@ -4380,36 +4415,36 @@ export default function App() {
           
           <div className="grid gap-3 py-3">
             {templateFiles.currentTemplateId && (
-              <div className="flex items-center gap-2 px-2 py-1.5 bg-primary/10 rounded-md text-xs text-primary">
+              <div className="flex items-center gap-2 px-2 py-1.5 bg-primary/20 border border-primary/30 rounded-lg text-xs text-primary">
                 <Cloud className="h-3 w-3" />
                 <span>Editing: {currentTemplateName}</span>
               </div>
             )}
             <div className="grid gap-1.5">
-              <Label htmlFor="project-name" className="text-xs">Name *</Label>
+              <Label htmlFor="project-name" className="text-xs text-white/70">Name *</Label>
               <Input
                 id="project-name"
                 value={saveProjectName}
                 onChange={(e) => setSaveProjectName(e.target.value)}
                 placeholder="My Template Design"
-                className="h-8 text-sm"
+                className="h-8 text-sm bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/30 focus:border-white/20"
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="project-description" className="text-xs">Description</Label>
+              <Label htmlFor="project-description" className="text-xs text-white/70">Description</Label>
               <Textarea
                 id="project-description"
                 value={saveProjectDescription}
                 onChange={(e) => setSaveProjectDescription(e.target.value)}
                 placeholder="Optional description..."
                 rows={2}
-                className="text-sm resize-none"
+                className="text-sm resize-none bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/30 focus:border-white/20"
               />
             </div>
           </div>
           
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSaveProjectDialogOpen(false)}>
+            <Button variant="outline" size="sm" onClick={() => setSaveProjectDialogOpen(false)} className="bg-transparent border-white/[0.1] text-white/70 hover:text-white hover:bg-white/[0.06]">
               Cancel
             </Button>
             {templateFiles.currentTemplateId && (

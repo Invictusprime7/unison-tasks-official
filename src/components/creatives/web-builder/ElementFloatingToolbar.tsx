@@ -115,16 +115,16 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
 
   return (
     <div className={cn(
-      'bg-popover border border-border rounded-xl shadow-xl p-1.5 flex items-center gap-1 flex-wrap',
+      'bg-[#0d0d18] rounded-xl shadow-[0_0_25px_rgba(0,255,255,0.3)] p-2 flex items-center gap-1.5 flex-wrap',
       'animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2',
       className
     )}>
       {/* Element type badge */}
-      <div className="px-2 py-1 bg-primary/10 text-primary rounded-md text-[10px] font-bold uppercase tracking-wider">
+      <div className="px-2.5 py-1 bg-cyan-500 text-black rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(0,255,255,0.4)]">
         {element.tagName || 'element'}
       </div>
 
-      <Separator orientation="vertical" className="h-6 mx-0.5" />
+      <Separator orientation="vertical" className="h-6 mx-0.5 bg-white/[0.1]" />
 
       {/* Text editing */}
       {isTextElement && (

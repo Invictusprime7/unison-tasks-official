@@ -110,7 +110,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
       <label
         className={cn(
           "flex items-center gap-1 px-2 py-1 text-xs rounded cursor-pointer transition-colors",
-          "text-muted-foreground hover:text-foreground hover:bg-muted",
+          "text-white/50 hover:text-white hover:bg-white/[0.04]",
           isDragging && "bg-primary/10 text-primary"
         )}
         onDrop={handleDrop}
@@ -136,7 +136,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
       <label
         className={cn(
           "flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-all",
-          "text-muted-foreground hover:border-primary/50 hover:bg-primary/5",
+          "text-white/50 hover:border-primary/50 hover:bg-primary/5",
           isDragging && "border-primary bg-primary/10"
         )}
         onDrop={handleDrop}
@@ -163,7 +163,7 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
           {files.map((file) => (
             <div
               key={file.id}
-              className="relative group flex items-center gap-2 px-2 py-1 bg-muted rounded text-xs"
+              className="relative group flex items-center gap-2 px-2 py-1 bg-white/[0.04] rounded text-xs"
             >
               {file.type === 'image' && file.preview ? (
                 <img
@@ -174,14 +174,14 @@ export const FileDropZone: React.FC<FileDropZoneProps> = ({
               ) : file.type === 'code' ? (
                 <File className="w-4 h-4 text-blue-500" />
               ) : (
-                <File className="w-4 h-4 text-muted-foreground" />
+                <File className="w-4 h-4 text-white/50" />
               )}
               <span className="max-w-[100px] truncate">{file.name}</span>
               <button
                 onClick={() => onRemoveFile(file.id)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                <X className="w-3 h-3 text-white/50 hover:text-destructive" />
               </button>
             </div>
           ))}

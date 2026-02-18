@@ -5,6 +5,39 @@ import { bundleCode, extractImageSources, resolveAssetPath } from '@/utils/codeB
 import { getSelectedElementData, highlightElement, removeHighlight, updateElementInIframe } from '@/utils/htmlElementSelector';
 import { getDragDropScript, getDragDropStyles } from '@/services/canvasDragDropService';
 
+/**
+ * Escape special characters in CSS selectors (e.g., Tailwind brackets like `min-h-[85vh]`)
+ */
+function escapeCSSSelector(selector: string): string {
+  return selector.replace(/(\.)([^.\s#>+~:[\]]+)/g, (match, dot, className) => {
+    const escaped = className
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/:/g, '\\:')
+      .replace(/\//g, '\\/');
+    return dot + escaped;
+  });
+}
+
+/**
+ * Safely query a selector with escaping
+ */
+function safeQuerySelector(doc: Document, selector: string): Element | null {
+  try {
+    const escaped = escapeCSSSelector(selector);
+    const el = doc.querySelector(escaped);
+    if (el) return el;
+    if (escaped !== selector) {
+      return doc.querySelector(selector);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface LiveHTMLPreviewProps {
   code: string;
   className?: string;
@@ -49,7 +82,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
     deleteElement: (selector: string) => {
       if (!iframeRef.current?.contentDocument) return false;
       try {
-        const element = iframeRef.current.contentDocument.querySelector(selector);
+        const element = safeQuerySelector(iframeRef.current.contentDocument, selector);
         if (element) {
           element.remove();
           selectedElementRef.current = null;
@@ -64,7 +97,7 @@ export const LiveHTMLPreview = forwardRef<LiveHTMLPreviewHandle, LiveHTMLPreview
     duplicateElement: (selector: string) => {
       if (!iframeRef.current?.contentDocument) return false;
       try {
-        const element = iframeRef.current.contentDocument.querySelector(selector);
+        const element = safeQuerySelector(iframeRef.current.contentDocument, selector);
         if (element && element.parentNode) {
           const clone = element.cloneNode(true) as HTMLElement;
           // Update ID if exists to avoid duplicates

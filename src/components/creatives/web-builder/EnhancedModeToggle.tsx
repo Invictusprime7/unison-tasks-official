@@ -75,7 +75,7 @@ export const EnhancedModeToggle: React.FC<EnhancedModeToggleProps> = ({
   return (
     <TooltipProvider delayDuration={300}>
       <div className={cn(
-        "flex items-center gap-1 p-1 bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-sm",
+        "flex items-center gap-1 p-1 bg-[#0d0d18] rounded-lg shadow-[0_0_15px_rgba(255,0,255,0.2)]",
         className
       )}>
         {/* Primary Mode Buttons */}
@@ -94,22 +94,22 @@ export const EnhancedModeToggle: React.FC<EnhancedModeToggleProps> = ({
                     onClick={() => onModeChange(mode)}
                     className={cn(
                       "h-8 px-3 gap-1.5 transition-all duration-200",
-                      isActive && "shadow-sm",
-                      !isActive && "hover:bg-muted"
+                      isActive && "bg-fuchsia-500 text-black shadow-[0_0_10px_rgba(255,0,255,0.5)] hover:bg-fuchsia-400",
+                      !isActive && "text-fuchsia-300 hover:bg-fuchsia-500/20 hover:text-fuchsia-200"
                     )}
                   >
                     <Icon className={cn(
                       "h-4 w-4 transition-transform",
                       isActive && "scale-110"
                     )} />
-                    <span className="text-xs font-medium hidden sm:inline">
+                    <span className="text-xs font-bold hidden sm:inline">
                       {config.label}
                     </span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="flex flex-col gap-0.5">
                   <span className="font-medium">{config.label}</span>
-                  <span className="text-xs text-muted-foreground">{config.description}</span>
+                  <span className="text-xs text-white/50">{config.description}</span>
                   {config.shortcut && (
                     <kbd className="mt-1 px-1.5 py-0.5 text-xs bg-muted rounded">{config.shortcut}</kbd>
                   )}
@@ -138,7 +138,7 @@ export const EnhancedModeToggle: React.FC<EnhancedModeToggleProps> = ({
                     onClick={() => onModeChange(mode)}
                     className={cn(
                       "h-8 w-8 transition-all duration-200",
-                      isActive && "bg-secondary"
+                      isActive && "bg-white/[0.08]"
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -146,7 +146,7 @@ export const EnhancedModeToggle: React.FC<EnhancedModeToggleProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="flex flex-col gap-0.5">
                   <span className="font-medium">{config.label}</span>
-                  <span className="text-xs text-muted-foreground">{config.description}</span>
+                  <span className="text-xs text-white/50">{config.description}</span>
                   {config.shortcut && (
                     <kbd className="mt-1 px-1.5 py-0.5 text-xs bg-muted rounded">{config.shortcut}</kbd>
                   )}
@@ -182,7 +182,7 @@ export const EnhancedModeToggle: React.FC<EnhancedModeToggleProps> = ({
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 <span className="font-medium">Interactive Mode</span>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white/50">
                   {isInteractive ? 'Click elements to interact' : 'Click to enable interactions'}
                 </p>
               </TooltipContent>

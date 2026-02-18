@@ -209,6 +209,51 @@ const GOOGLE_FONTS = [
 ];
 
 // ============================================================================
+// Selector Utilities
+// ============================================================================
+
+/**
+ * Escape special characters in CSS selectors (e.g., Tailwind brackets like `min-h-[85vh]`)
+ * CSS.escape is available in modern browsers, but we also need to handle class selectors
+ */
+const escapeCSSSelector = (selector: string): string => {
+  // Escape special characters inside class/attribute selectors
+  // Handle Tailwind-style brackets: .min-h-[85vh] → .min-h-\[85vh\]
+  return selector.replace(/(\.)([^.\s#>+~:[\]]+)/g, (match, dot, className) => {
+    // Escape [ ] ( ) : / within class names
+    const escaped = className
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/:/g, '\\:')
+      .replace(/\//g, '\\/');
+    return dot + escaped;
+  });
+};
+
+/**
+ * Safely query a selector, returning null if invalid
+ */
+const safeQuerySelector = (doc: Document, selector: string): Element | null => {
+  try {
+    // First try the escaped selector
+    const escaped = escapeCSSSelector(selector);
+    const el = doc.querySelector(escaped);
+    if (el) return el;
+    
+    // Fallback: try original selector (might work for simple selectors)
+    if (escaped !== selector) {
+      return doc.querySelector(selector);
+    }
+    return null;
+  } catch {
+    // If both fail, return null
+    return null;
+  }
+};
+
+// ============================================================================
 // Hook
 // ============================================================================
 
@@ -224,6 +269,12 @@ export const useTemplateCustomizer = () => {
   const [overrideVersion, setOverrideVersion] = useState(0); // Increments on every change to trigger reactivity
   const originalHtmlRef = useRef<string>('');
   const isCustomizerApplyingRef = useRef(false); // Prevents parseTemplate from running on customizer output
+  
+  // Track whether global theme settings have been explicitly modified
+  // This prevents element-level edits from triggering unwanted global color overrides
+  const [hasColorsModified, setHasColorsModified] = useState(false);
+  const [hasTypographyModified, setHasTypographyModified] = useState(false);
+  const [hasSpacingModified, setHasSpacingModified] = useState(false);
 
   // ---- Parse template structure ----
   const parseTemplate = useCallback((html: string) => {
@@ -288,7 +339,11 @@ export const useTemplateCustomizer = () => {
     if (!preset) return;
 
     setColors({ ...preset.colors });
-    if (preset.typography.headingFont) setTypography(prev => ({ ...prev, ...preset.typography }));
+    setHasColorsModified(true);
+    if (preset.typography.headingFont) {
+      setTypography(prev => ({ ...prev, ...preset.typography }));
+      setHasTypographyModified(true);
+    }
     setActivePresetId(presetId);
     setIsDirty(true);
   }, []);
@@ -296,6 +351,7 @@ export const useTemplateCustomizer = () => {
   // ---- Update individual color ----
   const updateColor = useCallback((key: keyof ColorPalette, value: string) => {
     setColors(prev => ({ ...prev, [key]: value }));
+    setHasColorsModified(true);
     setActivePresetId(null);
     setIsDirty(true);
   }, []);
@@ -303,12 +359,14 @@ export const useTemplateCustomizer = () => {
   // ---- Update typography ----
   const updateTypography = useCallback((key: keyof TypographyConfig, value: string) => {
     setTypography(prev => ({ ...prev, [key]: value }));
+    setHasTypographyModified(true);
     setIsDirty(true);
   }, []);
 
   // ---- Update spacing ----
   const updateSpacing = useCallback((key: keyof SpacingConfig, value: string) => {
     setSpacing(prev => ({ ...prev, [key]: value }));
+    setHasSpacingModified(true);
     setIsDirty(true);
   }, []);
 
@@ -372,57 +430,34 @@ export const useTemplateCustomizer = () => {
 
   // ---- Generate override CSS ----
   const generateOverrideCSS = useCallback((): string => {
-    const fontImports: string[] = [];
-    const fontsToLoad = new Set<string>();
+    const cssBlocks: string[] = [];
 
-    // Collect Google Fonts to load
-    if (GOOGLE_FONTS.includes(typography.headingFont.split(',')[0].trim())) {
-      fontsToLoad.add(typography.headingFont.split(',')[0].trim());
-    }
-    if (GOOGLE_FONTS.includes(typography.bodyFont.split(',')[0].trim())) {
-      fontsToLoad.add(typography.bodyFont.split(',')[0].trim());
-    }
-
-    if (fontsToLoad.size > 0) {
-      const families = Array.from(fontsToLoad).map(f => f.replace(/\s/g, '+')).join('&family=');
-      fontImports.push(`@import url('https://fonts.googleapis.com/css2?family=${families}:wght@300;400;500;600;700;800;900&display=swap');`);
-    }
-
-    // Element-level overrides
-    let elementCSS = '';
-    elementOverrides.forEach((override) => {
-      const styleProps = Object.entries(override.styles)
-        .map(([k, v]) => `  ${k.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${v} !important;`)
-        .join('\n');
-      if (styleProps) {
-        elementCSS += `${override.selector} {\n${styleProps}\n}\n`;
+    // Only load fonts if typography has been explicitly modified
+    if (hasTypographyModified) {
+      const fontsToLoad = new Set<string>();
+      if (GOOGLE_FONTS.includes(typography.headingFont.split(',')[0].trim())) {
+        fontsToLoad.add(typography.headingFont.split(',')[0].trim());
       }
-    });
-
-    // Section visibility & height
-    let sectionCSS = '';
-    sections.forEach(section => {
-      if (!section.visible) {
-        sectionCSS += `${section.selector} { display: none !important; }\n`;
+      if (GOOGLE_FONTS.includes(typography.bodyFont.split(',')[0].trim())) {
+        fontsToLoad.add(typography.bodyFont.split(',')[0].trim());
       }
-      if (section.height !== 'auto') {
-        sectionCSS += `${section.selector} { min-height: ${section.height} !important; }\n`;
+      if (fontsToLoad.size > 0) {
+        const families = Array.from(fontsToLoad).map(f => f.replace(/\s/g, '+')).join('&family=');
+        cssBlocks.push(`@import url('https://fonts.googleapis.com/css2?family=${families}:wght@300;400;500;600;700;800;900&display=swap');`);
       }
-    });
+    }
 
-    return `
-${fontImports.join('\n')}
+    cssBlocks.push('/* === Template Customizer Overrides === */');
 
-/* === Template Customizer Overrides === */
-
+    // Only apply global typography if explicitly modified
+    if (hasTypographyModified) {
+      cssBlocks.push(`
 /* Global Typography */
 body, html {
   font-family: ${typography.bodyFont} !important;
   font-size: ${typography.bodySize} !important;
   line-height: ${typography.lineHeight} !important;
   letter-spacing: ${typography.letterSpacing}em !important;
-  color: ${colors.text} !important;
-  background-color: ${colors.background} !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -433,8 +468,18 @@ h1, h2, h3, h4, h5, h6 {
 h1 { font-size: ${typography.h1Size} !important; }
 h2 { font-size: ${typography.h2Size} !important; }
 h3 { font-size: ${typography.h3Size} !important; }
+`);
+    }
 
+    // Only apply global colors if explicitly modified
+    if (hasColorsModified) {
+      cssBlocks.push(`
 /* Global Colors */
+body, html {
+  color: ${colors.text} !important;
+  background-color: ${colors.background} !important;
+}
+
 a { color: ${colors.primary} !important; }
 a:hover { opacity: 0.85; }
 
@@ -471,6 +516,16 @@ button:not([class*="ghost"]):not([class*="outline"]),
   color: ${colors.textMuted} !important;
 }
 
+/* Border colors */
+[class*="border"] {
+  border-color: ${colors.border} !important;
+}
+`);
+    }
+
+    // Only apply spacing if explicitly modified
+    if (hasSpacingModified) {
+      cssBlocks.push(`
 /* Section spacing */
 section, [class*="section"] {
   padding-top: ${spacing.sectionPadding} !important;
@@ -481,19 +536,41 @@ section, [class*="section"] {
 [class*="container"], [class*="max-w-"] {
   max-width: ${spacing.containerMaxWidth} !important;
 }
+`);
+    }
 
-/* Border colors */
-[class*="border"] {
-  border-color: ${colors.border} !important;
-}
+    // Section visibility & height (always apply if sections have been parsed)
+    let sectionCSS = '';
+    sections.forEach(section => {
+      const escapedSelector = escapeCSSSelector(section.selector);
+      if (!section.visible) {
+        sectionCSS += `${escapedSelector} { display: none !important; }\n`;
+      }
+      if (section.height !== 'auto') {
+        sectionCSS += `${escapedSelector} { min-height: ${section.height} !important; }\n`;
+      }
+    });
+    if (sectionCSS) {
+      cssBlocks.push(`/* Section overrides */\n${sectionCSS}`);
+    }
 
-/* Section overrides */
-${sectionCSS}
+    // Element-level overrides (always apply)
+    let elementCSS = '';
+    elementOverrides.forEach((override) => {
+      const styleProps = Object.entries(override.styles)
+        .map(([k, v]) => `  ${k.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${v} !important;`)
+        .join('\n');
+      if (styleProps) {
+        const escapedSelector = escapeCSSSelector(override.selector);
+        elementCSS += `${escapedSelector} {\n${styleProps}\n}\n`;
+      }
+    });
+    if (elementCSS) {
+      cssBlocks.push(`/* Element overrides */\n${elementCSS}`);
+    }
 
-/* Element overrides */
-${elementCSS}
-`;
-  }, [colors, typography, spacing, sections, elementOverrides]);
+    return cssBlocks.join('\n');
+  }, [colors, typography, spacing, sections, elementOverrides, hasColorsModified, hasTypographyModified, hasSpacingModified]);
 
   // ---- Apply overrides to HTML ----
   const applyOverrides = useCallback((html: string): string => {
@@ -514,7 +591,7 @@ ${elementCSS}
     const sectionElements: { el: Element; order: number }[] = [];
 
     sections.forEach(section => {
-      const el = doc.querySelector(section.selector);
+      const el = safeQuerySelector(doc, section.selector);
       if (el) {
         sectionElements.push({ el, order: section.order });
       }
@@ -530,7 +607,7 @@ ${elementCSS}
 
     // Replace images - use multiple fallback selectors
     images.forEach(img => {
-      let el = doc.querySelector(img.selector) as HTMLImageElement;
+      let el = safeQuerySelector(doc, img.selector) as HTMLImageElement;
       
       // Fallback: try matching by original src attribute
       if (!el) {
@@ -550,11 +627,11 @@ ${elementCSS}
     // Apply text content overrides
     elementOverrides.forEach(override => {
       if (override.textContent !== undefined) {
-        const el = doc.querySelector(override.selector);
+        const el = safeQuerySelector(doc, override.selector);
         if (el) el.textContent = override.textContent;
       }
       if (override.imageSrc) {
-        const el = doc.querySelector(override.selector) as HTMLImageElement;
+        const el = safeQuerySelector(doc, override.selector) as HTMLImageElement;
         if (el) el.setAttribute('src', override.imageSrc);
       }
     });
@@ -598,6 +675,9 @@ ${elementCSS}
     setElementOverrides(new Map());
     setActivePresetId(null);
     setIsDirty(false);
+    setHasColorsModified(false);
+    setHasTypographyModified(false);
+    setHasSpacingModified(false);
   }, []);
 
   return {

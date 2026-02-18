@@ -90,6 +90,41 @@ function isVanillaHtml(code: string): boolean {
   
   return false;
 }
+
+/**
+ * Escape special characters in CSS selectors (e.g., Tailwind brackets like `min-h-[85vh]`)
+ */
+function escapeCSSSelector(selector: string): string {
+  return selector.replace(/(\.)([^.\s#>+~:[\]]+)/g, (match, dot, className) => {
+    const escaped = className
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/:/g, '\\:')
+      .replace(/\//g, '\\/');
+    return dot + escaped;
+  });
+}
+
+/**
+ * Safely query a selector with escaping
+ */
+function safeQuerySelector(doc: Document, selector: string): Element | null {
+  try {
+    const escaped = escapeCSSSelector(selector);
+    const el = doc.querySelector(escaped);
+    if (el) return el;
+    // Fallback to original selector
+    if (escaped !== selector) {
+      return doc.querySelector(selector);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Convert any code (HTML, JSX, React) to a renderable HTML document
  */
@@ -1500,7 +1535,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       const doc = iframeRef.current?.contentDocument;
       if (!doc) return false;
       try {
-        const el = doc.querySelector(selector);
+        const el = safeQuerySelector(doc, selector);
         if (el) { el.remove(); selectedElementRef.current = null; return true; }
       } catch (e) { console.error('[SimplePreview] Delete failed:', e); }
       return false;
@@ -1509,7 +1544,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       const doc = iframeRef.current?.contentDocument;
       if (!doc) return false;
       try {
-        const el = doc.querySelector(selector);
+        const el = safeQuerySelector(doc, selector);
         if (el && el.parentNode) {
           const clone = el.cloneNode(true) as HTMLElement;
           if (clone.id) clone.id = `${clone.id}-copy-${Date.now()}`;
@@ -1523,7 +1558,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       const doc = iframeRef.current?.contentDocument;
       if (!doc) return false;
       try {
-        const el = doc.querySelector(selector) as HTMLElement | null;
+        const el = safeQuerySelector(doc, selector) as HTMLElement | null;
         if (!el) return false;
         if (updates.textContent !== undefined) el.textContent = updates.textContent;
         if (updates.innerHTML !== undefined) el.innerHTML = updates.innerHTML;
