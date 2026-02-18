@@ -52,6 +52,7 @@ import type { BusinessSystemType } from "@/data/templates/types";
 import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { buildWebBuilderAIContext } from "@/utils/aiAssistantContext";
 import { parseAIFileTags } from "@/utils/aiFileTags";
+import { parseAIResponse, getPrimaryCodeBlock, type AIResponseParseResult } from "@/utils/aiResponseParser";
 
 interface Message {
   role: "user" | "assistant";
@@ -1033,43 +1034,196 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       
       console.log('[AICodeAssistant] AI response received:', assistantContent.substring(0, 200) + '...');
 
-      // 1) Prefer <file> patch plans when present.
-      const filePlan = parseAIFileTags(assistantContent);
-      if (filePlan && Object.keys(filePlan).length > 0) {
+      // ========== COMPREHENSIVE AI RESPONSE PARSING ==========
+      // Use the new parser to extract all structured content types
+      const parsedResponse = parseAIResponse(assistantContent);
+      console.log('[AICodeAssistant] Parsed response:', {
+        files: parsedResponse.files.length,
+        codeBlocks: parsedResponse.codeBlocks.length,
+        builderActions: parsedResponse.builderActions.length,
+        styleModifications: parsedResponse.styleModifications.length,
+        sectionOperations: parsedResponse.sectionOperations.length,
+        elementOperations: parsedResponse.elementOperations.length,
+        intentWirings: parsedResponse.intentWirings.length,
+        layoutChanges: parsedResponse.layoutChanges.length,
+        hasStructuredContent: parsedResponse.hasStructuredContent,
+      });
+
+      // 1) Handle file patches (<file path="...">...</file>)
+      if (parsedResponse.files.length > 0) {
+        const filePlan: Record<string, string> = {};
+        parsedResponse.files.forEach(f => { filePlan[f.path] = f.content; });
         setPendingFiles(filePlan);
-        setActivePendingFilePath(Object.keys(filePlan)[0] || null);
+        setActivePendingFilePath(parsedResponse.files[0].path);
         setPendingFilesApplyOpen(true);
       }
-      
-      const hasCode = assistantContent.includes("```");
 
-      if (!filePlan && hasCode && onCodeGenerated) {
-        // Try to match code blocks with language specifiers
-        let codeMatch = assistantContent.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
+      // 2) Handle style modifications (<style element="..." property="..." value="..."/>)
+      if (parsedResponse.styleModifications.length > 0 && currentCode) {
+        console.log('[AICodeAssistant] Applying style modifications:', parsedResponse.styleModifications);
+        let modifiedCode = currentCode;
         
-        // If no match, try without language specifier
-        if (!codeMatch) {
-          codeMatch = assistantContent.match(/```\n([\s\S]*?)```/);
+        parsedResponse.styleModifications.forEach(mod => {
+          // Apply style modification by injecting inline styles or updating existing ones
+          const cssProp = mod.property.replace(/([A-Z])/g, '-$1').toLowerCase();
+          console.log(`[AICodeAssistant] Style: ${mod.selector} { ${cssProp}: ${mod.value} }`);
+          
+          // Generate CSS rule
+          const styleRule = `${mod.selector} { ${cssProp}: ${mod.value} !important; }`;
+          
+          // Check if a customizer-injected style block exists
+          if (modifiedCode.includes('<style id="ai-style-overrides">')) {
+            modifiedCode = modifiedCode.replace(
+              '</style><!-- ai-styles-end -->',
+              `  ${styleRule}\n</style><!-- ai-styles-end -->`
+            );
+          } else {
+            // Inject new style block before </head>
+            if (modifiedCode.includes('</head>')) {
+              modifiedCode = modifiedCode.replace(
+                '</head>',
+                `<style id="ai-style-overrides">\n  ${styleRule}\n</style><!-- ai-styles-end -->\n</head>`
+              );
+            }
+          }
+        });
+        
+        // Apply the modified code
+        if (modifiedCode !== currentCode && onCodeGenerated) {
+          setPendingCode(modifiedCode);
+          setPendingCodeApplyOpen(true);
+        }
+      }
+
+      // 3) Handle intent wirings (<intent on="..." action="..." .../>)
+      if (parsedResponse.intentWirings.length > 0 && currentCode) {
+        console.log('[AICodeAssistant] Applying intent wirings:', parsedResponse.intentWirings);
+        let modifiedCode = currentCode;
+        
+        parsedResponse.intentWirings.forEach(wiring => {
+          // This is a basic DOM-level intent wiring
+          // Find elements matching the selector pattern and add data-ut-intent
+          const selectorEscaped = wiring.selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          
+          // Try to find button/element with matching text or class
+          const classMatch = wiring.selector.match(/\.([a-zA-Z0-9_-]+)/);
+          const textMatch = wiring.selector.match(/contains\(['"]([^'"]+)['"]\)/);
+          
+          if (classMatch) {
+            const className = classMatch[1];
+            // Add data-ut-intent to elements with this class
+            const pattern = new RegExp(`(class="[^"]*\\b${className}\\b[^"]*")`, 'g');
+            modifiedCode = modifiedCode.replace(pattern, (match) => {
+              // Check if already has intent
+              if (modifiedCode.includes('data-ut-intent')) return match;
+              return `${match} data-ut-intent="${wiring.intent}"${wiring.label ? ` data-ut-label="${wiring.label}"` : ''}`;
+            });
+          }
+          
+          console.log(`[AICodeAssistant] Wire: ${wiring.selector} -> ${wiring.intent}`);
+        });
+        
+        if (modifiedCode !== currentCode && onCodeGenerated && parsedResponse.styleModifications.length === 0) {
+          setPendingCode(modifiedCode);
+          setPendingCodeApplyOpen(true);
+        }
+      }
+
+      // 4) Handle layout changes (<layout selector="..." type="grid" .../>)
+      if (parsedResponse.layoutChanges.length > 0 && currentCode) {
+        console.log('[AICodeAssistant] Applying layout changes:', parsedResponse.layoutChanges);
+        let modifiedCode = currentCode;
+        
+        parsedResponse.layoutChanges.forEach(layout => {
+          // Generate Tailwind layout classes
+          let layoutClasses = '';
+          
+          if (layout.type === 'grid') {
+            layoutClasses = 'grid';
+            if (layout.columns) layoutClasses += ` grid-cols-${layout.columns}`;
+            if (layout.gap) layoutClasses += ` gap-${layout.gap}`;
+          } else if (layout.type === 'flex') {
+            layoutClasses = 'flex';
+            if (layout.align) layoutClasses += ` items-${layout.align}`;
+            if (layout.justify) layoutClasses += ` justify-${layout.justify}`;
+            if (layout.gap) layoutClasses += ` gap-${layout.gap}`;
+          } else if (layout.type === 'stack') {
+            layoutClasses = 'flex flex-col';
+            if (layout.gap) layoutClasses += ` gap-${layout.gap}`;
+          }
+          
+          // Apply layout classes (simplified: inject CSS rule)
+          const layoutStyle = `${layout.selector} { display: ${layout.type === 'stack' ? 'flex; flex-direction: column' : layout.type}; ${layout.columns ? `grid-template-columns: repeat(${layout.columns}, minmax(0, 1fr));` : ''} ${layout.gap ? `gap: ${layout.gap.replace(/^\d+$/, '$&rem')};` : ''} }`;
+          
+          // Inject layout style
+          if (modifiedCode.includes('<style id="ai-style-overrides">')) {
+            modifiedCode = modifiedCode.replace(
+              '</style><!-- ai-styles-end -->',
+              `  ${layoutStyle}\n</style><!-- ai-styles-end -->`
+            );
+          } else if (modifiedCode.includes('</head>')) {
+            modifiedCode = modifiedCode.replace(
+              '</head>',
+              `<style id="ai-style-overrides">\n  ${layoutStyle}\n</style><!-- ai-styles-end -->\n</head>`
+            );
+          }
+          
+          console.log(`[AICodeAssistant] Layout: ${layout.selector} -> ${layoutClasses}`);
+        });
+        
+        if (modifiedCode !== currentCode && onCodeGenerated && parsedResponse.styleModifications.length === 0 && parsedResponse.intentWirings.length === 0) {
+          setPendingCode(modifiedCode);
+          setPendingCodeApplyOpen(true);
+        }
+      }
+
+      // 5) Handle builder actions (<action type="..." .../>)
+      if (parsedResponse.builderActions.length > 0) {
+        console.log('[AICodeAssistant] Processing builder actions from structured tags:', parsedResponse.builderActions);
+        // These can be queued for approval
+        const firstAction = parsedResponse.builderActions[0];
+        if (firstAction) {
+          setPendingBuilderActions({
+            type: firstAction.type,
+            packs: firstAction.params.pack ? [firstAction.params.pack] : undefined,
+            selector: firstAction.params.selector,
+            intent: firstAction.params.intent,
+          });
+          setBuilderActionConfirmOpen(true);
+        }
+      }
+
+      // 6) Handle code blocks (fallback for non-structured responses)
+      const hasCode = parsedResponse.codeBlocks.length > 0 || assistantContent.includes("```");
+      
+      if (parsedResponse.files.length === 0 && hasCode && onCodeGenerated) {
+        // Use parsed code blocks if available, otherwise fall back to regex
+        const primaryBlock = getPrimaryCodeBlock(parsedResponse);
+        
+        let extractedCode = primaryBlock?.content || '';
+        
+        // Fallback to regex extraction if parser didn't find blocks
+        if (!extractedCode) {
+          let codeMatch = assistantContent.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
+          if (!codeMatch) {
+            codeMatch = assistantContent.match(/```\n([\s\S]*?)```/);
+          }
+          if (codeMatch && codeMatch[1]) {
+            extractedCode = codeMatch[1].trim();
+          }
         }
         
-        if (codeMatch && codeMatch[1]) {
-          let extractedCode = codeMatch[1].trim();
-          
+        if (extractedCode) {
           // ALLOW vanilla JavaScript in DOMContentLoaded wrapper
           // Only remove inline event handlers for security
           extractedCode = extractedCode.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
           
           // Remove markdown syntax that sometimes slips through
           extractedCode = extractedCode
-            // Remove markdown headers (###, ##, #)
             .replace(/^#{1,6}\s+.*$/gm, '')
-            // Remove markdown code fences that appear in content
             .replace(/```[\w]*\n?/g, '')
-            // Remove markdown arrows/symbols (<<<, >>>, ---)
             .replace(/^[<>-]{3,}.*$/gm, '')
-            // Remove standalone markdown symbols
             .replace(/<<<|>>>|---/g, '')
-            // Clean up any resulting empty lines (more than 2 consecutive)
             .replace(/\n{3,}/g, '\n\n');
           
           // Handle element editing vs full code generation
@@ -1079,14 +1233,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
             setPendingCode(extractedCode);
             setPendingCodeApplyOpen(true);
           } else if (onCodeGenerated) {
-            console.log('[AICodeAssistant] Extracted HTML/CSS code with vanilla JavaScript allowed');
-            console.log('[AICodeAssistant] Code length:', extractedCode.length, 'characters');
+            console.log('[AICodeAssistant] Extracted code:', primaryBlock?.language || 'unknown', extractedCode.length, 'chars');
             setPendingElementSelector(null);
             setPendingCode(extractedCode);
             setPendingCodeApplyOpen(true);
           }
         }
       }
+      // ========== END COMPREHENSIVE AI RESPONSE PARSING ==========
 
       const assistantMessage: Message = {
         role: "assistant",

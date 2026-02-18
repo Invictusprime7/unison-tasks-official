@@ -434,6 +434,41 @@ You have FULL AUTHORITY to make ANY UI/UX decisions to improve this template. Th
 6. Wire ALL conversion elements with data-ut-intent
 7. No markdown, no explanations - just the complete HTML code
 
+📦 **STRUCTURED OUTPUT FORMATS (ADVANCED):**
+For targeted modifications, you can use these structured tags that the parser will extract:
+
+**File patches (multi-file changes):**
+<file path="/index.html">...html content...</file>
+<file path="/styles.css">...css content...</file>
+
+**Builder actions:**
+<action type="install_pack" pack="leads"/>
+<action type="wire_button" selector=".book-btn" intent="booking.create"/>
+
+**Style modifications (targeted):**
+<style element=".hero-title" property="color" value="#ff6b6b"/>
+<style element=".cta-button" property="background" value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"/>
+
+**Section operations:**
+<section operation="add" type="testimonials" position="after:features">...html...</section>
+<section operation="remove" id="faq"/>
+<section operation="reorder" from="2" to="0"/>
+
+**Element operations:**
+<element operation="modify" selector=".hero h1" attribute="class" value="text-6xl font-bold"/>
+<element operation="add" parent=".features-grid">...new card html...</element>
+<element operation="delete" selector=".outdated-banner"/>
+
+**Intent wiring:**
+<intent on=".subscribe-btn" action="newsletter.subscribe" label="Subscribe Now"/>
+<intent on=".book-appointment" action="booking.create" payload='{"service":"consultation"}'/>
+
+**Layout changes:**
+<layout selector=".services" type="grid" columns="3" gap="6"/>
+<layout selector=".hero-content" type="flex" align="center" justify="between"/>
+
+Use these structured tags when making targeted, specific changes. For full template generation, use standard code blocks.
+
 🎯 **YOUR GOAL:** Transform this template into a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL page that you would be proud to showcase.` : ''}
 ${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - VISUAL THEME ONLY, PRESERVE ALL CONTENT**
 
@@ -665,6 +700,17 @@ You create COMPLETE, PRODUCTION-READY components with:
     - Wire actions via data-ut-intent (also add data-intent for compatibility)
     - Use valid intents provided in context (e.g., cart.add, cart.view, checkout.start, auth.signin/signup/signout)
     - Include payload via data-* attributes (e.g., data-product-id, data-product-name, data-price)
+
+ 9. **STRUCTURED OUTPUT PARSING (OPTIONAL - FOR TARGETED EDITS):**
+    The builder can parse these structured tags for precise modifications:
+    - <file path="...">content</file> - Multi-file patches
+    - <action type="install_pack|wire_button" .../> - Builder actions
+    - <style element="selector" property="prop" value="val"/> - Targeted style changes
+    - <section operation="add|remove|reorder" .../> - Section operations
+    - <element operation="add|modify|delete" .../> - Element operations
+    - <intent on="selector" action="intent.name" .../> - Intent wiring
+    - <layout selector="selector" type="grid|flex" .../> - Layout changes
+    Use these when making targeted changes; use code blocks for full templates.
 
 **ANIMATION INTEGRATION RULES (CRITICAL FOR VISUAL EFFECTS):**
 
