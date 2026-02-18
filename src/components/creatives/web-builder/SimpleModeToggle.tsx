@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { MousePointer2, Eye, Trash2, Copy } from 'lucide-react';
+import { MousePointer2, Eye } from 'lucide-react';
 
 export type SimpleBuilderMode = 'select' | 'preview';
 
@@ -20,9 +20,6 @@ interface SimpleModeToggleProps {
 export const SimpleModeToggle: React.FC<SimpleModeToggleProps> = ({
   currentMode,
   onModeChange,
-  onDelete,
-  onDuplicate,
-  hasSelection = false,
   className,
 }) => {
   return (
@@ -75,36 +72,8 @@ export const SimpleModeToggle: React.FC<SimpleModeToggleProps> = ({
         </button>
       </div>
 
-      {/* Action Buttons - Only show when there's a selection in edit mode */}
-      {hasSelection && currentMode === 'select' && (
-        <div className="flex items-center gap-1 bg-[#0d0d18] rounded-lg p-1 shadow-[0_0_15px_rgba(255,0,255,0.15)] animate-in fade-in slide-in-from-left-2 duration-200">
-          <button
-            onClick={onDuplicate}
-            className={cn(
-              "flex items-center justify-center h-8 w-8 rounded-md transition-all duration-200",
-              "text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/30",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500",
-              "active:scale-90 hover:shadow-[0_0_10px_rgba(0,255,255,0.4)]"
-            )}
-            title="Duplicate (⌘D)"
-          >
-            <Copy className="h-4 w-4" />
-          </button>
-
-          <button
-            onClick={onDelete}
-            className={cn(
-              "flex items-center justify-center h-8 w-8 rounded-md transition-all duration-200",
-              "text-red-500 hover:text-red-400 hover:bg-red-500/30",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500",
-              "active:scale-90 hover:shadow-[0_0_10px_rgba(255,0,0,0.4)]"
-            )}
-            title="Delete (Del)"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      {/* Action Buttons - Disabled: use floating toolbar instead */}
+      {/* Selection actions (duplicate/delete) are now handled by ElementFloatingToolbar */}
     </div>
   );
 };

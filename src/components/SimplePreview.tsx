@@ -450,6 +450,56 @@ function injectIntentListener(html: string): string {
     // Page manifest cache for async multi-page navigation
     const dynamicPageCache = {};
     let isLoadingPage = false;
+    let pendingNavigationQueue = [];
+    let currentNavRequestId = null;
+    
+    // Safe page replacement using location.replace with blob URL
+    function safeReplacePage(htmlContent, pageName) {
+      try {
+        // Notify parent about navigation (for editor sync)
+        window.parent.postMessage({
+          type: 'NAV_PAGE_SWITCH',
+          pageName: pageName,
+          pagePath: '/' + pageName + '.html'
+        }, '*');
+        
+        // Create blob URL and navigate - this is safer than document.write
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.location.replace(url);
+        
+        // Clean up blob URL after navigation starts
+        setTimeout(function() {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      } catch (err) {
+        console.error('[Intent] Safe page replace failed, falling back:', err);
+        // Fallback to document.write only if blob approach fails
+        try {
+          document.open();
+          document.write(htmlContent);
+          document.close();
+        } catch (writeErr) {
+          console.error('[Intent] Document write also failed:', writeErr);
+          // Last resort: notify parent to reload preview
+          window.parent.postMessage({
+            type: 'NAV_PAGE_RELOAD_REQUIRED',
+            pageName: pageName,
+            pageContent: htmlContent
+          }, '*');
+        }
+      }
+    }
+    
+    // Process navigation queue
+    function processNavigationQueue() {
+      if (isLoadingPage || pendingNavigationQueue.length === 0) return;
+      
+      const nextNav = pendingNavigationQueue.shift();
+      if (nextNav) {
+        executeNavIntentInternal(nextNav.intent, nextNav.target);
+      }
+    }
     
     // Listen for page manifest sync from parent (async multi-page wiring)
     window.addEventListener('message', function(evt) {
@@ -468,6 +518,16 @@ function injectIntentListener(html: string): string {
     });
 
     function executeNavIntent(intent, target){
+      // Queue navigation if another is in progress
+      if (isLoadingPage) {
+        console.log('[Intent] Navigation queued:', target);
+        pendingNavigationQueue.push({ intent, target });
+        return;
+      }
+      executeNavIntentInternal(intent, target);
+    }
+    
+    function executeNavIntentInternal(intent, target){
       console.log('[Intent] Navigation:', intent, target);
       
       // Handle anchor links (scroll within page)
@@ -505,16 +565,7 @@ function injectIntentListener(html: string): string {
         const cachedPage = dynamicPageCache[pageName] || dynamicPageCache[pagePath] || dynamicPageCache['/' + pageName + '.html'];
         if (cachedPage) {
           console.log('[Intent] Instant navigation from cache:', pageName);
-          // Notify parent about navigation (for editor sync)
-          window.parent.postMessage({
-            type: 'NAV_PAGE_SWITCH',
-            pageName: pageName,
-            pagePath: '/' + pageName + '.html'
-          }, '*');
-          // Replace page content instantly
-          document.open();
-          document.write(cachedPage);
-          document.close();
+          safeReplacePage(cachedPage, pageName);
           return;
         }
         
@@ -530,6 +581,7 @@ function injectIntentListener(html: string): string {
         
         // Request dynamic page generation from parent
         const requestId = Date.now() + '-' + Math.random().toString(36).slice(2);
+        currentNavRequestId = requestId;
         
         // Listen for page ready response
         const handlePageReady = function(evt){
@@ -537,22 +589,37 @@ function injectIntentListener(html: string): string {
           if(evt.data.type === 'NAV_PAGE_READY' && evt.data.requestId === requestId){
             window.removeEventListener('message', handlePageReady);
             isLoadingPage = false;
+            currentNavRequestId = null;
             const overlay = document.getElementById('nav-loading-overlay');
             if(overlay) overlay.remove();
             
-            // Replace current page content with new page
+            // Replace current page content with new page using safe method
             if(evt.data.pageContent){
-              document.open();
-              document.write(evt.data.pageContent);
-              document.close();
+              // Cache the page for future navigation
+              dynamicPageCache[pageName] = evt.data.pageContent;
+              safeReplacePage(evt.data.pageContent, pageName);
             }
+            
+            // Process any queued navigation
+            processNavigationQueue();
           }
           if(evt.data.type === 'NAV_PAGE_ERROR' && evt.data.requestId === requestId){
             window.removeEventListener('message', handlePageReady);
             isLoadingPage = false;
+            currentNavRequestId = null;
             const overlay = document.getElementById('nav-loading-overlay');
             if(overlay) overlay.remove();
             console.error('[Intent] Page generation failed:', evt.data.error);
+            
+            // Show error message to user
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'nav-error-toast';
+            errorDiv.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);">Failed to generate page. Please try again.</div>';
+            document.body.appendChild(errorDiv);
+            setTimeout(function(){ var el = document.getElementById('nav-error-toast'); if(el) el.remove(); }, 4000);
+            
+            // Process any queued navigation
+            processNavigationQueue();
           }
         };
         
@@ -567,14 +634,25 @@ function injectIntentListener(html: string): string {
           pageContext: intent
         }, '*');
         
-        // Timeout fallback
+        // Timeout fallback with better cleanup
         setTimeout(function(){
-          if(isLoadingPage){
+          if(isLoadingPage && currentNavRequestId === requestId){
             window.removeEventListener('message', handlePageReady);
             isLoadingPage = false;
+            currentNavRequestId = null;
             const overlay = document.getElementById('nav-loading-overlay');
             if(overlay) overlay.remove();
             console.error('[Intent] Page generation timed out');
+            
+            // Show timeout message
+            const timeoutDiv = document.createElement('div');
+            timeoutDiv.id = 'nav-timeout-toast';
+            timeoutDiv.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#f59e0b;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);">Page generation timed out. Please try again.</div>';
+            document.body.appendChild(timeoutDiv);
+            setTimeout(function(){ var el = document.getElementById('nav-timeout-toast'); if(el) el.remove(); }, 4000);
+            
+            // Process any queued navigation
+            processNavigationQueue();
           }
         }, 30000);
         
@@ -1248,11 +1326,28 @@ function wrapHtmlSnippet(html: string): string {
               if(evt.data&&evt.data.type==='NAV_PAGE_READY'&&evt.data.requestId===requestId){
                 window.removeEventListener('message',handler);
                 const overlay=document.getElementById('nav-loading-overlay');if(overlay)overlay.remove();
-                if(evt.data.pageContent){document.open();document.write(evt.data.pageContent);document.close();}
+                if(evt.data.pageContent){
+                  try{
+                    const blob=new Blob([evt.data.pageContent],{type:'text/html'});
+                    const url=URL.createObjectURL(blob);
+                    window.location.replace(url);
+                    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+                  }catch(err){
+                    console.error('[Intent] Navigation failed:',err);
+                    try{document.open();document.write(evt.data.pageContent);document.close();}catch(e2){
+                      window.parent.postMessage({type:'NAV_PAGE_RELOAD_REQUIRED',pageName:pageName,pageContent:evt.data.pageContent},'*');
+                    }
+                  }
+                }
               }
               if(evt.data&&evt.data.type==='NAV_PAGE_ERROR'&&evt.data.requestId===requestId){
                 window.removeEventListener('message',handler);
                 const overlay=document.getElementById('nav-loading-overlay');if(overlay)overlay.remove();
+                const errorDiv=document.createElement('div');
+                errorDiv.id='nav-error-toast';
+                errorDiv.innerHTML='<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:9999;">Failed to generate page</div>';
+                document.body.appendChild(errorDiv);
+                setTimeout(function(){var el=document.getElementById('nav-error-toast');if(el)el.remove();},4000);
               }
             });
             return;

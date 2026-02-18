@@ -51,28 +51,28 @@ const TABS: TabConfig[] = [
     label: 'Profile', 
     icon: <User className="h-5 w-5" />,
     description: 'Manage your account',
-    gradient: 'from-blue-500 to-cyan-500'
+    gradient: 'from-cyan-500 to-blue-500'
   },
   { 
     id: 'businesses', 
     label: 'Businesses', 
     icon: <Building2 className="h-5 w-5" />,
     description: 'Organizations & teams',
-    gradient: 'from-purple-500 to-pink-500'
+    gradient: 'from-fuchsia-500 to-pink-500'
   },
   { 
     id: 'projects', 
     label: 'Projects', 
     icon: <FolderKanban className="h-5 w-5" />,
     description: 'Templates & builds',
-    gradient: 'from-green-500 to-emerald-500'
+    gradient: 'from-lime-500 to-emerald-500'
   },
   { 
     id: 'assets', 
     label: 'Assets', 
     icon: <Image className="h-5 w-5" />,
     description: 'Files & media',
-    gradient: 'from-orange-500 to-yellow-500'
+    gradient: 'from-yellow-500 to-orange-500'
   },
   { 
     id: 'email', 
@@ -86,14 +86,14 @@ const TABS: TabConfig[] = [
     label: 'Integrations', 
     icon: <Plug className="h-5 w-5" />,
     description: 'Connected services',
-    gradient: 'from-indigo-500 to-violet-500'
+    gradient: 'from-purple-500 to-violet-500'
   },
   { 
     id: 'security', 
     label: 'Security', 
     icon: <Shield className="h-5 w-5" />,
     description: 'Account protection',
-    gradient: 'from-green-500 to-emerald-500'
+    gradient: 'from-lime-500 to-cyan-500'
   },
 ];
 
@@ -102,20 +102,20 @@ function AnimatedBackground() {
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
       {/* Base gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a12] via-[#0d0d18] to-[#0a0a12]" />
       
       {/* Animated orbs */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-fuchsia-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-lime-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
       
       {/* Grid overlay */}
       <div 
         className="absolute inset-0 opacity-[0.02]"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+            linear-gradient(rgba(0,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,255,255,0.1) 1px, transparent 1px)
           `,
           backgroundSize: '50px 50px'
         }}
@@ -130,15 +130,15 @@ function AnimatedBackground() {
 // Status Indicator
 function CloudStatusIndicator({ status }: { status: 'online' | 'syncing' | 'offline' }) {
   const colors = {
-    online: 'bg-green-500',
-    syncing: 'bg-yellow-500 animate-pulse',
-    offline: 'bg-red-500',
+    online: 'bg-lime-500 shadow-[0_0_10px_rgba(132,204,22,0.5)]',
+    syncing: 'bg-yellow-500 animate-pulse shadow-[0_0_10px_rgba(255,255,0,0.5)]',
+    offline: 'bg-red-500 shadow-[0_0_10px_rgba(255,0,0,0.5)]',
   };
   
   return (
     <div className="flex items-center gap-2">
       <div className={cn("w-2 h-2 rounded-full", colors[status])} />
-      <span className="text-xs text-slate-400 capitalize">{status}</span>
+      <span className="text-xs text-gray-400 capitalize">{status}</span>
     </div>
   );
 }
@@ -329,13 +329,13 @@ export default function CloudDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a12]">
         <div className="text-center">
           <div className="relative">
-            <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full animate-pulse" />
-            <Cloud className="relative h-16 w-16 text-blue-400 animate-bounce mx-auto" />
+            <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full animate-pulse" />
+            <Cloud className="relative h-16 w-16 text-cyan-400 animate-bounce mx-auto drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]" />
           </div>
-          <p className="mt-4 text-slate-400">Loading Cloud Dashboard...</p>
+          <p className="mt-4 text-gray-400">Loading Cloud Dashboard...</p>
         </div>
       </div>
     );
@@ -352,7 +352,7 @@ export default function CloudDashboard() {
       <AnimatedBackground />
       
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-cyan-500/20 bg-[#0a0a12]/80 backdrop-blur-xl">
         <div className="max-w-[1800px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -360,40 +360,40 @@ export default function CloudDashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/')}
-                className="text-slate-400 hover:text-white"
+                className="text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Tasks
               </Button>
-              <div className="h-6 w-px bg-white/10" />
+              <div className="h-6 w-px bg-cyan-500/20" />
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 blur-lg opacity-50" />
-                  <div className="relative p-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600">
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-fuchsia-500 blur-lg opacity-50" />
+                  <div className="relative p-2 rounded-xl bg-gradient-to-r from-cyan-600 to-fuchsia-600 shadow-[0_0_20px_rgba(0,255,255,0.3)]">
                     <Cloud className="h-5 w-5" />
                   </div>
                 </div>
                 <div>
                   <h1 className="font-bold text-lg flex items-center gap-2">
                     Unison Cloud
-                    <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                    <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30 text-xs shadow-[0_0_10px_rgba(0,255,255,0.2)]">
                       Beta
                     </Badge>
                   </h1>
-                  <p className="text-xs text-slate-500">Your personal control plane</p>
+                  <p className="text-xs text-gray-500">Your personal control plane</p>
                 </div>
               </div>
             </div>
             
             <div className="flex items-center gap-4">
               <CloudStatusIndicator status={cloudStatus} />
-              <div className="h-6 w-px bg-white/10" />
+              <div className="h-6 w-px bg-cyan-500/20" />
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-sm font-medium">{user.email}</p>
-                  <p className="text-xs text-slate-500">Free Plan</p>
+                  <p className="text-xs text-gray-500">Free Plan</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-sm font-bold">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-r from-cyan-500 to-fuchsia-500 flex items-center justify-center text-sm font-bold shadow-[0_0_15px_rgba(0,255,255,0.4)]">
                   {user.email?.charAt(0).toUpperCase()}
                 </div>
               </div>
@@ -414,25 +414,25 @@ export default function CloudDashboard() {
                   icon={<FolderKanban className="h-4 w-4" />}
                   label="Projects"
                   value={stats.projects}
-                  gradient="from-green-500 to-emerald-500"
+                  gradient="from-lime-500 to-emerald-500"
                 />
                 <StatCard
                   icon={<Image className="h-4 w-4" />}
                   label="Assets"
                   value={stats.assets}
-                  gradient="from-orange-500 to-yellow-500"
+                  gradient="from-yellow-500 to-orange-500"
                 />
                 <StatCard
                   icon={<Building2 className="h-4 w-4" />}
                   label="Businesses"
                   value={stats.businesses}
-                  gradient="from-purple-500 to-pink-500"
+                  gradient="from-fuchsia-500 to-pink-500"
                 />
                 <StatCard
                   icon={<Plug className="h-4 w-4" />}
                   label="Integrations"
                   value={stats.integrations}
-                  gradient="from-indigo-500 to-violet-500"
+                  gradient="from-cyan-500 to-blue-500"
                 />
               </div>
               
@@ -449,10 +449,10 @@ export default function CloudDashboard() {
               </nav>
               
               {/* Sign Out */}
-              <div className="pt-4 border-t border-white/5">
+              <div className="pt-4 border-t border-cyan-500/20">
                 <Button
                   variant="ghost"
-                  className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:shadow-[0_0_15px_rgba(255,0,0,0.2)]"
                   onClick={handleSignOut}
                 >
                   <LogOut className="h-4 w-4 mr-3" />
@@ -467,12 +467,12 @@ export default function CloudDashboard() {
             {/* Tab Header */}
             <div className="mb-8">
               <div className="flex items-center gap-4 mb-2">
-                <div className={cn("p-3 rounded-xl bg-gradient-to-r", activeTabConfig.gradient)}>
+                <div className={cn("p-3 rounded-xl bg-gradient-to-r shadow-lg", activeTabConfig.gradient)}>
                   {activeTabConfig.icon}
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">{activeTabConfig.label}</h2>
-                  <p className="text-slate-400">{activeTabConfig.description}</p>
+                  <p className="text-gray-400">{activeTabConfig.description}</p>
                 </div>
               </div>
             </div>
@@ -482,7 +482,7 @@ export default function CloudDashboard() {
               <Suspense 
                 fallback={
                   <div className="flex items-center justify-center h-96">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                    <Loader2 className="h-8 w-8 animate-spin text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.5)]" />
                   </div>
                 }
               >

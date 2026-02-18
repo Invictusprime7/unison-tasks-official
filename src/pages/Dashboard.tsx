@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { ProjectsList } from "@/components/ProjectsList";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
 import { SubscriptionBadge } from "@/components/SubscriptionBadge";
-import { LogOut, Plus, CheckSquare, Inbox } from "lucide-react";
+import { LogOut, Plus, CheckSquare, Inbox, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
+import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -55,40 +56,85 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-lg">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a12]">
+        <div className="flex flex-col items-center gap-4">
+          <Zap className="h-8 w-8 text-cyan-400 animate-pulse" />
+          <div className="text-cyan-400 font-bold drop-shadow-[0_0_10px_rgba(0,255,255,0.5)]">
+            Loading...
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
+    <div className="min-h-screen bg-[#0a0a12]">
+      {/* Arcade Header */}
+      <header className="bg-[#0d0d18]/95 backdrop-blur-sm border-b border-cyan-500/20 shadow-[0_4px_20px_rgba(0,255,255,0.1)]">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div 
-            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" 
+            className="flex items-center gap-3 cursor-pointer group" 
             onClick={() => navigate("/")}
           >
-            <CheckSquare className="h-7 w-7 text-primary" />
-            <h1 className="text-2xl font-bold">Unison Tasks</h1>
+            <div className="p-2 rounded-lg bg-cyan-500/10 group-hover:bg-cyan-500/20 transition-all duration-300">
+              <CheckSquare className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)]" />
+            </div>
+            <h1 className="text-2xl font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.5)] group-hover:text-cyan-300 transition-colors">
+              Unison Tasks
+            </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <SubscriptionBadge />
-            <Button variant="outline" onClick={() => navigate("/dashboard/leads")}>
+            <Button 
+              variant="ghost"
+              onClick={() => navigate("/dashboard/leads")}
+              className={cn(
+                "border border-fuchsia-500/30 text-fuchsia-400 font-bold",
+                "hover:bg-fuchsia-500/20 hover:border-fuchsia-500/60",
+                "hover:shadow-[0_0_15px_rgba(255,0,255,0.3)]",
+                "transition-all duration-200"
+              )}
+            >
               <Inbox className="h-4 w-4 mr-2" />
               Leads
             </Button>
-            <Button onClick={handleCreateProject}>
+            <Button 
+              onClick={handleCreateProject}
+              className={cn(
+                "bg-lime-400 text-black font-bold",
+                "shadow-[0_0_15px_rgba(0,255,0,0.4)]",
+                "hover:bg-lime-300 hover:shadow-[0_0_25px_rgba(0,255,0,0.6)]",
+                "active:scale-95 transition-all duration-200"
+              )}
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Project
             </Button>
             {user ? (
-              <Button variant="outline" onClick={handleSignOut}>
+              <Button 
+                variant="ghost"
+                onClick={handleSignOut}
+                className={cn(
+                  "border border-red-500/30 text-red-400 font-bold",
+                  "hover:bg-red-500/20 hover:border-red-500/60",
+                  "hover:shadow-[0_0_15px_rgba(255,0,0,0.3)]",
+                  "transition-all duration-200"
+                )}
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
             ) : (
-              <Button variant="outline" onClick={() => navigate("/auth")}>
+              <Button 
+                variant="ghost"
+                onClick={() => navigate("/auth")}
+                className={cn(
+                  "border border-cyan-500/30 text-cyan-400 font-bold",
+                  "hover:bg-cyan-500/20 hover:border-cyan-500/60",
+                  "hover:shadow-[0_0_15px_rgba(0,255,255,0.3)]",
+                  "transition-all duration-200"
+                )}
+              >
                 Sign In
               </Button>
             )}
@@ -96,6 +142,7 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <ProjectsList userId={user?.id || ""} />
       </main>

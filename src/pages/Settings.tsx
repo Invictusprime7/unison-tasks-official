@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileSettings, SecuritySettings, NotificationSettings } from '@/components/settings';
 import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
+import { cn } from '@/lib/utils';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -38,9 +39,9 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0a0a12]">
       {/* Header */}
-      <div className="border-b bg-card">
+      <div className="border-b border-cyan-500/20 bg-[#0d0d18]">
         <div className="container max-w-5xl py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -48,12 +49,13 @@ export default function Settings() {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate('/dashboard')}
+                className="text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-semibold">Settings</h1>
-                <p className="text-sm text-muted-foreground">
+                <h1 className="text-2xl font-semibold text-white">Settings</h1>
+                <p className="text-sm text-gray-400">
                   Manage your account and preferences
                 </p>
               </div>
@@ -65,12 +67,15 @@ export default function Settings() {
       {/* Content */}
       <div className="container max-w-5xl py-8">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-4 bg-[#12121e] border border-cyan-500/20">
             {TABS.map((tab) => (
               <TabsTrigger
                 key={tab.id}
                 value={tab.id}
-                className="flex items-center gap-2"
+                className={cn(
+                  "flex items-center gap-2 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400",
+                  "text-gray-400 transition-all duration-200"
+                )}
               >
                 <tab.icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{tab.label}</span>

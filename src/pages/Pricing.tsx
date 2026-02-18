@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckSquare, Check, Star, ArrowLeft, Zap, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 // Initialize Stripe - use the publishable key from environment
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
@@ -187,32 +187,56 @@ const Pricing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0a0a12]">
       {/* Navigation */}
-      <nav className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="bg-[#0d0d18]/95 backdrop-blur-sm border-b border-cyan-500/20 shadow-[0_4px_20px_rgba(0,255,255,0.1)]">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate("/")}
+              className={cn(
+                "text-cyan-400/70 hover:text-cyan-400",
+                "hover:bg-cyan-500/20",
+                "transition-all duration-200"
+              )}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <div className="flex items-center gap-2">
-              <CheckSquare className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold text-foreground">Unison Tasks</span>
+              <CheckSquare className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)]" />
+              <span className="text-xl font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.5)]">Unison Tasks</span>
             </div>
           </div>
-          <Button onClick={() => navigate("/auth")}>Get Started</Button>
+          <Button 
+            onClick={() => navigate("/auth")}
+            className={cn(
+              "bg-cyan-500 text-black font-bold",
+              "shadow-[0_0_15px_rgba(0,255,255,0.4)]",
+              "hover:bg-cyan-400 hover:shadow-[0_0_25px_rgba(0,255,255,0.6)]",
+              "active:scale-95 transition-all duration-200"
+            )}
+          >
+            Get Started
+          </Button>
         </div>
       </nav>
 
       {/* Header */}
       <section className="container mx-auto px-4 py-16 text-center">
-        <Badge variant="secondary" className="mb-4">
+        <Badge className={cn(
+          "mb-4 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
+          "shadow-[0_0_15px_rgba(255,255,0,0.2)]"
+        )}>
           <Zap className="h-3 w-3 mr-1" />
           Simple pricing, powerful features
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Choose your plan</h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
+          Choose your <span className="text-cyan-400 drop-shadow-[0_0_20px_rgba(0,255,255,0.6)]">plan</span>
+        </h1>
+        <p className="text-xl text-gray-400 max-w-2xl mx-auto">
           Start free, scale as you grow. All plans include our core features.
         </p>
       </section>
@@ -220,90 +244,147 @@ const Pricing = () => {
       {/* Pricing Cards */}
       <section className="container mx-auto px-4 pb-20">
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {pricingTiers.map((tier, i) => (
-            <Card 
-              key={i} 
-              className={`relative border-2 ${tier.popular ? 'border-primary shadow-xl scale-105' : 'border-border/50'}`}
-            >
-              {tier.popular && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
-                  <Star className="h-3 w-3 mr-1" />
-                  Most Popular
-                </Badge>
-              )}
-              <CardHeader className="text-center pb-2">
-                <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                <div className="mt-4">
-                  <span className="text-5xl font-bold">{tier.price}</span>
-                  <span className="text-muted-foreground text-lg">{tier.period}</span>
-                </div>
-                <CardDescription className="mt-3">{tier.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <ul className="space-y-3">
-                  {tier.features.map((feature, j) => (
-                    <li key={j} className="flex items-start gap-3">
-                      <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                {tier.limitations.length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground mb-2">Limitations:</p>
-                    <ul className="space-y-1">
-                      {tier.limitations.map((limitation, j) => (
-                        <li key={j} className="text-xs text-muted-foreground">• {limitation}</li>
-                      ))}
-                    </ul>
-                  </div>
+          {pricingTiers.map((tier, i) => {
+            const tierColors = {
+              0: { // Free - Lime
+                border: "border-lime-500/30",
+                shadow: "shadow-[0_0_30px_rgba(0,255,0,0.1)]",
+                hoverShadow: "hover:shadow-[0_0_40px_rgba(0,255,0,0.2)]",
+                accent: "text-lime-400",
+                badge: "bg-lime-500/20 text-lime-400 border-lime-500/30",
+                button: "bg-lime-500/20 text-lime-400 border border-lime-500/40 hover:bg-lime-500/30 hover:shadow-[0_0_15px_rgba(0,255,0,0.3)]",
+              },
+              1: { // Pro - Cyan (popular)
+                border: "border-cyan-500/50",
+                shadow: "shadow-[0_0_40px_rgba(0,255,255,0.2)]",
+                hoverShadow: "hover:shadow-[0_0_50px_rgba(0,255,255,0.3)]",
+                accent: "text-cyan-400",
+                badge: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+                button: "bg-cyan-500 text-black font-bold shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:bg-cyan-400 hover:shadow-[0_0_30px_rgba(0,255,255,0.6)]",
+              },
+              2: { // Business - Fuchsia
+                border: "border-fuchsia-500/30",
+                shadow: "shadow-[0_0_30px_rgba(255,0,255,0.1)]",
+                hoverShadow: "hover:shadow-[0_0_40px_rgba(255,0,255,0.2)]",
+                accent: "text-fuchsia-400",
+                badge: "bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30",
+                button: "bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/40 hover:bg-fuchsia-500/30 hover:shadow-[0_0_15px_rgba(255,0,255,0.3)]",
+              },
+            };
+            const colors = tierColors[i as keyof typeof tierColors];
+
+            return (
+              <div 
+                key={i} 
+                className={cn(
+                  "relative bg-[#12121e] rounded-2xl p-6",
+                  "border-2 transition-all duration-300",
+                  colors.border,
+                  colors.shadow,
+                  colors.hoverShadow,
+                  tier.popular && "scale-105 z-10"
                 )}
-              </CardContent>
-              <CardFooter className="pt-4">
-                <Button 
-                  className="w-full" 
-                  variant={tier.popular ? "default" : "outline"}
-                  size="lg"
-                  onClick={() => handleSubscribe(tier)}
-                  disabled={loadingPlan !== null}
-                >
-                  {loadingPlan === tier.name ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    tier.cta
+              >
+                {tier.popular && (
+                  <Badge className={cn(
+                    "absolute -top-3 left-1/2 -translate-x-1/2",
+                    "bg-cyan-500 text-black font-bold",
+                    "shadow-[0_0_15px_rgba(0,255,255,0.5)]"
+                  )}>
+                    <Star className="h-3 w-3 mr-1" />
+                    Most Popular
+                  </Badge>
+                )}
+                
+                {/* Header */}
+                <div className="text-center pb-4">
+                  <h3 className={cn("text-2xl font-bold", colors.accent)}>{tier.name}</h3>
+                  <div className="mt-4">
+                    <span className="text-5xl font-bold text-white">{tier.price}</span>
+                    <span className="text-gray-400 text-lg">{tier.period}</span>
+                  </div>
+                  <p className="mt-3 text-gray-400 text-sm">{tier.description}</p>
+                </div>
+
+                {/* Features */}
+                <div className="pt-6 border-t border-gray-800">
+                  <ul className="space-y-3">
+                    {tier.features.map((feature, j) => (
+                      <li key={j} className="flex items-start gap-3">
+                        <Check className={cn("h-5 w-5 flex-shrink-0 mt-0.5", colors.accent)} />
+                        <span className="text-sm text-gray-300">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {tier.limitations.length > 0 && (
+                    <div className="mt-6 pt-4 border-t border-gray-800/50">
+                      <p className="text-xs text-gray-500 mb-2">Limitations:</p>
+                      <ul className="space-y-1">
+                        {tier.limitations.map((limitation, j) => (
+                          <li key={j} className="text-xs text-gray-500">• {limitation}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                </div>
+
+                {/* CTA */}
+                <div className="pt-6">
+                  <Button 
+                    className={cn(
+                      "w-full font-bold",
+                      colors.button,
+                      "active:scale-95 transition-all duration-200"
+                    )}
+                    size="lg"
+                    onClick={() => handleSubscribe(tier)}
+                    disabled={loadingPlan !== null}
+                  >
+                    {loadingPlan === tier.name ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      tier.cta
+                    )}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
       {/* FAQs */}
-      <section className="bg-muted/30 py-20">
+      <section className="bg-[#0d0d18] py-20 border-t border-cyan-500/10">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 text-white">
+            Frequently Asked <span className="text-yellow-400 drop-shadow-[0_0_15px_rgba(255,255,0,0.5)]">Questions</span>
+          </h2>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {faqs.map((faq, i) => (
-              <Card key={i} className="border-border/50 bg-background">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{faq.question}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm">{faq.answer}</p>
-                </CardContent>
-              </Card>
+              <div 
+                key={i} 
+                className={cn(
+                  "bg-[#12121e] rounded-xl p-6",
+                  "border border-purple-500/20",
+                  "shadow-[0_0_20px_rgba(168,85,247,0.05)]",
+                  "hover:border-purple-500/40 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]",
+                  "transition-all duration-300"
+                )}
+              >
+                <h3 className="text-lg font-bold text-purple-400 mb-2">{faq.question}</h3>
+                <p className="text-gray-400 text-sm">{faq.answer}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-cyan-500/10 py-8 bg-[#0a0a12]">
+        <div className="container mx-auto px-4 text-center text-sm text-gray-500">
           © 2024 Unison Tasks. All rights reserved.
         </div>
       </footer>

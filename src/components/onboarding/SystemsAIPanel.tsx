@@ -439,37 +439,17 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
   };
 
   return (
-    <section id="systems-ai" className="relative py-16 overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background pointer-events-none" />
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute top-40 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-      </div>
-      
+    <section id="systems-ai" className="relative overflow-hidden">
       <div className="relative container mx-auto px-4">
         <div className="max-w-3xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10 text-primary mb-4">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-medium">AI Code Assistant</span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-3">
-              Describe what you want to build
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Tell the AI what you need and get production-ready code in seconds
-            </p>
-          </div>
 
           {/* Main Input Card */}
-          <Card className="border-2 shadow-lg bg-card/80 backdrop-blur">
+          <Card className="border shadow-md bg-card/80 backdrop-blur">
             <CardContent className="p-6">
               {/* Text Input with Drop Zone */}
               <div 
                 className={cn(
-                  "relative mb-4 transition-all rounded-xl",
+                  "relative mb-3 transition-all rounded-lg",
                   isDragging && "ring-2 ring-primary ring-offset-2"
                 )}
                 onDrop={handleDrop}
@@ -477,7 +457,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
                 onDragLeave={handleDragLeave}
               >
                 <textarea
-                  placeholder="e.g., Create a modern landing page with a hero section, feature cards, testimonials carousel, and a contact form with email validation. Drop images here to include them!"
+                  placeholder="Describe your website... e.g., A modern salon site with booking"
                   value={codePrompt}
                   onChange={(e) => setCodePrompt(e.target.value)}
                   onKeyDown={(e) => {
@@ -487,60 +467,60 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
                     }
                   }}
                   className={cn(
-                    "w-full min-h-[120px] p-4 pr-14 text-lg border-2 rounded-xl resize-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-background",
+                    "w-full min-h-[100px] p-3 pr-12 text-base border rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-background",
                     isDragging && "border-primary bg-primary/5"
                   )}
                 />
                 
                 {/* Drop overlay indicator */}
                 {isDragging && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-xl border-2 border-dashed border-primary pointer-events-none">
-                    <div className="flex flex-col items-center gap-2 text-primary">
-                      <Upload className="h-8 w-8" />
-                      <span className="text-sm font-medium">Drop images or files here</span>
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-lg border-2 border-dashed border-primary pointer-events-none">
+                    <div className="flex items-center gap-2 text-primary text-sm">
+                      <Upload className="h-4 w-4" />
+                      <span className="font-medium">Drop files here</span>
                     </div>
                   </div>
                 )}
                 
                 <Button 
                   size="icon"
-                  className="absolute right-3 bottom-3 h-10 w-10 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  className="absolute right-3 bottom-3 h-10 w-10 rounded-full shadow-md bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                   onClick={handleCodeSubmit}
                   disabled={isCodeLoading || !codePrompt.trim()}
                 >
                   {isCodeLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Sparkles className="h-5 w-5" />
+                    <Sparkles className="h-4 w-4" />
                   )}
                 </Button>
               </div>
               
               {/* Dropped Files Preview */}
               {droppedFiles.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Attached files ({droppedFiles.length})</span>
+                <div className="mb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ImageIcon className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Attached ({droppedFiles.length})</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1">
                     {droppedFiles.map((file) => (
                       <div
                         key={file.id}
-                        className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border"
+                        className="relative group flex items-center gap-1.5 px-2 py-1 bg-muted rounded border text-xs"
                       >
                         {file.type === 'image' && file.preview ? (
                           <img
                             src={file.preview}
                             alt={file.name}
-                            className="h-8 w-8 object-cover rounded"
+                            className="h-5 w-5 object-cover rounded"
                           />
                         ) : (
-                          <div className="h-8 w-8 flex items-center justify-center bg-primary/10 rounded">
-                            <Code2 className="h-4 w-4 text-primary" />
+                          <div className="h-5 w-5 flex items-center justify-center bg-primary/10 rounded">
+                            <Code2 className="h-3 w-3 text-primary" />
                           </div>
                         )}
-                        <span className="text-sm truncate max-w-[100px]">{file.name}</span>
+                        <span className="truncate max-w-[80px]">{file.name}</span>
                         <button
                           onClick={() => handleRemoveFile(file.id)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/20 rounded"
@@ -552,18 +532,10 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
                   </div>
                 </div>
               )}
-              
-              {/* Drop hint when no files */}
-              {droppedFiles.length === 0 && (
-                <div className="flex items-center justify-center gap-2 mb-4 text-xs text-muted-foreground">
-                  <Upload className="h-3 w-3" />
-                  <span>Drop images or code files to include in your website</span>
-                </div>
-              )}
 
               {/* Code Prompt Chips */}
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground text-center">Or choose a template type:</p>
+                <p className="text-sm text-muted-foreground text-center">Or choose a template:</p>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {codePromptChips.map((chip) => {
                     const Icon = chip.icon;
@@ -572,10 +544,10 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
                       <button
                         key={chip.id}
                         onClick={() => handleCodeChipClick(chip.id)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all ${isSelected ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white border-purple-600 scale-105 shadow-md" : chip.color}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-all ${isSelected ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white border-purple-600 scale-105 shadow-md" : chip.color}`}
                       >
                         <Icon className="h-4 w-4" />
-                        <span className="text-sm font-medium">{chip.label}</span>
+                        <span className="font-medium">{chip.label}</span>
                       </button>
                     );
                   })}
@@ -583,31 +555,6 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
               </div>
             </CardContent>
           </Card>
-          
-          {/* What you'll get */}
-          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-            <div className="p-4">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-purple-500/10 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-purple-600" />
-              </div>
-              <p className="text-sm font-medium">AI-powered code</p>
-              <p className="text-xs text-muted-foreground">Smart generation</p>
-            </div>
-            <div className="p-4">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-500/10 flex items-center justify-center">
-                <Code2 className="h-5 w-5 text-green-600" />
-              </div>
-              <p className="text-sm font-medium">Clean HTML/CSS</p>
-              <p className="text-xs text-muted-foreground">Tailwind, React...</p>
-            </div>
-            <div className="p-4">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <Palette className="h-5 w-5 text-blue-600" />
-              </div>
-              <p className="text-sm font-medium">Open in builder</p>
-              <p className="text-xs text-muted-foreground">Edit & customize</p>
-            </div>
-          </div>
         </div>
       </div>
     </section>

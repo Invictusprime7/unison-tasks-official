@@ -2052,8 +2052,34 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         ? (event.source as Window) : null;
       await triggerPageGeneration(pageName, navLabel || pageName, source, requestId);
     };
+    
+    // Handle fallback reload request when in-iframe navigation fails
+    const handleNavPageReload = (event: MessageEvent) => {
+      if (event.data?.type !== 'NAV_PAGE_RELOAD_REQUIRED') return;
+      const { pageName, pageContent } = event.data;
+      console.log('[WebBuilder] Navigation reload required for:', pageName);
+      
+      if (pageContent) {
+        // Force update the preview by setting the code
+        syncingFromVFSRef.current = true;
+        setPreviewCode(pageContent);
+        setEditorCode(pageContent);
+        lastSyncedCodeRef.current = pageContent;
+        setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+        
+        // Store in VFS for future navigation
+        const vfsPath = `/${pageName}.html`;
+        virtualFS.importFiles({ [vfsPath]: pageContent });
+        setActivePagePath(vfsPath);
+      }
+    };
+    
     window.addEventListener('message', handleNavPageGenerate);
-    return () => window.removeEventListener('message', handleNavPageGenerate);
+    window.addEventListener('message', handleNavPageReload);
+    return () => {
+      window.removeEventListener('message', handleNavPageGenerate);
+      window.removeEventListener('message', handleNavPageReload);
+    };
   }, [triggerPageGeneration]);
   
   // Clear draft when template is saved

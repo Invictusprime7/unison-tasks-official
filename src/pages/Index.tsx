@@ -4,6 +4,16 @@ import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SubscriptionBadge } from "@/components/SubscriptionBadge";
 import { 
   CheckSquare, 
@@ -15,7 +25,6 @@ import {
   Check, 
   ArrowRight,
   Star,
-  Play,
   Layers,
   Workflow,
   Bot,
@@ -25,7 +34,17 @@ import {
   ExternalLink,
   Plus,
   Paintbrush,
-  Menu
+  Menu,
+  CreditCard,
+  BarChart3,
+  Webhook,
+  Globe,
+  Plug,
+  Eye,
+  EyeOff,
+  Loader2,
+  CheckCircle2,
+  Link
 } from "lucide-react";
 import { RecentProjectCard } from "@/components/home/RecentProjectCard";
 import { User } from "@supabase/supabase-js";
@@ -36,6 +55,7 @@ import { BusinessLauncher } from "@/components/onboarding/BusinessLauncher";
 import { SystemsAIPanel } from "@/components/onboarding/SystemsAIPanel";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DocHelper } from "@/components/docs";
+import { cn } from "@/lib/utils";
 
 const pricingTiers = [
   {
@@ -128,6 +148,83 @@ const platformFeatures = [
   }
 ];
 
+const integrationsList = [
+  {
+    id: 'stripe',
+    name: 'Stripe',
+    icon: CreditCard,
+    color: 'from-purple-500 to-indigo-600',
+    description: 'Accept payments and manage subscriptions',
+    apiKeyPlaceholder: 'sk_live_...',
+    docsUrl: 'https://stripe.com/docs'
+  },
+  {
+    id: 'paypal',
+    name: 'PayPal',
+    icon: CreditCard,
+    color: 'from-blue-500 to-blue-700',
+    description: 'Accept PayPal payments globally',
+    apiKeyPlaceholder: 'Client ID',
+    docsUrl: 'https://developer.paypal.com'
+  },
+  {
+    id: 'google_analytics',
+    name: 'Google Analytics',
+    icon: BarChart3,
+    color: 'from-orange-500 to-yellow-500',
+    description: 'Track website traffic and user behavior',
+    apiKeyPlaceholder: 'G-XXXXXXXXXX',
+    docsUrl: 'https://analytics.google.com'
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    icon: Bot,
+    color: 'from-green-500 to-emerald-600',
+    description: 'GPT-4, DALL-E, and Whisper APIs',
+    apiKeyPlaceholder: 'sk-...',
+    docsUrl: 'https://platform.openai.com/docs'
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    icon: Bot,
+    color: 'from-amber-500 to-orange-600',
+    description: 'Claude AI assistant integration',
+    apiKeyPlaceholder: 'sk-ant-...',
+    docsUrl: 'https://docs.anthropic.com'
+  },
+  {
+    id: 'zapier',
+    name: 'Zapier',
+    icon: Zap,
+    color: 'from-orange-400 to-red-500',
+    description: 'Connect with 5000+ apps',
+    apiKeyPlaceholder: 'Webhook URL',
+    docsUrl: 'https://zapier.com/apps'
+  },
+  {
+    id: 'make',
+    name: 'Make',
+    icon: Webhook,
+    color: 'from-violet-500 to-purple-600',
+    description: 'Visual automation platform',
+    apiKeyPlaceholder: 'API Key',
+    docsUrl: 'https://www.make.com/en/api-documentation'
+  },
+  {
+    id: 'vercel',
+    name: 'Vercel',
+    icon: Globe,
+    color: 'from-slate-600 to-slate-800',
+    description: 'Deploy frontend applications',
+    apiKeyPlaceholder: 'Bearer Token',
+    docsUrl: 'https://vercel.com/docs'
+  }
+];
+
+type IntegrationItem = typeof integrationsList[number];
+
 // Interface for recent projects from design_templates table
 interface RecentProject {
   id: string;
@@ -148,6 +245,14 @@ const Index = () => {
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [docsOpen, setDocsOpen] = useState(false);
+  
+  // Integration connection state
+  const [selectedIntegration, setSelectedIntegration] = useState<IntegrationItem | null>(null);
+  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [connectingIntegration, setConnectingIntegration] = useState(false);
+  const [connectedIntegrations, setConnectedIntegrations] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -195,6 +300,174 @@ const Index = () => {
     loadRecentProjects();
   }, [user]);
 
+  // Load connected integrations when user is authenticated
+  useEffect(() => {
+    const loadConnectedIntegrations = async () => {
+      if (!user || !isSupabaseConfigured) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('settings')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data?.settings) {
+          const settings = typeof data.settings === 'string' 
+            ? JSON.parse(data.settings) 
+            : data.settings;
+            
+          if (settings.integrations) {
+            const connected: Record<string, boolean> = {};
+            Object.keys(settings.integrations).forEach(key => {
+              connected[key] = settings.integrations[key]?.connected || false;
+            });
+            setConnectedIntegrations(connected);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading connected integrations:', error);
+      }
+    };
+
+    loadConnectedIntegrations();
+  }, [user]);
+
+  const handleIntegrationClick = (integration: IntegrationItem) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    setSelectedIntegration(integration);
+    setApiKey('');
+    setShowApiKey(false);
+    setConnectDialogOpen(true);
+  };
+
+  const handleConnectIntegration = async () => {
+    if (!selectedIntegration || !apiKey.trim() || !user) {
+      toast({
+        title: 'Error',
+        description: 'Please enter an API key or credentials.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setConnectingIntegration(true);
+    
+    try {
+      const { data: existingSettings } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentSettings = existingSettings?.settings 
+        ? (typeof existingSettings.settings === 'string' 
+            ? JSON.parse(existingSettings.settings) 
+            : existingSettings.settings)
+        : {};
+
+      const newSettings = {
+        ...currentSettings,
+        integrations: {
+          ...(currentSettings.integrations || {}),
+          [selectedIntegration.id]: {
+            connected: true,
+            connectedAt: new Date().toISOString(),
+          },
+        },
+      };
+
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          settings: newSettings,
+        });
+
+      setConnectedIntegrations(prev => ({
+        ...prev,
+        [selectedIntegration.id]: true
+      }));
+
+      setConnectDialogOpen(false);
+      setSelectedIntegration(null);
+      setApiKey('');
+      
+      toast({
+        title: 'Connected!',
+        description: `${selectedIntegration.name} has been connected successfully.`,
+      });
+    } catch (error) {
+      console.error('Error connecting integration:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to connect integration.',
+        variant: 'destructive',
+      });
+    } finally {
+      setConnectingIntegration(false);
+    }
+  };
+
+  const handleDisconnectIntegration = async () => {
+    if (!selectedIntegration || !user) return;
+
+    setConnectingIntegration(true);
+    
+    try {
+      const { data: existingSettings } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentSettings = existingSettings?.settings 
+        ? (typeof existingSettings.settings === 'string' 
+            ? JSON.parse(existingSettings.settings) 
+            : existingSettings.settings)
+        : {};
+
+      const newIntegrations = { ...(currentSettings.integrations || {}) };
+      delete newIntegrations[selectedIntegration.id];
+
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          settings: {
+            ...currentSettings,
+            integrations: newIntegrations,
+          },
+        });
+
+      setConnectedIntegrations(prev => {
+        const updated = { ...prev };
+        delete updated[selectedIntegration.id];
+        return updated;
+      });
+
+      setConnectDialogOpen(false);
+      setSelectedIntegration(null);
+      
+      toast({
+        title: 'Disconnected',
+        description: `${selectedIntegration.name} has been disconnected.`,
+      });
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to disconnect integration.',
+        variant: 'destructive',
+      });
+    } finally {
+      setConnectingIntegration(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast({
@@ -225,17 +498,32 @@ const Index = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <Zap className="h-10 w-10 text-cyan-400 animate-pulse mx-auto mb-4 drop-shadow-[0_0_15px_rgba(0,255,255,0.6)]" />
+          <p className="text-cyan-400 font-medium">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0a0a12] relative">
+      {/* Pixelated grid background - entire page */}
+      <div 
+        className="fixed inset-0 opacity-20 pointer-events-none z-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2300ffff' fill-opacity='0.15'%3E%3Crect x='0' y='0' width='4' height='4'/%3E%3Crect x='20' y='0' width='4' height='4'/%3E%3Crect x='0' y='20' width='4' height='4'/%3E%3Crect x='20' y='20' width='4' height='4'/%3E%3Crect x='10' y='10' width='4' height='4'/%3E%3Crect x='30' y='10' width='4' height='4'/%3E%3Crect x='10' y='30' width='4' height='4'/%3E%3Crect x='30' y='30' width='4' height='4'/%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '40px 40px'
+        }}
+      />
+      {/* Scanline effect - entire page */}
+      <div 
+        className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
+        style={{
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.1) 2px, rgba(0,255,255,0.1) 4px)',
+        }}
+      />
       {/* Configuration Warning */}
       {!isSupabaseConfigured && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-3">
@@ -249,56 +537,85 @@ const Index = () => {
       )}
 
       {/* Navigation */}
-      <nav className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <nav className="bg-[#0d0d18]/95 backdrop-blur-sm border-b border-cyan-500/20 shadow-[0_4px_20px_rgba(0,255,255,0.1)] sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Sheet open={docsOpen} onOpenChange={setDocsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/20">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Open documentation</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[400px] sm:w-[450px] p-0 overflow-hidden">
+              <SheetContent side="left" className="w-[400px] sm:w-[450px] p-0 overflow-hidden bg-[#0d0d18] border-cyan-500/20">
                 <DocHelper embedded className="h-full" />
               </SheetContent>
             </Sheet>
             <div className="flex items-center gap-2">
-              <CheckSquare className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-foreground">Unison Tasks</span>
+              <CheckSquare className="h-8 w-8 text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]" />
+              <span className="text-2xl font-bold text-cyan-400 drop-shadow-[0_0_15px_rgba(0,255,255,0.5)]">Unison Tasks</span>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-6">
-            <a href="#systems" className="text-muted-foreground hover:text-foreground transition-colors">Systems</a>
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#systems" className="text-gray-400 hover:text-cyan-400 transition-colors">Systems</a>
+            <a href="#features" className="text-gray-400 hover:text-lime-400 transition-colors">Features</a>
+            <a href="#pricing" className="text-gray-400 hover:text-fuchsia-400 transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
             {user && <SubscriptionBadge />}
             <Button 
-              variant="outline" 
+              variant="ghost" 
               onClick={() => navigate("/cloud")} 
-              className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/20"
+              className={cn(
+                "border border-blue-500/30 text-blue-400",
+                "hover:bg-blue-500/20 hover:border-blue-500/50",
+                "hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]",
+                "transition-all duration-200"
+              )}
             >
-              <Cloud className="h-4 w-4 mr-2 text-blue-500" />
+              <Cloud className="h-4 w-4 mr-2" />
               Cloud
             </Button>
             {user ? (
               <>
-                <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate("/dashboard")}
+                  className="text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/20"
+                >
                   Dashboard
                 </Button>
-                <Button variant="outline" onClick={handleSignOut}>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleSignOut}
+                  className={cn(
+                    "border border-red-500/30 text-red-400",
+                    "hover:bg-red-500/20 hover:border-red-500/50",
+                    "transition-all duration-200"
+                  )}
+                >
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="ghost" onClick={() => navigate("/auth")}>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate("/auth")}
+                  className="text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-500/20"
+                >
                   Sign In
                 </Button>
-                <Button onClick={handleStartLauncher}>
+                <Button 
+                  onClick={handleStartLauncher}
+                  className={cn(
+                    "bg-lime-400 text-black font-bold",
+                    "shadow-[0_0_15px_rgba(0,255,0,0.4)]",
+                    "hover:bg-lime-300 hover:shadow-[0_0_25px_rgba(0,255,0,0.6)]",
+                    "active:scale-95 transition-all duration-200"
+                  )}
+                >
                   Start Free
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -310,60 +627,72 @@ const Index = () => {
 
       {/* Hero Section - New Positioning */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/40" />
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="mx-auto max-w-6xl px-4">
-            <div className="mt-24 h-72 rounded-[2rem] bg-primary/10 blur-3xl" />
-          </div>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl animate-pulse" />
         </div>
-        <div className="relative container mx-auto px-4 py-20 md:py-32">
+        <div className="relative container mx-auto px-4 py-8 md:py-12">
           <div className="text-center max-w-4xl mx-auto animate-fade-in">
-          <Badge variant="secondary" className="mb-6">
+          <Badge className={cn(
+            "mb-3 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
+            "shadow-[0_0_15px_rgba(255,255,0,0.2)]"
+          )}>
             <Zap className="h-3 w-3 mr-1" />
             Installable systems · real backend included
           </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3 text-white leading-tight">
             Launch-ready business systems
-            <span className="block text-primary">that ship with working logic</span>
+            <span className="block text-cyan-400 drop-shadow-[0_0_30px_rgba(0,255,255,0.5)]">that ship with working logic</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-base text-gray-400 mb-4 max-w-2xl mx-auto">
             Pick a system, choose a contract-ready starter, and we’ll install the backend packs
             (data, workflows, intents) automatically.
           </p>
+          
+          {/* Systems AI Panel - Inline in hero */}
+          <div className="mb-4">
+            <SystemsAIPanel 
+              user={user} 
+              onAuthRequired={() => navigate("/auth")} 
+            />
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={() => document.getElementById('systems-ai')?.scrollIntoView({ behavior: 'smooth' })} className="text-lg px-8 h-14">
-              <Play className="mr-2 h-5 w-5" />
-              {user ? "Launch a System" : "Start Free"}
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/web-builder")} className="text-lg px-8 h-14">
+            <Button
+              size="lg"
+              variant="ghost"
+              onClick={() => navigate("/web-builder")}
+              className={cn(
+                "text-lg px-8 h-14 border border-fuchsia-500/40 text-fuchsia-400",
+                "hover:bg-fuchsia-500/20 hover:border-fuchsia-500/60",
+                "hover:shadow-[0_0_20px_rgba(255,0,255,0.3)]",
+                "transition-all duration-200"
+              )}
+            >
               Explore Builder
             </Button>
           </div>
           {!user && (
-            <p className="mt-4 text-sm text-muted-foreground">
+            <p className="mt-4 text-sm text-gray-500">
               No credit card required · You’ll sign in when you install
             </p>
           )}
           </div>
         </div>
       </section>
-      {/* Systems AI Panel - Main interactive component */}
-      <SystemsAIPanel 
-        user={user} 
-        onAuthRequired={() => navigate("/auth")} 
-      />
+
       {/* Recent Projects Section - Only visible for authenticated users */}
       {user && (
-        <section className="container mx-auto px-4 py-12 border-b border-border/40">
+        <section className="container mx-auto px-4 py-12 border-b border-cyan-500/20">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <FolderOpen className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-bold text-foreground">Your Recent Projects</h2>
+              <FolderOpen className="h-6 w-6 text-cyan-400" />
+              <h2 className="text-2xl font-bold text-white">Your Recent Projects</h2>
             </div>
             <Button 
               variant="ghost" 
               onClick={() => navigate("/cloud")}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10"
             >
               View All
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -371,8 +700,8 @@ const Index = () => {
           </div>
           
           {loadingProjects ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-3"></div>
+            <div className="flex items-center justify-center py-8 text-gray-400">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400 mr-3"></div>
               Loading projects...
             </div>
           ) : (
@@ -397,7 +726,10 @@ const Index = () => {
               {/* Quick Add New Project Card */}
               <button
                 onClick={handleStartLauncher}
-                className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card min-h-[200px] cursor-pointer hover:shadow-md hover:border-primary/50 transition-all text-muted-foreground hover:text-primary"
+                className={cn(
+                  "flex flex-col items-center justify-center rounded-xl border border-dashed border-lime-500/30 bg-[#12121e] min-h-[200px] cursor-pointer",
+                  "hover:shadow-[0_0_20px_rgba(132,204,22,0.2)] hover:border-lime-500/60 transition-all text-gray-500 hover:text-lime-400"
+                )}
               >
                 <Plus className="h-8 w-8 mb-2" />
                 <span className="text-sm font-medium">New Project</span>
@@ -408,26 +740,26 @@ const Index = () => {
       )}
 
       {/* The Difference Section */}
-      <section className="bg-muted/30 py-20">
+      <section className="bg-[#0d0d18] py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <Badge variant="secondary" className="mb-4">Why Unison Tasks</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-                Templates are dead. Systems are alive.
+              <Badge className="mb-4 bg-purple-500/20 text-purple-400 border border-purple-500/30">Why Unison Tasks</Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+                Templates are dead. <span className="text-lime-400 drop-shadow-[0_0_20px_rgba(132,204,22,0.5)]">Systems are alive.</span>
               </h2>
-              <p className="text-lg text-muted-foreground">
+              <p className="text-lg text-gray-400">
                 Other tools give you static pages. We give you running businesses.
               </p>
             </div>
             
             <div className="grid md:grid-cols-2 gap-8">
               {/* Old Way */}
-              <Card className="border-destructive/30 bg-destructive/5">
+              <Card className="border-red-500/30 bg-red-500/5">
                 <CardHeader>
-                  <CardTitle className="text-lg text-destructive">❌ Static Templates</CardTitle>
+                  <CardTitle className="text-lg text-red-400">❌ Static Templates</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <CardContent className="space-y-3 text-sm text-gray-400">
                   <p>• Buttons don't do anything</p>
                   <p>• Forms need manual wiring</p>
                   <p>• Payments require integration</p>
@@ -437,11 +769,11 @@ const Index = () => {
               </Card>
 
               {/* New Way */}
-              <Card className="border-primary/50 bg-primary/5">
+              <Card className="border-lime-500/50 bg-lime-500/5 shadow-[0_0_20px_rgba(132,204,22,0.1)]">
                 <CardHeader>
-                  <CardTitle className="text-lg text-primary">✓ Unison Systems</CardTitle>
+                  <CardTitle className="text-lg text-lime-400">✓ Unison Systems</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <CardContent className="space-y-3 text-sm text-gray-400">
                   <p>• Buttons pre-wired to actions</p>
                   <p>• Forms auto-submit to CRM</p>
                   <p>• Payments work out of box</p>
@@ -454,101 +786,370 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20">
+      {/* Integrations Section */}
+      <section id="integrations" className="py-20 bg-[#0a0a12]">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Everything is connected</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <Badge className="mb-4 bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30">
+              <Plug className="h-3 w-3 mr-1" />
+              Connect Anything
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+              Powerful <span className="text-fuchsia-400 drop-shadow-[0_0_20px_rgba(255,0,255,0.5)]">integrations</span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              Connect your favorite tools. Payments, analytics, AI, and automation — all pre-wired.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+            {integrationsList.map((integration) => {
+              const IconComponent = integration.icon;
+              const isConnected = connectedIntegrations[integration.id];
+              return (
+                <Card 
+                  key={integration.id}
+                  onClick={() => handleIntegrationClick(integration)}
+                  className={cn(
+                    "group relative border bg-[#12121e] overflow-hidden transition-all duration-300 hover:scale-105 cursor-pointer",
+                    isConnected 
+                      ? "border-lime-500/50 shadow-[0_0_15px_rgba(132,204,22,0.2)]" 
+                      : "border-white/10 hover:border-fuchsia-500/50 hover:shadow-[0_0_25px_rgba(255,0,255,0.2)]"
+                  )}
+                >
+                  {isConnected && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <CheckCircle2 className="h-5 w-5 text-lime-400 drop-shadow-[0_0_8px_rgba(132,204,22,0.6)]" />
+                    </div>
+                  )}
+                  <div className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-300",
+                    integration.color
+                  )} />
+                  <CardContent className="p-6 text-center relative">
+                    <div className={cn(
+                      "w-14 h-14 rounded-xl mx-auto mb-4 flex items-center justify-center bg-gradient-to-br shadow-lg",
+                      integration.color
+                    )}>
+                      <IconComponent className="h-7 w-7 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-1">{integration.name}</h3>
+                    <p className="text-xs text-gray-500 line-clamp-2">{integration.description}</p>
+                    <div className="mt-3">
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs",
+                          isConnected 
+                            ? "border-lime-500/50 text-lime-400 bg-lime-500/10" 
+                            : "border-fuchsia-500/30 text-fuchsia-400 bg-fuchsia-500/10"
+                        )}
+                      >
+                        {isConnected ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Connected
+                          </>
+                        ) : (
+                          <>
+                            <Link className="h-3 w-3 mr-1" />
+                            Connect
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          <div className="text-center mt-10">
+            <Button 
+              variant="ghost"
+              onClick={() => navigate("/cloud")}
+              className="text-fuchsia-400 border border-fuchsia-500/30 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/50"
+            >
+              View All Integrations
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Integration Connect Dialog */}
+      <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
+        <DialogContent className="bg-[#12121e] border-fuchsia-500/30 text-white max-w-md">
+          {selectedIntegration && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br shadow-lg",
+                    selectedIntegration.color
+                  )}>
+                    <selectedIntegration.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-xl">{selectedIntegration.name}</DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                      {selectedIntegration.description}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                {connectedIntegrations[selectedIntegration.id] ? (
+                  <div className="text-center py-4">
+                    <CheckCircle2 className="h-12 w-12 text-lime-400 mx-auto mb-3 drop-shadow-[0_0_15px_rgba(132,204,22,0.5)]" />
+                    <p className="text-lime-400 font-medium mb-1">Integration Connected</p>
+                    <p className="text-sm text-gray-400">
+                      {selectedIntegration.name} is connected and ready to use.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="apiKey" className="text-gray-300">
+                        API Key / Credentials
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="apiKey"
+                          type={showApiKey ? "text" : "password"}
+                          placeholder={selectedIntegration.apiKeyPlaceholder}
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          className="bg-[#0a0a12] border-fuchsia-500/30 text-white pr-10 focus:border-fuchsia-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                        >
+                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Your API key is encrypted and stored securely. 
+                      <a 
+                        href={selectedIntegration.docsUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-fuchsia-400 hover:text-fuchsia-300 ml-1"
+                      >
+                        Get your API key →
+                      </a>
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <DialogFooter className="gap-2">
+                {connectedIntegrations[selectedIntegration.id] ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setConnectDialogOpen(false)}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDisconnectIntegration}
+                      disabled={connectingIntegration}
+                      className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30"
+                    >
+                      {connectingIntegration ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Disconnecting...
+                        </>
+                      ) : (
+                        'Disconnect'
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setConnectDialogOpen(false)}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleConnectIntegration}
+                      disabled={connectingIntegration || !apiKey.trim()}
+                      className={cn(
+                        "bg-fuchsia-500 text-white hover:bg-fuchsia-400",
+                        "shadow-[0_0_15px_rgba(255,0,255,0.3)] hover:shadow-[0_0_20px_rgba(255,0,255,0.5)]"
+                      )}
+                    >
+                      {connectingIntegration ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Plug className="h-4 w-4 mr-2" />
+                          Connect
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-[#0a0a12]">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Everything is <span className="text-cyan-400 drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]">connected</span></h2>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
               No plugins. No integrations. Just launch.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {platformFeatures.map((feature, i) => (
-              <Card key={i} className="border-border/50 bg-background">
+            {platformFeatures.map((feature, i) => {
+              const colors = ['cyan', 'lime', 'fuchsia'];
+              const color = colors[i % colors.length];
+              return (
+              <Card key={i} className={cn(
+                "border bg-[#12121e] transition-all duration-200 hover:scale-105",
+                color === 'cyan' && "border-cyan-500/30 hover:shadow-[0_0_20px_rgba(0,255,255,0.15)]",
+                color === 'lime' && "border-lime-500/30 hover:shadow-[0_0_20px_rgba(132,204,22,0.15)]",
+                color === 'fuchsia' && "border-fuchsia-500/30 hover:shadow-[0_0_20px_rgba(255,0,255,0.15)]"
+              )}>
                 <CardHeader>
-                  <div className="bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                    <feature.icon className="h-6 w-6 text-primary" />
+                  <div className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center mb-4",
+                    color === 'cyan' && "bg-cyan-500/10",
+                    color === 'lime' && "bg-lime-500/10",
+                    color === 'fuchsia' && "bg-fuchsia-500/10"
+                  )}>
+                    <feature.icon className={cn(
+                      "h-6 w-6",
+                      color === 'cyan' && "text-cyan-400",
+                      color === 'lime' && "text-lime-400",
+                      color === 'fuchsia' && "text-fuchsia-400"
+                    )} />
                   </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="text-xl text-white">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                  <p className="text-gray-400">{feature.description}</p>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="bg-muted/30 py-20">
+      <section id="pricing" className="bg-[#0d0d18] py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Simple pricing</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Simple <span className="text-lime-400 drop-shadow-[0_0_20px_rgba(132,204,22,0.5)]">pricing</span></h2>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
               Start free. Upgrade when you grow.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {pricingTiers.map((tier, i) => (
+            {pricingTiers.map((tier, i) => {
+              const colors = ['lime', 'cyan', 'fuchsia'];
+              const color = colors[i % colors.length];
+              return (
               <Card 
                 key={i} 
-                className={`relative border-2 ${tier.popular ? 'border-primary shadow-lg scale-105' : 'border-border/50'}`}
+                className={cn(
+                  "relative border-2 bg-[#12121e] transition-all duration-200",
+                  tier.popular && "scale-105",
+                  color === 'lime' && "border-lime-500/30",
+                  color === 'cyan' && "border-cyan-500/50 shadow-[0_0_25px_rgba(0,255,255,0.2)]",
+                  color === 'fuchsia' && "border-fuchsia-500/30"
+                )}
               >
                 {tier.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-500 text-black shadow-[0_0_15px_rgba(0,255,255,0.5)]">
                     <Star className="h-3 w-3 mr-1" />
                     Most Popular
                   </Badge>
                 )}
                 <CardHeader className="text-center pb-2">
-                  <CardTitle className="text-2xl">{tier.name}</CardTitle>
+                  <CardTitle className="text-2xl text-white">{tier.name}</CardTitle>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold">{tier.price}</span>
-                    <span className="text-muted-foreground">{tier.period}</span>
+                    <span className={cn(
+                      "text-4xl font-bold",
+                      color === 'lime' && "text-lime-400",
+                      color === 'cyan' && "text-cyan-400",
+                      color === 'fuchsia' && "text-fuchsia-400"
+                    )}>{tier.price}</span>
+                    <span className="text-gray-400">{tier.period}</span>
                   </div>
-                  <CardDescription className="mt-2">{tier.description}</CardDescription>
+                  <CardDescription className="mt-2 text-gray-400">{tier.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <ul className="space-y-3">
                     {tier.features.map((feature, j) => (
                       <li key={j} className="flex items-center gap-2">
-                        <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
+                        <Check className={cn(
+                          "h-5 w-5 flex-shrink-0",
+                          color === 'lime' && "text-lime-400",
+                          color === 'cyan' && "text-cyan-400",
+                          color === 'fuchsia' && "text-fuchsia-400"
+                        )} />
+                        <span className="text-sm text-gray-300">{feature}</span>
                       </li>
                     ))}
                   </ul>
                 </CardContent>
                 <CardFooter>
                   <Button 
-                    className="w-full" 
-                    variant={tier.variant}
+                    className={cn(
+                      "w-full font-bold transition-all duration-200",
+                      color === 'lime' && "bg-lime-500 text-black hover:bg-lime-400 shadow-[0_0_15px_rgba(132,204,22,0.3)] hover:shadow-[0_0_20px_rgba(132,204,22,0.5)]",
+                      color === 'cyan' && "bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:shadow-[0_0_20px_rgba(0,255,255,0.5)]",
+                      color === 'fuchsia' && "bg-fuchsia-500 text-black hover:bg-fuchsia-400 shadow-[0_0_15px_rgba(255,0,255,0.3)] hover:shadow-[0_0_20px_rgba(255,0,255,0.5)]"
+                    )}
                     onClick={handleStartLauncher}
                   >
                     {tier.cta}
                   </Button>
                 </CardFooter>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
+      <section className="py-20 bg-[#0a0a12]">
         <div className="container mx-auto px-4">
-          <Card className="max-w-4xl mx-auto bg-primary text-primary-foreground border-0">
+          <Card className="max-w-4xl mx-auto bg-gradient-to-r from-cyan-500/20 via-fuchsia-500/20 to-lime-500/20 border border-cyan-500/30 shadow-[0_0_40px_rgba(0,255,255,0.2)]">
             <CardContent className="py-12 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to launch?</h2>
-              <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Ready to <span className="text-cyan-400 drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]">launch?</span></h2>
+              <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
                 Pick a business type. We'll handle the rest.
               </p>
               <Button 
                 size="lg" 
-                variant="secondary" 
                 onClick={handleStartLauncher}
-                className="text-lg px-8 h-14"
+                className={cn(
+                  "text-lg px-8 h-14 bg-cyan-500 text-black font-bold",
+                  "shadow-[0_0_25px_rgba(0,255,255,0.5)]",
+                  "hover:bg-cyan-400 hover:shadow-[0_0_35px_rgba(0,255,255,0.7)]",
+                  "active:scale-95 transition-all duration-200"
+                )}
               >
                 <Zap className="mr-2 h-5 w-5" />
                 Launch Your System
@@ -560,19 +1161,19 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 py-12">
+      <footer className="border-t border-cyan-500/20 py-12 bg-[#0a0a12]">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <CheckSquare className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">Unison Tasks</span>
+              <CheckSquare className="h-6 w-6 text-cyan-400" />
+              <span className="text-lg font-bold text-white">Unison Tasks</span>
             </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Support</a>
+            <div className="flex gap-6 text-sm text-gray-500">
+              <a href="#" className="hover:text-cyan-400 transition-colors">Privacy</a>
+              <a href="#" className="hover:text-cyan-400 transition-colors">Terms</a>
+              <a href="#" className="hover:text-cyan-400 transition-colors">Support</a>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               © 2025 Unison Tasks. All rights reserved.
             </p>
           </div>
