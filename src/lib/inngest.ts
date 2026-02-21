@@ -84,6 +84,28 @@ type Events = {
       contactEmail?: string;
     };
   };
+  "booking/reminder.24h": {
+    data: {
+      bookingId: string;
+      businessId: string;
+      contactId?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      service: string;
+      scheduledAt: string;
+    };
+  };
+  "booking/reminder.1h": {
+    data: {
+      bookingId: string;
+      businessId: string;
+      contactId?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      service: string;
+      scheduledAt: string;
+    };
+  };
   "booking/completed": {
     data: {
       bookingId: string;
@@ -98,6 +120,44 @@ type Events = {
       businessId: string;
       contactId?: string;
       contactEmail?: string;
+    };
+  };
+
+  // ============ CRM CRON EVENTS ============
+  "crm/lead.stale": {
+    data: {
+      leadId: string;
+      businessId: string;
+      email?: string;
+      lastActivity: string;
+      currentStatus: string;
+    };
+  };
+  "crm/deal.followup.needed": {
+    data: {
+      dealId: string;
+      businessId: string;
+      title: string;
+      stage: string;
+      contactId?: string;
+      daysSinceUpdate: number;
+    };
+  };
+  "crm/pipeline.bottleneck": {
+    data: {
+      businessId: string;
+      stage: string;
+      dealCount: number;
+      threshold: number;
+    };
+  };
+  "crm/weekly.summary": {
+    data: {
+      businessId: string;
+      period: { start: string; end: string };
+      leads: { new: number; converted: number; lost: number };
+      deals: { created: number; won: number; lost: number; totalValue: number; wonValue: number };
+      bookings: { scheduled: number; completed: number; noShows: number };
     };
   };
 
