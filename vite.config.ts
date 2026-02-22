@@ -36,8 +36,11 @@ export default defineConfig(({ mode }) => ({
       output: {
         // Comprehensive manual chunk splitting for optimal loading
         manualChunks: (id: string) => {
-          // React core and router
-          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+          // React core, router, and React-dependent utilities (must stay together)
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router') ||
+              id.includes('use-callback-ref') || id.includes('use-sidecar') || 
+              id.includes('use-sync-external-store') || id.includes('scheduler') ||
+              id.includes('aria-hidden') || id.includes('react-remove-scroll')) {
             return 'react-core';
           }
           
@@ -132,15 +135,9 @@ export default defineConfig(({ mode }) => ({
             return 'toast';
           }
 
-          // Node modules vendor chunk for everything else (split by first-level package name)
+          // Node modules vendor chunk - group smaller packages together
           if (id.includes('node_modules')) {
-            // Extract package name for more granular splitting
-            const match = id.match(/node_modules\/(?:\.pnpm\/)?(@?[^/@]+(?:\/[^/@]+)?)/);
-            if (match) {
-              const pkgName = match[1].replace('@', '').replace('/', '-');
-              // Group smaller packages together
-              return `vendor-${pkgName}`;
-            }
+            // Don't split every package individually - causes module resolution issues
             return 'vendor';
           }
         },

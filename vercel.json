@@ -72,7 +72,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; frame-ancestors 'self' https://*.vercel.app https://vercel.com; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; frame-ancestors 'self' https://*.vercel.app https://vercel.com; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'"
         },
         {
           "key": "Cross-Origin-Embedder-Policy",

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { SimplePreview, type SimplePreviewHandle } from '@/components/SimplePreview';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
+import { DeployButton } from '@/components/DeployButton';
 import { LiveHTMLPreview, type LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
@@ -3691,6 +3692,21 @@ ${body.innerHTML}
                   <Save className="h-3.5 w-3.5 mr-1.5" />
                   <span className="text-xs font-bold">{currentTemplateName ? 'Update' : 'Save'}</span>
                 </Button>
+                <DeployButton
+                  files={{ 'index.html': previewCode }}
+                  defaultSiteName={currentTemplateName || 'unison-site'}
+                  variant="ghost"
+                  size="sm"
+                  onDeployComplete={(url) => {
+                    toast.success('Site published!', {
+                      description: `Live at ${url}`,
+                      action: {
+                        label: 'Open',
+                        onClick: () => window.open(url, '_blank'),
+                      },
+                    });
+                  }}
+                />
               </div>
               
               <div className="h-5 w-px bg-cyan-500/50" />

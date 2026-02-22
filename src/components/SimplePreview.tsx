@@ -9,8 +9,9 @@
 
 import React, { useMemo, useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { FileCode, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
+import { FileCode, RefreshCw, ExternalLink, AlertTriangle, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DeployButton } from '@/components/DeployButton';
 import { getSelectedElementData, highlightElement, removeHighlight } from '@/utils/htmlElementSelector';
 import { toast } from 'sonner';
 import { executeIntent, type IntentContext } from '@/runtime/intentExecutor';
@@ -49,6 +50,12 @@ export interface SimplePreviewProps {
   onIntentTrigger?: (intent: string, payload: Record<string, unknown>, result: unknown) => void;
   /** Multi-page manifest for async navigation (path -> html content) */
   pageManifest?: Record<string, string>;
+  /** Enable deploy button in toolbar */
+  showDeploy?: boolean;
+  /** Default site name for deployments */
+  deploySiteName?: string;
+  /** Callback when deployment completes */
+  onDeployComplete?: (url: string) => void;
 }
 
 /**
@@ -1461,6 +1468,9 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   businessId,
   siteId,
   onIntentTrigger,
+  showDeploy = false,
+  deploySiteName,
+  onDeployComplete,
 }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
@@ -2033,6 +2043,16 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
+            {showDeploy && (
+              <DeployButton
+                files={{ 'index.html': currentHtml }}
+                defaultSiteName={deploySiteName}
+                onDeployComplete={onDeployComplete}
+                variant="ghost"
+                size="sm"
+                showProviderSelect={true}
+              />
+            )}
           </div>
         </div>
       )}

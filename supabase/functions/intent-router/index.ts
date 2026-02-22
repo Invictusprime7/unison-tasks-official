@@ -300,7 +300,7 @@ async function createLead(
   
   if (crmError) {
     console.error("[intent-router] Failed to create lead:", crmError);
-    throw new Error("Failed to save lead");
+    throw new Error(`Failed to save lead: ${crmError.message || crmError.code || 'Unknown database error'}`);
   }
   
   return crmLead;
@@ -853,32 +853,35 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
   
   let result: IntentResult;
   
+  // Add source to data for preview mode handling
+  const dataWithSource = { ...payload.data, _source: payload.source };
+  
   try {
     // Route to appropriate handler
     switch (payload.intent) {
       case "contact.submit":
       case "lead.capture":
-        result = await handleContactSubmit(supabase, payload.businessId, payload.projectId, payload.data);
+        result = await handleContactSubmit(supabase, payload.businessId, payload.projectId, dataWithSource);
         break;
       
       case "newsletter.subscribe":
-        result = await handleNewsletterSubscribe(supabase, payload.businessId, payload.projectId, payload.data);
+        result = await handleNewsletterSubscribe(supabase, payload.businessId, payload.projectId, dataWithSource);
         break;
       
       case "booking.create":
-        result = await handleBookingRequest(supabase, payload.businessId, payload.projectId, payload.data);
+        result = await handleBookingRequest(supabase, payload.businessId, payload.projectId, dataWithSource);
         break;
       
       case "quote.request":
-        result = await handleQuoteRequest(supabase, payload.businessId, payload.projectId, payload.data);
+        result = await handleQuoteRequest(supabase, payload.businessId, payload.projectId, dataWithSource);
         break;
       
       case "cta.primary":
-        result = await handleCTA(supabase, payload.businessId, payload.projectId, payload.data, "primary");
+        result = await handleCTA(supabase, payload.businessId, payload.projectId, dataWithSource, "primary");
         break;
       
       case "cta.secondary":
-        result = await handleCTA(supabase, payload.businessId, payload.projectId, payload.data, "secondary");
+        result = await handleCTA(supabase, payload.businessId, payload.projectId, dataWithSource, "secondary");
         break;
       
       case "contact.call":
@@ -890,12 +893,12 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
       
       case "button.click":
         // Generic button click - route to automation engine
-        result = await handleButtonClick(supabase, payload.businessId, payload.projectId, payload.data);
+        result = await handleButtonClick(supabase, payload.businessId, payload.projectId, dataWithSource);
         break;
       
       case "form.submit":
         // Generic form submission - treat as lead capture
-        result = await handleContactSubmit(supabase, payload.businessId, payload.projectId, payload.data);
+        result = await handleContactSubmit(supabase, payload.businessId, payload.projectId, dataWithSource);
         break;
       
       case "auth.login":
@@ -906,9 +909,9 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
       
       default:
         // Unknown intent - record as generic lead if it has contact info
-        if (payload.data.email || payload.data.phone) {
+        if (dataWithSource.email || dataWithSource.phone) {
           await createLead(supabase, payload.businessId, payload.projectId, {
-            ...payload.data,
+            ...dataWithSource,
             source: payload.intent,
           });
         }
