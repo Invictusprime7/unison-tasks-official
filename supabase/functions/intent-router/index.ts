@@ -909,7 +909,7 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
       
       default:
         // Unknown intent - record as generic lead if it has contact info
-        if (dataWithSource.email || dataWithSource.phone) {
+        if ((dataWithSource as any).email || (dataWithSource as any).phone) {
           await createLead(supabase, payload.businessId, payload.projectId, {
             ...dataWithSource,
             source: payload.intent,

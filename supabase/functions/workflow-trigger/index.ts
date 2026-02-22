@@ -31,8 +31,8 @@ export default async (req: Request) => {
     });
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await callerSupabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: claimsData, error: claimsError } = await callerSupabase.auth.getUser(token);
+    if (claimsError || !claimsData?.user) {
       console.warn("Workflow trigger rejected: invalid JWT", claimsError?.message);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
@@ -40,7 +40,7 @@ export default async (req: Request) => {
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = claimsData.user.id;
     console.log("Workflow trigger authenticated for user:", userId);
 
     // Use service role for internal operations

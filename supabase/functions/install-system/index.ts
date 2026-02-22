@@ -94,12 +94,12 @@ serve(async (req) => {
 
     // Validate caller + obtain user id
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await authClient.auth.getClaims(token);
-    if (claimsError || !claims?.claims?.sub) {
-      console.error("[install-system] getClaims failed", claimsError);
+    const { data: claims, error: claimsError } = await authClient.auth.getUser(token);
+    if (claimsError || !claims?.user?.id) {
+      console.error("[install-system] getUser failed", claimsError);
       return json(401, { success: false, error: "Unauthorized" });
     }
-    const userId = claims.claims.sub;
+    const userId = claims.user.id;
 
     const body: InstallRequest = await req.json();
     const systemType = body.systemType;
