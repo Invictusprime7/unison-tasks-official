@@ -1,4 +1,5 @@
 import { useEffect, lazy, Suspense } from "react";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 // Preload the Index component to avoid loading delay after redirect
 const Index = lazy(() => import("./Index"));
@@ -22,9 +23,11 @@ const Landing = () => {
   }, []);
 
   return (
-    <Suspense fallback={<LandingLoader />}>
-      <Index />
-    </Suspense>
+    <RouteErrorBoundary routeName="landing">
+      <Suspense fallback={<LandingLoader />}>
+        <Index />
+      </Suspense>
+    </RouteErrorBoundary>
   );
 };
 
