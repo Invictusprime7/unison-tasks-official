@@ -379,7 +379,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [pendingBuilderActions, setPendingBuilderActions] = useState<
     | null
     | {
-        type: "install_pack" | "wire_button";
+        type: "install_pack" | "wire_button" | "add_section" | "apply_style" | "modify_element" | "remove_section";
         packs?: string[];
         selector?: string;
         intent?: string;
