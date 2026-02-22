@@ -10,13 +10,13 @@ import { RouteErrorBoundary, AsyncBoundary } from "@/components/RouteErrorBounda
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import WebBuilderPage from "./pages/WebBuilderPage";
 
 // Dynamic imports for heavy pages
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Index = lazy(() => import("./pages/Index"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const CheckoutCancel = lazy(() => import("./pages/CheckoutCancel"));
+const WebBuilderPage = lazy(() => import("./pages/WebBuilderPage"));
 
 // Dynamic imports for heavy pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -97,9 +97,9 @@ const App = () => (
               </AsyncBoundary>
             } />
             <Route path="/web-builder" element={
-              <RouteErrorBoundary routeName="web-builder">
+              <AsyncBoundary loading={<PageLoader />}>
                 <WebBuilderPage />
-              </RouteErrorBoundary>
+              </AsyncBoundary>
             } />
             <Route path="/ai-generator" element={
               <AsyncBoundary loading={<PageLoader />}>
