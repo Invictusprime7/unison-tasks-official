@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "serve";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -202,7 +202,19 @@ OUTPUT: Return ONLY valid JSON matching the schema above. No markdown, no explan
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error(`AI Gateway error: ${response.status}`);
+      if (response.status === 401) {
+        console.error("AI gateway authentication failed");
+        return new Response(
+          JSON.stringify({ error: "AI service authentication failed. Please check API configuration." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const errorText = await response.text();
+      console.error("AI Gateway error:", response.status, errorText);
+      return new Response(
+        JSON.stringify({ error: `AI Gateway error: ${response.status}` }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const data = await response.json();

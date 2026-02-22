@@ -251,7 +251,6 @@ function injectIntentListener(html: string): string {
       var reason = e.reason || {};
       captureError('unhandledrejection', reason.message || String(reason), '', 0, 0, reason.stack || '');
     };
-    };
     
     window.addEventListener('message', function(evt) {
       try {

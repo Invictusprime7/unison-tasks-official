@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,17 +30,16 @@ export default async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await callerSupabase.auth.getUser(token);
-    if (claimsError || !claimsData?.user) {
-      console.warn("Workflow trigger rejected: invalid JWT", claimsError?.message);
+    const { data: { user }, error: userError } = await callerSupabase.auth.getUser();
+    if (userError || !user?.id) {
+      console.warn("Workflow trigger rejected: invalid JWT", userError?.message);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.user.id;
+    const userId = user.id;
     console.log("Workflow trigger authenticated for user:", userId);
 
     // Use service role for internal operations

@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { serve } from "serve";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,13 +93,12 @@ serve(async (req) => {
     });
 
     // Validate caller + obtain user id
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await authClient.auth.getUser(token);
-    if (claimsError || !claims?.user?.id) {
-      console.error("[install-system] getUser failed", claimsError);
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    if (userError || !user?.id) {
+      console.error("[install-system] getUser failed", userError);
       return json(401, { success: false, error: "Unauthorized" });
     }
-    const userId = claims.user.id;
+    const userId = user.id;
 
     const body: InstallRequest = await req.json();
     const systemType = body.systemType;

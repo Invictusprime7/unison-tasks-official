@@ -10,8 +10,8 @@
  * Every CoreIntent from published templates routes through here.
  */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "serve";
+import { createClient } from "@supabase/supabase-js";
 
 // CORS headers for browser requests
 const corsHeaders = {
@@ -854,7 +854,7 @@ async function routeIntent(payload: IntentPayload): Promise<IntentResult> {
   let result: IntentResult;
   
   // Add source to data for preview mode handling
-  const dataWithSource = { ...payload.data, _source: payload.source };
+  const dataWithSource: Record<string, any> = { ...payload.data, _source: payload.source };
   
   try {
     // Route to appropriate handler

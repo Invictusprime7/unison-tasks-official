@@ -3,7 +3,7 @@
  * Generates AI images using Lovable AI Gateway (Gemini image model)
  */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "serve";
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
@@ -136,8 +136,17 @@ serve(async (req: Request) => {
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      if (response.status === 401) {
+        return new Response(
+          JSON.stringify({ error: 'AI service authentication failed. Please check API configuration.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
-      throw new Error(`Failed to generate image: ${response.status}`);
+      return new Response(
+        JSON.stringify({ error: `Failed to generate image: ${response.status}` }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const result = await response.json();

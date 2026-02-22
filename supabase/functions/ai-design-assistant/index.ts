@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "serve";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -104,9 +104,19 @@ Return your response in this EXACT JSON format:
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (response.status === 401) {
+        console.error("AI gateway authentication failed");
+        return new Response(
+          JSON.stringify({ error: "AI service authentication failed. Please check API configuration." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      return new Response(
+        JSON.stringify({ error: `AI service error: ${response.status}` }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const data = await response.json();

@@ -6,8 +6,8 @@
 // @ts-nocheck - Supabase Edge Function types differ from local TS
 // deno-lint-ignore-file no-import-prefix
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "serve";
+import { createClient } from "@supabase/supabase-js";
 
 // deno-lint-ignore no-explicit-any
 type AnySupabase = any;

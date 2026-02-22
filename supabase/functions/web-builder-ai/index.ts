@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { serve } from "serve";
+import { z } from "zod";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -135,11 +135,18 @@ IMPORTANT: Return ONLY valid JSON, no markdown, no explanations outside the JSON
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (response.status === 401) {
+        console.error("AI gateway authentication failed");
+        return new Response(
+          JSON.stringify({ error: "AI service authentication failed. Please check API configuration." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       return new Response(
-        JSON.stringify({ error: "AI gateway error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: `AI gateway error: ${response.status}` }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

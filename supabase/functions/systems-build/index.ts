@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-import-prefix
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { serve } from "serve";
+import { z } from "zod";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

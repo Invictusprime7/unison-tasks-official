@@ -1,0 +1,958 @@
+/**
+ * INTENT-EXEC: Canonical Intent Execution Surface
+ * 
+ * This is THE single endpoint for all intent execution:
+ * 1. Validates entitlement (bundle.entitlements)
+ * 2. Logs intent event (intent_events table)
+ * 3. Executes client + edge logic
+ * 4. Triggers automation runtime
+ * 5. Records usage for metering
+ * 6. Returns standardized UTP/INTENT_RESULT
+ * 
+ * POST /functions/v1/intent-exec
+ * 
+ * Request body matches IntentExecuteRequest from SiteBundle types:
+ * {
+ *   siteId: string;
+ *   intentId: string;
+ *   bindingId?: string;
+ *   pageId: string;
+ *   params: Record<string, unknown>;
+ *   context?: { sessionId?: string; userId?: string; }
+ * }
+ */
+
+import { serve } from "serve";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface IntentExecuteRequest {
+  siteId?: string;         // Optional if businessId provided
+  businessId?: string;     // Can be provided directly
+  intentId: string;
+  bindingId?: string;
+  pageId: string;
+  params: Record<string, unknown>;
+  context?: {
+    sessionId?: string;
+    userId?: string;
+  };
+}
+
+interface ClientAction {
+  type: "NAVIGATE" | "OVERLAY" | "TOAST" | "STATE_PATCH" | "SUBMIT" | "EXTERNAL";
+  [key: string]: unknown;
+}
+
+interface IntentExecuteResponse {
+  ok: boolean;
+  result?: unknown;
+  clientActions?: ClientAction[];
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+interface IntentDefinition {
+  intentId: string;
+  category: string;
+  description: string;
+  paramsSchema: Record<string, unknown>;
+  handler: {
+    kind: "client" | "edge" | "both";
+    clientAction?: ClientAction;
+    edgeFunction?: {
+      functionName: string;
+      route: string;
+    };
+  };
+  requires?: {
+    featureFlag?: string;
+    minPlan?: string;
+    integrations?: string[];
+  };
+}
+
+interface EntitlementSystem {
+  plan: string;
+  features: Record<string, boolean>;
+  limits: Record<string, number>;
+  gatedIntents?: string[];
+  customDomain?: boolean;
+  whiteLabel?: boolean;
+  expiresAt?: string;
+}
+
+interface SiteBundle {
+  version: string;
+  site: { siteId: string; businessId: string };
+  intents: {
+    definitions: Record<string, IntentDefinition>;
+    bindings: unknown[];
+  };
+  entitlements: EntitlementSystem;
+  automations?: {
+    installed: string[];
+  };
+}
+
+// ============================================================================
+// CORS + Headers
+// ============================================================================
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+// ============================================================================
+// Supabase Client
+// ============================================================================
+
+function getSupabaseAdmin(): SupabaseClient {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase environment variables");
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
+
+// ============================================================================
+// Entitlement Validation
+// ============================================================================
+
+function checkEntitlement(
+  intentId: string,
+  intentDef: IntentDefinition | undefined,
+  entitlements: EntitlementSystem
+): { allowed: boolean; reason?: string } {
+  // Check if intent is in gated list
+  if (entitlements.gatedIntents?.includes(intentId)) {
+    return { allowed: false, reason: `Intent '${intentId}' is not available on your plan` };
+  }
+  
+  // Check intent-specific requirements
+  if (intentDef?.requires) {
+    // Check feature flag
+    if (intentDef.requires.featureFlag) {
+      const hasFeature = entitlements.features[intentDef.requires.featureFlag];
+      if (!hasFeature) {
+        return { allowed: false, reason: `Feature '${intentDef.requires.featureFlag}' is not enabled` };
+      }
+    }
+    
+    // Check plan level
+    if (intentDef.requires.minPlan) {
+      const planHierarchy = ["free", "starter", "pro", "agency", "enterprise"];
+      const currentPlanIndex = planHierarchy.indexOf(entitlements.plan);
+      const requiredPlanIndex = planHierarchy.indexOf(intentDef.requires.minPlan);
+      
+      if (currentPlanIndex < requiredPlanIndex) {
+        return { 
+          allowed: false, 
+          reason: `This feature requires '${intentDef.requires.minPlan}' plan or higher` 
+        };
+      }
+    }
+    
+    // Check integrations
+    if (intentDef.requires.integrations?.length) {
+      for (const integration of intentDef.requires.integrations) {
+        const hasIntegration = entitlements.features[`integration:${integration}`];
+        if (!hasIntegration) {
+          return { allowed: false, reason: `Integration '${integration}' is required but not configured` };
+        }
+      }
+    }
+  }
+  
+  return { allowed: true };
+}
+
+// ============================================================================
+// Usage Limit Check
+// ============================================================================
+
+async function checkUsageLimit(
+  supabase: SupabaseClient,
+  businessId: string
+): Promise<{ allowed: boolean; reason?: string }> {
+  const billingPeriod = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+  
+  const { data: summary, error } = await supabase
+    .from("usage_summary")
+    .select("intent_executions, intent_limit")
+    .eq("business_id", businessId)
+    .eq("billing_period", billingPeriod)
+    .maybeSingle();
+  
+  if (error) {
+    console.error("[intent-exec] Usage check error:", error);
+    // Allow on error to avoid blocking users
+    return { allowed: true };
+  }
+  
+  if (!summary) {
+    // No usage recorded yet, allow
+    return { allowed: true };
+  }
+  
+  if (summary.intent_limit && summary.intent_executions >= summary.intent_limit) {
+    return { 
+      allowed: false, 
+      reason: `Monthly intent execution limit reached (${summary.intent_limit})` 
+    };
+  }
+  
+  return { allowed: true };
+}
+
+// ============================================================================
+// Load Site Bundle
+// ============================================================================
+
+async function loadSiteBundle(
+  supabase: SupabaseClient,
+  siteId: string
+): Promise<SiteBundle | null> {
+  // Get the latest bundle for this site
+  const { data, error } = await supabase
+    .from("site_bundles")
+    .select("bundle, site_id, build_id")
+    .eq("site_id", siteId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  if (error) {
+    console.error("[intent-exec] Failed to load bundle:", error);
+    return null;
+  }
+  
+  if (!data) {
+    console.warn("[intent-exec] No bundle found for site:", siteId);
+    return null;
+  }
+  
+  return data.bundle as SiteBundle;
+}
+
+// ============================================================================
+// Log Intent Event
+// ============================================================================
+
+async function logIntentEvent(
+  supabase: SupabaseClient,
+  args: {
+    siteId?: string;
+    businessId: string;
+    buildId?: string;
+    intentId: string;
+    bindingId?: string;
+    pageId: string;
+    ok: boolean;
+    durationMs?: number;
+    params?: Record<string, unknown>;
+    result?: unknown;
+    errorCode?: string;
+    errorMessage?: string;
+    clientActions?: ClientAction[];
+    automationRunId?: string;
+    userId?: string;
+    sessionId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("intent_events")
+    .insert({
+      site_id: args.siteId,
+      business_id: args.businessId,
+      build_id: args.buildId,
+      intent_id: args.intentId,
+      binding_id: args.bindingId,
+      page_id: args.pageId,
+      ok: args.ok,
+      duration_ms: args.durationMs,
+      params: args.params || {},
+      result: args.result || {},
+      error_code: args.errorCode,
+      error_message: args.errorMessage,
+      client_actions: args.clientActions || [],
+      automation_run_id: args.automationRunId,
+      user_id: args.userId,
+      session_id: args.sessionId,
+      ip_address: args.ipAddress,
+      user_agent: args.userAgent,
+    })
+    .select("id")
+    .single();
+  
+  if (error) {
+    console.error("[intent-exec] Failed to log intent event:", error);
+    return null;
+  }
+  
+  return data?.id || null;
+}
+
+// ============================================================================
+// Record Usage
+// ============================================================================
+
+async function recordUsage(
+  supabase: SupabaseClient,
+  businessId: string,
+  intentId: string
+): Promise<void> {
+  try {
+    await supabase.rpc("record_usage_event", {
+      p_business_id: businessId,
+      p_event_type: "intent_executed",
+      p_resource_type: "intent",
+      p_metadata: { intentId },
+    });
+  } catch (error) {
+    console.error("[intent-exec] Failed to record usage:", error);
+  }
+}
+
+// ============================================================================
+// Trigger Automation
+// ============================================================================
+
+async function triggerAutomation(
+  supabase: SupabaseClient,
+  businessId: string,
+  intentId: string,
+  params: Record<string, unknown>,
+  siteId?: string
+): Promise<string | null> {
+  // Map intent to automation event
+  const automationIntent = mapIntentToAutomationEvent(intentId);
+  
+  if (!automationIntent) {
+    return null;
+  }
+  
+  // Insert automation event
+  const { data, error } = await supabase
+    .from("automation_events")
+    .insert({
+      business_id: businessId,
+      intent: automationIntent,
+      payload: {
+        ...params,
+        siteId,
+        intentId,
+        triggeredAt: new Date().toISOString(),
+      },
+      source: "intent_exec",
+      dedupe_key: `${siteId}:${intentId}:${Date.now()}`,
+    })
+    .select("id")
+    .single();
+  
+  if (error) {
+    console.error("[intent-exec] Failed to trigger automation:", error);
+    return null;
+  }
+  
+  console.log("[intent-exec] Automation event created:", data?.id);
+  return data?.id || null;
+}
+
+function mapIntentToAutomationEvent(intentId: string): string | null {
+  const mapping: Record<string, string> = {
+    "contact.submit": "lead.capture",
+    "lead.capture": "lead.capture",
+    "booking.create": "booking.create",
+    "quote.request": "quote.request",
+    "newsletter.subscribe": "newsletter.subscribe",
+    "form.submit": "form.submit",
+    "cta.primary": "cta.click",
+    "cta.secondary": "cta.click",
+  };
+  
+  return mapping[intentId] || null;
+}
+
+// ============================================================================
+// Execute Intent Handler
+// ============================================================================
+
+async function executeIntentHandler(
+  intentDef: IntentDefinition,
+  params: Record<string, unknown>,
+  context: { siteId?: string; businessId: string; pageId: string }
+): Promise<{ ok: boolean; result: unknown; clientActions: ClientAction[] }> {
+  const handler = intentDef.handler;
+  const clientActions: ClientAction[] = [];
+  let result: unknown = {};
+  
+  // Execute client action if defined
+  if (handler.kind === "client" || handler.kind === "both") {
+    if (handler.clientAction) {
+      clientActions.push(handler.clientAction);
+    }
+  }
+  
+  // Execute edge function if defined
+  if (handler.kind === "edge" || handler.kind === "both") {
+    if (handler.edgeFunction) {
+      try {
+        const edgeResult = await callEdgeFunction(
+          handler.edgeFunction.functionName,
+          handler.edgeFunction.route,
+          params,
+          context
+        );
+        result = edgeResult;
+        
+        // Add success toast if no client action defined
+        if (clientActions.length === 0) {
+          clientActions.push({
+            type: "TOAST",
+            message: "Submitted successfully!",
+            level: "success",
+          });
+        }
+      } catch (error) {
+        console.error("[intent-exec] Edge function error:", error);
+        return {
+          ok: false,
+          result: { error: String(error) },
+          clientActions: [{
+            type: "TOAST",
+            message: "An error occurred. Please try again.",
+            level: "error",
+          }],
+        };
+      }
+    }
+  }
+  
+  return { ok: true, result, clientActions };
+}
+
+async function callEdgeFunction(
+  functionName: string,
+  route: string,
+  params: Record<string, unknown>,
+  context: { siteId?: string; businessId: string; pageId: string }
+): Promise<unknown> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error("Missing Supabase config");
+  }
+  
+  const url = `${supabaseUrl}/functions/v1/${functionName}`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ...params,
+      ...context,
+      route,
+    }),
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Edge function error: ${response.status} - ${errorText}`);
+  }
+  
+  return response.json();
+}
+
+// ============================================================================
+// Core Intent Fallback Handlers
+// ============================================================================
+
+async function executeCoreFallback(
+  intentId: string,
+  params: Record<string, unknown>,
+  context: { siteId?: string; businessId: string; pageId: string }
+): Promise<{ ok: boolean; result: unknown; clientActions: ClientAction[] }> {
+  const supabase = getSupabaseAdmin();
+  
+  // Navigation intents - client-side only
+  if (intentId.startsWith("nav.")) {
+    return handleNavIntent(intentId, params);
+  }
+  
+  // Contact/lead intents - persist to CRM
+  if (intentId === "contact.submit" || intentId === "lead.capture") {
+    return await handleLeadCapture(supabase, params, context);
+  }
+  
+  // Booking intents
+  if (intentId === "booking.create") {
+    return await handleBookingCreate(supabase, params, context);
+  }
+  
+  // Quote request
+  if (intentId === "quote.request") {
+    return await handleQuoteRequest(supabase, params, context);
+  }
+  
+  // Default: just acknowledge
+  return {
+    ok: true,
+    result: { acknowledged: true },
+    clientActions: [{
+      type: "TOAST",
+      message: "Action completed",
+      level: "success",
+    }],
+  };
+}
+
+function handleNavIntent(
+  intentId: string,
+  params: Record<string, unknown>
+): { ok: boolean; result: unknown; clientActions: ClientAction[] } {
+  const path = params.path as string || params.to as string || "/";
+  
+  if (intentId === "nav.external") {
+    const url = params.url as string || params.href as string;
+    return {
+      ok: true,
+      result: { navigated: true },
+      clientActions: [{
+        type: "EXTERNAL",
+        url,
+        target: params.target || "_blank",
+      }],
+    };
+  }
+  
+  return {
+    ok: true,
+    result: { navigated: true },
+    clientActions: [{
+      type: "NAVIGATE",
+      to: path,
+    }],
+  };
+}
+
+async function handleLeadCapture(
+  supabase: SupabaseClient,
+  params: Record<string, unknown>,
+  context: { businessId: string }
+): Promise<{ ok: boolean; result: unknown; clientActions: ClientAction[] }> {
+  // Create lead/contact record
+  const { data, error } = await supabase
+    .from("crm_contacts")
+    .insert({
+      business_id: context.businessId,
+      email: params.email as string,
+      name: (params.name || params.fullName) as string,
+      phone: params.phone as string,
+      source: "website_form",
+      tags: ["lead"],
+      custom_fields: params,
+    })
+    .select("id")
+    .single();
+  
+  if (error) {
+    console.error("[intent-exec] Lead capture error:", error);
+    
+    // Check for duplicate
+    if (error.code === "23505") {
+      return {
+        ok: true,
+        result: { duplicate: true },
+        clientActions: [{
+          type: "TOAST",
+          message: "Thanks! We already have your information.",
+          level: "info",
+        }],
+      };
+    }
+    
+    return {
+      ok: false,
+      result: { error: error.message },
+      clientActions: [{
+        type: "TOAST",
+        message: "Failed to submit. Please try again.",
+        level: "error",
+      }],
+    };
+  }
+  
+  return {
+    ok: true,
+    result: { contactId: data?.id },
+    clientActions: [{
+      type: "TOAST",
+      message: "Thanks for reaching out! We'll be in touch soon.",
+      level: "success",
+    }],
+  };
+}
+
+async function handleBookingCreate(
+  supabase: SupabaseClient,
+  params: Record<string, unknown>,
+  context: { businessId: string }
+): Promise<{ ok: boolean; result: unknown; clientActions: ClientAction[] }> {
+  // Create booking record
+  const { data, error } = await supabase
+    .from("bookings")
+    .insert({
+      business_id: context.businessId,
+      customer_email: params.email as string,
+      customer_name: (params.name || params.fullName) as string,
+      customer_phone: params.phone as string,
+      service_name: params.service as string,
+      preferred_date: params.date as string,
+      preferred_time: params.time as string,
+      status: "pending",
+      notes: params.message as string,
+      source: "website",
+    })
+    .select("id")
+    .single();
+  
+  if (error) {
+    console.error("[intent-exec] Booking create error:", error);
+    return {
+      ok: false,
+      result: { error: error.message },
+      clientActions: [{
+        type: "TOAST",
+        message: "Failed to create booking. Please try again.",
+        level: "error",
+      }],
+    };
+  }
+  
+  return {
+    ok: true,
+    result: { bookingId: data?.id },
+    clientActions: [{
+      type: "TOAST",
+      message: "Booking request submitted! We'll confirm shortly.",
+      level: "success",
+    }],
+  };
+}
+
+async function handleQuoteRequest(
+  supabase: SupabaseClient,
+  params: Record<string, unknown>,
+  context: { businessId: string }
+): Promise<{ ok: boolean; result: unknown; clientActions: ClientAction[] }> {
+  // Create quote request as a deal
+  const { data, error } = await supabase
+    .from("crm_deals")
+    .insert({
+      business_id: context.businessId,
+      title: `Quote Request - ${params.service || "General"}`,
+      stage: "lead",
+      value: 0,
+      probability: 20,
+      custom_fields: {
+        ...params,
+        source: "website_quote_form",
+      },
+    })
+    .select("id")
+    .single();
+  
+  // Also create contact if not exists
+  if (params.email) {
+    await supabase
+      .from("crm_contacts")
+      .upsert({
+        business_id: context.businessId,
+        email: params.email as string,
+        name: (params.name || params.fullName) as string,
+        phone: params.phone as string,
+        source: "quote_request",
+        tags: ["quote_request"],
+      }, { onConflict: "business_id,email" });
+  }
+  
+  if (error) {
+    console.error("[intent-exec] Quote request error:", error);
+  }
+  
+  return {
+    ok: true,
+    result: { dealId: data?.id },
+    clientActions: [{
+      type: "TOAST",
+      message: "Quote request received! We'll prepare your estimate shortly.",
+      level: "success",
+    }],
+  };
+}
+
+// ============================================================================
+// Main Handler
+// ============================================================================
+
+serve(async (req: Request) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "POST required" } }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  const startTime = Date.now();
+  
+  // Initialize Supabase client - handle missing env vars gracefully
+  let supabase: SupabaseClient;
+  try {
+    supabase = getSupabaseAdmin();
+  } catch (envError) {
+    console.error("[intent-exec] Environment error:", envError);
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: { code: "CONFIG_ERROR", message: "Service not properly configured" },
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  // Extract client info
+  const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0] || 
+                    req.headers.get("x-real-ip") ||
+                    "unknown";
+  const userAgent = req.headers.get("user-agent") || "unknown";
+  
+  try {
+    const body = await req.json() as IntentExecuteRequest;
+    const { siteId, intentId, bindingId, pageId, params, context } = body;
+    
+    // Validate required fields
+    if (!intentId || !pageId) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: { code: "INVALID_REQUEST", message: "Missing required fields: intentId, pageId" },
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Need either siteId or businessId
+    if (!siteId && !body.businessId) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: { code: "INVALID_REQUEST", message: "Missing required field: siteId or businessId" },
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    console.log(`[intent-exec] Executing intent: ${intentId} for site: ${siteId || 'N/A'}`);
+    
+    // Load site bundle if siteId provided
+    const bundle = siteId ? await loadSiteBundle(supabase, siteId) : null;
+    
+    // Get business ID (from request, bundle, or lookup)
+    let businessId = body.businessId || bundle?.site?.businessId;
+    
+    if (!businessId && siteId) {
+      // Fallback: lookup from sites table
+      const { data: site } = await supabase
+        .from("sites")
+        .select("business_id")
+        .eq("id", siteId)
+        .maybeSingle();
+      
+      businessId = site?.business_id;
+    }
+    
+    if (!businessId) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: { code: "SITE_NOT_FOUND", message: "Site not found" },
+        }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Check usage limits
+    const usageCheck = await checkUsageLimit(supabase, businessId);
+    if (!usageCheck.allowed) {
+      const durationMs = Date.now() - startTime;
+      await logIntentEvent(supabase, {
+        siteId,
+        businessId,
+        intentId,
+        bindingId,
+        pageId,
+        ok: false,
+        durationMs,
+        params,
+        errorCode: "USAGE_LIMIT_EXCEEDED",
+        errorMessage: usageCheck.reason,
+        sessionId: context?.sessionId,
+        userId: context?.userId,
+        ipAddress,
+        userAgent,
+      });
+      
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: { code: "USAGE_LIMIT_EXCEEDED", message: usageCheck.reason },
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Get intent definition and entitlements
+    const intentDef = bundle?.intents?.definitions?.[intentId];
+    const entitlements = bundle?.entitlements || {
+      plan: "free",
+      features: {},
+      limits: {},
+    };
+    
+    // Check entitlement
+    const entitlementCheck = checkEntitlement(intentId, intentDef, entitlements);
+    if (!entitlementCheck.allowed) {
+      const durationMs = Date.now() - startTime;
+      await logIntentEvent(supabase, {
+        siteId,
+        businessId,
+        intentId,
+        bindingId,
+        pageId,
+        ok: false,
+        durationMs,
+        params,
+        errorCode: "ENTITLEMENT_DENIED",
+        errorMessage: entitlementCheck.reason,
+        sessionId: context?.sessionId,
+        userId: context?.userId,
+        ipAddress,
+        userAgent,
+      });
+      
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: { code: "ENTITLEMENT_DENIED", message: entitlementCheck.reason },
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Execute intent
+    let result: { ok: boolean; result: unknown; clientActions: ClientAction[] };
+    
+    if (intentDef) {
+      // Use bundle-defined handler
+      result = await executeIntentHandler(intentDef, params || {}, {
+        siteId,
+        businessId,
+        pageId,
+      });
+    } else {
+      // Fallback to core intent handlers
+      result = await executeCoreFallback(intentId, params || {}, {
+        siteId,
+        businessId,
+        pageId,
+      });
+    }
+    
+    const durationMs = Date.now() - startTime;
+    
+    // Trigger automation if applicable
+    let automationRunId: string | undefined;
+    if (result.ok) {
+      const runId = await triggerAutomation(supabase, businessId, intentId, params || {}, siteId);
+      if (runId) {
+        automationRunId = runId;
+      }
+    }
+    
+    // Log intent event
+    await logIntentEvent(supabase, {
+      siteId,
+      businessId,
+      intentId,
+      bindingId,
+      pageId,
+      ok: result.ok,
+      durationMs,
+      params,
+      result: result.result,
+      clientActions: result.clientActions,
+      automationRunId,
+      sessionId: context?.sessionId,
+      userId: context?.userId,
+      ipAddress,
+      userAgent,
+    });
+    
+    // Record usage
+    if (result.ok) {
+      await recordUsage(supabase, businessId, intentId);
+    }
+    
+    console.log(`[intent-exec] Completed in ${durationMs}ms: ${intentId} -> ${result.ok ? "OK" : "FAIL"}`);
+    
+    // Return standardized response
+    const response: IntentExecuteResponse = {
+      ok: result.ok,
+      result: result.result,
+      clientActions: result.clientActions,
+    };
+    
+    return new Response(
+      JSON.stringify(response),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+    
+  } catch (error) {
+    console.error("[intent-exec] Error:", error);
+    
+    const response: IntentExecuteResponse = {
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+    };
+    
+    return new Response(
+      JSON.stringify(response),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
