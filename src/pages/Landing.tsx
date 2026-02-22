@@ -1,15 +1,31 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, lazy, Suspense } from "react";
 
-// Landing page now redirects to /home which contains the full SaaS landing
+// Preload the Index component to avoid loading delay after redirect
+const Index = lazy(() => import("./Index"));
+
+// Loading component matching the app style
+const LandingLoader = () => (
+  <div className="h-screen w-full flex items-center justify-center bg-slate-900">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <p className="text-slate-400">Loading Unison Tasks...</p>
+    </div>
+  </div>
+);
+
+// Landing page renders Index directly instead of redirecting
 const Landing = () => {
-  const navigate = useNavigate();
-
+  // Start preloading as soon as component mounts
   useEffect(() => {
-    navigate("/home", { replace: true });
-  }, [navigate]);
+    // Preload critical chunks
+    import("./Index");
+  }, []);
 
-  return null;
+  return (
+    <Suspense fallback={<LandingLoader />}>
+      <Index />
+    </Suspense>
+  );
 };
 
 export default Landing;
