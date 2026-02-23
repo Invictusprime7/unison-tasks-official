@@ -1437,7 +1437,7 @@ Learn from every bug fix to become better at prevention!`
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
         
-        const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const imageResponse = await fetch('https://api.vercel.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -1554,7 +1554,7 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-        const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const resp = await fetch('https://api.vercel.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,

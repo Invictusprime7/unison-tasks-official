@@ -15,7 +15,7 @@ const corsHeaders = {
  * falls back to regex-based heuristics otherwise.
  */
 
-const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_GATEWAY_URL = "https://api.vercel.ai/v1/chat/completions";
 const AI_MODEL = "google/gemini-2.5-flash";
 
 interface ClassifyRequest {

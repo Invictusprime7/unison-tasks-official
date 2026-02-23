@@ -33,13 +33,13 @@ The test script sends a complex request. Try a minimal request in the Supabase D
 Test your API key directly:
 
 ```powershell
-# Test Lovable AI Gateway
+# Test Vercel AI Gateway
 $headers = @{
     "Content-Type" = "application/json"
-    "Authorization" = "Bearer YOUR_LOVABLE_API_KEY"
+    "Authorization" = "Bearer YOUR_VERCEL_AI_GATEWAY_KEY"
 }
 $body = '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"test"}],"max_tokens":10}'
-Invoke-RestMethod -Uri "https://ai.gateway.lovable.dev/v1/chat/completions" -Method POST -Headers $headers -Body $body
+Invoke-RestMethod -Uri "https://api.vercel.ai/v1/chat/completions" -Method POST -Headers $headers -Body $body
 ```
 
 ## What Was Fixed

@@ -74,7 +74,7 @@ Return your response in this EXACT JSON format:
   "explanation": "brief explanation of what you created or changed"
 }`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.vercel.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,

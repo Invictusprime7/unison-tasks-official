@@ -35,7 +35,7 @@ serve(async (req) => {
 
     systemPrompt += ` Use a ${tone} tone. Keep the core message but enhance clarity, impact, and engagement. Return only the rewritten text without explanations.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.vercel.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
