@@ -311,7 +311,7 @@ export default function CloudDashboard() {
       case 'profile':
         return <CloudProfile user={user} />;
       case 'businesses':
-        return <CloudBusinesses userId={user.id} />;
+        return <CloudBusinesses userId={user.id} onNavigateToTab={(tab) => setActiveTab(tab as CloudTab)} />;
       case 'projects':
         return <CloudProjects userId={user.id} />;
       case 'assets':
