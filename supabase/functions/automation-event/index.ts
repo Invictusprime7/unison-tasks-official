@@ -166,27 +166,45 @@ export default async (req: Request) => {
       .eq("intent", intent)
       .eq("industry", industry);
 
-    // Also check for business-specific workflows
+    // Check for business-specific workflows by business_id
+    // The query checks: trigger_type matches intent OR trigger_config.intent matches intent
     const { data: businessWorkflows } = await supabase
       .from("crm_workflows")
-      .select("id, name, priority, recipe_id")
-      .eq("business_id", businessId)
+      .select("id, name, priority, recipe_id, user_id")
       .eq("is_active", true)
+      .or(`business_id.eq.${businessId},user_id.eq.${business.id}`)
       .or(`trigger_type.eq.${intent},trigger_config->>intent.eq.${intent}`);
 
-    // Collect all workflows to trigger
-    const workflowsToTrigger: WorkflowToTrigger[] = [];
+    // Also check for user workflows without business_id set (legacy)
+    // This catches workflows where user_id matches but business_id was never set
+    const { data: userWorkflows } = await supabase
+      .from("crm_workflows")
+      .select("id, name, priority, recipe_id, user_id")
+      .eq("is_active", true)
+      .eq("user_id", business.id)
+      .is("business_id", null)
+      .or(`trigger_type.eq.${intent},trigger_config->>intent.eq.${intent}`);
 
-    // Add business-specific workflows
+    // Collect all workflows to trigger (dedupe by id)
+    const workflowMap = new Map<string, WorkflowToTrigger>();
+    
+    // Add business workflows
     if (businessWorkflows) {
       for (const wf of businessWorkflows) {
-        workflowsToTrigger.push({
-          id: wf.id,
-          name: wf.name,
-          priority: wf.priority || 50,
-        });
+        workflowMap.set(wf.id, { id: wf.id, name: wf.name, priority: wf.priority || 50 });
       }
     }
+    
+    // Add user workflows (fallback for legacy)
+    if (userWorkflows) {
+      for (const wf of userWorkflows) {
+        if (!workflowMap.has(wf.id)) {
+          workflowMap.set(wf.id, { id: wf.id, name: wf.name, priority: wf.priority || 50 });
+        }
+      }
+    }
+    
+    const workflowsToTrigger: WorkflowToTrigger[] = Array.from(workflowMap.values());
 
     // Add recipe-based workflows (check if recipe is enabled for business)
     if (intentMappings) {

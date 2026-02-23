@@ -56,9 +56,9 @@ serve(async (req) => {
     const templateId = url.searchParams.get('templateId');
 
     // Parse request body if present
-    let body: any = null;
+    let _body: unknown = null;
     if (req.method === 'POST' || req.method === 'PUT') {
-      body = await req.json();
+      _body = await req.json();
     }
 
     switch (action) {
@@ -331,9 +331,10 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Template backend error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: errMsg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus, Play, Trash2, Edit, Workflow, Clock, Zap, Settings, MousePointer, CreditCard, Calendar, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { WorkflowStepBuilder, WorkflowStep } from "./WorkflowStepBuilder";
+import { AUTOMATION_INTENTS, ACTION_INTENTS } from "@/coreIntents";
 
 interface WorkflowType {
   id: string;
@@ -61,6 +62,7 @@ export function CRMWorkflows() {
     trigger_type: "manual",
     cron: "",
     formId: "",
+    intentBinding: "", // For button_click trigger type
   });
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
 
@@ -96,6 +98,10 @@ export function CRMWorkflows() {
       if (formData.trigger_type === "form_submit" && formData.formId) {
         triggerConfig.formId = formData.formId;
       }
+      // For button_click, store the intent binding
+      if (formData.trigger_type === "button_click" && formData.intentBinding) {
+        triggerConfig.intent = formData.intentBinding;
+      }
 
       const workflowData = {
         name: formData.name,
@@ -128,7 +134,7 @@ export function CRMWorkflows() {
 
       setDialogOpen(false);
       setEditingWorkflow(null);
-      setFormData({ name: "", description: "", trigger_type: "manual", cron: "", formId: "" });
+      setFormData({ name: "", description: "", trigger_type: "manual", cron: "", formId: "", intentBinding: "" });
       setWorkflowSteps([]);
       fetchWorkflows();
     } catch (error) {
@@ -189,6 +195,7 @@ export function CRMWorkflows() {
       trigger_type: workflow.trigger_type,
       cron: workflow.trigger_config?.cron || "",
       formId: workflow.trigger_config?.formId || "",
+      intentBinding: workflow.trigger_config?.intent || "",
     });
     // Convert stored steps to WorkflowStep format
     const existingSteps: WorkflowStep[] = (workflow.steps || []).map((s: any, i: number) => ({
@@ -230,7 +237,7 @@ export function CRMWorkflows() {
           <DialogTrigger asChild>
             <Button onClick={() => {
               setEditingWorkflow(null);
-              setFormData({ name: "", description: "", trigger_type: "manual", cron: "", formId: "" });
+              setFormData({ name: "", description: "", trigger_type: "manual", cron: "", formId: "", intentBinding: "" });
               setWorkflowSteps([]);
             }}>
               <Plus className="h-4 w-4 mr-1" /> Add Workflow
@@ -319,6 +326,41 @@ export function CRMWorkflows() {
                         onChange={(e) => setFormData({ ...formData, formId: e.target.value })}
                         placeholder="contact-form, newsletter, etc."
                       />
+                    </div>
+                  )}
+                  {formData.trigger_type === "button_click" && (
+                    <div className="space-y-2">
+                      <Label>Bound Intent</Label>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Select which user action triggers this workflow
+                      </p>
+                      <Select
+                        value={formData.intentBinding}
+                        onValueChange={(v) => setFormData({ ...formData, intentBinding: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an intent..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="" disabled>-- Automation Intents --</SelectItem>
+                          {AUTOMATION_INTENTS.map((intent) => (
+                            <SelectItem key={intent} value={intent}>
+                              {intent}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="" disabled>-- Action Intents --</SelectItem>
+                          {ACTION_INTENTS.map((intent) => (
+                            <SelectItem key={intent} value={intent}>
+                              {intent}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formData.intentBinding && (
+                        <p className="text-xs text-green-500 mt-1">
+                          When <code className="bg-muted px-1 rounded">{formData.intentBinding}</code> fires, this workflow runs
+                        </p>
+                      )}
                     </div>
                   )}
                   <Button type="submit" className="w-full">

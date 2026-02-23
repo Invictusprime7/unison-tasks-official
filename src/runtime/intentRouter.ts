@@ -216,34 +216,81 @@ function handleNavigationIntent(intent: string, payload: IntentPayload): IntentR
 }
 
 /**
- * Handle workflow trigger intents (cart, orders, etc.)
+ * Handle automation intent triggers (cart, orders, booking events, etc.)
+ * Routes to automation-event Edge Function which:
+ * 1) Stores event in automation_events
+ * 2) Looks up matching workflows via intent_recipe_mappings + crm_workflows
+ * 3) Triggers workflow execution
  */
-async function handleWorkflowIntent(intent: string, payload: IntentPayload): Promise<IntentResult> {
-  console.log("[IntentRouter] Triggering workflow:", intent, payload);
+async function handleAutomationIntent(
+  intent: string, 
+  payload: IntentPayload,
+  elementKey?: string
+): Promise<IntentResult> {
+  console.log("[IntentRouter] Triggering automation:", intent, payload);
+  
+  const businessId = payload.businessId || defaultBusinessId;
+  const projectId = payload.projectId || defaultProjectId;
+  
+  // Always emit local event for UI reactivity
+  window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: payload }));
+  
+  // If no businessId, handle locally only (demo mode)
+  if (!businessId) {
+    console.log("[IntentRouter] No businessId, automation handled locally only");
+    return { 
+      success: true, 
+      data: { handled: 'local', intent, demo: true },
+      message: `Demo: ${intent} triggered`,
+    };
+  }
   
   try {
-    const { data, error } = await supabase.functions.invoke('workflow-trigger', {
+    // Call automation-event Edge Function
+    const { data, error } = await supabase.functions.invoke('automation-event', {
       body: {
-        eventType: 'button_click',
-        buttonId: intent,
-        buttonLabel: intent.split('.').pop(),
-        payload,
+        businessId,
+        intent,
+        payload: {
+          ...payload,
+          projectId,
+          elementKey,
+          sourceUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+          timestamp: new Date().toISOString(),
+        },
       }
     });
     
     if (error) {
-      console.error("[IntentRouter] Workflow error:", error);
-      // Don't fail - emit event for local handling
-      window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: payload }));
-      return { success: true, data: { handled: 'local', intent } };
+      console.error("[IntentRouter] Automation-event error:", error);
+      return { 
+        success: true, 
+        data: { handled: 'local', intent, backendError: true },
+        message: `${intent} triggered (offline mode)`,
+      };
     }
     
-    window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: { ...payload, workflowResult: data } }));
-    return { success: true, data };
-  } catch {
-    // Fallback to local event
-    window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: payload }));
-    return { success: true, data: { handled: 'local', intent } };
+    console.log("[IntentRouter] Automation-event success:", data);
+    
+    // Re-emit with backend result attached
+    window.dispatchEvent(new CustomEvent(`intent:${intent}`, { 
+      detail: { ...payload, automationResult: data } 
+    }));
+    
+    return { 
+      success: true, 
+      data,
+      message: data?.triggered > 0 
+        ? `Triggered ${data.triggered} workflow(s)`
+        : `${intent} processed`,
+    };
+  } catch (err) {
+    console.error("[IntentRouter] Automation-event exception:", err);
+    return { 
+      success: true, 
+      data: { handled: 'local', intent },
+      message: `${intent} triggered (offline mode)`,
+    };
   }
 }
 
@@ -631,7 +678,13 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     };
   }
 
-  // Step 6: For action intents with businessId, use the unified backend router
+  // Step 6: Route automation intents to automation-event Edge Function
+  if (isAutomationIntent(normalized)) {
+    const elementKey = typeof payload._elementKey === 'string' ? payload._elementKey : undefined;
+    return handleAutomationIntent(normalized, payload, elementKey);
+  }
+
+  // Step 7: For action intents with businessId, use the unified backend router
   if (isCoreIntent(normalized) && (isActionIntent(normalized) || isPayIntent(normalized))) {
     // Navigation intents skip backend
     if (isNavIntent(normalized)) {

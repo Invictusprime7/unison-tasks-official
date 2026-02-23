@@ -267,7 +267,7 @@ export const CollapsiblePropertiesPanel: React.FC<CollapsiblePropertiesPanelProp
 
       {/* Panel Content */}
       {!isCollapsed && (
-        <div className="w-72 bg-[#0d0d18] flex flex-col h-full shadow-[-10px_0_30px_rgba(255,0,255,0.1)]">
+        <div className="w-80 bg-[#0d0d18] flex flex-col h-full shadow-[-10px_0_30px_rgba(255,0,255,0.1)]">
           <div className="px-4 py-3 bg-[#0a0a14]">
             <h3 className="font-bold text-sm flex items-center gap-2 text-fuchsia-400 drop-shadow-[0_0_5px_rgba(255,0,255,0.5)]">
               <Layers className="w-4 h-4 text-fuchsia-500" />

@@ -42,6 +42,7 @@ import { TemplateFileManager } from "./web-builder/TemplateFileManager";
 import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
 import { AIPluginsPanel } from "./web-builder/AIPluginsPanel";
+import { IntentDirectoryPanel } from "./web-builder/IntentDirectoryPanel";
 import { ProjectsPanel } from "./web-builder/ProjectsPanel";
 import { LayoutTemplatesPanel } from "./web-builder/LayoutTemplatesPanel";
 import { FloatingDock } from "./web-builder/FloatingDock";
@@ -3415,13 +3416,14 @@ ${body.innerHTML}
           <div className="h-full flex overflow-hidden">
         {/* Left Panel - Elements Sidebar */}
         {!leftPanelCollapsed && (
-          <div className="w-72 bg-[#0d0d18] border-r-2 border-cyan-500/40 flex flex-col overflow-hidden shadow-[0_0_20px_rgba(0,255,255,0.15)]">
+          <div className="w-80 bg-[#0d0d18] border-r-2 border-cyan-500/40 flex flex-col overflow-hidden shadow-[0_0_20px_rgba(0,255,255,0.15)]">
             <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full justify-start rounded-none border-b-2 border-cyan-500/30 bg-[#0a0a14] px-2 h-11 shrink-0 gap-1">
-                <TabsTrigger value="elements" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,255,0.5)] transition-all duration-200">Elements</TabsTrigger>
-                <TabsTrigger value="functional" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-magenta-500 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,0,255,0.5)] transition-all duration-200">Logic</TabsTrigger>
-                <TabsTrigger value="seo" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,255,0,0.5)] transition-all duration-200">SEO</TabsTrigger>
-                <TabsTrigger value="ai-plugins" className="text-[11px] px-3 py-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-lime-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all duration-200">AI</TabsTrigger>
+              <TabsList className="w-full flex-wrap justify-start rounded-none border-b-2 border-cyan-500/30 bg-[#0a0a14] px-1.5 py-1.5 min-h-[44px] h-auto shrink-0 gap-1">
+                <TabsTrigger value="elements" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,255,0.5)] transition-all duration-200">Elements</TabsTrigger>
+                <TabsTrigger value="business" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-orange-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,165,0,0.5)] transition-all duration-200">Business</TabsTrigger>
+                <TabsTrigger value="functional" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,0,255,0.5)] transition-all duration-200">Logic</TabsTrigger>
+                <TabsTrigger value="seo" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,255,0,0.5)] transition-all duration-200">SEO</TabsTrigger>
+                <TabsTrigger value="ai-plugins" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-lime-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all duration-200">AI</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
@@ -3525,6 +3527,22 @@ ${body.innerHTML}
                 <AIPluginsPanel 
                   businessId={businessId}
                   pluginInstanceId={cloudState.installedPacks?.[0]}
+                />
+              </TabsContent>
+              <TabsContent value="business" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <IntentDirectoryPanel
+                  businessId={businessId}
+                  projectId={projectId || undefined}
+                  currentPagePath={activePagePath}
+                  detectedIntents={[]} // TODO: Wire to intent detection
+                  onRefreshIntents={() => {
+                    // Trigger re-analysis of current page
+                    console.log('[WebBuilder] Refreshing intents for:', activePagePath);
+                  }}
+                  onTestIntent={(intent, payload) => {
+                    // Fire test intent
+                    handleIntent(intent, { ...payload, businessId });
+                  }}
                 />
               </TabsContent>
             </Tabs>
