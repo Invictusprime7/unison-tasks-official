@@ -51,10 +51,6 @@
           "value": "nosniff"
         },
         {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
-        },
-        {
           "key": "X-XSS-Protection",
           "value": "1; mode=block"
         },
@@ -72,7 +68,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; frame-src 'self' blob: data: https://codesandbox.io https://*.codesandbox.io https://*.csb.app https://vercel.live; frame-ancestors 'self' https://*.vercel.app https://vercel.com; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; child-src 'self' blob: data:; frame-src 'self' blob: data: https://codesandbox.io https://*.codesandbox.io https://*.csb.app https://vercel.live https://*.vercel.app; frame-ancestors 'self' https://*.vercel.app https://vercel.com https://localhost:*; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live blob:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'"
         },
         {
           "key": "Cross-Origin-Embedder-Policy",
@@ -84,7 +80,7 @@
         },
         {
           "key": "Cross-Origin-Resource-Policy",
-          "value": "same-origin"
+          "value": "cross-origin"
         }
       ]
     }
