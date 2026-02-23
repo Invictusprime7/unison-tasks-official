@@ -253,7 +253,7 @@ function Show-Status {
     # Test endpoint
     Write-Color Yellow "`nTesting gateway endpoint..."
     try {
-        $response = Invoke-RestMethod -Uri "http://localhost:3001/health" -TimeoutSec 5 -ErrorAction Stop
+        $null = Invoke-RestMethod -Uri "http://localhost:3001/health" -TimeoutSec 5 -ErrorAction Stop
         Write-Color Green "Health Check:  OK"
     } catch {
         Write-Color Red "Health Check:  Failed (service may be starting)"
