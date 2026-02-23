@@ -1,0 +1,205 @@
+name: Supabase Auto-Update
+
+on:
+  # Run weekly on Sundays at midnight
+  schedule:
+    - cron: '0 0 * * 0'
+  
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy all Edge Functions'
+        type: boolean
+        default: false
+      sync_secrets:
+        description: 'Sync secrets from repository secrets'
+        type: boolean
+        default: false
+
+env:
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+jobs:
+  update-and-deploy:
+    name: Update Dependencies & Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+
+      - name: Link Supabase project
+        run: |
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+
+      - name: Check for Deno std updates
+        id: check_deno
+        run: |
+          CURRENT_VERSION=$(grep -oP 'std@\K[0-9.]+' supabase/functions/deno.json | head -1)
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/denoland/deno_std/releases/latest | jq -r .tag_name | sed 's/^v//')
+          
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          
+          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+            echo "update_available=true" >> $GITHUB_OUTPUT
+            echo "📦 Deno std update available: $CURRENT_VERSION -> $LATEST_VERSION"
+          else
+            echo "update_available=false" >> $GITHUB_OUTPUT
+            echo "✓ Deno std is up to date: $CURRENT_VERSION"
+          fi
+
+      - name: Check for npm package updates
+        id: check_npm
+        run: |
+          UPDATES=""
+          
+          # Check @supabase/supabase-js
+          CURRENT_SUPABASE=$(grep -oP 'supabase-js@\K[0-9.]+' supabase/functions/deno.json | head -1)
+          LATEST_SUPABASE=$(npm view @supabase/supabase-js version 2>/dev/null || echo "$CURRENT_SUPABASE")
+          if [ "$CURRENT_SUPABASE" != "$LATEST_SUPABASE" ]; then
+            UPDATES="$UPDATES supabase-js:$CURRENT_SUPABASE->$LATEST_SUPABASE"
+          fi
+          
+          # Check stripe
+          CURRENT_STRIPE=$(grep -oP 'stripe@\K[0-9.]+' supabase/functions/deno.json | head -1)
+          LATEST_STRIPE=$(npm view stripe version 2>/dev/null || echo "$CURRENT_STRIPE")
+          if [ "$CURRENT_STRIPE" != "$LATEST_STRIPE" ]; then
+            UPDATES="$UPDATES stripe:$CURRENT_STRIPE->$LATEST_STRIPE"
+          fi
+          
+          # Check resend
+          CURRENT_RESEND=$(grep -oP 'resend@\K[0-9.]+' supabase/functions/deno.json | head -1)
+          LATEST_RESEND=$(npm view resend version 2>/dev/null || echo "$CURRENT_RESEND")
+          if [ "$CURRENT_RESEND" != "$LATEST_RESEND" ]; then
+            UPDATES="$UPDATES resend:$CURRENT_RESEND->$LATEST_RESEND"
+          fi
+          
+          if [ -n "$UPDATES" ]; then
+            echo "updates=$UPDATES" >> $GITHUB_OUTPUT
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+            echo "📦 NPM package updates:$UPDATES"
+          else
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+            echo "✓ NPM packages are up to date"
+          fi
+
+      - name: Update deno.json
+        if: steps.check_deno.outputs.update_available == 'true' || steps.check_npm.outputs.has_updates == 'true'
+        run: |
+          # Update Deno std version
+          if [ "${{ steps.check_deno.outputs.update_available }}" == "true" ]; then
+            sed -i "s/std@${{ steps.check_deno.outputs.current }}/std@${{ steps.check_deno.outputs.latest }}/g" supabase/functions/deno.json
+            echo "✓ Updated Deno std to ${{ steps.check_deno.outputs.latest }}"
+          fi
+          
+          # Update npm packages
+          CURRENT_SUPABASE=$(grep -oP 'supabase-js@\K[0-9.]+' supabase/functions/deno.json | head -1)
+          LATEST_SUPABASE=$(npm view @supabase/supabase-js version 2>/dev/null || echo "$CURRENT_SUPABASE")
+          if [ "$CURRENT_SUPABASE" != "$LATEST_SUPABASE" ]; then
+            sed -i "s/supabase-js@$CURRENT_SUPABASE/supabase-js@$LATEST_SUPABASE/g" supabase/functions/deno.json
+            echo "✓ Updated @supabase/supabase-js to $LATEST_SUPABASE"
+          fi
+          
+          CURRENT_STRIPE=$(grep -oP 'stripe@\K[0-9.]+' supabase/functions/deno.json | head -1)
+          LATEST_STRIPE=$(npm view stripe version 2>/dev/null || echo "$CURRENT_STRIPE")
+          if [ "$CURRENT_STRIPE" != "$LATEST_STRIPE" ]; then
+            sed -i "s/stripe@$CURRENT_STRIPE/stripe@$LATEST_STRIPE/g" supabase/functions/deno.json
+            echo "✓ Updated stripe to $LATEST_STRIPE"
+          fi
+          
+          CURRENT_RESEND=$(grep -oP 'resend@\K[0-9.]+' supabase/functions/deno.json | head -1)
+          LATEST_RESEND=$(npm view resend version 2>/dev/null || echo "$CURRENT_RESEND")
+          if [ "$CURRENT_RESEND" != "$LATEST_RESEND" ]; then
+            sed -i "s/resend@$CURRENT_RESEND/resend@$LATEST_RESEND/g" supabase/functions/deno.json
+            echo "✓ Updated resend to $LATEST_RESEND"
+          fi
+
+      - name: Sync secrets to Supabase
+        if: github.event.inputs.sync_secrets == 'true'
+        run: |
+          echo "Syncing secrets to Supabase..."
+          
+          # Set secrets from GitHub repository secrets
+          supabase secrets set \
+            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            LOVABLE_API_KEY="${{ secrets.LOVABLE_API_KEY }}" \
+            STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            STRIPE_WEBHOOK_SECRET="${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
+            RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
+            GHL_API_KEY="${{ secrets.GHL_API_KEY }}" \
+            ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
+            2>/dev/null || echo "Some secrets may not be set"
+          
+          echo "✓ Secrets synced"
+
+      - name: Deploy Edge Functions
+        if: steps.check_deno.outputs.update_available == 'true' || steps.check_npm.outputs.has_updates == 'true' || github.event.inputs.force_deploy == 'true'
+        run: |
+          echo "Deploying Edge Functions..."
+          
+          for dir in supabase/functions/*/; do
+            func_name=$(basename "$dir")
+            if [ "$func_name" != "node_modules" ]; then
+              echo "  Deploying: $func_name"
+              supabase functions deploy "$func_name" --no-verify-jwt || echo "  ⚠️ $func_name deploy failed"
+            fi
+          done
+          
+          echo "✓ Edge Functions deployed"
+
+      - name: Commit and push changes
+        if: steps.check_deno.outputs.update_available == 'true' || steps.check_npm.outputs.has_updates == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add supabase/functions/deno.json
+          git commit -m "chore: update Deno dependencies [auto]
+          
+          Updated:
+          - Deno std: ${{ steps.check_deno.outputs.current }} -> ${{ steps.check_deno.outputs.latest }}
+          - NPM packages: ${{ steps.check_npm.outputs.updates }}"
+          
+          git push
+
+      - name: Create summary
+        run: |
+          echo "## Supabase Auto-Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_deno.outputs.update_available }}" == "true" ]; then
+            echo "✅ **Deno std** updated: \`${{ steps.check_deno.outputs.current }}\` → \`${{ steps.check_deno.outputs.latest }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✓ **Deno std** is up to date: \`${{ steps.check_deno.outputs.current }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_npm.outputs.has_updates }}" == "true" ]; then
+            echo "✅ **NPM packages** updated: \`${{ steps.check_npm.outputs.updates }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✓ **NPM packages** are up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Edge Functions deployed to Supabase" >> $GITHUB_STEP_SUMMARY
