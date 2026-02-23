@@ -1906,10 +1906,16 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
 
     const prevCode = prevCodeRef.current;
     prevCodeRef.current = code;
+    
+    // Detect significant code change (not just minor edit)
+    const isSignificantChange = !prevCode || 
+      Math.abs((prevCode?.length || 0) - (code?.length || 0)) > 500 ||
+      !prevCode.includes(code?.substring(0, 100) || '');
 
-    // Initial load: create blob URL and navigate (more reliable for first load)
-    if (!isInitializedRef.current) {
-      console.log('[SimplePreview] Initial load - using blob URL');
+    // Initial load OR significant change: create blob URL and navigate (more reliable)
+    if (!isInitializedRef.current || isSignificantChange) {
+      console.log('[SimplePreview] Full refresh - using blob URL', isSignificantChange ? '(significant change)' : '(initial)');
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
       const blob = new Blob([currentHtml], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;

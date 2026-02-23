@@ -3361,9 +3361,11 @@ ${body.innerHTML}
                   });
                   setTemplateCtaAnalysis(normalized.analysis);
                   console.log('[WebBuilder] Auto-wired intents:', normalized.analysis.intents);
+                  console.log('[WebBuilder] Normalized code length:', normalized.code.length);
                   
                   setEditorCode(normalized.code);
                   setPreviewCode(normalized.code);
+                  console.log('[WebBuilder] setPreviewCode called, switching to canvas view');
                   setViewMode('canvas');
                   
                   toast.success('Code Generated!', {
