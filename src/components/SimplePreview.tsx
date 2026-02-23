@@ -185,6 +185,197 @@ function injectIntentListener(html: string): string {
     html, body { background-color: inherit; }
   </style>`;
   
+  // CRITICAL: Tailwind CDN fallback CSS - ensures layouts work even if CDN fails
+  // This provides essential utility classes as inline fallbacks
+  const tailwindFallbackCss = `
+  <style id="tailwind-fallback">
+    /* === TAILWIND FALLBACK CSS === */
+    /* Essential layout utilities - fallback if CDN fails */
+    .flex { display: flex !important; }
+    .inline-flex { display: inline-flex !important; }
+    .grid { display: grid !important; }
+    .hidden { display: none !important; }
+    .block { display: block !important; }
+    .inline-block { display: inline-block !important; }
+    
+    /* Flex utilities */
+    .flex-col { flex-direction: column !important; }
+    .flex-row { flex-direction: row !important; }
+    .flex-wrap { flex-wrap: wrap !important; }
+    .flex-1 { flex: 1 1 0% !important; }
+    .items-center { align-items: center !important; }
+    .items-start { align-items: flex-start !important; }
+    .items-end { align-items: flex-end !important; }
+    .justify-center { justify-content: center !important; }
+    .justify-between { justify-content: space-between !important; }
+    .justify-start { justify-content: flex-start !important; }
+    .justify-end { justify-content: flex-end !important; }
+    
+    /* Spacing - commonly used gaps */
+    .gap-1 { gap: 0.25rem !important; }
+    .gap-2 { gap: 0.5rem !important; }
+    .gap-3 { gap: 0.75rem !important; }
+    .gap-4 { gap: 1rem !important; }
+    .gap-6 { gap: 1.5rem !important; }
+    .gap-8 { gap: 2rem !important; }
+    .gap-12 { gap: 3rem !important; }
+    
+    /* Padding */
+    .p-0 { padding: 0 !important; }
+    .p-1 { padding: 0.25rem !important; }
+    .p-2 { padding: 0.5rem !important; }
+    .p-3 { padding: 0.75rem !important; }
+    .p-4 { padding: 1rem !important; }
+    .p-6 { padding: 1.5rem !important; }
+    .p-8 { padding: 2rem !important; }
+    .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+    .px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+    .px-8 { padding-left: 2rem !important; padding-right: 2rem !important; }
+    .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+    .py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+    .py-8 { padding-top: 2rem !important; padding-bottom: 2rem !important; }
+    .py-12 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+    .py-16 { padding-top: 4rem !important; padding-bottom: 4rem !important; }
+    .py-20 { padding-top: 5rem !important; padding-bottom: 5rem !important; }
+    .py-24 { padding-top: 6rem !important; padding-bottom: 6rem !important; }
+    
+    /* Margin */
+    .m-0 { margin: 0 !important; }
+    .m-auto { margin: auto !important; }
+    .mx-auto { margin-left: auto !important; margin-right: auto !important; }
+    .mb-2 { margin-bottom: 0.5rem !important; }
+    .mb-4 { margin-bottom: 1rem !important; }
+    .mb-6 { margin-bottom: 1.5rem !important; }
+    .mb-8 { margin-bottom: 2rem !important; }
+    .mt-2 { margin-top: 0.5rem !important; }
+    .mt-4 { margin-top: 1rem !important; }
+    .mt-8 { margin-top: 2rem !important; }
+    
+    /* Width/Height */
+    .w-full { width: 100% !important; }
+    .h-full { height: 100% !important; }
+    .min-h-screen { min-height: 100vh !important; }
+    .max-w-xl { max-width: 36rem !important; }
+    .max-w-2xl { max-width: 42rem !important; }
+    .max-w-4xl { max-width: 56rem !important; }
+    .max-w-6xl { max-width: 72rem !important; }
+    .max-w-7xl { max-width: 80rem !important; }
+    
+    /* Grid */
+    .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+    .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+    
+    /* Position */
+    .relative { position: relative !important; }
+    .absolute { position: absolute !important; }
+    .fixed { position: fixed !important; }
+    .inset-0 { top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; }
+    .z-10 { z-index: 10 !important; }
+    .z-20 { z-index: 20 !important; }
+    .z-50 { z-index: 50 !important; }
+    
+    /* Text */
+    .text-center { text-align: center !important; }
+    .text-left { text-align: left !important; }
+    .text-right { text-align: right !important; }
+    .text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
+    .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+    .text-base { font-size: 1rem !important; line-height: 1.5rem !important; }
+    .text-lg { font-size: 1.125rem !important; line-height: 1.75rem !important; }
+    .text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+    .text-2xl { font-size: 1.5rem !important; line-height: 2rem !important; }
+    .text-3xl { font-size: 1.875rem !important; line-height: 2.25rem !important; }
+    .text-4xl { font-size: 2.25rem !important; line-height: 2.5rem !important; }
+    .text-5xl { font-size: 3rem !important; line-height: 1 !important; }
+    .text-6xl { font-size: 3.75rem !important; line-height: 1 !important; }
+    .font-medium { font-weight: 500 !important; }
+    .font-semibold { font-weight: 600 !important; }
+    .font-bold { font-weight: 700 !important; }
+    .uppercase { text-transform: uppercase !important; }
+    .tracking-tight { letter-spacing: -0.025em !important; }
+    .leading-tight { line-height: 1.25 !important; }
+    .leading-relaxed { line-height: 1.625 !important; }
+    
+    /* Colors - common ones */
+    .text-white { color: #ffffff !important; }
+    .text-black { color: #000000 !important; }
+    .text-gray-500 { color: #6b7280 !important; }
+    .text-gray-600 { color: #4b5563 !important; }
+    .text-gray-700 { color: #374151 !important; }
+    .text-gray-900 { color: #111827 !important; }
+    .bg-white { background-color: #ffffff !important; }
+    .bg-black { background-color: #000000 !important; }
+    .bg-gray-50 { background-color: #f9fafb !important; }
+    .bg-gray-100 { background-color: #f3f4f6 !important; }
+    .bg-gray-900 { background-color: #111827 !important; }
+    .bg-slate-900 { background-color: #0f172a !important; }
+    .bg-slate-950 { background-color: #020617 !important; }
+    
+    /* Borders */
+    .border { border-width: 1px !important; }
+    .border-0 { border-width: 0 !important; }
+    .rounded { border-radius: 0.25rem !important; }
+    .rounded-md { border-radius: 0.375rem !important; }
+    .rounded-lg { border-radius: 0.5rem !important; }
+    .rounded-xl { border-radius: 0.75rem !important; }
+    .rounded-2xl { border-radius: 1rem !important; }
+    .rounded-full { border-radius: 9999px !important; }
+    
+    /* Overflow */
+    .overflow-hidden { overflow: hidden !important; }
+    .overflow-auto { overflow: auto !important; }
+    .overflow-x-auto { overflow-x: auto !important; }
+    
+    /* Object fit */
+    .object-cover { object-fit: cover !important; }
+    .object-contain { object-fit: contain !important; }
+    
+    /* Opacity */
+    .opacity-0 { opacity: 0 !important; }
+    .opacity-50 { opacity: 0.5 !important; }
+    .opacity-75 { opacity: 0.75 !important; }
+    .opacity-100 { opacity: 1 !important; }
+    
+    /* Transitions */
+    .transition { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter !important; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important; transition-duration: 150ms !important; }
+    .duration-300 { transition-duration: 300ms !important; }
+    
+    /* Cursor */
+    .cursor-pointer { cursor: pointer !important; }
+    
+    /* Shadow */
+    .shadow { box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1) !important; }
+    .shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important; }
+    .shadow-xl { box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important; }
+    
+    /* Container (basic) */
+    .container { width: 100% !important; margin-left: auto !important; margin-right: auto !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+    @media (min-width: 640px) { .container { max-width: 640px !important; } }
+    @media (min-width: 768px) { .container { max-width: 768px !important; } }
+    @media (min-width: 1024px) { .container { max-width: 1024px !important; } }
+    @media (min-width: 1280px) { .container { max-width: 1280px !important; } }
+    
+    /* Responsive grid */
+    @media (min-width: 768px) {
+      .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .md\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+      .md\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+      .md\\:flex { display: flex !important; }
+      .md\\:hidden { display: none !important; }
+      .md\\:block { display: block !important; }
+    }
+    @media (min-width: 1024px) {
+      .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+      .lg\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+    }
+    
+    /* Hide scrollbar utility */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>`;
+  
   // Failsafe: force-reveal any animate-on-scroll elements that stay invisible
   const animationFailsafe = `
   <style>
@@ -957,7 +1148,8 @@ function injectIntentListener(html: string): string {
   
   if (lowerHtml.includes('<head>') || lowerHtml.includes('<head ')) {
     // Use regex for case-insensitive replacement
-    html = html.replace(/<head(\s[^>]*)?>/i, '$&\n' + colorSchemeEnforcement + errorCaptureScript);
+    // Inject color scheme, Tailwind fallback CSS, and error capture early in head
+    html = html.replace(/<head(\s[^>]*)?>/i, '$&\n' + colorSchemeEnforcement + tailwindFallbackCss + errorCaptureScript);
   }
   
   if (lowerHtml.includes('</head>')) {
@@ -969,7 +1161,8 @@ function injectIntentListener(html: string): string {
   } else if (lowerHtml.includes('</html>')) {
     return html.replace(/<\/html>/i, intentListenerScript + '\n</html>');
   } else {
-    return html + colorSchemeEnforcement + animationFailsafe + intentListenerScript;
+    // Fallback: append all styles including Tailwind fallback
+    return html + colorSchemeEnforcement + tailwindFallbackCss + animationFailsafe + intentListenerScript;
   }
 }
 
