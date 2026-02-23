@@ -188,7 +188,7 @@ ANTHROPIC_API_KEY=
 }
 
 # Deploy all Edge Functions
-function Deploy-EdgeFunctions {
+function Publish-EdgeFunctions {
     param([switch]$ForceAll)
     
     Write-Color Cyan "`n========================================="
@@ -290,7 +290,7 @@ function Start-WatchMode {
     $checkIntervalHours = 6  # Check for updates every 6 hours
     
     # Initial deploy
-    Deploy-EdgeFunctions
+    Publish-EdgeFunctions
     
     while ($true) {
         Start-Sleep -Seconds 60
@@ -305,7 +305,7 @@ function Start-WatchMode {
             if ($updates.Count -gt 0) {
                 Write-Color Yellow "Updates available! Applying..."
                 Update-DenoJson -Updates $updates
-                Deploy-EdgeFunctions
+                Publish-EdgeFunctions
             }
             
             $lastCheck = Get-Date
@@ -375,7 +375,7 @@ if ($Watch) {
         
         # Deploy functions
         if ($Force -or $updates.Count -gt 0) {
-            Deploy-EdgeFunctions -ForceAll:$Force
+            Publish-EdgeFunctions -ForceAll:$Force
         }
     } else {
         if ($updates.Count -eq 0) {
