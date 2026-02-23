@@ -1,7 +1,21 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { VirtualFile, VirtualNode } from './useVirtualFileSystem';
 
-const PREVIEW_GATEWAY_URL = import.meta.env.VITE_PREVIEW_GATEWAY_URL || 'http://localhost:3001';
+// Use environment variable for Docker gateway, or Vercel API routes in production
+const getPreviewApiUrl = () => {
+  // Local Docker gateway takes priority
+  if (import.meta.env.VITE_PREVIEW_GATEWAY_URL) {
+    return import.meta.env.VITE_PREVIEW_GATEWAY_URL;
+  }
+  // In production (Vercel), use relative API routes
+  if (import.meta.env.PROD) {
+    return '';  // Use relative paths like /api/preview/start
+  }
+  // Fallback for local dev
+  return 'http://localhost:3001';
+};
+
+const PREVIEW_GATEWAY_URL = getPreviewApiUrl();
 
 export interface PreviewSession {
   id: string;

@@ -292,8 +292,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   // Docker preview service
   const dockerService = usePreviewService();
   
-  // Check if Docker gateway is configured
-  const dockerConfigured = !!import.meta.env.VITE_PREVIEW_GATEWAY_URL;
+  // Check if preview service is available (Docker gateway OR Vercel API in production)
+  const dockerConfigured = !!import.meta.env.VITE_PREVIEW_GATEWAY_URL || import.meta.env.PROD;
   
   // Check if local Vite server is configured
   const localViteConfigured = !!LOCAL_PREVIEW_URL;
@@ -362,7 +362,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   // Handlers
   const handleStartDocker = useCallback(async () => {
     if (!dockerConfigured) {
-      onError?.('Docker gateway not configured. Set VITE_PREVIEW_GATEWAY_URL');
+      onError?.('Preview service not available');
       return;
     }
     

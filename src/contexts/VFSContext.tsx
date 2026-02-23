@@ -93,8 +93,8 @@ export function VFSProvider({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSyncedContentRef = useRef<Map<string, string>>(new Map());
   
-  // Check if Docker preview is available
-  const dockerAvailable = !!import.meta.env.VITE_PREVIEW_GATEWAY_URL;
+  // Check if preview service is available (Docker gateway OR Vercel API in production)
+  const dockerAvailable = !!import.meta.env.VITE_PREVIEW_GATEWAY_URL || import.meta.env.PROD;
   
   // Sync file changes to preview with debounce
   const syncFileToPreview = useCallback(async (path: string, content: string) => {
@@ -161,7 +161,7 @@ export function VFSProvider({
   // Combined actions
   const startPreview = useCallback(async () => {
     if (!dockerAvailable) {
-      console.warn('[VFSContext] Docker preview not available - no VITE_PREVIEW_GATEWAY_URL');
+      console.warn('[VFSContext] Preview service not available');
       return;
     }
     await preview.startSession(vfs.nodes);
