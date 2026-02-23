@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS public.site_bundles (
   bundle JSONB NOT NULL,
   
   -- Quick access fields (denormalized from bundle for queries)
-  page_count INTEGER GENERATED ALWAYS AS ((bundle->'manifest'->'routes')::jsonb ? 'length') STORED,
+  page_count INTEGER,
   intent_count INTEGER,
   
   -- Checksum for integrity verification
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS public.intent_events (
   
   -- Automation triggered
   automation_triggered BOOLEAN DEFAULT false,
-  automation_run_id UUID REFERENCES public.automation_runs(id) ON DELETE SET NULL,
+  automation_run_id UUID,  -- References automation_runs (FK omitted for migration order)
   
   -- User context
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -295,8 +295,8 @@ CREATE POLICY "sites_business_isolation" ON public.sites
   FOR ALL
   USING (
     business_id IN (
-      SELECT bm.business_id FROM public.business_members bm 
-      WHERE bm.user_id = auth.uid()
+      SELECT b.id FROM public.businesses b 
+      WHERE b.owner_id = auth.uid()
     )
   );
 
@@ -307,8 +307,8 @@ CREATE POLICY "site_builds_business_isolation" ON public.site_builds
     site_id IN (
       SELECT s.id FROM public.sites s
       WHERE s.business_id IN (
-        SELECT bm.business_id FROM public.business_members bm 
-        WHERE bm.user_id = auth.uid()
+        SELECT b.id FROM public.businesses b 
+        WHERE b.owner_id = auth.uid()
       )
     )
   );
@@ -320,8 +320,8 @@ CREATE POLICY "site_bundles_business_isolation" ON public.site_bundles
     site_id IN (
       SELECT s.id FROM public.sites s
       WHERE s.business_id IN (
-        SELECT bm.business_id FROM public.business_members bm 
-        WHERE bm.user_id = auth.uid()
+        SELECT b.id FROM public.businesses b 
+        WHERE b.owner_id = auth.uid()
       )
     )
   );
@@ -331,8 +331,8 @@ CREATE POLICY "intent_events_business_isolation" ON public.intent_events
   FOR ALL
   USING (
     business_id IN (
-      SELECT bm.business_id FROM public.business_members bm 
-      WHERE bm.user_id = auth.uid()
+      SELECT b.id FROM public.businesses b 
+      WHERE b.owner_id = auth.uid()
     )
   );
 
@@ -343,8 +343,8 @@ CREATE POLICY "publish_artifacts_business_isolation" ON public.publish_artifacts
     site_id IN (
       SELECT s.id FROM public.sites s
       WHERE s.business_id IN (
-        SELECT bm.business_id FROM public.business_members bm 
-        WHERE bm.user_id = auth.uid()
+        SELECT b.id FROM public.businesses b 
+        WHERE b.owner_id = auth.uid()
       )
     )
   );
@@ -354,8 +354,8 @@ CREATE POLICY "usage_events_business_isolation" ON public.usage_events
   FOR ALL
   USING (
     business_id IN (
-      SELECT bm.business_id FROM public.business_members bm 
-      WHERE bm.user_id = auth.uid()
+      SELECT b.id FROM public.businesses b 
+      WHERE b.owner_id = auth.uid()
     )
   );
 
@@ -364,8 +364,8 @@ CREATE POLICY "usage_summary_business_isolation" ON public.usage_summary
   FOR ALL
   USING (
     business_id IN (
-      SELECT bm.business_id FROM public.business_members bm 
-      WHERE bm.user_id = auth.uid()
+      SELECT b.id FROM public.businesses b 
+      WHERE b.owner_id = auth.uid()
     )
   );
 

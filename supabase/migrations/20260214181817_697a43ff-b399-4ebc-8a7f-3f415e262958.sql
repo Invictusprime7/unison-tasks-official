@@ -61,6 +61,14 @@ CREATE TABLE public.project_page_seo (
 ALTER TABLE public.project_seo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_page_seo ENABLE ROW LEVEL SECURITY;
 
+-- Helper function for business membership check
+CREATE OR REPLACE FUNCTION is_business_member(p_business_id UUID) RETURNS BOOLEAN
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM businesses WHERE id = p_business_id AND owner_id = auth.uid()
+  );
+$$;
+
 -- RLS: Users can manage SEO for their business projects
 CREATE POLICY "project_seo_select_member"
   ON public.project_seo FOR SELECT
@@ -110,6 +118,15 @@ CREATE POLICY "project_page_seo_delete"
     WHERE ps.project_id = project_page_seo.project_id 
     AND is_business_member(ps.business_id)
   ));
+
+-- Create updated_at timestamp function if not exists
+CREATE OR REPLACE FUNCTION public.set_updated_at_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Timestamps trigger
 CREATE TRIGGER update_project_seo_updated_at

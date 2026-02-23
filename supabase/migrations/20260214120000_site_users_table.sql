@@ -34,11 +34,6 @@ CREATE POLICY "Business owners can manage site users"
     business_id IN (
       SELECT id FROM businesses WHERE owner_id = auth.uid()
     )
-    OR
-    business_id IN (
-      SELECT business_id FROM business_members 
-      WHERE user_id = auth.uid() AND role IN ('admin', 'owner')
-    )
   );
 
 -- Service role has full access (for edge functions)
