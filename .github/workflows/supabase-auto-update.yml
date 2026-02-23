@@ -12,10 +12,6 @@ on:
         description: 'Force deploy all Edge Functions'
         type: boolean
         default: false
-      sync_secrets:
-        description: 'Sync secrets from repository secrets'
-        type: boolean
-        default: false
 
 env:
   SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -133,24 +129,6 @@ jobs:
             sed -i "s/resend@$CURRENT_RESEND/resend@$LATEST_RESEND/g" supabase/functions/deno.json
             echo "✓ Updated resend to $LATEST_RESEND"
           fi
-
-      - name: Sync secrets to Supabase
-        if: github.event.inputs.sync_secrets == 'true'
-        run: |
-          echo "Syncing secrets to Supabase..."
-          
-          # Set secrets from GitHub repository secrets
-          supabase secrets set \
-            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            LOVABLE_API_KEY="${{ secrets.LOVABLE_API_KEY }}" \
-            STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
-            STRIPE_WEBHOOK_SECRET="${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
-            RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
-            GHL_API_KEY="${{ secrets.GHL_API_KEY }}" \
-            ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
-            2>/dev/null || echo "Some secrets may not be set"
-          
-          echo "✓ Secrets synced"
 
       - name: Deploy Edge Functions
         if: steps.check_deno.outputs.update_available == 'true' || steps.check_npm.outputs.has_updates == 'true' || github.event.inputs.force_deploy == 'true'
