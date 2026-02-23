@@ -21,7 +21,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
-    Content-Security-Policy = "default-src 'self'; frame-ancestors 'self'; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; frame-src 'self' blob: data: https://codesandbox.io https://*.codesandbox.io https://*.csb.app; frame-ancestors 'self'; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss:; worker-src 'self' blob:; base-uri 'self'; form-action 'self'"
     Cross-Origin-Embedder-Policy = "unsafe-none"
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     Cross-Origin-Resource-Policy = "same-origin"
