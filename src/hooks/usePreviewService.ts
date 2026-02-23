@@ -226,8 +226,10 @@ export default {
         error: null,
       }));
 
-      // Connect WebSocket for real-time updates
-      connectWebSocket(session.id);
+      // Connect WebSocket for real-time updates (Docker gateway only, not Vercel API)
+      if (PREVIEW_GATEWAY_URL && !import.meta.env.PROD) {
+        connectWebSocket(session.id);
+      }
 
       return session;
     } catch (err: any) {
