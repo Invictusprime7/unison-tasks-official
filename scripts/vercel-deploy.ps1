@@ -36,7 +36,7 @@ function Install-VercelCLI {
     Write-ColorOutput Green "Vercel CLI installed successfully"
 }
 
-function Deploy-ToVercel {
+function Publish-ToVercel {
     param([bool]$Prod = $false)
     
     Write-ColorOutput Cyan "`n========================================="
@@ -102,9 +102,6 @@ function Watch-AndDeploy {
     $lastDeploy = Get-Date
     $debounceSeconds = 30  # Minimum time between deploys
     
-    # Get initial hash of tracked files
-    $lastHash = git rev-parse HEAD 2>$null
-    
     while ($true) {
         Start-Sleep -Seconds 5
         
@@ -123,7 +120,7 @@ function Watch-AndDeploy {
                 # Re-check if still has changes (user might have cancelled)
                 $status = git status --porcelain
                 if ($status) {
-                    $success = Deploy-ToVercel -Prod:$Production
+                    $success = Publish-ToVercel -Prod:$Production
                     $lastDeploy = Get-Date
                     
                     if ($success) {
@@ -179,5 +176,5 @@ if (-not (Test-Path $vercelDir)) {
 if ($Watch) {
     Watch-AndDeploy
 } else {
-    Deploy-ToVercel -Prod:$Production
+    Publish-ToVercel -Prod:$Production
 }

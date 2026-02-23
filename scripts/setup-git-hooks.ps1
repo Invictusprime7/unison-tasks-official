@@ -7,7 +7,6 @@ param(
 
 $hookDir = ".git/hooks"
 $postPushHook = "$hookDir/post-push"
-$preCommitHook = "$hookDir/pre-commit"
 
 if (-not (Test-Path ".git")) {
     Write-Host "Error: This is not a git repository" -ForegroundColor Red
