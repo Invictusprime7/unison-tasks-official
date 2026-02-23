@@ -36,97 +36,126 @@ const inferSectionLabel = (element: HTMLElement): string | undefined => {
  * Extract all computed styles from an element
  */
 export const extractElementStyles = (element: HTMLElement): Record<string, string> => {
-  const computedStyle = window.getComputedStyle(element);
-  
-  const relevantStyles: Record<string, string> = {
-    color: computedStyle.color,
-    backgroundColor: computedStyle.backgroundColor,
-    fontSize: computedStyle.fontSize,
-    fontFamily: computedStyle.fontFamily,
-    fontWeight: computedStyle.fontWeight,
-    fontStyle: computedStyle.fontStyle,
-    textDecoration: computedStyle.textDecoration,
-    textAlign: computedStyle.textAlign,
-    padding: computedStyle.padding,
-    margin: computedStyle.margin,
-    border: computedStyle.border,
-    borderRadius: computedStyle.borderRadius,
-    width: computedStyle.width,
-    height: computedStyle.height,
-    display: computedStyle.display,
-    opacity: computedStyle.opacity,
-  };
+  try {
+    // Use the element's own window context (important for iframe elements)
+    const win = element.ownerDocument?.defaultView || window;
+    const computedStyle = win.getComputedStyle(element);
+    
+    const relevantStyles: Record<string, string> = {
+      color: computedStyle.color,
+      backgroundColor: computedStyle.backgroundColor,
+      fontSize: computedStyle.fontSize,
+      fontFamily: computedStyle.fontFamily,
+      fontWeight: computedStyle.fontWeight,
+      fontStyle: computedStyle.fontStyle,
+      textDecoration: computedStyle.textDecoration,
+      textAlign: computedStyle.textAlign,
+      padding: computedStyle.padding,
+      margin: computedStyle.margin,
+      border: computedStyle.border,
+      borderRadius: computedStyle.borderRadius,
+      width: computedStyle.width,
+      height: computedStyle.height,
+      display: computedStyle.display,
+      opacity: computedStyle.opacity,
+    };
 
-  return relevantStyles;
+    return relevantStyles;
+  } catch (err) {
+    console.error('[htmlElementSelector] Error extracting styles:', err);
+    return {};
+  }
 };
 
 /**
  * Generate a unique CSS selector for an element
  */
 export const generateSelector = (element: HTMLElement): string => {
-  if (element.id) {
-    return `#${element.id}`;
-  }
-
-  const path: string[] = [];
-  let current: HTMLElement | null = element;
-
-  while (current && current !== document.body) {
-    let selector = current.tagName.toLowerCase();
-    
-    if (current.className) {
-      const classes = current.className.split(' ').filter(c => c.trim());
-      if (classes.length > 0) {
-        selector += `.${classes[0]}`;
-      }
+  try {
+    if (element.id) {
+      return `#${element.id}`;
     }
-    
-    // Add nth-child if there are siblings
-    const parent = current.parentElement;
-    if (parent) {
-      const siblings = Array.from(parent.children);
-      const index = siblings.indexOf(current);
-      if (siblings.length > 1) {
-        selector += `:nth-child(${index + 1})`;
-      }
-    }
-    
-    path.unshift(selector);
-    current = current.parentElement;
-  }
 
-  return path.join(' > ');
+    const path: string[] = [];
+    let current: HTMLElement | null = element;
+    // Use element's own document body (important for iframe elements)
+    const docBody = element.ownerDocument?.body;
+
+    while (current && current !== docBody) {
+      let selector = current.tagName.toLowerCase();
+      
+      // Handle className safely (SVG elements have SVGAnimatedString)
+      let classNameStr = '';
+      if (typeof current.className === 'string') {
+        classNameStr = current.className;
+      } else if (current.className && typeof (current.className as any).baseVal === 'string') {
+        classNameStr = (current.className as any).baseVal;
+      }
+      
+      if (classNameStr) {
+        const classes = classNameStr.split(' ').filter(c => c.trim());
+        if (classes.length > 0) {
+          selector += `.${classes[0]}`;
+        }
+      }
+      
+      // Add nth-child if there are siblings
+      const parent = current.parentElement;
+      if (parent) {
+        const siblings = Array.from(parent.children);
+        const index = siblings.indexOf(current);
+        if (siblings.length > 1) {
+          selector += `:nth-child(${index + 1})`;
+        }
+      }
+      
+      path.unshift(selector);
+      current = current.parentElement;
+    }
+
+    return path.join(' > ');
+  } catch (err) {
+    console.error('[htmlElementSelector] Error generating selector:', err);
+    return '';
+  }
 };
 
 /**
  * Generate XPath for an element
  */
 export const generateXPath = (element: HTMLElement): string => {
-  if (element.id) {
-    return `//*[@id="${element.id}"]`;
-  }
-
-  const path: string[] = [];
-  let current: HTMLElement | null = element;
-
-  while (current && current !== document.body) {
-    let index = 0;
-    let sibling = current.previousSibling;
-
-    while (sibling) {
-      if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === current.nodeName) {
-        index++;
-      }
-      sibling = sibling.previousSibling;
+  try {
+    if (element.id) {
+      return `//*[@id="${element.id}"]`;
     }
 
-    const tagName = current.nodeName.toLowerCase();
-    const part = index > 0 ? `${tagName}[${index + 1}]` : tagName;
-    path.unshift(part);
-    current = current.parentElement;
-  }
+    const path: string[] = [];
+    let current: HTMLElement | null = element;
+    // Use element's own document body (important for iframe elements)
+    const docBody = element.ownerDocument?.body;
 
-  return '/' + path.join('/');
+    while (current && current !== docBody) {
+      let index = 0;
+      let sibling = current.previousSibling;
+
+      while (sibling) {
+        if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === current.nodeName) {
+          index++;
+        }
+        sibling = sibling.previousSibling;
+      }
+
+      const tagName = current.nodeName.toLowerCase();
+      const part = index > 0 ? `${tagName}[${index + 1}]` : tagName;
+      path.unshift(part);
+      current = current.parentElement;
+    }
+
+    return '/' + path.join('/');
+  } catch (err) {
+    console.error('[htmlElementSelector] Error generating XPath:', err);
+    return '';
+  }
 };
 
 /**
@@ -147,16 +176,31 @@ export const extractElementAttributes = (element: HTMLElement): Record<string, s
  * Get selected element data
  */
 export const getSelectedElementData = (element: HTMLElement): SelectedElementData => {
-  return {
-    tagName: element.tagName,
-    textContent: element.textContent || "",
-    styles: extractElementStyles(element),
-    attributes: extractElementAttributes(element),
-    selector: generateSelector(element),
-    xpath: generateXPath(element),
-    html: element.outerHTML,
-    section: inferSectionLabel(element),
-  };
+  try {
+    return {
+      tagName: element.tagName || 'UNKNOWN',
+      textContent: element.textContent || "",
+      styles: extractElementStyles(element),
+      attributes: extractElementAttributes(element),
+      selector: generateSelector(element),
+      xpath: generateXPath(element),
+      html: element.outerHTML || '',
+      section: inferSectionLabel(element),
+    };
+  } catch (err) {
+    console.error('[htmlElementSelector] Error extracting element data:', err);
+    // Return minimal safe data
+    return {
+      tagName: element.tagName || 'UNKNOWN',
+      textContent: '',
+      styles: {},
+      attributes: {},
+      selector: '',
+      xpath: '',
+      html: '',
+      section: undefined,
+    };
+  }
 };
 
 /**
