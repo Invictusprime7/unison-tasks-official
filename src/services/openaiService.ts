@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { retryWithBackoff } from '@/utils/retryWithBackoff';
 
 export interface OpenAIImageRequest {
   prompt: string;
@@ -39,9 +40,9 @@ export async function generateAIImage(request: OpenAIImageRequest): Promise<Open
   try {
     console.log('[OpenAI] Generating image with prompt:', request.prompt);
     
-    const { data, error } = await supabase.functions.invoke('generate-image', {
-      body: request
-    });
+    const { data, error } = await retryWithBackoff(
+      () => supabase.functions.invoke('generate-image', { body: request })
+    );
 
     if (error) {
       console.error('[OpenAI] Image generation error:', error);
@@ -66,13 +67,15 @@ export async function generateAICode(request: OpenAICodeRequest): Promise<OpenAI
   try {
     console.log('[OpenAI] Generating code with mode:', request.mode);
     
-    const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
-      body: {
-        messages: request.messages,
-        mode: request.mode || 'creative',
-        savePattern: true
-      }
-    });
+    const { data, error } = await retryWithBackoff(
+      () => supabase.functions.invoke('ai-code-assistant', {
+        body: {
+          messages: request.messages,
+          mode: request.mode || 'creative',
+          savePattern: true
+        }
+      })
+    );
 
     if (error) {
       console.error('[OpenAI] Code generation error:', error);
@@ -109,9 +112,9 @@ export async function rewriteCopy(
   try {
     console.log('[OpenAI] Rewriting copy with tone:', tone, 'purpose:', purpose);
     
-    const { data, error } = await supabase.functions.invoke('copy-rewrite', {
-      body: { text, tone, purpose }
-    });
+    const { data, error } = await retryWithBackoff(
+      () => supabase.functions.invoke('copy-rewrite', { body: { text, tone, purpose } })
+    );
 
     if (error) {
       console.error('[OpenAI] Copy rewrite error:', error);
@@ -140,9 +143,9 @@ export async function generatePage(
   try {
     console.log('[OpenAI] Generating page with prompt:', prompt);
     
-    const { data, error } = await supabase.functions.invoke('generate-page', {
-      body: { prompt, theme, sectionType }
-    });
+    const { data, error } = await retryWithBackoff(
+      () => supabase.functions.invoke('generate-page', { body: { prompt, theme, sectionType } })
+    );
 
     if (error) {
       console.error('[OpenAI] Page generation error:', error);
