@@ -1,6 +1,31 @@
 import { serve } from "serve";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { generateVariation, variationToPromptContext } from "../_shared/industryVariations.ts";
+
+/**
+ * Convert hex color to HSL string (CSS format without "hsl()")
+ * Returns format: "H S% L%" for CSS custom properties
+ */
+function hexToHsl(hex: string): string {
+  hex = hex.replace(/^#/, '');
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return `0 0% ${Math.round(l * 100)}%`;
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  switch (max) {
+    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+    case g: h = ((b - r) / d + 2) / 6; break;
+    case b: h = ((r - g) / d + 4) / 6; break;
+  }
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
 
 interface CodePattern {
   pattern_type: string;
@@ -222,7 +247,7 @@ serve(async (req: Request) => {
         )
         .min(1)
         .max(50),
-      mode: z.string().max(20).optional(),
+      mode: z.string().max(30).optional(),
       savePattern: z.boolean().optional(),
       generateImage: z.boolean().optional(),
       imagePlacement: z.string().max(40).optional(),
@@ -231,6 +256,11 @@ serve(async (req: Request) => {
       debugMode: z.boolean().optional(),
       templateAction: z.string().max(50).optional(),
       templateAnalysis: z.string().max(20_000).optional(),
+      // Template generation parameters (for template-json and template-html modes)
+      variationSeed: z.string().max(30).optional(),
+      templateName: z.string().max(100).optional(),
+      aesthetic: z.string().max(80).optional(),
+      source: z.string().max(80).optional(),
     });
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
@@ -253,10 +283,19 @@ serve(async (req: Request) => {
       imagePlacement,
       currentCode,
       editMode = false,
-      debugMode = false,
+      debugMode: _debugMode = false,
       templateAction,
-      templateAnalysis,
+      templateAnalysis: _templateAnalysis,
+      variationSeed,
+      templateName,
+      aesthetic,
+      source,
     } = parsed.data;
+    
+    // Suppress unused variable warnings - these are used in specific modes
+    void _debugMode;
+    void _templateAnalysis;
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -1377,14 +1416,736 @@ ${editModeContext}
 Learn from every bug fix to become better at prevention!`
     };
 
-    const systemPrompt = systemPrompts[mode as keyof typeof systemPrompts] || systemPrompts.code;
+    // Handle template generation modes with industry variations
+    let systemPrompt: string;
+    
+    if (mode === 'template-json' || mode === 'template-html' || mode === 'template-react') {
+      // Extract user prompt text for variation generation
+      const extractText = (content: unknown): string => {
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+          return content.map((p: Record<string, unknown>) => (p?.text as string) || '').filter(Boolean).join(' ');
+        }
+        return '';
+      };
+      
+      const userPromptText = extractText(messages[messages.length - 1]?.content) || '';
+      const templatePromptText = templateName 
+        ? `${templateName} ${aesthetic || ''} ${source || ''}` 
+        : userPromptText;
+      
+      const variation = generateVariation(templatePromptText, variationSeed);
+      const variationContext = variationToPromptContext(variation);
+      
+      console.log(`[ai-code-assistant] Template mode=${mode}, Industry=${variation.industry.name}, Colors=${variation.colorScheme.name}, Seed=${variation.seed}`);
+      
+      if (mode === 'template-json') {
+        systemPrompt = `You are an ELITE web template generator producing PREMIUM, PRODUCTION-READY templates for a Web Builder canvas. Your templates must rival top-tier designs from ThemeForest, Webflow, and Framer.
+
+${variationContext}
+
+TEMPLATE SCHEMA (STRICT — follow exactly, USE THE COLORS SPECIFIED ABOVE):
+{
+  "name": "Template Name",
+  "description": "Brief description",
+  "industry": "${variation.industry.id}",
+  "brandKit": {
+    "primaryColor": "${variation.colorScheme.primary}",
+    "secondaryColor": "${variation.colorScheme.secondary}",
+    "accentColor": "${variation.colorScheme.accent}",
+    "fonts": {
+      "heading": "${variation.fontPairing.heading}",
+      "body": "${variation.fontPairing.body}"${variation.fontPairing.accent ? `,
+      "accent": "${variation.fontPairing.accent}"` : ''}
+    }
+  },
+  "sections": [ ... ],
+  "formats": [
+    { "id": "desktop", "name": "Desktop", "size": { "width": 1280, "height": 800 }, "format": "web" }
+  ],
+  "data": { ... }
+}
+
+SECTION STRUCTURE:
+{
+  "id": "section-[name]",
+  "name": "Section Name",
+  "type": "hero" | "features" | "cta" | "testimonials" | "pricing" | "stats" | "about" | "footer",
+  "constraints": {
+    "width": { "mode": "fill" },
+    "height": { "mode": "fixed", "value": 600 },
+    "padding": { "top": 60, "right": 80, "bottom": 60, "left": 80 },
+    "gap": 24,
+    "flexDirection": "column",
+    "alignItems": "center",
+    "justifyContent": "center"
+  },
+  "style": { "background": "linear-gradient(135deg, ${variation.colorScheme.gradients[0]})" },
+  "components": [ ... ]
+}
+
+COMPONENT STRUCTURE:
+{
+  "id": "unique-id",
+  "type": "text" | "image" | "shape" | "button" | "container",
+  "constraints": { "width": { "mode": "fill" | "hug" | "fixed" }, "height": { "mode": "fill" | "hug" | "fixed" } },
+  "style": { "backgroundColor": "${variation.colorScheme.primary}", "borderRadius": 12 },
+  "fabricProps": { "fontSize": 56, "fontFamily": "${variation.fontPairing.heading}", "fontWeight": "bold", "fill": "${variation.colorScheme.foreground}" }
+}
+
+MINIMUM 6 sections with 4-6 components each. Use the industry images: ${variation.industry.unsplashIds.map(id => `https://images.unsplash.com/${id}?w=800&q=80`).join(', ')}
+
+OUTPUT: Return ONLY valid JSON matching this schema.`;
+      } else if (mode === 'template-html') {
+        // template-html mode
+        systemPrompt = `You are an ELITE web designer producing PREMIUM, AWARD-WINNING website templates. Your output must rival top-tier templates from ThemeForest, Webflow, and Framer.
+
+${variationContext}
+
+DESIGN SYSTEM (MANDATORY):
+Use CSS custom properties for theming. These are already configured:
+:root {
+  --primary: ${hexToHsl(variation.colorScheme.primary)};
+  --secondary: ${hexToHsl(variation.colorScheme.secondary)};
+  --accent: ${hexToHsl(variation.colorScheme.accent)};
+  --background: ${hexToHsl(variation.colorScheme.background)};
+  --foreground: ${hexToHsl(variation.colorScheme.foreground)};
+  --muted: ${hexToHsl(variation.colorScheme.muted)};
+  --card: ${hexToHsl(variation.colorScheme.cardBg)};
+}
+
+## 🎨 PREMIUM CSS (INCLUDE IN <style> TAG):
+\`\`\`css
+/* Glassmorphism */
+.glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+.glass-card { background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; }
+.nav-blur { background: rgba(10,10,10,0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+/* Gradients */
+.gradient-text { background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent))); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.btn-primary { background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary))); color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 9999px; transition: all 0.3s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+.btn-secondary { background: transparent; border: 2px solid rgba(255,255,255,0.3); color: white; padding: 0.75rem 1.5rem; border-radius: 9999px; }
+
+/* Micro-interactions */
+.hover-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.hover-lift:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.button-press:active { transform: scale(0.97); }
+
+/* Animations */
+@keyframes fade-in-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in-up { opacity: 0; animation: fade-in-up 0.6s ease forwards; }
+.stagger-1 { animation-delay: 0.1s; } .stagger-2 { animation-delay: 0.2s; } .stagger-3 { animation-delay: 0.3s; }
+
+/* Typography */
+.headline-xl { font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; line-height: 1.1; }
+.headline-lg { font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1.2; }
+.body-lg { font-size: 1.125rem; line-height: 1.7; color: rgba(255,255,255,0.7); }
+.body-md { font-size: 1rem; line-height: 1.6; color: rgba(255,255,255,0.6); }
+.caption { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: hsl(var(--primary)); }
+
+/* Cards */
+.card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 2rem; transition: all 0.3s ease; }
+.card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); transform: translateY(-4px); }
+
+/* Layout */
+.section-spacing { padding: 5rem 1rem; }
+.container-wide { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; border-radius: 9999px; background: rgba(var(--primary), 0.1); border: 1px solid rgba(var(--primary), 0.2); }
+\`\`\`
+
+ARCHITECTURE RULES:
+- Use Tailwind CSS via CDN
+- Use Lucide Icons CDN: <i data-lucide="icon-name" class="w-6 h-6"></i>
+- Use semantic HTML5
+- Mobile-first responsive: sm → md → lg → xl
+- Initialize icons: <script>lucide.createIcons();</script>
+
+TYPOGRAPHY (USE THESE FONTS):
+- Heading: "${variation.fontPairing.heading}"
+- Body: "${variation.fontPairing.body}"
+
+SECTION ORDER (FOLLOW EXACTLY):
+${variation.sectionOrder.map((s, i) => `${i + 1}. ${s.toUpperCase()}`).join('\n')}
+
+HERO LAYOUT: ${variation.heroVariant.name} (${variation.heroVariant.layout})
+
+IMAGES TO USE:
+${variation.industry.unsplashIds.map(id => `https://images.unsplash.com/${id}?w=800&q=80`).join('\n')}
+
+OUTPUT: Return ONLY the complete, self-contained HTML document. No markdown, no explanations.`;
+      } else {
+        // template-react mode - FULLSTACK REACT APPLICATION
+        // Build reference template block if provided (for quality baseline)
+        const referenceTemplateBlock = currentCode && templateAction === 'use-as-schema' ? `
+
+## 🏆 PREMIUM REFERENCE TEMPLATE (QUALITY BASELINE - CRITICAL!)
+
+Below is a HANDCRAFTED, PREMIUM HTML template that represents the EXACT quality standard you must match or exceed.
+Your React output must have THE SAME section structure, content density, and visual sophistication.
+
+**ABSOLUTE REQUIREMENTS FROM REFERENCE:**
+1. **Match Section Count**: If reference has 8 sections, generate 8 React section components
+2. **Match Content Density**: Same number of cards, testimonials, service items, team members
+3. **Preserve All Intent Wiring**: Convert data-ut-intent to onClick handlers or form actions
+4. **Match Visual Quality**: Same level of gradients, animations, hover effects, glassmorphism
+5. **Match Image Usage**: Same number and types of images (hero, gallery, team photos)
+6. **Match Typography Hierarchy**: Eyebrow → Headline → Body → Caption pattern
+
+**REFERENCE TEMPLATE HTML (analyze structure and content):**
+\`\`\`html
+${currentCode.substring(0, 30000)}
+\`\`\`
+${currentCode.length > 30000 ? `\n[Template continues for ${currentCode.length} total characters — maintain this quality throughout]` : ''}
+
+**INTENT WIRING CONVERSION:**
+- \`data-ut-intent="booking.create"\` → \`onClick={() => handleBooking()}\` + form with onSubmit
+- \`data-ut-intent="contact.submit"\` → Contact form with onSubmit handler
+- \`data-ut-intent="newsletter.subscribe"\` → Newsletter form component
+- \`data-ut-intent="nav.anchor"\` → Smooth scroll with id targeting
+- \`data-ut-cta="cta.primary"\` → Primary action button with prominent styling
+
+` : '';
+
+        systemPrompt = `You are an ELITE React fullstack developer producing PREMIUM, PRODUCTION-READY React applications. Your output must rival top-tier applications built with Next.js, Remix, and modern React patterns.
+${referenceTemplateBlock}
+${variationContext}
+
+## REACT FULLSTACK ARCHITECTURE
+
+You are generating a complete React application with the following structure:
+
+\`\`\`
+src/
+├── App.tsx              # Main app component with routing
+├── main.tsx             # Entry point
+├── index.css            # Global styles with CSS variables
+├── components/
+│   ├── ui/              # Reusable UI components (Button, Card, Input)
+│   ├── layout/          # Layout components (Header, Footer, Section)
+│   └── sections/        # Page sections (Hero, Features, Pricing, etc.)
+├── pages/               # Route pages
+├── hooks/               # Custom React hooks
+├── lib/                 # Utilities and helpers
+└── types/               # TypeScript types
+\`\`\`
+
+## DESIGN SYSTEM (MANDATORY CSS VARIABLES):
+
+\`\`\`css
+:root {
+  --primary: ${hexToHsl(variation.colorScheme.primary)};
+  --primary-foreground: 0 0% 100%;
+  --secondary: ${hexToHsl(variation.colorScheme.secondary)};
+  --secondary-foreground: 0 0% 100%;
+  --accent: ${hexToHsl(variation.colorScheme.accent)};
+  --accent-foreground: 0 0% 100%;
+  --background: ${hexToHsl(variation.colorScheme.background)};
+  --foreground: ${hexToHsl(variation.colorScheme.foreground)};
+  --muted: ${hexToHsl(variation.colorScheme.muted)};
+  --muted-foreground: 240 3.8% 46.1%;
+  --card: ${hexToHsl(variation.colorScheme.cardBg)};
+  --card-foreground: ${hexToHsl(variation.colorScheme.foreground)};
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: ${hexToHsl(variation.colorScheme.primary)};
+  --radius: 0.5rem;
+}
+\`\`\`
+
+## COMPONENT PATTERNS (USE THESE EXACT PATTERNS):
+
+### Button Component:
+\`\`\`tsx
+import { cn } from "@/lib/utils";
+import { ButtonHTMLAttributes, forwardRef } from "react";
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "default" | "secondary" | "outline" | "ghost";
+  size?: "sm" | "md" | "lg";
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = "default", size = "md", ...props }, ref) => {
+    return (
+      <button
+        className={cn(
+          "inline-flex items-center justify-center rounded-md font-medium transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          {
+            "bg-primary text-primary-foreground hover:bg-primary/90": variant === "default",
+            "bg-secondary text-secondary-foreground hover:bg-secondary/80": variant === "secondary",
+            "border border-input bg-background hover:bg-accent hover:text-accent-foreground": variant === "outline",
+            "hover:bg-accent hover:text-accent-foreground": variant === "ghost",
+          },
+          {
+            "h-9 px-3 text-sm": size === "sm",
+            "h-10 px-4 py-2": size === "md",
+            "h-11 px-8 text-lg": size === "lg",
+          },
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+\`\`\`
+
+### Section Component:
+\`\`\`tsx
+interface SectionProps {
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}
+
+export function Section({ children, className, id }: SectionProps) {
+  return (
+    <section id={id} className={cn("py-16 md:py-24", className)}>
+      <div className="container mx-auto px-4">{children}</div>
+    </section>
+  );
+}
+\`\`\`
+
+## TYPOGRAPHY (USE THESE FONTS VIA GOOGLE FONTS):
+- Heading: "${variation.fontPairing.heading}"
+- Body: "${variation.fontPairing.body}"
+
+## SECTION ORDER (IMPLEMENT ALL IN THIS ORDER):
+${variation.sectionOrder.map((s, i) => `${i + 1}. ${s.charAt(0).toUpperCase() + s.slice(1)}`).join('\n')}
+
+## HERO LAYOUT: ${variation.heroVariant.name}
+Layout: ${variation.heroVariant.layout}
+
+## IMAGES (USE THESE UNSPLASH IMAGES):
+${variation.industry.unsplashIds.map(id => `https://images.unsplash.com/${id}?w=800&q=80`).join('\n')}
+
+## ICONS:
+Use Lucide React icons: \`import { IconName } from "lucide-react";\`
+
+## 🎨 PREMIUM CSS PATTERNS (MANDATORY - COPY THESE EXACTLY INTO index.css):
+
+\`\`\`css
+/* ============================================
+   GLASSMORPHISM (USE FOR CARDS AND NAVIGATION)
+   ============================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.glass-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.nav-blur {
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ============================================
+   GRADIENT EFFECTS (USE FOR BUTTONS AND TEXT)
+   ============================================ */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 2px solid rgba(255,255,255,0.3);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.5);
+}
+
+/* ============================================
+   MICRO-INTERACTIONS (USE FOR ALL CARDS)
+   ============================================ */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
+
+.button-press {
+  transition: transform 0.1s ease;
+}
+
+.button-press:active {
+  transform: scale(0.97);
+}
+
+/* ============================================
+   ANIMATIONS (USE FOR CONTENT REVEAL)
+   ============================================ */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fade-in-up 0.6s ease forwards;
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+
+/* ============================================
+   PROFESSIONAL SHADOWS
+   ============================================ */
+.shadow-elevation-3 {
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15), 0 3px 6px rgba(0,0,0,0.1);
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(var(--primary), 0.3), 0 0 40px rgba(var(--primary), 0.1);
+}
+
+/* ============================================
+   TYPOGRAPHY (USE THESE CLASS PATTERNS)
+   ============================================ */
+.headline-xl {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.headline-lg {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.body-lg {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.7);
+}
+
+.body-md {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.6);
+}
+
+.caption {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--primary));
+}
+
+/* ============================================
+   CARD PATTERNS
+   ============================================ */
+.card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-4px);
+}
+
+.card-highlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(var(--primary), 0.1) 0%, transparent 50%);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-highlight:hover::before {
+  opacity: 1;
+}
+
+/* ============================================
+   LAYOUT UTILITIES
+   ============================================ */
+.section-spacing {
+  padding: 5rem 1rem;
+}
+
+.container-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.container-tight {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ============================================
+   BADGE PATTERNS
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border-radius: 9999px;
+  background: rgba(var(--primary), 0.1);
+  border: 1px solid rgba(var(--primary), 0.2);
+  color: hsl(var(--primary));
+}
+
+.badge-primary {
+  background: linear-gradient(135deg, rgba(var(--primary), 0.15) 0%, rgba(var(--accent), 0.1) 100%);
+  border: 1px solid rgba(var(--primary), 0.3);
+}
+\`\`\`
+
+## REQUIRED FEATURES:
+1. **React Router** - Client-side routing with react-router-dom
+2. **TypeScript** - Full type safety with proper interfaces
+3. **Tailwind CSS** - Use utility classes with CSS variables
+4. **Responsive Design** - Mobile-first with sm/md/lg/xl breakpoints
+5. **Animations** - Use Tailwind transitions and CSS animations
+6. **State Management** - React hooks (useState, useEffect, useContext)
+7. **Forms** - Controlled components with validation
+8. **Accessibility** - ARIA labels, focus states, semantic HTML
+
+## SECTION COMPONENTS (CREATE SEPARATE FILES FOR EACH):
+Each section must be a standalone component in src/components/sections/:
+- **Header.tsx** - Fixed navigation with logo, nav links, and CTA button
+- **Hero.tsx** - Full-height hero with headline, subtext, CTAs, and background image
+- **Services.tsx** - Service cards with icons, descriptions, and pricing (MINIMUM 6 items)
+- **About.tsx** - Company/team story with image and statistics
+- **Team.tsx** - Team member cards with photos, names, roles (MINIMUM 3 members)
+- **Testimonials.tsx** - Customer testimonials with quotes and avatars (MINIMUM 3)
+- **Gallery.tsx** - Image gallery or portfolio showcase (MINIMUM 6 images)
+- **FAQ.tsx** - Accordion FAQ section (MINIMUM 5 questions)
+- **CTA.tsx** - Call-to-action banner with headline and buttons
+- **Contact.tsx** - Contact form with name, email, message fields
+- **Footer.tsx** - Footer with links, contact info, and social icons
+
+## INTENT HANDLER HOOKS:
+Create a useIntentHandlers.ts hook:
+\`\`\`tsx
+export function useIntentHandlers() {
+  const handleBooking = (service?: string) => {
+    console.log('Booking intent:', service);
+    // Scroll to booking form or open modal
+  };
+  
+  const handleContact = (data: FormData) => {
+    console.log('Contact submitted:', Object.fromEntries(data));
+  };
+  
+  const handleNewsletter = (email: string) => {
+    console.log('Newsletter signup:', email);
+  };
+  
+  return { handleBooking, handleContact, handleNewsletter };
+}
+\`\`\`
+
+## OUTPUT FORMAT:
+
+Return a single JSON object with this structure (no markdown, no explanations):
+
+\`\`\`json
+{
+  "files": {
+    "src/App.tsx": "// Main app with routing...",
+    "src/main.tsx": "// Entry point with React DOM...",
+    "src/index.css": "/* Global styles with CSS variables */",
+    "src/components/ui/Button.tsx": "// Reusable button...",
+    "src/components/ui/Card.tsx": "// Reusable card...",
+    "src/components/ui/Input.tsx": "// Form input...",
+    "src/components/sections/Header.tsx": "// Navigation header...",
+    "src/components/sections/Hero.tsx": "// Hero section...",
+    "src/components/sections/Services.tsx": "// Services grid (6+ items)...",
+    "src/components/sections/About.tsx": "// About section...",
+    "src/components/sections/Team.tsx": "// Team members (3+)...",
+    "src/components/sections/Testimonials.tsx": "// Testimonials (3+)...",
+    "src/components/sections/Gallery.tsx": "// Image gallery (6+)...",
+    "src/components/sections/FAQ.tsx": "// FAQ accordion (5+)...",
+    "src/components/sections/CTA.tsx": "// Call to action...",
+    "src/components/sections/Contact.tsx": "// Contact form...",
+    "src/components/sections/Footer.tsx": "// Footer...",
+    "src/hooks/useIntentHandlers.ts": "// Intent handler hooks...",
+    "src/pages/Home.tsx": "// Home page composing sections...",
+    "src/lib/utils.ts": "// cn() and utilities...",
+    "src/types/index.ts": "// TypeScript types...",
+    "package.json": "{ \\"dependencies\\": {...} }",
+    "tailwind.config.js": "// Tailwind config with CSS vars...",
+    "index.html": "<!-- HTML template with fonts -->"
+  },
+  "entryPoint": "src/App.tsx",
+  "framework": "react",
+  "buildTool": "vite"
+}
+\`\`\`
+
+## QUALITY REQUIREMENTS (NON-NEGOTIABLE):
+- **MINIMUM 10 section components** - Header, Hero, Services, About, Team, Testimonials, Gallery, FAQ, CTA, Contact, Footer
+- **MINIMUM 6 service/feature items** with icons, titles, descriptions, pricing  
+- **MINIMUM 3 team members** with photos, names, titles, bios
+- **MINIMUM 3 testimonials** with quotes, names, companies, avatars
+- **MINIMUM 6 gallery images** with proper aspect ratios
+- **MINIMUM 5 FAQ items** with expandable answers
+- Premium, award-winning visual design rivaling Webflow/Framer
+- Smooth scroll animations and micro-interactions
+- Professional typography hierarchy (eyebrow → headline → body)
+- Consistent spacing (8px grid system)
+- Glass morphism and gradient effects WHERE SHOWN IN CSS ABOVE
+- Dark/light mode ready with CSS variables
+- SEO-friendly semantic HTML structure
+- All images from Unsplash with proper alt text
+
+## 🎯 PREMIUM COMPONENT EXAMPLES (FOLLOW THIS QUALITY LEVEL):
+
+### Hero.tsx Example:
+\`\`\`tsx
+export function Hero() {
+  return (
+    <section className="min-h-screen flex items-center relative overflow-hidden">
+      {/* Background with gradient overlay */}
+      <div className="absolute inset-0">
+        <img 
+          src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1920&q=80" 
+          alt="Hero background" 
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent" />
+      </div>
+      
+      {/* Content */}
+      <div className="relative z-10 container-wide section-spacing">
+        <div className="max-w-2xl">
+          {/* Eyebrow badge */}
+          <span className="badge badge-primary mb-6 animate-fade-in-up">
+            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            Award-Winning Service
+          </span>
+          
+          {/* Headline with gradient text */}
+          <h1 className="headline-xl text-white mb-6 animate-fade-in-up stagger-1">
+            Where <span className="gradient-text">Excellence</span> Meets Artistry
+          </h1>
+          
+          {/* Subtext */}
+          <p className="body-lg mb-10 animate-fade-in-up stagger-2">
+            Experience transformative services from our team of experts 
+            in a luxurious, relaxing environment.
+          </p>
+          
+          {/* CTA buttons */}
+          <div className="flex flex-wrap gap-4 animate-fade-in-up stagger-3">
+            <button className="btn-primary button-press">
+              Book Appointment
+            </button>
+            <button className="btn-secondary">
+              View Services
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+\`\`\`
+
+### Services.tsx Card Pattern Example:
+\`\`\`tsx
+const services = [
+  { id: 1, name: "Service One", price: "$85+", duration: "60 min", description: "Premium service description", popular: true },
+  // ... 6 total services with icons
+];
+
+{services.map((service) => (
+  <div key={service.id} className="card hover-lift relative group">
+    {service.popular && (
+      <span className="badge badge-primary text-xs absolute -top-3 left-4">Most Popular</span>
+    )}
+    <div className="flex justify-between items-start mb-4">
+      <div>
+        <h3 className="text-xl font-bold text-white">{service.name}</h3>
+        <span className="caption">{service.duration}</span>
+      </div>
+      <span className="gradient-text font-bold text-xl">{service.price}</span>
+    </div>
+    <p className="body-md mb-4">{service.description}</p>
+    <button className="w-full text-primary hover:text-primary/80 font-medium transition-colors">
+      Book This Service →
+    </button>
+  </div>
+))}
+\`\`\`
+
+OUTPUT: Return ONLY the JSON object with the files. No markdown code fences, no explanations.`;
+      }
+    } else {
+      systemPrompt = systemPrompts[mode as keyof typeof systemPrompts] || systemPrompts.code;
+    }
 
     const extractTextContent = (content: unknown): string => {
       if (typeof content === 'string') return content;
       if (Array.isArray(content)) {
         // Try to extract any text parts (OpenAI/Gemini style).
         const textParts = content
-          .map((p: any) => {
+          .map((p: Record<string, unknown>) => {
             if (!p || typeof p !== 'object') return '';
             if (typeof p.text === 'string') return p.text;
             // Some formats may use { type: 'text', text: '...' }
