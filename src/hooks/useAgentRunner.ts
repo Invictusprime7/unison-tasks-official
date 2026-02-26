@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { retryWithBackoff } from '@/utils/retryWithBackoff';
 
 interface ToolCallResult {
   tool: string;
@@ -44,11 +45,13 @@ export function useAgentRunner(): UseAgentRunnerReturn {
     setError(null);
 
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke<AgentRunResult>(
-        'agent-runner',
-        {
-          body: eventId ? { eventId } : {},
-        }
+      const { data, error: invokeError } = await retryWithBackoff(
+        () => supabase.functions.invoke<AgentRunResult>(
+          'agent-runner',
+          {
+            body: eventId ? { eventId } : {},
+          }
+        )
       );
 
       if (invokeError) {

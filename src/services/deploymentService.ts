@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { retryWithBackoff } from '@/utils/retryWithBackoff';
 
 export type DeploymentProvider = 'vercel' | 'netlify';
 
@@ -170,15 +171,18 @@ export async function deployToProvider(
 
     updateProgress(30, `Connecting to ${request.provider}...`);
 
-    // Call the Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke('publish-site', {
-      body: {
-        provider: request.provider,
-        siteName: request.siteName || `unison-site-${Date.now()}`,
-        customDomain: request.customDomain,
-        files: normalizedFiles,
-      },
-    });
+    // Call the Supabase Edge Function with retry on transient failures
+    const { data, error } = await retryWithBackoff(
+      () => supabase.functions.invoke('publish-site', {
+        body: {
+          provider: request.provider,
+          siteName: request.siteName || `unison-site-${Date.now()}`,
+          customDomain: request.customDomain,
+          files: normalizedFiles,
+        },
+      }),
+      { maxRetries: 3, baseDelayMs: 1000 }
+    );
 
     if (error) {
       console.error('[deploymentService] Supabase function error:', error);
