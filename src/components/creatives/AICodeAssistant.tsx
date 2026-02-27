@@ -51,7 +51,7 @@ import { rewriteDemoEmbeds } from "@/utils/demoEmbedRewriter";
 import type { BusinessSystemType } from "@/data/templates/types";
 import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { buildWebBuilderAIContext } from "@/utils/aiAssistantContext";
-import { parseAIFileTags } from "@/utils/aiFileTags";
+// Removed deprecated aiFileTags - functionality consolidated in aiResponseParser
 import { parseAIResponse, getPrimaryCodeBlock, type AIResponseParseResult } from "@/utils/aiResponseParser";
 
 interface Message {
@@ -311,6 +311,12 @@ interface AICodeAssistantProps {
     selector: string;
     section?: string;
   }; // Selected element from preview for targeted editing
+  /** User's design profile extracted from saved projects - enables personalized AI generation */
+  userDesignProfile?: {
+    projectCount?: number;
+    dominantStyle?: 'dark' | 'light' | 'colorful' | 'minimal' | 'mixed';
+    industryHints?: string[];
+  };
   /** When true, the AI panel opens to edit the selected element. Controlled externally. */
   requestAIEdit?: boolean;
   /** Called when the AI panel finishes or dismisses the element-edit request. */
@@ -336,6 +342,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   backendStateContext,
   businessDataContext,
   selectedElement,
+  userDesignProfile,
   requestAIEdit,
   onAIEditDismissed,
   onElementUpdate,
@@ -901,17 +908,25 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       let enhancedPrompt = userMessage.content;
       
       if (isEditingSelectedElement) {
-        enhancedPrompt = `🎯 ELEMENT EDITING MODE - Modify specific section only\n\n`;
+        enhancedPrompt = `🚨 ELEMENT EDITING MODE - SURGICAL MODIFICATION ONLY 🚨\n\n`;
         enhancedPrompt += `Selected Element (${selectedElement.section || 'section'}):\n`;
         enhancedPrompt += `Selector: ${selectedElement.selector}\n\n`;
         enhancedPrompt += `Current HTML:\n\`\`\`html\n${selectedElement.html}\n\`\`\`\n\n`;
         enhancedPrompt += `User Request: ${userMessage.content}\n\n`;
-        enhancedPrompt += `INSTRUCTIONS:\n`;
-        enhancedPrompt += `- Only modify THIS element/section\n`;
-        enhancedPrompt += `- You can: add grid/column layouts, change components, rewrite text, modify UI, add images\n`;
-        enhancedPrompt += `- Preserve the overall structure unless requested to change it\n`;
-        enhancedPrompt += `- Return ONLY the modified HTML for this element\n`;
-        enhancedPrompt += `- Use Tailwind CSS classes for styling\n`;
+        enhancedPrompt += `⚠️ CRITICAL ELEMENT EDITING RULES:\n`;
+        enhancedPrompt += `1. Return ONLY the modified HTML for THIS EXACT element - no wrappers, no page structure\n`;
+        enhancedPrompt += `2. PRESERVE ALL existing content (text, images, links) unless explicitly asked to change them\n`;
+        enhancedPrompt += `3. PRESERVE ALL existing Tailwind classes unless explicitly asked to restyle\n`;
+        enhancedPrompt += `4. PRESERVE ALL data-* attributes exactly as they appear\n`;
+        enhancedPrompt += `5. PRESERVE ALL existing child elements and their structure\n`;
+        enhancedPrompt += `6. ONLY add/modify what was explicitly requested\n`;
+        enhancedPrompt += `7. Do NOT wrap the output in any additional tags\n\n`;
+        enhancedPrompt += `ALLOWED MODIFICATIONS:\n`;
+        enhancedPrompt += `- Layout changes: add grid/flex classes if requested\n`;
+        enhancedPrompt += `- Add new components: only if explicitly requested\n`;
+        enhancedPrompt += `- Style changes: only if explicitly requested\n`;
+        enhancedPrompt += `- Text changes: only if explicitly requested\n\n`;
+        enhancedPrompt += `OUTPUT: The modified HTML element only, no markdown fences, no explanations.\n`;
         enhancedPrompt += slotContext;
         console.log('[AICodeAssistant] Element editing mode activated for:', selectedElement.selector);
       } else if (mode === "debug" && hasExistingTemplate) {
@@ -969,6 +984,8 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               editMode: hasExistingTemplate || mode === "debug",
               debugMode: mode === "debug",
               templateAction,
+              // Pass user design profile for personalized AI generation
+              userDesignProfile: userDesignProfile || undefined,
             },
           });
 

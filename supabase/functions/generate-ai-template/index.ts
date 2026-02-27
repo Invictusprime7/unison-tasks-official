@@ -1,4 +1,5 @@
 import { serve } from "serve";
+import { generateVariation, variationToPromptContext, type TemplateVariation } from "../_shared/industryVariations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, variationSeed } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -25,21 +26,29 @@ serve(async (req) => {
       );
     }
 
+    // Generate unique template variation based on prompt and optional seed
+    const variation: TemplateVariation = generateVariation(prompt, variationSeed);
+    const variationContext = variationToPromptContext(variation);
+    
+    console.log(`[generate-ai-template] Industry: ${variation.industry.name}, Color: ${variation.colorScheme.name}, Hero: ${variation.heroVariant.name}, Seed: ${variation.seed}`);
+
     const systemPrompt = `You are an ELITE web template generator producing PREMIUM, PRODUCTION-READY templates for a Web Builder canvas. Your templates must rival top-tier designs from ThemeForest, Webflow, and Framer.
 
-TEMPLATE SCHEMA (STRICT — follow exactly):
+${variationContext}
+
+TEMPLATE SCHEMA (STRICT — follow exactly, USE THE COLORS SPECIFIED ABOVE):
 {
   "name": "Template Name",
   "description": "Brief description",
-  "industry": "web",
+  "industry": "${variation.industry.id}",
   "brandKit": {
-    "primaryColor": "#3b82f6",
-    "secondaryColor": "#1e40af",
-    "accentColor": "#06b6d4",
+    "primaryColor": "${variation.colorScheme.primary}",
+    "secondaryColor": "${variation.colorScheme.secondary}",
+    "accentColor": "${variation.colorScheme.accent}",
     "fonts": {
-      "heading": "Plus Jakarta Sans",
-      "body": "Inter",
-      "accent": "Space Grotesk"
+      "heading": "${variation.fontPairing.heading}",
+      "body": "${variation.fontPairing.body}"${variation.fontPairing.accent ? `,
+      "accent": "${variation.fontPairing.accent}"` : ''}
     }
   },
   "sections": [ ... ],
@@ -69,7 +78,7 @@ SECTION STRUCTURE:
     "justifyContent": "center"
   },
   "style": {
-    "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    "background": "linear-gradient(135deg, ${variation.colorScheme.gradients[0]})"
   },
   "components": [ ... ]
 }
@@ -89,16 +98,16 @@ COMPONENT STRUCTURE:
     "defaultValue": "Content here"
   },
   "style": {
-    "backgroundColor": "#3b82f6",
+    "backgroundColor": "${variation.colorScheme.primary}",
     "borderRadius": 12,
     "opacity": 1,
     "boxShadow": "0 10px 30px -10px rgba(0,0,0,0.2)"
   },
   "fabricProps": {
     "fontSize": 56,
-    "fontFamily": "Plus Jakarta Sans",
+    "fontFamily": "${variation.fontPairing.heading}",
     "fontWeight": "bold",
-    "fill": "#1e293b",
+    "fill": "${variation.colorScheme.foreground}",
     "lineHeight": 1.2,
     "letterSpacing": -0.5
   }
@@ -107,26 +116,27 @@ COMPONENT STRUCTURE:
 PREMIUM QUALITY REQUIREMENTS:
 
 1. **Typography Excellence:**
-   - Use premium Google Fonts (Plus Jakarta Sans, Inter, Manrope, DM Sans, Space Grotesk)
+   - USE THE FONTS SPECIFIED ABOVE: "${variation.fontPairing.heading}" for headings, "${variation.fontPairing.body}" for body
    - Hero title: 48-64px, bold/extrabold, tight letter-spacing
    - Section headings: 32-42px, semibold
    - Body text: 16-18px, regular weight
    - Proper line-height values (1.1-1.2 headings, 1.6-1.7 body)
 
 2. **Visual Depth:**
-   - Use gradient backgrounds on hero and CTA sections
+   - Use gradient backgrounds on hero and CTA sections (use the gradient from variation)
    - Add boxShadow to cards and elevated elements
    - Use subtle background colors to alternate sections
    - Decorative shape components for visual interest (circles, blobs)
    - Use opacity and transparency for layered effects
 
-3. **Color Strategy:**
-   - Primary color for CTAs and key accents
-   - Secondary color for supporting elements
-   - Accent color for highlights and badges
-   - Use muted foreground (#64748b) for body text
-   - Use dark foreground (#0f172a, #1e293b) for headings
-   - White/light backgrounds (#ffffff, #f8fafc) alternating with tinted sections
+3. **Color Strategy (USE VARIATION COLORS - NO DEFAULTS):**
+   - Primary "${variation.colorScheme.primary}" for CTAs and key accents
+   - Secondary "${variation.colorScheme.secondary}" for supporting elements
+   - Accent "${variation.colorScheme.accent}" for highlights and badges
+   - Muted "${variation.colorScheme.muted}" for body text
+   - Foreground "${variation.colorScheme.foreground}" for headings
+   - Background "${variation.colorScheme.background}" for page background
+   - Card background "${variation.colorScheme.cardBg}" alternating with tinted sections
 
 4. **Section Requirements (MINIMUM 6 sections):**
    - Hero: Large heading, subtitle, 1-2 CTA buttons, optional badge/tag, decorative elements
@@ -263,7 +273,16 @@ OUTPUT: Return ONLY valid JSON matching the schema above. No markdown, no explan
       ...templateStructure,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      // Include variation metadata for reproducibility
+      variationMeta: {
+        seed: variation.seed,
+        industry: variation.industry.id,
+        colorScheme: variation.colorScheme.id,
+        fontPairing: variation.fontPairing.id,
+        heroVariant: variation.heroVariant.id,
+        visualEffect: variation.visualEffect.id
+      }
     };
 
     console.log("✅ Template generated successfully with", 
@@ -273,8 +292,15 @@ OUTPUT: Return ONLY valid JSON matching the schema above. No markdown, no explan
     return new Response(
       JSON.stringify({ 
         template: completeTemplate,
-        explanation: "AI template generated successfully with " + 
-          completeTemplate.sections.length + " sections"
+        variation: {
+          seed: variation.seed,
+          industry: variation.industry.name,
+          colorScheme: variation.colorScheme.name,
+          fontPairing: `${variation.fontPairing.heading} + ${variation.fontPairing.body}`,
+          heroLayout: variation.heroVariant.name,
+          sectionOrder: variation.sectionOrder
+        },
+        explanation: `AI template generated for ${variation.industry.name} industry with ${completeTemplate.sections.length} sections using "${variation.colorScheme.name}" color scheme and "${variation.heroVariant.name}" hero layout.`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

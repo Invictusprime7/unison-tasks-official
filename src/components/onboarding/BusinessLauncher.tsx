@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getTemplatesByCategory } from "@/data/templates";
 import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
+import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 
 // Industry chip configurations
 const industryChips = [
@@ -160,6 +161,14 @@ export function BusinessLauncher({ open, onOpenChange }: BusinessLauncherProps) 
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  // User Design Profile - analyzes saved projects for style-matching
+  const { 
+    hasProfile, 
+    profile: designProfile,
+    getPromptContext: getDesignPromptContext,
+    projectCount: savedProjectCount 
+  } = useUserDesignProfile();
+  
   // Flow state
   const [step, setStep] = useState<FlowStep>("prompt");
   const [prompt, setPrompt] = useState("");
@@ -238,18 +247,29 @@ export function BusinessLauncher({ open, onOpenChange }: BusinessLauncherProps) 
       setBuildProgress(25);
       setBuildStatus("Generating your website...");
 
-      console.log(`[BusinessLauncher] Using systems-build with${ref ? ` template: ${ref.templateId}` : 'out template'}`);
+      console.log(`[BusinessLauncher] Using systems-build with${ref ? ` template: ${ref.templateId}` : 'out template'}${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
+
+      // Add user design profile context for style-matched generation
+      const designProfileContext = hasProfile ? getDesignPromptContext() : null;
+      const enhancedPrompt = designProfileContext 
+        ? `${designProfileContext}\n\n---\n\nUser Request:\n${prompt}`
+        : prompt;
 
       // Call systems-build edge function
       const { data, error } = await supabase.functions.invoke("systems-build", {
         body: {
           blueprint,
-          userPrompt: prompt,
+          userPrompt: enhancedPrompt,
           enhanceWithAI: true,
           templateId: ref?.templateId,
           templateHtml: ref?.templateHtml,
           variantMode: true,
           variationSeed: `v${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+          userDesignProfile: hasProfile ? {
+            projectCount: savedProjectCount,
+            dominantStyle: designProfile?.dominantStyle,
+            industryHints: designProfile?.industryHints,
+          } : undefined,
         },
       });
 

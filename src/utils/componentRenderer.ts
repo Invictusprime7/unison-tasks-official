@@ -4,6 +4,7 @@
  */
 
 import { Canvas as FabricCanvas, Rect, IText, FabricImage } from 'fabric';
+import { htmlToJsx } from './aiWebParser';
 
 export interface ComponentConfig {
   type: 'hero' | 'card' | 'button' | 'section' | 'form' | 'navigation' | 'custom';
@@ -337,7 +338,7 @@ import './styles.css';
 
 const ${componentName} = () => {
   return (
-    ${config.jsx || convertHTMLToJSX(config.html)}
+    ${config.jsx || htmlToJsx(config.html)}
   );
 };
 
@@ -349,13 +350,5 @@ ${config.css}
 */`;
 }
 
-/**
- * Convert HTML to JSX
- */
-function convertHTMLToJSX(html: string): string {
-  return html
-    .replace(/class=/g, 'className=')
-    .replace(/for=/g, 'htmlFor=')
-    .replace(/onclick=/g, 'onClick=')
-    .replace(/onchange=/g, 'onChange=');
-}
+// Re-export htmlToJsx for backward compatibility
+export { htmlToJsx };

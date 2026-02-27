@@ -54,3 +54,47 @@ export function useVFSPreview() {
     nodes,
   };
 }
+
+// ============================================================================
+// Import Hook - For importing content from various sources
+// ============================================================================
+
+export function useVFSImport() {
+  const {
+    importFiles,
+    importSavedProject,
+    importFromWebpage,
+    importFromCode,
+    parseWebContent,
+    resetToEmpty,
+    loadDefaultTemplate,
+  } = useVFS();
+  
+  return {
+    // Basic import
+    importFiles,
+    
+    // Enhanced imports with parsing
+    importSavedProject,
+    importFromWebpage,
+    importFromCode,
+    
+    // Parse without importing (for preview/analysis)
+    parseWebContent,
+    
+    // Reset
+    reset: resetToEmpty,
+    loadTemplate: loadDefaultTemplate,
+  };
+}
+
+// ============================================================================
+// Type exports
+// ============================================================================
+
+export type { VFSContextValue } from '@/contexts/VFSContext';
+export type { 
+  SavedProjectData, 
+  ParsedWebContent, 
+  VFSGenerationResult 
+} from '@/utils/aiWebParser';

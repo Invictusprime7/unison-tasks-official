@@ -472,3 +472,99 @@ export function getPrimaryCodeBlock(result: AIResponseParseResult): ParsedCodeBl
   
   return result.codeBlocks[0] || null;
 }
+
+/**
+ * Parse AI response and convert to VFS-ready format
+ * Combines structured parsing with unique component generation
+ */
+export async function parseAIResponseToVFS(
+  input: string,
+  options: {
+    projectName?: string;
+    splitComponents?: boolean;
+  } = {}
+): Promise<{
+  files: Record<string, string>;
+  componentName: string;
+  hasContent: boolean;
+}> {
+  // Lazy import to avoid circular dependencies
+  const { transformCodeToVFS, parseOnlineWebpage, generateUniqueReactVFS } = await import('./aiWebParser');
+  
+  const parsed = parseAIResponse(input);
+  const { projectName = 'AIGenerated', splitComponents = true } = options;
+  
+  // If we have file tags, use them directly
+  if (parsed.files.length > 0) {
+    const files: Record<string, string> = {};
+    for (const file of parsed.files) {
+      files[file.path] = file.content;
+    }
+    return {
+      files,
+      componentName: projectName,
+      hasContent: true,
+    };
+  }
+  
+  // If we have code blocks, transform the primary one
+  const primaryCode = getPrimaryCodeBlock(parsed);
+  if (primaryCode) {
+    const result = transformCodeToVFS(primaryCode.content, { projectName });
+    return {
+      files: result.files,
+      componentName: result.componentName,
+      hasContent: true,
+    };
+  }
+  
+  // Try to extract HTML from the response
+  const htmlMatch = input.match(/<(!DOCTYPE|html|body|div)[^>]*>[\s\S]+<\/(html|body|div)>/i);
+  if (htmlMatch) {
+    const webContent = parseOnlineWebpage(htmlMatch[0]);
+    const result = generateUniqueReactVFS(webContent, { projectName, splitComponents });
+    return {
+      files: result.files,
+      componentName: result.componentName,
+      hasContent: true,
+    };
+  }
+  
+  return {
+    files: {},
+    componentName: projectName,
+    hasContent: false,
+  };
+}
+
+/**
+ * Extract unique component identifiers from AI output
+ * Useful for deduplication and caching
+ */
+export function extractComponentSignature(code: string): string {
+  // Create a signature based on structure, not content
+  const normalized = code
+    .replace(/\s+/g, ' ')
+    .replace(/'[^']*'/g, "''")
+    .replace(/"[^"]*"/g, '""')
+    .replace(/\d+/g, '0')
+    .trim();
+  
+  // Simple hash
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  
+  return `comp_${Math.abs(hash).toString(36)}`;
+}
+
+// Re-export utilities from aiWebParser for convenience
+export { 
+  parseOnlineWebpage,
+  parseSavedProject,
+  generateUniqueReactVFS,
+  transformCodeToVFS,
+} from './aiWebParser';

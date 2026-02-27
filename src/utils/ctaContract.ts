@@ -177,11 +177,45 @@ export function normalizeTemplateForCtaContract(opts: {
   }
 
   const contract = systemType ? getSystemContract(systemType) : undefined;
+  
+  // Quick check: if template already has intent attributes and no contract requirements,
+  // skip DOM manipulation to preserve exact code structure (SVGs, scripts, etc.)
+  const hasExistingIntents = /data-ut-intent=/.test(code);
+  const hasRequiredIntents = contract?.requiredIntents && contract.requiredIntents.length > 0;
+  
+  if (hasExistingIntents && !hasRequiredIntents) {
+    // Just extract analysis without DOM manipulation
+    const intents: string[] = [];
+    const slots: string[] = [];
+    const intentMatches = code.matchAll(/data-ut-intent="([^"]+)"/g);
+    for (const m of intentMatches) {
+      if (m[1]) intents.push(m[1]);
+    }
+    const slotMatches = code.matchAll(/data-ut-cta="([^"]+)"/g);
+    for (const m of slotMatches) {
+      if (m[1]) slots.push(m[1]);
+    }
+    return {
+      code,
+      analysis: { 
+        intents: [...new Set(intents)], 
+        slots: [...new Set(slots)], 
+        hadUtAttributes: true 
+      },
+    };
+  }
 
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(code, 'text/html');
     const analysis = autoMigrateCTAs(doc, contract, category);
+    
+    // Only re-serialize if we actually made changes
+    if (analysis.intents.length === 0 && !analysis.hadUtAttributes) {
+      // No changes needed, return original code
+      return { code, analysis };
+    }
+    
     const normalized = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
     return { code: normalized, analysis };
   } catch {

@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Suspense, lazy } from "react";
 import { RouteErrorBoundary, AsyncBoundary } from "@/components/RouteErrorBoundary";
+import { Analytics } from "@vercel/analytics/react";
 
 // Static imports for lightweight pages
 import Landing from "./pages/Landing";
@@ -33,6 +34,7 @@ const DocsPage = lazy(() => import("./pages/DocsPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const ProjectSetup = lazy(() => import("./pages/ProjectSetup"));
 
 const queryClient = new QueryClient();
 
@@ -75,6 +77,11 @@ const App = () => (
                 <AsyncBoundary loading={<PageLoader />}>
                   <Project />
                 </AsyncBoundary>
+            } />
+            <Route path="/project/:projectId/setup" element={
+              <AsyncBoundary loading={<PageLoader />}>
+                <ProjectSetup />
+              </AsyncBoundary>
             } />
             <Route path="/files" element={
               <AsyncBoundary loading={<PageLoader />}>
@@ -160,6 +167,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        <Analytics />
       </TooltipProvider>
     </DirectionProvider>
   </QueryClientProvider>

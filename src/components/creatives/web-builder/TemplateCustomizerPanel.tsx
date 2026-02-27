@@ -43,16 +43,16 @@ const Section: React.FC<{
     <div className="border-b border-white/[0.06]">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/[0.04] transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.04] transition-colors"
       >
-        <div className="flex items-center gap-2 text-sm font-medium text-white">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-white">
           {icon}
           {title}
-          {badge && <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-white/[0.08]">{badge}</Badge>}
+          {badge && <Badge variant="secondary" className="text-[9px] h-3.5 px-1 bg-white/[0.08]">{badge}</Badge>}
         </div>
-        {open ? <ChevronUp className="w-3.5 h-3.5 text-white/50" /> : <ChevronDown className="w-3.5 h-3.5 text-white/50" />}
+        {open ? <ChevronUp className="w-3 h-3 text-white/50" /> : <ChevronDown className="w-3 h-3 text-white/50" />}
       </button>
-      {open && <div className="px-4 pb-3 space-y-3">{children}</div>}
+      {open && <div className="px-3 pb-2 space-y-2">{children}</div>}
     </div>
   );
 };
@@ -63,19 +63,19 @@ const ColorSwatch: React.FC<{
   value: string;
   onChange: (v: string) => void;
 }> = ({ label, value, onChange }) => (
-  <div className="flex items-center gap-2">
+  <div className="flex items-center gap-1.5">
     <input
       type="color"
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="w-8 h-8 rounded-md border border-white/[0.1] cursor-pointer bg-transparent p-0"
+      className="w-6 h-6 rounded border border-white/[0.1] cursor-pointer bg-transparent p-0 flex-shrink-0"
     />
     <div className="flex-1 min-w-0">
-      <Label className="text-xs text-white/50 block">{label}</Label>
+      <Label className="text-[10px] text-white/50 block leading-tight">{label}</Label>
       <Input
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="h-6 text-xs px-1.5 font-mono"
+        className="h-5 text-[10px] px-1 font-mono"
       />
     </div>
   </div>
@@ -112,9 +112,9 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
   }, [customizer, onApply]);
 
   return (
-    <div className={cn('w-80 bg-[#0a0a12] shadow-[inset_0_0_30px_rgba(255,255,0,0.05)] flex flex-col h-full', className)}>
+    <div className={cn('w-full bg-[#0a0a12] shadow-[inset_0_0_30px_rgba(255,255,0,0.05)] flex flex-col h-full', className)}>
       {/* Header */}
-      <div className="px-4 py-3 bg-[#0d0d18] flex items-center justify-between">
+      <div className="px-3 py-2 bg-[#0d0d18] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-1 rounded-lg bg-yellow-500 shadow-[0_0_10px_rgba(255,255,0,0.4)]">
             <Sparkles className="w-3.5 h-3.5 text-black" />
@@ -139,7 +139,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
 
       {/* Tabs */}
       <Tabs defaultValue="theme" className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mx-2 mt-2 grid grid-cols-5 h-9 bg-[#0d0d18]">
+        <TabsList className="mx-2 mt-1.5 grid grid-cols-5 h-7 bg-[#0d0d18]">
           <TabsTrigger value="theme" className="text-xs px-1 data-[state=active]:bg-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,255,0,0.5)] text-yellow-400/60 hover:text-yellow-300">
             <Sparkles className="w-3.5 h-3.5" />
           </TabsTrigger>

@@ -38,6 +38,7 @@ import {
   ensureViteRootFiles,
 } from '@/services/previewSession';
 import { createCodeSandbox, openInCodeSandbox, type CodeSandboxSession } from '@/services/codesandbox';
+import { getDependenciesForSandpack, type ExtractedDependencies } from '@/utils/dependencyExtractor';
 
 // ============================================================================
 // Types
@@ -2780,6 +2781,21 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     return prepareFiles(files);
   }, [files, hasPureHTML]);
 
+  // Extract and resolve dependencies from VFS files dynamically
+  const { extractedDependencies, dependencyInfo } = useMemo(() => {
+    if (hasPureHTML) {
+      return { extractedDependencies: BUNDLED_DEPENDENCIES, dependencyInfo: null };
+    }
+    const result = getDependenciesForSandpack(sandpackFiles, BUNDLED_DEPENDENCIES);
+    return {
+      extractedDependencies: result.dependencies,
+      dependencyInfo: result.extractionInfo,
+    };
+  }, [sandpackFiles, hasPureHTML]);
+
+  // Track if we have unresolved/new dependencies that need attention
+  const hasNewDependencies = dependencyInfo?.detected.length ?? 0;
+
   // Determine entry file
   const entryFile = useMemo(() => {
     // Check if activeFile exists in processed files
@@ -2878,6 +2894,16 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
         </div>
       )}
 
+      {/* Dependency info badge */}
+      {hasNewDependencies > 0 && dependencyInfo && (
+        <div className="absolute top-2 right-2 z-20 bg-primary/10 border border-primary/20 rounded-md px-2 py-1">
+          <span className="text-xs text-primary flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            {dependencyInfo.detected.length} deps resolved
+          </span>
+        </div>
+      )}
+
       <SandpackProvider
         template="react-ts"
         files={sandpackFiles}
@@ -2892,7 +2918,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
           recompileDelay: 300,
         }}
         customSetup={{
-          dependencies: BUNDLED_DEPENDENCIES,
+          dependencies: extractedDependencies,
         }}
       >
         <PreviewInner

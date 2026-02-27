@@ -6,11 +6,22 @@
  * - Preview service integration (Docker-based)
  * - Auto-sync between code changes and preview
  * - Session management
+ * - Saved project loading and parsing
+ * - Online webpage import
  */
 
 import React, { createContext, useContext, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { useVirtualFileSystem, VirtualFile, VirtualFolder, VirtualNode } from '@/hooks/useVirtualFileSystem';
 import { usePreviewService, PreviewSession, PreviewServiceState } from '@/hooks/usePreviewService';
+import { 
+  parseSavedProject, 
+  parseOnlineWebpage, 
+  generateUniqueReactVFS,
+  transformCodeToVFS,
+  type SavedProjectData,
+  type ParsedWebContent,
+  type VFSGenerationResult 
+} from '@/utils/aiWebParser';
 
 // ============================================================================
 // Types
@@ -62,6 +73,12 @@ export interface VFSContextValue {
   stopPreview: () => Promise<void>;
   restartPreview: () => Promise<void>;
   patchFile: (path: string, content: string) => Promise<boolean>;
+  
+  // Enhanced Import Actions
+  importSavedProject: (data: string | object) => SavedProjectData | null;
+  importFromWebpage: (html: string, sourceUrl?: string) => VFSGenerationResult;
+  importFromCode: (code: string, projectName?: string) => VFSGenerationResult;
+  parseWebContent: (html: string, sourceUrl?: string) => ParsedWebContent;
   
   // Combined helpers
   getPreviewUrl: () => string | null;
@@ -188,6 +205,42 @@ export function VFSProvider({
     return preview.session?.status === 'running';
   }, [preview.session]);
   
+  // Enhanced import actions
+  const importSavedProject = useCallback((data: string | object): SavedProjectData | null => {
+    const project = parseSavedProject(data);
+    if (project) {
+      vfs.importFiles(project.files);
+      console.log('[VFSContext] Imported saved project:', project.name, Object.keys(project.files).length, 'files');
+    }
+    return project;
+  }, [vfs]);
+  
+  const importFromWebpage = useCallback((html: string, sourceUrl?: string): VFSGenerationResult => {
+    const webContent = parseOnlineWebpage(html, sourceUrl);
+    const result = generateUniqueReactVFS(webContent, {
+      projectName: webContent.meta.title || 'ImportedSite',
+      splitComponents: true,
+      useTypeScript: true,
+    });
+    vfs.importFiles(result.files);
+    console.log('[VFSContext] Imported webpage:', sourceUrl || 'unknown', Object.keys(result.files).length, 'files');
+    return result;
+  }, [vfs]);
+  
+  const importFromCode = useCallback((code: string, projectName?: string): VFSGenerationResult => {
+    const result = transformCodeToVFS(code, {
+      projectName: projectName || 'Generated',
+      preferReact: true,
+    });
+    vfs.importFiles(result.files);
+    console.log('[VFSContext] Imported code:', result.componentName, Object.keys(result.files).length, 'files');
+    return result;
+  }, [vfs]);
+  
+  const parseWebContent = useCallback((html: string, sourceUrl?: string): ParsedWebContent => {
+    return parseOnlineWebpage(html, sourceUrl);
+  }, []);
+  
   // Context value
   const value: VFSContextValue = {
     // VFS State
@@ -231,6 +284,12 @@ export function VFSProvider({
     stopPreview,
     restartPreview,
     patchFile: preview.patchFile,
+    
+    // Enhanced Import Actions
+    importSavedProject,
+    importFromWebpage,
+    importFromCode,
+    parseWebContent,
     
     // Combined helpers
     getPreviewUrl,

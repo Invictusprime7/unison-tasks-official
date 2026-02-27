@@ -317,18 +317,20 @@ function generateRouterApp(result: MultiPageParseResult): string {
     .join('\n');
   
   // Add catch-all redirect to main page
+  // Use HashRouter for preview compatibility (works in iframes without server rewrites)
+  // Production builds can switch to BrowserRouter if needed
   return `import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 ${imports}
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
 ${routes}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 `;

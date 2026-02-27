@@ -64,6 +64,14 @@ export interface VFSPreviewProps {
   onError?: (error: string) => void;
   /** Show backend indicator */
   showBackendIndicator?: boolean;
+  /** Callback when navigation intent is triggered */
+  onNavigate?: (path: string) => void;
+  /** Callback when any intent is triggered */
+  onIntentTrigger?: (intent: string, payload: Record<string, unknown>) => void;
+  /** Business ID for intent context */
+  businessId?: string;
+  /** Site ID for intent context */
+  siteId?: string;
 }
 
 export interface VFSPreviewHandle {
@@ -96,6 +104,190 @@ body {
   margin: 0; 
 }`;
 
+/**
+ * Preview Navigation Script
+ * Handles link clicks within the preview iframe:
+ * 1. Intercepts data-ut-intent elements and posts to parent
+ * 2. Intercepts regular /path.html links and posts to parent  
+ * 3. Allows hash (#section) links to work normally
+ * 4. Opens external links in new tab
+ * 5. Handles cart, auth, booking, and other intents
+ */
+const PREVIEW_NAV_SCRIPT = `
+<script>
+(function() {
+  'use strict';
+  
+  // Handle all click events on the document
+  document.addEventListener('click', function(e) {
+    // Find the clicked element with data-ut-intent (might be a child element)
+    let target = e.target;
+    let intentEl = null;
+    
+    // Walk up to find element with data-ut-intent or anchor
+    while (target && target !== document.body) {
+      if (target.getAttribute && target.getAttribute('data-ut-intent')) {
+        intentEl = target;
+        break;
+      }
+      if (target.tagName === 'A') {
+        intentEl = target;
+        break;
+      }
+      target = target.parentElement;
+    }
+    
+    if (!intentEl) return;
+    
+    // Skip if element has data-no-intent (UI selectors like tabs, filters)
+    if (intentEl.getAttribute('data-no-intent') !== null) {
+      return; // Allow default behavior
+    }
+    
+    const utIntent = intentEl.getAttribute('data-ut-intent') || intentEl.getAttribute('data-intent');
+    const href = intentEl.getAttribute('href');
+    
+    // 1. Handle intent-wired elements
+    if (utIntent) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Build payload from data attributes
+      var payload = {};
+      Array.from(intentEl.attributes).forEach(function(attr) {
+        if (attr.name.startsWith('data-ut-') || attr.name.startsWith('data-')) {
+          var key = attr.name.replace('data-ut-', '').replace('data-', '').replace(/-/g, '_');
+          if (key !== 'intent' && key !== 'no_intent') {
+            payload[key] = attr.value;
+          }
+        }
+      });
+      
+      // Special handling for navigation intents
+      if (utIntent === 'nav.goto') {
+        var navPath = payload.path || href || '/';
+        console.log('[Preview] nav.goto:', navPath);
+        window.parent.postMessage({
+          type: 'preview-nav',
+          intent: 'nav.goto',
+          path: navPath,
+          label: intentEl.textContent?.trim() || ''
+        }, '*');
+        return;
+      }
+      
+      if (utIntent === 'nav.anchor') {
+        var anchor = payload.anchor || (href && href.startsWith('#') ? href.slice(1) : '');
+        if (anchor) {
+          var targetEl = document.getElementById(anchor) || document.querySelector('[name="' + anchor + '"]');
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+        return;
+      }
+      
+      if (utIntent === 'nav.external') {
+        window.open(href || payload.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      
+      // All other intents - post to parent for handling
+      console.log('[Preview] Intent triggered:', utIntent, payload);
+      window.parent.postMessage({
+        type: 'INTENT_TRIGGER',
+        intent: utIntent,
+        payload: payload
+      }, '*');
+      return;
+    }
+    
+    // 2. Handle hash links - let them work normally
+    if (href && href.startsWith('#')) {
+      return;
+    }
+    
+    // 3. Handle external links - open in new tab
+    if (href && (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//'))) {
+      e.preventDefault();
+      window.open(href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    
+    // 4. Handle internal page links (e.g., /about.html, /contact)
+    if (href && href.startsWith('/') && !href.startsWith('//')) {
+      e.preventDefault();
+      console.log('[Preview] Internal link clicked:', href);
+      window.parent.postMessage({
+        type: 'preview-nav',
+        intent: 'nav.goto',
+        path: href,
+        label: intentEl.textContent?.trim() || ''
+      }, '*');
+      return;
+    }
+    
+    // 5. Handle relative links (e.g., about.html)
+    if (href && !href.includes('://') && !href.startsWith('#') && !href.startsWith('javascript:')) {
+      e.preventDefault();
+      var path = href.startsWith('/') ? href : '/' + href;
+      console.log('[Preview] Relative link clicked:', path);
+      window.parent.postMessage({
+        type: 'preview-nav',
+        intent: 'nav.goto',
+        path: path,
+        label: intentEl.textContent?.trim() || ''
+      }, '*');
+      return;
+    }
+  }, true);
+  
+  // Handle form submissions with intents
+  document.addEventListener('submit', function(e) {
+    var form = e.target;
+    if (form.tagName !== 'FORM') return;
+    
+    var utIntent = form.getAttribute('data-ut-intent') || form.getAttribute('data-intent');
+    if (utIntent) {
+      e.preventDefault();
+      
+      // Collect form data
+      var formData = {};
+      var inputs = form.querySelectorAll('input, textarea, select');
+      inputs.forEach(function(input) {
+        if (input.name) {
+          formData[input.name] = input.value;
+        }
+      });
+      
+      // Get business context from form data attributes
+      var businessId = form.getAttribute('data-business-id');
+      if (businessId) {
+        formData.businessId = businessId;
+      }
+      
+      console.log('[Preview] Form submitted with intent:', utIntent, formData);
+      window.parent.postMessage({
+        type: 'INTENT_TRIGGER',
+        intent: utIntent,
+        payload: formData
+      }, '*');
+    }
+  }, true);
+  
+  // Listen for intent results from parent
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'INTENT_RESULT') {
+      console.log('[Preview] Intent result received:', e.data.intent, e.data.result);
+      // Could trigger visual feedback here if needed
+    }
+  });
+  
+  console.log('[Preview] Navigation & intent script initialized');
+})();
+</script>
+`;
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -121,19 +313,43 @@ function nodesToFileMap(nodes: VirtualNode[]): Record<string, string> {
  * Generate a static HTML preview from VFS files
  * Used when Docker is unavailable
  */
-function generateStaticHtmlPreview(files: Record<string, string>): string {
+function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: string): string {
   // Debug: Log all available file keys
   const fileKeys = Object.keys(files);
-  console.log('[VFSPreview] Static preview files available:', fileKeys);
+  console.log('[VFSPreview] Static preview files available:', fileKeys, 'activeFile:', activeFile);
   
-  // FIRST: Check if there's a standalone index.html - use it directly
+  // Helper to inject the navigation script into HTML
+  const injectNavScript = (html: string): string => {
+    // If already has our script, don't inject again
+    if (html.includes('preview-nav') || html.includes('preview-intent')) {
+      return html;
+    }
+    // Inject before </body>
+    if (html.includes('</body>')) {
+      return html.replace('</body>', `${PREVIEW_NAV_SCRIPT}\n</body>`);
+    }
+    // Fallback: append to end
+    return html + PREVIEW_NAV_SCRIPT;
+  };
+  
+  // FIRST: Check for active file (for multi-page navigation)
+  if (activeFile) {
+    const normalizedActive = activeFile.startsWith('/') ? activeFile : `/${activeFile}`;
+    const activeContent = files[normalizedActive] || files[activeFile];
+    if (activeContent && (activeContent.includes('<!DOCTYPE') || activeContent.includes('<html') || activeContent.includes('<body'))) {
+      console.log('[VFSPreview] Using active file:', activeFile);
+      return injectNavScript(activeContent);
+    }
+  }
+  
+  // SECOND: Check if there's a standalone index.html - use it directly
   const indexHtml = files['/index.html'] || files['index.html'];
   if (indexHtml) {
     // If it's a complete HTML document (not just a Vite entry point), use it
     if (!indexHtml.includes('src="/src/main.tsx"') && 
         (indexHtml.includes('<!DOCTYPE') || indexHtml.includes('<html') || indexHtml.includes('<body'))) {
       console.log('[VFSPreview] Using index.html directly');
-      return indexHtml;
+      return injectNavScript(indexHtml);
     }
   }
   
@@ -261,6 +477,7 @@ function generateStaticHtmlPreview(files: Record<string, string>): string {
 </head>
 <body class="bg-white">
   ${bodyContent}
+  ${PREVIEW_NAV_SCRIPT}
 </body>
 </html>`;
 }
@@ -281,6 +498,10 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   onReady,
   onError,
   showBackendIndicator = true,
+  onNavigate,
+  onIntentTrigger,
+  businessId,
+  siteId,
 }, ref) => {
   // State - default to 'html' so preview works immediately
   const [backend, setBackend] = useState<PreviewBackend>('html');
@@ -288,6 +509,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const [logs, setLogs] = useState<string[]>([]);
   const [htmlPreviewSrc, setHtmlPreviewSrc] = useState<string | null>(null);
   const startAttemptedRef = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   
   // Docker preview service
   const dockerService = usePreviewService();
@@ -306,6 +528,48 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     return result;
   }, [nodes, propFiles]);
   
+  // Handle messages from preview iframe
+  useEffect(() => {
+    const handlePreviewMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data?.type) return;
+      
+      // Handle navigation
+      if (data.type === 'preview-nav' && data.intent === 'nav.goto') {
+        console.log('[VFSPreview] Navigation:', data.path);
+        onNavigate?.(data.path);
+      }
+      
+      // Handle intent triggers
+      if (data.type === 'INTENT_TRIGGER') {
+        const { intent, payload } = data;
+        console.log('[VFSPreview] Intent triggered:', intent, payload);
+        
+        // Enrich payload with context
+        const enrichedPayload = {
+          ...payload,
+          businessId: businessId || payload.businessId,
+          siteId: siteId || payload.siteId,
+        };
+        
+        onIntentTrigger?.(intent, enrichedPayload);
+        
+        // Send acknowledgment back to iframe
+        const iframe = iframeRef.current;
+        if (iframe?.contentWindow) {
+          iframe.contentWindow.postMessage({
+            type: 'INTENT_RESULT',
+            intent,
+            result: { ok: true },
+          }, '*');
+        }
+      }
+    };
+    
+    window.addEventListener('message', handlePreviewMessage);
+    return () => window.removeEventListener('message', handlePreviewMessage);
+  }, [onNavigate, onIntentTrigger, businessId, siteId]);
+  
   // Debug effect to log when files change
   useEffect(() => {
     console.log('[VFSPreview] ========== FILES UPDATED ==========');
@@ -318,15 +582,15 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   // Generate HTML preview for fallback
   const htmlPreview = useMemo(() => {
     console.log('[VFSPreview] ========== GENERATING HTML ==========');
-    console.log('[VFSPreview] Input files:', Object.keys(files));
-    const html = generateStaticHtmlPreview(files);
+    console.log('[VFSPreview] Input files:', Object.keys(files), 'activeFile:', activeFile);
+    const html = generateStaticHtmlPreview(files, activeFile);
     console.log('[VFSPreview] Generated HTML length:', html.length);
     console.log('[VFSPreview] HTML preview (first 500 chars):', html.substring(0, 500));
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     console.log('[VFSPreview] Blob URL created:', url);
     return url;
-  }, [files]);
+  }, [files, activeFile]);
   
   // Cleanup blob URLs
   useEffect(() => {
@@ -554,6 +818,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
         {/* Preview Iframe - key forces re-render when URL changes */}
         {(backend === 'docker' || backend === 'html' || backend === 'local') && previewUrl && (
           <iframe
+            ref={iframeRef}
             key={previewUrl}
             src={previewUrl}
             className="w-full h-full border-0 bg-white"

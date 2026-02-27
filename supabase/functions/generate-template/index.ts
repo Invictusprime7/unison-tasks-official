@@ -1,6 +1,7 @@
 import { serve } from "serve";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { generateVariation, variationToPromptContext, hexToHsl, type TemplateVariation } from "../_shared/industryVariations.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,6 +18,7 @@ serve(async (req) => {
       templateName: z.string().trim().min(1).max(100),
       aesthetic: z.string().trim().min(1).max(80),
       source: z.string().trim().min(1).max(80),
+      variationSeed: z.string().trim().max(20).optional(),
     });
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
@@ -27,7 +29,7 @@ serve(async (req) => {
       );
     }
 
-    const { templateName, aesthetic, source } = parsed.data;
+    const { templateName, aesthetic, source, variationSeed } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -41,17 +43,21 @@ serve(async (req) => {
       );
     }
 
+    // Generate unique template variation for diverse outputs
+    const combinedPrompt = `${templateName} ${aesthetic} ${source}`;
+    const variation: TemplateVariation = generateVariation(combinedPrompt, variationSeed);
+    const variationContext = variationToPromptContext(variation);
+    
+    console.log(`[generate-template] Variation: Industry=${variation.industry.name}, Colors=${variation.colorScheme.name}, Hero=${variation.heroVariant.name}, Seed=${variation.seed}`);
+
     // Query production Tailwind patterns from database
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Infer industry from template name / source for targeted pattern matching
-    const inferredIndustry = inferIndustryFromPrompt(templateName, aesthetic, source);
-    
-    // Query industry-specific patterns first
-    const industryFilter = inferredIndustry 
-      ? `tags.cs.{${inferredIndustry}}`
+    // Use the industry from variation for pattern matching
+    const industryFilter = variation.industry.id 
+      ? `tags.cs.{${variation.industry.id}}`
       : `tags.cs.{all-industries}`;
     
     const { data: industryPatterns } = await supabase
@@ -68,30 +74,33 @@ serve(async (req) => {
         ).join('\n\n')
       : '';
 
-    console.log(`[generate-template] Loaded ${industryPatterns?.length ?? 0} design patterns (industry: ${inferredIndustry || 'general'})`);
+    console.log(`[generate-template] Loaded ${industryPatterns?.length ?? 0} design patterns (industry: ${variation.industry.name})`);
 
-    const systemPrompt = `You are an ELITE web designer producing PREMIUM, AWARD-WINNING website templates. Your output must rival top-tier templates from ThemeForest, Webflow, and Framer.${patternRef}
+    const systemPrompt = `You are an ELITE web designer producing PREMIUM, AWARD-WINNING website templates. Your output must rival top-tier templates from ThemeForest, Webflow, and Framer.
+
+${variationContext}
+${patternRef}
 
 DESIGN SYSTEM (MANDATORY):
-Use CSS custom properties for theming. Define these in :root and use them throughout:
+Use CSS custom properties for theming. Override the default colors with the industry-specific palette above. Define these in :root and use them throughout:
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
+  --background: ${hexToHsl(variation.colorScheme.background)};
+  --foreground: ${hexToHsl(variation.colorScheme.foreground)};
+  --card: ${hexToHsl(variation.colorScheme.cardBg)};
+  --card-foreground: ${hexToHsl(variation.colorScheme.foreground)};
+  --primary: ${hexToHsl(variation.colorScheme.primary)};
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --border: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  --secondary: ${hexToHsl(variation.colorScheme.secondary)};
+  --secondary-foreground: 210 40% 98%;
+  --muted: ${hexToHsl(variation.colorScheme.muted)};
+  --muted-foreground: ${hexToHsl(variation.colorScheme.muted)};
+  --accent: ${hexToHsl(variation.colorScheme.accent)};
+  --accent-foreground: 210 40% 98%;
+  --border: ${hexToHsl(variation.colorScheme.muted)};
+  --ring: ${hexToHsl(variation.colorScheme.primary)};
   --radius: 0.75rem;
+  --destructive: 0 84.2% 60.2%;
 }
 
 Use hsl(var(--primary)), hsl(var(--foreground)), etc. in all styling.
@@ -133,8 +142,8 @@ PREMIUM DESIGN MANDATE — AWARD-WINNING LEVEL (CRITICAL):
 
 Your output MUST rival top-tier ThemeForest templates, Framer showcases, and agency portfolios.
 
-**Typography (STRICT HIERARCHY):**
-- Import 2 premium Google Fonts (Plus Jakarta Sans + Inter, Space Grotesk + DM Sans, Manrope + Inter)
+**Typography (USE VARIATION FONTS - STRICT HIERARCHY):**
+- Import TWO Google Fonts as specified: "${variation.fontPairing.heading}" for headings + "${variation.fontPairing.body}" for body
 - Hero H1: text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] with gradient text accents
 - Section H2: text-3xl md:text-4xl font-bold with eyebrow text above (text-primary text-sm uppercase tracking-wider)
 - Card H3: text-xl font-bold
@@ -381,7 +390,15 @@ Return ONLY the complete HTML code. Make it look like a $5000 custom-built websi
       JSON.stringify({ 
         code: cleanedCode,
         templateName,
-        aesthetic 
+        aesthetic,
+        variationMeta: {
+          seed: variation.seed,
+          industry: variation.industry.name,
+          colorScheme: variation.colorScheme.name,
+          fontPairing: `${variation.fontPairing.heading} / ${variation.fontPairing.body}`,
+          heroLayout: variation.heroVariant.name,
+          sectionOrder: variation.sectionOrder,
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -466,25 +483,4 @@ function hardenGeneratedHTML(code: string): string {
   }
 
   return hardened;
-}
-
-/**
- * Infer industry from template name/aesthetic/source for targeted pattern matching.
- */
-function inferIndustryFromPrompt(name: string, aesthetic: string, source: string): string | null {
-  const combined = `${name} ${aesthetic} ${source}`.toLowerCase();
-  const INDUSTRY_KEYWORDS: Record<string, string[]> = {
-    'restaurant': ['restaurant', 'food', 'dining', 'cafe', 'bistro', 'bar', 'kitchen', 'chef', 'menu', 'cuisine'],
-    'salon-spa': ['salon', 'spa', 'beauty', 'hair', 'nail', 'skincare', 'wellness', 'barber', 'cosmetic'],
-    'real-estate': ['real estate', 'property', 'realtor', 'home', 'apartment', 'listing', 'housing', 'mortgage'],
-    'ecommerce': ['ecommerce', 'shop', 'store', 'product', 'fashion', 'retail', 'boutique', 'clothing'],
-    'coaching': ['coaching', 'consultant', 'mentor', 'advisor', 'training', 'workshop', 'course'],
-    'local-service': ['plumber', 'electrician', 'contractor', 'cleaning', 'repair', 'hvac', 'roofing', 'landscap'],
-    'portfolio': ['portfolio', 'freelance', 'designer', 'photographer', 'artist', 'creative', 'agency'],
-    'nonprofit': ['nonprofit', 'charity', 'foundation', 'ngo', 'donate', 'volunteer', 'cause'],
-  };
-  for (const [industry, keywords] of Object.entries(INDUSTRY_KEYWORDS)) {
-    if (keywords.some(kw => combined.includes(kw))) return industry;
-  }
-  return null;
 }

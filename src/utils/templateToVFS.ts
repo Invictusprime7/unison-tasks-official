@@ -5,6 +5,8 @@
  * Supports both HTML-based templates and React component templates.
  */
 
+import { htmlToJsx } from './aiWebParser';
+
 // Template format types
 export type TemplateFormat = 'html' | 'react' | 'mixed';
 
@@ -54,7 +56,7 @@ function escapeForJsx(content: string): string {
 
 /**
  * Converts HTML template to React component
- * For complex HTML, uses dangerouslySetInnerHTML for reliability
+ * Extracts BOTH head styles AND body content for complete rendering
  */
 export function htmlToReactComponent(html: string, options: ConvertOptions = {}): string {
   const { componentName = 'Template', addTailwindStyles = true } = options;
@@ -63,84 +65,52 @@ export function htmlToReactComponent(html: string, options: ConvertOptions = {})
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   
+  // Extract ALL style tags from the document (head and body)
+  const styleElements = doc.querySelectorAll('style');
+  let allStyles = '';
+  styleElements.forEach(style => {
+    allStyles += style.innerHTML + '\n';
+  });
+  
   // Extract body content and its background class
   let bodyContent = doc.body.innerHTML.trim();
   const bodyClass = doc.body.className || 'bg-slate-950 text-white';
   
-  // For complex HTML with scripts or special characters, use dangerouslySetInnerHTML
-  // This is more reliable than trying to convert all HTML to JSX
-  const hasComplexContent = bodyContent.includes('<script') || 
-                             bodyContent.includes('{') ||
-                             bodyContent.includes('onclick') ||
-                             bodyContent.length > 5000;
+  // Remove any style tags from body content (we'll inject them separately)
+  bodyContent = bodyContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
   
-  if (hasComplexContent) {
-    // Use dangerouslySetInnerHTML for complex templates
-    // Escape backticks and ${} in the template literal
-    const escapedContent = bodyContent
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$\{/g, '\\${');
-    
-    return `import React from 'react';
+  // Escape the content for use in template literal
+  const escapedContent = bodyContent
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
+  
+  // Escape styles for template literal
+  const escapedStyles = allStyles
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
+  
+  // Always use dangerouslySetInnerHTML for templates - it's more reliable
+  // Include styles in a style tag within the component
+  return `import React from 'react';
 
 export default function ${componentName}() {
   const htmlContent = \`${escapedContent}\`;
   
+  const templateStyles = \`${escapedStyles}\`;
+  
   return (
-    <div 
-      className="min-h-screen ${bodyClass}"
-      dangerouslySetInnerHTML={{ __html: htmlContent }}
-    />
+    <>
+      <style dangerouslySetInnerHTML={{ __html: templateStyles }} />
+      <div 
+        className="min-h-screen ${bodyClass}"
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
+    </>
   );
 }
 `;
-  }
-  
-  // For simpler HTML, convert to JSX
-  bodyContent = convertHtmlToJsx(bodyContent);
-  
-  // Generate the React component
-  const component = `import React from 'react';
-
-export default function ${componentName}() {
-  return (
-    <div className="min-h-screen ${bodyClass}">
-      ${bodyContent}
-    </div>
-  );
-}
-`;
-
-  return component;
-}
-
-/**
- * Converts HTML attribute syntax to JSX
- */
-function convertHtmlToJsx(html: string): string {
-  return html
-    // Convert class to className
-    .replace(/\bclass=/g, 'className=')
-    // Convert for to htmlFor
-    .replace(/\bfor=/g, 'htmlFor=')
-    // Convert style strings to objects (simplified)
-    .replace(/style="([^"]*)"/g, (match, styleStr) => {
-      const styleObj = styleStr.split(';')
-        .filter((s: string) => s.trim())
-        .map((s: string) => {
-          const [prop, val] = s.split(':').map((p: string) => p.trim());
-          // Convert kebab-case to camelCase
-          const camelProp = prop.replace(/-([a-z])/g, (g: string) => g[1].toUpperCase());
-          return `${camelProp}: '${val}'`;
-        })
-        .join(', ');
-      return `style={{${styleObj}}}`;
-    })
-    // Convert onclick to onClick etc.
-    .replace(/\bon([a-z]+)=/gi, (match, event) => `on${event.charAt(0).toUpperCase()}${event.slice(1)}=`)
-    // Self-close void elements
-    .replace(/<(img|input|br|hr|meta|link)([^>]*)(?<!\/)>/gi, '<$1$2 />');
 }
 
 /**
@@ -277,7 +247,7 @@ export function appendElementToComponent(
   elementName: string
 ): string {
   // Convert the element HTML to JSX
-  const jsxElement = convertHtmlToJsx(elementHtml);
+  const jsxElement = htmlToJsx(elementHtml);
   
   // Find the return statement and inject before the closing tag
   const returnMatch = existingCode.match(/return\s*\(\s*([\s\S]*)\s*\);?\s*\}[\s\n]*$/);
@@ -329,7 +299,7 @@ export function elementToVFSPatch(
   
   if (!appContent) {
     // No existing App.tsx - create fresh
-    const jsxElement = convertHtmlToJsx(elementHtml);
+    const jsxElement = htmlToJsx(elementHtml);
     return {
       '/src/App.tsx': `import React from 'react';
 

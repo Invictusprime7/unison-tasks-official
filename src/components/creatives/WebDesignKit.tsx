@@ -60,8 +60,19 @@ export const WebDesignKit = ({ open, onOpenChange, onBack, onTemplateGenerated }
 
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-template", {
-        body: { templateName, aesthetic, source },
+      // Generate unique variation seed for diverse outputs
+      const variationSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      
+      const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
+        body: { 
+          messages: [{ role: 'user', content: `Generate a ${templateName} template with ${aesthetic} aesthetic inspired by ${source}` }],
+          mode: 'template-html',
+          templateName,
+          aesthetic,
+          source,
+          variationSeed,
+          savePattern: true
+        },
       });
 
       if (error) throw error;
@@ -71,16 +82,28 @@ export const WebDesignKit = ({ open, onOpenChange, onBack, onTemplateGenerated }
         return;
       }
 
+      // ai-code-assistant returns { content } with raw HTML
+      let code = data.content || data.code;
+      if (code) {
+        // Clean markdown code fences if present
+        code = code.replace(/^```html?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+      }
+
+      if (!code) {
+        toast.error('AI returned empty template');
+        return;
+      }
+
       // Pass the generated template to WebBuilder
       if (onTemplateGenerated) {
-        onTemplateGenerated(data.code, templateName, aesthetic);
+        onTemplateGenerated(code, templateName, aesthetic);
         onOpenChange(false);
         toast.success("Template loaded in Web Builder!");
       } else {
         setCurrentTemplate({
           name: templateName,
           aesthetic: aesthetic,
-          code: data.code,
+          code: code,
         });
         setEditorOpen(true);
         toast.success("Template generated successfully!");

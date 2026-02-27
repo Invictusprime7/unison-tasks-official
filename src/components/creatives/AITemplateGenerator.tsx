@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useAITemplate } from '@/hooks/useAITemplate';
+import { useWebBuilderAI } from '@/hooks/useWebBuilderAI';
 import { Sparkles, Loader2 } from 'lucide-react';
 import type { AITemplatePrompt } from '@/types/template';
 
@@ -32,7 +32,7 @@ export const AITemplateGenerator = ({
   onOpenChange,
   onTemplateGenerated,
 }: AITemplateGeneratorProps) => {
-  const { loading, generateTemplate } = useAITemplate();
+  const { loading, generateStructuredTemplate } = useWebBuilderAI(null);
   const [formData, setFormData] = useState<Partial<AITemplatePrompt>>({
     industry: '',
     goal: '',
@@ -45,7 +45,7 @@ export const AITemplateGenerator = ({
       return;
     }
 
-    const template = await generateTemplate(formData as AITemplatePrompt);
+    const template = await generateStructuredTemplate(formData as AITemplatePrompt);
     if (template && onTemplateGenerated) {
       onTemplateGenerated(template);
       onOpenChange(false);

@@ -126,6 +126,13 @@ const BodySchema = z.object({
   templateHtml: z.string().max(200_000).optional(),
   variantMode: z.boolean().optional().default(false),
   variationSeed: z.string().optional(), // Random seed for visual diversity
+  outputFormat: z.enum(["html", "react"]).optional().default("react"), // Output format: html = HTML+Tailwind, react = React fullstack
+  // User Design Profile - extracted patterns from user's saved projects for style-matching
+  userDesignProfile: z.object({
+    projectCount: z.number().optional(),
+    dominantStyle: z.enum(["dark", "light", "colorful", "minimal", "mixed"]).optional(),
+    industryHints: z.array(z.string()).optional(),
+  }).optional(),
 });
 
 // ============================================================================
@@ -466,9 +473,158 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed, outputFormat, userDesignProfile } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
+    // Build design profile context string for AI prompts
+    const designProfileContext = userDesignProfile ? `
+[User Design Profile - Match this established style]
+- Analyzed Projects: ${userDesignProfile.projectCount || 0}
+- Dominant Style: ${userDesignProfile.dominantStyle || 'mixed'}
+- Industry Experience: ${userDesignProfile.industryHints?.join(', ') || 'none'}
+Generate a site that matches the user's established design preferences while being unique.
+` : '';
+
+    // ==========================================================================
+    // REACT FULLSTACK OUTPUT MODE
+    // Routes through ai-code-assistant for React fullstack generation
+    // Uses pre-built template HTML as quality baseline schema
+    // ==========================================================================
+    if (outputFormat === "react") {
+      console.log(`[systems-build] React fullstack mode - routing to ai-code-assistant template-react${templateId ? ` with template: ${templateId}` : ''}`);
+      
+      // Perform web research for industry context (same as HTML mode)
+      const rawIndustry = blueprint.identity.industry;
+      console.log(`[systems-build] Starting web research for React mode: ${blueprint.brand.business_name} (${rawIndustry})`);
+      const research = await performWebResearch(blueprint.brand.business_name, rawIndustry, userPrompt);
+      const researchContext = formatResearchContext(research);
+      
+      // Extract section structure from template for AI reference
+      const extractSectionStructure = (html: string): string => {
+        if (!html) return '';
+        const sections: string[] = [];
+        const sectionMatches = html.matchAll(/data-ut-section="([^"]+)"/g);
+        for (const match of sectionMatches) {
+          sections.push(match[1]);
+        }
+        return sections.length > 0 ? `Sections in reference: ${sections.join(', ')}` : '';
+      };
+      
+      // Extract intents from template
+      const extractIntents = (html: string): string => {
+        if (!html) return '';
+        const intents = new Set<string>();
+        const intentMatches = html.matchAll(/data-ut-intent="([^"]+)"/g);
+        for (const match of intentMatches) {
+          intents.add(match[1]);
+        }
+        return intents.size > 0 ? `Intents to wire: ${[...intents].join(', ')}` : '';
+      };
+      
+      const sectionStructure = templateHtml ? extractSectionStructure(templateHtml) : '';
+      const intentWiring = templateHtml ? extractIntents(templateHtml) : '';
+      
+      // Build enhanced prompt from blueprint WITH template reference
+      const reactPrompt = `Create a ${blueprint.brand.business_name} website for ${blueprint.identity.industry.replace(/_/g, " ")} industry.
+
+${blueprint.brand.tagline ? `Tagline: "${blueprint.brand.tagline}"` : ""}
+${blueprint.identity.primary_goal ? `Goal: ${blueprint.identity.primary_goal}` : ""}
+${blueprint.brand.tone ? `Tone: ${blueprint.brand.tone}` : ""}
+
+Brand Colors:
+- Primary: ${blueprint.brand.palette?.primary || "#0EA5E9"}
+- Secondary: ${blueprint.brand.palette?.secondary || "#22D3EE"}
+- Accent: ${blueprint.brand.palette?.accent || "#F59E0B"}
+- Background: ${blueprint.brand.palette?.background || "#FFFFFF"}
+- Foreground: ${blueprint.brand.palette?.foreground || "#1E293B"}
+
+Typography:
+- Headings: ${blueprint.brand.typography?.heading || "Inter"}
+- Body: ${blueprint.brand.typography?.body || "Inter"}
+
+${sectionStructure ? `\n${sectionStructure}` : ''}
+${intentWiring ? `\n${intentWiring}` : ''}
+${researchContext}
+${designProfileContext}
+${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
+
+      // Call ai-code-assistant with template-react mode AND template reference
+      const aiCodeAssistantUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ai-code-assistant`;
+      
+      const reactResponse = await fetch(aiCodeAssistantUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: reactPrompt }],
+          mode: "template-react",
+          variationSeed: variationSeed || `react-${Date.now().toString(36)}`,
+          templateName: blueprint.brand.business_name,
+          aesthetic: blueprint.brand.tone || "modern professional",
+          source: blueprint.identity.industry,
+          savePattern: true,
+          // Pass template HTML as reference for quality baseline
+          currentCode: templateHtml ? templateHtml.substring(0, 50000) : undefined,
+          templateAction: templateHtml ? "use-as-schema" : undefined,
+        }),
+      });
+
+      if (!reactResponse.ok) {
+        console.error("[systems-build] ai-code-assistant call failed:", reactResponse.status);
+        return new Response(
+          JSON.stringify({ error: "React generation failed", status: reactResponse.status }),
+          { status: reactResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const reactData = await reactResponse.json();
+      
+      // ai-code-assistant returns { content } with the React files JSON
+      let filesJson = reactData.content || reactData.code || "";
+      
+      // Try to parse the JSON response
+      try {
+        // Clean any markdown code fences
+        filesJson = filesJson.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+        const parsed = JSON.parse(filesJson);
+        
+        return new Response(
+          JSON.stringify({
+            files: parsed.files,
+            entryPoint: parsed.entryPoint || "src/App.tsx",
+            framework: "react",
+            buildTool: "vite",
+            _meta: {
+              ai_generated: true,
+              outputFormat: "react",
+              template: templateId,
+              variation_seed: variationSeed,
+            },
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (parseError) {
+        // If JSON parsing fails, return raw content
+        console.warn("[systems-build] Failed to parse React JSON, returning raw:", parseError);
+        return new Response(
+          JSON.stringify({
+            code: filesJson,
+            _meta: {
+              ai_generated: true,
+              outputFormat: "react",
+              parse_error: true,
+            },
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // ==========================================================================
+    // HTML OUTPUT MODE (default legacy behavior)
+    // ==========================================================================
     if (!LOVABLE_API_KEY) {
       console.warn("[systems-build] LOVABLE_API_KEY not configured - using fallback generation");
       const fallbackCode = generateFallbackHTML(blueprint);
@@ -550,9 +706,15 @@ serve(async (req) => {
 
     // Build comprehensive system prompt for business website generation
     const systemPrompt = buildSystemPrompt(blueprint, patternContext, templateHtml, researchContext, variantMode, variationSeed);
+    
+    // Merge design profile context into user prompt for HTML mode
+    const enhancedUserPrompt = designProfileContext 
+      ? (userPrompt ? `${userPrompt}\n\n${designProfileContext}` : designProfileContext)
+      : userPrompt;
+    
     const userMessage = variantMode && templateHtml
-      ? buildVariantUserMessage(blueprint, userPrompt, variationSeed)
-      : buildUserMessage(blueprint, userPrompt);
+      ? buildVariantUserMessage(blueprint, enhancedUserPrompt, variationSeed)
+      : buildUserMessage(blueprint, enhancedUserPrompt);
 
     console.log(`[systems-build] Generating website for ${blueprint.brand.business_name} (${blueprint.identity.industry})${templateId ? ` with reference template: ${templateId}` : ''}`);
 

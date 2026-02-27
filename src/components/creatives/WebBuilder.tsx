@@ -10,7 +10,7 @@ import {
   Monitor, Tablet, Smartphone,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap, RefreshCcw,
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
-  FolderOpen, Cloud, CloudOff, Server
+  FolderOpen, Cloud, CloudOff, Server, Layers, Settings
 } from "lucide-react";
 import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
 import { CodePreviewDialog } from "./web-builder/CodePreviewDialog";
 import { AICodeAssistant } from "./AICodeAssistant";
+import { AIBuilderPanel, type VFSEdit, type IframeError } from "./web-builder/AIBuilderPanel";
 import { IntegrationsPanel } from "./design-studio/IntegrationsPanel";
 import { ExportDialog } from "./design-studio/ExportDialog";
 import { PerformancePanel } from "./web-builder/PerformancePanel";
@@ -76,6 +77,8 @@ import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
 import { usePageSEO } from "@/hooks/usePageSEO";
 import { generateUUID } from "@/utils/uuid";
 import { extractPageTabs, type PageTab } from "./web-builder/PageNavigationBar";
+import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
+import { BusinessSetupSuggestions } from "@/components/onboarding/BusinessSetupSuggestions";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -172,7 +175,14 @@ function buildDynamicPagePrompt(
   pageName: string,
   pageContext: string,
   navLabel: string,
-  mainPageCode: string
+  mainPageCode: string,
+  options?: {
+    businessContext?: string | null;
+    designProfile?: {
+      dominantStyle?: string;
+      industryHints?: string[];
+    };
+  }
 ): string {
   // Extract brand/styling context from main page
   const colorMatch = mainPageCode.match(/(?:bg-|text-|from-|to-)([a-z]+-\d+)/g);
@@ -293,6 +303,14 @@ ${specificPrompt}
 8. **FOOTER** - Match the main page footer style
 9. **NO NEW TABS** - NEVER use target="_blank" or window.open. All links must navigate in-place.
 
+${options?.businessContext ? `📊 BUSINESS CONTEXT:
+${options.businessContext}` : ''}
+
+${options?.designProfile?.dominantStyle ? `🎨 USER DESIGN PREFERENCES:
+- Dominant Style: ${options.designProfile.dominantStyle}
+- Industry: ${options.designProfile.industryHints?.join(', ') || 'general'}
+Match the user's established design preferences while being unique.` : ''}
+
 🔌 INTENT WIRING:
 - Navigation: data-ut-intent="nav.goto" data-ut-path="/index.html"
 - Forms: data-ut-intent on submit buttons (contact.submit, booking.create, etc.)
@@ -305,6 +323,87 @@ CONTEXT FROM MAIN PAGE (extract styling patterns):
 ${mainPageCode.substring(0, 2000)}
 
 OUTPUT: Complete HTML page only, no markdown, no explanations.`;
+}
+
+/**
+ * Validate AI-generated code against the original template to detect destructive changes.
+ * Returns warnings if the AI significantly altered the template structure.
+ */
+interface CodeValidationResult {
+  isValid: boolean;
+  warnings: string[];
+  severity: 'ok' | 'warning' | 'critical';
+  sectionDiff: number;
+  contentLoss: number;
+}
+
+function validateAICodeChange(originalCode: string, newCode: string): CodeValidationResult {
+  const warnings: string[] = [];
+  
+  if (!originalCode || !newCode) {
+    return { isValid: true, warnings: [], severity: 'ok', sectionDiff: 0, contentLoss: 0 };
+  }
+  
+  // Count sections in original vs new
+  const origSections = (originalCode.match(/<section/gi) || []).length;
+  const newSections = (newCode.match(/<section/gi) || []).length;
+  const sectionDiff = origSections - newSections;
+  
+  if (sectionDiff > 0) {
+    warnings.push(`${sectionDiff} section(s) removed from template`);
+  }
+  
+  // Check if header/footer were removed
+  const origHasHeader = /<header/i.test(originalCode);
+  const newHasHeader = /<header/i.test(newCode);
+  const origHasFooter = /<footer/i.test(originalCode);
+  const newHasFooter = /<footer/i.test(newCode);
+  
+  if (origHasHeader && !newHasHeader) {
+    warnings.push('Header section was removed');
+  }
+  if (origHasFooter && !newHasFooter) {
+    warnings.push('Footer section was removed');
+  }
+  
+  // Check for significant content length reduction (more than 30%)
+  const origLength = originalCode.length;
+  const newLength = newCode.length;
+  const contentLoss = origLength > 0 ? Math.round(((origLength - newLength) / origLength) * 100) : 0;
+  
+  if (contentLoss > 30) {
+    warnings.push(`Template content reduced by ${contentLoss}% - possible data loss`);
+  }
+  
+  // Check for script/style preservation
+  const origScripts = (originalCode.match(/<script/gi) || []).length;
+  const newScripts = (newCode.match(/<script/gi) || []).length;
+  if (origScripts > newScripts) {
+    warnings.push(`${origScripts - newScripts} script block(s) removed - functionality may be broken`);
+  }
+  
+  const origStyles = (originalCode.match(/<style/gi) || []).length;
+  const newStyles = (newCode.match(/<style/gi) || []).length;
+  if (origStyles > newStyles) {
+    warnings.push(`${origStyles - newStyles} style block(s) removed - styling may be affected`);
+  }
+  
+  // Determine severity
+  let severity: 'ok' | 'warning' | 'critical' = 'ok';
+  if (warnings.length > 0) {
+    severity = 'warning';
+  }
+  if (sectionDiff > 2 || contentLoss > 50 || (!newHasHeader && origHasHeader) || (!newHasFooter && origHasFooter)) {
+    severity = 'critical';
+  }
+  
+  return {
+    isValid: severity !== 'critical',
+    warnings,
+    severity,
+    sectionDiff,
+    contentLoss,
+  };
 }
 
 // Define SelectedElement interface to match HTMLElementPropertiesPanel expected type
@@ -426,9 +525,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     ((location.state as { manifestId?: string })?.manifestId as string) || null
   );
   const [isSavingProject, setIsSavingProject] = useState(false);
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(true); // AI panel open by default for easy access
+  const [iframeErrors, setIframeErrors] = useState<IframeError[]>([]);
   const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [performancePanelOpen, setPerformancePanelOpen] = useState(false);
@@ -456,6 +556,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [customizerOpen, setCustomizerOpen] = useState(false);
   // AI edit request state — only true when user clicks AI button in floating toolbar
   const [aiEditRequested, setAiEditRequested] = useState(false);
+  
+  // Business Setup Suggestions - shown after AI generates a site/template
+  const [showBusinessSetup, setShowBusinessSetup] = useState(false);
 
   // Parse template when previewCode changes (but NOT when customizer is applying overrides)
   useEffect(() => {
@@ -799,6 +902,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Virtual file system for code editor
   const virtualFS = useVirtualFileSystem();
   
+  // User design profile for personalized AI generation
+  const { profile: userDesignProfile, fetchProfile: fetchDesignProfile, hasProfile: hasDesignProfile } = useUserDesignProfile();
+  
+  // Fetch design profile on mount
+  useEffect(() => {
+    fetchDesignProfile();
+  }, [fetchDesignProfile]);
+  
   // Track modified and AI-generated files for modern UI
   const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
   const [aiGeneratedFiles, setAIGeneratedFiles] = useState<Set<string>>(new Set());
@@ -941,12 +1052,19 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Sync previewCode changes back to the active page's VFS entry
   // This ensures edits in code view or AI apply to the correct page
+  // CRITICAL: Must sync even for single-page sites so AI edits reflect in VFSPreview
   useEffect(() => {
     if (syncingFromVFSRef.current) return;
-    if (!previewCode || pageTabs.length <= 1) return;
+    if (!previewCode) return;
+    
+    // Determine the target path - for single page sites, use /index.html
+    const targetPath = pageTabs.length > 1 ? activePagePath : '/index.html';
+    
     const vfsFiles = virtualFS.getSandpackFiles();
-    if (vfsFiles[activePagePath] && vfsFiles[activePagePath] !== previewCode) {
-      virtualFS.importFiles({ ...vfsFiles, [activePagePath]: previewCode });
+    // Only sync if the content is different (prevents infinite loops)
+    if (vfsFiles[targetPath] !== previewCode) {
+      console.log('[WebBuilder] Syncing previewCode to VFS:', targetPath, 'length:', previewCode.length);
+      virtualFS.importFiles({ ...vfsFiles, [targetPath]: previewCode });
     }
   }, [previewCode, activePagePath, pageTabs.length]);
 
@@ -1644,6 +1762,58 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         }
         return;
       }
+      
+      // Handle preview navigation messages from VFSPreview static HTML
+      // This enables links to work inside the preview iframe
+      if (event.data?.type === 'preview-nav') {
+        const { intent, path, label } = event.data;
+        console.log('[WebBuilder] Preview navigation:', intent, path, label);
+        
+        if (!path) return;
+        
+        // Handle hash/anchor navigation - let the preview handle it
+        if (path.startsWith('#')) {
+          return; // Anchor links already work in the preview
+        }
+        
+        // Normalize path
+        const htmlPath = path.endsWith('.html') ? path : `${path.replace(/\/$/, '')}.html`;
+        const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
+        const vfsFiles = virtualFS.getSandpackFiles();
+        const existingPage = vfsFiles[vfsPath];
+        
+        if (existingPage) {
+          // Page exists in VFS - switch to it
+          setActivePagePath(vfsPath);
+          syncingFromVFSRef.current = true;
+          setPreviewCode(existingPage);
+          setEditorCode(existingPage);
+          lastSyncedCodeRef.current = existingPage;
+          setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+          toast(`Navigated to ${label || path}`, { description: 'Page loaded from VFS' });
+        } else {
+          // Page doesn't exist - trigger AI generation
+          const pageName = path.replace(/^\//, '').replace(/\.html$/, '').replace(/[^a-zA-Z0-9-]/g, '-') || 'page';
+          console.log('[WebBuilder] Page not in VFS, generating:', pageName, label);
+          triggerPageGenRef.current(pageName, label || pageName, null, undefined);
+        }
+        return;
+      }
+      
+      // Handle preview intent messages (form submissions, etc.)
+      if (event.data?.type === 'preview-intent') {
+        const { intent, payload } = event.data;
+        console.log('[WebBuilder] Preview intent:', intent, payload);
+        // Handle form intents - show success toast for demo
+        if (intent?.includes('contact') || intent?.includes('newsletter') || intent?.includes('subscribe')) {
+          toast.success('Form submitted!', { description: 'This is a preview - no data was sent.' });
+        } else if (intent?.includes('booking')) {
+          toast.success('Booking requested!', { description: 'This is a preview - connect your calendar to enable.' });
+        } else {
+          toast('Intent triggered', { description: `${intent} (preview mode)` });
+        }
+        return;
+      }
 
       // Only handle intent trigger messages
       if (event.data?.type !== 'INTENT_TRIGGER') return;
@@ -1979,7 +2149,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     setCurrentNavPage(navLabel || pageName);
 
     try {
-      const pagePrompt = buildDynamicPagePrompt(pageName, '', navLabel, previewCode);
+      const pagePrompt = buildDynamicPagePrompt(pageName, '', navLabel, previewCode, {
+        businessContext: businessDataContext,
+        designProfile: userDesignProfile ? {
+          dominantStyle: userDesignProfile.dominantStyle,
+          industryHints: userDesignProfile.industryHints,
+        } : undefined,
+      });
       
       const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
         body: {
@@ -1987,6 +2163,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           mode: "code",
           templateAction: "full-control",
           editMode: false,
+          // Pass user design profile for personalized page generation
+          userDesignProfile: userDesignProfile ? {
+            projectCount: userDesignProfile.projectCount,
+            dominantStyle: userDesignProfile.dominantStyle,
+            industryHints: userDesignProfile.industryHints,
+          } : undefined,
         },
       });
 
@@ -2040,7 +2222,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setIsGeneratingPage(false);
       setCurrentNavPage(null);
     }
-  }, [virtualFS, previewCode, generatedPages]);
+  }, [virtualFS, previewCode, generatedPages, businessDataContext, userDesignProfile]);
 
   // Ref to always hold the latest triggerPageGeneration (avoids stale closure in INTENT_TRIGGER handler)
   const triggerPageGenRef = useRef(triggerPageGeneration);
@@ -2127,6 +2309,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         toast(`${templateName} loaded!`, {
           description: `${aesthetic} - Preview your AI-generated website`,
         });
+        
+        // Show business setup suggestions after a brief delay for AI-generated sites
+        if (navSystemType) {
+          setTimeout(() => setShowBusinessSetup(true), 1500);
+        }
       } else {
         setViewMode('code');
         toast(`${templateName} loaded!`, {
@@ -2360,22 +2547,33 @@ ${html}
   }, [systemType, manifestIdFromState, virtualFS]);
 
   // Handle saving current template
+  // Helper to get final HTML with customizer overrides baked in
+  const getFinalHtmlWithOverrides = useCallback(() => {
+    if (templateCustomizer.isDirty) {
+      const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
+      return templateCustomizer.applyOverrides(baseHtml);
+    }
+    return previewCode;
+  }, [templateCustomizer, previewCode]);
+
   const handleSaveTemplate = useCallback(async (
     name: string,
     description: string,
     isPublic: boolean
   ) => {
-    await templateFiles.saveTemplate(name, description, isPublic, previewCode);
-  }, [templateFiles, previewCode]);
+    const finalCode = getFinalHtmlWithOverrides();
+    await templateFiles.saveTemplate(name, description, isPublic, finalCode);
+  }, [templateFiles, getFinalHtmlWithOverrides]);
 
   // Handle quick save (update existing template)
   const handleQuickSave = useCallback(async () => {
     if (templateFiles.currentTemplateId) {
-      await templateFiles.updateTemplate(templateFiles.currentTemplateId, previewCode);
+      const finalCode = getFinalHtmlWithOverrides();
+      await templateFiles.updateTemplate(templateFiles.currentTemplateId, finalCode);
     } else {
       setFileManagerOpen(true);
     }
-  }, [templateFiles, previewCode]);
+  }, [templateFiles, getFinalHtmlWithOverrides]);
 
   // Handle save to projects from preview
   const handleSaveToProjects = useCallback(async (saveAsNew: boolean = false) => {
@@ -2387,14 +2585,15 @@ ${html}
     setIsSavingProject(true);
     try {
       const isUpdating = templateFiles.currentTemplateId && !saveAsNew;
+      const finalCode = getFinalHtmlWithOverrides();
       
       if (isUpdating) {
         // Update existing template
-        await templateFiles.updateTemplate(templateFiles.currentTemplateId, previewCode);
+        await templateFiles.updateTemplate(templateFiles.currentTemplateId, finalCode);
         toast.success(`Updated "${saveProjectName}"`);
       } else {
         // Save as new template
-        await templateFiles.saveTemplate(saveProjectName, saveProjectDescription, false, previewCode);
+        await templateFiles.saveTemplate(saveProjectName, saveProjectDescription, false, finalCode);
         toast.success(`Saved "${saveProjectName}" to Projects`);
       }
       
@@ -2406,7 +2605,7 @@ ${html}
     } finally {
       setIsSavingProject(false);
     }
-  }, [saveProjectName, saveProjectDescription, templateFiles, previewCode, clearDraft]);
+  }, [saveProjectName, saveProjectDescription, templateFiles, getFinalHtmlWithOverrides, clearDraft]);
 
   // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {
@@ -3295,65 +3494,285 @@ ${body.innerHTML}
       {/* Interactive Element Highlighting Styles */}
       <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />
 
-      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
-        {/* AI Panel Toggle Tab - when collapsed */}
-        {!aiPanelOpen && (
-          <div className="w-11 border-r border-white/[0.06] backdrop-blur-md bg-gradient-to-b from-white/[0.02] via-white/[0.04] to-white/[0.02] flex flex-col items-center justify-center">
+      {/* Full-Width Top Toolbar */}
+      <div className="h-12 flex-shrink-0 bg-[#0a0a14] border-b-2 border-fuchsia-500/50 flex items-center px-4 gap-3 shadow-[0_4px_20px_rgba(255,0,255,0.15)] z-20">
+        {/* Left Section: AI Toggle, Back, Device, Mode */}
+        <div className="flex items-center gap-2">
+          {/* AI Panel Toggle Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setAiPanelOpen(!aiPanelOpen)}
+            className={cn(
+              "h-8 px-2.5 rounded-lg transition-all duration-200",
+              aiPanelOpen 
+                ? "bg-lime-500/20 text-lime-400 hover:bg-lime-500/30 shadow-[0_0_10px_rgba(0,255,0,0.3)]" 
+                : "text-lime-400/60 hover:text-lime-400 hover:bg-lime-500/10"
+            )}
+            title={aiPanelOpen ? "Close AI Panel" : "Open AI Panel"}
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
+          
+          <div className="h-5 w-px bg-fuchsia-500/50" />
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBackNavigation}
+            className="text-cyan-400 hover:text-cyan-300 h-8 px-2.5 rounded-lg hover:bg-cyan-500/20 hover:shadow-[0_0_10px_rgba(0,255,255,0.3)] transition-all duration-200"
+            title={`Go back to ${referrerPageName}${hasUnsavedChanges ? ' (unsaved changes will be auto-saved)' : ''} - Alt+←`}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="h-5 w-px bg-fuchsia-500/50" />
+          
+          {/* Device Breakpoints */}
+          <div className="flex items-center gap-0.5 bg-[#0d0d18] rounded-lg p-1">
+            <Button
+              variant={device === "desktop" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setDevice("desktop")}
+              className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "desktop" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
+              title="Desktop"
+            >
+              <Monitor className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={device === "tablet" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setDevice("tablet")}
+              className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "tablet" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
+              title="Tablet"
+            >
+              <Tablet className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={device === "mobile" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setDevice("mobile")}
+              className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "mobile" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
+              title="Mobile"
+            >
+              <Smartphone className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          
+          <div className="h-5 w-px bg-fuchsia-500/50" />
+          
+          {/* Mode Toggle */}
+          <SimpleModeToggle
+            currentMode={builderMode}
+            onModeChange={(mode) => {
+              setBuilderMode(mode);
+              setIsInteractiveMode(mode === 'preview');
+              if (mode === 'preview') {
+                setSelectedHTMLElement(null);
+                setSelectedObject(null);
+                setAiEditRequested(false);
+              }
+            }}
+            hasSelection={!!selectedHTMLElement || !!selectedObject}
+            onDelete={() => {
+              if (selectedHTMLElement?.selector) {
+                handleDeleteHTMLElement();
+              } else if (selectedObject) {
+                handleDelete();
+              }
+            }}
+            onDuplicate={() => {
+              if (selectedHTMLElement?.selector) {
+                handleDuplicateHTMLElement();
+              } else if (selectedObject) {
+                handleDuplicate();
+              }
+            }}
+          />
+          
+          {/* Left/Right Panel Toggles */}
+          <div className="h-5 w-px bg-fuchsia-500/50" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+            className={cn(
+              "h-8 px-2 rounded-lg transition-all duration-200",
+              !leftPanelCollapsed 
+                ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30" 
+                : "text-cyan-400/60 hover:text-cyan-400 hover:bg-cyan-500/10"
+            )}
+            title={leftPanelCollapsed ? "Show Elements Panel" : "Hide Elements Panel"}
+          >
+            <Layers className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Center Section: Floating Dock */}
+        <div className="flex-1 flex justify-center">
+          <FloatingDock
+            onSelectTemplate={handleSelectTemplate}
+            onDemoTemplate={(code, name, systemType, templateId) => {
+              handleSelectTemplate(code, name, systemType, templateId);
+              toast.info(`Demo mode: ${name} - Interactions return mock responses`);
+            }}
+            onLoadTemplate={handleLoadTemplate}
+            onSaveTemplate={handleSaveTemplate}
+            currentCode={previewCode}
+            cloudState={cloudState}
+            onNavigateToCloud={() => navigate('/cloud')}
+          />
+        </div>
+
+        {/* Right Section: View Mode, Save, AI Activity, Right Panel Toggle */}
+        <div className="flex items-center gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-0.5 bg-[#0d0d18] rounded-lg p-1">
+            <Button
+              variant={viewMode === "canvas" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("canvas")}
+              className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "canvas" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
+              title="Canvas View"
+            >
+              <Square className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={viewMode === "code" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("code")}
+              className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "code" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
+              title="Code View"
+            >
+              <FileCode className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={viewMode === "split" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("split")}
+              className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "split" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
+              title="Split View"
+            >
+              <Layout className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          
+          <div className="h-5 w-px bg-cyan-500/50" />
+          
+          {/* Save with status */}
+          <div className="flex items-center gap-1.5">
+            {autoSaveStatus === 'saving' && (
+              <div className="animate-spin h-3 w-3 border-2 border-yellow-500/30 border-t-yellow-400 rounded-full" />
+            )}
+            {autoSaveStatus === 'saved' && (
+              <Cloud className="h-3.5 w-3.5 text-lime-400 drop-shadow-[0_0_5px_rgba(0,255,0,0.6)]" />
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setAiPanelOpen(true)}
-              className="text-white/60 hover:text-white hover:bg-white/[0.08] rounded-full p-2 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 writing-mode-vertical"
-              style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+              onClick={() => setSaveProjectDialogOpen(true)}
+              className="h-7 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 px-2.5 rounded-lg hover:shadow-[0_0_10px_rgba(255,255,0,0.3)] transition-all duration-200"
+              title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
             >
-              <Sparkles className="h-4 w-4 text-primary animate-pulse mb-2" />
-              <span className="text-xs">AI Assistant</span>
+              <Save className="h-3.5 w-3.5 mr-1.5" />
+              <span className="text-xs font-bold">{currentTemplateName ? 'Update' : 'Save'}</span>
             </Button>
+            <DeployButton
+              files={{ 'index.html': previewCode }}
+              defaultSiteName={currentTemplateName || 'unison-site'}
+              variant="ghost"
+              size="sm"
+              onDeployComplete={(url) => {
+                toast.success('Site published!', {
+                  description: `Live at ${url}`,
+                  action: {
+                    label: 'Open',
+                    onClick: () => window.open(url, '_blank'),
+                  },
+                });
+              }}
+            />
           </div>
-        )}
+          
+          <div className="h-5 w-px bg-cyan-500/50" />
+          
+          {/* AI Activity Indicator */}
+          <AIActivityPanel
+            events={aiActivity.events}
+            activityState={aiActivity.activityState}
+            attentionCount={aiActivity.attentionCount}
+            isLoading={aiActivity.isLoading}
+            onViewDetails={() => {
+              setLeftPanelCollapsed(false);
+              toast.info('View AI plugin details in the sidebar', {
+                description: 'Go to AI Plugins tab for full analysis',
+              });
+            }}
+          />
+          
+          <div className="h-5 w-px bg-fuchsia-500/50" />
+          
+          {/* Right Panel Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+            className={cn(
+              "h-8 px-2 rounded-lg transition-all duration-200",
+              !rightPanelCollapsed 
+                ? "bg-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/30" 
+                : "text-fuchsia-400/60 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
+            )}
+            title={rightPanelCollapsed ? "Show Properties Panel" : "Hide Properties Panel"}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
-        {/* AI Panel - docked at left */}
+      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
+        {/* AI Panel - static left side panel (always visible when builder opens) */}
         {aiPanelOpen && (
           <>
-            <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
-              <AICodeAssistant
-                displayMode="dock"
-                isOpen={aiPanelOpen}
-                onToggle={() => setAiPanelOpen(!aiPanelOpen)}
-                fabricCanvas={fabricCanvas}
+            <ResizablePanel defaultSize={22} minSize={18} maxSize={35}>
+              <AIBuilderPanel
                 currentCode={previewCode}
                 systemType={activeSystemType}
                 templateName={currentTemplateName}
-                templateCtaAnalysis={templateCtaAnalysis}
-                pageStructureContext={pageStructureContext}
-                backendStateContext={backendStateContext}
-                businessDataContext={businessDataContext}
-                selectedElement={
-                  aiEditRequested && selectedHTMLElement?.selector && selectedHTMLElement?.html
-                    ? {
-                        selector: selectedHTMLElement.selector,
-                        html: selectedHTMLElement.html,
-                        section: selectedHTMLElement.section,
-                      }
-                    : undefined
-                }
-                requestAIEdit={aiEditRequested}
-                onAIEditDismissed={() => setAiEditRequested(false)}
-                onElementUpdate={(selector, newHtml) => {
-                  const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
-                  if (!res.ok) {
-                    toast.error('Section redesign currently supports HTML templates only (not React/TSX).');
-                    return false;
-                  }
-                  setEditorCode(res.code);
-                  setPreviewCode(res.code);
-                  toast.success('Section redesigned');
-                  return true;
+                iframeErrors={iframeErrors}
+                onClearErrors={() => setIframeErrors([])}
+                onClose={() => setAiPanelOpen(false)}
+                onViewEdits={(edits) => {
+                  // Switch to code view and highlight the edited files
+                  setViewMode('split');
+                  toast.info('View Edits', {
+                    description: `${edits.length} file(s) modified - check the file explorer`,
+                  });
                 }}
                 onCodeGenerated={(code) => {
                   console.log('[WebBuilder] ========== AI CODE GENERATED ==========');
                   console.log('[WebBuilder] Code length:', code.length);
                   console.log('[WebBuilder] Code preview:', code.substring(0, 200));
+                  
+                  // Validate AI-generated code against current template to detect destructive changes
+                  const validation = validateAICodeChange(previewCode, code);
+                  if (validation.warnings.length > 0) {
+                    console.warn('[WebBuilder] AI code validation warnings:', validation.warnings);
+                  }
+                  
+                  // If critical changes detected, warn user and potentially reject
+                  if (validation.severity === 'critical') {
+                    console.error('[WebBuilder] CRITICAL: AI made destructive changes to template');
+                    toast.error('AI made major changes to your template', {
+                      description: validation.warnings.join('; '),
+                      duration: 8000,
+                    });
+                  } else if (validation.severity === 'warning') {
+                    toast.warning('AI modified template structure', {
+                      description: validation.warnings.join('; '),
+                      duration: 5000,
+                    });
+                  }
                   
                   const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
                   const normalized = normalizeTemplateForCtaContract({
@@ -3366,11 +3785,20 @@ ${body.innerHTML}
                   
                   setEditorCode(normalized.code);
                   setPreviewCode(normalized.code);
+                  
+                  // Immediately sync to VFS for instant preview update
+                  const targetPath = pageTabs.length > 1 ? activePagePath : '/index.html';
+                  const vfsFiles = virtualFS.getSandpackFiles();
+                  virtualFS.importFiles({ ...vfsFiles, [targetPath]: normalized.code });
+                  console.log('[WebBuilder] VFS updated directly:', targetPath);
+                  
                   console.log('[WebBuilder] setPreviewCode called, switching to canvas view');
                   setViewMode('canvas');
                   
                   toast.success('Code Generated!', {
-                    description: 'Your AI-generated content is now in the preview'
+                    description: validation.severity === 'ok' 
+                      ? 'Your AI-generated content is now in the preview'
+                      : 'Check the preview - some structural changes were made'
                   });
                 }}
                 onFilesPatch={(files) => {
@@ -3402,21 +3830,36 @@ ${body.innerHTML}
                   toast.success('Files updated', { description: 'Approved patch plan applied to project files' });
                   return true;
                 }}
-                onSwitchToCanvasView={() => {
-                  setViewMode('canvas');
-                }}
               />
             </ResizablePanel>
-            <ResizableHandle className="w-1.5 bg-gradient-to-b from-transparent via-white/[0.08] to-transparent hover:via-primary/40 transition-all duration-300" />
+            <ResizableHandle className="w-1.5 bg-gradient-to-b from-transparent via-lime-500/20 to-transparent hover:via-lime-400/50 transition-all duration-300 shadow-[0_0_8px_rgba(0,255,0,0.2)]" />
           </>
         )}
 
-        <ResizablePanel defaultSize={aiPanelOpen ? 75 : 100} minSize={30}>
+        <ResizablePanel defaultSize={aiPanelOpen ? 78 : 100} minSize={50}>
           {/* Main Content */}
-          <div className="h-full flex overflow-hidden">
+          <div className="h-full flex overflow-x-auto overflow-y-hidden">
         {/* Left Panel - Elements Sidebar */}
         {!leftPanelCollapsed && (
-          <div className="w-80 bg-[#0d0d18] border-r-2 border-cyan-500/40 flex flex-col overflow-hidden shadow-[0_0_20px_rgba(0,255,255,0.15)]">
+          <div className="w-64 flex-shrink-0 bg-[#0d0d18] border-r-2 border-cyan-500/40 flex flex-col overflow-hidden shadow-[0_0_20px_rgba(0,255,255,0.15)]">
+            {/* Left Panel Header with Close Button */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-cyan-500/30 bg-[#0a0a14]">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded-md bg-cyan-500/20">
+                  <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                </div>
+                <span className="text-xs font-bold text-cyan-400">Elements</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setLeftPanelCollapsed(true)}
+                className="h-6 w-6 text-cyan-400/50 hover:text-cyan-400 hover:bg-cyan-500/10 rounded transition-all duration-200"
+                title="Close Elements Panel"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+            </div>
             <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
               <TabsList className="w-full flex-wrap justify-start rounded-none border-b-2 border-cyan-500/30 bg-[#0a0a14] px-1.5 py-1.5 min-h-[44px] h-auto shrink-0 gap-1">
                 <TabsTrigger value="elements" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,255,0.5)] transition-all duration-200">Elements</TabsTrigger>
@@ -3563,194 +4006,11 @@ ${body.innerHTML}
         </div>
 
         {/* Center Canvas Area */}
-        <div className="flex-1 flex flex-col bg-transparent relative">
-          {/* Unified Topbar */}
-          <div className="h-12 bg-[#0a0a14] border-b-2 border-fuchsia-500/50 flex items-center px-4 gap-3 shadow-[0_4px_20px_rgba(255,0,255,0.15)]">
-            {/* Left Section: Back, Device, Mode */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBackNavigation}
-                className="text-cyan-400 hover:text-cyan-300 h-8 px-2.5 rounded-lg hover:bg-cyan-500/20 hover:shadow-[0_0_10px_rgba(0,255,255,0.3)] transition-all duration-200"
-                title={`Go back to ${referrerPageName}${hasUnsavedChanges ? ' (unsaved changes will be auto-saved)' : ''} - Alt+←`}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              
-              <div className="h-5 w-px bg-fuchsia-500/50" />
-              
-              {/* Device Breakpoints */}
-              <div className="flex items-center gap-0.5 bg-[#0d0d18] rounded-lg p-1">
-                <Button
-                  variant={device === "desktop" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setDevice("desktop")}
-                  className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "desktop" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
-                  title="Desktop"
-                >
-                  <Monitor className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={device === "tablet" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setDevice("tablet")}
-                  className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "tablet" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
-                  title="Tablet"
-                >
-                  <Tablet className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={device === "mobile" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setDevice("mobile")}
-                  className={cn("h-7 w-7 rounded-md transition-all duration-200", device === "mobile" ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,255,0.6)]" : "text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/20")}
-                  title="Mobile"
-                >
-                  <Smartphone className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              
-              <div className="h-5 w-px bg-fuchsia-500/50" />
-              
-              {/* Mode Toggle */}
-              <SimpleModeToggle
-                currentMode={builderMode}
-                onModeChange={(mode) => {
-                  setBuilderMode(mode);
-                  setIsInteractiveMode(mode === 'preview');
-                  if (mode === 'preview') {
-                    setSelectedHTMLElement(null);
-                    setSelectedObject(null);
-                    setAiEditRequested(false);
-                  }
-                }}
-                hasSelection={!!selectedHTMLElement || !!selectedObject}
-                onDelete={() => {
-                  if (selectedHTMLElement?.selector) {
-                    handleDeleteHTMLElement();
-                  } else if (selectedObject) {
-                    handleDelete();
-                  }
-                }}
-                onDuplicate={() => {
-                  if (selectedHTMLElement?.selector) {
-                    handleDuplicateHTMLElement();
-                  } else if (selectedObject) {
-                    handleDuplicate();
-                  }
-                }}
-              />
-            </div>
-
-            {/* Center Section: Floating Dock */}
-            <div className="flex-1 flex justify-center">
-              <FloatingDock
-                onSelectTemplate={handleSelectTemplate}
-                onDemoTemplate={(code, name, systemType, templateId) => {
-                  handleSelectTemplate(code, name, systemType, templateId);
-                  toast.info(`Demo mode: ${name} - Interactions return mock responses`);
-                }}
-                onLoadTemplate={handleLoadTemplate}
-                onSaveTemplate={handleSaveTemplate}
-                currentCode={previewCode}
-                cloudState={cloudState}
-                onNavigateToCloud={() => navigate('/cloud')}
-              />
-            </div>
-
-            {/* Right Section: View Mode, Save & AI Activity */}
-            <div className="flex items-center gap-2">
-              {/* View Mode Toggle - Icons only */}
-              <div className="flex items-center gap-0.5 bg-[#0d0d18] rounded-lg p-1">
-                <Button
-                  variant={viewMode === "canvas" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("canvas")}
-                  className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "canvas" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
-                  title="Canvas View"
-                >
-                  <Square className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={viewMode === "code" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("code")}
-                  className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "code" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
-                  title="Code View"
-                >
-                  <FileCode className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={viewMode === "split" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("split")}
-                  className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "split" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
-                  title="Split View"
-                >
-                  <Layout className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              
-              <div className="h-5 w-px bg-cyan-500/50" />
-              
-              {/* Save with status */}
-              <div className="flex items-center gap-1.5">
-                {autoSaveStatus === 'saving' && (
-                  <div className="animate-spin h-3 w-3 border-2 border-yellow-500/30 border-t-yellow-400 rounded-full" />
-                )}
-                {autoSaveStatus === 'saved' && (
-                  <Cloud className="h-3.5 w-3.5 text-lime-400 drop-shadow-[0_0_5px_rgba(0,255,0,0.6)]" />
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSaveProjectDialogOpen(true)}
-                  className="h-7 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 px-2.5 rounded-lg hover:shadow-[0_0_10px_rgba(255,255,0,0.3)] transition-all duration-200"
-                  title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
-                >
-                  <Save className="h-3.5 w-3.5 mr-1.5" />
-                  <span className="text-xs font-bold">{currentTemplateName ? 'Update' : 'Save'}</span>
-                </Button>
-                <DeployButton
-                  files={{ 'index.html': previewCode }}
-                  defaultSiteName={currentTemplateName || 'unison-site'}
-                  variant="ghost"
-                  size="sm"
-                  onDeployComplete={(url) => {
-                    toast.success('Site published!', {
-                      description: `Live at ${url}`,
-                      action: {
-                        label: 'Open',
-                        onClick: () => window.open(url, '_blank'),
-                      },
-                    });
-                  }}
-                />
-              </div>
-              
-              <div className="h-5 w-px bg-cyan-500/50" />
-              
-              {/* AI Activity Indicator */}
-              <AIActivityPanel
-                events={aiActivity.events}
-                activityState={aiActivity.activityState}
-                attentionCount={aiActivity.attentionCount}
-                isLoading={aiActivity.isLoading}
-                onViewDetails={() => {
-                  setLeftPanelCollapsed(false);
-                  toast.info('View AI plugin details in the sidebar', {
-                    description: 'Go to AI Plugins tab for full analysis',
-                  });
-                }}
-              />
-            </div>
-          </div>
-
+        <div className="flex-1 min-w-0 flex flex-col bg-transparent relative">
           {/* Main Content Area - Canvas/Code/Split View */}
           <div 
             ref={canvasContainerRef}
-            className="flex-1 overflow-hidden p-4 flex items-start justify-center bg-gradient-to-br from-[#0a0a0f] via-[#0c0c12] to-[#0a0a0f] relative"
+            className="flex-1 overflow-hidden p-2 flex items-stretch justify-center bg-gradient-to-br from-[#0a0a0f] via-[#0c0c12] to-[#0a0a0f] relative"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -3870,12 +4130,21 @@ ${body.innerHTML}
                       ref={livePreviewRef}
                       nodes={virtualFS.nodes}
                       files={virtualFS.getSandpackFiles()}
+                      activeFile={activePagePath}
                       className="w-full h-full min-h-0 flex-1"
                       showToolbar={true}
                       autoStart={true}
                       showBackendIndicator={true}
                       onReady={() => console.log('[WebBuilder] VFSPreview ready')}
-                      onError={(err) => toast.error(`Preview error: ${err}`)}
+                      onError={(err) => {
+                        toast.error(`Preview error: ${err}`);
+                        // Capture error for AI debugging
+                        setIframeErrors(prev => [...prev, {
+                          type: 'runtime',
+                          message: err,
+                          timestamp: new Date(),
+                        }]);
+                      }}
                     />
                   ) : (
                     <SimplePreview
@@ -4122,12 +4391,21 @@ export default function App() {
                         ref={livePreviewRef}
                         nodes={virtualFS.nodes}
                         files={virtualFS.getSandpackFiles()}
+                        activeFile={activePagePath}
                         className="w-full h-full min-h-0 flex-1"
                         showToolbar={true}
                         autoStart={true}
                         showBackendIndicator={true}
                         onReady={() => console.log('[WebBuilder] VFSPreview ready')}
-                        onError={(err) => toast.error(`Preview error: ${err}`)}
+                        onError={(err) => {
+                          toast.error(`Preview error: ${err}`);
+                          // Capture error for AI debugging
+                          setIframeErrors(prev => [...prev, {
+                            type: 'runtime',
+                            message: err,
+                            timestamp: new Date(),
+                          }]);
+                        }}
                       />
                     ) : (
                       <SimplePreview
@@ -4243,7 +4521,7 @@ export default function App() {
             variant="ghost"
             size="icon"
             onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-12 w-5 rounded-l-lg rounded-r-none backdrop-blur-md bg-white/[0.04] border-r-0 border border-white/[0.08] text-white/40 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-12 w-5 rounded-l-lg rounded-r-none backdrop-blur-md bg-fuchsia-500/10 border-r-0 border border-fuchsia-500/30 text-fuchsia-400/60 hover:text-fuchsia-400 hover:bg-fuchsia-500/20 hover:shadow-[0_0_10px_rgba(255,0,255,0.3)] transition-all duration-200"
             title={rightPanelCollapsed ? "Show right panel" : "Hide right panel"}
           >
             {rightPanelCollapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -4252,30 +4530,52 @@ export default function App() {
 
         {/* Right Panel: Customizer OR Properties */}
         {!rightPanelCollapsed && (
-          previewCode && !selectedObject ? (
-            <TemplateCustomizerPanel
-              customizer={templateCustomizer}
-              onApply={applyCustomizerOverrides}
-            />
-          ) : (
-            <CollapsiblePropertiesPanel 
-              fabricCanvas={fabricCanvas}
-              selectedObject={selectedObject}
-              selectedHTMLElement={selectedHTMLElement}
-              isCollapsed={rightPanelCollapsed}
-              onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-              onUpdate={() => fabricCanvas?.renderAll()}
-              onUpdateHTMLElement={(updates) => {
-                if (selectedHTMLElement?.selector) {
-                  handleFloatingStyleUpdate(selectedHTMLElement.selector, updates.styles || {});
-                  if (updates.textContent !== undefined) {
-                    handleFloatingTextUpdate(selectedHTMLElement.selector, updates.textContent);
-                  }
-                  const updatedElement = { 
-                    ...selectedHTMLElement, 
-                    styles: { ...selectedHTMLElement.styles, ...updates.styles },
-                    textContent: updates.textContent ?? selectedHTMLElement.textContent 
-                  };
+          <div className="w-64 flex-shrink-0 bg-[#0d0d18] border-l-2 border-fuchsia-500/40 flex flex-col overflow-hidden shadow-[0_0_20px_rgba(255,0,255,0.15)]">
+            {/* Right Panel Header with Close Button */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-fuchsia-500/30 bg-[#0a0a14]">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded-md bg-fuchsia-500/20">
+                  <Settings className="w-3.5 h-3.5 text-fuchsia-400" />
+                </div>
+                <span className="text-xs font-bold text-fuchsia-400">
+                  {previewCode && !selectedObject ? 'Customizer' : 'Properties'}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setRightPanelCollapsed(true)}
+                className="h-6 w-6 text-fuchsia-400/50 hover:text-fuchsia-400 hover:bg-fuchsia-500/10 rounded transition-all duration-200"
+                title="Close Panel"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {previewCode && !selectedObject ? (
+                <TemplateCustomizerPanel
+                  customizer={templateCustomizer}
+                  onApply={applyCustomizerOverrides}
+                />
+              ) : (
+                <CollapsiblePropertiesPanel 
+                  fabricCanvas={fabricCanvas}
+                  selectedObject={selectedObject}
+                  selectedHTMLElement={selectedHTMLElement}
+                  isCollapsed={rightPanelCollapsed}
+                  onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+                  onUpdate={() => fabricCanvas?.renderAll()}
+                  onUpdateHTMLElement={(updates) => {
+                    if (selectedHTMLElement?.selector) {
+                      handleFloatingStyleUpdate(selectedHTMLElement.selector, updates.styles || {});
+                      if (updates.textContent !== undefined) {
+                        handleFloatingTextUpdate(selectedHTMLElement.selector, updates.textContent);
+                      }
+                      const updatedElement = { 
+                        ...selectedHTMLElement, 
+                        styles: { ...selectedHTMLElement.styles, ...updates.styles },
+                        textContent: updates.textContent ?? selectedHTMLElement.textContent 
+                      };
                   setSelectedHTMLElement(updatedElement);
                 }
               }}
@@ -4283,7 +4583,9 @@ export default function App() {
               onDelete={handleDelete}
               onDuplicate={handleDuplicate}
             />
-          )
+              )}
+            </div>
+          </div>
         )}
 
         {/* Floating Element Toolbar - appears over selected elements */}
@@ -4568,6 +4870,19 @@ export default function App() {
           setResearchPayload(null);
         }}
         payload={researchPayload}
+      />
+
+      {/* Business Setup Suggestions - shown after AI generates a site */}
+      <BusinessSetupSuggestions
+        open={showBusinessSetup}
+        onOpenChange={setShowBusinessSetup}
+        systemType={activeSystemType}
+        templateName={currentTemplateName}
+        projectId={projectId || templateFiles.currentTemplateId || undefined}
+        businessId={businessId || undefined}
+        onSkip={() => {
+          console.log('[WebBuilder] User skipped business setup suggestions');
+        }}
       />
     </div>
   );

@@ -1690,15 +1690,26 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   
   // Map intents to overlay types
   const intentToOverlayMap: Record<string, OverlayType> = {
+    // Auth intents
     'auth.login': 'auth-login',
+    'auth.signin': 'auth-login',
     'auth.register': 'auth-register',
+    'auth.signup': 'auth-register',
+    // Booking intents
     'booking.create': 'booking',
+    'booking.request': 'booking',
+    // Contact/Lead intents
     'contact.submit': 'contact',
     'lead.capture': 'contact',
     'quote.request': 'contact',
     'newsletter.subscribe': 'contact',
-    'pay.checkout': 'checkout',
+    // Cart/Checkout intents
+    'cart.view': 'checkout',
     'cart.checkout': 'checkout',
+    'pay.checkout': 'checkout',
+    'checkout.start': 'checkout',
+    // Overlay intents
+    'overlay.open': 'contact', // Generic overlay defaults to contact
   };
   
   // Listen for errors from the iframe

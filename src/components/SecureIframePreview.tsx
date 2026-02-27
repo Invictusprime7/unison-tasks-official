@@ -1,7 +1,66 @@
 import { useEffect, useRef, useState } from 'react';
 import { RPCHost } from '@/utils/rpc';
-import { VirtualFilesystem } from '@/utils/vfs';
 import { createSecureHTML } from '@/utils/htmlSanitizer';
+
+// Local VFS class for iframe preview (isolated, not shared with other components)
+interface VFSFile {
+  path: string;
+  content: string;
+  modified: number;
+}
+
+type VFSOp = 
+  | { type: 'put'; path: string; content: string }
+  | { type: 'delete'; path: string };
+
+class VirtualFilesystem {
+  private files = new Map<string, VFSFile>();
+  private listeners = new Set<(op: VFSOp) => void>();
+
+  writeFile(path: string, content: string): void {
+    const normalizedPath = this.normalizePath(path);
+    this.files.set(normalizedPath, {
+      path: normalizedPath,
+      content,
+      modified: Date.now()
+    });
+    this.notifyListeners({ type: 'put', path: normalizedPath, content });
+  }
+
+  readFile(path: string): string | null {
+    const normalizedPath = this.normalizePath(path);
+    const file = this.files.get(normalizedPath);
+    return file ? file.content : null;
+  }
+
+  deleteFile(path: string): boolean {
+    const normalizedPath = this.normalizePath(path);
+    const existed = this.files.delete(normalizedPath);
+    if (existed) {
+      this.notifyListeners({ type: 'delete', path: normalizedPath });
+    }
+    return existed;
+  }
+
+  getSnapshot(): Record<string, string> {
+    const snapshot: Record<string, string> = {};
+    for (const [path, file] of this.files) {
+      snapshot[path] = file.content;
+    }
+    return snapshot;
+  }
+
+  private notifyListeners(op: VFSOp): void {
+    this.listeners.forEach(listener => listener(op));
+  }
+
+  private normalizePath(path: string): string {
+    if (!path.startsWith('/')) {
+      path = '/' + path;
+    }
+    return path.replace(/\/+/g, '/');
+  }
+}
 
 interface SecureIframePreviewProps {
   html?: string;

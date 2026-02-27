@@ -36,8 +36,7 @@ verify_jwt = false
 [functions.web-builder-ai]
 verify_jwt = false
 
-[functions.ai-web-assistant]
-verify_jwt = false
+# Removed: [functions.ai-web-assistant] - unused (0 call sites)
 
 [functions.workflow-trigger]
 verify_jwt = false

@@ -4,6 +4,9 @@
  * Allows users to describe what they want to build and generates
  * production-ready code using the systems-build edge function with
  * premium template references for quality baseline.
+ * 
+ * Enhanced with User Design Profile analysis - AI learns from user's
+ * saved projects to generate style-matched, personalized websites.
  */
 
 import { useState, useCallback } from "react";
@@ -12,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 import { 
   Sparkles, 
   Loader2,
@@ -26,12 +30,15 @@ import {
   Code2,
   Upload,
   X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Fingerprint
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { getTemplatesByCategory } from "@/data/templates";
 import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
 import { cn } from "@/lib/utils";
+import { templateToVFSFiles } from "@/utils/templateToVFS";
+import { applyDesignProfileToTemplate } from "@/utils/designPatternExtractor";
 
 // Dropped file type
 interface DroppedFile {
@@ -100,7 +107,7 @@ const CHIP_TO_CATEGORY: Record<string, LayoutCategory> = {
  * Picks the best template HTML for a given chip to use as AI reference.
  * Prefers the first (dark luxury) variant as it's typically the most premium.
  */
-function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; systemType: BusinessSystemType } | null {
+function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; templateName: string; systemType: BusinessSystemType } | null {
   const systemType = CHIP_TO_SYSTEM[chipId];
   const category = CHIP_TO_CATEGORY[chipId];
   if (!systemType || !category) return null;
@@ -115,6 +122,7 @@ function getTemplateReference(chipId: string): { templateId: string; templateHtm
   return {
     templateId: bestTemplate.id,
     templateHtml: bestTemplate.code,
+    templateName: bestTemplate.name,
     systemType,
   };
 }
@@ -174,6 +182,15 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
   // File drop state
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // User Design Profile - analyzes saved projects for style-matching
+  const { 
+    hasProfile, 
+    profile: designProfile,
+    getPromptContext: getDesignPromptContext,
+    projectCount: savedProjectCount,
+    loading: profileLoading 
+  } = useUserDesignProfile();
 
   // File processing helpers
   const getFileType = (file: File): DroppedFile['type'] => {
@@ -303,23 +320,83 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         ? `\n\n[Attached files: ${droppedFiles.map(f => f.name).join(", ")}]\n${droppedFiles.filter(f => f.type === "text").map(f => `--- ${f.name} ---\n${f.content}`).join("\n\n")}`
         : "";
 
-      // If a chip is selected, use systems-build with template reference for premium quality
+      // If a chip is selected, use the pre-built premium template directly
+      // Templates have premium CSS built-in - use as-is for quality output
       if (selectedCodeChip) {
         const ref = getTemplateReference(selectedCodeChip);
-        const blueprint = buildBlueprintFromChip(selectedCodeChip, codePrompt);
+        
+        // If we have a premium template, customize it with user's design profile
+        // This applies color preferences and style patterns while preserving template quality
+        if (ref && ref.templateHtml) {
+          console.log(`[SystemsAIPanel] Using pre-built template: ${ref.templateId} (${ref.templateName})`);
+          
+          // Apply user design profile customizations if available
+          const customizedHtml = hasProfile 
+            ? applyDesignProfileToTemplate(ref.templateHtml, designProfile)
+            : ref.templateHtml;
+          
+          console.log(`[SystemsAIPanel] Design profile ${hasProfile ? 'applied' : 'not available'} (${savedProjectCount} projects)`);
+          
+          // Convert HTML template to React VFS files (preserves all styles)
+          const vfsFiles = templateToVFSFiles(customizedHtml, ref.templateName.replace(/[^a-zA-Z0-9]/g, ''));
+          
+          // Add the original HTML as index.html for HTML preview mode
+          vfsFiles['/index.html'] = customizedHtml;
+          
+          console.log('[SystemsAIPanel] Converted to VFS:', Object.keys(vfsFiles).length, 'files');
+          
+          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(vfsFiles));
+          setDroppedFiles([]); // Clear files on success
+          navigate("/web-builder", {
+            state: {
+              vfsFiles: vfsFiles,
+              generatedCode: customizedHtml, // Pass customized HTML for preview
+              templateName: ref.templateName,
+              aesthetic: "premium",
+              startInPreview: true,
+              systemType: ref.systemType,
+              framework: "react",
+              userDesignProfile: hasProfile ? {
+                projectCount: savedProjectCount,
+                dominantStyle: designProfile?.dominantStyle,
+              } : undefined,
+            },
+          });
+          toast({ 
+            title: `${ref.templateName} ready!`, 
+            description: hasProfile 
+              ? `Personalized from ${savedProjectCount} saved project${savedProjectCount !== 1 ? 's' : ''}` 
+              : "Premium template loaded. Customize in Web Builder..."
+          });
+          return;
+        }
 
-        console.log(`[SystemsAIPanel] Using systems-build with${ref ? ` template reference: ${ref.templateId}` : 'out template reference'}, ${droppedFiles.length} attachments`);
+        // No pre-built template found - fallback to AI generation
+        const blueprint = buildBlueprintFromChip(selectedCodeChip, codePrompt);
+        console.log(`[SystemsAIPanel] No pre-built template for ${selectedCodeChip}, using AI generation`);
+
+        // Add user design profile context for style-matched generation
+        const designProfileContext = hasProfile ? getDesignPromptContext() : null;
+        const enhancedPrompt = designProfileContext 
+          ? `${designProfileContext}\n\n---\n\nUser Request:\n${codePrompt}${fileContext}`
+          : codePrompt + fileContext;
 
         const { data, error } = await supabase.functions.invoke("systems-build", {
           body: {
             blueprint,
-            userPrompt: codePrompt + fileContext,
+            userPrompt: enhancedPrompt,
             enhanceWithAI: true,
             templateId: ref?.templateId,
             templateHtml: ref?.templateHtml,
             variantMode: true,
             variationSeed: `v${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
             attachments: attachments.length > 0 ? attachments : undefined,
+            outputFormat: "react", // Request React fullstack output
+            userDesignProfile: hasProfile ? {
+              projectCount: savedProjectCount,
+              dominantStyle: designProfile?.dominantStyle,
+              industryHints: designProfile?.industryHints,
+            } : undefined,
           },
         });
 
@@ -340,8 +417,29 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
           throw error;
         }
 
+        // Handle React fullstack response (files object) or fallback to code string
+        const reactFiles = data?.files as Record<string, string> | undefined;
         const generatedCode = data?.code || "";
-        if (generatedCode && generatedCode.length > 50) {
+        
+        if (reactFiles && Object.keys(reactFiles).length > 0) {
+          // React fullstack output - pass files to Web Builder
+          console.log('[SystemsAIPanel] React fullstack generated:', Object.keys(reactFiles).length, 'files');
+          
+          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(reactFiles));
+          setDroppedFiles([]); // Clear files on success
+          navigate("/web-builder", {
+            state: {
+              vfsFiles: reactFiles,
+              templateName: `AI ${codePromptChips.find(c => c.id === selectedCodeChip)?.label || "React App"}`,
+              aesthetic: "modern",
+              startInPreview: true,
+              systemType: ref?.systemType,
+              framework: "react",
+            },
+          });
+          toast({ title: "React app generated!", description: `${Object.keys(reactFiles).length} files created. Opening in Web Builder...` });
+          return;
+        } else if (generatedCode && generatedCode.length > 50) {
           console.log('[SystemsAIPanel] systems-build generated', generatedCode.length, 'chars');
           
           // Parse multi-page output if PAGE markers present
@@ -372,17 +470,28 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
       }
 
       // Fallback: use ai-code-assistant for free-form prompts without a chip selected
-      const enhancedPrompt = buildFreeformPrompt(codePrompt) + fileContext;
+      // Add user design profile context for style-matched generation
+      const designProfileContext = hasProfile ? getDesignPromptContext() : null;
+      const basePrompt = buildFreeformPrompt(codePrompt) + fileContext;
+      const enhancedPrompt = designProfileContext 
+        ? `${designProfileContext}\n\n---\n\nUser Request:\n${basePrompt}`
+        : basePrompt;
 
-      console.log(`[SystemsAIPanel] Using ai-code-assistant with ${droppedFiles.length} attachments`);
+      console.log(`[SystemsAIPanel] Using ai-code-assistant template-react with ${droppedFiles.length} attachments${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
 
       const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
         body: {
           messages: [{ role: "user", content: enhancedPrompt }],
-          mode: "code",
+          mode: "template-react", // React fullstack output
+          variationSeed: `react-${Date.now().toString(36)}`,
           templateAction: "full-control",
           editMode: false,
           attachments: attachments.length > 0 ? attachments : undefined,
+          userDesignProfile: hasProfile ? {
+            projectCount: savedProjectCount,
+            dominantStyle: designProfile?.dominantStyle,
+            industryHints: designProfile?.industryHints,
+          } : undefined,
         },
       });
 
@@ -399,6 +508,35 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
       }
 
       const content = data?.content || "";
+      
+      // Try to parse React files JSON response
+      try {
+        const cleanedContent = content.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+        const parsed = JSON.parse(cleanedContent);
+        
+        if (parsed.files && Object.keys(parsed.files).length > 0) {
+          console.log('[SystemsAIPanel] React fullstack generated:', Object.keys(parsed.files).length, 'files');
+          
+          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(parsed.files));
+          setDroppedFiles([]);
+          navigate("/web-builder", {
+            state: {
+              vfsFiles: parsed.files,
+              templateName: "AI React App",
+              aesthetic: "modern",
+              startInPreview: true,
+              systemType: "content",
+              framework: "react",
+            },
+          });
+          toast({ title: "React app generated!", description: `${Object.keys(parsed.files).length} files created. Opening in Web Builder...` });
+          return;
+        }
+      } catch {
+        // Not JSON, treat as raw code
+      }
+      
+      // Fallback: extract code from markdown
       let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
       if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
       if (!codeMatch) codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)?\n?([\s\S]*?)```/);
@@ -423,7 +561,8 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
             templateName: "AI Generated", 
             aesthetic: "modern", 
             startInPreview: true,
-            systemType: "content", // Default system type for freestyle AI generation
+            systemType: "content",
+            framework: "react",
           },
         });
         toast({ title: "Code generated!", description: "Opening in Web Builder..." });
@@ -446,6 +585,16 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
           {/* Main Input Card */}
           <Card className="border shadow-md bg-card/80 backdrop-blur">
             <CardContent className="p-6">
+              {/* User Design Profile Indicator */}
+              {hasProfile && (
+                <div className="flex items-center justify-center gap-2 mb-4 px-3 py-2 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-blue-500/10 rounded-lg border border-violet-200/30">
+                  <Fingerprint className="h-4 w-4 text-violet-500" />
+                  <span className="text-sm text-violet-600 dark:text-violet-400">
+                    Style-matching from {savedProjectCount} saved project{savedProjectCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+              
               {/* Text Input with Drop Zone */}
               <div 
                 className={cn(

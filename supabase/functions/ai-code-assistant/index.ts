@@ -1,4 +1,4 @@
-import { serve } from "serve";
+﻿import { serve } from "serve";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { generateVariation, variationToPromptContext } from "../_shared/industryVariations.ts";
@@ -256,11 +256,19 @@ serve(async (req: Request) => {
       debugMode: z.boolean().optional(),
       templateAction: z.string().max(50).optional(),
       templateAnalysis: z.string().max(20_000).optional(),
+      // System type for business context
+      systemType: z.string().max(50).optional(),
       // Template generation parameters (for template-json and template-html modes)
       variationSeed: z.string().max(30).optional(),
       templateName: z.string().max(100).optional(),
       aesthetic: z.string().max(80).optional(),
       source: z.string().max(80).optional(),
+      // User Design Profile - extracted patterns from user's saved projects for style-matching
+      userDesignProfile: z.object({
+        projectCount: z.number().optional(),
+        dominantStyle: z.enum(["dark", "light", "colorful", "minimal", "mixed"]).optional(),
+        industryHints: z.array(z.string()).optional(),
+      }).optional(),
     });
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
@@ -286,15 +294,36 @@ serve(async (req: Request) => {
       debugMode: _debugMode = false,
       templateAction,
       templateAnalysis: _templateAnalysis,
+      systemType,
       variationSeed,
       templateName,
       aesthetic,
       source,
+      userDesignProfile,
     } = parsed.data;
     
     // Suppress unused variable warnings - these are used in specific modes
     void _debugMode;
     void _templateAnalysis;
+    
+    // Build system type context for business-aware generation
+    const systemTypeContext = systemType ? `
+[Business System Type: ${systemType}]
+Generate content and features appropriate for a ${systemType} business. Consider:
+- Industry-specific sections and terminology
+- Relevant call-to-actions and conversion elements
+- Appropriate color schemes and imagery suggestions
+- Business-specific functionality (booking for services, cart for stores, etc.)
+` : '';
+    
+    // Build design profile context string for AI prompts
+    const designProfileContext = userDesignProfile ? `
+[User Design Profile - Match this established style]
+- Analyzed Projects: ${userDesignProfile.projectCount || 0}
+- Dominant Style: ${userDesignProfile.dominantStyle || 'mixed'}
+- Industry Experience: ${userDesignProfile.industryHints?.join(', ') || 'none'}
+Generate a site that matches the user's established design preferences while being unique.
+` : '';
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
@@ -569,9 +598,30 @@ The template's business context, content, and purpose must remain EXACTLY the sa
 Return the COMPLETE HTML with visual theme applied. Keep every word of content identical. No markdown, no explanation.` : ''}
 ` : '';
 
-    const editModeContext = editMode && currentCode ? `
-🔄 **EDIT MODE ACTIVE - MODIFYING EXISTING TEMPLATE**
-You are editing an existing saved template. The user wants to MODIFY their existing code, NOT replace it entirely.
+            const editModeContext = editMode && currentCode ? `
+â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”
+ðŸ”´ðŸ”´ðŸ”´ EDIT MODE: ADDITIVE ONLY - ZERO TOLERANCE FOR REMOVAL ðŸ”´ðŸ”´ðŸ”´
+â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”â›”
+
+You are editing an EXISTING saved template in an iframe. The user's site is LIVE.
+
+ðŸ”’ **THE GOLDEN RULE: ADD, NEVER REMOVE**
+- You must ADD to the existing template
+- You must NEVER remove sections, scripts, styles, or elements
+- Unless the user EXPLICITLY says "remove", "delete", "take out", or "get rid of"
+- If user says "change X" â†’ MODIFY X in place, do not delete and recreate
+
+ðŸ“Š **MANDATORY ELEMENT COUNT VALIDATION:**
+Before outputting, COUNT these elements in your output vs the input:
+- <section> tags: Input count MUST equal output count (unless explicitly adding/removing)
+- <script> blocks: Input count MUST equal output count
+- <style> blocks: Input count MUST equal output count
+- <header>/<nav>/<footer>: MUST be preserved exactly
+- data-ut-intent attributes: ALL MUST be preserved
+- Form elements: ALL MUST be preserved
+
+WARNING: **IF YOUR OUTPUT HAS FEWER ELEMENTS THAN INPUT = FATAL ERROR**
+
 ${templateStructure}
 ${templateActionContext}
 **CURRENT TEMPLATE CODE (${currentCode.length > maxCodeLength ? 'truncated' : 'full'}):**
@@ -579,23 +629,46 @@ ${templateActionContext}
 ${currentCode.substring(0, maxCodeLength)}${currentCode.length > maxCodeLength ? '\n... (truncated for context)' : ''}
 \`\`\`
 
-⚠️ **CRITICAL EDIT MODE RULES - MUST FOLLOW:**
-1. **NEVER CREATE A NEW PAGE** - You are editing the existing template above, NOT generating from scratch
-2. **PRESERVE ALL EXISTING ELEMENTS** - Do NOT remove ANY sections, components, or content unless explicitly asked
-3. **ONLY MODIFY WHAT'S REQUESTED** - If user says "center the hero", ONLY add centering classes to the hero section
-4. **KEEP ALL OTHER SECTIONS INTACT** - Headers, footers, features, testimonials - everything stays unless removal is requested
-5. **MAINTAIN existing styles** - Don't change colors, fonts, or styling unless specifically asked
-6. **PRESERVE existing JavaScript** - Don't remove any working functionality
-7. **OUTPUT THE FULL MODIFIED CODE** - Return the COMPLETE template with the requested changes applied
-8. **If user asks for a "new page" or "start fresh"** - ONLY THEN generate fresh code
+ðŸš¨ðŸš¨ðŸš¨ **ABSOLUTE EDIT MODE REQUIREMENTS - VIOLATION = USER DATA LOSS** ðŸš¨ðŸš¨ðŸš¨
 
-🚫 **COMMON MISTAKES TO AVOID:**
-- DON'T replace the entire page when asked to reposition one element
-- DON'T remove sections that weren't mentioned in the request
-- DON'T simplify or reduce the template - keep ALL content
-- DON'T change element content unless asked (keep all text, images, links)
+**STRUCTURAL INTEGRITY RULES (MANDATORY):**
+1. **SECTION COUNT LOCK** - Count <section> tags in input. Your output MUST have >= that count. NEVER reduce.
+2. **SCRIPT BLOCK LOCK** - Copy ALL <script> blocks EXACTLY as they appear. NEVER remove or simplify.
+3. **STYLE BLOCK LOCK** - Copy ALL <style> blocks EXACTLY as they appear. NEVER remove or consolidate.
+4. **TEXT CONTENT LOCK** - DO NOT change any text, headings, paragraphs, button labels UNLESS specifically requested
+5. **IMAGE URLs LOCK** - NEVER modify src attributes on images unless requested
+6. **COLOR PALETTE LOCK** - NEVER change bg-*, text-*, border-* color classes unless requested
+7. **FONT CLASSES LOCK** - NEVER change font-*, text-size, leading-* unless requested
+8. **DATA ATTRIBUTES LOCK** - ALL data-* attributes MUST be preserved exactly
 
-📐 **POSITIONING & LAYOUT COMMANDS:**
+**ADDITIVE CHANGE PRINCIPLE:**
+- If user says "center the hero" â†’ ADD centering classes to hero. NOTHING ELSE CHANGES.
+- If user says "add animation" â†’ ADD animation classes. NOTHING ELSE CHANGES.
+- If user says "make it bigger" â†’ MODIFY size classes on target element. NOTHING ELSE CHANGES.
+- If user says "change the color" â†’ MODIFY color classes on target element. NOTHING ELSE CHANGES.
+
+**OUTPUT VERIFICATION CHECKLIST (MANDATORY - CHECK BEFORE OUTPUTTING):**
+â–¡ Section count: Input has N sections â†’ Output has N sections? (If not, STOP and fix)
+â–¡ Script count: Input has N scripts â†’ Output has N scripts? (If not, STOP and fix)
+â–¡ Style count: Input has N styles â†’ Output has N styles? (If not, STOP and fix)
+â–¡ Footer present: Input has footer â†’ Output has footer? (If not, STOP and fix)
+â–¡ Header/Nav present: Input has header/nav â†’ Output has header/nav? (If not, STOP and fix)
+â–¡ All text content preserved word-for-word?
+â–¡ All image URLs preserved?
+â–¡ All color classes preserved?
+â–¡ Only the specifically requested change was made?
+
+ðŸš« **FATAL ERRORS THAT CAUSE DATA LOSS (ZERO TOLERANCE):**
+- Reducing the number of sections (e.g., 8 sections â†’ 3 sections = FATAL)
+- Removing ANY <script> blocks (functionality breaks = FATAL)
+- Removing ANY <style> blocks (styling lost = FATAL)
+- Removing the footer section (user content lost = FATAL)
+- Generating a "simplified" or "cleaner" version (DATA LOSS = FATAL)
+- Outputting a "new" template instead of editing existing (DATA LOSS = FATAL)
+- Changing text content without being asked
+- Replacing specific images with different ones
+
+ðŸ“ **POSITIONING & LAYOUT COMMANDS:**
 When user asks to reposition elements, ONLY add/modify classes on the targeted element:
 
 **Centering:**
@@ -662,6 +735,30 @@ WIRING RULES (CRITICAL):
   - Only add data-ut-intent on real conversion CTAs ("Book", "Submit", "Buy", "Join", "Request quote", etc.)
 - For e-commerce: use intents like cart.add, cart.view, checkout.start.
 - For auth: use intents like auth.signup, auth.signin, auth.signout.
+
+NAVIGATION WIRING (MANDATORY FOR ALL LINKS):
+- The preview uses HashRouter - all internal links MUST use hash-based navigation or intent wiring
+- Navigation links: <a href="/about" data-ut-intent="nav.goto" data-ut-path="/about">About</a>
+- Anchor links: <a href="#pricing" data-ut-intent="nav.anchor" data-ut-anchor="pricing">Pricing</a>
+- External links: <a href="https://..." data-ut-intent="nav.external" target="_blank" rel="noopener">Link</a>
+- NEVER use plain <a href="/path"> without data-ut-intent - it will break preview navigation
+- The runtime resolves: data-ut-intent="nav.goto" → HashRouter navigation, data-ut-intent="nav.anchor" → smooth scroll
+
+INTENT VOCABULARY (REFERENCE):
+| Intent | Payload Attributes | Action |
+|--------|-------------------|--------|
+| nav.goto | data-ut-path="/page" | Route navigation |
+| nav.anchor | data-ut-anchor="section" | Scroll to section |
+| nav.external | href="https://..." | Open in new tab |
+| cart.add | data-product-id, data-price, data-name | Add to cart + show overlay |
+| cart.view | none | Open cart overlay |
+| auth.signin | none | Open auth overlay (login) |
+| auth.signup | none | Open auth overlay (register) |
+| booking.create | data-service | Open booking overlay |
+| contact.submit | none | Open contact overlay |
+| overlay.open | data-overlay-type | Open generic overlay |
+| quote.request | none | Open quote form |
+| newsletter.subscribe | none | Newsletter signup |
 
 DESIGN SYSTEM RULES (CRITICAL):
 - Prefer design tokens via classes: bg-background, text-foreground, bg-card, text-muted-foreground, border-border, bg-primary, text-primary-foreground.
@@ -2291,7 +2388,7 @@ OUTPUT: Return ONLY the JSON object with the files. No markdown code fences, no 
     const researchContext = formatResearchContext(research);
 
     const aiMessages = [
-      { role: 'system', content: systemPrompt + researchContext + (generatedImageUrl ? `
+      { role: 'system', content: systemPrompt + researchContext + systemTypeContext + designProfileContext + (generatedImageUrl ? `
 
 **IMPORTANT: An AI-generated image has been created for this request. Include this image HTML in your response at the appropriate location:**
 ${imageHtml}
@@ -2416,7 +2513,10 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     // Handle timeout errors specifically
     if (error instanceof Error && error.name === 'AbortError') {
       return new Response(
-        JSON.stringify({ error: 'Request timed out. The AI service is taking too long. Please try again.' }),
+        JSON.stringify({ 
+          error: 'Request timed out. The AI service is taking too long. Please try again.',
+          errorType: 'timeout'
+        }),
         {
           status: 504,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -2424,9 +2524,30 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       );
     }
     
+    // Extract detailed error message
     const message = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Provide user-friendly error messages
+    let userMessage = message;
+    let errorType = 'unknown';
+    
+    if (message.includes('All AI models failed')) {
+      userMessage = 'AI service temporarily unavailable. All models are busy or experiencing issues. Please try again in a moment.';
+      errorType = 'ai_unavailable';
+    } else if (message.includes('network') || message.includes('fetch')) {
+      userMessage = 'Network error connecting to AI service. Please check your connection and try again.';
+      errorType = 'network';
+    } else if (message.includes('JSON') || message.includes('parse')) {
+      userMessage = 'Received invalid response from AI service. Please try again.';
+      errorType = 'parse_error';
+    }
+    
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ 
+        error: userMessage,
+        errorType,
+        details: message !== userMessage ? message : undefined  
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

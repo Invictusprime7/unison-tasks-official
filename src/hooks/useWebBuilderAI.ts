@@ -4,7 +4,12 @@ import { Canvas as FabricCanvas, Rect, Circle, IText, Textbox, FabricImage } fro
 import { toast } from 'sonner';
 import { TemplateRenderer } from '@/utils/templateRenderer';
 import { TemplateToHTMLExporter } from '@/utils/templateToHTMLExporter';
-import type { AIGeneratedTemplate } from '@/types/template';
+import type { AIGeneratedTemplate, AITemplatePrompt } from '@/types/template';
+
+// Generate a unique variation seed for diverse template outputs
+const generateVariationSeed = (): string => {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+};
 
 export interface AICanvasObject {
   type: 'rect' | 'circle' | 'text' | 'textbox' | 'image' | 'group';
@@ -202,14 +207,15 @@ export const useWebBuilderAI = (
   const generateTemplate = async (prompt: string): Promise<AITemplateResponse | null> => {
     setLoading(true);
     try {
-      console.log('[useWebBuilderAI] Generating template with prompt:', prompt);
+      const variationSeed = generateVariationSeed();
+      console.log('[useWebBuilderAI] Generating template via ai-code-assistant, prompt:', prompt, 'seed:', variationSeed);
       
-      const { data, error } = await supabase.functions.invoke('generate-ai-template', {
+      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
         body: { 
-          prompt,
-          industry: 'web',
-          goal: 'web-builder-template',
-          format: 'web'
+          messages: [{ role: 'user', content: prompt }],
+          mode: 'template-json',
+          variationSeed,
+          savePattern: true
         }
       });
 
@@ -227,8 +233,23 @@ export const useWebBuilderAI = (
 
       console.log('[useWebBuilderAI] Received data:', data);
 
-      // Handle both wrapped and unwrapped responses
-      const template = data.template || data;
+      // ai-code-assistant returns { content } with raw JSON string - parse it
+      let template;
+      if (data.content) {
+        // Parse JSON from content string (may have markdown code fences)
+        let jsonContent = data.content;
+        jsonContent = jsonContent.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        try {
+          template = JSON.parse(jsonContent);
+        } catch (parseError) {
+          console.error('[useWebBuilderAI] Failed to parse template JSON:', parseError);
+          toast.error('AI returned invalid template format');
+          return null;
+        }
+      } else {
+        // Fallback for legacy response format
+        template = data.template || data;
+      }
       
       // Normalize variants to formats for compatibility
       if (template.variants && !template.formats) {
@@ -266,10 +287,97 @@ export const useWebBuilderAI = (
     }
   };
 
+  // Structured template generation with detailed prompt (merged from useAITemplate)
+  const generateStructuredTemplate = async (prompt: AITemplatePrompt): Promise<AIGeneratedTemplate | null> => {
+    setLoading(true);
+    try {
+      const variationSeed = generateVariationSeed();
+      const promptText = `Create a ${prompt.format} template for ${prompt.industry}. 
+Goal: ${prompt.goal}
+${prompt.targetAudience ? `Target Audience: ${prompt.targetAudience}` : ''}
+${prompt.keyMessages?.length ? `Key Messages: ${prompt.keyMessages.join(', ')}` : ''}
+${prompt.preferredStyle ? `Style: ${prompt.preferredStyle}` : ''}
+${prompt.brandKit ? `Brand Colors: Primary ${prompt.brandKit.primaryColor}, Secondary ${prompt.brandKit.secondaryColor}` : ''}`;
+
+      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
+        body: { 
+          messages: [{ role: 'user', content: promptText }],
+          mode: 'template-json',
+          variationSeed,
+          savePattern: true
+        }
+      });
+
+      if (error) {
+        if (error.message.includes('429')) {
+          toast.error('Rate limit exceeded. Please try again later.');
+        } else if (error.message.includes('402')) {
+          toast.error('Payment required. Please add credits to your workspace.');
+        } else {
+          toast.error('Failed to generate template: ' + error.message);
+        }
+        return null;
+      }
+
+      // Parse JSON from ai-code-assistant content response
+      let generatedTemplate: AIGeneratedTemplate;
+      if (data.content) {
+        let jsonContent = data.content;
+        jsonContent = jsonContent.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        try {
+          generatedTemplate = JSON.parse(jsonContent) as AIGeneratedTemplate;
+        } catch (parseError) {
+          console.error('[useWebBuilderAI] Failed to parse structured template JSON:', parseError);
+          toast.error('AI returned invalid template format');
+          return null;
+        }
+      } else {
+        generatedTemplate = data.template as AIGeneratedTemplate;
+      }
+      
+      toast.success('AI template generated successfully!');
+      return generatedTemplate;
+    } catch (error) {
+      console.error('Error generating AI template:', error);
+      toast.error('An unexpected error occurred');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate template image (merged from useAITemplate)
+  const generateImage = async (prompt: string, style?: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-template-image', {
+        body: { prompt, style }
+      });
+
+      if (error) {
+        if (error.message.includes('429')) {
+          toast.error('Rate limit exceeded. Please try again later.');
+        } else if (error.message.includes('402')) {
+          toast.error('Payment required. Please add credits to your workspace.');
+        } else {
+          toast.error('Failed to generate image: ' + error.message);
+        }
+        return null;
+      }
+
+      return data.imageUrl;
+    } catch (error) {
+      console.error('Error generating image:', error);
+      toast.error('Failed to generate image');
+      return null;
+    }
+  };
+
   return {
     loading,
     lastResponse,
     generateDesign,
     generateTemplate,
+    generateStructuredTemplate,
+    generateImage,
   };
 };
