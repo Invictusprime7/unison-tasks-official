@@ -726,7 +726,7 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
     const model = variantMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash";
     console.log(`[systems-build] Calling AI gateway with model=${model}`);
 
-    const response = await fetch("https://api.vercel.ai/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
