@@ -564,11 +564,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             await new Promise(r => setTimeout(r, attempt * 1000));
           }
           
+          // Truncate currentCode to stay within edge function limits
+          const MAX_CODE_LENGTH = 180_000;
+          const truncatedCode = currentCode && currentCode.length > MAX_CODE_LENGTH
+            ? currentCode.substring(0, MAX_CODE_LENGTH) + '\n<!-- ... truncated for AI processing -->'
+            : currentCode;
+
           response = await supabase.functions.invoke('ai-code-assistant', {
             body: {
               messages: [{ role: 'user', content: input }],
               mode: 'code',
-              currentCode,
+              currentCode: truncatedCode,
               editMode: !!currentCode,
               systemType,
               templateName,

@@ -251,7 +251,7 @@ serve(async (req: Request) => {
       savePattern: z.boolean().optional(),
       generateImage: z.boolean().optional(),
       imagePlacement: z.string().max(40).optional(),
-      currentCode: z.string().max(50_000).optional(),
+      currentCode: z.string().max(200_000).optional(),
       editMode: z.boolean().optional(),
       debugMode: z.boolean().optional(),
       templateAction: z.string().max(50).optional(),
