@@ -257,7 +257,7 @@ serve(async (req: Request) => {
       templateAction: z.string().max(50).optional(),
       templateAnalysis: z.string().max(20_000).optional(),
       // System type for business context
-      systemType: z.string().max(50).optional(),
+      systemType: z.string().max(50).nullish(),
       // Template generation parameters (for template-json and template-html modes)
       variationSeed: z.string().max(30).optional(),
       templateName: z.string().max(100).optional(),
