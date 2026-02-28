@@ -2601,11 +2601,11 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     // Hybrid AI: try Vercel AI Gateway models first, then fall back to direct provider APIs
     // Models listed in order of preference (valid, existing model IDs)
     // navPageGen reduces maxTokens to 10000 for faster on-demand page generation
-    const pageTokens = navPageGen ? 10000 : 16000;
+    const pageTokens = navPageGen ? 10000 : 32000;
     const gatewayModels = LOVABLE_API_KEY ? [
-      { id: 'google/gemini-2.0-flash',       maxTokens: pageTokens,        label: 'Gemini 2.0 Flash' },
+      { id: 'google/gemini-2.5-flash',       maxTokens: pageTokens,        label: 'Gemini 2.5 Flash' },
       { id: 'google/gemini-2.5-pro',         maxTokens: pageTokens,        label: 'Gemini 2.5 Pro' },
-      { id: 'anthropic/claude-sonnet-4-5',   maxTokens: navPageGen ? 10000 : 32000, label: 'Claude Sonnet 4.6' },
+      { id: 'anthropic/claude-sonnet-4-5',   maxTokens: navPageGen ? 10000 : 32000, label: 'Claude Sonnet 4.5' },
       { id: 'openai/gpt-4o-mini',            maxTokens: pageTokens,        label: 'GPT-4o Mini' },
       { id: 'openai/gpt-4o',                 maxTokens: pageTokens,        label: 'GPT-4o' },
     ] : [];
