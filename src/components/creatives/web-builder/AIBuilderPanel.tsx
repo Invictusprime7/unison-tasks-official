@@ -158,11 +158,11 @@ const ThinkingStepItem: React.FC<{
   onToggle: () => void;
 }> = ({ step, isLast, onToggle }) => {
   const icons = {
-    analyzing: <Sparkles className="w-3 h-3 text-lime-400 animate-pulse" />,
-    planning: <FileCode className="w-3 h-3 text-cyan-400" />,
-    generating: <Code2 className="w-3 h-3 text-lime-400 animate-pulse" />,
-    validating: <CheckCircle2 className="w-3 h-3 text-cyan-400" />,
-    complete: <CheckCircle2 className="w-3 h-3 text-lime-400" />,
+    analyzing: <Sparkles className="w-3 h-3 text-blue-400 animate-pulse" />,
+    planning: <FileCode className="w-3 h-3 text-sky-400" />,
+    generating: <Code2 className="w-3 h-3 text-blue-400 animate-pulse" />,
+    validating: <CheckCircle2 className="w-3 h-3 text-sky-400" />,
+    complete: <CheckCircle2 className="w-3 h-3 text-blue-400" />,
     error: <XCircle className="w-3 h-3 text-red-400" />,
     reasoning: <Brain className="w-3 h-3 text-violet-400" />,
   };
@@ -170,24 +170,24 @@ const ThinkingStepItem: React.FC<{
   return (
     <div className="flex items-start gap-2 py-1">
       <div className="flex flex-col items-center">
-        <div className="w-5 h-5 rounded-full bg-lime-500/10 border border-lime-500/20 flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
           {icons[step.type]}
         </div>
-        {!isLast && <div className="w-px h-4 bg-lime-500/20" />}
+        {!isLast && <div className="w-px h-4 bg-blue-500/20" />}
       </div>
       <div className="flex-1 min-w-0">
         <button
           onClick={onToggle}
-          className="flex items-center gap-1 text-xs text-lime-400/70 hover:text-lime-400 transition-colors w-full text-left"
+          className="flex items-center gap-1 text-xs text-blue-400/70 hover:text-blue-400 transition-colors w-full text-left"
         >
           {step.details && (
             step.isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />
           )}
           <span className="truncate font-mono">{step.message}</span>
-          <span className="text-lime-400/30 text-[10px] ml-auto font-mono">{formatTimestamp(step.timestamp)}</span>
+          <span className="text-blue-400/30 text-[10px] ml-auto font-mono">{formatTimestamp(step.timestamp)}</span>
         </button>
         {step.isExpanded && step.details && (
-          <pre className="mt-1 p-2 bg-black/40 border border-lime-500/20 rounded text-[10px] text-lime-400/50 overflow-x-auto font-mono">
+          <pre className="mt-1 p-2 bg-black/40 border border-blue-500/20 rounded text-[10px] text-blue-400/50 overflow-x-auto font-mono">
             {step.details}
           </pre>
         )}
@@ -219,8 +219,8 @@ const MessageItem: React.FC<{
   if (message.role === 'user') {
     return (
       <div className="flex justify-end mb-3">
-        <div className="max-w-[85%] bg-cyan-500/20 border border-cyan-500/30 rounded-lg px-3 py-2">
-          <p className="text-sm text-cyan-100">{message.content}</p>
+      <div className="max-w-[85%] bg-sky-500/20 border border-sky-500/30 rounded-lg px-3 py-2">
+          <p className="text-sm text-sky-100">{message.content}</p>
         </div>
       </div>
     );
@@ -229,8 +229,8 @@ const MessageItem: React.FC<{
   if (message.role === 'system') {
     return (
       <div className="flex justify-center mb-3">
-        <div className="bg-lime-500/10 border border-lime-500/20 rounded-full px-3 py-1">
-          <p className="text-xs text-lime-400/70 font-mono">{message.content}</p>
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1">
+          <p className="text-xs text-blue-400/70 font-mono">{message.content}</p>
         </div>
       </div>
     );
@@ -268,14 +268,14 @@ const MessageItem: React.FC<{
         <div className="mb-2">
           <button
             onClick={() => setShowThinking(!showThinking)}
-            className="flex items-center gap-1 text-xs text-lime-400/50 hover:text-lime-400/70 transition-colors mb-1 font-mono"
+            className="flex items-center gap-1 text-xs text-blue-400/50 hover:text-blue-400/70 transition-colors mb-1 font-mono"
           >
             {showThinking ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            <Sparkles className="w-3 h-3 text-lime-400" />
+            <Sparkles className="w-3 h-3 text-blue-400" />
             <span>AI Thinking ({thinkingSteps.length} steps)</span>
           </button>
           {showThinking && (
-            <div className="ml-2 pl-2 border-l border-lime-500/20">
+            <div className="ml-2 pl-2 border-l border-blue-500/20">
               {thinkingSteps.map((step, i) => (
                 <ThinkingStepItem
                   key={step.id}
@@ -290,23 +290,23 @@ const MessageItem: React.FC<{
       )}
 
       {/* Main message content */}
-      <div className="bg-black/40 border border-lime-500/20 rounded-lg px-3 py-2">
+      <div className="bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2">
         {message.isStreaming && (
           <div className="flex items-center gap-2 mb-2">
-            <Loader2 className="w-3 h-3 animate-spin text-lime-400" />
-            <span className="text-xs text-lime-400/50 font-mono">Generating...</span>
+            <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+            <span className="text-xs text-blue-400/50 font-mono">Generating...</span>
           </div>
         )}
-        <p className="text-sm text-lime-100/90 whitespace-pre-wrap">{message.content}</p>
+        <p className="text-sm text-blue-100/90 whitespace-pre-wrap">{message.content}</p>
 
         {/* View Edits Button */}
         {message.edits && message.edits.length > 0 && onViewEdits && (
-          <div className="mt-3 pt-2 border-t border-lime-500/20">
+          <div className="mt-3 pt-2 border-t border-blue-500/20">
             <Button
               size="sm"
               variant="outline"
               onClick={() => onViewEdits(message.edits!)}
-              className="gap-2 bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_10px_rgba(0,255,255,0.3)]"
+              className="gap-2 bg-sky-500/10 border-sky-500/30 text-sky-400 hover:bg-sky-500/20 hover:shadow-[0_0_10px_rgba(56,189,248,0.3)]"
             >
               <Eye className="w-3 h-3" />
               View Edits ({message.edits.length} file{message.edits.length > 1 ? 's' : ''})
@@ -314,18 +314,18 @@ const MessageItem: React.FC<{
             </Button>
             <div className="mt-2 space-y-1">
               {message.edits.map((edit, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs text-lime-400/50 font-mono">
+                <div key={i} className="flex items-center gap-2 text-xs text-blue-400/50 font-mono">
                   <Badge variant="outline" className={cn(
                     "text-[10px] px-1",
-                    edit.type === 'create' && "border-lime-500/50 text-lime-400",
-                    edit.type === 'modify' && "border-cyan-500/50 text-cyan-400",
+                    edit.type === 'create' && "border-blue-500/50 text-blue-400",
+                    edit.type === 'modify' && "border-sky-500/50 text-sky-400",
                     edit.type === 'delete' && "border-red-500/50 text-red-400"
                   )}>
                     {edit.type}
                   </Badge>
                   <span className="truncate">{edit.path}</span>
                   {edit.linesChanged && (
-                    <span className="text-lime-400/30">+{edit.linesChanged} lines</span>
+                    <span className="text-blue-400/30">+{edit.linesChanged} lines</span>
                   )}
                 </div>
               ))}
@@ -339,7 +339,7 @@ const MessageItem: React.FC<{
             <Button
               size="sm"
               onClick={() => onApplyCode(message.code!)}
-              className="gap-2 bg-lime-500 hover:bg-lime-400 text-black font-semibold"
+              className="gap-2 bg-blue-500 hover:bg-blue-400 text-white font-semibold"
             >
               <Play className="w-3 h-3" />
               Apply Code
@@ -396,7 +396,7 @@ const DebugPanel: React.FC<{
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Debug Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-fuchsia-500/20 bg-[#0d0d18]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-fuchsia-500/20 bg-[#0a0f1e]">
         <div className="flex items-center gap-2">
           <Bug className="w-4 h-4 text-fuchsia-400 drop-shadow-[0_0_5px_rgba(255,0,255,0.5)]" />
           <span className="text-sm font-bold text-fuchsia-400 font-mono">
@@ -421,9 +421,9 @@ const DebugPanel: React.FC<{
         <div className="p-3 space-y-2">
           {errors.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircle2 className="w-8 h-8 text-lime-500/50 mx-auto mb-2 drop-shadow-[0_0_10px_rgba(0,255,0,0.3)]" />
-              <p className="text-sm text-lime-400/60 font-mono">No errors detected</p>
-              <p className="text-xs text-lime-400/30 mt-1 font-mono">Errors from the preview will appear here</p>
+              <CheckCircle2 className="w-8 h-8 text-blue-500/50 mx-auto mb-2 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]" />
+              <p className="text-sm text-blue-400/60 font-mono">No errors detected</p>
+              <p className="text-xs text-blue-400/30 mt-1 font-mono">Errors from the preview will appear here</p>
             </div>
           ) : (
             errors.map((error, i) => (
@@ -488,10 +488,10 @@ const DebugPanel: React.FC<{
       </ScrollArea>
 
       {/* Supabase CLI Access Info */}
-      <div className="px-3 py-2 border-t border-lime-500/20 bg-[#0d0d18]">
-        <div className="flex items-center gap-2 text-xs text-lime-400/40 font-mono">
+      <div className="px-3 py-2 border-t border-blue-500/20 bg-[#0a0f1e]">
+        <div className="flex items-center gap-2 text-xs text-blue-400/40 font-mono">
           <Database className="w-3 h-3" />
-          <span>Supabase CLI access enabled</span>
+          <span>Backend CLI access enabled</span>
         </div>
       </div>
     </div>
@@ -1051,20 +1051,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
   return (
     <div className={cn(
-      "flex flex-col h-full bg-[#0a0a12] border-r border-lime-500/20",
-      "shadow-[inset_0_0_30px_rgba(0,255,0,0.03)]",
+      "flex flex-col h-full bg-[#060a14] border-r border-blue-500/20",
+      "shadow-[inset_0_0_30px_rgba(59,130,246,0.03)]",
       className
     )}>
-      {/* Retro Header with Lime Glow */}
-      <div className="flex items-center gap-2 px-3 py-3 border-b border-lime-500/30 bg-[#0d0d18]">
-        <div className="p-1.5 rounded-lg bg-lime-500 shadow-[0_0_15px_rgba(0,255,0,0.5)]">
-          <Sparkles className="w-4 h-4 text-black" />
+      {/* Retro Header with Blue Glow */}
+      <div className="flex items-center gap-2 px-3 py-3 border-b border-blue-500/30 bg-[#0a0f1e]">
+        <div className="p-1.5 rounded-lg bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+          <Sparkles className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-lime-400 drop-shadow-[0_0_5px_rgba(0,255,0,0.5)]">
+          <h2 className="text-sm font-bold text-blue-400 drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]">
             🤖 AI Builder
           </h2>
-          <p className="text-[10px] text-lime-300/50 truncate font-mono">
+          <p className="text-[10px] text-blue-300/50 truncate font-mono">
             {templateName || 'New Project'} • {systemType || 'General'}
           </p>
         </div>
@@ -1073,7 +1073,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-7 w-7 text-lime-400/50 hover:text-lime-400 hover:bg-lime-500/10 rounded transition-all duration-200"
+            className="h-7 w-7 text-blue-400/50 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-all duration-200"
             title="Close AI Panel"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -1083,17 +1083,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
       {/* Retro Tabs with Glow Effects */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'code' | 'debug')} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="w-full grid grid-cols-2 rounded-none h-10 bg-[#0a0a14] border-b border-lime-500/20">
+        <TabsList className="w-full grid grid-cols-2 rounded-none h-10 bg-[#070b16] border-b border-blue-500/20">
           <TabsTrigger
             value="code"
-            className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-lime-400 data-[state=active]:text-lime-400 data-[state=active]:bg-lime-500/10 data-[state=active]:shadow-[0_0_10px_rgba(0,255,0,0.3)] text-lime-400/50 hover:text-lime-400/70 transition-all duration-200"
+            className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-400 data-[state=active]:text-blue-400 data-[state=active]:bg-blue-500/10 data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.3)] text-blue-400/50 hover:text-blue-400/70 transition-all duration-200"
           >
             <Code2 className="w-3.5 h-3.5" />
             Code
           </TabsTrigger>
           <TabsTrigger
             value="debug"
-            className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-fuchsia-400 data-[state=active]:text-fuchsia-400 data-[state=active]:bg-fuchsia-500/10 data-[state=active]:shadow-[0_0_10px_rgba(255,0,255,0.3)] text-fuchsia-400/50 hover:text-fuchsia-400/70 transition-all duration-200"
+            className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-amber-400 data-[state=active]:text-amber-400 data-[state=active]:bg-amber-500/10 data-[state=active]:shadow-[0_0_10px_rgba(245,158,11,0.3)] text-amber-400/50 hover:text-amber-400/70 transition-all duration-200"
           >
             <Bug className="w-3.5 h-3.5" />
             Debug
@@ -1120,8 +1120,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 />
               ))}
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                <div className="flex items-center gap-2 text-lime-400/50 text-sm py-2 font-mono">
-                  <Loader2 className="w-4 h-4 animate-spin text-lime-400" />
+                <div className="flex items-center gap-2 text-blue-400/50 text-sm py-2 font-mono">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
                   <span>▸ Processing...</span>
                 </div>
               )}
@@ -1131,13 +1131,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           {/* Quick Prompts with Retro Style */}
           {messages.length <= 1 && (
             <div className="flex-shrink-0 px-3 pb-2">
-              <p className="text-[10px] text-lime-400/40 mb-1.5 font-mono">▸ Quick start:</p>
+              <p className="text-[10px] text-blue-400/40 mb-1.5 font-mono">▸ Quick start:</p>
               <div className="flex flex-wrap gap-1">
                 {quickPrompts.map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => setInput(prompt)}
-                    className="text-[10px] px-2 py-1 bg-lime-500/10 hover:bg-lime-500/20 rounded border border-lime-500/20 hover:border-lime-500/40 text-lime-400/70 hover:text-lime-400 transition-all duration-200 hover:shadow-[0_0_8px_rgba(0,255,0,0.2)]"
+                    className="text-[10px] px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/20 hover:border-blue-500/40 text-blue-400/70 hover:text-blue-400 transition-all duration-200 hover:shadow-[0_0_8px_rgba(59,130,246,0.2)]"
                   >
                     {prompt}
                   </button>
@@ -1147,7 +1147,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           )}
 
           {/* Input with Retro Styling + File Drop */}
-          <div className="flex-shrink-0 mt-auto p-3 border-t border-lime-500/20 bg-[#0d0d18]">
+          <div className="flex-shrink-0 mt-auto p-3 border-t border-blue-500/20 bg-[#0a0f1e]">
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -1164,7 +1164,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 {droppedFiles.map((f) => (
                   <div
                     key={f.id}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-lime-500/15 border border-lime-500/30 rounded-full text-[10px] text-lime-300 max-w-[140px]"
+                    className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/15 border border-blue-500/30 rounded-full text-[10px] text-blue-300 max-w-[140px]"
                     title={f.name}
                   >
                     {f.type === 'image' ? (
@@ -1179,7 +1179,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                     <span className="truncate">{f.name}</span>
                     <button
                       onClick={() => removeFile(f.id)}
-                      className="ml-0.5 text-lime-400/50 hover:text-red-400 transition-colors flex-shrink-0"
+                      className="ml-0.5 text-blue-400/50 hover:text-red-400 transition-colors flex-shrink-0"
                     >
                       <X className="w-2.5 h-2.5" />
                     </button>
@@ -1192,17 +1192,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             <div
               className={cn(
                 'relative rounded-md transition-all duration-200',
-                isDragging && 'ring-2 ring-lime-400 ring-offset-1 ring-offset-[#0d0d18]'
+                isDragging && 'ring-2 ring-blue-400 ring-offset-1 ring-offset-[#0a0f1e]'
               )}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
               {isDragging && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-lime-500/20 border-2 border-dashed border-lime-400 pointer-events-none">
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-blue-500/20 border-2 border-dashed border-blue-400 pointer-events-none">
                   <div className="flex flex-col items-center gap-1">
-                    <Paperclip className="w-5 h-5 text-lime-400" />
-                    <span className="text-[11px] text-lime-300 font-mono">Drop files here</span>
+                    <Paperclip className="w-5 h-5 text-blue-400" />
+                    <span className="text-[11px] text-blue-300 font-mono">Drop files here</span>
                   </div>
                 </div>
               )}
@@ -1216,7 +1216,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   }
                 }}
                 placeholder={droppedFiles.length > 0 ? 'Add instructions for the attached files (optional)...' : 'Describe what you want to build, or drop files here...'}
-                className="min-h-[60px] max-h-[120px] bg-black/40 border-lime-500/30 text-sm resize-none text-lime-100 placeholder:text-lime-400/30 focus:border-lime-400 focus:ring-lime-400/20"
+                className="min-h-[60px] max-h-[120px] bg-black/40 border-blue-500/30 text-sm resize-none text-blue-100 placeholder:text-blue-400/30 focus:border-blue-400 focus:ring-blue-400/20"
                 disabled={isLoading}
               />
             </div>
@@ -1227,20 +1227,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading || droppedFiles.length >= 5}
-                  className="flex items-center gap-1 text-[10px] text-lime-400/50 hover:text-lime-400 disabled:opacity-30 transition-colors"
+                  className="flex items-center gap-1 text-[10px] text-blue-400/50 hover:text-blue-400 disabled:opacity-30 transition-colors"
                   title="Attach files (images, code, text)"
                 >
                   <Paperclip className="w-3 h-3" />
                   {droppedFiles.length > 0 ? `${droppedFiles.length}/5` : 'Attach'}
                 </button>
-                <span className="text-[10px] text-lime-400/20 font-mono">|</span>
-                <span className="text-[10px] text-lime-400/30 font-mono">Enter → send</span>
+                <span className="text-[10px] text-blue-400/20 font-mono">|</span>
+                <span className="text-[10px] text-blue-400/30 font-mono">Enter → send</span>
               </div>
               <Button
                 size="sm"
                 onClick={handleSend}
                 disabled={(!input.trim() && droppedFiles.length === 0) || isLoading}
-                className="gap-1.5 bg-lime-500 hover:bg-lime-400 text-black font-bold shadow-[0_0_15px_rgba(0,255,0,0.4)] hover:shadow-[0_0_20px_rgba(0,255,0,0.6)] transition-all duration-200"
+                className="gap-1.5 bg-blue-500 hover:bg-blue-400 text-white font-bold shadow-[0_0_15px_rgba(59,130,246,0.4)] hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all duration-200"
               >
                 {isLoading ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
