@@ -694,7 +694,7 @@ function injectIntentListener(html: string): string {
       
       const nextNav = pendingNavigationQueue.shift();
       if (nextNav) {
-        executeNavIntentInternal(nextNav.intent, nextNav.target);
+        executeNavIntentInternal(nextNav.intent, nextNav.target, nextNav.label);
       }
     }
     
@@ -714,17 +714,17 @@ function injectIntentListener(html: string): string {
       });
     });
 
-    function executeNavIntent(intent, target){
+    function executeNavIntent(intent, target, label){
       // Queue navigation if another is in progress
       if (isLoadingPage) {
         console.log('[Intent] Navigation queued:', target);
-        pendingNavigationQueue.push({ intent, target });
+        pendingNavigationQueue.push({ intent, target, label: label });
         return;
       }
-      executeNavIntentInternal(intent, target);
+      executeNavIntentInternal(intent, target, label);
     }
     
-    function executeNavIntentInternal(intent, target){
+    function executeNavIntentInternal(intent, target, label){
       console.log('[Intent] Navigation:', intent, target);
       
       // Handle anchor links (scroll within page)
@@ -754,9 +754,9 @@ function injectIntentListener(html: string): string {
         const pagePath = target || '';
         const pageName = pagePath.replace(/^\\//, '').replace(/\\.html$/, '').replace(/\\/$/, '') || 'index';
         
-        // Get nav label from clicked element
-        const clickedEl = document.activeElement || document.querySelector('[data-ut-path="' + target + '"]');
-        const navLabel = clickedEl ? (clickedEl.textContent || '').trim() : pageName;
+        // Get nav label - prefer label passed from click handler, then query the element, fallback to pageName
+        const labelEl = document.querySelector('[data-ut-path="' + target + '"]') || document.querySelector('[href="' + target + '"]');
+        const navLabel = (label && label.length > 0) ? label : ((labelEl ? (labelEl.textContent || '').trim() : '') || pageName);
         
         // CHECK CACHE FIRST - instant navigation if page already exists
         const cachedPage = dynamicPageCache[pageName] || dynamicPageCache[pagePath] || dynamicPageCache['/' + pageName + '.html'];
@@ -773,7 +773,7 @@ function injectIntentListener(html: string): string {
         // Create loading overlay
         const loadingOverlay = document.createElement('div');
         loadingOverlay.id = 'nav-loading-overlay';
-        loadingOverlay.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:white;padding:24px 48px;border-radius:12px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);"><div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div><div style="font-weight:600;color:#111;">Generating ' + navLabel + ' page...</div><div style="font-size:12px;color:#666;margin-top:4px;">AI is creating your custom page</div></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+        loadingOverlay.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:white;padding:24px 48px;border-radius:12px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);"><div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div><div id="nav-gen-msg" style="font-weight:600;color:#111;">Generating ' + navLabel + ' page...</div><div id="nav-gen-sub" style="font-size:12px;color:#666;margin-top:4px;">AI is creating your custom page</div></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
         document.body.appendChild(loadingOverlay);
         
         // Request dynamic page generation from parent
@@ -831,7 +831,17 @@ function injectIntentListener(html: string): string {
           pageContext: intent
         }, '*');
         
-        // Timeout fallback with better cleanup
+        // Heartbeat at 30s — update overlay text instead of failing
+        setTimeout(function(){
+          if(isLoadingPage && currentNavRequestId === requestId){
+            var msgEl = document.getElementById('nav-gen-msg');
+            if(msgEl) msgEl.textContent = 'Still generating\u2026 this may take a moment';
+            var subEl = document.getElementById('nav-gen-sub');
+            if(subEl) subEl.textContent = 'Complex pages can take up to 90 seconds';
+          }
+        }, 30000);
+        
+        // Hard timeout at 90s — AI generation can take up to 90 seconds
         setTimeout(function(){
           if(isLoadingPage && currentNavRequestId === requestId){
             window.removeEventListener('message', handlePageReady);
@@ -839,7 +849,7 @@ function injectIntentListener(html: string): string {
             currentNavRequestId = null;
             const overlay = document.getElementById('nav-loading-overlay');
             if(overlay) overlay.remove();
-            console.error('[Intent] Page generation timed out');
+            console.error('[Intent] Page generation timed out after 90 seconds');
             
             // Show timeout message
             const timeoutDiv = document.createElement('div');
@@ -851,7 +861,7 @@ function injectIntentListener(html: string): string {
             // Process any queued navigation
             processNavigationQueue();
           }
-        }, 30000);
+        }, 90000);
         
         return;
       }
@@ -1038,7 +1048,7 @@ function injectIntentListener(html: string): string {
       const navIntent = detectNavIntent(el);
       if(navIntent){
         e.preventDefault();e.stopPropagation();
-        executeNavIntent(navIntent.intent, navIntent.target);
+        executeNavIntent(navIntent.intent, navIntent.target, (el.textContent || el.getAttribute('aria-label') || '').trim());
         return;
       }
       
@@ -1518,11 +1528,13 @@ function wrapHtmlSnippet(html: string): string {
             // Show loading
             const loadingOverlay=document.createElement('div');
             loadingOverlay.id='nav-loading-overlay';
-            loadingOverlay.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:white;padding:24px 48px;border-radius:12px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);"><div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div><div style="font-weight:600;color:#111;">Generating '+navLabel+' page...</div></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+            loadingOverlay.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:white;padding:24px 48px;border-radius:12px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);"><div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div><div id="nav-gen-msg" style="font-weight:600;color:#111;">Generating '+navLabel+' page...</div><div id="nav-gen-sub" style="font-size:12px;color:#666;margin-top:4px;">AI is creating your custom page</div></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
             document.body.appendChild(loadingOverlay);
+            var navDone=false;
             window.parent.postMessage({type:'NAV_PAGE_GENERATE',requestId:requestId,pageName:pageName,navLabel:navLabel},'*');
             window.addEventListener('message',function handler(evt){
               if(evt.data&&evt.data.type==='NAV_PAGE_READY'&&evt.data.requestId===requestId){
+                navDone=true;
                 window.removeEventListener('message',handler);
                 const overlay=document.getElementById('nav-loading-overlay');if(overlay)overlay.remove();
                 if(evt.data.pageContent){
@@ -1540,6 +1552,7 @@ function wrapHtmlSnippet(html: string): string {
                 }
               }
               if(evt.data&&evt.data.type==='NAV_PAGE_ERROR'&&evt.data.requestId===requestId){
+                navDone=true;
                 window.removeEventListener('message',handler);
                 const overlay=document.getElementById('nav-loading-overlay');if(overlay)overlay.remove();
                 const errorDiv=document.createElement('div');
@@ -1549,6 +1562,10 @@ function wrapHtmlSnippet(html: string): string {
                 setTimeout(function(){var el=document.getElementById('nav-error-toast');if(el)el.remove();},4000);
               }
             });
+            // 30s heartbeat — update message instead of failing
+            setTimeout(function(){if(!navDone){var m=document.getElementById('nav-gen-msg');if(m)m.textContent='Still generating\u2026 this may take a moment';var s=document.getElementById('nav-gen-sub');if(s)s.textContent='Complex pages can take up to 90 seconds';}},30000);
+            // 90s hard timeout
+            setTimeout(function(){if(!navDone){const overlay=document.getElementById('nav-loading-overlay');if(overlay)overlay.remove();const td=document.createElement('div');td.innerHTML='<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#f59e0b;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);">Page generation timed out. Please try again.</div>';document.body.appendChild(td);setTimeout(function(){document.body.removeChild(td);},4000);}},90000);
             return;
           }
         }

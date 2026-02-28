@@ -173,7 +173,7 @@ export const integrationsList: IntegrationItem[] = [
     name: 'Anthropic',
     icon: Bot,
     color: 'from-amber-500 to-orange-600',
-    description: 'Claude AI assistant integration',
+    description: 'Claude Sonnet 4.6 — extended thinking & advanced reasoning',
     apiKeyPlaceholder: 'sk-ant-...',
     docsUrl: 'https://docs.anthropic.com'
   },

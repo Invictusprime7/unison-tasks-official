@@ -37,14 +37,13 @@ export function AIServiceDiagnostics() {
     setTestResult('Testing...');
     
     try {
-      const { data, error } = await supabase.functions.invoke('fullstack-ai', {
+      const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
         body: {
           messages: [
             { role: 'user', content: 'Generate a simple HTML button with the text "Hello World"' }
           ],
-          mode: 'html',
-          model: 'gpt-4o-mini',
-          maxTokens: 500
+          mode: 'code',
+          editMode: false,
         }
       });
 

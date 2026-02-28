@@ -91,10 +91,11 @@ export const PLATFORM_SERVICES: PlatformService[] = [
   },
   {
     id: 'anthropic',
-    name: 'Claude AI',
-    description: 'Advanced AI assistant for complex reasoning and content',
+    name: 'Claude AI (Sonnet 4.6)',
+    description: 'Claude Sonnet 4.6 — extended thinking, 200K context, advanced code generation',
     category: 'ai',
     provider: 'Anthropic',
+
     configPath: '/cloud?tab=integrations',
     docsUrl: 'https://docs.anthropic.com',
     requiredEnvVars: ['ANTHROPIC_API_KEY'],

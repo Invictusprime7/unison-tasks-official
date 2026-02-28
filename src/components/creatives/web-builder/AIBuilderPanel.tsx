@@ -36,11 +36,19 @@ import {
   Copy,
   Play,
   ExternalLink,
+  Brain,
+  Zap,
+  Paperclip,
+  ImageIcon,
+  FileText,
+  FileCode2,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
+import type { SystemsBuildContext } from '@/types/systemsBuildContext';
 
 // ============================================================================
 // Types
@@ -48,7 +56,7 @@ import type { BusinessSystemType } from '@/data/templates/types';
 
 interface ThinkingStep {
   id: string;
-  type: 'analyzing' | 'planning' | 'generating' | 'validating' | 'complete' | 'error';
+  type: 'analyzing' | 'planning' | 'generating' | 'validating' | 'complete' | 'error' | 'reasoning';
   message: string;
   timestamp: Date;
   details?: string;
@@ -61,6 +69,8 @@ interface Message {
   content: string;
   timestamp: Date;
   thinking?: ThinkingStep[];
+  /** Raw extended-thinking text returned by Claude Sonnet 4.6 */
+  claudeReasoning?: string;
   code?: string;
   edits?: VFSEdit[];
   error?: IframeError;
@@ -95,6 +105,35 @@ interface AIBuilderPanelProps {
   onClearErrors?: () => void;
   onClose?: () => void;
   className?: string;
+  /** User's design profile for personalised AI generation */
+  userDesignProfile?: {
+    projectCount?: number;
+    dominantStyle?: 'dark' | 'light' | 'colorful' | 'minimal' | 'mixed';
+    industryHints?: string[];
+  } | null;
+  /** Structural summary of the current page (sections, elements) */
+  pageStructureContext?: string | null;
+  /** Current backend / Supabase integration state */
+  backendStateContext?: string | null;
+  /** Real business data (products, services, hours, etc.) */
+  businessDataContext?: string | null;
+  /** Structured business blueprint from systems-build (brand, palette, intents, sections) */
+  systemsBuildContext?: SystemsBuildContext | null;
+}
+
+// ============================================================================
+// Dropped File Type
+// ============================================================================
+
+interface DroppedFile {
+  id: string;
+  name: string;
+  type: 'image' | 'text' | 'code' | 'other';
+  /** Data URL for images, raw text for text/code */
+  preview?: string;
+  /** Full text content for text/code files */
+  content?: string;
+  size: number;
 }
 
 // ============================================================================
@@ -125,6 +164,7 @@ const ThinkingStepItem: React.FC<{
     validating: <CheckCircle2 className="w-3 h-3 text-cyan-400" />,
     complete: <CheckCircle2 className="w-3 h-3 text-lime-400" />,
     error: <XCircle className="w-3 h-3 text-red-400" />,
+    reasoning: <Brain className="w-3 h-3 text-violet-400" />,
   };
 
   return (
@@ -168,6 +208,7 @@ const MessageItem: React.FC<{
 }> = ({ message, onViewEdits, onApplyCode, onRetryError }) => {
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>(message.thinking || []);
   const [showThinking, setShowThinking] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(false);
 
   const toggleStep = (stepId: string) => {
     setThinkingSteps(prev =>
@@ -198,6 +239,30 @@ const MessageItem: React.FC<{
   // Assistant message with cascade thinking
   return (
     <div className="mb-4">
+      {/* AI Extended Reasoning — shown for all models when thinking tags are present */}
+      {message.claudeReasoning && (
+        <div className="mb-2 rounded-lg border border-violet-500/30 bg-violet-950/30 overflow-hidden">
+          <button
+            onClick={() => setShowReasoning(!showReasoning)}
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-violet-300/80 hover:text-violet-200 transition-colors font-mono"
+          >
+            {showReasoning ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            <Brain className="w-3 h-3 text-violet-400" />
+            <Zap className="w-3 h-3 text-amber-400" />
+            <span className="font-semibold">AI Reasoning</span>
+            <span className="ml-auto text-violet-400/40 text-[10px]">{message.claudeReasoning.length.toLocaleString()} chars</span>
+          </button>
+          {showReasoning && (
+            <div className="px-3 pb-3">
+              <div className="text-[10px] text-violet-300/40 font-mono mb-1 uppercase tracking-widest">Extended Reasoning · Internal Thought Process</div>
+              <pre className="text-[11px] text-violet-100/70 whitespace-pre-wrap font-mono leading-relaxed max-h-64 overflow-y-auto rounded bg-black/30 p-2 border border-violet-500/10">
+                {message.claudeReasoning}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Thinking Process (collapsible cascade) */}
       {thinkingSteps.length > 0 && (
         <div className="mb-2">
@@ -448,13 +513,89 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   onClearErrors,
   onClose,
   className,
+  userDesignProfile,
+  pageStructureContext,
+  backendStateContext,
+  businessDataContext,
+  systemsBuildContext,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
   const [activeTab, setActiveTab] = useState<'code' | 'debug'>('code');
+  const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── File processing helpers ───────────────────────────────────────────────
+  const classifyFile = (file: File): DroppedFile['type'] => {
+    if (file.type.startsWith('image/')) return 'image';
+    const codeExts = ['.ts', '.tsx', '.js', '.jsx', '.css', '.html', '.json', '.md', '.py', '.sql'];
+    if (codeExts.some(ext => file.name.endsWith(ext))) return 'code';
+    if (file.type.startsWith('text/')) return 'text';
+    return 'other';
+  };
+
+  const processFile = useCallback((file: File): Promise<DroppedFile> => {
+    return new Promise((resolve) => {
+      const id = generateId();
+      const fileType = classifyFile(file);
+      if (fileType === 'image') {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ id, name: file.name, type: 'image', preview: reader.result as string, size: file.size });
+        reader.onerror = () => resolve({ id, name: file.name, type: 'image', size: file.size });
+        reader.readAsDataURL(file);
+      } else if (fileType === 'text' || fileType === 'code') {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const text = reader.result as string;
+          resolve({ id, name: file.name, type: fileType, content: text, preview: text.slice(0, 500), size: file.size });
+        };
+        reader.onerror = () => resolve({ id, name: file.name, type: fileType, size: file.size });
+        reader.readAsText(file);
+      } else {
+        resolve({ id, name: file.name, type: 'other', size: file.size });
+      }
+    });
+  }, []);
+
+  const addFiles = useCallback(async (files: FileList | File[]) => {
+    const arr = Array.from(files).slice(0, 5); // max 5 files
+    const processed = await Promise.all(arr.map(processFile));
+    setDroppedFiles(prev => {
+      const existing = new Set(prev.map(f => f.name));
+      const newFiles = processed.filter(f => !existing.has(f.name));
+      return [...prev, ...newFiles].slice(0, 5);
+    });
+  }, [processFile]);
+
+  const removeFile = useCallback((id: string) => {
+    setDroppedFiles(prev => prev.filter(f => f.id !== id));
+  }, []);
+
+  // Drag-and-drop handlers for the input zone
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files?.length) {
+      await addFiles(e.dataTransfer.files);
+    }
+  }, [addFiles]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -514,18 +655,45 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
   // Send message to AI
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && droppedFiles.length === 0) || isLoading) return;
+
+    // Build file context suffix
+    const fileContext = droppedFiles.length > 0 ? (() => {
+      const parts: string[] = [];
+      for (const f of droppedFiles) {
+        if (f.type === 'image') {
+          parts.push(`\n\n[Attached image: ${f.name} — apply relevant visuals/style from this image to the design]`);
+        } else if (f.content) {
+          parts.push(`\n\n[Attached file: ${f.name}]\n\`\`\`\n${f.content.slice(0, 4000)}${f.content.length > 4000 ? '\n// ...truncated...' : ''}\n\`\`\``);
+        }
+      }
+      return parts.join('');
+    })() : '';
+
+    // Build attachments for the edge function
+    const attachments = droppedFiles
+      .filter(f => f.type === 'image' && f.preview)
+      .map(f => ({ name: f.name, type: 'image', data: f.preview! }));
+
+    const userContent = input.trim() || `Analyse the attached file${droppedFiles.length > 1 ? 's' : ''} and incorporate them into the design.`;
+    const displayContent = userContent + (droppedFiles.length > 0 ? `\n📎 ${droppedFiles.length} file${droppedFiles.length > 1 ? 's' : ''} attached` : '');
 
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
-      content: input.trim(),
+      content: displayContent,
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setDroppedFiles([]);
     setIsLoading(true);
+
+    // Keep fileContext & attachments in closure for the rest of handleSend
+    const _fileContext = fileContext;
+    const _attachments = attachments;
+    const _userContent = userContent;
 
     try {
       // Simulate thinking process
@@ -543,13 +711,26 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       }]);
 
       // Detect whether this is a targeted (surgical) edit or a full generation
-      const rawInput = input.trim();
+      const rawInput = _userContent; // input is already cleared; use the captured value
       const lowerInput = rawInput.toLowerCase();
       const hasSurgicalKeyword = !!(
         lowerInput.match(/\b(full control|full reign|revamp|overhaul|transform|reimagine|build|create|generate|make)\b.*\b(landing page|page|website|store)\b/) === null &&
         (lowerInput.match(/\b(change|modify|update|edit|adjust|tweak|fix|add|insert|include|remove|delete|hide|replace|restyle|redesign|change color|change style)\b/))
       );
       const isSurgicalEdit = hasSurgicalKeyword && !!currentCode;
+
+      // Build rich context block for full-generation requests
+      const contextLines: string[] = [];
+      if (systemType) contextLines.push(`Business type: ${systemType}`);
+      if (templateName) contextLines.push(`Template: ${templateName}`);
+      if (userDesignProfile) {
+        contextLines.push(`Design style: ${userDesignProfile.dominantStyle || 'mixed'}`);
+        if (userDesignProfile.industryHints?.length) contextLines.push(`Industry: ${userDesignProfile.industryHints.join(', ')}`);
+      }
+      if (businessDataContext) contextLines.push(`\nBusiness data:\n${businessDataContext.slice(0, 800)}`);
+      if (pageStructureContext) contextLines.push(`\nPage structure:\n${pageStructureContext.slice(0, 600)}`);
+      if (backendStateContext) contextLines.push(`\nBackend state:\n${backendStateContext.slice(0, 400)}`);
+      const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
       // For surgical edits, inject a strict prompt guard so the AI returns only the snippet
       const promptForAI = isSurgicalEdit
@@ -561,7 +742,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             currentCode && currentCode.length > 5000 ? currentCode.slice(0, 5000) + '\n<!-- ...truncated... -->' : (currentCode || ''),
             '```',
             '',
-            `User Request: ${rawInput}`,
+            `User Request: ${_userContent}${_fileContext}`,
             '',
             '⚠️ CRITICAL SURGICAL OUTPUT RULES:',
             '1. Return ONLY the NEW or MODIFIED HTML snippet — NEVER the full page',
@@ -571,7 +752,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             '5. DO NOT output <!DOCTYPE html>, <html>, <head>, or <body> wrappers',
             '6. No explanations — raw HTML snippet only',
           ].join('\n')
-        : rawInput;
+        : `${_userContent}${_fileContext}${richContext}`;
 
       // Detect templateAction for the backend
       const detectTemplateAction = (msg: string): string | undefined => {
@@ -622,6 +803,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               systemType,
               templateName,
               templateAction,
+              userDesignProfile: userDesignProfile ?? undefined,
+              systemsBuildContext: systemsBuildContext ?? undefined,
+              attachments: _attachments.length > 0 ? _attachments : undefined,
             },
           });
           
@@ -656,6 +840,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         throw lastError || new Error('AI service failed after retries');
       }
 
+      // Extract AI reasoning (works for all models: thinking-tag extraction or native Anthropic blocks)
+      const aiReasoning: string | undefined = response.data?.thinking || undefined;
+
       // The edge function returns { content, generatedImage?, imagePlacement? }
       const aiContent = response.data?.content || 'I processed your request but have no specific output to show.';
       
@@ -682,13 +869,24 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         });
       }
 
-      // Add final thinking step
+      // Add final thinking step — include a reasoning summary badge if AI thinking was returned
       thinkingSteps.push({
         id: generateId(),
-        type: 'complete',
-        message: 'Generation complete',
+        type: aiReasoning ? 'reasoning' : 'complete',
+        message: aiReasoning
+          ? `Extended reasoning complete (${(aiReasoning.length / 1000).toFixed(1)}k chars)`
+          : 'Generation complete',
         timestamp: new Date(),
+        details: aiReasoning ? aiReasoning.slice(0, 500) + (aiReasoning.length > 500 ? '…' : '') : undefined,
       });
+      if (aiReasoning) {
+        thinkingSteps.push({
+          id: generateId(),
+          type: 'complete',
+          message: 'Response generated',
+          timestamp: new Date(),
+        });
+      }
 
       // Update message with final content
       setMessages(prev => prev.map(m =>
@@ -697,6 +895,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               ...m,
               content: aiContent,
               thinking: thinkingSteps,
+              claudeReasoning: aiReasoning,
               code: generatedCode,
               edits: edits.length > 0 ? edits : undefined,
               isStreaming: false,
@@ -789,6 +988,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           editMode: true,
           systemType,
           templateName,
+          systemsBuildContext: systemsBuildContext ?? undefined,
         },
       });
 
@@ -946,9 +1146,66 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             </div>
           )}
 
-          {/* Input with Retro Styling */}
+          {/* Input with Retro Styling + File Drop */}
           <div className="flex-shrink-0 mt-auto p-3 border-t border-lime-500/20 bg-[#0d0d18]">
-            <div className="flex gap-2">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.txt,.md,.ts,.tsx,.js,.jsx,.css,.html,.json,.sql,.py"
+              className="hidden"
+              onChange={async (e) => { if (e.target.files?.length) { await addFiles(e.target.files); e.target.value = ''; } }}
+            />
+
+            {/* Attached file chips */}
+            {droppedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {droppedFiles.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-lime-500/15 border border-lime-500/30 rounded-full text-[10px] text-lime-300 max-w-[140px]"
+                    title={f.name}
+                  >
+                    {f.type === 'image' ? (
+                      f.preview
+                        ? <img src={f.preview} alt={f.name} className="w-3.5 h-3.5 rounded object-cover flex-shrink-0" />
+                        : <ImageIcon className="w-3 h-3 flex-shrink-0" />
+                    ) : f.type === 'code' ? (
+                      <FileCode2 className="w-3 h-3 flex-shrink-0" />
+                    ) : (
+                      <FileText className="w-3 h-3 flex-shrink-0" />
+                    )}
+                    <span className="truncate">{f.name}</span>
+                    <button
+                      onClick={() => removeFile(f.id)}
+                      className="ml-0.5 text-lime-400/50 hover:text-red-400 transition-colors flex-shrink-0"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Drop zone + textarea */}
+            <div
+              className={cn(
+                'relative rounded-md transition-all duration-200',
+                isDragging && 'ring-2 ring-lime-400 ring-offset-1 ring-offset-[#0d0d18]'
+              )}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {isDragging && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-lime-500/20 border-2 border-dashed border-lime-400 pointer-events-none">
+                  <div className="flex flex-col items-center gap-1">
+                    <Paperclip className="w-5 h-5 text-lime-400" />
+                    <span className="text-[11px] text-lime-300 font-mono">Drop files here</span>
+                  </div>
+                </div>
+              )}
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -958,19 +1215,31 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                     handleSend();
                   }
                 }}
-                placeholder="Describe what you want to build..."
+                placeholder={droppedFiles.length > 0 ? 'Add instructions for the attached files (optional)...' : 'Describe what you want to build, or drop files here...'}
                 className="min-h-[60px] max-h-[120px] bg-black/40 border-lime-500/30 text-sm resize-none text-lime-100 placeholder:text-lime-400/30 focus:border-lime-400 focus:ring-lime-400/20"
                 disabled={isLoading}
               />
             </div>
+
             <div className="flex items-center justify-between mt-2">
-              <span className="text-[10px] text-lime-400/30 font-mono">
-                Enter → send • Shift+Enter → new line
-              </span>
+              <div className="flex items-center gap-2">
+                {/* Attach file button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || droppedFiles.length >= 5}
+                  className="flex items-center gap-1 text-[10px] text-lime-400/50 hover:text-lime-400 disabled:opacity-30 transition-colors"
+                  title="Attach files (images, code, text)"
+                >
+                  <Paperclip className="w-3 h-3" />
+                  {droppedFiles.length > 0 ? `${droppedFiles.length}/5` : 'Attach'}
+                </button>
+                <span className="text-[10px] text-lime-400/20 font-mono">|</span>
+                <span className="text-[10px] text-lime-400/30 font-mono">Enter → send</span>
+              </div>
               <Button
                 size="sm"
                 onClick={handleSend}
-                disabled={!input.trim() || isLoading}
+                disabled={(!input.trim() && droppedFiles.length === 0) || isLoading}
                 className="gap-1.5 bg-lime-500 hover:bg-lime-400 text-black font-bold shadow-[0_0_15px_rgba(0,255,0,0.4)] hover:shadow-[0_0_20px_rgba(0,255,0,0.6)] transition-all duration-200"
               >
                 {isLoading ? (

@@ -23,7 +23,6 @@ import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesP
 import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
 import { CodePreviewDialog } from "./web-builder/CodePreviewDialog";
-import { AICodeAssistant } from "./AICodeAssistant";
 import { AIBuilderPanel, type VFSEdit, type IframeError } from "./web-builder/AIBuilderPanel";
 import { IntegrationsPanel } from "./design-studio/IntegrationsPanel";
 import { ExportDialog } from "./design-studio/ExportDialog";
@@ -79,6 +78,7 @@ import { generateUUID } from "@/utils/uuid";
 import { extractPageTabs, type PageTab } from "./web-builder/PageNavigationBar";
 import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 import { BusinessSetupSuggestions } from "@/components/onboarding/BusinessSetupSuggestions";
+import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -1231,6 +1231,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const projectNameFromState = (location.state as { projectName?: string })?.projectName;
   const publishStatusFromState = (location.state as { publishStatus?: string })?.publishStatus;
   const customDomainFromState = (location.state as { customDomain?: string })?.customDomain;
+  // Business blueprint context forwarded from SystemsAIPanel for context-aware in-builder AI
+  const systemsBuildContextFromState = (location.state as { systemsBuildContext?: SystemsBuildContext })?.systemsBuildContext ?? null;
   
   // Cloud state: project settings, entitlements, installed packs
   const [cloudState, setCloudState] = useState<{
@@ -2163,6 +2165,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           mode: "code",
           templateAction: "full-control",
           editMode: false,
+          // navPageGen=true: skip chain-of-thought, cap output tokens, reduce per-model timeouts
+          navPageGen: true,
+          // Industry context for research-augmented page generation
+          systemType: activeSystemType ?? undefined,
+          navPageName: pageName,
+          navLabel: navLabel,
           // Pass user design profile for personalized page generation
           userDesignProfile: userDesignProfile ? {
             projectCount: userDesignProfile.projectCount,
@@ -3741,6 +3749,11 @@ ${body.innerHTML}
                 iframeErrors={iframeErrors}
                 onClearErrors={() => setIframeErrors([])}
                 onClose={() => setAiPanelOpen(false)}
+                userDesignProfile={userDesignProfile ?? undefined}
+                pageStructureContext={pageStructureContext}
+                backendStateContext={backendStateContext}
+                businessDataContext={businessDataContext}
+                systemsBuildContext={systemsBuildContextFromState}
                 onViewEdits={(edits) => {
                   // Switch to code view and highlight the edited files
                   setViewMode('split');
@@ -4598,11 +4611,17 @@ export default function App() {
               onDelete={handleFloatingDelete}
               onDuplicate={handleFloatingDuplicate}
               onClear={() => setSelectedHTMLElement(null)}
+              systemType={activeSystemType}
+              systemsBuildContext={systemsBuildContextFromState}
               onAIEditComplete={async (selector, newHtml) => {
                 const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
                 if (res.ok) {
                   setEditorCode(res.code);
                   setPreviewCode(res.code);
+                  // Sync change to VFS so it persists across navigation
+                  const targetPath = pageTabs.length > 1 ? activePagePath : '/index.html';
+                  const vfsFiles = virtualFS.getSandpackFiles();
+                  virtualFS.importFiles({ ...vfsFiles, [targetPath]: res.code });
                   setSelectedHTMLElement(null);
                   toast.success('Element updated by AI');
                   return true;

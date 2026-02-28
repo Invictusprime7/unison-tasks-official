@@ -2,6 +2,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { generateVariation, variationToPromptContext } from "../_shared/industryVariations.ts";
+import {
+  getIndustryProfile,
+  matchPagePattern,
+  buildIndustryPageContext,
+  getResearchQueries,
+} from "../_shared/industryPagePatterns.ts";
 
 /**
  * Convert hex color to HSL string (CSS format without "hsl()")
@@ -269,6 +275,85 @@ serve(async (req: Request) => {
         dominantStyle: z.enum(["dark", "light", "colorful", "minimal", "mixed"]).optional(),
         industryHints: z.array(z.string()).optional(),
       }).optional(),
+      // Flag for fast on-demand page generation (nav clicks in preview).
+      // When true: skip the thinking instruction and cap output tokens to 10000 for speed.
+      navPageGen: z.boolean().optional(),
+      // Nav page generation context — page slug + the nav link label that was clicked
+      navPageName: z.string().max(100).nullish(),
+      navLabel: z.string().max(120).nullish(),
+      // Systems Build Context — mirrors the full BlueprintSchema from systems-build (snake_case).
+      // When provided, every generation request benefits from brand, palette, intents & section layout.
+      // When absent but systemType is present a minimal default blueprint is auto-synthesised below.
+      systemsBuildContext: z.object({
+        version: z.string().optional(),
+        identity: z.object({
+          industry: z.string().max(80).optional(),
+          business_model: z.string().max(80).optional(),
+          primary_goal: z.string().max(200).optional(),
+          locale: z.string().max(20).optional(),
+        }).optional(),
+        brand: z.object({
+          business_name: z.string().max(100).optional(),
+          tagline: z.string().max(200).optional(),
+          tone: z.string().max(80).optional(),
+          palette: z.object({
+            primary: z.string().optional(),
+            secondary: z.string().optional(),
+            accent: z.string().optional(),
+            background: z.string().optional(),
+            foreground: z.string().optional(),
+          }).optional(),
+          typography: z.object({ heading: z.string().optional(), body: z.string().optional() }).optional(),
+          logo: z.object({ mode: z.string().optional(), text_lockup: z.string().optional() }).optional(),
+        }).optional(),
+        design: z.object({
+          layout: z.object({
+            hero_style: z.string().max(40).optional(),
+            section_spacing: z.string().max(20).optional(),
+            max_width: z.string().max(20).optional(),
+            navigation_style: z.string().max(20).optional(),
+          }).optional(),
+          effects: z.object({
+            animations: z.boolean().optional(),
+            scroll_animations: z.boolean().optional(),
+            hover_effects: z.boolean().optional(),
+            gradient_backgrounds: z.boolean().optional(),
+            glassmorphism: z.boolean().optional(),
+            shadows: z.string().max(20).optional(),
+          }).optional(),
+          images: z.object({
+            style: z.string().max(20).optional(),
+            aspect_ratio: z.string().max(20).optional(),
+            overlay_style: z.string().max(20).optional(),
+          }).optional(),
+          buttons: z.object({
+            style: z.string().max(20).optional(),
+            size: z.string().max(20).optional(),
+            hover_effect: z.string().max(20).optional(),
+          }).optional(),
+          sections: z.object({
+            include_stats: z.boolean().optional(),
+            include_testimonials: z.boolean().optional(),
+            include_faq: z.boolean().optional(),
+            include_cta_banner: z.boolean().optional(),
+            include_newsletter: z.boolean().optional(),
+            include_social_proof: z.boolean().optional(),
+            use_counter_animations: z.boolean().optional(),
+          }).optional(),
+          content: z.object({
+            density: z.string().max(20).optional(),
+            use_icons: z.boolean().optional(),
+            writing_style: z.string().max(30).optional(),
+          }).optional(),
+        }).optional(),
+        intents: z.array(z.object({
+          intent: z.string().max(60),
+          target: z.object({ kind: z.string().optional(), ref: z.string().optional() }).optional(),
+        })).max(20).optional(),
+        // Extra fields for template structural context
+        template_sections: z.array(z.string().max(60)).max(20).optional(),
+        template_intents: z.array(z.string().max(60)).max(20).optional(),
+      }).optional(),
     });
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
@@ -300,6 +385,10 @@ serve(async (req: Request) => {
       aesthetic,
       source,
       userDesignProfile,
+      systemsBuildContext,
+      navPageGen = false,
+      navPageName,
+      navLabel,
     } = parsed.data;
     
     // Suppress unused variable warnings - these are used in specific modes
@@ -324,6 +413,59 @@ Generate content and features appropriate for a ${systemType} business. Consider
 - Industry Experience: ${userDesignProfile.industryHints?.join(', ') || 'none'}
 Generate a site that matches the user's established design preferences while being unique.
 ` : '';
+
+    // Build systems-build blueprint context — brand, palette, intents, template structure.
+    // Auto-synthesise a minimal default when systemType is present but no explicit blueprint was sent.
+    const resolvedBlueprint = systemsBuildContext ?? (systemType ? {
+      identity: { industry: systemType },
+      brand: { business_name: templateName ?? systemType },
+    } : null);
+
+    const systemsBuildContextText = resolvedBlueprint ? (() => {
+      const { brand, identity, design, intents, template_sections, template_intents } = resolvedBlueprint as {
+        brand?: { business_name?: string; tagline?: string; tone?: string; palette?: Record<string, string | undefined>; typography?: { heading?: string; body?: string } };
+        identity?: { industry?: string; primary_goal?: string };
+        design?: {
+          layout?: { hero_style?: string };
+          effects?: { animations?: boolean; glassmorphism?: boolean; shadows?: string };
+          sections?: { include_stats?: boolean; include_testimonials?: boolean; include_faq?: boolean; include_cta_banner?: boolean; include_newsletter?: boolean; include_social_proof?: boolean };
+          buttons?: { style?: string };
+          content?: { writing_style?: string };
+        };
+        intents?: Array<{ intent: string }>;
+        template_sections?: string[];
+        template_intents?: string[];
+      };
+
+      const lines: string[] = ['\n[🏗️ Business Blueprint — Use for Content, Colors & Intent Wiring]'];
+      if (brand?.business_name) lines.push(`Business: ${brand.business_name}`);
+      if (brand?.tagline) lines.push(`Tagline: "${brand.tagline}"`);
+      if (identity?.industry) lines.push(`Industry: ${identity.industry.replace(/_/g, ' ')}`);
+      if (identity?.primary_goal) lines.push(`Goal: ${identity.primary_goal}`);
+      if (brand?.tone) lines.push(`Tone: ${brand.tone}`);
+      if (brand?.palette) {
+        const p = brand.palette;
+        lines.push(`Brand Colors: Primary ${p['primary'] || 'auto'} | Secondary ${p['secondary'] || 'auto'} | Accent ${p['accent'] || 'auto'} | BG ${p['background'] || 'auto'} | FG ${p['foreground'] || 'auto'}`);
+      }
+      if (brand?.typography) lines.push(`Typography: ${brand.typography.heading || 'auto'} (headings) / ${brand.typography.body || 'auto'} (body)`);
+      if (design?.layout?.hero_style) lines.push(`Hero Layout: ${design.layout.hero_style}`);
+      if (design?.effects?.glassmorphism) lines.push(`Visual FX: glassmorphism enabled`);
+      if (design?.effects?.shadows) lines.push(`Shadow Style: ${design.effects.shadows}`);
+      if (design?.buttons?.style) lines.push(`Button Style: ${design.buttons.style}`);
+      if (design?.content?.writing_style) lines.push(`Writing Style: ${design.content.writing_style}`);
+      if (design?.sections) {
+        const s = design.sections;
+        const included = (Object.entries(s) as [string, boolean | undefined][])
+          .filter(([, v]) => v)
+          .map(([k]) => k.replace('include_', '').replace(/_/g, ' '));
+        if (included.length) lines.push(`Required Sections: ${included.join(', ')}`);
+      }
+      if (intents?.length) lines.push(`Backend Intents to Wire: ${intents.map(i => i.intent).join(', ')}`);
+      if (template_sections?.length) lines.push(`Template Section Layout: ${template_sections.join(' → ')}`);
+      if (template_intents?.length) lines.push(`Existing Intent Wiring: ${template_intents.join(', ')}`);
+      lines.push('Apply this blueprint: use the brand colors, tone, and wire all listed intents on CTAs.');
+      return lines.join('\n');
+    })() : '';
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
@@ -2256,6 +2398,33 @@ OUTPUT: Return ONLY the JSON object with the files. No markdown code fences, no 
     
     // Perform web research in parallel (non-blocking) for design/code context
     const researchPromise = performPromptResearch(userPromptText);
+
+    // For navPageGen requests, ALSO run targeted industry page research in parallel
+    const navResearchPromise: Promise<string> = (navPageGen && systemType)
+      ? (async () => {
+          try {
+            const profile = getIndustryProfile(systemType ?? null);
+            const pattern = matchPagePattern(profile, navPageName ?? '', navLabel ?? '');
+            // Static context (always fast)
+            const staticCtx = buildIndustryPageContext(profile, pattern);
+            // Live DuckDuckGo research using pattern-specific queries (run both in parallel)
+            const queries = getResearchQueries(pattern);
+            const liveResults = await Promise.allSettled(
+              queries.map(q => performPromptResearch(q))
+            );
+            const liveSnippets = liveResults
+              .filter((r): r is PromiseFulfilledResult<{ snippets: string[]; trends: string[]; keyPhrases: string[] }> => r.status === 'fulfilled')
+              .flatMap(r => r.value.snippets.slice(0, 3));
+            const liveCtx = liveSnippets.length > 0
+              ? `\n\n📡 LIVE WEB RESEARCH (industry page patterns):\n${liveSnippets.map(s => `  • ${s}`).join('\n')}`
+              : '';
+            return staticCtx + liveCtx;
+          } catch (e) {
+            console.warn('[navResearch] failed:', e);
+            return '';
+          }
+        })()
+      : Promise.resolve('');
     
     // More specific keywords - avoid triggering on general page generation requests
     const imageKeywords = ['generate image', 'create image', 'generate a logo', 'create a logo', 'make a logo', 'add logo image', 'insert image'];
@@ -2378,11 +2547,49 @@ OUTPUT: Return ONLY the JSON object with the files. No markdown code fences, no 
     console.log(`[AI-Code-Assistant] Processing ${processedMessages.length} messages (from ${messages.length} original)`);
 
     // Wait for research results and format context
-    const research = await researchPromise;
+    const [research, industryPageContext] = await Promise.all([researchPromise, navResearchPromise]);
     const researchContext = formatResearchContext(research);
 
+    // ── Thinking-tag instruction injected into every request ───────────────
+    // All models (Gemini, GPT-4o, Claude via gateway) are asked to reason step-by-step
+    // inside <thinking>…</thinking> before producing their final answer.
+    // The tags are stripped from the returned content and forwarded to the UI separately.
+    // For navPageGen requests (on-demand page clicks), skip thinking to reduce latency.
+    const thinkingInstruction = navPageGen ? '' : `
+
+[REASONING REQUIREMENT]
+Before writing your final answer, reason through the problem step-by-step inside <thinking> tags.
+Structure your thinking as follows:
+<thinking>
+1. UNDERSTAND: What exactly is the user asking for?
+2. ANALYSE: What does the current code/context tell me?
+3. PLAN: What approach will produce the best result?
+4. CONSIDER: Are there edge cases, accessibility concerns, or performance issues?
+5. DECIDE: Final plan before I write the output.
+</thinking>
+Write your <thinking> block FIRST, then immediately follow with your complete response (HTML/code/answer).
+Never include the <thinking> block explanation text in your final output.`;
+
+    // Helper: parse and strip <thinking>…</thinking> from a raw model response
+    const extractThinkingTags = (raw: string): { reasoning: string; content: string } => {
+      // Match both single-line and multi-line thinking blocks at the start of the response
+      const match = raw.match(/^\s*<thinking>([\s\S]*?)<\/thinking>\s*/i);
+      if (match) {
+        return { reasoning: match[1].trim(), content: raw.slice(match[0].length).trim() };
+      }
+      // Also handle thinking block anywhere in the response (some models insert it mid-text)
+      const anyMatch = raw.match(/<thinking>([\s\S]*?)<\/thinking>\s*/i);
+      if (anyMatch) {
+        return {
+          reasoning: anyMatch[1].trim(),
+          content: raw.replace(/<thinking>[\s\S]*?<\/thinking>\s*/i, '').trim(),
+        };
+      }
+      return { reasoning: '', content: raw };
+    };
+
     const aiMessages = [
-      { role: 'system', content: systemPrompt + researchContext + systemTypeContext + designProfileContext + (generatedImageUrl ? `
+      { role: 'system', content: systemPrompt + researchContext + industryPageContext + systemTypeContext + designProfileContext + systemsBuildContextText + thinkingInstruction + (generatedImageUrl ? `
 
 **IMPORTANT: An AI-generated image has been created for this request. Include this image HTML in your response at the appropriate location:**
 ${imageHtml}
@@ -2393,22 +2600,28 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
 
     // Hybrid AI: try Vercel AI Gateway models first, then fall back to direct provider APIs
     // Models listed in order of preference (valid, existing model IDs)
+    // navPageGen reduces maxTokens to 10000 for faster on-demand page generation
+    const pageTokens = navPageGen ? 10000 : 16000;
     const gatewayModels = LOVABLE_API_KEY ? [
-      { id: 'google/gemini-2.0-flash', maxTokens: 16000, label: 'Gemini 2.0 Flash' },
-      { id: 'google/gemini-2.5-pro',   maxTokens: 16000, label: 'Gemini 2.5 Pro' },
-      { id: 'openai/gpt-4o-mini',      maxTokens: 16000, label: 'GPT-4o Mini' },
-      { id: 'openai/gpt-4o',           maxTokens: 16000, label: 'GPT-4o' },
+      { id: 'google/gemini-2.0-flash',       maxTokens: pageTokens,        label: 'Gemini 2.0 Flash' },
+      { id: 'google/gemini-2.5-pro',         maxTokens: pageTokens,        label: 'Gemini 2.5 Pro' },
+      { id: 'anthropic/claude-sonnet-4-5',   maxTokens: navPageGen ? 10000 : 32000, label: 'Claude Sonnet 4.6' },
+      { id: 'openai/gpt-4o-mini',            maxTokens: pageTokens,        label: 'GPT-4o Mini' },
+      { id: 'openai/gpt-4o',                 maxTokens: pageTokens,        label: 'GPT-4o' },
     ] : [];
 
     let content = '';
     let lastError = '';
+    // Mutable wrapper so TypeScript const-analysis doesn't flag it (assigned inside nested conditionals)
+    const capture = { reasoning: '' };
 
     // ── Phase 1: Vercel AI Gateway ──────────────────────────────────────────
     for (const model of gatewayModels) {
       try {
         console.log(`[AI-Hybrid] Trying gateway model ${model.label}...`);
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000);
+        // 25s per-model timeout: allows up to 5 attempts (125s total) within Supabase's 150s wall-clock limit
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
         const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -2464,7 +2677,13 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
           continue;
         }
 
-        content = parsed;
+        // Extract <thinking> tags before storing final content
+        const extracted = extractThinkingTags(parsed);
+        if (extracted.reasoning) {
+          capture.reasoning = extracted.reasoning;
+          console.log(`[AI-Hybrid] Thinking tags extracted from ${model.label}: ${extracted.reasoning.length} chars`);
+        }
+        content = extracted.content;
         console.log(`[AI-Hybrid] Success with ${model.label}`);
         break;
       } catch (err) {
@@ -2491,7 +2710,7 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
           try {
             console.log(`[AI-Hybrid] Trying direct ${model.label}...`);
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 90000);
+            const timeoutId = setTimeout(() => controller.abort(), 25000);
             const resp = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -2511,7 +2730,13 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
             const data = await resp.json();
             const parsed = data.choices?.[0]?.message?.content || '';
             if (!parsed) { lastError = `${model.label}: no content`; continue; }
-            content = parsed;
+            // Extract <thinking> tags
+            const extracted = extractThinkingTags(parsed);
+            if (extracted.reasoning) {
+              capture.reasoning = extracted.reasoning;
+              console.log(`[AI-Hybrid] Thinking tags extracted from ${model.label}: ${extracted.reasoning.length} chars`);
+            }
+            content = extracted.content;
             console.log(`[AI-Hybrid] Success with ${model.label}`);
             break;
           } catch (err) {
@@ -2522,14 +2747,15 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       }
     }
 
-    // ── Phase 3: Direct Anthropic API (claude-3-5-haiku) ───────────────────
+    // ── Phase 3: Direct Anthropic API (claude-sonnet-4-5 with extended thinking) ───────────────────
     if (!content) {
       const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
       if (ANTHROPIC_API_KEY) {
         try {
-          console.log('[AI-Hybrid] Trying direct Anthropic claude-3-5-haiku...');
+          console.log('[AI-Hybrid] Trying direct Anthropic claude-sonnet-4-5 (extended thinking)...');
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 90000);
+          // 30s for Anthropic (Phase 3 fallback, budget already tight by this point)
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
           // Anthropic uses a slightly different messages format (no system in messages array)
           const systemMsg = aiMessages.find(m => m.role === 'system')?.content || '';
           const userMsgs = aiMessages.filter(m => m.role !== 'system');
@@ -2537,12 +2763,19 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
             method: 'POST',
             headers: {
               'x-api-key': ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01',
+              'anthropic-version': '2025-02-19',
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'claude-3-5-haiku-20241022',
-              max_tokens: 16000,
+              model: 'claude-sonnet-4-5',
+              max_tokens: navPageGen ? 10000 : 32000,
+              // Extended thinking disabled for navPageGen (speed matters more than reasoning quality)
+              ...(navPageGen ? {} : {
+                thinking: {
+                  type: 'enabled',
+                  budget_tokens: 10000,
+                },
+              }),
               system: systemMsg,
               messages: userMsgs,
             }),
@@ -2551,10 +2784,32 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
           clearTimeout(timeoutId);
           if (resp.ok) {
             const data = await resp.json();
-            const parsed = data.content?.[0]?.text || '';
+            // Extended thinking returns multiple content blocks (thinking + text).
+            // Find the text block explicitly so we never accidentally return raw thinking tokens.
+            const textBlock = (data.content as Array<{ type: string; text?: string; thinking?: string }> | undefined)
+              ?.find(b => b.type === 'text');
+            // Capture native Anthropic thinking blocks
+            const thinkingBlocks = (data.content as Array<{ type: string; thinking?: string }> | undefined)
+              ?.filter(b => b.type === 'thinking')
+              .map(b => b.thinking || '')
+              .filter(Boolean);
+            const parsed = textBlock?.text || data.content?.[0]?.text || '';
             if (parsed) {
-              content = parsed;
-              console.log('[AI-Hybrid] Success with Anthropic claude-3-5-haiku');
+              if (thinkingBlocks?.length) {
+                // Prefer native Anthropic thinking blocks
+                capture.reasoning = thinkingBlocks.join('\n\n');
+                console.log(`[AI-Hybrid] Native extended thinking captured from Anthropic: ${capture.reasoning.length} chars`);
+                content = parsed;
+              } else {
+                // Fall back to tag extraction (in case model used <thinking> tags inline)
+                const extracted = extractThinkingTags(parsed);
+                if (extracted.reasoning) {
+                  capture.reasoning = extracted.reasoning;
+                  console.log(`[AI-Hybrid] Thinking tags extracted from Anthropic response: ${extracted.reasoning.length} chars`);
+                }
+                content = extracted.content;
+              }
+              console.log('[AI-Hybrid] Success with Anthropic claude-sonnet-4-5');
             } else {
               lastError = 'Anthropic: no content';
             }
@@ -2587,6 +2842,8 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     return new Response(
       JSON.stringify({ 
         content,
+        // Claude extended thinking text (only present when direct Anthropic API with thinking enabled was used)
+        thinking: capture.reasoning ? capture.reasoning.substring(0, 12000) : undefined,
         generatedImage: generatedImageUrl || undefined,
         imagePlacement: generatedImageUrl ? (imagePlacement || 'top-left') : undefined
       }),

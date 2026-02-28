@@ -39,6 +39,7 @@ import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types"
 import { cn } from "@/lib/utils";
 import { templateToVFSFiles } from "@/utils/templateToVFS";
 import { applyDesignProfileToTemplate } from "@/utils/designPatternExtractor";
+import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 
 // Dropped file type
 interface DroppedFile {
@@ -167,6 +168,69 @@ function buildBlueprintFromChip(chipId: string, prompt: string) {
       sections: { include_stats: true, include_testimonials: true, include_faq: true, include_cta_banner: true, include_newsletter: true, include_social_proof: true },
     },
     intents: defaults.intents.map(i => ({ intent: i })),
+  };
+}
+
+/**
+ * Build a SystemsBuildContext object from a chip ID.
+ * Combines the blueprint defaults (palette, intents) with structural
+ * data extracted from the reference template HTML.
+ */
+function buildSystemsBuildContextFromChip(chipId: string): SystemsBuildContext {
+  // buildBlueprintFromChip already returns the full snake_case BlueprintSchema shape
+  const blueprint = buildBlueprintFromChip(chipId, '');
+  const ref = getTemplateReference(chipId);
+
+  // Extract section names (data-ut-section) and intent wiring (data-ut-intent) from template
+  const template_sections: string[] = [];
+  const intentSet = new Set<string>();
+  if (ref?.templateHtml) {
+    for (const m of ref.templateHtml.matchAll(/data-ut-section="([^"]+)"/g)) template_sections.push(m[1]);
+    for (const m of ref.templateHtml.matchAll(/data-ut-intent="([^"]+)"/g)) intentSet.add(m[1]);
+  }
+
+  // Return the blueprint as-is (snake_case matches SystemsBuildContext exactly) plus template metadata
+  return {
+    version: blueprint.version,
+    identity: {
+      industry: blueprint.identity.industry,
+      primary_goal: blueprint.identity.primary_goal,
+    },
+    brand: {
+      business_name: blueprint.brand.business_name,
+      tagline: blueprint.brand.tagline,
+      tone: blueprint.brand.tone,
+      palette: blueprint.brand.palette,
+      typography: blueprint.brand.typography,
+    },
+    design: {
+      layout: blueprint.design?.layout
+        ? { hero_style: blueprint.design.layout.hero_style as string | undefined }
+        : undefined,
+      effects: blueprint.design?.effects
+        ? {
+            animations: blueprint.design.effects.animations,
+            scroll_animations: blueprint.design.effects.scroll_animations,
+            hover_effects: blueprint.design.effects.hover_effects,
+            gradient_backgrounds: blueprint.design.effects.gradient_backgrounds,
+            glassmorphism: blueprint.design.effects.glassmorphism,
+            shadows: blueprint.design.effects.shadows as string | undefined,
+          }
+        : undefined,
+      sections: blueprint.design?.sections
+        ? {
+            include_stats: blueprint.design.sections.include_stats,
+            include_testimonials: blueprint.design.sections.include_testimonials,
+            include_faq: blueprint.design.sections.include_faq,
+            include_cta_banner: blueprint.design.sections.include_cta_banner,
+            include_newsletter: blueprint.design.sections.include_newsletter,
+            include_social_proof: blueprint.design.sections.include_social_proof,
+          }
+        : undefined,
+    },
+    intents: blueprint.intents,
+    template_sections: template_sections.slice(0, 20),
+    template_intents: [...intentSet].slice(0, 20),
   };
 }
 
@@ -360,6 +424,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
                 projectCount: savedProjectCount,
                 dominantStyle: designProfile?.dominantStyle,
               } : undefined,
+              systemsBuildContext: buildSystemsBuildContextFromChip(selectedCodeChip),
             },
           });
           toast({ 
@@ -371,37 +436,50 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
           return;
         }
 
-        // No pre-built template found - fallback to AI generation
-        const blueprint = buildBlueprintFromChip(selectedCodeChip, codePrompt);
-        console.log(`[SystemsAIPanel] No pre-built template for ${selectedCodeChip}, using AI generation`);
+        // No pre-built template found - AI generation via ai-code-assistant (same as in-builder AI)
+        console.log(`[SystemsAIPanel] No pre-built template for ${selectedCodeChip}, using ai-code-assistant`);
 
-        // Add user design profile context for style-matched generation
+        const chipLabel = codePromptChips.find(c => c.id === selectedCodeChip)?.label || "website";
+        const chipBuildContext = buildSystemsBuildContextFromChip(selectedCodeChip);
         const designProfileContext = hasProfile ? getDesignPromptContext() : null;
-        const enhancedPrompt = designProfileContext 
-          ? `${designProfileContext}\n\n---\n\nUser Request:\n${codePrompt}${fileContext}`
-          : codePrompt + fileContext;
+        const chipPrompt = `Create a complete, polished, production-ready ${chipLabel} website. ${codePrompt}${fileContext}`;
+        const enhancedChipPrompt = designProfileContext
+          ? `${designProfileContext}\n\n---\n\nUser Request:\n${chipPrompt}`
+          : chipPrompt;
 
-        const { data, error } = await supabase.functions.invoke("systems-build", {
-          body: {
-            blueprint,
-            userPrompt: enhancedPrompt,
-            enhanceWithAI: true,
-            templateId: ref?.templateId,
-            templateHtml: ref?.templateHtml,
-            variantMode: true,
-            variationSeed: `v${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-            attachments: attachments.length > 0 ? attachments : undefined,
-            outputFormat: "react", // Request React fullstack output
-            userDesignProfile: hasProfile ? {
-              projectCount: savedProjectCount,
-              dominantStyle: designProfile?.dominantStyle,
-              industryHints: designProfile?.industryHints,
-            } : undefined,
-          },
-        });
+        const CHIP_MAX_RETRIES = 2;
+        let chipData: Record<string, unknown> | null = null;
+        let chipError: { message?: string } | null = null;
 
-        if (error) {
-          const msg = error.message || '';
+        for (let attempt = 0; attempt <= CHIP_MAX_RETRIES; attempt++) {
+          if (attempt > 0) {
+            await new Promise(res => setTimeout(res, 1000 * attempt));
+            console.log(`[SystemsAIPanel] Retry attempt ${attempt} for chip generation`);
+          }
+          const result = await supabase.functions.invoke("ai-code-assistant", {
+            body: {
+              messages: [{ role: "user", content: enhancedChipPrompt }],
+              mode: "code",
+              templateAction: "full-control",
+              editMode: false,
+              systemType: ref?.systemType,
+              templateName: ref?.templateName,
+              attachments: attachments.length > 0 ? attachments : undefined,
+              userDesignProfile: hasProfile ? {
+                projectCount: savedProjectCount,
+                dominantStyle: designProfile?.dominantStyle,
+                industryHints: designProfile?.industryHints,
+              } : undefined,
+              systemsBuildContext: chipBuildContext,
+            },
+          });
+          chipError = result.error as { message?: string } | null;
+          chipData = result.data as Record<string, unknown> | null;
+          if (!chipError) break;
+        }
+
+        if (chipError) {
+          const msg = chipError.message || '';
           if (msg.includes('429')) {
             toast({ title: "Rate limit exceeded", description: "Please wait a moment before trying again.", variant: "destructive" });
             return;
@@ -410,159 +488,105 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
             toast({ title: "Credits required", description: "Please add credits to continue using AI features.", variant: "destructive" });
             return;
           }
-          if (msg.includes('Failed to fetch') || msg.includes('Failed to send')) {
-            toast({ title: "Generation timed out", description: "The AI took too long. Please try again with a simpler prompt.", variant: "destructive" });
-            return;
-          }
-          throw error;
+          throw chipError;
         }
 
-        // Handle React fullstack response (files object) or fallback to code string
-        const reactFiles = data?.files as Record<string, string> | undefined;
-        const generatedCode = data?.code || "";
-        
-        if (reactFiles && Object.keys(reactFiles).length > 0) {
-          // React fullstack output - pass files to Web Builder
-          console.log('[SystemsAIPanel] React fullstack generated:', Object.keys(reactFiles).length, 'files');
-          
-          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(reactFiles));
-          setDroppedFiles([]); // Clear files on success
-          navigate("/web-builder", {
-            state: {
-              vfsFiles: reactFiles,
-              templateName: `AI ${codePromptChips.find(c => c.id === selectedCodeChip)?.label || "React App"}`,
-              aesthetic: "modern",
-              startInPreview: true,
-              systemType: ref?.systemType,
-              framework: "react",
-            },
-          });
-          toast({ title: "React app generated!", description: `${Object.keys(reactFiles).length} files created. Opening in Web Builder...` });
-          return;
-        } else if (generatedCode && generatedCode.length > 50) {
-          console.log('[SystemsAIPanel] systems-build generated', generatedCode.length, 'chars');
-          
-          // Parse multi-page output if PAGE markers present
-          const { hasMultiPageMarkers, parseMultiPageOutput, generateMultiPageVFS } = await import('@/utils/redirectPageGenerator');
-          let vfsFiles: Record<string, string> | undefined;
-          
-          if (hasMultiPageMarkers(generatedCode)) {
-            const parsed = parseMultiPageOutput(generatedCode);
-            vfsFiles = generateMultiPageVFS(parsed);
-            console.log('[SystemsAIPanel] Multi-page output detected:', parsed.allPages.length, 'pages');
-          }
-          
-          sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
-          setDroppedFiles([]); // Clear files on success
-          navigate("/web-builder", {
-            state: {
-              generatedCode: vfsFiles ? undefined : generatedCode,
-              vfsFiles: vfsFiles,
-              templateName: `AI ${codePromptChips.find(c => c.id === selectedCodeChip)?.label || "Generated"}`,
-              aesthetic: "modern",
-              startInPreview: true,
-              systemType: ref?.systemType,
-            },
-          });
-          toast({ title: "Website generated!", description: vfsFiles ? `Multi-page site with ${Object.keys(vfsFiles).length} pages` : "Opening in Web Builder..." });
-          return;
-        }
-      }
+        const chipContent = (chipData?.content as string) || "";
+        const chipHtmlStart = chipContent.includes('<!DOCTYPE') ? chipContent.indexOf('<!DOCTYPE') : chipContent.indexOf('<html');
+        const chipHtmlEnd = chipContent.lastIndexOf('</html>');
+        const chipHtml = chipHtmlStart !== -1 && chipHtmlEnd !== -1
+          ? chipContent.slice(chipHtmlStart, chipHtmlEnd + 7)
+          : chipContent.replace(/```(?:html)?\n?/g, '').replace(/```\s*$/g, '').trim();
 
-      // Fallback: use ai-code-assistant for free-form prompts without a chip selected
-      // Add user design profile context for style-matched generation
-      const designProfileContext = hasProfile ? getDesignPromptContext() : null;
-      const basePrompt = buildFreeformPrompt(codePrompt) + fileContext;
-      const enhancedPrompt = designProfileContext 
-        ? `${designProfileContext}\n\n---\n\nUser Request:\n${basePrompt}`
-        : basePrompt;
-
-      console.log(`[SystemsAIPanel] Using ai-code-assistant template-react with ${droppedFiles.length} attachments${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
-
-      const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
-        body: {
-          messages: [{ role: "user", content: enhancedPrompt }],
-          mode: "template-react", // React fullstack output
-          variationSeed: `react-${Date.now().toString(36)}`,
-          templateAction: "full-control",
-          editMode: false,
-          attachments: attachments.length > 0 ? attachments : undefined,
-          userDesignProfile: hasProfile ? {
-            projectCount: savedProjectCount,
-            dominantStyle: designProfile?.dominantStyle,
-            industryHints: designProfile?.industryHints,
-          } : undefined,
-        },
-      });
-
-      if (error) {
-        if (error.message?.includes('429')) {
-          toast({ title: "Rate limit exceeded", description: "Please wait a moment.", variant: "destructive" });
-          return;
-        }
-        if (error.message?.includes('402')) {
-          toast({ title: "Credits required", description: "Please add credits.", variant: "destructive" });
-          return;
-        }
-        throw error;
-      }
-
-      const content = data?.content || "";
-      
-      // Try to parse React files JSON response
-      try {
-        const cleanedContent = content.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
-        const parsed = JSON.parse(cleanedContent);
-        
-        if (parsed.files && Object.keys(parsed.files).length > 0) {
-          console.log('[SystemsAIPanel] React fullstack generated:', Object.keys(parsed.files).length, 'files');
-          
-          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(parsed.files));
+        if (chipHtml && chipHtml.length > 100) {
+          console.log('[SystemsAIPanel] ai-code-assistant chip generation:', chipHtml.length, 'chars');
+          sessionStorage.setItem('ai_assistant_generated_code', chipHtml);
           setDroppedFiles([]);
           navigate("/web-builder", {
             state: {
-              vfsFiles: parsed.files,
-              templateName: "AI React App",
+              generatedCode: chipHtml,
+              templateName: `AI ${chipLabel}`,
               aesthetic: "modern",
               startInPreview: true,
-              systemType: "content",
-              framework: "react",
+              systemType: ref?.systemType,
+              userDesignProfile: hasProfile ? { projectCount: savedProjectCount, dominantStyle: designProfile?.dominantStyle } : undefined,
+              systemsBuildContext: chipBuildContext,
             },
           });
-          toast({ title: "React app generated!", description: `${Object.keys(parsed.files).length} files created. Opening in Web Builder...` });
+          toast({ title: "Website generated!", description: "Opening in Web Builder..." });
           return;
         }
-      } catch {
-        // Not JSON, treat as raw code
       }
-      
-      // Fallback: extract code from markdown
-      let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
-      if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
-      if (!codeMatch) codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)?\n?([\s\S]*?)```/);
-      
-      let generatedCode = codeMatch ? codeMatch[1].trim() : content.trim();
-      if (generatedCode) {
-        generatedCode = generatedCode
-          .replace(/^#{1,6}\s+.*$/gm, '')
-          .replace(/```[\w]*\n?/g, '')
-          .replace(/^[<>-]{3,}.*$/gm, '')
-          .replace(/<<<|>>>|---/g, '')
-          .replace(/\n{3,}/g, '\n\n')
-          .trim();
+
+      // Free-form prompt: ai-code-assistant with retry logic (same engine as in-builder AI)
+      const freeformDesignContext = hasProfile ? getDesignPromptContext() : null;
+      const basePrompt = buildFreeformPrompt(codePrompt) + fileContext;
+      const enhancedFreeformPrompt = freeformDesignContext
+        ? `${freeformDesignContext}\n\n---\n\nUser Request:\n${basePrompt}`
+        : basePrompt;
+
+      console.log(`[SystemsAIPanel] Free-form ai-code-assistant with ${droppedFiles.length} attachments${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
+
+      const FREE_MAX_RETRIES = 2;
+      let freeformData: Record<string, unknown> | null = null;
+      let freeformError: { message?: string } | null = null;
+
+      for (let attempt = 0; attempt <= FREE_MAX_RETRIES; attempt++) {
+        if (attempt > 0) {
+          await new Promise(res => setTimeout(res, 1000 * attempt));
+          console.log(`[SystemsAIPanel] Retry attempt ${attempt} for free-form generation`);
+        }
+        const result = await supabase.functions.invoke("ai-code-assistant", {
+          body: {
+            messages: [{ role: "user", content: enhancedFreeformPrompt }],
+            mode: "code",
+            templateAction: "full-control",
+            editMode: false,
+            systemType: "content",
+            attachments: attachments.length > 0 ? attachments : undefined,
+            userDesignProfile: hasProfile ? {
+              projectCount: savedProjectCount,
+              dominantStyle: designProfile?.dominantStyle,
+              industryHints: designProfile?.industryHints,
+            } : undefined,
+          },
+        });
+        freeformError = result.error as { message?: string } | null;
+        freeformData = result.data as Record<string, unknown> | null;
+        if (!freeformError) break;
       }
+
+      if (freeformError) {
+        if (freeformError.message?.includes('429')) {
+          toast({ title: "Rate limit exceeded", description: "Please wait a moment.", variant: "destructive" });
+          return;
+        }
+        if (freeformError.message?.includes('402')) {
+          toast({ title: "Credits required", description: "Please add credits.", variant: "destructive" });
+          return;
+        }
+        throw freeformError;
+      }
+
+      const freeformContent = (freeformData?.content as string) || "";
+      // Extract clean HTML directly - prefer <!DOCTYPE html> boundaries
+      const freeHtmlStart = freeformContent.includes('<!DOCTYPE') ? freeformContent.indexOf('<!DOCTYPE') : freeformContent.indexOf('<html');
+      const freeHtmlEnd = freeformContent.lastIndexOf('</html>');
+      const generatedCode = freeHtmlStart !== -1 && freeHtmlEnd !== -1
+        ? freeformContent.slice(freeHtmlStart, freeHtmlEnd + 7)
+        : freeformContent.replace(/```(?:html)?\n?/g, '').replace(/```\s*$/g, '').trim();
 
       if (generatedCode) {
         sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
-        setDroppedFiles([]); // Clear files on success
+        setDroppedFiles([]);
         navigate("/web-builder", {
-          state: { 
-            generatedCode, 
-            templateName: "AI Generated", 
-            aesthetic: "modern", 
+          state: {
+            generatedCode,
+            templateName: "AI Generated",
+            aesthetic: "modern",
             startInPreview: true,
             systemType: "content",
-            framework: "react",
+            userDesignProfile: hasProfile ? { projectCount: savedProjectCount, dominantStyle: designProfile?.dominantStyle } : undefined,
           },
         });
         toast({ title: "Code generated!", description: "Opening in Web Builder..." });

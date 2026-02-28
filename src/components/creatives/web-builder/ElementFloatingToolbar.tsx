@@ -23,6 +23,8 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import type { SystemsBuildContext } from '@/types/systemsBuildContext';
+import type { BusinessSystemType } from '@/data/templates/types';
 
 interface SelectedElement {
   tagName?: string;
@@ -50,6 +52,10 @@ interface ElementFloatingToolbarProps {
   /** Legacy — kept for backward compatibility; prefer onAIEditComplete */
   onRequestAI?: (selector: string) => void;
   className?: string;
+  /** Business system type for context-aware AI edits (e.g. 'salon', 'restaurant') */
+  systemType?: BusinessSystemType | null;
+  /** Full business blueprint from systems-build for richer AI context */
+  systemsBuildContext?: SystemsBuildContext | null;
 }
 
 const FONT_OPTIONS = [
@@ -67,6 +73,8 @@ interface InlineAIPanelProps {
   onClose: () => void;
   onAIEditComplete?: (selector: string, html: string) => boolean | Promise<boolean>;
   onRequestAI?: (selector: string) => void;
+  systemType?: BusinessSystemType | null;
+  systemsBuildContext?: SystemsBuildContext | null;
 }
 
 const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
@@ -74,6 +82,8 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
   onClose,
   onAIEditComplete,
   onRequestAI,
+  systemType,
+  systemsBuildContext,
 }) => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -132,6 +142,8 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
           mode: 'code',
           editMode: true,
           templateAction: 'modify',
+          systemType: systemType ?? undefined,
+          systemsBuildContext: systemsBuildContext ?? undefined,
         },
       });
 
@@ -263,6 +275,8 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   onAIEditComplete,
   onRequestAI,
   className,
+  systemType,
+  systemsBuildContext,
 }) => {
   const [isEditingText, setIsEditingText] = useState(false);
   const [editText, setEditText] = useState('');
@@ -486,6 +500,8 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
           onClose={() => setIsAIOpen(false)}
           onAIEditComplete={onAIEditComplete}
           onRequestAI={onRequestAI}
+          systemType={systemType}
+          systemsBuildContext={systemsBuildContext}
         />
       )}
     </div>
