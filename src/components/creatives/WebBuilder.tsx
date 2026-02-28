@@ -688,11 +688,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       } catch { /* ignore selector errors */ }
     });
 
-    // 4. Keep editorCode in sync (generate the full HTML for code-editor pane)
+    // 4. Keep previewCode AND editorCode in sync so changes persist in the VFS
     const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
     if (baseHtml) {
       const customized = templateCustomizer.applyOverrides(baseHtml);
       if (customized !== previewCode) {
+        setPreviewCode(customized);
         setEditorCode(customized);
       }
     }
