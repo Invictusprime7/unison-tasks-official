@@ -2603,11 +2603,10 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     // navPageGen reduces maxTokens to 10000 for faster on-demand page generation
     const pageTokens = navPageGen ? 10000 : 32000;
     const gatewayModels = LOVABLE_API_KEY ? [
+      { id: 'google/gemini-3-flash-preview', maxTokens: pageTokens,        label: 'Gemini 3 Flash' },
       { id: 'google/gemini-2.5-flash',       maxTokens: pageTokens,        label: 'Gemini 2.5 Flash' },
+      { id: 'openai/gpt-5-mini',             maxTokens: pageTokens,        label: 'GPT-5 Mini' },
       { id: 'google/gemini-2.5-pro',         maxTokens: pageTokens,        label: 'Gemini 2.5 Pro' },
-      { id: 'anthropic/claude-sonnet-4-5',   maxTokens: navPageGen ? 10000 : 32000, label: 'Claude Sonnet 4.5' },
-      { id: 'openai/gpt-4o-mini',            maxTokens: pageTokens,        label: 'GPT-4o Mini' },
-      { id: 'openai/gpt-4o',                 maxTokens: pageTokens,        label: 'GPT-4o' },
     ] : [];
 
     let content = '';
