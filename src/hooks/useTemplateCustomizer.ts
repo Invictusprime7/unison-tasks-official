@@ -275,6 +275,7 @@ export const useTemplateCustomizer = () => {
   const [hasColorsModified, setHasColorsModified] = useState(false);
   const [hasTypographyModified, setHasTypographyModified] = useState(false);
   const [hasSpacingModified, setHasSpacingModified] = useState(false);
+  const [hasSectionsReordered, setHasSectionsReordered] = useState(false);
 
   // ---- Parse template structure ----
   const parseTemplate = useCallback((html: string) => {
@@ -385,6 +386,7 @@ export const useTemplateCustomizer = () => {
       newSections.splice(toIndex, 0, moved);
       return newSections.map((s, i) => ({ ...s, order: i }));
     });
+    setHasSectionsReordered(true);
     setIsDirty(true);
   }, []);
 
@@ -582,34 +584,63 @@ section, [class*="section"] {
 
     const overrideCSS = generateOverrideCSS();
 
-    // Handle section reordering by DOM manipulation
+    // Fast path: if only element overrides / CSS changed (no section reorder, no image replace),
+    // just inject CSS into existing HTML without DOM parse+serialize (prevents section reordering)
+    const hasImageChanges = images.some(img => {
+      // Check if any image src differs from what's in the original HTML
+      const parser = new DOMParser();
+      const origDoc = parser.parseFromString(baseHtml, 'text/html');
+      const el = safeQuerySelector(origDoc, img.selector) as HTMLImageElement;
+      return el && el.getAttribute('src') !== img.src;
+    });
+    const hasTextOverrides = Array.from(elementOverrides.values()).some(o => o.textContent !== undefined || o.imageSrc);
+
+    const needsDomManipulation = hasSectionsReordered || hasImageChanges || hasTextOverrides;
+
+    if (!needsDomManipulation) {
+      // CSS-only path: just inject/replace the override <style> block — no DOM restructuring
+      let result = baseHtml;
+      // Remove any existing customizer overrides
+      result = result.replace(/<style id="customizer-overrides">[\s\S]*?<\/style>\s*/g, '');
+      
+      if (overrideCSS.trim()) {
+        if (result.includes('</head>')) {
+          result = result.replace('</head>', `<style id="customizer-overrides">${overrideCSS}</style>\n</head>`);
+        } else {
+          result = `<style id="customizer-overrides">${overrideCSS}</style>\n${result}`;
+        }
+      }
+      isCustomizerApplyingRef.current = true;
+      return result;
+    }
+
+    // Full DOM manipulation path (only when sections reordered, images changed, or text overrides)
     const parser = new DOMParser();
     const doc = parser.parseFromString(baseHtml, 'text/html');
 
-    // Reorder sections
-    const body = doc.body;
-    const sectionElements: { el: Element; order: number }[] = [];
+    // Reorder sections ONLY if explicitly reordered by user
+    if (hasSectionsReordered) {
+      const body = doc.body;
+      const sectionElements: { el: Element; order: number }[] = [];
 
-    sections.forEach(section => {
-      const el = safeQuerySelector(doc, section.selector);
-      if (el) {
-        sectionElements.push({ el, order: section.order });
-      }
-    });
-
-    // Sort by new order and re-append
-    if (sectionElements.length > 1) {
-      sectionElements.sort((a, b) => a.order - b.order);
-      sectionElements.forEach(({ el }) => {
-        body.appendChild(el);
+      sections.forEach(section => {
+        const el = safeQuerySelector(doc, section.selector);
+        if (el) {
+          sectionElements.push({ el, order: section.order });
+        }
       });
+
+      if (sectionElements.length > 1) {
+        sectionElements.sort((a, b) => a.order - b.order);
+        sectionElements.forEach(({ el }) => {
+          body.appendChild(el);
+        });
+      }
     }
 
-    // Replace images - use multiple fallback selectors
+    // Replace images
     images.forEach(img => {
       let el = safeQuerySelector(doc, img.selector) as HTMLImageElement;
-      
-      // Fallback: try matching by original src attribute
       if (!el) {
         const allImgs = doc.querySelectorAll('img');
         const idx = parseInt(img.id.replace('img-', ''), 10);
@@ -617,7 +648,6 @@ section, [class*="section"] {
           el = allImgs[idx] as HTMLImageElement;
         }
       }
-      
       if (el && el.getAttribute('src') !== img.src) {
         el.setAttribute('src', img.src);
         if (img.alt) el.setAttribute('alt', img.alt);
@@ -649,11 +679,10 @@ section, [class*="section"] {
     } else {
       result = `<style id="customizer-overrides">${overrideCSS}</style>\n${result}`;
     }
-    // Mark that the output is from customizer (to prevent parseTemplate from re-running on it)
     isCustomizerApplyingRef.current = true;
 
     return result;
-  }, [isDirty, generateOverrideCSS, sections, images, elementOverrides]);
+  }, [isDirty, generateOverrideCSS, sections, images, elementOverrides, hasSectionsReordered]);
 
   // ---- Check if customizer just applied (to skip parseTemplate) ----
   const consumeCustomizerApplyFlag = useCallback((): boolean => {
@@ -678,6 +707,7 @@ section, [class*="section"] {
     setHasColorsModified(false);
     setHasTypographyModified(false);
     setHasSpacingModified(false);
+    setHasSectionsReordered(false);
   }, []);
 
   return {
