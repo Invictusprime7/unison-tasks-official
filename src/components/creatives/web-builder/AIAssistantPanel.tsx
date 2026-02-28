@@ -208,13 +208,65 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       return;
     }
 
-    // Detect if user wants a full template or individual elements
-    const isTemplateRequest = /\b(template|page|website|landing page|full design|complete design|entire page)\b/i.test(userInput);
+    // Detect template action (add, remove, modify, restyle, full-control)
+    // Use the same logic as in AICodeAssistant.tsx for consistency
+    const detectTemplateAction = (message: string): string | undefined => {
+      const lowerMessage = message.toLowerCase();
+      if (lowerMessage.match(/\b(full control|full reign|ai decide|you decide|your choice|go wild|do whatever|improve everything|make it better|optimize everything|enhance everything|fix everything|revamp|overhaul|transform|reimagine)\b/)) {
+        return 'full-control';
+      }
+      if (lowerMessage.match(/\b(add|create|implement|build)\b.*\b(cart|checkout|ecommerce|e-commerce|shopping|payment|buy now|add to cart)\b/)) {
+        return 'full-control';
+      }
+      if (lowerMessage.match(/\b(make|add)\b.*\b(dynamic|interactive|animated|live|real-time)\b/)) {
+        return 'full-control';
+      }
+      if (lowerMessage.match(/\b(add|insert|include|create new|put|place)\b.*\b(section|element|component|button|image|form|card|hero|footer|header|nav)/)) {
+        return 'add';
+      }
+      if (lowerMessage.match(/\b(remove|delete|hide|get rid of|take out)\b/)) {
+        return 'remove';
+      }
+      if (lowerMessage.match(/\b(change|modify|update|edit|adjust|tweak|fix)\b/)) {
+        return 'modify';
+      }
+      if (lowerMessage.match(/\b(suggest|improve|recommend|enhance|optimize|better|upgrade)\b/)) {
+        return 'suggest';
+      }
+      if (lowerMessage.match(/\b(restyle|redesign|new look|change color|change style|theme|recolor)\b/)) {
+        return 'restyle';
+      }
+      return undefined;
+    };
 
+    // If we have a current template, pass it for targeted changes
+    const templateAction = detectTemplateAction(userInput);
+    const hasCurrentTemplate = pendingTemplates.size > 0;
     let response;
-    if (isTemplateRequest) {
+    if (templateAction && templateAction !== 'full-control' && hasCurrentTemplate) {
+      // Targeted edit: pass current template and action
+      const currentTemplate = Array.from(pendingTemplates.values()).slice(-1)[0];
+      // Compose a prompt that includes the user's request and the current template context
+      const prompt = `User request: ${userInput}\n\nCurrent template:\n\`\`\`json\n${JSON.stringify(currentTemplate)}\n\`\`\``;
+      response = await generateTemplate(prompt);
+      if (response && response.template) {
+        const messageIndex = messages.length + 1;
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: `✨ **Change Applied!**\n\n${response.explanation || 'Your requested change was made.'}\n\nClick "Build to Canvas" below to update your project!`,
+          template: response.template
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setPendingTemplates(prev => new Map(prev).set(messageIndex, response.template));
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error applying that change. Please try again with a different prompt.'
+        }]);
+      }
+    } else {
+      // Full template or first-time request
       response = await generateTemplate(userInput);
-      
       if (response && response.template) {
         const messageIndex = messages.length + 1;
         const assistantMessage: Message = {
@@ -228,20 +280,6 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: 'Sorry, I encountered an error creating that template. Please try again with a different prompt.'
-        }]);
-      }
-    } else {
-      response = await generateDesign(userInput);
-      
-      if (response) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: response.explanation || 'Design elements added to canvas!'
-        }]);
-      } else {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: 'Sorry, I encountered an error creating that design. Please try again with a different prompt.'
         }]);
       }
     }

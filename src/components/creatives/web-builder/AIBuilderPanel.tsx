@@ -542,6 +542,49 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         isStreaming: true,
       }]);
 
+      // Detect whether this is a targeted (surgical) edit or a full generation
+      const rawInput = input.trim();
+      const lowerInput = rawInput.toLowerCase();
+      const hasSurgicalKeyword = !!(
+        lowerInput.match(/\b(full control|full reign|revamp|overhaul|transform|reimagine|build|create|generate|make)\b.*\b(landing page|page|website|store)\b/) === null &&
+        (lowerInput.match(/\b(change|modify|update|edit|adjust|tweak|fix|add|insert|include|remove|delete|hide|replace|restyle|redesign|change color|change style)\b/))
+      );
+      const isSurgicalEdit = hasSurgicalKeyword && !!currentCode;
+
+      // For surgical edits, inject a strict prompt guard so the AI returns only the snippet
+      const promptForAI = isSurgicalEdit
+        ? [
+            '🚨 SURGICAL EDIT MODE — DO NOT REWRITE THE FULL TEMPLATE 🚨',
+            '',
+            `Existing Template (context only — do NOT reproduce it):`,
+            '```html',
+            currentCode && currentCode.length > 5000 ? currentCode.slice(0, 5000) + '\n<!-- ...truncated... -->' : (currentCode || ''),
+            '```',
+            '',
+            `User Request: ${rawInput}`,
+            '',
+            '⚠️ CRITICAL SURGICAL OUTPUT RULES:',
+            '1. Return ONLY the NEW or MODIFIED HTML snippet — NEVER the full page',
+            '2. If adding: output ONLY that element/section HTML',
+            '3. If modifying: output ONLY the modified element HTML',
+            '4. If styling: output ONLY a <style> block with changed rules',
+            '5. DO NOT output <!DOCTYPE html>, <html>, <head>, or <body> wrappers',
+            '6. No explanations — raw HTML snippet only',
+          ].join('\n')
+        : rawInput;
+
+      // Detect templateAction for the backend
+      const detectTemplateAction = (msg: string): string | undefined => {
+        const lm = msg.toLowerCase();
+        if (lm.match(/\b(full control|revamp|overhaul|transform|reimagine)\b/)) return 'full-control';
+        if (lm.match(/\b(add|insert|include|create new|put|place)\b.*\b(section|element|component|button|image|form|card|hero|footer|header|nav)/)) return 'add';
+        if (lm.match(/\b(remove|delete|hide|get rid of|take out)\b/)) return 'remove';
+        if (lm.match(/\b(change|modify|update|edit|adjust|tweak|fix)\b/)) return 'modify';
+        if (lm.match(/\b(restyle|redesign|new look|change color|change style|theme|recolor)\b/)) return 'restyle';
+        return currentCode ? 'modify' : undefined;
+      };
+      const templateAction = detectTemplateAction(rawInput);
+
       // Call AI service with retry logic
       const MAX_RETRIES = 2;
       let response = null;
@@ -572,28 +615,33 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
           response = await supabase.functions.invoke('ai-code-assistant', {
             body: {
-              messages: [{ role: 'user', content: input }],
+              messages: [{ role: 'user', content: promptForAI }],
               mode: 'code',
               currentCode: truncatedCode,
               editMode: !!currentCode,
               systemType,
               templateName,
+              templateAction,
             },
           });
           
           // Check for retryable errors
           if (response.error) {
-            const errorMsg = response.error.message || '';
+            // Try to get the real error message from the edge function response body
+            const bodyError: string = (response.data as { error?: string } | null)?.error || '';
+            const errorMsg = bodyError || response.error.message || '';
             const isRetryable = errorMsg.includes('non-2xx') || 
                                errorMsg.includes('timeout') ||
-                               errorMsg.includes('temporarily unavailable');
+                               errorMsg.includes('temporarily unavailable') ||
+                               errorMsg.includes('All AI providers failed');
             
             if (isRetryable && attempt < MAX_RETRIES) {
               console.log(`[AIBuilderPanel] Retryable error, attempt ${attempt + 1}:`, errorMsg);
               lastError = response.error;
               continue;
             }
-            throw response.error;
+            // Throw an error with the descriptive message from the edge function
+            throw new Error(bodyError || response.error.message || 'Edge function error');
           }
           
           // Success
@@ -656,10 +704,14 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           : m
       ));
 
-      // Auto-apply generated code to preview
-      if (generatedCode && onCodeGenerated) {
+      // Auto-apply only for full-generation requests — surgical edits require explicit "Apply" click in the message bubble
+      if (generatedCode && onCodeGenerated && !isSurgicalEdit) {
         onCodeGenerated(generatedCode);
         toast.success('Code applied to preview');
+      } else if (generatedCode && isSurgicalEdit) {
+        // Surgical edit: show the code in the message bubble with an Apply button
+        // (the user must explicitly approve the change)
+        toast.info('Review & apply the suggested change below');
       }
 
     } catch (error) {
@@ -671,14 +723,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         errorMessage = error.message;
         
         // Parse edge function errors for better messaging
-        if (errorMessage.includes('non-2xx status code')) {
+        if (errorMessage.includes('All AI providers failed') || errorMessage.includes('All AI models failed')) {
+          errorMessage = 'AI service unavailable — no API key is working. Please check your LOVABLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY in Supabase secrets.';
+        } else if (errorMessage.includes('non-2xx status code')) {
           errorMessage = 'AI service temporarily unavailable. Please try again in a moment.';
-        } else if (errorMessage.includes('Rate limit')) {
+        } else if (errorMessage.includes('Rate limit') || errorMessage.includes('rate limit')) {
           errorMessage = 'Too many requests. Please wait a moment and try again.';
         } else if (errorMessage.includes('timeout') || errorMessage.includes('AbortError')) {
           errorMessage = 'Request timed out. Try a shorter prompt or try again.';
-        } else if (errorMessage.includes('Payment required')) {
-          errorMessage = 'AI credits needed. Please check your subscription.';
+        } else if (errorMessage.includes('Payment required') || errorMessage.includes('402')) {
+          errorMessage = 'AI credits needed. Please check your subscription or API billing.';
+        } else if (errorMessage.includes('401') || errorMessage.includes('authentication')) {
+          errorMessage = 'AI API key is invalid or expired. Please update your API key in Supabase secrets.';
+        } else if (errorMessage.includes('not available') || errorMessage.includes('LOVABLE_API_KEY')) {
+          errorMessage = 'AI service not configured. Please set OPENAI_API_KEY or LOVABLE_API_KEY in your Supabase project secrets.';
         }
       } else if (typeof error === 'object' && error !== null) {
         // Handle Supabase FunctionsHttpError

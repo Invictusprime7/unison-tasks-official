@@ -328,14 +328,8 @@ Generate a site that matches the user's established design preferences while bei
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
-      console.warn("LOVABLE_API_KEY not configured - AI features unavailable");
-      return new Response(
-        JSON.stringify({ 
-          error: "AI features are not available. Please deploy to Lovable Cloud to enable AI capabilities.",
-          isLocalDevelopment: true
-        }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Not fatal — we will fall through to direct OpenAI / Anthropic API fallbacks below.
+      console.warn("LOVABLE_API_KEY not configured — will attempt direct provider APIs as fallback");
     }
 
     // Initialize Supabase for learning system
@@ -2397,18 +2391,22 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       ...processedMessages
     ];
 
-    // Hybrid AI: try primary model, fallback to secondary
-    const models = [
-      { id: 'google/gemini-2.5-flash', maxTokens: 16000, label: 'Gemini Flash' },
-      { id: 'openai/gpt-5-mini', maxTokens: 16000, label: 'GPT-5 Mini' },
-    ];
+    // Hybrid AI: try Vercel AI Gateway models first, then fall back to direct provider APIs
+    // Models listed in order of preference (valid, existing model IDs)
+    const gatewayModels = LOVABLE_API_KEY ? [
+      { id: 'google/gemini-2.0-flash', maxTokens: 16000, label: 'Gemini 2.0 Flash' },
+      { id: 'google/gemini-2.5-pro',   maxTokens: 16000, label: 'Gemini 2.5 Pro' },
+      { id: 'openai/gpt-4o-mini',      maxTokens: 16000, label: 'GPT-4o Mini' },
+      { id: 'openai/gpt-4o',           maxTokens: 16000, label: 'GPT-4o' },
+    ] : [];
 
     let content = '';
     let lastError = '';
 
-    for (const model of models) {
+    // ── Phase 1: Vercel AI Gateway ──────────────────────────────────────────
+    for (const model of gatewayModels) {
       try {
-        console.log(`[AI-Hybrid] Trying ${model.label}...`);
+        console.log(`[AI-Hybrid] Trying gateway model ${model.label}...`);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90000);
 
@@ -2481,8 +2479,97 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       }
     }
 
+    // ── Phase 2: Direct OpenAI API (gpt-4o-mini / gpt-4o) ──────────────────
     if (!content) {
-      throw new Error(`All AI models failed. Last error: ${lastError}`);
+      const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+      if (OPENAI_API_KEY) {
+        const openaiModels = [
+          { id: 'gpt-4o-mini', maxTokens: 16000, label: 'OpenAI gpt-4o-mini' },
+          { id: 'gpt-4o',      maxTokens: 16000, label: 'OpenAI gpt-4o' },
+        ];
+        for (const model of openaiModels) {
+          try {
+            console.log(`[AI-Hybrid] Trying direct ${model.label}...`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90000);
+            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ model: model.id, max_tokens: model.maxTokens, messages: aiMessages }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (!resp.ok) {
+              const errText = await resp.text();
+              console.warn(`[AI-Hybrid] ${model.label} error ${resp.status}: ${errText.substring(0, 200)}`);
+              lastError = `${model.label}: ${resp.status}`;
+              continue;
+            }
+            const data = await resp.json();
+            const parsed = data.choices?.[0]?.message?.content || '';
+            if (!parsed) { lastError = `${model.label}: no content`; continue; }
+            content = parsed;
+            console.log(`[AI-Hybrid] Success with ${model.label}`);
+            break;
+          } catch (err) {
+            lastError = `${model.label}: ${err instanceof Error ? err.message : 'unknown'}`;
+            continue;
+          }
+        }
+      }
+    }
+
+    // ── Phase 3: Direct Anthropic API (claude-3-5-haiku) ───────────────────
+    if (!content) {
+      const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+      if (ANTHROPIC_API_KEY) {
+        try {
+          console.log('[AI-Hybrid] Trying direct Anthropic claude-3-5-haiku...');
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 90000);
+          // Anthropic uses a slightly different messages format (no system in messages array)
+          const systemMsg = aiMessages.find(m => m.role === 'system')?.content || '';
+          const userMsgs = aiMessages.filter(m => m.role !== 'system');
+          const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'claude-3-5-haiku-20241022',
+              max_tokens: 16000,
+              system: systemMsg,
+              messages: userMsgs,
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (resp.ok) {
+            const data = await resp.json();
+            const parsed = data.content?.[0]?.text || '';
+            if (parsed) {
+              content = parsed;
+              console.log('[AI-Hybrid] Success with Anthropic claude-3-5-haiku');
+            } else {
+              lastError = 'Anthropic: no content';
+            }
+          } else {
+            const errText = await resp.text();
+            lastError = `Anthropic: ${resp.status} ${errText.substring(0, 100)}`;
+          }
+        } catch (err) {
+          lastError = `Anthropic: ${err instanceof Error ? err.message : 'unknown'}`;
+        }
+      }
+    }
+
+    if (!content) {
+      throw new Error(`All AI providers failed. Last error: ${lastError}. Please ensure at least one of LOVABLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY is set in your Supabase secrets.`);
     }
 
     // Save learning session (async, don't wait)

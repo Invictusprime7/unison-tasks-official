@@ -555,7 +555,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const templateCustomizer = useTemplateCustomizer();
   const [customizerOpen, setCustomizerOpen] = useState(false);
   // AI edit request state — only true when user clicks AI button in floating toolbar
-  const [aiEditRequested, setAiEditRequested] = useState(false);
+
   
   // Business Setup Suggestions - shown after AI generates a site/template
   const [showBusinessSetup, setShowBusinessSetup] = useState(false);
@@ -3570,7 +3570,6 @@ ${body.innerHTML}
               if (mode === 'preview') {
                 setSelectedHTMLElement(null);
                 setSelectedObject(null);
-                setAiEditRequested(false);
               }
             }}
             hasSelection={!!selectedHTMLElement || !!selectedObject}
@@ -4590,7 +4589,7 @@ export default function App() {
 
         {/* Floating Element Toolbar - appears over selected elements */}
         {selectedHTMLElement && viewMode === 'canvas' && builderMode === 'select' && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[96vw]">
             <ElementFloatingToolbar
               element={selectedHTMLElement}
               onUpdateStyles={handleFloatingStyleUpdate}
@@ -4598,8 +4597,20 @@ export default function App() {
               onReplaceImage={handleFloatingImageReplace}
               onDelete={handleFloatingDelete}
               onDuplicate={handleFloatingDuplicate}
-              onClear={() => { setSelectedHTMLElement(null); setAiEditRequested(false); }}
-              onRequestAI={() => setAiEditRequested(true)}
+              onClear={() => setSelectedHTMLElement(null)}
+              onAIEditComplete={async (selector, newHtml) => {
+                const res = applyElementHtmlUpdate(previewCode, selector, newHtml);
+                if (res.ok) {
+                  setEditorCode(res.code);
+                  setPreviewCode(res.code);
+                  setSelectedHTMLElement(null);
+                  toast.success('Element updated by AI');
+                  return true;
+                } else {
+                  toast.error('AI edit could not be applied — element not found');
+                  return false;
+                }
+              }}
             />
           </div>
         )}

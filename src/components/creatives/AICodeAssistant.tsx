@@ -377,6 +377,10 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   const [pendingCodeApplyOpen, setPendingCodeApplyOpen] = useState(false);
   const [pendingCode, setPendingCode] = useState<string>("");
   const [pendingElementSelector, setPendingElementSelector] = useState<string | null>(null);
+  // True when pendingCode is a snippet injected into the template (not a full replacement)
+  const [pendingCodeIsSnippet, setPendingCodeIsSnippet] = useState(false);
+  // The templateAction that triggered the current pending code (for dialog warnings)
+  const [pendingTemplateAction, setPendingTemplateAction] = useState<string | undefined>(undefined);
 
   const [pendingFilesApplyOpen, setPendingFilesApplyOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<Record<string, string> | null>(null);
@@ -938,15 +942,38 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         enhancedPrompt = `I need help fixing rendering/error issues in my code. Here's the current code:\n\n\`\`\`html\n${truncatedCode}\n\`\`\`\n\nIssue: ${userMessage.content}\n\nPlease analyze the code, identify the issue, and provide a fixed version with explanation.${slotContext}`;
         console.log('[AICodeAssistant] Debug mode: Enhanced prompt created with code context');
       } else if (mode === "code") {
-        // Encourage file patch plans for non-trivial edits.
-        const patchPlanHint =
-          "\n\nOUTPUT FORMAT PREFERENCE:\n" +
-          "- For multi-file or structural changes, output ONLY <file path=\"...\">...</file> blocks (no markdown).\n" +
-          "- For single-file full-template changes, you may output one ```html``` or ```tsx``` block.\n" +
-          "- For selected-element edits, return ONLY the modified HTML for that element (no wrappers).\n";
+        // For surgical (non-full-control) edits on an existing template, force snippet-only output
+        const isSurgicalEdit = hasExistingTemplate && templateAction &&
+          ['modify', 'add', 'remove', 'restyle', 'suggest'].includes(templateAction);
 
-        enhancedPrompt = `${userMessage.content}${slotContext}${backendContext}${patchPlanHint}`;
-        console.log('[AICodeAssistant] Code mode: Added slot context for AI with taste');
+        if (isSurgicalEdit) {
+          const truncatedCode = (currentCode || '').length > 6000
+            ? (currentCode || '').substring(0, 6000) + '\n<!-- ...template truncated for context... -->'
+            : (currentCode || '');
+          enhancedPrompt = '🚨 SURGICAL EDIT MODE — DO NOT REWRITE THE FULL TEMPLATE 🚨\n\n';
+          enhancedPrompt += `Existing Template (context only — do NOT reproduce it):\n\`\`\`html\n${truncatedCode}\n\`\`\`\n\n`;
+          enhancedPrompt += `User Request: ${userMessage.content}\n\n`;
+          enhancedPrompt += '⚠️ CRITICAL SURGICAL OUTPUT RULES:\n';
+          enhancedPrompt += '1. Return ONLY the NEW or MODIFIED HTML snippet — NEVER the full page\n';
+          enhancedPrompt += '2. If adding a section/element: output ONLY that section/element HTML\n';
+          enhancedPrompt += '3. If modifying an element: output ONLY the modified element HTML\n';
+          enhancedPrompt += '4. If changing styles: output ONLY a <style> block with the changed rules\n';
+          enhancedPrompt += '5. PRESERVE all existing content/classes/attributes not being changed\n';
+          enhancedPrompt += '6. DO NOT output <!DOCTYPE html>, <html>, <head>, or <body> wrappers\n';
+          enhancedPrompt += '7. NO explanations, no prose — raw HTML snippet only\n';
+          enhancedPrompt += slotContext;
+          console.log('[AICodeAssistant] Surgical edit mode prompt for action:', templateAction);
+        } else {
+          // Encourage file patch plans for non-trivial edits.
+          const patchPlanHint =
+            "\n\nOUTPUT FORMAT PREFERENCE:\n" +
+            "- For multi-file or structural changes, output ONLY <file path=\"...\">...</file> blocks (no markdown).\n" +
+            "- For single-file full-template changes, you may output one ```html``` or ```tsx``` block.\n" +
+            "- For selected-element edits, return ONLY the modified HTML for that element (no wrappers).\n";
+
+          enhancedPrompt = `${userMessage.content}${slotContext}${backendContext}${patchPlanHint}`;
+          console.log('[AICodeAssistant] Code mode: Added slot context for AI with taste');
+        }
       } else {
         // Design/review modes still benefit from system context
         enhancedPrompt = `${userMessage.content}${backendContext}`;
@@ -1212,6 +1239,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
       // 6) Handle code blocks (fallback for non-structured responses)
       const hasCode = parsedResponse.codeBlocks.length > 0 || assistantContent.includes("```");
+
+      // Helper: true when a code string is a complete HTML document
+      const isFullHtmlDocument = (code: string): boolean =>
+        /^\s*(<!DOCTYPE\s+html|<html[\s>])/i.test(code.trim());
+
+      // Whether this request was a surgical (targeted, non-destructive) edit
+      const isSurgicalAction = hasExistingTemplate && templateAction &&
+        ['modify', 'add', 'remove', 'restyle', 'suggest'].includes(templateAction);
       
       if (parsedResponse.files.length === 0 && hasCode && onCodeGenerated) {
         // Use parsed code blocks if available, otherwise fall back to regex
@@ -1242,17 +1277,61 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
             .replace(/^[<>-]{3,}.*$/gm, '')
             .replace(/<<<|>>>|---/g, '')
             .replace(/\n{3,}/g, '\n\n');
-          
-          // Handle element editing vs full code generation
+
+          const isFullDoc = isFullHtmlDocument(extractedCode);
+
           if (isEditingSelectedElement && onElementUpdate && selectedElement) {
-            console.log('[AICodeAssistant] Updating selected element with new HTML');
-            setPendingElementSelector(selectedElement.selector);
+            // Toolbar AI edit: apply only to the selected element
+            console.log('[AICodeAssistant] Toolbar element-edit: staging snippet for element', selectedElement.selector);
+            setPendingElementSelector(selectedElement.selector ?? null);
             setPendingCode(extractedCode);
+            setPendingCodeIsSnippet(true);
+            setPendingTemplateAction(templateAction);
             setPendingCodeApplyOpen(true);
-          } else if (onCodeGenerated) {
-            console.log('[AICodeAssistant] Extracted code:', primaryBlock?.language || 'unknown', extractedCode.length, 'chars');
+          } else if (!isFullDoc && isSurgicalAction && currentCode) {
+            // AI returned a snippet (not a full doc) for a targeted request.
+            // Merge it into the existing template instead of replacing the whole page.
+            console.log('[AICodeAssistant] Snippet for surgical action:', templateAction, '— merging into template');
+            if (selectedElement?.selector && onElementUpdate) {
+              // Route to element-level approval — only touches the selected element
+              setPendingElementSelector(selectedElement.selector);
+              setPendingCode(extractedCode);
+              setPendingCodeIsSnippet(true);
+              setPendingTemplateAction(templateAction);
+              setPendingCodeApplyOpen(true);
+            } else {
+              // No specific element selected — inject snippet into the template
+              let mergedCode: string;
+              if (currentCode.includes('</body>')) {
+                mergedCode = currentCode.replace(
+                  '</body>',
+                  `\n<!-- AI ${templateAction}: ${new Date().toISOString()} -->\n${extractedCode}\n</body>`
+                );
+              } else {
+                mergedCode = currentCode + '\n' + extractedCode;
+              }
+              setPendingElementSelector(null);
+              setPendingCode(mergedCode);
+              setPendingCodeIsSnippet(false);
+              setPendingTemplateAction(templateAction);
+              setPendingCodeApplyOpen(true);
+            }
+          } else if (isFullDoc && isSurgicalAction && currentCode) {
+            // AI returned a full document when only a targeted edit was requested.
+            // Stage it for review — the approval dialog will warn the user.
+            console.warn('[AICodeAssistant] Full document returned for surgical action:', templateAction, '— flagging for review');
             setPendingElementSelector(null);
             setPendingCode(extractedCode);
+            setPendingCodeIsSnippet(false);
+            setPendingTemplateAction(templateAction);
+            setPendingCodeApplyOpen(true);
+          } else if (onCodeGenerated) {
+            // Normal full code generation (no existing template, or explicit full-control action)
+            console.log('[AICodeAssistant] Full code generation:', primaryBlock?.language || 'unknown', extractedCode.length, 'chars');
+            setPendingElementSelector(null);
+            setPendingCode(extractedCode);
+            setPendingCodeIsSnippet(false);
+            setPendingTemplateAction(templateAction);
             setPendingCodeApplyOpen(true);
           }
         }
@@ -1465,15 +1544,48 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       </Dialog>
 
       {/* Approve code/HTML changes before applying */}
-      <Dialog open={pendingCodeApplyOpen} onOpenChange={setPendingCodeApplyOpen}>
+      <Dialog open={pendingCodeApplyOpen} onOpenChange={(open) => {
+        setPendingCodeApplyOpen(open);
+        if (!open) { setPendingCodeIsSnippet(false); setPendingTemplateAction(undefined); }
+      }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Review & apply changes</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Changes are staged. Click Apply to write them into the current template.
-            </p>
+            {/* Warn when AI returned a full document for a targeted (surgical) edit request */}
+            {pendingTemplateAction &&
+              ['modify', 'add', 'remove', 'restyle', 'suggest'].includes(pendingTemplateAction) &&
+              !pendingElementSelector &&
+              /^\s*(<!DOCTYPE\s+html|<html[\s>])/i.test(pendingCode) && (
+              <div className="flex items-start gap-2 p-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs">
+                <span className="text-base leading-none mt-0.5">⚠️</span>
+                <span>
+                  The AI returned a <strong>full template replacement</strong> for a "{pendingTemplateAction}" request.
+                  This will overwrite your entire template. Review carefully before applying.
+                </span>
+              </div>
+            )}
+            {/* Confirm element-level update */}
+            {pendingElementSelector && (
+              <div className="text-xs text-cyan-400/80 bg-cyan-500/10 border border-cyan-500/20 rounded-md px-2 py-1.5">
+                🎯 Targeted update for <code className="font-mono">{pendingElementSelector}</code> — only this element will change.
+              </div>
+            )}
+            {/* Snippet injection notice */}
+            {!pendingElementSelector && !(/^\s*(<!DOCTYPE\s+html|<html[\s>])/i.test(pendingCode)) && (
+              <div className="text-xs text-lime-400/80 bg-lime-500/10 border border-lime-500/20 rounded-md px-2 py-1.5">
+                ✂️ Snippet merged into your template. Review and click Apply.
+              </div>
+            )}
+            {/* Normal full-template notice */}
+            {!pendingElementSelector &&
+              /^\s*(<!DOCTYPE\s+html|<html[\s>])/i.test(pendingCode) &&
+              !(['modify', 'add', 'remove', 'restyle', 'suggest'].includes(pendingTemplateAction ?? '')) && (
+              <p className="text-sm text-muted-foreground">
+                Changes are staged. Click Apply to write them into the current template.
+              </p>
+            )}
             <Textarea
               value={pendingCode}
               onChange={(e) => setPendingCode(e.target.value)}
@@ -1481,13 +1593,18 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setPendingCodeApplyOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setPendingCodeApplyOpen(false);
+              setPendingCodeIsSnippet(false);
+              setPendingTemplateAction(undefined);
+            }}>
               Cancel
             </Button>
             <Button
               onClick={() => {
                 if (!pendingCode.trim()) return;
                 if (pendingElementSelector && onElementUpdate) {
+                  // Targeted element-level update
                   const ok = onElementUpdate(pendingElementSelector, pendingCode);
                   if (!ok) {
                     toast({
@@ -1501,8 +1618,10 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
 
                   toast({ title: "Element updated", description: "Approved changes applied." });
                   setIsEditingElement(false);
+                  setPendingCodeIsSnippet(false);
+                  setPendingTemplateAction(undefined);
                   
-                  // Auto-continue: Add follow-up message after element update
+                  // Auto-continue
                   const followUpMessage: Message = {
                     role: "assistant",
                     content: "✅ **Element updated!** I've applied your changes.\n\n**Click to continue:**",
@@ -1518,10 +1637,13 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                   };
                   setMessages((prev) => [...prev, followUpMessage]);
                 } else if (onCodeGenerated) {
+                  // Full template update (merged snippet already baked in, or explicit full generation)
                   onCodeGenerated(pendingCode);
                   toast({ title: "Template updated", description: "Approved changes applied." });
+                  setPendingCodeIsSnippet(false);
+                  setPendingTemplateAction(undefined);
                   
-                  // Auto-continue: Add follow-up message after code generation
+                  // Auto-continue
                   const followUpMessage: Message = {
                     role: "assistant",
                     content: "✅ **Applied!** Your code is now live.\n\n**Click to continue:**",
