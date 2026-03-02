@@ -2667,10 +2667,9 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     // navPageGen reduces maxTokens to 10000 for faster on-demand page generation
     const pageTokens = navPageGen ? 10000 : 32000;
     const gatewayModels = LOVABLE_API_KEY ? [
-      { id: 'google/gemini-3-flash-preview', maxTokens: pageTokens,        label: 'Gemini 3 Flash' },
       { id: 'google/gemini-2.5-flash',       maxTokens: pageTokens,        label: 'Gemini 2.5 Flash' },
-      { id: 'openai/gpt-5-mini',             maxTokens: pageTokens,        label: 'GPT-5 Mini' },
       { id: 'google/gemini-2.5-pro',         maxTokens: pageTokens,        label: 'Gemini 2.5 Pro' },
+      { id: 'openai/gpt-5-mini',             maxTokens: pageTokens,        label: 'GPT-5 Mini' },
     ] : [];
 
     let content = '';
@@ -2938,7 +2937,7 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
     let userMessage = message;
     let errorType = 'unknown';
     
-    if (message.includes('All AI models failed')) {
+    if (message.includes('All AI providers failed') || message.includes('All AI models failed')) {
       userMessage = 'AI service temporarily unavailable. All models are busy or experiencing issues. Please try again in a moment.';
       errorType = 'ai_unavailable';
     } else if (message.includes('network') || message.includes('fetch')) {
