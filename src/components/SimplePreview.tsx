@@ -650,41 +650,60 @@ function injectIntentListener(html: string): string {
     let pendingNavigationQueue = [];
     let currentNavRequestId = null;
     
-    // Safe page replacement using location.replace with blob URL
+    // Restore any cached pages from a previous navigation (set by cache restore script)
+    if (window.__vfsPageCache) {
+      try {
+        Object.keys(window.__vfsPageCache).forEach(function(k) {
+          dynamicPageCache[k] = window.__vfsPageCache[k];
+        });
+        console.log('[Intent] Restored', Object.keys(window.__vfsPageCache).length, 'cached pages from previous navigation');
+        delete window.__vfsPageCache;
+      } catch(e) { console.warn('[Intent] Cache restore failed:', e); }
+    }
+    
+    // Serialize current page cache so it survives navigation
+    // Stores on window.__vfsPageCache which the intent listener reads on init
+    function serializeCacheForInjection() {
+      try {
+        const entries = Object.entries(dynamicPageCache);
+        if (entries.length === 0) return '';
+        // Base64-encode each page to avoid script injection issues
+        const pairs = entries.map(function(e) {
+          var encoded = btoa(unescape(encodeURIComponent(e[1])));
+          return JSON.stringify(e[0]) + ':decodeURIComponent(escape(atob(' + JSON.stringify(encoded) + ')))';
+        });
+        return 'window.__vfsPageCache={' + pairs.join(',') + '};';
+      } catch(e) {
+        console.warn('[Intent] Cache serialization failed:', e);
+        return '';
+      }
+    }
+    
+    // Safe page replacement that preserves intent wiring and page cache
     function safeReplacePage(htmlContent, pageName) {
       try {
-        // Notify parent about navigation (for editor sync)
+        // Ask the PARENT to process this page through codeToHtml (which injects
+        // the intent listener script) and then reload the iframe.
+        // This ensures every navigated-to page has full intent wiring + page cache.
+        
+        // Serialize cache to pass to parent for re-injection
+        var cacheScript = serializeCacheForInjection();
+        
         window.parent.postMessage({
-          type: 'NAV_PAGE_SWITCH',
+          type: 'NAV_PAGE_REPLACE',
           pageName: pageName,
-          pagePath: '/' + pageName + '.html'
+          pagePath: '/' + pageName + '.html',
+          pageContent: htmlContent,
+          cacheScript: cacheScript,
         }, '*');
         
-        // Create blob URL and navigate - this is safer than document.write
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        window.location.replace(url);
-        
-        // Clean up blob URL after navigation starts
-        setTimeout(function() {
-          URL.revokeObjectURL(url);
-        }, 1000);
       } catch (err) {
-        console.error('[Intent] Safe page replace failed, falling back:', err);
-        // Fallback to document.write only if blob approach fails
-        try {
-          document.open();
-          document.write(htmlContent);
-          document.close();
-        } catch (writeErr) {
-          console.error('[Intent] Document write also failed:', writeErr);
-          // Last resort: notify parent to reload preview
-          window.parent.postMessage({
-            type: 'NAV_PAGE_RELOAD_REQUIRED',
-            pageName: pageName,
-            pageContent: htmlContent
-          }, '*');
-        }
+        console.error('[Intent] Page replace failed:', err);
+        window.parent.postMessage({
+          type: 'NAV_PAGE_RELOAD_REQUIRED',
+          pageName: pageName,
+          pageContent: htmlContent
+        }, '*');
       }
     }
     
