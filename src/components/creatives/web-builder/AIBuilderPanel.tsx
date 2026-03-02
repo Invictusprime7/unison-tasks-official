@@ -204,9 +204,8 @@ const ThinkingStepItem: React.FC<{
 const MessageItem: React.FC<{
   message: Message;
   onViewEdits?: (edits: VFSEdit[]) => void;
-  onApplyCode?: (code: string) => void;
   onRetryError?: (error: IframeError) => void;
-}> = ({ message, onViewEdits, onApplyCode, onRetryError }) => {
+}> = ({ message, onViewEdits, onRetryError }) => {
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>(message.thinking || []);
   const [showThinking, setShowThinking] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
@@ -334,30 +333,7 @@ const MessageItem: React.FC<{
           </div>
         )}
 
-        {/* Apply Code Button */}
-        {message.code && onApplyCode && (
-          <div className="mt-3 pt-2 border-t border-white/10 flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => onApplyCode(message.code!)}
-              className="gap-2 bg-blue-500 hover:bg-blue-400 text-white font-semibold"
-            >
-              <Play className="w-3 h-3" />
-              Apply Code
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                navigator.clipboard.writeText(message.code!);
-                toast.success('Code copied to clipboard');
-              }}
-              className="gap-1 text-white/50 hover:text-white"
-            >
-              <Copy className="w-3 h-3" />
-            </Button>
-          </div>
-        )}
+        {/* Code is auto-applied to VFS — no manual "Apply" button needed */}
 
         {/* Error with retry */}
         {message.error && onRetryError && (
@@ -858,15 +834,69 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       // The edge function returns { content, generatedImage?, imagePlacement? }
       const aiContent = response.data?.content || 'I processed your request but have no specific output to show.';
       
-      // Extract code from content - AI may return full HTML in content
-      let generatedCode = null;
+      // ====== ROBUST CODE EXTRACTION ======
+      // Extract code from AI response - handles raw HTML, markdown fences, and mixed content
+      let generatedCode: string | null = null;
+      let explanationText = '';
+
       if (aiContent) {
-        // Check if content contains HTML code (starts with <!DOCTYPE or <html or contains full HTML structure)
-        const hasHtmlStructure = aiContent.includes('<!DOCTYPE') || 
-                                  aiContent.includes('<html') || 
-                                  (aiContent.includes('<head') && aiContent.includes('<body'));
-        if (hasHtmlStructure) {
-          generatedCode = aiContent;
+        // Strategy 1: Check if content IS raw HTML (starts with <!DOCTYPE or <html)
+        const trimmed = aiContent.trim();
+        const isRawHtml = /^<!doctype\s+html/i.test(trimmed) || /^<html[\s>]/i.test(trimmed);
+
+        if (isRawHtml) {
+          generatedCode = trimmed;
+          explanationText = 'Code applied to your project.';
+        } else {
+          // Strategy 2: Extract from markdown code fences (```html ... ``` or ```tsx ... ```)
+          const fenceRegex = /```(?:html|htm|tsx|jsx|css)?\s*\n([\s\S]*?)```/gi;
+          const fenceMatches = [...aiContent.matchAll(fenceRegex)];
+
+          if (fenceMatches.length > 0) {
+            // Find the largest code block — it's likely the full template
+            let bestBlock = '';
+            for (const m of fenceMatches) {
+              const block = m[1].trim();
+              if (block.length > bestBlock.length) bestBlock = block;
+            }
+            // Only treat as generatedCode if it has real HTML structure
+            const hasStructure = bestBlock.includes('<') && (
+              bestBlock.includes('<!DOCTYPE') ||
+              bestBlock.includes('<html') ||
+              bestBlock.includes('<head') ||
+              bestBlock.includes('<body') ||
+              bestBlock.includes('<div') ||
+              bestBlock.includes('<section')
+            );
+            if (hasStructure) {
+              generatedCode = bestBlock;
+            }
+          }
+
+          // Strategy 3: Check for embedded HTML structure without fences (mixed prose + code)
+          if (!generatedCode) {
+            const doctypeIdx = aiContent.indexOf('<!DOCTYPE');
+            const htmlIdx = aiContent.indexOf('<html');
+            const startIdx = doctypeIdx !== -1 ? doctypeIdx : htmlIdx;
+            if (startIdx !== -1) {
+              const candidate = aiContent.substring(startIdx).trim();
+              if (candidate.includes('</html>')) {
+                generatedCode = candidate.substring(0, candidate.indexOf('</html>') + 7);
+              } else if (candidate.includes('<body') && candidate.length > 200) {
+                generatedCode = candidate;
+              }
+            }
+          }
+
+          // Extract explanation: everything that's NOT inside code fences
+          explanationText = aiContent
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/^\s*\n/gm, '\n')
+            .trim();
+
+          if (!explanationText && generatedCode) {
+            explanationText = isSurgicalEdit ? '✅ Edit applied successfully.' : '✅ Code generated and applied to your project.';
+          }
         }
       }
 
@@ -900,27 +930,25 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         });
       }
 
-      // Update message with final content
+      // Update message — show ONLY the explanation text, NOT raw code
       setMessages(prev => prev.map(m =>
         m.id === streamingId
           ? {
               ...m,
-              content: aiContent,
+              content: explanationText || aiContent,
               thinking: thinkingSteps,
               claudeReasoning: aiReasoning,
-              code: generatedCode,
+              // DO NOT set `code` — we auto-apply instead of showing "Apply" buttons
               edits: edits.length > 0 ? edits : undefined,
               isStreaming: false,
             }
           : m
       ));
 
-      // Auto-apply for both full-generation and surgical edits.
-      // Surgical edits now return the complete template with only the targeted change,
-      // so auto-applying is safe and gives the user immediate visual feedback.
+      // AUTO-APPLY: Always push generated code to VFS via onCodeGenerated
       if (generatedCode && onCodeGenerated) {
         onCodeGenerated(generatedCode);
-        toast.success(isSurgicalEdit ? 'Edit applied to preview' : 'Code applied to preview');
+        toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
       }
 
     } catch (error) {
@@ -1034,13 +1062,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     }
   };
 
-  // Handle applying generated code
-  const handleApplyCode = (code: string) => {
-    if (onCodeGenerated) {
-      onCodeGenerated(code);
-      toast.success('Code applied to preview');
-    }
-  };
+  // handleApplyCode removed — code is now auto-applied to VFS
 
   // Handle viewing edits
   const handleViewEdits = (edits: VFSEdit[]) => {
@@ -1125,7 +1147,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   key={message.id}
                   message={message}
                   onViewEdits={handleViewEdits}
-                  onApplyCode={handleApplyCode}
                   onRetryError={handleFixError}
                 />
               ))}
