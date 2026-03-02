@@ -41,7 +41,9 @@ export type {
 
 export {
   // Utilities
-  wrapInHtmlDoc,
+  wrapInReactComponent,
+  wrapInHtmlDoc, // deprecated alias
+  
   
   // Salon templates only
   salonTemplates,

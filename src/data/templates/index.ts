@@ -76,8 +76,8 @@ export {
   generateSectionSuggestionPrompt
 } from './industryPromptGenerator';
 
-// Utilities
-export { wrapInHtmlDoc } from './utils';
+// Utilities (wrapInReactComponent is the primary, wrapInHtmlDoc is deprecated alias)
+export { wrapInReactComponent, wrapInHtmlDoc } from './utils';
 
 // Advanced CSS System
 export { 

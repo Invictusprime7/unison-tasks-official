@@ -6,7 +6,7 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInHtmlDoc } from '../utils';
+import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 // ============================================================================
@@ -633,7 +633,7 @@ export const restaurantTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Restaurant Reservation System',
     tags: ['restaurant', 'fine-dining', 'luxury', 'booking', 'dark'],
-    code: wrapInHtmlDoc(restaurantDark, 'Aurum — Fine Dining Restaurant'),
+    code: wrapInReactComponent(restaurantDark, 'Aurum — Fine Dining Restaurant'),
   },
   {
     id: 'restaurant-light-casual-bistro',
@@ -643,7 +643,7 @@ export const restaurantTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Bistro Reservation System',
     tags: ['restaurant', 'bistro', 'casual', 'booking', 'light'],
-    code: wrapInHtmlDoc(restaurantLight, "Bella's Bistro — Neighborhood Restaurant"),
+    code: wrapInReactComponent(restaurantLight, "Bella's Bistro — Neighborhood Restaurant"),
   },
   {
     id: 'restaurant-bold-farm-table',
@@ -653,7 +653,7 @@ export const restaurantTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Farm Restaurant System',
     tags: ['restaurant', 'farm-to-table', 'organic', 'booking', 'bold'],
-    code: wrapInHtmlDoc(restaurantBold, 'Roots & Harvest — Farm-to-Table'),
+    code: wrapInReactComponent(restaurantBold, 'Roots & Harvest — Farm-to-Table'),
   },
 ];
 

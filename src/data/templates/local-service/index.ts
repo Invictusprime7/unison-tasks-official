@@ -6,7 +6,7 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInHtmlDoc } from '../utils';
+import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 const SERVICE_DARK_STYLES = `
@@ -539,7 +539,7 @@ export const localServiceTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Contractor Quote System',
     tags: ['contractor', 'renovation', 'construction', 'quote', 'dark'],
-    code: wrapInHtmlDoc(serviceDark, 'Apex Contracting — Home Renovations'),
+    code: wrapInReactComponent(serviceDark, 'Apex Contracting — Home Renovations'),
   },
   {
     id: 'local-service-light-neighborhood',
@@ -549,7 +549,7 @@ export const localServiceTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Local Service Quote System',
     tags: ['plumber', 'local-service', 'neighborhood', 'quote', 'light'],
-    code: wrapInHtmlDoc(serviceLight, 'GreenLeaf Plumbing — Your Local Plumber'),
+    code: wrapInReactComponent(serviceLight, 'GreenLeaf Plumbing — Your Local Plumber'),
   },
   {
     id: 'local-service-bold-emergency',
@@ -559,7 +559,7 @@ export const localServiceTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Emergency Service System',
     tags: ['electrician', 'emergency', '24-7', 'urgent', 'bold'],
-    code: wrapInHtmlDoc(serviceBold, 'RapidFix Electric — 24/7 Emergency'),
+    code: wrapInReactComponent(serviceBold, 'RapidFix Electric — 24/7 Emergency'),
   },
 ];
 
