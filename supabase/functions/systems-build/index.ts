@@ -126,7 +126,7 @@ const BodySchema = z.object({
   templateHtml: z.string().max(200_000).optional(),
   variantMode: z.boolean().optional().default(false),
   variationSeed: z.string().optional(), // Random seed for visual diversity
-  outputFormat: z.enum(["html", "react"]).optional().default("react"), // Output format: html = HTML+Tailwind, react = React fullstack
+  outputFormat: z.enum(["react"]).optional().default("react"), // Output format: react = React fullstack
   // User Design Profile - extracted patterns from user's saved projects for style-matching
   userDesignProfile: z.object({
     projectCount: z.number().optional(),
