@@ -640,7 +640,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [isInteractiveModeHelpOpen, setIsInteractiveModeHelpOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [editorCode, setEditorCode] = useState('// AI Web Builder - JavaScript Mode\n// Use vanilla JavaScript to create interactive web experiences\n\n// Example: Create a simple interactive button\nconst createButton = () => {\n  const button = document.createElement("button");\n  button.textContent = "Click Me!";\n  button.style.padding = "12px 24px";\n  button.style.fontSize = "16px";\n  button.style.cursor = "pointer";\n  \n  button.onclick = () => {\n    alert("Hello from Web Builder!");\n  };\n  \n  return button;\n};\n\n// Usage: Uncomment to test\n// document.body.appendChild(createButton());');
-  const [previewCode, setPreviewCode] = useState('<!-- AI-generated code will appear here -->\n<div style="padding: 40px; text-align: center;">\n  <h1>Welcome to AI Web Builder</h1>\n  <p>Use the AI Code Assistant to generate components</p>\n</div>');
+  const [previewCode, setPreviewCode] = useState(`import React from 'react';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+      <div className="text-center p-8">
+        <h1 className="text-4xl font-bold mb-4">Welcome to AI Web Builder</h1>
+        <p className="text-muted-foreground">Use the AI Code Assistant to generate components</p>
+      </div>
+    </div>
+  );
+}`);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const splitViewDropZoneRef = useRef<HTMLDivElement>(null);
   const [selectedHTMLElement, setSelectedHTMLElement] = useState<SelectedElement | null>(null);
@@ -1020,7 +1031,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const autoRewireHtmlIntentsRef = useRef<((fileId: string, content: string) => void) | null>(null);
   
   // Multi-page navigation state
-  const [activePagePath, setActivePagePath] = useState<string>('/index.html');
+  const [activePagePath, setActivePagePath] = useState<string>('/src/App.tsx');
   
   // Derive page tabs from VFS
   const pageTabs = useMemo(() => {
@@ -1041,7 +1052,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const vfsFiles = virtualFS.getSandpackFiles();
     const manifest: Record<string, string> = {};
     Object.entries(vfsFiles).forEach(([path, content]) => {
-      if (path.endsWith('.html')) {
+      if (path.endsWith('.tsx') && (path.includes('/pages/') || path === '/src/App.tsx')) {
         manifest[path] = content;
       }
     });
@@ -1092,43 +1103,42 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const handleAddPage = useCallback(() => {
     const name = prompt('Enter page name (e.g. "about", "contact"):');
     if (!name) return;
-    const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/\.html$/, '');
-    const path = `/${sanitized}.html`;
+    const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const componentName = sanitized
+      .replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase())
+      .replace(/^(.)/, (_, c) => c.toUpperCase());
+    const path = `/src/pages/${componentName}.tsx`;
     const vfsFiles = virtualFS.getSandpackFiles();
     if (vfsFiles[path]) {
-      toast.error(`Page "${sanitized}" already exists`);
+      toast.error(`Page "${componentName}" already exists`);
       return;
     }
-    // Get styling cues from main page
-    const mainContent = vfsFiles['/index.html'] || previewCode;
     const label = sanitized.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const newPageHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${label}</title>
-  <script src="https://cdn.tailwindcss.com"><\/script>
-</head>
-<body class="bg-slate-950 text-white min-h-screen">
-  <header class="border-b border-white/10 px-6 py-4">
-    <nav class="flex items-center gap-6">
-      <a href="/index.html" class="text-sm text-white/70 hover:text-white" data-ut-intent="nav.goto" data-ut-path="/index.html">Home</a>
-      <span class="text-sm text-white font-medium">${label}</span>
-    </nav>
-  </header>
-  <main class="max-w-4xl mx-auto px-6 py-16">
-    <h1 class="text-4xl font-bold mb-6">${label}</h1>
-    <p class="text-white/70 text-lg">This is the ${label} page. Start editing to add your content.</p>
-  </main>
-</body>
-</html>`;
-    virtualFS.importFiles({ [path]: newPageHtml });
+    const newPageCode = `import { Link } from 'react-router-dom';
+
+export default function ${componentName}Page() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border/40 px-6 py-4">
+        <nav className="flex items-center gap-6">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Home</Link>
+          <span className="text-sm text-foreground font-medium">${label}</span>
+        </nav>
+      </header>
+      <main className="max-w-4xl mx-auto px-6 py-16">
+        <h1 className="text-4xl font-bold mb-6">${label}</h1>
+        <p className="text-muted-foreground text-lg">This is the ${label} page. Start editing to add your content.</p>
+      </main>
+    </div>
+  );
+}
+`;
+    virtualFS.importFiles({ [path]: newPageCode });
     setActivePagePath(path);
     syncingFromVFSRef.current = true;
-    setPreviewCode(newPageHtml);
-    setEditorCode(newPageHtml);
-    lastSyncedCodeRef.current = newPageHtml;
+    setPreviewCode(newPageCode);
+    setEditorCode(newPageCode);
+    lastSyncedCodeRef.current = newPageCode;
     setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
     toast.success(`Page "${label}" created`);
   }, [virtualFS, previewCode]);
@@ -1143,7 +1153,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     virtualFS.importFiles(allFiles);
     // Switch back to main page if we deleted the active one
     if (activePagePath === path) {
-      handleSelectPage('/index.html');
+      handleSelectPage('/src/App.tsx');
     }
     toast.success('Page removed');
   }, [virtualFS, activePagePath, handleSelectPage]);
@@ -1237,44 +1247,33 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (previewCode && previewCode !== lastSyncedCodeRef.current) {
       console.log('[WebBuilder] Syncing previewCode to VFS, length:', previewCode.length);
       // Determine file type based on content
-      const isHTML = previewCode.trim().startsWith('<!DOCTYPE') || 
-                     previewCode.trim().startsWith('<html') ||
-                     previewCode.includes('<body');
-      const isTSX = previewCode.includes('import React') || 
-                    previewCode.includes('export default') ||
-                    previewCode.includes('const ') && previewCode.includes('return (');
+      const isReactCode = previewCode.includes('import ') || 
+                     previewCode.includes('export default') ||
+                     (previewCode.includes('function ') && previewCode.includes('return ('));
       
-      console.log('[WebBuilder] Content type detection - isHTML:', isHTML, 'isTSX:', isTSX);
+      console.log('[WebBuilder] Content type detection - isReactCode:', isReactCode);
       
-      if (isHTML) {
-        // For HTML templates, sync to the active page path (supports multi-page)
-        const targetPath = activePagePath || '/index.html';
+      if (isReactCode) {
+        // For React/TSX, sync to App.tsx or active page
+        const targetPath = activePagePath.endsWith('.tsx') ? activePagePath : '/src/App.tsx';
         console.log('[WebBuilder] Importing as', targetPath);
         virtualFS.importFiles({
           [targetPath]: previewCode,
         });
-      } else if (isTSX) {
-        // For React/TSX, sync to App.tsx
-        console.log('[WebBuilder] Importing as /src/App.tsx');
-        virtualFS.importFiles({
-          '/src/App.tsx': previewCode,
-        });
       } else {
-        // Default to active page path for simple HTML snippets
-        const targetPath = activePagePath || '/index.html';
+        // Default: wrap in a React component
+        const targetPath = '/src/App.tsx';
+        const wrapped = `import React from 'react';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      ${previewCode}
+    </div>
+  );
+}`;
         virtualFS.importFiles({
-          [targetPath]: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-  ${previewCode}
-</body>
-</html>`,
+          [targetPath]: wrapped,
         });
       }
       lastSyncedCodeRef.current = previewCode;

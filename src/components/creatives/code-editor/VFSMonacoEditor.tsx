@@ -12,7 +12,9 @@
 
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import Editor, { OnMount, loader } from '@monaco-editor/react';
-import type { editor as MonacoEditor } from 'monaco-editor';
+
+// Infer editor type from OnMount callback (avoids direct 'monaco-editor' dependency)
+type IStandaloneCodeEditor = Parameters<OnMount>[0];
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -124,7 +126,7 @@ const VFSMonacoEditor: React.FC<VFSMonacoEditorProps> = ({
   className,
   onSave,
 }) => {
-  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const editorRef = useRef<IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<any>(null);
   const [isFormatting, setIsFormatting] = useState(false);
 
