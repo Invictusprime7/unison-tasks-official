@@ -49,6 +49,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
+import { generateLibraryPrompt } from '@/data/siteElementsLibrary';
 
 // ============================================================================
 // Types
@@ -713,9 +714,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       // Detect whether this is a targeted (surgical) edit or a full generation
       const rawInput = _userContent; // input is already cleared; use the captured value
       const lowerInput = rawInput.toLowerCase();
-      const hasSurgicalKeyword = !!(
-        lowerInput.match(/\b(full control|full reign|revamp|overhaul|transform|reimagine|build|create|generate|make)\b.*\b(landing page|page|website|store)\b/) === null &&
-        (lowerInput.match(/\b(change|modify|update|edit|adjust|tweak|fix|add|insert|include|remove|delete|hide|replace|restyle|redesign|change color|change style)\b/))
+      const isFullGeneration = !!lowerInput.match(/\b(full control|full reign|revamp|overhaul|transform|reimagine|build|create|generate|make)\b.*\b(landing page|page|website|store|site|template)\b/);
+      const hasSurgicalKeyword = !isFullGeneration && !!(
+        lowerInput.match(/\b(change|modify|update|edit|adjust|tweak|fix|add|insert|include|remove|delete|hide|replace|restyle|redesign|change color|change style|move|swap|reposition|resize|enlarge|shrink|center|align|increase|decrease|make the|make it|set the|set it|should be|needs to be)\b/)
       );
       const isSurgicalEdit = hasSurgicalKeyword && !!currentCode;
 
@@ -732,25 +733,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (backendStateContext) contextLines.push(`\nBackend state:\n${backendStateContext.slice(0, 400)}`);
       const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
-      // For surgical edits, inject a strict prompt guard so the AI returns only the snippet
+      // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted change
       const promptForAI = isSurgicalEdit
         ? [
-            '🚨 SURGICAL EDIT MODE — DO NOT REWRITE THE FULL TEMPLATE 🚨',
-            '',
-            `Existing Template (context only — do NOT reproduce it):`,
-            '```html',
-            currentCode && currentCode.length > 5000 ? currentCode.slice(0, 5000) + '\n<!-- ...truncated... -->' : (currentCode || ''),
-            '```',
+            '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED ELEMENT 🚨',
             '',
             `User Request: ${_userContent}${_fileContext}`,
             '',
-            '⚠️ CRITICAL SURGICAL OUTPUT RULES:',
-            '1. Return ONLY the NEW or MODIFIED HTML snippet — NEVER the full page',
-            '2. If adding: output ONLY that element/section HTML',
-            '3. If modifying: output ONLY the modified element HTML',
-            '4. If styling: output ONLY a <style> block with changed rules',
-            '5. DO NOT output <!DOCTYPE html>, <html>, <head>, or <body> wrappers',
-            '6. No explanations — raw HTML snippet only',
+            '⚠️ CRITICAL SURGICAL EDIT RULES:',
+            '1. Output the COMPLETE template HTML — but ONLY modify the element the user asked about',
+            '2. Every section, script, style, image, text, and data attribute NOT mentioned MUST stay IDENTICAL',
+            '3. DO NOT re-generate, rephrase, or "improve" unmentioned sections',
+            '4. DO NOT change colors, fonts, layout, or content outside the targeted element',
+            '5. If the change is purely CSS/class-based, only modify the class list on that one element',
+            '6. Think of this like a diff — your output should be identical to the input except for the one change',
           ].join('\n')
         : `${_userContent}${_fileContext}${richContext}`;
 
@@ -794,17 +790,33 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             ? currentCode.substring(0, MAX_CODE_LENGTH) + '\n<!-- ... truncated for AI processing -->'
             : currentCode;
 
+          // Generate AI Site Elements Library context for the request
+          // Skeletons are NEVER included — the library provides structural reference
+          // and intent wiring only. Visual design comes from the industry variation system.
+          // SKIP library context entirely for surgical edits — it pressures the AI
+          // toward full-page generation and conflicts with targeted edit instructions.
+          const siteElementsLibraryContext = isSurgicalEdit
+            ? undefined
+            : generateLibraryPrompt({
+                systemType,
+                userPrompt: _userContent,
+                includeSkeletons: false,
+                maxElements: 10,
+              });
+
           response = await supabase.functions.invoke('ai-code-assistant', {
             body: {
               messages: [{ role: 'user', content: promptForAI }],
               mode: 'code',
               currentCode: truncatedCode,
               editMode: !!currentCode,
+              surgicalEdit: isSurgicalEdit,
               systemType,
               templateName,
               templateAction,
               userDesignProfile: userDesignProfile ?? undefined,
               systemsBuildContext: systemsBuildContext ?? undefined,
+              siteElementsLibraryContext,
               attachments: _attachments.length > 0 ? _attachments : undefined,
             },
           });
@@ -903,14 +915,12 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           : m
       ));
 
-      // Auto-apply only for full-generation requests — surgical edits require explicit "Apply" click in the message bubble
-      if (generatedCode && onCodeGenerated && !isSurgicalEdit) {
+      // Auto-apply for both full-generation and surgical edits.
+      // Surgical edits now return the complete template with only the targeted change,
+      // so auto-applying is safe and gives the user immediate visual feedback.
+      if (generatedCode && onCodeGenerated) {
         onCodeGenerated(generatedCode);
-        toast.success('Code applied to preview');
-      } else if (generatedCode && isSurgicalEdit) {
-        // Surgical edit: show the code in the message bubble with an Apply button
-        // (the user must explicitly approve the change)
-        toast.info('Review & apply the suggested change below');
+        toast.success(isSurgicalEdit ? 'Edit applied to preview' : 'Code applied to preview');
       }
 
     } catch (error) {

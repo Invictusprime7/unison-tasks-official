@@ -93,3 +93,104 @@ export function isActionIntent(intent: string): intent is ActionIntent {
 export function isAutomationIntent(intent: string): intent is AutomationIntent {
   return (AUTOMATION_INTENTS as readonly string[]).includes(intent);
 }
+
+// ============================================================================
+// Element Affinity — Maps intents to the elements that typically carry them
+// ============================================================================
+
+/**
+ * Which site elements typically trigger each intent.
+ * Used by the AI to auto-wire elements when generating full-stack pages.
+ *
+ * Structure: intent → { elements, ctaLabels, payloadKeys }
+ */
+export const INTENT_ELEMENT_AFFINITY: Record<string, {
+  /** Element IDs that commonly carry this intent */
+  elements: string[];
+  /** CTA tracking labels for these elements */
+  ctaLabels: string[];
+  /** Required data-* payload attributes */
+  payloadKeys: string[];
+  /** Human-readable description of what this wiring does */
+  description: string;
+}> = {
+  // Navigation
+  'nav.goto': {
+    elements: ['navbar-standard', 'mobile-menu-drawer', 'breadcrumb-standard', 'footer-multi-column'],
+    ctaLabels: ['cta.nav', 'cta.footer'],
+    payloadKeys: ['data-ut-path'],
+    description: 'Internal page navigation via HashRouter',
+  },
+  'nav.anchor': {
+    elements: ['hero-centered', 'hero-split', 'hero-fullbleed', 'announcement-bar', 'cta-banner'],
+    ctaLabels: ['cta.hero-secondary', 'cta.secondary'],
+    payloadKeys: ['data-ut-anchor'],
+    description: 'Smooth-scroll to section on same page',
+  },
+  'nav.external': {
+    elements: ['footer-multi-column', 'team-grid'],
+    ctaLabels: [],
+    payloadKeys: [],
+    description: 'Open external URL in new tab',
+  },
+
+  // Payment
+  'pay.checkout': {
+    elements: ['pricing-3-tier', 'cart-overlay'],
+    ctaLabels: ['cta.primary'],
+    payloadKeys: ['data-plan', 'data-price-id'],
+    description: 'Begin checkout / payment flow',
+  },
+
+  // Actions
+  'contact.submit': {
+    elements: ['contact-form-section', 'hero-centered', 'hero-split', 'cta-banner', 'faq-accordion', 'pricing-3-tier'],
+    ctaLabels: ['cta.primary', 'cta.hero', 'cta.secondary'],
+    payloadKeys: [],
+    description: 'Submit contact form / open contact overlay',
+  },
+  'newsletter.subscribe': {
+    elements: ['newsletter-signup', 'footer-multi-column'],
+    ctaLabels: ['cta.primary'],
+    payloadKeys: [],
+    description: 'Subscribe to newsletter / mailing list',
+  },
+  'booking.create': {
+    elements: ['hero-centered', 'hero-split', 'hero-fullbleed', 'service-cards', 'navbar-standard', 'cta-banner'],
+    ctaLabels: ['cta.hero', 'cta.nav', 'cta.primary'],
+    payloadKeys: ['data-service'],
+    description: 'Create booking / appointment',
+  },
+  'quote.request': {
+    elements: ['hero-centered', 'hero-fullbleed', 'service-cards', 'contact-form-section', 'cta-banner'],
+    ctaLabels: ['cta.hero', 'cta.primary'],
+    payloadKeys: [],
+    description: 'Request a quote or estimate',
+  },
+  'lead.capture': {
+    elements: ['hero-split', 'contact-form-section', 'cta-banner'],
+    ctaLabels: ['cta.hero', 'cta.primary'],
+    payloadKeys: [],
+    description: 'Capture lead information',
+  },
+
+  // Automation
+  'auth.signup': {
+    elements: ['hero-centered', 'hero-split', 'navbar-standard', 'cta-banner', 'footer-multi-column'],
+    ctaLabels: ['cta.hero', 'cta.nav', 'cta.primary'],
+    payloadKeys: [],
+    description: 'Open auth overlay (register)',
+  },
+  'cart.add': {
+    elements: ['product-card-grid', 'service-cards'],
+    ctaLabels: ['cta.primary'],
+    payloadKeys: ['data-product-id', 'data-product-name', 'data-price'],
+    description: 'Add item to shopping cart',
+  },
+  'cart.view': {
+    elements: ['navbar-standard'],
+    ctaLabels: ['cta.nav'],
+    payloadKeys: [],
+    description: 'Open cart overlay',
+  },
+};

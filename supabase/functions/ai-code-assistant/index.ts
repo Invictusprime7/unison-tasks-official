@@ -354,6 +354,10 @@ serve(async (req: Request) => {
         template_sections: z.array(z.string().max(60)).max(20).optional(),
         template_intents: z.array(z.string().max(60)).max(20).optional(),
       }).optional(),
+      // AI Site Elements Library — pre-built component intelligence context
+      siteElementsLibraryContext: z.string().max(50_000).optional(),
+      // Surgical edit mode — the user wants a targeted change, not full-page generation
+      surgicalEdit: z.boolean().optional(),
     });
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
@@ -389,6 +393,8 @@ serve(async (req: Request) => {
       navPageGen = false,
       navPageName,
       navLabel,
+      siteElementsLibraryContext,
+      surgicalEdit = false,
     } = parsed.data;
     
     // Suppress unused variable warnings - these are used in specific modes
@@ -895,6 +901,38 @@ INTENT VOCABULARY (REFERENCE):
 | overlay.open | data-overlay-type | Open generic overlay |
 | quote.request | none | Open quote form |
 | newsletter.subscribe | none | Newsletter signup |
+| lead.capture | none | Capture lead information |
+| pay.checkout | data-plan, data-price-id | Begin checkout/payment flow |
+
+FULL-STACK AUTO-WIRING (MANDATORY):
+When generating a complete page, you MUST wire EVERY interactive element to the correct intent.
+Use the AI Site Elements Library context (injected below) for the wiring map.
+The wiring map tells you EXACTLY which attributes to place on which elements.
+
+KEY WIRING RULES:
+- Every conversion CTA MUST have: data-ut-intent + data-ut-cta + data-ut-label
+- UI-only controls (toggles, filters, accordions, close btns) MUST have: data-no-intent
+- Nav links MUST have: data-ut-intent="nav.goto" + data-ut-path="/page"
+- Anchor links MUST have: data-ut-intent="nav.anchor" + data-ut-anchor="section"
+- External links MUST have: data-ut-intent="nav.external" + target="_blank"
+- NEVER leave a clickable element without either data-ut-intent OR data-no-intent
+
+CTA TRACKING LABELS (data-ut-cta values):
+- cta.nav → Header/navbar CTA button
+- cta.hero → Hero section primary CTA
+- cta.hero-secondary → Hero section secondary CTA
+- cta.primary → Main conversion CTAs (pricing, service cards, CTA banners)
+- cta.secondary → Secondary/supporting CTAs
+- cta.footer → Footer CTA button
+
+INDUSTRY-AWARE INTENT SELECTION:
+The primary CTA intent changes based on business type:
+- SaaS → auth.signup (hero, nav, CTA banner)
+- Ecommerce → cart.add / cart.view (products, nav)
+- Booking businesses (salon, restaurant, coaching) → booking.create
+- Service businesses → quote.request or contact.submit
+- Portfolio/Agency → contact.submit
+- Nonprofit → nav.anchor (to donation/mission section)
 
 DESIGN SYSTEM RULES (CRITICAL):
 - Prefer design tokens via classes: bg-background, text-foreground, bg-card, text-muted-foreground, border-border, bg-primary, text-primary-foreground.
@@ -2588,8 +2626,34 @@ Never include the <thinking> block explanation text in your final output.`;
       return { reasoning: '', content: raw };
     };
 
+    // Inject AI Site Elements Library knowledge when available.
+    // SKIP entirely for surgical edits — the library pressures the AI toward
+    // full-page generation and conflicts with targeted edit instructions.
+    // The library provides STRUCTURAL patterns and INTENT WIRING only.
+    // Visual design (colors, fonts, gradients, effects) comes from the
+    // industry variation system and design profile — NOT from the library.
+    const elementsLibraryBlock = (siteElementsLibraryContext && !surgicalEdit)
+      ? `\n${siteElementsLibraryContext}\n⚠️ LIBRARY USAGE RULE: The element library above provides STRUCTURE and INTENT WIRING patterns only. For colors, fonts, gradients, card styles, and visual effects, follow the industry variation system, design profile, and brand palette provided elsewhere in this prompt. Do NOT copy visual styles from the library skeletons — create a UNIQUE design each time.\n`
+      : '';
+
+    // For surgical edits, inject a strong system-level reinforcement that overrides
+    // the general edit mode context. This ensures the AI only touches the targeted element.
+    const surgicalEditReinforcement = surgicalEdit ? `
+
+🔒🔒🔒 SURGICAL EDIT OVERRIDE — HIGHEST PRIORITY 🔒🔒🔒
+This is a SURGICAL EDIT request. The user wants ONE specific change.
+Your output MUST be the COMPLETE template HTML, but with ONLY the requested element modified.
+EVERY other section, element, style, script, text, image, color, font, and data attribute MUST remain BYTE-FOR-BYTE IDENTICAL to the input.
+Think of this as applying a minimal diff — if a line wasn't mentioned by the user, it MUST NOT change.
+DO NOT "improve", reorganize, or modernize unmentioned parts of the template.
+DO NOT add new sections unless explicitly asked.
+DO NOT remove any sections, scripts, or styles.
+If the user asks to change ONE element's color, ONLY that element's color class changes. Nothing else.
+🔒🔒🔒 END SURGICAL EDIT OVERRIDE 🔒🔒🔒
+` : '';
+
     const aiMessages = [
-      { role: 'system', content: systemPrompt + researchContext + industryPageContext + systemTypeContext + designProfileContext + systemsBuildContextText + thinkingInstruction + (generatedImageUrl ? `
+      { role: 'system', content: systemPrompt + surgicalEditReinforcement + researchContext + industryPageContext + systemTypeContext + designProfileContext + systemsBuildContextText + elementsLibraryBlock + thinkingInstruction + (generatedImageUrl ? `
 
 **IMPORTANT: An AI-generated image has been created for this request. Include this image HTML in your response at the appropriate location:**
 ${imageHtml}
