@@ -95,6 +95,8 @@
     "lucide-react": "^0.545.0",
     "nanoid": "^5.1.6",
     "next-themes": "^0.4.6",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.6.14",
     "react": "^19.2.0",
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.2.0",
