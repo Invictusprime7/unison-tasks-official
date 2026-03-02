@@ -834,77 +834,95 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       // The edge function returns { content, generatedImage?, imagePlacement? }
       const aiContent = response.data?.content || 'I processed your request but have no specific output to show.';
       
-      // ====== ROBUST CODE EXTRACTION ======
-      // Extract code from AI response - handles raw HTML, markdown fences, and mixed content
+      // ====== ROBUST CODE EXTRACTION (React/TSX Mode) ======
+      // Extract React component code from AI response
       let generatedCode: string | null = null;
       let explanationText = '';
+      let multiFileOutput: Record<string, string> | null = null;
 
       if (aiContent) {
-        // Strategy 1: Check if content IS raw HTML (starts with <!DOCTYPE or <html)
         const trimmed = aiContent.trim();
-        const isRawHtml = /^<!doctype\s+html/i.test(trimmed) || /^<html[\s>]/i.test(trimmed);
 
-        if (isRawHtml) {
-          generatedCode = trimmed;
-          explanationText = 'Code applied to your project.';
-        } else {
-          // Strategy 2: Extract from markdown code fences (```html ... ``` or ```tsx ... ```)
-          const fenceRegex = /```(?:html|htm|tsx|jsx|css)?\s*\n([\s\S]*?)```/gi;
+        // Strategy 1: Check for JSON multi-file output: {"files": {...}}
+        if (trimmed.startsWith('{') && trimmed.includes('"files"')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed.files && typeof parsed.files === 'object') {
+              multiFileOutput = parsed.files;
+              explanationText = parsed.explanation || '✅ Multi-file project generated and applied.';
+            }
+          } catch { /* not valid JSON, continue */ }
+        }
+
+        // Strategy 2: Check if content IS a React component (starts with import/export/function)
+        if (!multiFileOutput && !generatedCode) {
+          const isReactComponent = /^import\s+/m.test(trimmed) ||
+            /^export\s+default\s+function/m.test(trimmed) ||
+            /^(?:const|function)\s+\w+.*=.*(?:=>|\{)/m.test(trimmed);
+
+          if (isReactComponent && trimmed.includes('return') && trimmed.includes('<')) {
+            generatedCode = trimmed;
+            explanationText = '✅ Component applied to your project.';
+          }
+        }
+
+        // Strategy 3: Extract from markdown code fences (```tsx ... ``` or ```jsx ... ```)
+        if (!multiFileOutput && !generatedCode) {
+          const fenceRegex = /```(?:tsx|jsx|typescript|javascript|ts|js|html|htm|css)?\s*\n([\s\S]*?)```/gi;
           const fenceMatches = [...aiContent.matchAll(fenceRegex)];
 
           if (fenceMatches.length > 0) {
-            // Find the largest code block — it's likely the full template
+            // Find the largest code block
             let bestBlock = '';
             for (const m of fenceMatches) {
               const block = m[1].trim();
               if (block.length > bestBlock.length) bestBlock = block;
             }
-            // Only treat as generatedCode if it has real HTML structure
-            const hasStructure = bestBlock.includes('<') && (
-              bestBlock.includes('<!DOCTYPE') ||
-              bestBlock.includes('<html') ||
-              bestBlock.includes('<head') ||
-              bestBlock.includes('<body') ||
-              bestBlock.includes('<div') ||
-              bestBlock.includes('<section')
-            );
-            if (hasStructure) {
+            // Check if it has React/JSX structure
+            const hasReactStructure = bestBlock.includes('import ') ||
+              bestBlock.includes('export ') ||
+              bestBlock.includes('function ') ||
+              bestBlock.includes('return (') ||
+              (bestBlock.includes('<') && bestBlock.includes('className'));
+            if (hasReactStructure) {
               generatedCode = bestBlock;
             }
           }
+        }
 
-          // Strategy 3: Check for embedded HTML structure without fences (mixed prose + code)
-          if (!generatedCode) {
-            const doctypeIdx = aiContent.indexOf('<!DOCTYPE');
-            const htmlIdx = aiContent.indexOf('<html');
-            const startIdx = doctypeIdx !== -1 ? doctypeIdx : htmlIdx;
-            if (startIdx !== -1) {
-              const candidate = aiContent.substring(startIdx).trim();
-              if (candidate.includes('</html>')) {
-                generatedCode = candidate.substring(0, candidate.indexOf('</html>') + 7);
-              } else if (candidate.includes('<body') && candidate.length > 200) {
-                generatedCode = candidate;
-              }
-            }
-          }
-
-          // Extract explanation: everything that's NOT inside code fences
+        // Extract explanation: everything that's NOT inside code fences
+        if (!explanationText) {
           explanationText = aiContent
             .replace(/```[\s\S]*?```/g, '')
             .replace(/^\s*\n/gm, '\n')
             .trim();
 
-          if (!explanationText && generatedCode) {
+          if (!explanationText && (generatedCode || multiFileOutput)) {
             explanationText = isSurgicalEdit ? '✅ Edit applied successfully.' : '✅ Code generated and applied to your project.';
           }
         }
       }
 
+      // Handle multi-file output via onFilesPatch
+      if (multiFileOutput && onFilesPatch) {
+        onFilesPatch(multiFileOutput);
+        toast.success('✅ Multi-file project applied to VFS');
+      }
+
       // Determine VFS edits from response
       const edits: VFSEdit[] = [];
-      if (generatedCode) {
+      if (multiFileOutput) {
+        Object.keys(multiFileOutput).forEach(path => {
+          edits.push({
+            path,
+            type: 'create',
+            linesChanged: multiFileOutput![path].split('\n').length,
+            preview: multiFileOutput![path].substring(0, 200),
+          });
+        });
+      } else if (generatedCode) {
         edits.push({
-          path: '/index.html',
+          path: '/src/App.tsx',
           type: currentCode ? 'modify' : 'create',
           linesChanged: generatedCode.split('\n').length,
           preview: generatedCode.substring(0, 200),
