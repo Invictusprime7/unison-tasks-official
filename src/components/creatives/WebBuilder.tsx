@@ -337,6 +337,57 @@ interface CodeValidationResult {
   contentLoss: number;
 }
 
+/**
+ * Extract all <style> blocks from HTML source.
+ */
+function extractStyleBlocks(html: string): string[] {
+  const regex = /<style[^>]*>[\s\S]*?<\/style>/gi;
+  return html.match(regex) || [];
+}
+
+/**
+ * Preserve the original template's <style> blocks in the AI-generated output.
+ * This prevents the AI from silently rewriting CSS custom properties, color palettes,
+ * font stacks, and animation keyframes that define the template's visual identity.
+ */
+function preserveStyleBlocks(originalCode: string, aiCode: string): string {
+  const origStyles = extractStyleBlocks(originalCode);
+  const aiStyles = extractStyleBlocks(aiCode);
+
+  // If original had style blocks and AI changed or removed them, restore originals
+  if (origStyles.length === 0) return aiCode;
+
+  // Replace AI style blocks with original ones (same count → 1:1 swap)
+  let result = aiCode;
+  if (aiStyles.length === origStyles.length) {
+    for (let i = 0; i < origStyles.length; i++) {
+      result = result.replace(aiStyles[i], origStyles[i]);
+    }
+  } else if (aiStyles.length < origStyles.length) {
+    // AI removed style blocks — replace what's there and append the rest
+    for (let i = 0; i < aiStyles.length; i++) {
+      result = result.replace(aiStyles[i], origStyles[i]);
+    }
+    // Inject missing style blocks before </head> or before </style> of last match
+    const remaining = origStyles.slice(aiStyles.length).join('\n');
+    const headClose = result.indexOf('</head>');
+    if (headClose !== -1) {
+      result = result.slice(0, headClose) + '\n' + remaining + '\n' + result.slice(headClose);
+    }
+  } else {
+    // AI added extra style blocks — keep originals, drop AI additions
+    for (let i = 0; i < origStyles.length; i++) {
+      result = result.replace(aiStyles[i], origStyles[i]);
+    }
+    // Remove any extra AI style blocks
+    for (let i = origStyles.length; i < aiStyles.length; i++) {
+      result = result.replace(aiStyles[i], '');
+    }
+  }
+
+  return result;
+}
+
 function validateAICodeChange(originalCode: string, newCode: string): CodeValidationResult {
   const warnings: string[] = [];
   
@@ -3773,23 +3824,35 @@ ${body.innerHTML}
                     console.warn('[WebBuilder] AI code validation warnings:', validation.warnings);
                   }
                   
-                  // If critical changes detected, warn user and potentially reject
+                  // If critical changes detected, REJECT the AI output and keep original
                   if (validation.severity === 'critical') {
-                    console.error('[WebBuilder] CRITICAL: AI made destructive changes to template');
-                    toast.error('AI made major changes to your template', {
+                    console.error('[WebBuilder] CRITICAL: AI made destructive changes — REJECTING output');
+                    toast.error('AI edit rejected — it would have changed your entire template', {
                       description: validation.warnings.join('; '),
                       duration: 8000,
                     });
-                  } else if (validation.severity === 'warning') {
+                    return; // Do NOT apply the code
+                  }
+                  
+                  if (validation.severity === 'warning') {
                     toast.warning('AI modified template structure', {
                       description: validation.warnings.join('; '),
                       duration: 5000,
                     });
                   }
                   
+                  // Preserve original style blocks to prevent style drift from AI edits
+                  let safeCode = code;
+                  if (previewCode && previewCode.trim().startsWith('<')) {
+                    safeCode = preserveStyleBlocks(previewCode, code);
+                    if (safeCode !== code) {
+                      console.log('[WebBuilder] Style blocks preserved from original template');
+                    }
+                  }
+                  
                   const effectiveSystemType = (activeSystemType || (systemType as BusinessSystemType) || null) as BusinessSystemType | null;
                   const normalized = normalizeTemplateForCtaContract({
-                    code,
+                    code: safeCode,
                     systemType: effectiveSystemType,
                   });
                   setTemplateCtaAnalysis(normalized.analysis);

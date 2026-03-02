@@ -2649,6 +2649,13 @@ DO NOT "improve", reorganize, or modernize unmentioned parts of the template.
 DO NOT add new sections unless explicitly asked.
 DO NOT remove any sections, scripts, or styles.
 If the user asks to change ONE element's color, ONLY that element's color class changes. Nothing else.
+
+⚠️ CRITICAL STYLE PRESERVATION ⚠️
+- Copy ALL <style> blocks from the input VERBATIM — character for character.
+- DO NOT rewrite, reformat, consolidate, minify, or "clean up" any CSS.
+- DO NOT change CSS custom properties, color values, font-family declarations, or animation keyframes.
+- DO NOT change Tailwind utility classes on elements you were NOT asked to modify.
+- If the user asks to change element X, ONLY modify classes/styles on element X. Leave ALL other elements' classes untouched.
 🔒🔒🔒 END SURGICAL EDIT OVERRIDE 🔒🔒🔒
 ` : '';
 
