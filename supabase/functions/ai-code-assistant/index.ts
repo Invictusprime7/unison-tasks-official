@@ -2656,6 +2656,15 @@ If the user asks to change ONE element's color, ONLY that element's color class 
 - DO NOT change CSS custom properties, color values, font-family declarations, or animation keyframes.
 - DO NOT change Tailwind utility classes on elements you were NOT asked to modify.
 - If the user asks to change element X, ONLY modify classes/styles on element X. Leave ALL other elements' classes untouched.
+- DO NOT change background colors, gradients, border-radius, box-shadow, or any visual property on ANY element not targeted by the user.
+
+⚠️ BACKEND / WIRING EDITS — EXTRA RULES ⚠️
+When the user asks to "wire", "connect", "integrate", "hook up", "link to backend", "add API call", "submit data", "save to database", or similar backend-wiring requests:
+- You are ONLY allowed to add/modify <script> blocks, data attributes (data-*), form action/method attributes, or fetch/API call logic.
+- You MUST NOT change ANY visual styling: no class changes, no inline style changes, no CSS modifications.
+- You MUST NOT rearrange, rewrite, or "improve" any HTML structure or element order.
+- The ONLY acceptable changes are functional: adding event listeners, fetch calls, form handlers, script blocks.
+- Copy the entire template as-is and ONLY inject the minimal JavaScript/attributes needed for the backend wiring.
 🔒🔒🔒 END SURGICAL EDIT OVERRIDE 🔒🔒🔒
 ` : '';
 
