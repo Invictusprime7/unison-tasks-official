@@ -379,12 +379,57 @@ function preserveStyleBlocks(originalCode: string, aiCode: string): string {
     for (let i = 0; i < origStyles.length; i++) {
       result = result.replace(aiStyles[i], origStyles[i]);
     }
-    // Remove any extra AI style blocks
+    // Remove any extra AI style blocks (but keep script-only additions like ai-style-overrides)
     for (let i = origStyles.length; i < aiStyles.length; i++) {
-      result = result.replace(aiStyles[i], '');
+      // Keep AI-injected override blocks (functional additions), remove visual rewrites
+      if (!aiStyles[i].includes('ai-style-overrides')) {
+        result = result.replace(aiStyles[i], '');
+      }
     }
   }
 
+  return result;
+}
+
+/**
+ * Preserve inline class attributes from the original template on elements that the AI
+ * should not have modified. Compares elements by tag+id or tag+data-section and restores
+ * the original class attribute when the AI changed it without a corresponding structural change.
+ */
+function preserveInlineClasses(originalCode: string, aiCode: string): string {
+  // Build a map of element id/data-section → class attribute from original
+  const classMap = new Map<string, string>();
+  const classRegex = /<(\w+)\s+[^>]*?((?:id|data-section)="[^"]*")[^>]*?class="([^"]*)"/gi;
+  let match: RegExpExecArray | null;
+  
+  while ((match = classRegex.exec(originalCode)) !== null) {
+    const key = `${match[1].toLowerCase()}|${match[2]}`;
+    classMap.set(key, match[3]);
+  }
+  
+  if (classMap.size === 0) return aiCode;
+  
+  // For each identifiable element in AI output, check if classes changed
+  let result = aiCode;
+  const aiClassRegex = /<(\w+)\s+[^>]*?((?:id|data-section)="[^"]*")[^>]*?class="([^"]*)"/gi;
+  const replacements: Array<{ from: string; to: string }> = [];
+  
+  while ((match = aiClassRegex.exec(aiCode)) !== null) {
+    const key = `${match[1].toLowerCase()}|${match[2]}`;
+    const origClass = classMap.get(key);
+    if (origClass && origClass !== match[3]) {
+      // AI changed classes on this element — restore original
+      replacements.push({
+        from: match[0],
+        to: match[0].replace(`class="${match[3]}"`, `class="${origClass}"`)
+      });
+    }
+  }
+  
+  for (const rep of replacements) {
+    result = result.replace(rep.from, rep.to);
+  }
+  
   return result;
 }
 
@@ -3841,12 +3886,13 @@ ${body.innerHTML}
                     });
                   }
                   
-                  // Preserve original style blocks to prevent style drift from AI edits
+                  // Preserve original style blocks and inline classes to prevent style drift from AI edits
                   let safeCode = code;
                   if (previewCode && previewCode.trim().startsWith('<')) {
                     safeCode = preserveStyleBlocks(previewCode, code);
+                    safeCode = preserveInlineClasses(previewCode, safeCode);
                     if (safeCode !== code) {
-                      console.log('[WebBuilder] Style blocks preserved from original template');
+                      console.log('[WebBuilder] Style blocks and inline classes preserved from original template');
                     }
                   }
                   
