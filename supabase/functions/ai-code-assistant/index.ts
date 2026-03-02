@@ -265,10 +265,10 @@ serve(async (req: Request) => {
       // System type for business context
       systemType: z.string().max(50).nullish(),
       // Template generation parameters (for template-json and template-html modes)
-      variationSeed: z.string().max(30).optional(),
-      templateName: z.string().max(100).optional(),
-      aesthetic: z.string().max(80).optional(),
-      source: z.string().max(80).optional(),
+      variationSeed: z.string().max(30).nullish(),
+      templateName: z.string().max(100).nullish(),
+      aesthetic: z.string().max(80).nullish(),
+      source: z.string().max(80).nullish(),
       // User Design Profile - extracted patterns from user's saved projects for style-matching
       userDesignProfile: z.object({
         projectCount: z.number().optional(),
