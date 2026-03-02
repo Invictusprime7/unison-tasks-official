@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
-import CodeMirrorEditor from './CodeMirrorEditor';
+import VFSMonacoEditor from './code-editor/VFSMonacoEditor';
 import { SimplePreview, type SimplePreviewHandle } from '@/components/SimplePreview';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { DeployButton } from '@/components/DeployButton';
@@ -4419,29 +4419,18 @@ ${body.innerHTML}
                               ? (activeFile.language === 'typescript' ? 'javascript' : activeFile.language)
                               : 'javascript') as 'javascript' | 'html' | 'css' | 'json';
                             return (
-                              <CodeMirrorEditor
+                              <VFSMonacoEditor
                                 height="100%"
-                                language={lang}
+                                fileName={activeFile.name}
                                 value={activeFile.content}
                                 onChange={(value) => {
                                   virtualFS.updateFileContent(activeFile.id, value);
                                   trackFileModification(activeFile.id, value);
                                 }}
-                                theme="vs-dark"
                                 isAIProcessing={templateState.isRendering}
-                                options={{
-                                  minimap: { enabled: true },
-                                  fontSize: 14,
-                                  lineNumbers: 'on',
-                                  roundedSelection: true,
-                                  scrollBeyondLastLine: false,
-                                  automaticLayout: true,
-                                  tabSize: 2,
-                                  wordWrap: 'on',
-                                  formatOnPaste: true,
-                                  formatOnType: true,
-                                  suggestOnTriggerCharacters: true,
-                                  quickSuggestions: true,
+                                onSave={(val) => {
+                                  virtualFS.updateFileContent(activeFile.id, val);
+                                  toast.success('File saved');
                                 }}
                                 className="w-full h-full"
                               />
@@ -4620,28 +4609,19 @@ export default function App() {
                     </div>
                     
                     <div className="flex-1">
-                      <CodeMirrorEditor
+                      <VFSMonacoEditor
                         height="100%"
-                        language="javascript"
+                        fileName="template.html"
                         value={editorCode}
                         onChange={(value) => {
                           setEditorCode(value || '');
                           setPreviewCode(value || '');
                         }}
-                        theme="vs-dark"
                         isAIProcessing={templateState.isRendering}
-                        options={{
-                          minimap: { enabled: true },
-                          fontSize: 13,
-                          lineNumbers: 'on',
-                          scrollBeyondLastLine: false,
-                          automaticLayout: true,
-                          tabSize: 2,
-                          wordWrap: 'on',
-                          suggestOnTriggerCharacters: true,
-                          quickSuggestions: true,
-                          formatOnPaste: true,
-                          formatOnType: true,
+                        onSave={(val) => {
+                          setEditorCode(val);
+                          setPreviewCode(val);
+                          toast.success('Saved');
                         }}
                       />
                     </div>

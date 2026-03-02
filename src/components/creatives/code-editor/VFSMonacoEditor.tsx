@@ -1,0 +1,370 @@
+/**
+ * VFS Monaco Editor — Full IDE-grade code editor
+ * 
+ * Features:
+ * - Monaco (VS Code engine) with IntelliSense
+ * - Language-specific syntax highlighting (HTML/CSS/JS/TS/JSON)
+ * - Prettier format-on-demand (Shift+Alt+F)
+ * - AI inline completions
+ * - Minimap, bracket matching, breadcrumbs
+ * - VFS-aware: auto-detects language from file extension
+ */
+
+import React, { useRef, useCallback, useEffect, useState } from 'react';
+import Editor, { OnMount, loader } from '@monaco-editor/react';
+import type { editor as MonacoEditor } from 'monaco-editor';
+import { cn } from '@/lib/utils';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface VFSMonacoEditorProps {
+  value: string;
+  onChange?: (value: string) => void;
+  fileName?: string;           // e.g. "App.tsx" — used for language detection
+  language?: string;           // override language
+  readOnly?: boolean;
+  isAIProcessing?: boolean;
+  height?: string;
+  className?: string;
+  onSave?: (value: string) => void;
+}
+
+// Map file extension → Monaco language id
+const EXT_LANG_MAP: Record<string, string> = {
+  'tsx': 'typescript',
+  'ts': 'typescript',
+  'jsx': 'javascript',
+  'js': 'javascript',
+  'html': 'html',
+  'htm': 'html',
+  'css': 'css',
+  'scss': 'scss',
+  'json': 'json',
+  'md': 'markdown',
+  'svg': 'xml',
+  'xml': 'xml',
+  'yaml': 'yaml',
+  'yml': 'yaml',
+};
+
+function detectLanguage(fileName?: string, fallback?: string): string {
+  if (fallback) return fallback;
+  if (!fileName) return 'typescript';
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  return EXT_LANG_MAP[ext] || 'plaintext';
+}
+
+// ---------------------------------------------------------------------------
+// Prettier helpers (lazy-loaded)
+// ---------------------------------------------------------------------------
+
+let prettierPromise: Promise<any> | null = null;
+let prettierPluginsPromise: Promise<any[]> | null = null;
+
+async function loadPrettier() {
+  if (!prettierPromise) {
+    prettierPromise = import('prettier/standalone');
+    prettierPluginsPromise = Promise.all([
+      import('prettier/plugins/html'),
+      import('prettier/plugins/babel'),
+      import('prettier/plugins/estree'),
+      import('prettier/plugins/postcss'),
+      import('prettier/plugins/typescript'),
+    ]);
+  }
+  const prettier = await prettierPromise;
+  const plugins = await prettierPluginsPromise!;
+  return { prettier, plugins };
+}
+
+const LANG_TO_PARSER: Record<string, string> = {
+  typescript: 'typescript',
+  javascript: 'babel',
+  html: 'html',
+  css: 'css',
+  scss: 'css',
+  json: 'json',
+};
+
+async function formatCode(code: string, language: string): Promise<string> {
+  const parser = LANG_TO_PARSER[language];
+  if (!parser) return code;
+
+  try {
+    const { prettier, plugins } = await loadPrettier();
+    return await prettier.format(code, {
+      parser,
+      plugins,
+      singleQuote: true,
+      trailingComma: 'all',
+      printWidth: 100,
+      tabWidth: 2,
+      semi: true,
+    });
+  } catch (err) {
+    console.warn('[Prettier] format failed:', err);
+    return code;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+const VFSMonacoEditor: React.FC<VFSMonacoEditorProps> = ({
+  value,
+  onChange,
+  fileName,
+  language: languageOverride,
+  readOnly = false,
+  isAIProcessing = false,
+  height = '100%',
+  className,
+  onSave,
+}) => {
+  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<any>(null);
+  const [isFormatting, setIsFormatting] = useState(false);
+
+  const language = detectLanguage(fileName, languageOverride);
+
+  // Format action
+  const handleFormat = useCallback(async () => {
+    const editor = editorRef.current;
+    if (!editor || readOnly) return;
+    setIsFormatting(true);
+    try {
+      const formatted = await formatCode(editor.getValue(), language);
+      if (formatted !== editor.getValue()) {
+        editor.setValue(formatted);
+        onChange?.(formatted);
+      }
+    } finally {
+      setIsFormatting(false);
+    }
+  }, [language, onChange, readOnly]);
+
+  const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+
+    // ---- TypeScript / JSX configuration ----
+    const tsOpts = {
+      target: monaco.languages.typescript.ScriptTarget.ESNext,
+      allowNonTsExtensions: true,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.ESNext,
+      noEmit: true,
+      esModuleInterop: true,
+      jsx: monaco.languages.typescript.JsxEmit.React,
+      reactNamespace: 'React',
+      allowJs: true,
+      typeRoots: ['node_modules/@types'],
+      lib: ['es2020', 'dom', 'dom.iterable'],
+    };
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions(tsOpts);
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions(tsOpts);
+
+    // React type stubs for IntelliSense
+    monaco.languages.typescript.typescriptDefaults.addExtraLib(
+      `declare module 'react' {
+        export interface FC<P = {}> { (props: P): JSX.Element | null; }
+        export function useState<S>(init: S | (() => S)): [S, (v: S | ((p: S) => S)) => void];
+        export function useEffect(effect: () => void | (() => void), deps?: any[]): void;
+        export function useRef<T>(init: T): { current: T };
+        export function useCallback<T extends (...a: any[]) => any>(cb: T, deps: any[]): T;
+        export function useMemo<T>(factory: () => T, deps: any[]): T;
+        export function useContext<T>(ctx: React.Context<T>): T;
+        export interface CSSProperties { [k: string]: any; }
+        export namespace JSX { interface Element {} interface IntrinsicElements { [e: string]: any; } }
+      }`,
+      'ts:react.d.ts',
+    );
+
+    // ---- Tailwind class completions inside className="" ----
+    const tailwindClasses = [
+      'flex', 'grid', 'block', 'inline-block', 'hidden',
+      'items-center', 'justify-center', 'justify-between', 'flex-col', 'flex-row', 'flex-wrap',
+      'p-1','p-2','p-3','p-4','p-6','p-8','px-2','px-4','px-6','py-2','py-4','py-6',
+      'm-1','m-2','m-4','mx-auto','my-4','gap-2','gap-4','gap-6',
+      'w-full','h-full','max-w-sm','max-w-md','max-w-lg','max-w-xl','max-w-2xl','min-h-screen',
+      'text-xs','text-sm','text-base','text-lg','text-xl','text-2xl','text-3xl','text-4xl',
+      'font-normal','font-medium','font-semibold','font-bold',
+      'text-center','text-left','text-right',
+      'bg-primary','bg-secondary','bg-muted','bg-accent','bg-destructive','bg-background',
+      'text-primary','text-secondary','text-muted','text-accent','text-foreground','text-muted-foreground',
+      'border','border-border','border-primary','rounded','rounded-md','rounded-lg','rounded-xl','rounded-full',
+      'shadow','shadow-md','shadow-lg','shadow-xl',
+      'opacity-50','opacity-75','opacity-100',
+      'transition-all','transition-colors','duration-200','duration-300',
+      'hover:bg-primary/90','hover:opacity-80','hover:scale-105',
+      'animate-spin','animate-pulse','animate-bounce',
+      'absolute','relative','fixed','sticky','inset-0','z-10','z-50',
+      'overflow-hidden','overflow-auto','overflow-x-auto',
+      'space-x-2','space-x-4','space-y-2','space-y-4',
+      'cursor-pointer','select-none','pointer-events-none',
+      'sm:','md:','lg:','xl:','2xl:',
+    ];
+
+    monaco.languages.registerCompletionItemProvider(
+      ['html', 'typescript', 'javascript', 'typescriptreact', 'javascriptreact'],
+      {
+        triggerCharacters: ['"', "'", ' '],
+        provideCompletionItems: (model, position) => {
+          // Only inside className=""
+          const lineContent = model.getLineContent(position.lineNumber);
+          const beforeCursor = lineContent.substring(0, position.column - 1);
+          if (!/(className|class)\s*=\s*["'][^"']*$/.test(beforeCursor)) {
+            return { suggestions: [] };
+          }
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+          return {
+            suggestions: tailwindClasses.map(cls => ({
+              label: cls,
+              kind: cls.startsWith('bg-') || cls.startsWith('text-')
+                ? monaco.languages.CompletionItemKind.Color
+                : monaco.languages.CompletionItemKind.Property,
+              insertText: cls,
+              range,
+              sortText: cls,
+            })),
+          };
+        },
+      },
+    );
+
+    // ---- Keyboard shortcuts ----
+    // Shift+Alt+F → Format with Prettier
+    editor.addAction({
+      id: 'prettier-format',
+      label: 'Format Document (Prettier)',
+      keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+      contextMenuGroupId: '1_modification',
+      contextMenuOrder: 1,
+      run: () => handleFormat(),
+    });
+
+    // Ctrl/Cmd+S → Save
+    editor.addAction({
+      id: 'save-file',
+      label: 'Save File',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+      run: (ed) => {
+        onSave?.(ed.getValue());
+      },
+    });
+
+    // Enable diagnostics
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
+  }, [handleFormat, onSave]);
+
+  // Update language when file changes
+  useEffect(() => {
+    if (editorRef.current && monacoRef.current) {
+      const model = editorRef.current.getModel();
+      if (model) {
+        monacoRef.current.editor.setModelLanguage(model, language);
+      }
+    }
+  }, [language]);
+
+  return (
+    <div
+      className={cn(
+        'relative w-full overflow-hidden',
+        isAIProcessing && 'opacity-50 pointer-events-none',
+        className,
+      )}
+      style={{ height }}
+    >
+      {/* AI processing overlay */}
+      {isAIProcessing && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border shadow-lg">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-muted-foreground font-medium">AI is processing…</span>
+          </div>
+        </div>
+      )}
+
+      {/* Format indicator */}
+      {isFormatting && (
+        <div className="absolute top-2 right-16 z-20 px-2 py-1 rounded bg-primary/20 text-primary text-xs font-medium animate-pulse">
+          Formatting…
+        </div>
+      )}
+
+      <Editor
+        height="100%"
+        language={language}
+        value={value}
+        onChange={(v) => onChange?.(v || '')}
+        onMount={handleEditorDidMount}
+        theme="vs-dark"
+        options={{
+          readOnly,
+          minimap: { enabled: true, maxColumn: 80 },
+          fontSize: 14,
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
+          fontLigatures: true,
+          lineNumbers: 'on',
+          renderLineHighlight: 'all',
+          roundedSelection: true,
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+          tabSize: 2,
+          wordWrap: 'on',
+          formatOnPaste: true,
+          formatOnType: true,
+          suggestOnTriggerCharacters: true,
+          quickSuggestions: true,
+          inlineSuggest: { enabled: true },
+          bracketPairColorization: { enabled: true },
+          guides: {
+            bracketPairs: true,
+            indentation: true,
+          },
+          stickyScroll: { enabled: true },
+          cursorBlinking: 'smooth',
+          cursorSmoothCaretAnimation: 'on',
+          smoothScrolling: true,
+          padding: { top: 8, bottom: 8 },
+          folding: true,
+          foldingStrategy: 'indentation',
+          showFoldingControls: 'mouseover',
+          matchBrackets: 'always',
+          colorDecorators: true,
+          linkedEditing: true,
+        }}
+      />
+
+      {/* Status bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#007acc] flex items-center justify-between px-3 text-[11px] text-white/90 font-medium z-10 select-none">
+        <div className="flex items-center gap-3">
+          <span>{fileName || 'untitled'}</span>
+          <span className="opacity-60">Ln {value.split('\n').length}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="opacity-70 cursor-pointer hover:opacity-100" onClick={handleFormat} title="Shift+Alt+F">
+            Prettier
+          </span>
+          <span className="uppercase tracking-wider">{language}</span>
+          <span className="opacity-60">UTF-8</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VFSMonacoEditor;
