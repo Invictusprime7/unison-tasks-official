@@ -1054,6 +1054,17 @@ ${pages.map((p, i) => `${i + 1}. ${p.title} (${p.path || "/"})`).join("\n")}
 🔗 **NAVIGATION MENU:**
 ${navigation.map(n => `- ${n.label}: ${n.path}`).join("\n")}
 
+🔗 **MULTI-PAGE NAVIGATION WIRING (CRITICAL):**
+- ALL navigation links in header/footer MUST use: data-ut-intent="nav.goto" data-ut-path="/pagename.html"
+- ALL CTA buttons that imply navigation to another page MUST include data-ut-path="/target.html"
+- Common pages to wire: About (/about.html), Services (/services.html), Contact (/contact.html), Pricing (/pricing.html), Gallery (/gallery.html), Blog (/blog.html), FAQ (/faq.html), Menu (/menu.html)
+- For e-commerce: Products (/products.html), Cart (/cart.html), Checkout (/checkout.html)
+- For auth CTAs: Login (/login.html), Signup (/signup.html)
+- The system automatically generates matching page files for EVERY data-ut-path target
+- Do NOT use anchor links (#section) for pages that deserve their own page — use data-ut-path instead
+- Example: <a href="/about.html" data-ut-intent="nav.goto" data-ut-path="/about.html">About Us</a>
+- Example: <button data-ut-intent="nav.goto" data-ut-path="/products.html" data-ut-cta="cta.hero">Shop Now</button>
+
 🎯 **INTENT BUTTONS TO WIRE:**
 ${intents.map(i => `- data-ut-intent="${i.intent}" for ${i.intent.replace(/\./g, " ").replace(/[_-]/g, " ")}`).join("\n")}
 
