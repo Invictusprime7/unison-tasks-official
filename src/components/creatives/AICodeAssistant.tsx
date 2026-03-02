@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Canvas as FabricCanvas } from "fabric";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import CodeMirrorEditor from "./CodeMirrorEditor";
+import VFSMonacoEditor from "./code-editor/VFSMonacoEditor";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -2054,16 +2054,11 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                                   </div>
                                 </div>
                                 <div className="max-h-[200px] overflow-auto">
-                                  <CodeMirrorEditor
-                                    height="auto"
-                                    language={(lang === "typescript" ? "javascript" : (lang as "javascript" | "html" | "css" | "json")) || "javascript"}
+                                  <VFSMonacoEditor
+                                    height="200px"
+                                    fileName={`snippet.${lang || 'tsx'}`}
                                     value={codeContent}
-                                    theme="vs-dark"
                                     readOnly={true}
-                                    options={{
-                                      lineNumbers: "on",
-                                      wordWrap: "on",
-                                    }}
                                   />
                                 </div>
                               </div>
@@ -2227,16 +2222,11 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           </DialogHeader>
           <div className="flex-1 overflow-hidden p-3">
             <div className="h-full border border-white/10 rounded-lg overflow-hidden">
-              <CodeMirrorEditor
+              <VFSMonacoEditor
                 height="100%"
-                language="javascript"
+                fileName="editor.tsx"
                 value={viewerCode}
                 onChange={(value) => setViewerCode(value || "")}
-                theme="vs-dark"
-                options={{
-                  lineNumbers: "on",
-                  wordWrap: "on",
-                }}
               />
             </div>
           </div>
