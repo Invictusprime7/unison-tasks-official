@@ -57,6 +57,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
 import { setDefaultBusinessId, setCurrentSystemType, setDemoMode, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { buildRedirectPageContext } from "@/utils/redirectPageGenerator";
+import { scaffoldMultiPageVFS } from "@/utils/multiPageScaffolder";
 import { classifyLabel, type ElementContext } from "@/utils/redirectLabelClassifier";
 import { IntentPipelineOverlay, type PipelineConfig } from "./web-builder/IntentPipelineOverlay";
 import { DemoIntentOverlay, type DemoIntentOverlayConfig } from "./web-builder/DemoIntentOverlay";
@@ -2434,7 +2435,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (location.state?.vfsFiles) {
       const vfsFiles = (location.state as { vfsFiles?: Record<string, string> })?.vfsFiles;
       if (vfsFiles && Object.keys(vfsFiles).length > 0) {
-        virtualFS.importFiles(vfsFiles);
+        // Auto-scaffold any missing linked pages from the main HTML
+        const mainHtml = vfsFiles["/index.html"];
+        if (mainHtml) {
+          const scaffoldResult = scaffoldMultiPageVFS(mainHtml, vfsFiles);
+          virtualFS.importFiles(scaffoldResult.files);
+          if (scaffoldResult.scaffoldedPages.length > 0) {
+            console.log(`[WebBuilder] Auto-scaffolded ${scaffoldResult.scaffoldedPages.length} linked pages from VFS import`);
+          }
+        } else {
+          virtualFS.importFiles(vfsFiles);
+        }
         const entry = vfsFiles["/index.html"] || vfsFiles["/src/App.tsx"] || vfsFiles["/App.tsx"];
         if (entry) {
           setEditorCode(entry);
@@ -2447,6 +2458,21 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       const { generatedCode, templateName, aesthetic, startInPreview, systemType: navSystemType } = location.state;
       console.log('[WebBuilder] Loading template code:', templateName, 'startInPreview:', startInPreview, 'systemType:', navSystemType);
       if (templateName) setCurrentTemplateName(templateName);
+      
+      // Auto-scaffold multi-page VFS from generated HTML
+      const isHTML = generatedCode.trim().startsWith('<!DOCTYPE') || generatedCode.trim().startsWith('<html');
+      if (isHTML) {
+        const scaffoldResult = scaffoldMultiPageVFS(generatedCode);
+        virtualFS.importFiles(scaffoldResult.files);
+        if (scaffoldResult.scaffoldedPages.length > 0) {
+          console.log(`[WebBuilder] Auto-scaffolded ${scaffoldResult.scaffoldedPages.length} linked pages:`, 
+            scaffoldResult.scaffoldedPages.map(p => p.path));
+          toast.success(`${scaffoldResult.pageCount} pages ready`, {
+            description: `Main page + ${scaffoldResult.scaffoldedPages.length} linked pages loaded into VFS`,
+          });
+        }
+      }
+      
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
       

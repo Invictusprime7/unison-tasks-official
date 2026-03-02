@@ -759,11 +759,14 @@ USER REQUEST: ${prompt}
 6. **INTERACTIVE ELEMENTS** - Working navigation, hover states, scroll animations
 7. **BACKEND INTENT WIRING** - data-ut-intent attributes on CTAs
 8. **UI CONTROLS WITHOUT INTENTS** - data-no-intent on non-conversion elements
-9. **ON-DEMAND NAVIGATION** - Nav links use data-ut-intent="nav.goto" so pages are generated when clicked
+9. **NAVIGATION LINKS** - All nav links MUST use data-ut-intent="nav.goto" data-ut-path="/pagename.html" for linked pages (about, services, contact, pricing, etc.)
+10. **CTA BUTTONS** - Redirect-worthy CTAs (Shop Now, Learn More, View Details, Get Started, etc.) MUST include data-ut-path pointing to their target page
 
 OUTPUT FORMAT:
 - Return ONLY a single complete HTML page (index.html)
-- Navigation links use data-ut-intent for on-demand page generation
+- Navigation links use data-ut-intent="nav.goto" with data-ut-path for ALL linked pages
+- CTA buttons that imply navigation MUST have data-ut-path attributes
+- The system will auto-generate matching pages for every data-ut-path target
 - NO \`<!-- PAGE: -->\` markers - generate only the main page
 - NO markdown, NO explanations
 - Start with <!DOCTYPE html>`;
