@@ -1847,18 +1847,66 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         const { pagePath, pageName } = event.data;
         console.log('[WebBuilder] Page switch from iframe:', pagePath, pageName);
         const targetPath = pagePath || `/${pageName}.html`;
-        // Sync the editor to the navigated page
+        // Update active page path and editor code WITHOUT touching previewCode
+        // Touching previewCode triggers iframe re-render which destroys the in-iframe navigation
         const vfsFiles = virtualFS.getSandpackFiles();
         const pageContent = vfsFiles[targetPath];
         if (pageContent) {
           setActivePagePath(targetPath);
           syncingFromVFSRef.current = true;
-          setPreviewCode(pageContent);
           setEditorCode(pageContent);
           lastSyncedCodeRef.current = pageContent;
           setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
-          toast(`Viewing ${pageName || targetPath}`, { description: 'Page switched' });
         }
+        // Re-sync manifest to iframe so all pages are available for back-navigation
+        setTimeout(() => {
+          simplePreviewRef.current?.syncPageManifest(pageManifest);
+        }, 300);
+        return;
+      }
+      
+      // Handle in-place page navigation: iframe sends raw HTML, we process it
+      // through codeToHtml (which injects intent wiring) and reload the iframe
+      if (event.data?.type === 'NAV_PAGE_REPLACE') {
+        const { pagePath, pageName, pageContent, cacheScript } = event.data;
+        console.log('[WebBuilder] NAV_PAGE_REPLACE:', pagePath, pageName);
+        const targetPath = pagePath || `/${pageName}.html`;
+        const rawContent = pageContent || '';
+        
+        // Inject cache restoration script into <head> so it runs before the intent listener IIFE
+        let previewContent = rawContent;
+        if (cacheScript) {
+          const cacheTag = `<script id="page-cache-restore">${cacheScript}<\/script>`;
+          if (previewContent.includes('</head>')) {
+            previewContent = previewContent.replace('</head>', `${cacheTag}\n</head>`);
+          } else if (previewContent.toLowerCase().includes('<body')) {
+            previewContent = previewContent.replace(/<body/i, `${cacheTag}\n<body`);
+          } else {
+            previewContent = cacheTag + '\n' + previewContent;
+          }
+        }
+        
+        // Update preview code — this triggers codeToHtml which injects intent wiring
+        setActivePagePath(targetPath);
+        syncingFromVFSRef.current = true;
+        setPreviewCode(previewContent);
+        setEditorCode(rawContent); // Editor shows clean HTML without cache scripts
+        lastSyncedCodeRef.current = rawContent;
+        setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+        
+        // Re-sync manifest after iframe reloads
+        setTimeout(() => {
+          simplePreviewRef.current?.syncPageManifest(pageManifest);
+        }, 600);
+        return;
+      }
+      
+      // Handle manifest request from iframe after in-place page navigation
+      if (event.data?.type === 'REQUEST_PAGE_MANIFEST') {
+        console.log('[WebBuilder] Iframe requested page manifest re-sync');
+        setTimeout(() => {
+          simplePreviewRef.current?.syncPageManifest(pageManifest);
+        }, 50);
         return;
       }
       
