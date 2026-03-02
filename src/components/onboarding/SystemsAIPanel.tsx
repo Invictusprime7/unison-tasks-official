@@ -108,7 +108,7 @@ const CHIP_TO_CATEGORY: Record<string, LayoutCategory> = {
  * Picks the best template HTML for a given chip to use as AI reference.
  * Prefers the first (dark luxury) variant as it's typically the most premium.
  */
-function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; templateName: string; systemType: BusinessSystemType } | null {
+function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; templateCode: string; templateName: string; systemType: BusinessSystemType } | null {
   const systemType = CHIP_TO_SYSTEM[chipId];
   const category = CHIP_TO_CATEGORY[chipId];
   if (!systemType || !category) return null;
@@ -122,7 +122,8 @@ function getTemplateReference(chipId: string): { templateId: string; templateHtm
   
   return {
     templateId: bestTemplate.id,
-    templateHtml: bestTemplate.code,
+    templateHtml: bestTemplate.code, // kept for backward compat
+    templateCode: bestTemplate.code, // React component string
     templateName: bestTemplate.name,
     systemType,
   };

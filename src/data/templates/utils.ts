@@ -1,227 +1,291 @@
 /**
  * Layout Templates - Utility Functions
  * Shared helpers for template generation
+ * 
+ * REACT-ONLY: All templates output React component strings (.tsx)
  */
 
 /**
- * Wraps body content into a full HTML document with Tailwind CSS CDN
+ * Escapes backticks and ${} in template content for safe embedding in template literals
  */
-export const wrapInHtmlDoc = (body: string, title: string = "AI Web Builder Template") => `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    html { scroll-behavior: smooth; }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-    details > summary { list-style: none; cursor: pointer; }
-    details > summary::-webkit-details-marker { display: none; }
-    .tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }
-  </style>
-</head>
-<body class="bg-slate-950 text-white">
-  ${body}
+function escapeForTemplateLiteral(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+}
 
-  <script>
-    (() => {
-      const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const stickyStoragePrefix = 'stickyDismissed:';
+/**
+ * Extracts <style> block content from HTML body strings
+ */
+function extractStyles(body: string): { styles: string; cleanBody: string } {
+  const styleBlocks: string[] = [];
+  const cleanBody = body.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_, css) => {
+    styleBlocks.push(css.trim());
+    return '';
+  });
+  return { styles: styleBlocks.join('\n\n'), cleanBody: cleanBody.trim() };
+}
 
-      // Smooth-scroll for in-page anchors.
-      document.addEventListener('click', (e) => {
-        const target = e.target;
-        if (!(target instanceof Element)) return;
-        const anchor = target.closest('a[href^="#"]');
-        if (!anchor) return;
-        const href = anchor.getAttribute('href') || '';
-        if (href.length < 2) return;
-        const el = document.querySelector(href);
-        if (!el) return;
-        e.preventDefault();
-        el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
-      });
+/**
+ * Extracts <script> block content from HTML body strings
+ */
+function extractScripts(body: string): { scripts: string; cleanBody: string } {
+  const scriptBlocks: string[] = [];
+  const cleanBody = body.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (_, js) => {
+    scriptBlocks.push(js.trim());
+    return '';
+  });
+  return { scripts: scriptBlocks.join('\n\n'), cleanBody: cleanBody.trim() };
+}
 
-      // data-toggle="#targetId" toggles the target's "hidden" class.
-      document.addEventListener('click', (e) => {
-        const target = e.target;
-        if (!(target instanceof Element)) return;
-        const btn = target.closest('[data-toggle]');
-        if (!btn) return;
+/**
+ * Wraps body content into a React component with embedded styles and interactive behavior.
+ * Replaces the old wrapInHtmlDoc for the pure React/TSX pipeline.
+ * 
+ * The component:
+ * 1. Injects all <style> blocks via useEffect
+ * 2. Runs interactive scripts (tabs, carousel, scroll-reveal) via useEffect
+ * 3. Renders HTML content via dangerouslySetInnerHTML (preserves Tailwind classes)
+ */
+export const wrapInReactComponent = (body: string, title: string = "Template"): string => {
+  // Extract styles and scripts from the body content
+  const { styles: extractedStyles, cleanBody: bodyAfterStyles } = extractStyles(body);
+  const { scripts: extractedScripts, cleanBody: finalBody } = extractScripts(bodyAfterStyles);
 
-        const selector = btn.getAttribute('data-toggle');
-        if (!selector) return;
-        const panel = document.querySelector(selector);
-        if (!(panel instanceof HTMLElement)) return;
+  const escapedStyles = escapeForTemplateLiteral(extractedStyles);
+  const escapedBody = escapeForTemplateLiteral(finalBody);
+  const escapedScripts = escapeForTemplateLiteral(extractedScripts);
 
-        panel.classList.toggle('hidden');
-        panel.setAttribute('aria-hidden', panel.classList.contains('hidden') ? 'true' : 'false');
-      });
+  return `import React, { useEffect, useRef } from 'react';
 
-      // Sticky dismiss: [data-sticky][data-sticky-key] can be hidden via a [data-dismiss] button.
-      const hideSticky = (stickyEl, key) => {
-        if (!(stickyEl instanceof HTMLElement)) return;
-        stickyEl.classList.add('hidden');
-        stickyEl.setAttribute('aria-hidden', 'true');
-        if (key) {
-          try {
-            localStorage.setItem(stickyStoragePrefix + key, '1');
-          } catch {
-            // ignore storage errors
-          }
+/**
+ * ${title}
+ * Auto-generated React component from premium template
+ */
+
+const TEMPLATE_STYLES = \`
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+.tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }
+${escapedStyles}
+\`;
+
+const TEMPLATE_HTML = \`${escapedBody}\`;
+
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Inject styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-template-styles', '');
+    style.textContent = TEMPLATE_STYLES;
+    document.head.appendChild(style);
+    
+    // Set body classes
+    document.body.classList.add('bg-slate-950', 'text-white');
+    document.title = ${JSON.stringify(title)};
+    
+    return () => {
+      style.remove();
+      document.body.classList.remove('bg-slate-950', 'text-white');
+    };
+  }, []);
+
+  // Run interactive scripts after HTML is mounted
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    // Smooth-scroll for in-page anchors
+    const handleClick = (e: Event) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest('a[href^="#"]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href') || '';
+      if (href.length < 2) return;
+      const el = document.querySelector(href);
+      if (!el) return;
+      e.preventDefault();
+      el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
+    };
+    container.addEventListener('click', handleClick);
+
+    // Data-toggle
+    const handleToggle = (e: Event) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      const btn = t.closest('[data-toggle]');
+      if (!btn) return;
+      const selector = btn.getAttribute('data-toggle');
+      if (!selector) return;
+      const panel = document.querySelector(selector);
+      if (!(panel instanceof HTMLElement)) return;
+      panel.classList.toggle('hidden');
+      panel.setAttribute('aria-hidden', panel.classList.contains('hidden') ? 'true' : 'false');
+    };
+    container.addEventListener('click', handleToggle);
+
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          observer.unobserve(entry.target);
         }
-      };
-
-      document.querySelectorAll('[data-sticky-key]').forEach((el) => {
-        if (!(el instanceof HTMLElement)) return;
-        const key = el.getAttribute('data-sticky-key');
-        if (!key) return;
-        try {
-          const dismissed = localStorage.getItem(stickyStoragePrefix + key) === '1';
-          if (dismissed) hideSticky(el, undefined);
-        } catch {
-          // ignore storage errors
-        }
       });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    container.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
 
-      // Use capture phase so this still works even if the builder/preview intercepts clicks.
-      document.addEventListener(
-        'click',
-        (e) => {
-          const target = e.target;
-          if (!(target instanceof Element)) return;
-          const btn = target.closest('[data-dismiss]');
-          if (!btn) return;
+    // Tabs
+    container.querySelectorAll('[data-tabs]').forEach((root) => {
+      const buttons = Array.from(root.querySelectorAll('[data-tab]'));
+      const panels = Array.from(root.querySelectorAll('[data-tab-panel]'));
+      if (buttons.length === 0 || panels.length === 0) return;
+      const theme = (root.getAttribute('data-tabs-theme') || 'dark').toLowerCase();
 
-          const selector = btn.getAttribute('data-dismiss') || '';
-          const key = btn.getAttribute('data-dismiss-key') || undefined;
-          const sticky =
-            selector && selector !== 'closest'
-              ? document.querySelector(selector)
-              : btn.closest('[data-sticky]') || btn.closest('[data-sticky-key]');
-          if (!sticky) return;
-
-          // Prevent preview navigation overlays / generic button interception.
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
-
-          hideSticky(sticky, key);
-        },
-        true
-      );
-
-      // Tabs: [data-tabs] contains buttons [data-tab] and panels [data-tab-panel].
-      document.querySelectorAll('[data-tabs]').forEach((root) => {
-        if (!(root instanceof HTMLElement)) return;
-        const buttons = Array.from(root.querySelectorAll('[data-tab]'));
-        const panels = Array.from(root.querySelectorAll('[data-tab-panel]'));
-        if (buttons.length === 0 || panels.length === 0) return;
-
-        const theme = (root.getAttribute('data-tabs-theme') || 'dark').toLowerCase();
-
-        const applyButtonStyles = (button, isActive) => {
-          if (!(button instanceof HTMLElement)) return;
-
-          if (theme === 'light') {
-            // Light: active = dark pill, inactive = white pill.
-            button.classList.toggle('bg-neutral-900', isActive);
-            button.classList.toggle('text-white', isActive);
-            button.classList.toggle('bg-white', !isActive);
-            button.classList.toggle('text-neutral-900', !isActive);
-            button.classList.remove('bg-white/10', 'bg-white/5', 'text-slate-400', 'text-slate-300');
-            return;
-          }
-
-          // Dark: active = stronger glass, inactive = softer.
+      const applyButtonStyles = (button: Element, isActive: boolean) => {
+        if (!(button instanceof HTMLElement)) return;
+        if (theme === 'light') {
+          button.classList.toggle('bg-neutral-900', isActive);
+          button.classList.toggle('text-white', isActive);
+          button.classList.toggle('bg-white', !isActive);
+          button.classList.toggle('text-neutral-900', !isActive);
+        } else {
           button.classList.toggle('bg-white/10', isActive);
           button.classList.toggle('text-white', isActive);
           button.classList.toggle('bg-white/5', !isActive);
           button.classList.toggle('text-slate-300', !isActive);
-          button.classList.remove('bg-neutral-900', 'bg-white', 'text-neutral-900');
-        };
+        }
+      };
 
-        const activate = (key) => {
-          buttons.forEach((b) => {
-            const isActive = b.getAttribute('data-tab') === key;
-            applyButtonStyles(b, isActive);
-            b.setAttribute('aria-selected', isActive ? 'true' : 'false');
-          });
-          panels.forEach((p) => {
-            const isActive = p.getAttribute('data-tab-panel') === key;
-            p.classList.toggle('hidden', !isActive);
-          });
-        };
-
-        const initial = root.getAttribute('data-tabs') || buttons[0].getAttribute('data-tab');
-        if (initial) activate(initial);
-
-        root.addEventListener('click', (e) => {
-          const t = e.target;
-          if (!(t instanceof Element)) return;
-          const b = t.closest('[data-tab]');
-          if (!(b instanceof HTMLElement)) return;
-          const key = b.getAttribute('data-tab');
-          if (!key) return;
-          activate(key);
+      const activate = (key: string) => {
+        buttons.forEach(b => {
+          const isActive = b.getAttribute('data-tab') === key;
+          applyButtonStyles(b, isActive);
+          b.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
-      });
-
-      // Carousel: [data-carousel] contains [data-carousel-item], next/prev controls.
-      document.querySelectorAll('[data-carousel]').forEach((root) => {
-        if (!(root instanceof HTMLElement)) return;
-        const items = Array.from(root.querySelectorAll('[data-carousel-item]')).filter((x) => x instanceof HTMLElement);
-        if (items.length === 0) return;
-
-        let index = 0;
-        const show = (i) => {
-          index = (i + items.length) % items.length;
-          items.forEach((it, idx) => it.classList.toggle('hidden', idx !== index));
-        };
-        show(0);
-
-        root.addEventListener('click', (e) => {
-          const t = e.target;
-          if (!(t instanceof Element)) return;
-          if (t.closest('[data-carousel-prev]')) show(index - 1);
-          if (t.closest('[data-carousel-next]')) show(index + 1);
+        panels.forEach(p => {
+          const isActive = p.getAttribute('data-tab-panel') === key;
+          p.classList.toggle('hidden', !isActive);
         });
+      };
+
+      const initial = root.getAttribute('data-tabs') || buttons[0]?.getAttribute('data-tab');
+      if (initial) activate(initial);
+
+      root.addEventListener('click', (e) => {
+        const t = e.target;
+        if (!(t instanceof Element)) return;
+        const b = t.closest('[data-tab]');
+        if (!(b instanceof HTMLElement)) return;
+        const key = b.getAttribute('data-tab');
+        if (key) activate(key);
       });
+    });
 
-      // Pricing switch: checkbox [data-pricing-switch] toggles elements with data-price-monthly/data-price-annual.
-      document.querySelectorAll('[data-pricing]').forEach((root) => {
-        if (!(root instanceof HTMLElement)) return;
-        const checkbox = root.querySelector('[data-pricing-switch]');
-        if (!(checkbox instanceof HTMLInputElement)) return;
-
-        const apply = () => {
-          const annual = checkbox.checked;
-          root.querySelectorAll('[data-price-monthly]').forEach((el) => el.classList.toggle('hidden', annual));
-          root.querySelectorAll('[data-price-annual]').forEach((el) => el.classList.toggle('hidden', !annual));
-        };
-        checkbox.addEventListener('change', apply);
-        apply();
+    // Carousel
+    container.querySelectorAll('[data-carousel]').forEach((root) => {
+      const items = Array.from(root.querySelectorAll('[data-carousel-item]')).filter(x => x instanceof HTMLElement) as HTMLElement[];
+      if (items.length === 0) return;
+      let index = 0;
+      const show = (i: number) => {
+        index = (i + items.length) % items.length;
+        items.forEach((it, idx) => it.classList.toggle('hidden', idx !== index));
+      };
+      show(0);
+      root.addEventListener('click', (e) => {
+        const t = e.target;
+        if (!(t instanceof Element)) return;
+        if (t.closest('[data-carousel-prev]')) show(index - 1);
+        if (t.closest('[data-carousel-next]')) show(index + 1);
       });
+    });
 
-      // "Demo" forms: add data-demo-form to show a lightweight success message without navigation.
-      document.querySelectorAll('form[data-demo-form]').forEach((form) => {
-        if (!(form instanceof HTMLFormElement)) return;
-        form.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const msg = form.getAttribute('data-demo-message') || 'Thanks! We\'ll be in touch shortly.';
-          const host = form.closest('[data-demo-form-host]') || form;
-          const existing = host.querySelector('[data-demo-toast]');
-          if (existing) existing.remove();
+    // Pricing switch
+    container.querySelectorAll('[data-pricing]').forEach((root) => {
+      const checkbox = root.querySelector('[data-pricing-switch]') as HTMLInputElement | null;
+      if (!checkbox) return;
+      const apply = () => {
+        const annual = checkbox.checked;
+        root.querySelectorAll('[data-price-monthly]').forEach(el => el.classList.toggle('hidden', annual));
+        root.querySelectorAll('[data-price-annual]').forEach(el => el.classList.toggle('hidden', !annual));
+      };
+      checkbox.addEventListener('change', apply);
+      apply();
+    });
 
-          const toast = document.createElement('div');
-          toast.setAttribute('data-demo-toast', '');
-          toast.className = 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200';
-          toast.textContent = msg;
-          host.appendChild(toast);
-        });
+    // Sticky dismiss
+    const stickyStoragePrefix = 'stickyDismissed:';
+    container.querySelectorAll('[data-sticky-key]').forEach(el => {
+      if (!(el instanceof HTMLElement)) return;
+      const key = el.getAttribute('data-sticky-key');
+      if (!key) return;
+      try {
+        if (localStorage.getItem(stickyStoragePrefix + key) === '1') {
+          el.classList.add('hidden');
+          el.setAttribute('aria-hidden', 'true');
+        }
+      } catch { /* ignore */ }
+    });
+
+    const handleDismiss = (e: Event) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      const btn = t.closest('[data-dismiss]');
+      if (!btn) return;
+      const selector = btn.getAttribute('data-dismiss') || '';
+      const key = btn.getAttribute('data-dismiss-key') || undefined;
+      const sticky = selector && selector !== 'closest'
+        ? document.querySelector(selector)
+        : btn.closest('[data-sticky]') || btn.closest('[data-sticky-key]');
+      if (!sticky || !(sticky instanceof HTMLElement)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      sticky.classList.add('hidden');
+      sticky.setAttribute('aria-hidden', 'true');
+      if (key) {
+        try { localStorage.setItem(stickyStoragePrefix + key, '1'); } catch { /* ignore */ }
+      }
+    };
+    container.addEventListener('click', handleDismiss, true);
+
+    // Demo forms
+    container.querySelectorAll('form[data-demo-form]').forEach(form => {
+      if (!(form instanceof HTMLFormElement)) return;
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const msg = form.getAttribute('data-demo-message') || "Thanks! We'll be in touch shortly.";
+        const host = form.closest('[data-demo-form-host]') || form;
+        const existing = host.querySelector('[data-demo-toast]');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.setAttribute('data-demo-toast', '');
+        toast.className = 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200';
+        toast.textContent = msg;
+        host.appendChild(toast);
       });
-    })();
-  </script>
-</body>
-</html>`;
+    });
+
+    return () => {
+      container.removeEventListener('click', handleClick);
+      container.removeEventListener('click', handleToggle);
+      container.removeEventListener('click', handleDismiss, true);
+      observer.disconnect();
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} dangerouslySetInnerHTML={{ __html: TEMPLATE_HTML }} />
+  );
+}
+`;
+};
+
+/**
+ * @deprecated Use wrapInReactComponent instead. Kept for backward compatibility during migration.
+ */
+export const wrapInHtmlDoc = wrapInReactComponent;

@@ -11,7 +11,7 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInHtmlDoc } from '../utils';
+import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 // ============================================================================
@@ -558,7 +558,7 @@ export const salonTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Salon Appointment System',
     tags: ['salon', 'beauty', 'hair', 'booking', 'spa', 'premium', 'dark'],
-    code: wrapInHtmlDoc(salonLuxury, 'Luxe Beauty - Hair Salon'),
+    code: wrapInReactComponent(salonLuxury, 'Luxe Beauty - Hair Salon'),
   },
   {
     id: 'salon-light-wellness',
@@ -568,7 +568,7 @@ export const salonTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Spa Booking System',
     tags: ['salon', 'spa', 'wellness', 'booking', 'light', 'holistic'],
-    code: wrapInHtmlDoc(salonLight, 'Serenity Spa & Wellness'),
+    code: wrapInReactComponent(salonLight, 'Serenity Spa & Wellness'),
   },
   {
     id: 'salon-bold-editorial',
@@ -578,7 +578,7 @@ export const salonTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Editorial Salon System',
     tags: ['salon', 'beauty', 'editorial', 'booking', 'bold', 'fashion'],
-    code: wrapInHtmlDoc(salonBold, 'HAUS — Editorial Beauty'),
+    code: wrapInReactComponent(salonBold, 'HAUS — Editorial Beauty'),
   },
 ];
 
