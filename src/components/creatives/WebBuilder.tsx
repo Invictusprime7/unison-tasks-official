@@ -4030,10 +4030,19 @@ ${body.innerHTML}
                     const finalEntry = normalizedFiles["/index.html"] || normalizedFiles["/src/App.tsx"] || normalizedFiles["/App.tsx"];
                     setEditorCode(finalEntry);
                     setPreviewCode(finalEntry);
+                  } else {
+                    // No standard entry file — pick the first TSX/JSX file and use it as preview
+                    const filePaths = Object.keys(normalizedFiles);
+                    const firstComponent = filePaths.find(p => /\.(tsx|jsx)$/.test(p));
+                    if (firstComponent) {
+                      console.log('[WebBuilder] Multi-file patch: using', firstComponent, 'as preview entry');
+                      setEditorCode(normalizedFiles[firstComponent]);
+                      setPreviewCode(normalizedFiles[firstComponent]);
+                    }
                   }
 
                   setViewMode('canvas');
-                  toast.success('Files updated', { description: 'Approved patch plan applied to project files' });
+                  toast.success('Files updated', { description: `${Object.keys(normalizedFiles).length} file(s) applied to project` });
                   return true;
                 }}
               />
