@@ -120,11 +120,6 @@ interface AIBuilderPanelProps {
   businessDataContext?: string | null;
   /** Structured business blueprint from systems-build (brand, palette, intents, sections) */
   systemsBuildContext?: SystemsBuildContext | null;
-  /** VFS file tree context — paths and sizes of all files in the project */
-  vfsFileTree?: { path: string; size: number }[] | null;
-  /** Full contents of the currently active file in the editor */
-  activeFilePath?: string | null;
-  activeFileContent?: string | null;
 }
 
 // ============================================================================
@@ -500,9 +495,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   backendStateContext,
   businessDataContext,
   systemsBuildContext,
-  vfsFileTree,
-  activeFilePath,
-  activeFileContent,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -595,7 +587,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       setMessages([{
         id: generateId(),
         role: 'assistant',
-        content: `👋 Welcome to the AI Builder!\n\nI'm your fullstack engineer. I can:\n• Create & edit React components across your VFS\n• Build backend edge functions & database integrations\n• Wire up routing, forms, auth, and API calls\n• Debug and fix errors in your preview\n\nDescribe what you want — I'll write the code and apply it live.`,
+        content: `👋 Welcome to the AI Builder!\n\nI can help you:\n• Generate and modify code\n• Fix errors in your preview\n• Debug Supabase integrations\n\nJust describe what you want to build or switch to Debug tab to fix errors.`,
         timestamp: new Date(),
         thinking: [
           { id: '1', type: 'complete', message: 'Ready to assist', timestamp: new Date() }
@@ -704,16 +696,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       );
       const isSurgicalEdit = hasSurgicalKeyword && !!currentCode;
 
-      // Build VFS file tree context for AI awareness
-      const vfsContextBlock = vfsFileTree && vfsFileTree.length > 0
-        ? `\n\n[VFS Project Files]\n${vfsFileTree.map(f => `${f.path} (${f.size} bytes)`).join('\n')}`
-        : '';
-      
-      // Build active file context
-      const activeFileBlock = activeFilePath && activeFileContent
-        ? `\n\n[Active File: ${activeFilePath}]\n\`\`\`tsx\n${activeFileContent.slice(0, 8000)}${activeFileContent.length > 8000 ? '\n// ... truncated' : ''}\n\`\`\``
-        : '';
-
       // Build rich context block for full-generation requests
       const contextLines: string[] = [];
       if (systemType) contextLines.push(`Business type: ${systemType}`);
@@ -727,23 +709,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (backendStateContext) contextLines.push(`\nBackend state:\n${backendStateContext.slice(0, 400)}`);
       const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
-      // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted file(s)
+      // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted change
       const promptForAI = isSurgicalEdit
         ? [
-            '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED FILE(S) 🚨',
+            '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED ELEMENT 🚨',
             '',
             `User Request: ${_userContent}${_fileContext}`,
-            activeFileBlock,
-            vfsContextBlock,
             '',
             '⚠️ CRITICAL SURGICAL EDIT RULES:',
-            '1. Output ONLY the modified file(s) in the JSON {"files": {...}} format',
-            '2. Include COMPLETE file contents for each modified file',
-            '3. DO NOT include files that are unchanged',
-            '4. DO NOT re-generate or "improve" code the user did not ask about',
-            '5. Maintain all existing imports, types, and patterns',
+            '1. Output the COMPLETE template HTML — but ONLY modify the element the user asked about',
+            '2. Every section, script, style, image, text, and data attribute NOT mentioned MUST stay IDENTICAL',
+            '3. DO NOT re-generate, rephrase, or "improve" unmentioned sections',
+            '4. DO NOT change colors, fonts, layout, or content outside the targeted element',
+            '5. If the change is purely CSS/class-based, only modify the class list on that one element',
+            '6. Think of this like a diff — your output should be identical to the input except for the one change',
           ].join('\n')
-        : `${_userContent}${_fileContext}${richContext}${vfsContextBlock}${activeFileBlock}`;
+        : `${_userContent}${_fileContext}${richContext}`;
 
       // Detect templateAction for the backend
       const detectTemplateAction = (msg: string): string | undefined => {
@@ -812,7 +793,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               userDesignProfile: userDesignProfile ?? undefined,
               systemsBuildContext: systemsBuildContext ?? undefined,
               siteElementsLibraryContext,
-              vfsFileTree: vfsFileTree ?? undefined,
               attachments: _attachments.length > 0 ? _attachments : undefined,
             },
           });
@@ -863,47 +843,19 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (aiContent) {
         const trimmed = aiContent.trim();
 
-        // Helper: try to parse a string as multi-file JSON {"files": {...}, "explanation"?: "..."}
-        const tryParseMultiFileJSON = (raw: string): boolean => {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed.files && typeof parsed.files === 'object' && Object.keys(parsed.files).length > 0) {
-              // Normalize paths: ensure leading slash
-              const normalized: Record<string, string> = {};
-              for (const [path, content] of Object.entries(parsed.files)) {
-                if (typeof content !== 'string') continue;
-                const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-                normalized[normalizedPath] = content;
-              }
-              multiFileOutput = normalized;
-              explanationText = parsed.explanation || '✅ Multi-file project generated and applied.';
-              return true;
-            }
-          } catch { /* not valid JSON */ }
-          return false;
-        };
-
-        // Strategy 1a: Raw JSON multi-file output: {"files": {...}}
+        // Strategy 1: Check for JSON multi-file output: {"files": {...}}
         if (trimmed.startsWith('{') && trimmed.includes('"files"')) {
-          tryParseMultiFileJSON(trimmed);
-        }
-
-        // Strategy 1b: JSON wrapped in markdown code fences (```json ... ```)
-        if (!multiFileOutput) {
-          const jsonFenceRegex = /```(?:json)?\s*\n([\s\S]*?)```/gi;
-          const jsonMatches = [...aiContent.matchAll(jsonFenceRegex)];
-          for (const m of jsonMatches) {
-            const block = m[1].trim();
-            if (block.startsWith('{') && block.includes('"files"')) {
-              if (tryParseMultiFileJSON(block)) break;
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed.files && typeof parsed.files === 'object') {
+              multiFileOutput = parsed.files;
+              explanationText = parsed.explanation || '✅ Multi-file project generated and applied.';
             }
-          }
+          } catch { /* not valid JSON, continue */ }
         }
 
         // Strategy 2: Check if content IS a React component (starts with import/export/function)
-        // GUARD: Skip if content looks like a JSON object — prevents treating
-        // {"files":{"src/App.tsx":"import React..."}} as a component
-        if (!multiFileOutput && !generatedCode && !trimmed.startsWith('{')) {
+        if (!multiFileOutput && !generatedCode) {
           const isReactComponent = /^import\s+/m.test(trimmed) ||
             /^export\s+default\s+function/m.test(trimmed) ||
             /^(?:const|function)\s+\w+.*=.*(?:=>|\{)/m.test(trimmed);
@@ -944,11 +896,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             .replace(/```[\s\S]*?```/g, '')
             .replace(/^\s*\n/gm, '\n')
             .trim();
-
-          // If explanation is just the raw JSON, clear it
-          if (explanationText.startsWith('{') && explanationText.includes('"files"')) {
-            explanationText = '';
-          }
 
           if (!explanationText && (generatedCode || multiFileOutput)) {
             explanationText = isSurgicalEdit ? '✅ Edit applied successfully.' : '✅ Code generated and applied to your project.';
