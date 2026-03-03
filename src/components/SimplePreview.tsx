@@ -6,7 +6,7 @@
  * lightweight HTML/React string preview.
  */
 
-import React, { forwardRef, useImperativeHandle, useRef, useMemo, useContext } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useMemo, useContext, useEffect, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { ExternalLink, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -71,6 +71,9 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
   onDeployComplete,
 }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeLoadedRef = useRef(false);
+  const lastWrittenCodeRef = useRef<string>('');
+  const [iframeReady, setIframeReady] = useState(false);
   
   // Try VFS preview - returns null if no VFSProvider
   const vfsPreview = useVFSPreviewSafe();
@@ -78,14 +81,12 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
   const loading = vfsPreview?.loading ?? false;
   const error = vfsPreview?.error ?? null;
 
-  // Build srcdoc from code prop when no VFS URL
-  const srcdoc = useMemo(() => {
-    if (previewUrl || !code) return undefined;
-    // If it looks like a full HTML doc, use as-is
-    if (code.trim().startsWith('<!') || code.trim().startsWith('<html')) {
-      return code;
+  // Build full HTML from code
+  const buildHtml = useCallback((rawCode: string): string => {
+    if (!rawCode) return '';
+    if (rawCode.trim().startsWith('<!') || rawCode.trim().startsWith('<html')) {
+      return rawCode;
     }
-    // Wrap in minimal HTML shell
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -96,11 +97,77 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
     body { font-family: system-ui, -apple-system, sans-serif; }
   </style>
 </head>
-<body>${code}</body>
+<body>${rawCode}</body>
 </html>`;
-  }, [code, previewUrl]);
+  }, []);
 
-  const hasSomethingToShow = !!previewUrl || !!srcdoc;
+  // Initial srcdoc — computed once from the first code value, never changes after.
+  // Subsequent code changes are patched into the iframe DOM directly (see effect below).
+  const initialSrcdoc = useMemo(() => {
+    if (previewUrl || !code) return undefined;
+    return buildHtml(code);
+  }, []); // intentionally empty — capture only the initial code
+
+  // Seed the written-code ref so the patch effect can skip the first (already-rendered) value
+  useEffect(() => {
+    if (initialSrcdoc && !lastWrittenCodeRef.current) {
+      lastWrittenCodeRef.current = code;
+    }
+  }, [initialSrcdoc, code]);
+
+  const hasSomethingToShow = !!previewUrl || !!initialSrcdoc || !!code;
+
+  // Patch iframe DOM directly on code changes (avoids full reload blink)
+  useEffect(() => {
+    if (previewUrl || !code) return;
+    // Skip if code hasn't changed
+    if (code === lastWrittenCodeRef.current) return;
+    lastWrittenCodeRef.current = code;
+
+    const iframe = iframeRef.current;
+    if (!iframe || !iframeLoadedRef.current) {
+      // Iframe not ready yet — will pick up code on first load via srcDoc
+      return;
+    }
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc || !doc.documentElement) {
+      // No document access — force srcDoc (rare fallback)
+      iframe.srcdoc = buildHtml(code);
+      return;
+    }
+
+    // Parse new HTML and patch head+body in-place (no iframe reload)
+    try {
+      const newHtml = buildHtml(code);
+      const parser = new DOMParser();
+      const newDoc = parser.parseFromString(newHtml, 'text/html');
+      
+      // Patch <head> content
+      doc.head.innerHTML = newDoc.head.innerHTML;
+      
+      // Patch <body> content and attributes
+      doc.body.innerHTML = newDoc.body.innerHTML;
+      for (const attr of Array.from(newDoc.body.attributes)) {
+        doc.body.setAttribute(attr.name, attr.value);
+      }
+      // Remove stale body attributes
+      for (const attr of Array.from(doc.body.attributes)) {
+        if (!newDoc.body.hasAttribute(attr.name)) {
+          doc.body.removeAttribute(attr.name);
+        }
+      }
+    } catch {
+      // Fallback: write full document (still avoids React srcDoc change)
+      iframe.srcdoc = buildHtml(code);
+    }
+  }, [code, previewUrl, buildHtml]);
+
+  // Track iframe load state
+  const handleIframeLoad = useCallback(() => {
+    iframeLoadedRef.current = true;
+    setIframeReady(true);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     getIframe: () => iframeRef.current,
@@ -137,11 +204,11 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
       if (vfsPreview?.restart) {
         vfsPreview.restart();
       } else if (iframeRef.current) {
-        // Force srcdoc refresh
-        const cur = iframeRef.current.srcdoc;
+        // Force srcdoc refresh with current code
+        const html = buildHtml(lastWrittenCodeRef.current || code);
         iframeRef.current.srcdoc = '';
         requestAnimationFrame(() => {
-          if (iframeRef.current) iframeRef.current.srcdoc = cur;
+          if (iframeRef.current) iframeRef.current.srcdoc = html;
         });
       }
     },
@@ -155,10 +222,11 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
   const handleRefresh = () => {
     if (vfsPreview?.restart) {
       vfsPreview.restart();
-    } else if (iframeRef.current && srcdoc) {
+    } else if (iframeRef.current) {
+      const html = buildHtml(lastWrittenCodeRef.current || code);
       iframeRef.current.srcdoc = '';
       requestAnimationFrame(() => {
-        if (iframeRef.current) iframeRef.current.srcdoc = srcdoc;
+        if (iframeRef.current) iframeRef.current.srcdoc = html;
       });
     }
   };
@@ -253,11 +321,13 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
               allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write; web-share"
               sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock"
             />
-          ) : srcdoc ? (
+          ) : initialSrcdoc ? (
             <iframe
               ref={iframeRef}
-              srcDoc={srcdoc}
+              srcDoc={initialSrcdoc}
+              onLoad={handleIframeLoad}
               className="w-full h-full border-0 bg-white dark:bg-zinc-950"
+              style={{ opacity: iframeReady ? 1 : 0, transition: 'opacity 0.15s ease-in' }}
               title="Code Preview"
               sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock"
             />

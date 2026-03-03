@@ -810,6 +810,19 @@ export default function App() {
     }
   }, [templateCustomizer.overrideVersion]);
 
+  // Stable callback for SimplePreview element selection (avoids new ref each render)
+  const handlePreviewElementSelect = useCallback((el: any) => {
+    setSelectedHTMLElement({
+      tagName: el.tagName,
+      textContent: el.textContent,
+      styles: el.styles,
+      attributes: el.attributes,
+      selector: el.selector,
+      html: el.html,
+      section: el.section,
+    });
+  }, []);
+
   // Handle element-level edits from floating toolbar
   const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
     console.log('[WebBuilder] handleFloatingStyleUpdate called:', selector, styles);
@@ -4408,17 +4421,7 @@ ${body.innerHTML}
                       showToolbar={false}
                       device={device}
                       enableSelection={builderMode === 'select'}
-                      onElementSelect={builderMode === 'select' ? (el) => {
-                        setSelectedHTMLElement({
-                          tagName: el.tagName,
-                          textContent: el.textContent,
-                          styles: el.styles,
-                          attributes: el.attributes,
-                          selector: el.selector,
-                          html: el.html,
-                          section: el.section,
-                        });
-                      } : undefined}
+                      onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                     />
                   )}
                   {/* Inline loading overlay for AI page generation */}
@@ -4671,17 +4674,7 @@ export default function App() {
                         className="w-full h-full min-h-0 flex-1"
                         showToolbar={false}
                         enableSelection={builderMode === 'select'}
-                        onElementSelect={builderMode === 'select' ? (el) => {
-                          setSelectedHTMLElement({
-                            tagName: el.tagName,
-                            textContent: el.textContent,
-                            styles: el.styles,
-                            attributes: el.attributes,
-                            selector: el.selector,
-                            html: el.html,
-                            section: el.section,
-                          });
-                        } : undefined}
+                        onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                       />
                     )}
                   </div>
