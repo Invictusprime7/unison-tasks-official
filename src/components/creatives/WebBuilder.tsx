@@ -1,3 +1,4 @@
+/* cache-bust: 20260303 */
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import TemplateFeedback from "./TemplateFeedback";
 import { Canvas as FabricCanvas } from "fabric";
