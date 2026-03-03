@@ -1010,6 +1010,19 @@ export default function App() {
       loadTemplateFromUrl();
     }
   }, [location.search]);
+
+  // Get full cloud context from location state (from CloudProjects or System Launcher)
+  const projectId = (location.state as { projectId?: string })?.projectId;
+  const systemType = (location.state as { systemType?: string })?.systemType;
+  const systemName = (location.state as { systemName?: string })?.systemName;
+  const businessId = (location.state as { businessId?: string })?.businessId;
+  const manifestIdFromState = (location.state as { manifestId?: string })?.manifestId;
+  const projectSlug = (location.state as { projectSlug?: string })?.projectSlug;
+  const projectNameFromState = (location.state as { projectName?: string })?.projectName;
+  const publishStatusFromState = (location.state as { publishStatus?: string })?.publishStatus;
+  const customDomainFromState = (location.state as { customDomain?: string })?.customDomain;
+  // Business blueprint context forwarded from SystemsAIPanel for context-aware in-builder AI
+  const systemsBuildContextFromState = (location.state as { systemsBuildContext?: SystemsBuildContext })?.systemsBuildContext ?? null;
   
   // Virtual file system for code editor
   const virtualFS = useVirtualFileSystem();
@@ -1340,19 +1353,6 @@ export default function App() {
   // Track unsaved changes for back button warning
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const initialCodeRef = useRef<string>(previewCode);
-  
-  // Get full cloud context from location state (from CloudProjects or System Launcher)
-  const projectId = (location.state as { projectId?: string })?.projectId;
-  const systemType = (location.state as { systemType?: string })?.systemType;
-  const systemName = (location.state as { systemName?: string })?.systemName;
-  const businessId = (location.state as { businessId?: string })?.businessId;
-  const manifestIdFromState = (location.state as { manifestId?: string })?.manifestId;
-  const projectSlug = (location.state as { projectSlug?: string })?.projectSlug;
-  const projectNameFromState = (location.state as { projectName?: string })?.projectName;
-  const publishStatusFromState = (location.state as { publishStatus?: string })?.publishStatus;
-  const customDomainFromState = (location.state as { customDomain?: string })?.customDomain;
-  // Business blueprint context forwarded from SystemsAIPanel for context-aware in-builder AI
-  const systemsBuildContextFromState = (location.state as { systemsBuildContext?: SystemsBuildContext })?.systemsBuildContext ?? null;
   
   // Cloud state: project settings, entitlements, installed packs
   const [cloudState, setCloudState] = useState<{
