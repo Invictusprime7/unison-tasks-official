@@ -6,6 +6,7 @@ import { DirectionProvider } from "@radix-ui/react-direction";
 import { Suspense, lazy } from "react";
 import { RouteErrorBoundary, AsyncBoundary } from "@/components/RouteErrorBoundary";
 import { Analytics } from "@vercel/analytics/react";
+import { CloudProvider } from "@/contexts/CloudContext";
 
 // Static imports for lightweight pages
 import Landing from "./pages/Landing";
@@ -130,7 +131,9 @@ const App = () => (
             } />
             <Route path="/cloud" element={
               <AsyncBoundary loading={<PageLoader />}>
-                <CloudDashboard />
+                <CloudProvider>
+                  <CloudDashboard />
+                </CloudProvider>
               </AsyncBoundary>
             } />
             <Route path="/docs" element={

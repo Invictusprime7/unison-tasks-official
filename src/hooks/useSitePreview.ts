@@ -11,8 +11,8 @@
  * - Route management for multi-page preview
  */
 
-import { useCallback, useEffect, useMemo, useState, useContext } from "react";
-import VFSContext, { type VFSContextValue } from "@/contexts/VFSContext";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useVFSSafe } from "@/hooks/useVFSContext";
 import { useSiteNavigation, type NavigationState } from "./useSiteNavigation";
 import type { PageNode, PageGraph, NavItem } from "@/schemas/SiteGraph";
 import type { Industry } from "@/schemas/BusinessBlueprint";
@@ -349,8 +349,8 @@ export function useSitePreview(options: UseSitePreviewOptions): UseSitePreviewRe
     debug = false,
   } = options;
   
-  // VFS context
-  const vfs = useContext(VFSContext);
+  // VFS context (safe — returns null if no provider)
+  const vfs = useVFSSafe();
   
   // Site navigation hook
   const navigation = useSiteNavigation({

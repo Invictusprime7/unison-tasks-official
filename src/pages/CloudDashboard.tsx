@@ -10,7 +10,7 @@
  * - Third-party Integrations
  */
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Cloud, User, Building2, FolderKanban, Image, Mail, 
@@ -98,6 +98,54 @@ const TABS: TabConfig[] = [
 ];
 
 // Animated Background Component
+
+// Tab-scoped error boundary so one broken tab doesn't crash the whole page
+class TabErrorBoundary extends Component<
+  { tabName: string; onRetry: () => void; children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { tabName: string; onRetry: () => void; children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[CloudDashboard] ${this.props.tabName} tab error:`, error, info);
+  }
+  componentDidUpdate(prevProps: { tabName: string }) {
+    // Reset when user switches tabs
+    if (prevProps.tabName !== this.props.tabName && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-96 text-center gap-4">
+          <Shield className="h-12 w-12 text-red-400 opacity-60" />
+          <div>
+            <p className="text-white font-semibold text-lg">Tab failed to load</p>
+            <p className="text-slate-400 text-sm mt-1">
+              {this.state.error?.message || 'An unexpected error occurred.'}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              this.props.onRetry();
+            }}
+            className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 function AnimatedBackground() {
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
@@ -306,25 +354,39 @@ export default function CloudDashboard() {
 
   const renderTabContent = () => {
     if (!user) return null;
-    
+
+    let content: ReactNode;
     switch (activeTab) {
       case 'profile':
-        return <CloudProfile user={user} />;
+        content = <CloudProfile user={user} />;
+        break;
       case 'businesses':
-        return <CloudBusinesses userId={user.id} onNavigateToTab={(tab) => setActiveTab(tab as CloudTab)} />;
+        content = <CloudBusinesses userId={user.id} onNavigateToTab={(tab) => setActiveTab(tab as CloudTab)} />;
+        break;
       case 'projects':
-        return <CloudProjects userId={user.id} />;
+        content = <CloudProjects userId={user.id} />;
+        break;
       case 'assets':
-        return <CloudAssets userId={user.id} />;
+        content = <CloudAssets userId={user.id} />;
+        break;
       case 'email':
-        return <CloudEmail userId={user.id} />;
+        content = <CloudEmail userId={user.id} />;
+        break;
       case 'integrations':
-        return <CloudIntegrations userId={user.id} />;
+        content = <CloudIntegrations userId={user.id} />;
+        break;
       case 'security':
-        return <CloudSecurity userId={user.id} />;
+        content = <CloudSecurity userId={user.id} />;
+        break;
       default:
-        return <CloudProfile user={user} />;
+        content = <CloudProfile user={user} />;
     }
+
+    return (
+      <TabErrorBoundary tabName={activeTab} onRetry={() => setActiveTab(activeTab)}>
+        {content}
+      </TabErrorBoundary>
+    );
   };
 
   if (loading) {

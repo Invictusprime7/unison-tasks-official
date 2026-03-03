@@ -305,6 +305,10 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
   // 2FA state
   const [twoFaEnabled, setTwoFaEnabled] = useState(false);
   const [enablingTwoFa, setEnablingTwoFa] = useState(false);
+  const [twoFaQrCode, setTwoFaQrCode] = useState<string | null>(null);
+  const [twoFaSecret, setTwoFaSecret] = useState<string | null>(null);
+  const [twoFaVerifyCode, setTwoFaVerifyCode] = useState('');
+  const [twoFaFactorId, setTwoFaFactorId] = useState<string | null>(null);
 
   // Revoke all sessions dialog
   const [revokeAllDialogOpen, setRevokeAllDialogOpen] = useState(false);
@@ -317,59 +321,54 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
   const loadSecurityData = async () => {
     setLoading(true);
     try {
-      // Simulated sessions - would come from user_sessions table
-      const mockSessions: Session[] = [
-        {
-          id: '1',
-          device: 'Windows 11',
-          browser: 'Chrome 120',
-          location: 'New York, US',
-          ipAddress: '192.168.1.1',
-          lastActive: new Date(),
-          isCurrent: true,
-        },
-        {
-          id: '2',
-          device: 'iPhone 15 Pro',
-          browser: 'Safari Mobile',
-          location: 'New York, US',
-          ipAddress: '192.168.1.50',
-          lastActive: new Date(Date.now() - 3600000),
-          isCurrent: false,
-        },
-      ];
+      // Load MFA factor status (gracefully handle if MFA is disabled on project)
+      let mfaEnabled = false;
+      try {
+        const { data: factors, error: mfaError } = await supabase.auth.mfa.listFactors();
+        if (!mfaError && factors?.totp) {
+          const verifiedTotpFactors = factors.totp.filter(f => f.status === 'verified');
+          mfaEnabled = verifiedTotpFactors.length > 0;
+        }
+      } catch (mfaErr) {
+        console.warn('[CloudSecurity] MFA not available:', mfaErr);
+      }
+      setTwoFaEnabled(mfaEnabled);
 
-      // Simulated login history - would come from login_history table
-      const mockHistory: LoginEvent[] = [
+      // Load real session from current auth
+      const currentSessions: Session[] = [];
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          const ua = navigator.userAgent;
+          const device = /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Unknown';
+          const browser = /Chrome/.test(ua) ? 'Chrome' : /Firefox/.test(ua) ? 'Firefox' : /Safari/.test(ua) ? 'Safari' : /Edge/.test(ua) ? 'Edge' : 'Unknown';
+          currentSessions.push({
+            id: 'current',
+            device,
+            browser,
+            location: 'Current Location',
+            ipAddress: '—',
+            lastActive: new Date(),
+            isCurrent: true,
+          });
+        }
+      } catch (sessionErr) {
+        console.warn('[CloudSecurity] Session fetch error:', sessionErr);
+      }
+      setSessions(currentSessions);
+
+      // Simulated login history until auth logs table is available
+      const recentHistory: LoginEvent[] = [
         {
           id: '1',
           type: 'success',
-          device: 'Windows 11 - Chrome',
-          location: 'New York, US',
-          ipAddress: '192.168.1.1',
+          device: 'Current Session',
+          location: 'Current Location',
+          ipAddress: '—',
           timestamp: new Date(),
         },
-        {
-          id: '2',
-          type: 'success',
-          device: 'iPhone 15 Pro - Safari',
-          location: 'New York, US',
-          ipAddress: '192.168.1.50',
-          timestamp: new Date(Date.now() - 86400000),
-        },
-        {
-          id: '3',
-          type: 'failed',
-          device: 'Unknown - Firefox',
-          location: 'London, UK',
-          ipAddress: '10.0.0.5',
-          timestamp: new Date(Date.now() - 172800000),
-          reason: 'Invalid password',
-        },
       ];
-
-      setSessions(mockSessions);
-      setLoginHistory(mockHistory);
+      setLoginHistory(recentHistory);
     } catch (error) {
       console.error('Error loading security data:', error);
     } finally {
@@ -414,8 +413,15 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
   const handleRevokeSession = async (sessionId: string) => {
     setRevokingSession(sessionId);
     try {
-      // Would call API to revoke session
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Sign out current session (only option with Supabase client-side)
+      if (sessionId !== 'current') {
+        try {
+          await supabase.auth.signOut({ scope: 'others' } as any);
+        } catch {
+          // scope param may not be supported; fall back to no-op
+          console.warn('[CloudSecurity] signOut scope not supported');
+        }
+      }
 
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
 
@@ -437,8 +443,12 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
   const handleRevokeAllSessions = async () => {
     setRevokingAll(true);
     try {
-      // Would call API to revoke all other sessions
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Sign out all other sessions via Supabase
+      try {
+        await supabase.auth.signOut({ scope: 'others' } as any);
+      } catch {
+        console.warn('[CloudSecurity] signOut scope not supported');
+      }
 
       setSessions((prev) => prev.filter((s) => s.isCurrent));
 
@@ -461,21 +471,46 @@ export function CloudSecurity({ userId }: CloudSecurityProps) {
   const handleToggle2FA = async () => {
     setEnablingTwoFa(true);
     try {
-      // Would enable/disable 2FA via Supabase MFA API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (twoFaEnabled) {
+        // Disable: unenroll all TOTP factors
+        const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+        if (listError) throw listError;
+        
+        for (const factor of factors?.totp || []) {
+          const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+          if (error) throw error;
+        }
+        
+        setTwoFaEnabled(false);
+        setTwoFaQrCode(null);
+        setTwoFaSecret(null);
+        setTwoFaFactorId(null);
 
-      setTwoFaEnabled(!twoFaEnabled);
+        toast({
+          title: '2FA Disabled',
+          description: 'Two-factor authentication has been disabled.',
+        });
+      } else {
+        // Enable: enroll a new TOTP factor
+        const { data, error } = await supabase.auth.mfa.enroll({
+          factorType: 'totp',
+          friendlyName: 'Authenticator App',
+        });
+        if (error) throw error;
 
-      toast({
-        title: twoFaEnabled ? '2FA Disabled' : '2FA Enabled',
-        description: twoFaEnabled
-          ? 'Two-factor authentication has been disabled.'
-          : 'Two-factor authentication is now active.',
-      });
-    } catch (error) {
+        setTwoFaQrCode(data.totp.qr_code);
+        setTwoFaSecret(data.totp.secret);
+        setTwoFaFactorId(data.id);
+
+        toast({
+          title: '2FA Setup Started',
+          description: 'Scan the QR code with your authenticator app, then enter the verification code.',
+        });
+      }
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to update 2FA settings',
+        description: error.message || 'Failed to update 2FA settings',
         variant: 'destructive',
       });
     } finally {

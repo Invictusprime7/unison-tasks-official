@@ -121,6 +121,52 @@ export class SessionManager {
     await fs.writeFile(fullPath, content, 'utf-8');
     
     logger.debug({ sessionId, filePath }, 'File patched');
+
+    // If package.json was updated, re-run dependency installation inside the container
+    if (filePath === 'package.json' || filePath === '/package.json') {
+      await this.reinstallDependencies(sessionId);
+    }
+  }
+
+  /**
+   * Re-run pnpm install inside a running container after package.json changes
+   */
+  private async reinstallDependencies(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session?.containerId) {
+      logger.warn({ sessionId }, 'Cannot reinstall deps: no container');
+      return;
+    }
+
+    try {
+      logger.info({ sessionId }, 'package.json changed — reinstalling dependencies');
+      const container = this.docker.getContainer(session.containerId);
+
+      const exec = await container.exec({
+        Cmd: ['pnpm', 'install', '--prefer-offline', '--no-frozen-lockfile', '--ignore-scripts'],
+        AttachStdout: true,
+        AttachStderr: true,
+        WorkingDir: '/app/session-work',
+      });
+
+      const stream = await exec.start({ hijack: true, stdin: false });
+
+      // Collect output for logging
+      let output = '';
+      stream.on('data', (chunk: Buffer) => { output += chunk.toString(); });
+
+      await new Promise<void>((resolve, reject) => {
+        stream.on('end', resolve);
+        stream.on('error', reject);
+        // Timeout after 60 seconds
+        setTimeout(() => { stream.destroy(); resolve(); }, 60_000);
+      });
+
+      logger.info({ sessionId, output: output.slice(-500) }, 'Dependency reinstall completed');
+    } catch (error) {
+      logger.error({ sessionId, error }, 'Failed to reinstall dependencies');
+      // Non-fatal — Vite will show import errors but won't crash
+    }
   }
 
   /**

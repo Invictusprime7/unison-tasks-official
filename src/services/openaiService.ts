@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { invokeAIFunction } from '@/integrations/supabase/ai-client';
 
 export interface OpenAIImageRequest {
   prompt: string;
@@ -39,9 +40,7 @@ export async function generateAIImage(request: OpenAIImageRequest): Promise<Open
   try {
     console.log('[OpenAI] Generating image with prompt:', request.prompt);
     
-    const { data, error } = await supabase.functions.invoke('generate-image', {
-      body: request
-    });
+    const { data, error } = await invokeAIFunction('generate-image', request);
 
     if (error) {
       console.error('[OpenAI] Image generation error:', error);
@@ -66,12 +65,10 @@ export async function generateAICode(request: OpenAICodeRequest): Promise<OpenAI
   try {
     console.log('[OpenAI] Generating code with mode:', request.mode);
     
-    const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
-      body: {
-        messages: request.messages,
-        mode: request.mode || 'creative',
-        savePattern: true
-      }
+    const { data, error } = await invokeAIFunction('ai-code-assistant', {
+      messages: request.messages,
+      mode: request.mode || 'creative',
+      savePattern: true
     });
 
     if (error) {
@@ -109,9 +106,7 @@ export async function rewriteCopy(
   try {
     console.log('[OpenAI] Rewriting copy with tone:', tone, 'purpose:', purpose);
     
-    const { data, error } = await supabase.functions.invoke('copy-rewrite', {
-      body: { text, tone, purpose }
-    });
+    const { data, error } = await invokeAIFunction('copy-rewrite', { text, tone, purpose });
 
     if (error) {
       console.error('[OpenAI] Copy rewrite error:', error);
@@ -140,9 +135,7 @@ export async function generatePage(
   try {
     console.log('[OpenAI] Generating page with prompt:', prompt);
     
-    const { data, error } = await supabase.functions.invoke('generate-page', {
-      body: { prompt, theme, sectionType }
-    });
+    const { data, error } = await invokeAIFunction('generate-page', { prompt, theme, sectionType });
 
     if (error) {
       console.error('[OpenAI] Page generation error:', error);
@@ -174,11 +167,9 @@ export async function getAIServiceStatus(): Promise<{
   message: string;
 }> {
   try {
-    const { error } = await supabase.functions.invoke('ai-code-assistant', {
-      body: {
-        messages: [{ role: 'user', content: 'test' }],
-        mode: 'test'
-      }
+    const { error } = await invokeAIFunction('ai-code-assistant', {
+      messages: [{ role: 'user', content: 'test' }],
+      mode: 'test'
     });
 
     if (error) {

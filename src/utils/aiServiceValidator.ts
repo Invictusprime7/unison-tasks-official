@@ -17,12 +17,12 @@ export interface AIServiceStatus {
 }
 
 /**
- * Check if the fullstack-ai function is properly configured
+ * Check if the ai-code-assistant function is properly configured
  */
 export async function validateAIService(): Promise<AIServiceStatus> {
   try {
     // Try a lightweight health check by invoking with minimal payload
-    const { data, error } = await supabase.functions.invoke('fullstack-ai', {
+    const { data, error } = await supabase.functions.invoke('ai-code-assistant', {
       body: {
         messages: [{ role: 'user', content: 'test' }],
         mode: 'creative',
@@ -40,7 +40,7 @@ export async function validateAIService(): Promise<AIServiceStatus> {
           isConfigured: false,
           hasAPIKey: false,
           functionAvailable: false,
-          error: 'Supabase function "fullstack-ai" not found. Please deploy it first.'
+          error: 'Supabase function "ai-code-assistant" not found. Please deploy it first.'
         };
       }
       
@@ -114,11 +114,11 @@ export function getAIErrorMessage(error: any): string {
   
   // Check for connection/network errors first
   if (errorStr.includes('failed to send') || errorStr.includes('failed to fetch') || errorStr.includes('network request failed')) {
-    return 'Cannot connect to AI service. Please check:\n1. Your internet connection\n2. Supabase project is online\n3. Function is deployed: supabase functions deploy fullstack-ai';
+    return 'Cannot connect to AI service. Please check:\n1. Your internet connection\n2. Supabase project is online\n3. Function is deployed: supabase functions deploy ai-code-assistant';
   }
   
   if (errorStr.includes('not found') || errorStr.includes('404')) {
-    return 'AI function not found. Deploy it with: supabase functions deploy fullstack-ai';
+    return 'AI function not found. Deploy it with: supabase functions deploy ai-code-assistant';
   }
   
   if (errorStr.includes('api key') || errorStr.includes('not configured') || errorStr.includes('503')) {

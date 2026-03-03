@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CLOUD CONTEXT - Centralized state management for Unison Cloud
  * 
  * Provides unified access to:
@@ -83,7 +83,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const { data: memberships, error: memberError } = await supabase
-        .from('organization_members')
+        .from('organization_members' as any)
         .select(`
           organization_id,
           role,
@@ -109,7 +109,11 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', user.id)
         .eq('is_active', true);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        // Table may not exist yet â€” this is OK
+        console.warn('[CloudProvider] organization_members query failed:', memberError.message);
+        return;
+      }
 
       const orgs: CloudOrganization[] = (memberships || [])
         .filter((m: any) => m.organizations)
@@ -154,7 +158,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
     try {
       // Fetch members
       const { data: members, error: membersError } = await supabase
-        .from('organization_members')
+        .from('organization_members' as any)
         .select(`
           id,
           user_id,
@@ -199,7 +203,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
 
       // Fetch invitations
       const { data: invites, error: invitesError } = await supabase
-        .from('team_invitations')
+        .from('team_invitations' as any)
         .select(`
           id,
           organization_id,
@@ -249,16 +253,19 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     try {
-      // Fetch active sessions
-      const { data: sessionsData, error: sessionsError } = await supabase
-        .from('user_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('last_active', { ascending: false });
+      // Fetch active sessions (table may not exist yet â€” graceful fallback)
+      let sessionsData: any[] | null = null;
+      try {
+        const { data, error } = await supabase
+          .from('user_sessions' as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('last_active', { ascending: false });
+        if (!error) sessionsData = data;
+      } catch { /* table may not exist */ }
 
-      if (!sessionsError && sessionsData) {
-        // Get current session ID from auth
+      if (sessionsData) {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         setSessions(sessionsData.map((s: any) => ({
@@ -273,15 +280,19 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
         })));
       }
 
-      // Fetch login history
-      const { data: historyData, error: historyError } = await supabase
-        .from('login_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Fetch login history (table may not exist yet â€” graceful fallback)
+      let historyData: any[] | null = null;
+      try {
+        const { data, error } = await supabase
+          .from('login_history' as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (!error) historyData = data;
+      } catch { /* table may not exist */ }
 
-      if (!historyError && historyData) {
+      if (historyData) {
         setLoginHistory(historyData.map((h: any) => ({
           id: h.id,
           type: h.success ? 'success' : (h.blocked ? 'blocked' : 'failed'),
@@ -293,19 +304,31 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
         })));
       }
 
-      // Get profile for security status (using any type for extended profile fields)
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // Get profile for security status
+      let extProfile: any = null;
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        extProfile = profileData;
+      } catch { /* profiles query failed */ }
+
+      // Check MFA status via Supabase Auth API
+      let twoFactorEnabled = extProfile?.two_factor_enabled || false;
+      try {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        if (factors?.totp?.some((f: any) => f.status === 'verified')) {
+          twoFactorEnabled = true;
+        }
+      } catch { /* MFA not available */ }
 
       const failedLogins = (historyData || []).filter((h: any) => !h.success).length;
-      const extProfile = profileData as any;
 
       setSecurityStatus({
-        passwordStrength: 'good', // Would be calculated server-side
-        twoFactorEnabled: extProfile?.two_factor_enabled || false,
+        passwordStrength: 'good',
+        twoFactorEnabled,
         lastPasswordChange: extProfile?.last_password_change ? new Date(extProfile.last_password_change) : null,
         activeSessions: sessionsData?.length || 1,
         recentFailedLogins: failedLogins,
@@ -338,7 +361,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { data, error } = await supabase
-        .from('organizations')
+        .from('organizations' as any)
         .insert({
           name,
           slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
@@ -353,7 +376,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
 
       // Add owner as member
       await supabase
-        .from('organization_members')
+        .from('organization_members' as any)
         .insert({
           organization_id: data.id,
           user_id: user.id,
@@ -383,7 +406,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
   const updateOrganization = useCallback(async (id: string, updates: Partial<CloudOrganization>): Promise<boolean> => {
     try {
       const { error } = await supabase
-        .from('organizations')
+        .from('organizations' as any)
         .update({
           name: updates.name,
           description: updates.description,
@@ -418,7 +441,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
   const deleteOrganization = useCallback(async (id: string): Promise<boolean> => {
     try {
       const { error } = await supabase
-        .from('organizations')
+        .from('organizations' as any)
         .delete()
         .eq('id', id);
 
@@ -452,7 +475,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { error } = await supabase
-        .from('team_invitations')
+        .from('team_invitations' as any)
         .insert({
           organization_id: currentOrganization.id,
           email: email.toLowerCase(),
@@ -485,7 +508,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
   const removeMember = useCallback(async (memberId: string): Promise<boolean> => {
     try {
       const { error } = await supabase
-        .from('organization_members')
+        .from('organization_members' as any)
         .update({ is_active: false })
         .eq('id', memberId);
 
@@ -512,7 +535,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
   const updateMemberRole = useCallback(async (memberId: string, role: TeamMember['role']): Promise<boolean> => {
     try {
       const { error } = await supabase
-        .from('organization_members')
+        .from('organization_members' as any)
         .update({ role })
         .eq('id', memberId);
 
@@ -539,7 +562,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
   const cancelInvitation = useCallback(async (invitationId: string): Promise<boolean> => {
     try {
       const { error } = await supabase
-        .from('team_invitations')
+        .from('team_invitations' as any)
         .update({ status: 'revoked' })
         .eq('id', invitationId);
 
@@ -567,7 +590,7 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
     try {
       // Reset expiration date
       const { error } = await supabase
-        .from('team_invitations')
+        .from('team_invitations' as any)
         .update({
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           token: crypto.randomUUID(), // Generate new token
@@ -657,9 +680,10 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
 
   const enableTwoFactor = useCallback(async (): Promise<{ qrCode: string; secret: string } | null> => {
     try {
-      // Call edge function to set up 2FA
-      const { data, error } = await supabase.functions.invoke('setup-two-factor', {
-        body: { action: 'enable' },
+      // Use Supabase native MFA enrollment
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Authenticator App',
       });
 
       if (error) throw error;
@@ -669,7 +693,10 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
         description: 'Scan the QR code with your authenticator app.',
       });
 
-      return data;
+      return {
+        qrCode: data.totp.qr_code,
+        secret: data.totp.secret,
+      };
 
     } catch (error: any) {
       toast({
@@ -685,13 +712,17 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
 
     try {
-      // Use any type for extended profile fields not in generated types
-      const { error } = await supabase
-        .from('profiles')
-        .update({ two_factor_enabled: false } as any)
-        .eq('id', user.id);
+      // Unenroll all TOTP factors via Supabase native MFA
+      const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+      if (listError) throw listError;
 
-      if (error) throw error;
+      const totpFactors = factors?.totp || [];
+      for (const factor of totpFactors) {
+        const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+          factorId: factor.id,
+        });
+        if (unenrollError) throw unenrollError;
+      }
 
       toast({
         title: '2FA Disabled',
@@ -711,29 +742,46 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, toast, refreshSecurity]);
 
+  // Store latest refreshAll in a ref so the init effect always calls the current version
+  const refreshAllRef = React.useRef(refreshAll);
+  React.useEffect(() => { refreshAllRef.current = refreshAll; }, [refreshAll]);
+
   // Initialize on mount
   useEffect(() => {
+    let cancelled = false;
+
     const initCloud = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      setUser(authUser);
-      
-      if (authUser) {
-        await refreshAll();
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (cancelled) return;
+        setUser(authUser);
+
+        if (authUser) {
+          // Small delay to let state settle after setUser
+          await new Promise(r => setTimeout(r, 0));
+          if (!cancelled) await refreshAllRef.current();
+        }
+      } catch (error) {
+        console.error('[CloudProvider] Init error:', error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     initCloud();
 
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      if (cancelled) return;
       setUser(session?.user || null);
       if (session?.user) {
-        refreshAll();
+        // Use ref to avoid stale closure
+        refreshAllRef.current().catch(err => console.error('[CloudProvider] Auth refresh error:', err));
       }
     });
 
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
     };
   }, []);

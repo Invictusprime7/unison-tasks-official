@@ -16,6 +16,7 @@ import VFSContext from '@/contexts/VFSContext';
 
 /**
  * Safe VFS preview hook - returns null if no VFSProvider wraps this component.
+ * Uses VFSContext directly with null-guard for safe usage outside VFSProvider.
  */
 function useVFSPreviewSafe() {
   const ctx = useContext(VFSContext);
@@ -25,6 +26,8 @@ function useVFSPreviewSafe() {
     loading: ctx.previewLoading,
     error: ctx.previewError,
     restart: ctx.restartPreview,
+    connected: ctx.previewConnected,
+    isRunning: ctx.isPreviewRunning?.() ?? false,
   };
 }
 

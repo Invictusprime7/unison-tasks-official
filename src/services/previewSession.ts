@@ -13,6 +13,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { extractDependencies } from '@/utils/dependencyExtractor';
 
 // ============================================
 // TYPES
@@ -293,13 +294,82 @@ export function vfsToFileMap(nodes: VirtualNode[]): FileMap {
 
 /**
  * Ensure all required Vite root files exist
- * Injects missing files from defaults
+ * Injects missing files from defaults.
+ * Generates a dynamic package.json with dependencies extracted from VFS imports.
  */
 export function ensureViteRootFiles(fileMap: FileMap): FileMap {
   const result = { ...fileMap };
 
-  // Inject required root files if missing
+  // --- Dynamic dependency extraction ---
+  // Scan VFS code for import statements and build a real package.json
+  const { dependencies: extractedDeps } = extractDependencies(fileMap);
+
+  // Parse any existing VFS package.json to preserve user overrides
+  let existingPkg: Record<string, unknown> = {};
+  let existingDeps: Record<string, string> = {};
+  let existingDevDeps: Record<string, string> = {};
+  const existingContent = fileMap['/package.json'] || fileMap['package.json'];
+  if (existingContent) {
+    try {
+      existingPkg = JSON.parse(existingContent);
+      existingDeps = (existingPkg.dependencies as Record<string, string>) || {};
+      existingDevDeps = (existingPkg.devDependencies as Record<string, string>) || {};
+    } catch { /* ignore malformed JSON */ }
+  }
+
+  // Merge: extracted deps (widest coverage) < worker-template base < VFS pkg overrides
+  const baseDeps: Record<string, string> = {
+    'react': '^18.3.1',
+    'react-dom': '^18.3.1',
+  };
+
+  const mergedDeps: Record<string, string> = {
+    ...baseDeps,
+    ...extractedDeps,   // auto-detected from code
+    ...existingDeps,    // user-specified always wins
+  };
+
+  // Standard devDependencies for the Vite/React/TS toolchain
+  const defaultDevDeps: Record<string, string> = {
+    '@types/react': '^18.3.12',
+    '@types/react-dom': '^18.3.1',
+    '@vitejs/plugin-react': '^4.3.4',
+    'autoprefixer': '^10.4.20',
+    'postcss': '^8.4.49',
+    'tailwindcss': '^3.4.17',
+    'typescript': '^5.6.3',
+    'vite': '^5.4.11',
+  };
+
+  const mergedDevDeps: Record<string, string> = {
+    ...defaultDevDeps,
+    ...existingDevDeps,
+  };
+
+  // Build the final package.json
+  const generatedPkg = {
+    name: (existingPkg.name as string) || 'unison-preview',
+    private: true,
+    version: (existingPkg.version as string) || '0.0.1',
+    type: 'module',
+    scripts: {
+      dev: 'vite --host 0.0.0.0 --port 4173',
+      build: 'tsc && vite build',
+      preview: 'vite preview',
+    },
+    dependencies: mergedDeps,
+    devDependencies: mergedDevDeps,
+  };
+
+  // Always overwrite package.json with the dynamically resolved version
+  result['/package.json'] = JSON.stringify(generatedPkg, null, 2);
+
+  console.log('[ensureViteRootFiles] Generated dynamic package.json with', 
+    Object.keys(mergedDeps).length, 'dependencies');
+
+  // Inject remaining required root files if missing (skip package.json — already set)
   Object.entries(REQUIRED_ROOT_FILES).forEach(([path, content]) => {
+    if (path === '/package.json') return; // already handled above
     if (!result[path]) {
       result[path] = content;
     }

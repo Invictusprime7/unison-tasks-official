@@ -6,6 +6,7 @@
  */
 
 import type { FileMap } from './previewSession';
+import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 
 // CodeSandbox API endpoints
 const CODESANDBOX_DEFINE_API = 'https://codesandbox.io/api/v1/sandboxes/define';
@@ -40,20 +41,23 @@ export async function createCodeSandbox(
     csFiles[csPath] = { content };
   }
 
-  // Ensure required files exist
+  // Ensure required files exist — generate deps dynamically from code imports
   if (!csFiles['package.json']) {
+    const baseDeps: Record<string, string> = {
+      'react': '^18.2.0',
+      'react-dom': '^18.2.0',
+      'lucide-react': 'latest',
+      'clsx': 'latest',
+      'tailwind-merge': 'latest',
+    };
+    const { dependencies: resolvedDeps } = getDependenciesForSandpack(files, baseDeps);
+
     csFiles['package.json'] = {
       content: JSON.stringify({
         name: title.toLowerCase().replace(/\s+/g, '-'),
         version: '1.0.0',
         main: 'src/main.tsx',
-        dependencies: {
-          'react': '^18.2.0',
-          'react-dom': '^18.2.0',
-          'lucide-react': 'latest',
-          'clsx': 'latest',
-          'tailwind-merge': 'latest',
-        },
+        dependencies: resolvedDeps,
         devDependencies: {
           '@types/react': '^18.2.0',
           '@types/react-dom': '^18.2.0',
@@ -149,14 +153,17 @@ export function generateCodeSandboxUrl(
     csFiles[csPath] = { content };
   }
 
-  // Ensure package.json
+  // Ensure package.json — resolve deps dynamically
   if (!csFiles['package.json']) {
+    const baseDeps: Record<string, string> = {
+      'react': '^18.2.0',
+      'react-dom': '^18.2.0',
+    };
+    const { dependencies: resolvedDeps } = getDependenciesForSandpack(files, baseDeps);
+
     csFiles['package.json'] = {
       content: JSON.stringify({
-        dependencies: {
-          'react': '^18.2.0',
-          'react-dom': '^18.2.0',
-        },
+        dependencies: resolvedDeps,
       }, null, 2),
     };
   }

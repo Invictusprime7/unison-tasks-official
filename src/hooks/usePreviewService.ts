@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { VirtualFile, VirtualNode } from './useVirtualFileSystem';
+import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 
 // Use environment variable for Docker gateway, or Vercel API routes in production
 const getPreviewApiUrl = () => {
@@ -107,8 +108,14 @@ export default defineConfig({
 });`;
     }
 
-    // Add package.json if not present
+    // Add package.json — dynamically resolve deps from VFS imports
     if (!files['/package.json']) {
+      const baseDeps: Record<string, string> = {
+        react: '^18.3.1',
+        'react-dom': '^18.3.1',
+      };
+      const { dependencies: resolvedDeps } = getDependenciesForSandpack(files, baseDeps);
+
       files['/package.json'] = JSON.stringify({
         name: 'preview-project',
         private: true,
@@ -119,10 +126,7 @@ export default defineConfig({
           build: 'vite build',
           preview: 'vite preview',
         },
-        dependencies: {
-          react: '^18.3.1',
-          'react-dom': '^18.3.1',
-        },
+        dependencies: resolvedDeps,
         devDependencies: {
           '@types/react': '^18.3.18',
           '@types/react-dom': '^18.3.5',

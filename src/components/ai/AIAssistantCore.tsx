@@ -15,6 +15,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAIFunction } from "@/integrations/supabase/ai-client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -185,14 +186,15 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       }
       // Default AI handler via edge function
       else {
-        const { data, error } = await supabase.functions.invoke("code-assistant", {
-          body: {
-            prompt: trimmedInput,
-            context: contextCode,
-            systemType,
-            businessName,
-            mode: "code",
-          },
+        const messages = [
+          ...(contextCode ? [{ role: "system" as const, content: `Context:\n${contextCode}` }] : []),
+          { role: "user" as const, content: trimmedInput },
+        ];
+        const { data, error } = await invokeAIFunction("ai-code-assistant", {
+          messages,
+          systemType,
+          businessName,
+          mode: "code",
         });
 
         if (error) {

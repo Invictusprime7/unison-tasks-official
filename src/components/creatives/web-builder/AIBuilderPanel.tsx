@@ -120,6 +120,10 @@ interface AIBuilderPanelProps {
   businessDataContext?: string | null;
   /** Structured business blueprint from systems-build (brand, palette, intents, sections) */
   systemsBuildContext?: SystemsBuildContext | null;
+  /** Current VFS file list + dependency summary for AI awareness */
+  vfsContext?: string | null;
+  /** Direct VFS apply callback — bypasses legacy onCodeGenerated pipeline, uses AI→VFS orchestrator */
+  onApplyToVFS?: (files: Record<string, string>) => void;
 }
 
 // ============================================================================
@@ -495,6 +499,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   backendStateContext,
   businessDataContext,
   systemsBuildContext,
+  vfsContext,
+  onApplyToVFS,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -707,6 +713,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (businessDataContext) contextLines.push(`\nBusiness data:\n${businessDataContext.slice(0, 800)}`);
       if (pageStructureContext) contextLines.push(`\nPage structure:\n${pageStructureContext.slice(0, 600)}`);
       if (backendStateContext) contextLines.push(`\nBackend state:\n${backendStateContext.slice(0, 400)}`);
+      if (vfsContext) contextLines.push(`\nCurrent VFS project files:\n${vfsContext.slice(0, 1200)}`);
       const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
       // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted change
@@ -903,10 +910,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
 
-      // Handle multi-file output via onFilesPatch
-      if (multiFileOutput && onFilesPatch) {
-        onFilesPatch(multiFileOutput);
-        toast.success('✅ Multi-file project applied to VFS');
+      // Handle multi-file output — prefer orchestrator, fall back to legacy callback
+      if (multiFileOutput) {
+        if (onApplyToVFS) {
+          onApplyToVFS(multiFileOutput);
+          toast.success('✅ Multi-file project applied with dependencies');
+        } else if (onFilesPatch) {
+          onFilesPatch(multiFileOutput);
+          toast.success('✅ Multi-file project applied to VFS');
+        }
       }
 
       // Determine VFS edits from response
@@ -963,10 +975,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           : m
       ));
 
-      // AUTO-APPLY: Always push generated code to VFS via onCodeGenerated
-      if (generatedCode && onCodeGenerated) {
-        onCodeGenerated(generatedCode);
-        toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
+      // AUTO-APPLY: Push generated code to VFS — prefer orchestrator for dep resolution
+      if (generatedCode) {
+        if (onApplyToVFS && !multiFileOutput) {
+          // Single file through orchestrator — gets dep detection + package.json
+          const targetPath = currentCode && isSurgicalEdit ? '/src/App.tsx' : '/src/App.tsx';
+          onApplyToVFS({ [targetPath]: generatedCode });
+          toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
+        } else if (onCodeGenerated) {
+          onCodeGenerated(generatedCode);
+          toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
+        }
       }
 
     } catch (error) {

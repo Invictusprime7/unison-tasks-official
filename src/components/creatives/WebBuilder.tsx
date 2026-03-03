@@ -81,6 +81,8 @@ import { extractPageTabs, type PageTab } from "./web-builder/PageNavigationBar";
 import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 import { BusinessSetupSuggestions } from "@/components/onboarding/BusinessSetupSuggestions";
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
+import { useSiteBuilder, type UseSiteBuilderReturn } from "@/hooks/useSiteBuilder";
+import { useAIVFS } from "@/hooks/useAIVFS";
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -1011,6 +1013,26 @@ export default function App() {
   
   // Virtual file system for code editor
   const virtualFS = useVirtualFileSystem();
+  
+  // AI → VFS orchestrator — auto-resolves dependencies and syncs to preview
+  const aiVFS = useAIVFS(virtualFS, simplePreviewRef);
+  
+  // Site builder orchestrator — provides site graph navigation, brand system, and intent routing
+  // Uses project/business IDs from location state; no-ops if unavailable
+  const siteBuilderBusinessId = businessId || getOrCreatePreviewBusinessId(systemType);
+  const siteBuilderIndustry = (systemType as any) || 'general';
+  const siteBuilderRef = useRef<UseSiteBuilderReturn | null>(null);
+  const siteBuilder = useSiteBuilder({
+    projectId: projectId || 'preview',
+    businessId: siteBuilderBusinessId,
+    industry: siteBuilderIndustry,
+    autoGenerateAll: false,
+    debug: false,
+    onReady: () => {
+      console.log('[WebBuilder] Site builder ready');
+    },
+  });
+  siteBuilderRef.current = siteBuilder;
   
   // User design profile for personalized AI generation
   const { profile: userDesignProfile, fetchProfile: fetchDesignProfile, hasProfile: hasDesignProfile } = useUserDesignProfile();
@@ -3925,6 +3947,21 @@ ${body.innerHTML}
                 backendStateContext={backendStateContext}
                 businessDataContext={businessDataContext}
                 systemsBuildContext={systemsBuildContextFromState}
+                vfsContext={aiVFS.getContext().summary}
+                onApplyToVFS={(files) => {
+                  const result = aiVFS.applyCode(files);
+                  if (result.success) {
+                    // Update editor/preview state from the main entry file
+                    const entry = files['/index.html'] || files['/src/App.tsx'] || files['/App.tsx'];
+                    if (entry) {
+                      setEditorCode(entry);
+                      setPreviewCode(entry);
+                    }
+                    setViewMode('canvas');
+                    console.log('[WebBuilder] AI→VFS orchestrator applied:', result.filesWritten.length, 'files,', 
+                      Object.keys(result.dependencies.dependencies).length, 'deps');
+                  }
+                }}
                 onViewEdits={(edits) => {
                   // Switch to code view and highlight the edited files
                   setViewMode('split');
