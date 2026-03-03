@@ -103,10 +103,10 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
 
   // Initial srcdoc — computed once from the first code value, never changes after.
   // Subsequent code changes are patched into the iframe DOM directly (see effect below).
-  const initialSrcdoc = useMemo(() => {
+  const [initialSrcdoc] = useState(() => {
     if (previewUrl || !code) return undefined;
     return buildHtml(code);
-  }, []); // intentionally empty — capture only the initial code
+  });
 
   // Seed the written-code ref so the patch effect can skip the first (already-rendered) value
   useEffect(() => {
