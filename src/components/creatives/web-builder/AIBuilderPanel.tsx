@@ -863,19 +863,47 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (aiContent) {
         const trimmed = aiContent.trim();
 
-        // Strategy 1: Check for JSON multi-file output: {"files": {...}}
-        if (trimmed.startsWith('{') && trimmed.includes('"files"')) {
+        // Helper: try to parse a string as multi-file JSON {"files": {...}, "explanation"?: "..."}
+        const tryParseMultiFileJSON = (raw: string): boolean => {
           try {
-            const parsed = JSON.parse(trimmed);
-            if (parsed.files && typeof parsed.files === 'object') {
-              multiFileOutput = parsed.files;
+            const parsed = JSON.parse(raw);
+            if (parsed.files && typeof parsed.files === 'object' && Object.keys(parsed.files).length > 0) {
+              // Normalize paths: ensure leading slash
+              const normalized: Record<string, string> = {};
+              for (const [path, content] of Object.entries(parsed.files)) {
+                if (typeof content !== 'string') continue;
+                const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+                normalized[normalizedPath] = content;
+              }
+              multiFileOutput = normalized;
               explanationText = parsed.explanation || '✅ Multi-file project generated and applied.';
+              return true;
             }
-          } catch { /* not valid JSON, continue */ }
+          } catch { /* not valid JSON */ }
+          return false;
+        };
+
+        // Strategy 1a: Raw JSON multi-file output: {"files": {...}}
+        if (trimmed.startsWith('{') && trimmed.includes('"files"')) {
+          tryParseMultiFileJSON(trimmed);
+        }
+
+        // Strategy 1b: JSON wrapped in markdown code fences (```json ... ```)
+        if (!multiFileOutput) {
+          const jsonFenceRegex = /```(?:json)?\s*\n([\s\S]*?)```/gi;
+          const jsonMatches = [...aiContent.matchAll(jsonFenceRegex)];
+          for (const m of jsonMatches) {
+            const block = m[1].trim();
+            if (block.startsWith('{') && block.includes('"files"')) {
+              if (tryParseMultiFileJSON(block)) break;
+            }
+          }
         }
 
         // Strategy 2: Check if content IS a React component (starts with import/export/function)
-        if (!multiFileOutput && !generatedCode) {
+        // GUARD: Skip if content looks like a JSON object — prevents treating
+        // {"files":{"src/App.tsx":"import React..."}} as a component
+        if (!multiFileOutput && !generatedCode && !trimmed.startsWith('{')) {
           const isReactComponent = /^import\s+/m.test(trimmed) ||
             /^export\s+default\s+function/m.test(trimmed) ||
             /^(?:const|function)\s+\w+.*=.*(?:=>|\{)/m.test(trimmed);
@@ -916,6 +944,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             .replace(/```[\s\S]*?```/g, '')
             .replace(/^\s*\n/gm, '\n')
             .trim();
+
+          // If explanation is just the raw JSON, clear it
+          if (explanationText.startsWith('{') && explanationText.includes('"files"')) {
+            explanationText = '';
+          }
 
           if (!explanationText && (generatedCode || multiFileOutput)) {
             explanationText = isSurgicalEdit ? '✅ Edit applied successfully.' : '✅ Code generated and applied to your project.';
