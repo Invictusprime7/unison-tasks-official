@@ -1249,7 +1249,7 @@ export default ${componentName};`;
     return nodes.some(n => n.type === 'file');
   }, [nodes]);
 
-  return {
+  return useMemo(() => ({
     nodes: sortedNodes,
     activeFileId,
     openTabs,
@@ -1275,5 +1275,31 @@ export default ${componentName};`;
     importFiles,
     resetToEmpty,
     loadDefaultTemplate,
-  };
+  }), [
+    sortedNodes,
+    activeFileId,
+    openTabs,
+    stats,
+    hasFiles,
+    setActiveFileId,
+    createFile,
+    createFolder,
+    deleteNode,
+    renameNode,
+    duplicateNode,
+    moveNode,
+    updateFileContent,
+    toggleFolder,
+    expandAll,
+    collapseAll,
+    getActiveFile,
+    openFile,
+    closeTab,
+    getOpenFiles,
+    getNodePath,
+    getSandpackFiles,
+    importFiles,
+    resetToEmpty,
+    loadDefaultTemplate,
+  ]);
 }

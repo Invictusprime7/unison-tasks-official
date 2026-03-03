@@ -56,7 +56,7 @@ export interface SimplePreviewProps {
   onDeployComplete?: (url: string) => void;
 }
 
-export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>(({
+export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePreviewProps>(({
   code,
   className,
   showToolbar = true,
@@ -277,7 +277,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
       />
     </div>
   );
-});
+}));
 
 SimplePreview.displayName = 'SimplePreview';
 

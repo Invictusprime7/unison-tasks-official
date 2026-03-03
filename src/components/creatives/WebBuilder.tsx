@@ -1274,6 +1274,9 @@ export default function ${componentName}Page() {
   // This ensures the preview component sees the same code as the editor
   const lastSyncedCodeRef = useRef<string>('');
   const syncingFromVFSRef = useRef(false);
+  // Keep a stable ref to virtualFS so the sync effect doesn't re-run every render
+  const virtualFSRef = useRef(virtualFS);
+  virtualFSRef.current = virtualFS;
   
   useEffect(() => {
     // Skip if we're syncing from VFS to avoid loops
@@ -1293,11 +1296,14 @@ export default function ${componentName}Page() {
         // For React/TSX, sync to App.tsx or active page
         const targetPath = activePagePath.endsWith('.tsx') ? activePagePath : '/src/App.tsx';
         console.log('[WebBuilder] Importing as', targetPath);
-        virtualFS.importFiles({
+        virtualFSRef.current.importFiles({
           [targetPath]: previewCode,
         });
+        lastSyncedCodeRef.current = previewCode;
       } else {
-        // Default: wrap in a React component
+        // Default: wrap in a React component and import to VFS,
+        // but keep lastSyncedCodeRef as the WRAPPED version so
+        // the VFS→previewCode sync (Effect B) won't overwrite previewCode.
         const targetPath = '/src/App.tsx';
         const wrapped = `import React from 'react';
 
@@ -1308,13 +1314,14 @@ export default function App() {
     </div>
   );
 }`;
-        virtualFS.importFiles({
+        virtualFSRef.current.importFiles({
           [targetPath]: wrapped,
         });
+        // Store the wrapped version so Effect B won't detect a mismatch
+        lastSyncedCodeRef.current = wrapped;
       }
-      lastSyncedCodeRef.current = previewCode;
     }
-  }, [previewCode, virtualFS, activePagePath]);
+  }, [previewCode, activePagePath]); // virtualFS accessed via ref — not a dependency
   
   // Sync VFS changes back to previewCode (for code editor edits)
   // This keeps the legacy previewCode state in sync with VFS
