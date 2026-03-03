@@ -388,6 +388,7 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   // Extract content from React component
   let bodyContent = '';
   let templateStyles = '';
+  let templateBodyClasses = '';
   
   console.log('[VFSPreview] Attempting to extract JSX from content, length:', appContent.length);
   
@@ -408,7 +409,20 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
         .replace(/\\\$/g, '$')
         .replace(/\\\\/g, '\\');
     }
-    console.log('[VFSPreview] Found TEMPLATE_HTML const, content length:', bodyContent.length);
+    
+    // Extract body classes set by the React component's useEffect
+    // Pattern: document.body.classList.add('bg-slate-950', 'text-white')
+    const bodyClassMatch = appContent.match(/document\.body\.classList\.add\(([^)]+)\)/);
+    if (bodyClassMatch) {
+      const classes = bodyClassMatch[1]
+        .replace(/['"]/g, '')
+        .split(',')
+        .map(c => c.trim())
+        .filter(Boolean);
+      templateBodyClasses = classes.join(' ');
+    }
+    
+    console.log('[VFSPreview] Found TEMPLATE_HTML const, content length:', bodyContent.length, 'bodyClasses:', templateBodyClasses);
   }
   
   // Also try inline dangerouslySetInnerHTML pattern
@@ -501,7 +515,7 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   <style>${BASE_CSS}</style>
   ${templateStyles ? `<style>${templateStyles}</style>` : ''}
 </head>
-<body class="bg-white">
+<body class="${templateBodyClasses || 'bg-white'}">
   ${bodyContent}
   ${PREVIEW_NAV_SCRIPT}
 </body>
