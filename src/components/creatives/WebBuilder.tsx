@@ -10,7 +10,7 @@ import {
   Monitor, Tablet, Smartphone,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap, RefreshCcw,
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
-  FolderOpen, Cloud, CloudOff, Server, Layers, Settings
+  FolderOpen, Cloud, CloudOff, Server, Layers, Settings, ExternalLink
 } from "lucide-react";
 import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
@@ -4304,6 +4304,15 @@ ${body.innerHTML}
                     >
                       <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => livePreviewRef.current?.openInNewTab()}
+                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-md transition-all duration-200"
+                      title="Open preview in new tab"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                     {builderMode === 'select' && (
                       <>
                         <span className="w-px h-4 bg-border mx-1" />
@@ -4570,6 +4579,15 @@ export default function App() {
                         title="Refresh Preview (F5)"
                       >
                         <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => livePreviewRef.current?.openInNewTab()}
+                        className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-md transition-all duration-200"
+                        title="Open preview in new tab"
+                      >
+                        <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
