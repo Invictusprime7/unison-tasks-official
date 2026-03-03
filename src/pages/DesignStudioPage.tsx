@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, FolderOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VFSProvider } from "@/contexts/VFSContext";
 
 // Dynamic imports for heavy components
 const DesignStudio = lazy(() => import("@/components/creatives/DesignStudio").then(m => ({ default: m.DesignStudio })));
@@ -16,6 +17,7 @@ const DesignStudioPage = () => {
   const [activeTab, setActiveTab] = useState<"canvas" | "web">("canvas");
 
   return (
+    <VFSProvider>
     <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden">
       <header className="h-10 sm:h-12 border-b border-gray-200 bg-white flex items-center justify-between px-2 sm:px-4 shrink-0 min-w-0">
         <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-shrink">
@@ -68,6 +70,7 @@ const DesignStudioPage = () => {
         />
       </Suspense>
     </div>
+    </VFSProvider>
   );
 };
 
