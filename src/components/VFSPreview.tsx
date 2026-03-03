@@ -387,15 +387,40 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   
   // Extract content from React component
   let bodyContent = '';
+  let templateStyles = '';
   
   console.log('[VFSPreview] Attempting to extract JSX from content, length:', appContent.length);
   
-  // Look for dangerouslySetInnerHTML pattern (templates)
-  const dangerousMatch = appContent.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*`([\s\S]*?)`\s*\}\}/s);
-  if (dangerousMatch) {
-    bodyContent = dangerousMatch[1];
-    console.log('[VFSPreview] Found dangerouslySetInnerHTML content');
-  } else {
+  // Look for TEMPLATE_HTML const pattern (from wrapInReactComponent)
+  // This matches: const TEMPLATE_HTML = `...`;
+  const templateHtmlMatch = appContent.match(/const\s+TEMPLATE_HTML\s*=\s*`([\s\S]*?)`;/);
+  const templateStylesMatch = appContent.match(/const\s+TEMPLATE_STYLES\s*=\s*`([\s\S]*?)`;/);
+  
+  if (templateHtmlMatch) {
+    // Unescape template literal escapes that wrapInReactComponent added
+    bodyContent = templateHtmlMatch[1]
+      .replace(/\\`/g, '`')
+      .replace(/\\\$/g, '$')
+      .replace(/\\\\/g, '\\');
+    if (templateStylesMatch) {
+      templateStyles = templateStylesMatch[1]
+        .replace(/\\`/g, '`')
+        .replace(/\\\$/g, '$')
+        .replace(/\\\\/g, '\\');
+    }
+    console.log('[VFSPreview] Found TEMPLATE_HTML const, content length:', bodyContent.length);
+  }
+  
+  // Also try inline dangerouslySetInnerHTML pattern
+  if (!bodyContent) {
+    const dangerousMatch = appContent.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*`([\s\S]*?)`\s*\}\}/s);
+    if (dangerousMatch) {
+      bodyContent = dangerousMatch[1];
+      console.log('[VFSPreview] Found inline dangerouslySetInnerHTML content');
+    }
+  }
+  
+  if (!bodyContent) {
     // Try multiple patterns to extract JSX return content
     // Pattern 1: Arrow function component with return
     let returnMatch = appContent.match(/=>\s*\{\s*return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
@@ -474,6 +499,7 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   <title>VFS Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>${BASE_CSS}</style>
+  ${templateStyles ? `<style>${templateStyles}</style>` : ''}
 </head>
 <body class="bg-white">
   ${bodyContent}
