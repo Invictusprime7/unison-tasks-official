@@ -4264,8 +4264,13 @@ ${body.innerHTML}
                       builderMode === 'select' ? "bg-emerald-500" : "bg-slate-400"
                     )} />
                     <span className="text-xs font-medium text-slate-500">
-                      {builderMode === 'select' ? 'Select Mode - Click elements to edit' : 'Preview Mode - Test interactions'}
+                      {builderMode === 'select' ? 'Select Mode' : 'Preview Mode'}
                     </span>
+                    {useReactPreview && (
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-600">
+                        <FileCode className="h-3 w-3" /> HTML Preview
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     {/* Undo/Redo/Refresh buttons */}
@@ -4320,16 +4325,16 @@ ${body.innerHTML}
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                 >
                   {/* React mode uses VFSPreview with Docker HMR, HTML mode uses SimplePreview */}
-                  {useReactPreview ? (
+                    {useReactPreview ? (
                     <VFSPreview
                       ref={livePreviewRef}
                       nodes={virtualFS.nodes}
                       files={virtualFS.getSandpackFiles()}
                       activeFile={activePagePath}
                       className="w-full h-full min-h-0 flex-1"
-                      showToolbar={true}
+                      showToolbar={false}
                       autoStart={true}
-                      showBackendIndicator={true}
+                      showBackendIndicator={false}
                       onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                       onError={(err) => {
                         toast.error(`Preview error: ${err}`);
@@ -4526,9 +4531,14 @@ export default function App() {
                 {/* Live Preview - Main viewing area */}
                 <div className="flex-1 bg-white rounded-xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-black/30 relative flex flex-col">
                   <div className="h-10 backdrop-blur-md bg-gradient-to-r from-slate-100/95 to-slate-50/95 border-b border-slate-200/50 flex items-center justify-between px-4 flex-shrink-0">
-                    <div className="flex items-center">
-                      <Eye className="w-4 h-4 text-slate-400 mr-2" />
-                      <span className="text-sm text-slate-500">Live Preview - AI Generated Template</span>
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm text-slate-500">Live Preview</span>
+                      {useReactPreview && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-600">
+                          <FileCode className="h-3 w-3" /> HTML Preview
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
@@ -4577,9 +4587,9 @@ export default function App() {
                         files={virtualFS.getSandpackFiles()}
                         activeFile={activePagePath}
                         className="w-full h-full min-h-0 flex-1"
-                        showToolbar={true}
+                        showToolbar={false}
                         autoStart={true}
-                        showBackendIndicator={true}
+                        showBackendIndicator={false}
                         onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                         onError={(err) => {
                           toast.error(`Preview error: ${err}`);
