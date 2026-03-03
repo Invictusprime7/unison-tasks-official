@@ -3924,6 +3924,17 @@ ${body.innerHTML}
                 backendStateContext={backendStateContext}
                 businessDataContext={businessDataContext}
                 systemsBuildContext={systemsBuildContextFromState}
+                vfsFileTree={(() => {
+                  try {
+                    const files = virtualFS.getSandpackFiles();
+                    return Object.entries(files).map(([path, content]) => ({
+                      path,
+                      size: typeof content === 'string' ? content.length : 0,
+                    }));
+                  } catch { return null; }
+                })()}
+                activeFilePath={virtualFS.getActiveFile()?.name ?? null}
+                activeFileContent={virtualFS.getActiveFile()?.content ?? null}
                 onViewEdits={(edits) => {
                   // Switch to code view and highlight the edited files
                   setViewMode('split');

@@ -120,6 +120,11 @@ interface AIBuilderPanelProps {
   businessDataContext?: string | null;
   /** Structured business blueprint from systems-build (brand, palette, intents, sections) */
   systemsBuildContext?: SystemsBuildContext | null;
+  /** VFS file tree context — paths and sizes of all files in the project */
+  vfsFileTree?: { path: string; size: number }[] | null;
+  /** Full contents of the currently active file in the editor */
+  activeFilePath?: string | null;
+  activeFileContent?: string | null;
 }
 
 // ============================================================================
@@ -495,6 +500,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   backendStateContext,
   businessDataContext,
   systemsBuildContext,
+  vfsFileTree,
+  activeFilePath,
+  activeFileContent,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -587,7 +595,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       setMessages([{
         id: generateId(),
         role: 'assistant',
-        content: `👋 Welcome to the AI Builder!\n\nI can help you:\n• Generate and modify code\n• Fix errors in your preview\n• Debug Supabase integrations\n\nJust describe what you want to build or switch to Debug tab to fix errors.`,
+        content: `👋 Welcome to the AI Builder!\n\nI'm your fullstack engineer. I can:\n• Create & edit React components across your VFS\n• Build backend edge functions & database integrations\n• Wire up routing, forms, auth, and API calls\n• Debug and fix errors in your preview\n\nDescribe what you want — I'll write the code and apply it live.`,
         timestamp: new Date(),
         thinking: [
           { id: '1', type: 'complete', message: 'Ready to assist', timestamp: new Date() }
@@ -696,6 +704,16 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       );
       const isSurgicalEdit = hasSurgicalKeyword && !!currentCode;
 
+      // Build VFS file tree context for AI awareness
+      const vfsContextBlock = vfsFileTree && vfsFileTree.length > 0
+        ? `\n\n[VFS Project Files]\n${vfsFileTree.map(f => `${f.path} (${f.size} bytes)`).join('\n')}`
+        : '';
+      
+      // Build active file context
+      const activeFileBlock = activeFilePath && activeFileContent
+        ? `\n\n[Active File: ${activeFilePath}]\n\`\`\`tsx\n${activeFileContent.slice(0, 8000)}${activeFileContent.length > 8000 ? '\n// ... truncated' : ''}\n\`\`\``
+        : '';
+
       // Build rich context block for full-generation requests
       const contextLines: string[] = [];
       if (systemType) contextLines.push(`Business type: ${systemType}`);
@@ -709,22 +727,23 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (backendStateContext) contextLines.push(`\nBackend state:\n${backendStateContext.slice(0, 400)}`);
       const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
-      // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted change
+      // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted file(s)
       const promptForAI = isSurgicalEdit
         ? [
-            '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED ELEMENT 🚨',
+            '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED FILE(S) 🚨',
             '',
             `User Request: ${_userContent}${_fileContext}`,
+            activeFileBlock,
+            vfsContextBlock,
             '',
             '⚠️ CRITICAL SURGICAL EDIT RULES:',
-            '1. Output the COMPLETE template HTML — but ONLY modify the element the user asked about',
-            '2. Every section, script, style, image, text, and data attribute NOT mentioned MUST stay IDENTICAL',
-            '3. DO NOT re-generate, rephrase, or "improve" unmentioned sections',
-            '4. DO NOT change colors, fonts, layout, or content outside the targeted element',
-            '5. If the change is purely CSS/class-based, only modify the class list on that one element',
-            '6. Think of this like a diff — your output should be identical to the input except for the one change',
+            '1. Output ONLY the modified file(s) in the JSON {"files": {...}} format',
+            '2. Include COMPLETE file contents for each modified file',
+            '3. DO NOT include files that are unchanged',
+            '4. DO NOT re-generate or "improve" code the user did not ask about',
+            '5. Maintain all existing imports, types, and patterns',
           ].join('\n')
-        : `${_userContent}${_fileContext}${richContext}`;
+        : `${_userContent}${_fileContext}${richContext}${vfsContextBlock}${activeFileBlock}`;
 
       // Detect templateAction for the backend
       const detectTemplateAction = (msg: string): string | undefined => {
@@ -793,6 +812,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               userDesignProfile: userDesignProfile ?? undefined,
               systemsBuildContext: systemsBuildContext ?? undefined,
               siteElementsLibraryContext,
+              vfsFileTree: vfsFileTree ?? undefined,
               attachments: _attachments.length > 0 ? _attachments : undefined,
             },
           });
