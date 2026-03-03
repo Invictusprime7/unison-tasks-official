@@ -1,18 +1,32 @@
-
 /**
- * SimplePreview - Updated for VFS/Sandpack
+ * SimplePreview - Hybrid VFS/Sandpack + srcdoc fallback
  * 
- * Routes preview through the VFS system rather than direct HTML injection.
- * Maintains the existing interface for compatibility but delegates rendering.
+ * When a VFS preview URL is available (Sandpack/Docker), uses that.
+ * Otherwise falls back to rendering the `code` prop via srcdoc for
+ * lightweight HTML/React string preview.
  */
 
-import React, { forwardRef, useImperativeHandle, useEffect, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useMemo, useContext } from 'react';
 import { cn } from '@/lib/utils';
-import { useVFSPreview } from '@/hooks/useVFSContext';
 import { ExternalLink, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DeployButton } from '@/components/DeployButton';
 import { PreviewOverlayManager } from '@/components/preview/PreviewOverlayManager';
+import VFSContext from '@/contexts/VFSContext';
+
+/**
+ * Safe VFS preview hook - returns null if no VFSProvider wraps this component.
+ */
+function useVFSPreviewSafe() {
+  const ctx = useContext(VFSContext);
+  if (!ctx) return null;
+  return {
+    url: ctx.previewSession?.iframeUrl || null,
+    loading: ctx.previewLoading,
+    error: ctx.previewError,
+    restart: ctx.restartPreview,
+  };
+}
 
 export interface SimplePreviewHandle {
   getIframe: () => HTMLIFrameElement | null;
@@ -24,31 +38,18 @@ export interface SimplePreviewHandle {
 }
 
 export interface SimplePreviewProps {
-  /** The code to preview - ignored in VFS mode, we use files from context */
   code: string;
-  /** Additional CSS classes */
   className?: string;
-  /** Show toolbar */
   showToolbar?: boolean;
-  /** Device breakpoint for responsive preview */
   device?: 'desktop' | 'tablet' | 'mobile';
-  /** Enable element selection (for Edit mode) */
   enableSelection?: boolean;
-  /** Callback when an element is selected */
   onElementSelect?: (elementData: any) => void;
-  /** Business ID for intent execution context */
   businessId?: string;
-  /** Site/Project ID for intent execution context */
   siteId?: string;
-  /** Callback when an intent is triggered (for external handling) */
   onIntentTrigger?: (intent: string, payload: Record<string, unknown>, result: unknown) => void;
-  /** Multi-page manifest for async navigation (path -> html content) */
   pageManifest?: Record<string, string>;
-  /** Enable deploy button in toolbar */
   showDeploy?: boolean;
-  /** Default site name for deployments */
   deploySiteName?: string;
-  /** Callback when deployment completes */
   onDeployComplete?: (url: string) => void;
 }
 
@@ -68,34 +69,95 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
 }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
-  // Use the VFS preview hook to get the sandpack URL
-  const { url: previewUrl, loading, error, restart } = useVFSPreview();
+  // Try VFS preview - returns null if no VFSProvider
+  const vfsPreview = useVFSPreviewSafe();
+  const previewUrl = vfsPreview?.url ?? null;
+  const loading = vfsPreview?.loading ?? false;
+  const error = vfsPreview?.error ?? null;
 
-  // Expose imperative handle
+  // Build srcdoc from code prop when no VFS URL
+  const srcdoc = useMemo(() => {
+    if (previewUrl || !code) return undefined;
+    // If it looks like a full HTML doc, use as-is
+    if (code.trim().startsWith('<!') || code.trim().startsWith('<html')) {
+      return code;
+    }
+    // Wrap in minimal HTML shell
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body>${code}</body>
+</html>`;
+  }, [code, previewUrl]);
+
+  const hasSomethingToShow = !!previewUrl || !!srcdoc;
+
   useImperativeHandle(ref, () => ({
     getIframe: () => iframeRef.current,
-    deleteElement: () => {
-      console.warn('Direct DOM manipulation not supported in React/VFS mode');
+    deleteElement: (selector: string) => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return false;
+      const el = doc.querySelector(selector);
+      if (el) { el.remove(); return true; }
       return false;
     },
-    duplicateElement: () => {
-      console.warn('Direct DOM manipulation not supported in React/VFS mode');
+    duplicateElement: (selector: string) => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return false;
+      const el = doc.querySelector(selector);
+      if (el?.parentNode) { el.parentNode.insertBefore(el.cloneNode(true), el.nextSibling); return true; }
       return false;
     },
-    updateElement: () => {
-      console.warn('Direct DOM manipulation not supported in React/VFS mode');
-      return false;
+    updateElement: (selector: string, updates: any) => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return false;
+      const el = doc.querySelector(selector) as HTMLElement | null;
+      if (!el) return false;
+      if (updates.textContent !== undefined) el.textContent = updates.textContent;
+      if (updates.innerHTML !== undefined) el.innerHTML = updates.innerHTML;
+      if (updates.style) Object.assign(el.style, updates.style);
+      if (updates.attributes) {
+        for (const [k, v] of Object.entries(updates.attributes)) {
+          el.setAttribute(k, String(v));
+        }
+      }
+      return true;
     },
     refresh: () => {
-      restart();
+      if (vfsPreview?.restart) {
+        vfsPreview.restart();
+      } else if (iframeRef.current) {
+        // Force srcdoc refresh
+        const cur = iframeRef.current.srcdoc;
+        iframeRef.current.srcdoc = '';
+        requestAnimationFrame(() => {
+          if (iframeRef.current) iframeRef.current.srcdoc = cur;
+        });
+      }
     },
-    syncPageManifest: () => {
-      // No-op in VFS mode, files are synced via context
+    syncPageManifest: (pages: Record<string, string>) => {
+      const iframe = iframeRef.current;
+      if (!iframe?.contentWindow) return;
+      iframe.contentWindow.postMessage({ type: 'SYNC_PAGE_MANIFEST', pages }, '*');
     },
-  }), [restart]);
+  }), [vfsPreview]);
 
   const handleRefresh = () => {
-    restart();
+    if (vfsPreview?.restart) {
+      vfsPreview.restart();
+    } else if (iframeRef.current && srcdoc) {
+      iframeRef.current.srcdoc = '';
+      requestAnimationFrame(() => {
+        if (iframeRef.current) iframeRef.current.srcdoc = srcdoc;
+      });
+    }
   };
 
   const handleOpenInNewTab = () => {
@@ -106,7 +168,6 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
 
   return (
     <div className={cn('flex flex-col h-full bg-background rounded-lg overflow-hidden border border-white/10', className)}>
-      {/* Toolbar */}
       {showToolbar && (
         <div className={cn(
           "flex items-center justify-between px-3 py-2 border-b border-white/10",
@@ -115,7 +176,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
           <div className="flex items-center gap-2">
             <div className={cn(
               "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
-              error ? "bg-red-500/20 text-red-400" : "bg-emerald-500/20 text-emerald-400"
+              error ? "bg-destructive/20 text-destructive" : "bg-emerald-500/20 text-emerald-400"
             )}>
               {loading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -134,7 +195,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
               variant="ghost"
               onClick={handleRefresh}
               className="h-7 w-7 p-0"
-              title="Restart Preview"
+              title="Refresh Preview"
             >
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             </Button>
@@ -150,7 +211,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
             </Button>
             {showDeploy && (
               <DeployButton
-                files={{}} // Files handled by deploy hook internally if needed, or update this prop
+                files={{}}
                 defaultSiteName={deploySiteName}
                 onDeployComplete={onDeployComplete}
                 variant="ghost"
@@ -171,7 +232,7 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
             maxWidth: '100%',
           }}
         >
-          {loading && !previewUrl && (
+          {loading && !hasSomethingToShow && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-10">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -189,15 +250,22 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
               allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write; web-share"
               sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock"
             />
+          ) : srcdoc ? (
+            <iframe
+              ref={iframeRef}
+              srcDoc={srcdoc}
+              className="w-full h-full border-0 bg-white dark:bg-zinc-950"
+              title="Code Preview"
+              sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads allow-pointer-lock"
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              {!loading && "Preview not available"}
+              {!loading && "No content to preview"}
             </div>
           )}
         </div>
       </div>
       
-      {/* Overlay Manager for Auth/Booking/Checkout modals */}
       <PreviewOverlayManager
         activeOverlay={null} 
         onClose={() => {}}
