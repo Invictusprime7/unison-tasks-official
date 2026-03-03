@@ -288,6 +288,189 @@ const PREVIEW_NAV_SCRIPT = `
 </script>
 `;
 
+/**
+ * Interactive Behaviors Script
+ * Replicates the useEffect behaviors from wrapInReactComponent for static HTML preview.
+ * Handles: tabs, carousel, scroll-reveal, pricing switch, data-toggle, sticky dismiss, demo forms.
+ */
+const INTERACTIVE_BEHAVIORS_SCRIPT = `
+<script>
+(function() {
+  'use strict';
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Smooth-scroll for in-page anchors
+  document.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!(t instanceof Element)) return;
+    var anchor = t.closest('a[href^="#"]');
+    if (!anchor) return;
+    var href = anchor.getAttribute('href') || '';
+    if (href.length < 2) return;
+    var el = document.querySelector(href);
+    if (!el) return;
+    e.preventDefault();
+    el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
+  });
+
+  // Data-toggle
+  document.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!(t instanceof Element)) return;
+    var btn = t.closest('[data-toggle]');
+    if (!btn) return;
+    var selector = btn.getAttribute('data-toggle');
+    if (!selector) return;
+    var panel = document.querySelector(selector);
+    if (!panel) return;
+    panel.classList.toggle('hidden');
+    panel.setAttribute('aria-hidden', panel.classList.contains('hidden') ? 'true' : 'false');
+  });
+
+  // Scroll reveal
+  if (window.IntersectionObserver) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    document.querySelectorAll('[data-reveal]').forEach(function(el) { observer.observe(el); });
+  }
+
+  // Tabs
+  document.querySelectorAll('[data-tabs]').forEach(function(root) {
+    var buttons = Array.from(root.querySelectorAll('[data-tab]'));
+    var panels = Array.from(root.querySelectorAll('[data-tab-panel]'));
+    if (buttons.length === 0 || panels.length === 0) return;
+    var theme = (root.getAttribute('data-tabs-theme') || 'dark').toLowerCase();
+
+    function applyButtonStyles(button, isActive) {
+      if (theme === 'light') {
+        button.classList.toggle('bg-neutral-900', isActive);
+        button.classList.toggle('text-white', isActive);
+        button.classList.toggle('bg-white', !isActive);
+        button.classList.toggle('text-neutral-900', !isActive);
+      } else {
+        button.classList.toggle('bg-white/10', isActive);
+        button.classList.toggle('text-white', isActive);
+        button.classList.toggle('bg-white/5', !isActive);
+        button.classList.toggle('text-slate-300', !isActive);
+      }
+    }
+
+    function activate(key) {
+      buttons.forEach(function(b) {
+        var isActive = b.getAttribute('data-tab') === key;
+        applyButtonStyles(b, isActive);
+        b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      panels.forEach(function(p) {
+        var isActive = p.getAttribute('data-tab-panel') === key;
+        p.classList.toggle('hidden', !isActive);
+      });
+    }
+
+    var initial = root.getAttribute('data-tabs') || (buttons[0] && buttons[0].getAttribute('data-tab'));
+    if (initial) activate(initial);
+
+    root.addEventListener('click', function(e) {
+      var t = e.target;
+      if (!(t instanceof Element)) return;
+      var b = t.closest('[data-tab]');
+      if (!b) return;
+      var key = b.getAttribute('data-tab');
+      if (key) activate(key);
+    });
+  });
+
+  // Carousel
+  document.querySelectorAll('[data-carousel]').forEach(function(root) {
+    var items = Array.from(root.querySelectorAll('[data-carousel-item]'));
+    if (items.length === 0) return;
+    var index = 0;
+    function show(i) {
+      index = ((i % items.length) + items.length) % items.length;
+      items.forEach(function(it, idx) { it.classList.toggle('hidden', idx !== index); });
+    }
+    show(0);
+    root.addEventListener('click', function(e) {
+      var t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.closest('[data-carousel-prev]')) show(index - 1);
+      if (t.closest('[data-carousel-next]')) show(index + 1);
+    });
+  });
+
+  // Pricing switch
+  document.querySelectorAll('[data-pricing]').forEach(function(root) {
+    var checkbox = root.querySelector('[data-pricing-switch]');
+    if (!checkbox) return;
+    function apply() {
+      var annual = checkbox.checked;
+      root.querySelectorAll('[data-price-monthly]').forEach(function(el) { el.classList.toggle('hidden', annual); });
+      root.querySelectorAll('[data-price-annual]').forEach(function(el) { el.classList.toggle('hidden', !annual); });
+    }
+    checkbox.addEventListener('change', apply);
+    apply();
+  });
+
+  // Sticky dismiss
+  var stickyStoragePrefix = 'stickyDismissed:';
+  document.querySelectorAll('[data-sticky-key]').forEach(function(el) {
+    var key = el.getAttribute('data-sticky-key');
+    if (!key) return;
+    try {
+      if (localStorage.getItem(stickyStoragePrefix + key) === '1') {
+        el.classList.add('hidden');
+        el.setAttribute('aria-hidden', 'true');
+      }
+    } catch(e) {}
+  });
+
+  document.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!(t instanceof Element)) return;
+    var btn = t.closest('[data-dismiss]');
+    if (!btn) return;
+    var selector = btn.getAttribute('data-dismiss') || '';
+    var key = btn.getAttribute('data-dismiss-key') || undefined;
+    var sticky = selector && selector !== 'closest'
+      ? document.querySelector(selector)
+      : btn.closest('[data-sticky]') || btn.closest('[data-sticky-key]');
+    if (!sticky) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sticky.classList.add('hidden');
+    sticky.setAttribute('aria-hidden', 'true');
+    if (key) {
+      try { localStorage.setItem(stickyStoragePrefix + key, '1'); } catch(e) {}
+    }
+  }, true);
+
+  // Demo forms
+  document.querySelectorAll('form[data-demo-form]').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var msg = form.getAttribute('data-demo-message') || "Thanks! We'll be in touch shortly.";
+      var host = form.closest('[data-demo-form-host]') || form;
+      var existing = host.querySelector('[data-demo-toast]');
+      if (existing) existing.remove();
+      var toast = document.createElement('div');
+      toast.setAttribute('data-demo-toast', '');
+      toast.className = 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200';
+      toast.textContent = msg;
+      host.appendChild(toast);
+    });
+  });
+
+  console.log('[Preview] Interactive behaviors initialized');
+})();
+</script>
+`;
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -326,10 +509,10 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
     }
     // Inject before </body>
     if (html.includes('</body>')) {
-      return html.replace('</body>', `${PREVIEW_NAV_SCRIPT}\n</body>`);
+      return html.replace('</body>', `${PREVIEW_NAV_SCRIPT}\n${INTERACTIVE_BEHAVIORS_SCRIPT}\n</body>`);
     }
     // Fallback: append to end
-    return html + PREVIEW_NAV_SCRIPT;
+    return html + PREVIEW_NAV_SCRIPT + INTERACTIVE_BEHAVIORS_SCRIPT;
   };
   
   // FIRST: Check for active file (for multi-page navigation)
@@ -518,6 +701,7 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
 <body class="${templateBodyClasses || 'bg-white'}">
   ${bodyContent}
   ${PREVIEW_NAV_SCRIPT}
+  ${INTERACTIVE_BEHAVIORS_SCRIPT}
 </body>
 </html>`;
 }
