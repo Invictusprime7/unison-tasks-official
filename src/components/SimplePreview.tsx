@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { DeployButton } from '@/components/DeployButton';
 import { PreviewOverlayManager } from '@/components/preview/PreviewOverlayManager';
 import VFSContext from '@/contexts/VFSContext';
+import { getSelectedElementData, highlightElement, removeHighlight } from '@/utils/htmlElementSelector';
 
 /**
  * Safe VFS preview hook - returns null if no VFSProvider wraps this component.
@@ -38,6 +39,7 @@ export interface SimplePreviewHandle {
   updateElement: (selector: string, updates: any) => boolean;
   refresh: () => void;
   syncPageManifest: (pages: Record<string, string>) => void;
+  openInNewTab: () => void;
 }
 
 export interface SimplePreviewProps {
@@ -74,6 +76,10 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
   const iframeLoadedRef = useRef(false);
   const lastWrittenCodeRef = useRef<string>('');
   const [iframeReady, setIframeReady] = useState(false);
+  
+  // Element selection state for Edit mode
+  const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
+  const selectedElementRef = useRef<HTMLElement | null>(null);
   
   // Try VFS preview - returns null if no VFSProvider
   const vfsPreview = useVFSPreviewSafe();
@@ -169,6 +175,71 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
     setIframeReady(true);
   }, []);
 
+  // Element selection handlers for Edit mode
+  useEffect(() => {
+    if (!enableSelection || !iframeRef.current || !iframeReady) return;
+
+    const iframe = iframeRef.current;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) return;
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target !== iframeDoc.body && target !== iframeDoc.documentElement) {
+        if (hoveredElement && hoveredElement !== target) {
+          removeHighlight(hoveredElement);
+        }
+        highlightElement(target, '#3b82f6');
+        setHoveredElement(target);
+      }
+    };
+
+    const handleMouseOut = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && hoveredElement === target) {
+        removeHighlight(target);
+        setHoveredElement(null);
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const target = e.target as HTMLElement;
+      if (target && target !== iframeDoc.body && target !== iframeDoc.documentElement) {
+        // Remove previous selection highlight
+        if (selectedElementRef.current && selectedElementRef.current !== target) {
+          removeHighlight(selectedElementRef.current);
+        }
+        
+        const elementData = getSelectedElementData(target);
+        console.log('[SimplePreview] Element selected:', elementData);
+        onElementSelect?.(elementData);
+        
+        // Store reference to selected element and keep it highlighted
+        selectedElementRef.current = target;
+        highlightElement(target, '#10b981');
+      }
+    };
+
+    // Add event listeners to iframe document
+    iframeDoc.addEventListener('mouseover', handleMouseOver);
+    iframeDoc.addEventListener('mouseout', handleMouseOut);
+    iframeDoc.addEventListener('click', handleClick, true);
+
+    return () => {
+      if (iframeDoc) {
+        iframeDoc.removeEventListener('mouseover', handleMouseOver);
+        iframeDoc.removeEventListener('mouseout', handleMouseOut);
+        iframeDoc.removeEventListener('click', handleClick, true);
+      }
+      // Clean up highlights
+      if (hoveredElement) removeHighlight(hoveredElement);
+      if (selectedElementRef.current) removeHighlight(selectedElementRef.current);
+    };
+  }, [enableSelection, iframeReady, onElementSelect, hoveredElement]);
+
   useImperativeHandle(ref, () => ({
     getIframe: () => iframeRef.current,
     deleteElement: (selector: string) => {
@@ -217,7 +288,20 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
       if (!iframe?.contentWindow) return;
       iframe.contentWindow.postMessage({ type: 'SYNC_PAGE_MANIFEST', pages }, '*');
     },
-  }), [vfsPreview]);
+    openInNewTab: () => {
+      if (previewUrl) {
+        window.open(previewUrl, '_blank');
+      } else {
+        // Create a data URL from the current HTML content
+        const html = buildHtml(lastWrittenCodeRef.current || code);
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Clean up after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+    },
+  }), [vfsPreview, previewUrl, buildHtml, code]);
 
   const handleRefresh = () => {
     if (vfsPreview?.restart) {

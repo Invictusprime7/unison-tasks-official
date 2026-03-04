@@ -790,7 +790,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           response = await supabase.functions.invoke('ai-code-assistant', {
             body: {
               messages: [{ role: 'user', content: promptForAI }],
-              mode: 'code',
+              // Use 'code' mode for surgical edits (better targeted changes), 
+              // 'template-react' for full generation (multi-file VFS output)
+              mode: isSurgicalEdit ? 'code' : 'template-react',
               currentCode: truncatedCode,
               editMode: !!currentCode,
               surgicalEdit: isSurgicalEdit,
@@ -850,15 +852,26 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (aiContent) {
         const trimmed = aiContent.trim();
 
+        // Strategy 0: Strip markdown JSON fences before checking for JSON structure
+        // AI often returns: ```json\n{ "files": {...} }\n```
+        let jsonCandidate = trimmed;
+        const jsonFenceMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$/i);
+        if (jsonFenceMatch) {
+          jsonCandidate = jsonFenceMatch[1].trim();
+        }
+
         // Strategy 1: Check for JSON multi-file output: {"files": {...}}
-        if (trimmed.startsWith('{') && trimmed.includes('"files"')) {
+        if (jsonCandidate.startsWith('{') && jsonCandidate.includes('"files"')) {
           try {
-            const parsed = JSON.parse(trimmed);
+            const parsed = JSON.parse(jsonCandidate);
             if (parsed.files && typeof parsed.files === 'object') {
               multiFileOutput = parsed.files;
               explanationText = parsed.explanation || '✅ Multi-file project generated and applied.';
+              console.log('[AIBuilderPanel] Parsed multi-file JSON output:', Object.keys(multiFileOutput));
             }
-          } catch { /* not valid JSON, continue */ }
+          } catch (parseErr) { 
+            console.warn('[AIBuilderPanel] JSON parse failed:', parseErr);
+          }
         }
 
         // Strategy 2: Check if content IS a React component (starts with import/export/function)
@@ -885,14 +898,24 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               const block = m[1].trim();
               if (block.length > bestBlock.length) bestBlock = block;
             }
-            // Check if it has React/JSX structure
+            // Check if it has React/JSX structure OR valid HTML structure
             const hasReactStructure = bestBlock.includes('import ') ||
               bestBlock.includes('export ') ||
               bestBlock.includes('function ') ||
               bestBlock.includes('return (') ||
               (bestBlock.includes('<') && bestBlock.includes('className'));
-            if (hasReactStructure) {
+            // Also accept HTML output (has tags but uses class= instead of className)
+            const hasHtmlStructure = bestBlock.includes('<') && (
+              bestBlock.includes('class=') || 
+              bestBlock.includes('<!DOCTYPE') ||
+              bestBlock.includes('<html') ||
+              bestBlock.includes('<body') ||
+              bestBlock.includes('<section') ||
+              bestBlock.includes('<div')
+            );
+            if (hasReactStructure || hasHtmlStructure) {
               generatedCode = bestBlock;
+              console.log('[AIBuilderPanel] Extracted code from fence, type:', hasReactStructure ? 'React' : 'HTML');
             }
           }
         }
@@ -912,14 +935,34 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
       // Handle multi-file output — prefer orchestrator, fall back to legacy callback
       if (multiFileOutput) {
+        console.log('[AIBuilderPanel] Multi-file output detected:', Object.keys(multiFileOutput));
+        
+        // Normalize paths to ensure leading slash
+        const normalizedFiles: Record<string, string> = {};
+        for (const [path, content] of Object.entries(multiFileOutput)) {
+          const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+          normalizedFiles[normalizedPath] = content;
+        }
+        
         if (onApplyToVFS) {
-          onApplyToVFS(multiFileOutput);
+          console.log('[AIBuilderPanel] Calling onApplyToVFS with normalized paths:', Object.keys(normalizedFiles));
+          onApplyToVFS(normalizedFiles);
           toast.success('✅ Multi-file project applied with dependencies');
         } else if (onFilesPatch) {
-          onFilesPatch(multiFileOutput);
+          onFilesPatch(normalizedFiles);
           toast.success('✅ Multi-file project applied to VFS');
+        } else {
+          console.warn('[AIBuilderPanel] No VFS callback available for multi-file output!');
         }
       }
+
+      // Determine content type for path selection
+      const isHtmlContent = generatedCode && (
+        generatedCode.includes('<!DOCTYPE') ||
+        generatedCode.includes('<html') ||
+        (generatedCode.includes('class=') && !generatedCode.includes('className'))
+      );
+      const singleFilePath = isHtmlContent ? '/index.html' : '/src/App.tsx';
 
       // Determine VFS edits from response
       const edits: VFSEdit[] = [];
@@ -934,7 +977,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         });
       } else if (generatedCode) {
         edits.push({
-          path: '/src/App.tsx',
+          path: singleFilePath,
           type: currentCode ? 'modify' : 'create',
           linesChanged: generatedCode.split('\n').length,
           preview: generatedCode.substring(0, 200),
@@ -978,9 +1021,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       // AUTO-APPLY: Push generated code to VFS — prefer orchestrator for dep resolution
       if (generatedCode) {
         if (onApplyToVFS && !multiFileOutput) {
-          // Single file through orchestrator — gets dep detection + package.json
-          const targetPath = currentCode && isSurgicalEdit ? '/src/App.tsx' : '/src/App.tsx';
-          onApplyToVFS({ [targetPath]: generatedCode });
+          console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, isHtmlContent, codeLength: generatedCode.length });
+          onApplyToVFS({ [singleFilePath]: generatedCode });
           toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
         } else if (onCodeGenerated) {
           onCodeGenerated(generatedCode);

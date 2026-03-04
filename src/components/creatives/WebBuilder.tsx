@@ -1919,7 +1919,7 @@ export default function App() {
         // Inject cache restoration script into <head> so it runs before the intent listener IIFE
         let previewContent = rawContent;
         if (cacheScript) {
-          const cacheTag = `<script id="page-cache-restore">${cacheScript}<\/script>`;
+          const cacheTag = `<script id="page-cache-restore">${cacheScript}</script>`;
           if (previewContent.includes('</head>')) {
             previewContent = previewContent.replace('</head>', `${cacheTag}\n</head>`);
           } else if (previewContent.toLowerCase().includes('<body')) {
@@ -2086,7 +2086,7 @@ export default function App() {
       if (intent === 'nav.external') {
         // Treat external links as in-page navigation — generate a page for it
         const url = (payload as any)?.url || (payload as any)?.path || '';
-        const pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+        const pageName = url.replace(/^https?:\/\/[^/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
         const label = buttonLabel || url || 'External Page';
         triggerPageGenRef.current(pageName, label, source, requestId);
         return;
@@ -2285,7 +2285,7 @@ export default function App() {
       if (!url) return;
       
       console.log('[WebBuilder] External navigation event (VFS):', url);
-      const pageName = url.replace(/^https?:\/\/[^\/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
+      const pageName = url.replace(/^https?:\/\/[^/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
       const label = detail?.buttonLabel || detail?.text || url;
       triggerPageGenRef.current(pageName, label, null, undefined);
     };
@@ -2350,7 +2350,7 @@ export default function App() {
       const { data, error } = await supabase.functions.invoke("ai-code-assistant", {
         body: {
           messages: [{ role: "user", content: pagePrompt }],
-          mode: "code",
+          mode: "template-react",
           templateAction: "full-control",
           editMode: false,
           // navPageGen=true: skip chain-of-thought, cap output tokens, reduce per-model timeouts
@@ -2371,16 +2371,39 @@ export default function App() {
       if (error) throw error;
 
       const content = data?.content || "";
-      let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
-      if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
       
-      let pageCode = codeMatch ? codeMatch[1].trim() : content.trim();
-      pageCode = pageCode
-        .replace(/^#{1,6}\s+.*$/gm, '')
-        .replace(/```[\w]*\n?/g, '')
-        .replace(/<<<|>>>|---/g, '')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
+      // Handle JSON multi-file output from template-react mode
+      let pageCode = '';
+      const jsonFenceMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$/i);
+      const jsonCandidate = jsonFenceMatch ? jsonFenceMatch[1].trim() : content.trim();
+      
+      if (jsonCandidate.startsWith('{') && jsonCandidate.includes('"files"')) {
+        try {
+          const parsed = JSON.parse(jsonCandidate);
+          if (parsed.files && typeof parsed.files === 'object') {
+            // Import all files to VFS
+            virtualFS.importFiles(parsed.files);
+            // Use the main entry file for preview
+            pageCode = parsed.files['/index.html'] || parsed.files['/src/App.tsx'] || 
+                       parsed.files[`/pages/${pageName}.tsx`] || Object.values(parsed.files)[0] as string || '';
+            console.log('[WebBuilder] Nav page multi-file output:', Object.keys(parsed.files));
+          }
+        } catch { /* not valid JSON, continue with fence extraction */ }
+      }
+      
+      // Fall back to fence extraction
+      if (!pageCode) {
+        let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
+        if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
+        
+        pageCode = codeMatch ? codeMatch[1].trim() : content.trim();
+        pageCode = pageCode
+          .replace(/^#{1,6}\s+.*$/gm, '')
+          .replace(/```[\w]*\n?/g, '')
+          .replace(/<<<|>>>|---/g, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+      }
 
       if (pageCode) {
         // Save to VFS for persistence
@@ -2968,15 +2991,33 @@ ${html}
     },
     {
       ...defaultWebBuilderShortcuts.delete,
-      action: () => selectedObject && handleDelete(),
+      action: () => {
+        if (selectedHTMLElement) {
+          handleDeleteHTMLElement();
+        } else if (selectedObject) {
+          handleDelete();
+        }
+      },
     },
     {
       ...defaultWebBuilderShortcuts.backspace,
-      action: () => selectedObject && handleDelete(),
+      action: () => {
+        if (selectedHTMLElement) {
+          handleDeleteHTMLElement();
+        } else if (selectedObject) {
+          handleDelete();
+        }
+      },
     },
     {
       ...defaultWebBuilderShortcuts.duplicate,
-      action: () => selectedObject && handleDuplicate(),
+      action: () => {
+        if (selectedHTMLElement) {
+          handleDuplicateHTMLElement();
+        } else if (selectedObject) {
+          handleDuplicate();
+        }
+      },
     },
     {
       ...defaultWebBuilderShortcuts.save,
@@ -3969,17 +4010,23 @@ ${body.innerHTML}
                 systemsBuildContext={systemsBuildContextFromState}
                 vfsContext={aiVFS.getContext().summary}
                 onApplyToVFS={(files) => {
+                  console.log('[WebBuilder] onApplyToVFS called with files:', Object.keys(files));
                   const result = aiVFS.applyCode(files);
+                  console.log('[WebBuilder] aiVFS.applyCode result:', { success: result.success, filesWritten: result.filesWritten, errors: result.errors });
                   if (result.success) {
                     // Update editor/preview state from the main entry file
                     const entry = files['/index.html'] || files['/src/App.tsx'] || files['/App.tsx'];
+                    console.log('[WebBuilder] Entry file for preview:', entry ? (entry.substring(0, 100) + '...') : 'NOT FOUND');
                     if (entry) {
                       setEditorCode(entry);
                       setPreviewCode(entry);
+                      console.log('[WebBuilder] Updated previewCode state');
                     }
                     setViewMode('canvas');
                     console.log('[WebBuilder] AI→VFS orchestrator applied:', result.filesWritten.length, 'files,', 
                       Object.keys(result.dependencies.dependencies).length, 'deps');
+                  } else {
+                    console.error('[WebBuilder] aiVFS.applyCode failed:', result.errors);
                   }
                 }}
                 onViewEdits={(edits) => {
@@ -4365,7 +4412,13 @@ ${body.innerHTML}
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => livePreviewRef.current?.openInNewTab()}
+                      onClick={() => {
+                        if (useReactPreview) {
+                          livePreviewRef.current?.openInNewTab();
+                        } else {
+                          simplePreviewRef.current?.openInNewTab();
+                        }
+                      }}
                       className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-md transition-all duration-200"
                       title="Open preview in new tab"
                     >
@@ -4396,12 +4449,12 @@ ${body.innerHTML}
                     <VFSPreview
                       ref={livePreviewRef}
                       nodes={virtualFS.nodes}
-                      files={virtualFS.getSandpackFiles()}
                       activeFile={activePagePath}
                       className="w-full h-full min-h-0 flex-1"
                       showToolbar={false}
                       autoStart={true}
                       showBackendIndicator={false}
+                      device={device}
                       onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                       onError={(err) => {
                         toast.error(`Preview error: ${err}`);
@@ -4631,7 +4684,13 @@ export default function App() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => livePreviewRef.current?.openInNewTab()}
+                        onClick={() => {
+                          if (useReactPreview) {
+                            livePreviewRef.current?.openInNewTab();
+                          } else {
+                            simplePreviewRef.current?.openInNewTab();
+                          }
+                        }}
                         className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-md transition-all duration-200"
                         title="Open preview in new tab"
                       >
@@ -4650,12 +4709,12 @@ export default function App() {
                       <VFSPreview
                         ref={livePreviewRef}
                         nodes={virtualFS.nodes}
-                        files={virtualFS.getSandpackFiles()}
                         activeFile={activePagePath}
                         className="w-full h-full min-h-0 flex-1"
                         showToolbar={false}
                         autoStart={true}
                         showBackendIndicator={false}
+                        device={device}
                         onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                         onError={(err) => {
                           toast.error(`Preview error: ${err}`);
@@ -4673,6 +4732,7 @@ export default function App() {
                         code={previewCode}
                         className="w-full h-full min-h-0 flex-1"
                         showToolbar={false}
+                        device={device}
                         enableSelection={builderMode === 'select'}
                         onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                       />

@@ -72,6 +72,8 @@ export interface VFSPreviewProps {
   businessId?: string;
   /** Site ID for intent context */
   siteId?: string;
+  /** Device breakpoint for responsive preview */
+  device?: 'desktop' | 'tablet' | 'mobile';
 }
 
 export interface VFSPreviewHandle {
@@ -726,6 +728,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   onIntentTrigger,
   businessId,
   siteId,
+  device = 'desktop',
 }, ref) => {
   // State - default to 'html' so preview works immediately
   const [backend, setBackend] = useState<PreviewBackend>('html');
@@ -1039,16 +1042,28 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
           </div>
         )}
         
-        {/* Preview Iframe - key forces re-render when URL changes */}
+        {/* Preview Iframe - removed key={previewUrl} to prevent infinite remount on blob URL changes */}
         {(backend === 'docker' || backend === 'html' || backend === 'local') && previewUrl && (
-          <iframe
-            ref={iframeRef}
-            key={previewUrl}
-            src={previewUrl}
-            className="w-full h-full border-0 bg-white"
-            title="VFS Preview"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-          />
+          <div 
+            className="w-full h-full flex justify-center overflow-hidden bg-slate-100"
+            style={{
+              padding: device !== 'desktop' ? '16px' : 0,
+            }}
+          >
+            <iframe
+              ref={iframeRef}
+              src={previewUrl}
+              className="h-full border-0 bg-white transition-all duration-300"
+              style={{
+                width: device === 'mobile' ? '375px' : device === 'tablet' ? '768px' : '100%',
+                maxWidth: '100%',
+                boxShadow: device !== 'desktop' ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
+                borderRadius: device !== 'desktop' ? '12px' : '0',
+              }}
+              title="VFS Preview"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            />
+          </div>
         )}
         
         {/* Logs Panel */}
