@@ -10,6 +10,20 @@
       "runtime": "@vercel/node@3.2.0"
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/booking-reminders",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/crm-daily",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/crm-weekly-summary",
+      "schedule": "0 8 * * 1"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

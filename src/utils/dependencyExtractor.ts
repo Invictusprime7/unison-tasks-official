@@ -75,6 +75,7 @@ const KNOWN_VERSIONS: Record<string, string> = {
   'react-resizable-panels': 'latest',
   'input-otp': 'latest',
   'next-themes': 'latest',
+  'inngest': 'latest',
 };
 
 // Regex patterns for extracting imports

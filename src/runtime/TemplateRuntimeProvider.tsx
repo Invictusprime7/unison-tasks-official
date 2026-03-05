@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { IntentManagers, IntentResult, IntentContext } from './intentExecutor';
 import { executeIntent, configureIntentExecutor } from './intentExecutor';
-import { setupEventBridge } from '@/lib/inngest-event-bridge';
+import { setupEventBridge, createInngestEventsManager } from '@/lib/inngest-event-bridge';
 
 // ============ TYPES ============
 
@@ -484,7 +484,13 @@ export function TemplateRuntimeProvider({ config, children }: TemplateRuntimePro
     overlay: createOverlayManager(),
     toast: createToastManager(),
     auth: createAuthManager(user, showAuthModal),
-  }), [config.businessId, sessionId, user?.id, config]);
+    events: createInngestEventsManager({
+      businessId: config.businessId,
+      siteId: config.siteId,
+      userId: user?.id,
+      sessionId,
+    }),
+  }), [config.businessId, config.siteId, sessionId, user?.id, config]);
 
   // Configure global executor with managers
   useEffect(() => {

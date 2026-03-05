@@ -99,6 +99,7 @@ const BUNDLED_DEPENDENCIES = {
   "framer-motion": "latest",
   "date-fns": "latest",
   "recharts": "latest",
+  "inngest": "latest",
 };
 
 // Modules that can be imported (won't be stripped)
@@ -114,6 +115,7 @@ const ALLOWED_IMPORTS = new Set([
   'framer-motion',
   'date-fns',
   'recharts',
+  'inngest',
 ]);
 
 // CSS Variables for shadcn/ui theming
