@@ -11,7 +11,7 @@ import {
   Monitor, Tablet, Smartphone,
   Sparkles, Code, Undo2, Redo2, Save, Keyboard, Zap, RefreshCcw,
   ChevronsDown, ChevronsUp, ArrowDown, ArrowUp, FileCode, Copy, Maximize2, Trash2,
-  FolderOpen, Cloud, CloudOff, Server, Layers, Settings, ExternalLink
+  FolderOpen, Cloud, CloudOff, Server, Layers, Settings, ExternalLink, GitBranch
 } from "lucide-react";
 import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
@@ -45,6 +45,7 @@ import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
 import { AIPluginsPanel } from "./web-builder/AIPluginsPanel";
 import { IntentDirectoryPanel } from "./web-builder/IntentDirectoryPanel";
 import { AutomationStatsPanel } from "./web-builder/AutomationStatsPanel";
+import { WorkflowListPanel } from "./web-builder/WorkflowListPanel";
 import { ProjectsPanel } from "./web-builder/ProjectsPanel";
 import { LayoutTemplatesPanel } from "./web-builder/LayoutTemplatesPanel";
 import { FloatingDock } from "./web-builder/FloatingDock";
@@ -4284,6 +4285,10 @@ ${body.innerHTML}
                       <Sparkles className="h-3 w-3 mr-1" />
                       Recipes
                     </TabsTrigger>
+                    <TabsTrigger value="workflows" className="text-[9px] px-1.5 py-0.5 data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+                      <GitBranch className="h-3 w-3 mr-1" />
+                      Workflows
+                    </TabsTrigger>
                   </TabsList>
                   <TabsContent value="intents" className="flex-1 m-0 min-h-0 overflow-hidden">
                     <IntentDirectoryPanel
@@ -4312,6 +4317,15 @@ ${body.innerHTML}
                         // Navigate to settings
                         toast.info('Opening business settings...');
                       }}
+                    />
+                  </TabsContent>
+                  <TabsContent value="workflows" className="flex-1 m-0 min-h-0 overflow-hidden">
+                    <WorkflowListPanel
+                      businessId={businessId}
+                      projectId={projectId || undefined}
+                      industry={cloudState.business?.name?.toLowerCase().includes('salon') ? 'salon' : 
+                               cloudState.business?.name?.toLowerCase().includes('restaurant') ? 'restaurant' : 
+                               cloudState.business?.name?.toLowerCase().includes('contractor') ? 'contractor' : undefined}
                     />
                   </TabsContent>
                 </Tabs>
