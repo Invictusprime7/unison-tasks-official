@@ -8,6 +8,8 @@
  * 2) UI directives - standardized results that control UI instantly
  * 3) Context hydration - auto-creates missing entities instead of failing
  * 4) Event emission - consistent events for automations
+ * 5) Inngest integration - triggers durable workflows for automation intents
+ * 6) Execution logging - records all intent executions for analytics
  * 
  * This replaces scattered handlers with ONE unified flow.
  */
@@ -22,6 +24,10 @@ import {
   isCoreIntent 
 } from '@/coreIntents';
 import { normalizeIntent } from './intentAliases';
+import { sendInngestEvent } from '@/services/inngestService';
+import { logIntentExecution, createLogEntryFromResult } from '@/services/intentExecutionLogger';
+import { lookupIntentBinding, recordBindingTriggered } from '@/services/intentBindingService';
+import type { InngestEvents } from '@/lib/inngest';
 
 // ============ TYPES ============
 
@@ -646,11 +652,19 @@ export function configureIntentExecutor(managers: IntentManagers): void {
  * Execute an intent with full normalization, hydration, and UI directives
  * 
  * This is THE entry point for all intent execution.
+ * Now includes:
+ * - Inngest workflow triggering for automation intents
+ * - Execution logging for analytics and debugging
+ * - Intent binding lookup for project-specific workflows
  */
 export async function executeIntent(
   rawIntent: string,
   ctx: IntentContext = {}
 ): Promise<IntentResult> {
+  const startTime = Date.now();
+  const workflowsTriggered: string[] = [];
+  const recipesTriggered: string[] = [];
+
   // Step 1: Normalize intent via aliases
   const normalized = normalizeIntent(rawIntent);
   console.log(`[IntentExecutor] Executing: "${rawIntent}" → "${normalized}"`);
@@ -661,7 +675,30 @@ export async function executeIntent(
     managers: { ...globalManagers, ...ctx.managers },
   };
 
-  // Step 3: Find handler
+  // Step 3: Look up intent binding if we have project context
+  let bindingId: string | undefined;
+  if (ctx.siteId && ctx.payload?.elementKey) {
+    try {
+      const bindingResult = await lookupIntentBinding(
+        ctx.siteId,
+        (ctx.payload?.pagePath as string) || '/',
+        ctx.payload.elementKey as string
+      );
+      if (bindingResult.binding) {
+        bindingId = bindingResult.binding.id;
+        if (bindingResult.workflow) {
+          workflowsTriggered.push(bindingResult.workflow.id);
+        }
+        if (bindingResult.recipes.length > 0) {
+          recipesTriggered.push(...bindingResult.recipes.map(r => r.id));
+        }
+      }
+    } catch (err) {
+      console.warn('[IntentExecutor] Binding lookup failed:', err);
+    }
+  }
+
+  // Step 4: Find handler
   const handler = INTENT_HANDLERS[normalized as CoreIntent];
   
   if (!handler) {
@@ -674,6 +711,22 @@ export async function executeIntent(
       payload: (ctx.payload ?? {}) as Record<string, unknown>,
       source: 'executor',
     });
+
+    // Log failed execution
+    if (ctx.businessId) {
+      logIntentExecution({
+        businessId: ctx.businessId,
+        projectId: ctx.siteId,
+        bindingId,
+        intent: normalized,
+        payload: (ctx.payload ?? {}) as Record<string, unknown>,
+        source: 'direct',
+        resultStatus: 'error',
+        errorMessage: error.message,
+        executionTimeMs: Date.now() - startTime,
+      }).catch(() => {});
+    }
+
     return {
       ok: false,
       error,
@@ -682,25 +735,49 @@ export async function executeIntent(
     };
   }
 
-  // Step 4: Execute with error handling
+  // Step 5: Execute with error handling
   try {
     const result = await handler(mergedCtx);
     
-    // Step 5: Process UI directives
+    // Step 6: Process UI directives
     if (result.ui && mergedCtx.managers) {
       processUIDirectives(result.ui, mergedCtx.managers);
     }
 
-    // Step 6: Show toast
+    // Step 7: Show toast
     if (result.toast && mergedCtx.managers?.toast) {
       mergedCtx.managers.toast.show(result.toast);
     }
 
-    // Step 7: Emit events
+    // Step 8: Emit events locally
     if (result.events && mergedCtx.managers?.events) {
       for (const event of result.events) {
         mergedCtx.managers.events.emit(event);
       }
+    }
+
+    // Step 9: Fire Inngest events for automation intents
+    if (result.ok && ctx.businessId && (isActionIntent(normalized) || isAutomationIntent(normalized))) {
+      await fireInngestEvent(normalized, ctx, result);
+    }
+
+    // Step 10: Record binding trigger
+    if (bindingId) {
+      recordBindingTriggered(bindingId).catch(() => {});
+    }
+
+    // Step 11: Log execution
+    if (ctx.businessId) {
+      logIntentExecution(createLogEntryFromResult(normalized, result, {
+        businessId: ctx.businessId,
+        projectId: ctx.siteId,
+        bindingId,
+        payload: (ctx.payload ?? {}) as Record<string, unknown>,
+        source: 'direct',
+        startTime,
+        workflowsTriggered,
+        recipesTriggered,
+      })).catch(() => {});
     }
 
     return {
@@ -718,6 +795,22 @@ export async function executeIntent(
       payload: (ctx.payload ?? {}) as Record<string, unknown>,
       source: 'executor',
     });
+
+    // Log failed execution
+    if (ctx.businessId) {
+      logIntentExecution({
+        businessId: ctx.businessId,
+        projectId: ctx.siteId,
+        bindingId,
+        intent: normalized,
+        payload: (ctx.payload ?? {}) as Record<string, unknown>,
+        source: 'direct',
+        resultStatus: 'error',
+        errorMessage: errObj.message,
+        executionTimeMs: Date.now() - startTime,
+      }).catch(() => {});
+    }
+
     return {
       ok: false,
       error: errObj,
@@ -763,4 +856,149 @@ export function canHandleIntent(rawIntent: string): boolean {
  */
 export function getSupportedIntents(): string[] {
   return Object.keys(INTENT_HANDLERS);
+}
+
+// ============ INNGEST INTEGRATION ============
+
+/**
+ * Map intent names to Inngest event names
+ */
+const INTENT_TO_INNGEST_EVENT: Partial<Record<string, keyof InngestEvents>> = {
+  // Lead/Contact
+  'contact.submit': 'crm/lead.created',
+  'lead.capture': 'crm/lead.created',
+  'newsletter.subscribe': 'crm/lead.created',
+  
+  // Booking
+  'booking.create': 'booking/created',
+  'booking.confirmed': 'booking/created',
+  'booking.reminder': 'booking/reminder.24h',
+  'booking.cancelled': 'booking/cancelled',
+  'booking.noshow': 'booking/noshow',
+  
+  // Cart/Commerce
+  'cart.checkout': 'crm/deal.created',
+  'cart.abandoned': 'booking/cancelled', // Will create a specific event later
+  
+  // Deal lifecycle
+  'deal.won': 'crm/deal.stage.changed',
+  'deal.lost': 'crm/deal.stage.changed',
+  
+  // Orders
+  'order.created': 'crm/deal.created',
+};
+
+/**
+ * Fire an Inngest event for automation intents
+ */
+async function fireInngestEvent(
+  intent: string,
+  ctx: IntentContext,
+  result: IntentResult
+): Promise<void> {
+  const inngestEventName = INTENT_TO_INNGEST_EVENT[intent];
+  
+  if (!inngestEventName) {
+    // Not all intents need Inngest events - this is fine
+    console.log(`[IntentExecutor] No Inngest mapping for intent: ${intent}`);
+    return;
+  }
+
+  try {
+    // Build event data based on intent type
+    const eventData = buildInngestEventData(intent, ctx, result);
+    
+    console.log(`[IntentExecutor] Firing Inngest event: ${inngestEventName}`, eventData);
+    
+    const sendResult = await sendInngestEvent(inngestEventName, eventData);
+    
+    if (sendResult.success) {
+      console.log(`[IntentExecutor] Inngest event sent successfully:`, sendResult.ids);
+    } else {
+      console.warn(`[IntentExecutor] Inngest event failed:`, sendResult.error);
+    }
+  } catch (error) {
+    console.error(`[IntentExecutor] Failed to fire Inngest event:`, error);
+    // Don't throw - Inngest failure shouldn't break the main intent execution
+  }
+}
+
+/**
+ * Build event data based on intent type
+ */
+function buildInngestEventData(
+  intent: string,
+  ctx: IntentContext,
+  result: IntentResult
+): Record<string, unknown> {
+  const baseData = {
+    businessId: ctx.businessId || '',
+    timestamp: new Date().toISOString(),
+    source: 'intent-executor',
+  };
+
+  switch (intent) {
+    case 'contact.submit':
+    case 'lead.capture':
+    case 'newsletter.subscribe':
+      return {
+        ...baseData,
+        leadId: (result.data as { leadId?: string })?.leadId || `lead_${Date.now()}`,
+        email: ctx.payload?.email || ctx.email,
+        phone: ctx.payload?.phone || ctx.phone,
+      };
+
+    case 'booking.create':
+    case 'booking.confirmed':
+      return {
+        ...baseData,
+        bookingId: (result.data as { bookingId?: string })?.bookingId || `booking_${Date.now()}`,
+        contactEmail: ctx.payload?.customerEmail || ctx.email,
+        contactPhone: ctx.payload?.customerPhone || ctx.phone,
+        service: ctx.payload?.service || 'General',
+        scheduledAt: ctx.payload?.datetime || new Date().toISOString(),
+      };
+
+    case 'booking.reminder':
+      return {
+        ...baseData,
+        bookingId: ctx.payload?.bookingId || `booking_${Date.now()}`,
+        contactEmail: ctx.payload?.email || ctx.email,
+      };
+
+    case 'booking.cancelled':
+    case 'booking.noshow':
+      return {
+        ...baseData,
+        bookingId: ctx.payload?.bookingId || '',
+        reason: ctx.payload?.reason || intent.replace('booking.', ''),
+      };
+
+    case 'deal.won':
+    case 'deal.lost':
+      return {
+        ...baseData,
+        dealId: ctx.payload?.dealId || '',
+        previousStage: ctx.payload?.previousStage || 'negotiation',
+        newStage: intent === 'deal.won' ? 'closed_won' : 'closed_lost',
+        contactEmail: ctx.email,
+      };
+
+    case 'cart.checkout':
+    case 'order.created':
+      return {
+        ...baseData,
+        dealId: `order_${Date.now()}`,
+        title: 'Web Order',
+        value: ctx.payload?.total || ctx.payload?.value,
+        stage: 'prospecting',
+      };
+
+    default:
+      return {
+        ...baseData,
+        intent,
+        payload: ctx.payload || {},
+      };
+  }
 }

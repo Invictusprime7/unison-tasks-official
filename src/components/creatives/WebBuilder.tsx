@@ -44,6 +44,7 @@ import { useTemplateFiles } from "@/hooks/useTemplateFiles";
 import { FunctionalBlocksPanel } from "./web-builder/FunctionalBlocksPanel";
 import { AIPluginsPanel } from "./web-builder/AIPluginsPanel";
 import { IntentDirectoryPanel } from "./web-builder/IntentDirectoryPanel";
+import { AutomationStatsPanel } from "./web-builder/AutomationStatsPanel";
 import { ProjectsPanel } from "./web-builder/ProjectsPanel";
 import { LayoutTemplatesPanel } from "./web-builder/LayoutTemplatesPanel";
 import { FloatingDock } from "./web-builder/FloatingDock";
@@ -4273,20 +4274,47 @@ ${body.innerHTML}
                 />
               </TabsContent>
               <TabsContent value="business" className="flex-1 m-0 min-h-0 overflow-hidden">
-                <IntentDirectoryPanel
-                  businessId={businessId}
-                  projectId={projectId || undefined}
-                  currentPagePath={activePagePath}
-                  detectedIntents={[]} // TODO: Wire to intent detection
-                  onRefreshIntents={() => {
-                    // Trigger re-analysis of current page
-                    console.log('[WebBuilder] Refreshing intents for:', activePagePath);
-                  }}
-                  onTestIntent={(intent, payload) => {
-                    // Fire test intent
-                    handleIntent(intent, { ...payload, businessId });
-                  }}
-                />
+                <Tabs defaultValue="intents" className="flex flex-col h-full">
+                  <TabsList className="w-full justify-start rounded-none bg-[#0a0a12] px-2 h-8 shrink-0 gap-1 border-b border-cyan-500/10">
+                    <TabsTrigger value="intents" className="text-[9px] px-1.5 py-0.5 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Intents
+                    </TabsTrigger>
+                    <TabsTrigger value="automations" className="text-[9px] px-1.5 py-0.5 data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Recipes
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="intents" className="flex-1 m-0 min-h-0 overflow-hidden">
+                    <IntentDirectoryPanel
+                      businessId={businessId}
+                      projectId={projectId || undefined}
+                      currentPagePath={activePagePath}
+                      detectedIntents={[]} // TODO: Wire to intent detection
+                      onRefreshIntents={() => {
+                        // Trigger re-analysis of current page
+                        console.log('[WebBuilder] Refreshing intents for:', activePagePath);
+                      }}
+                      onTestIntent={(intent, payload) => {
+                        // Fire test intent
+                        handleIntent(intent, { ...payload, businessId });
+                      }}
+                    />
+                  </TabsContent>
+                  <TabsContent value="automations" className="flex-1 m-0 min-h-0 overflow-hidden">
+                    <AutomationStatsPanel
+                      businessId={businessId}
+                      projectId={projectId || undefined}
+                      industry={cloudState.business?.name?.toLowerCase().includes('salon') ? 'salon' : 
+                               cloudState.business?.name?.toLowerCase().includes('restaurant') ? 'restaurant' : 
+                               cloudState.business?.name?.toLowerCase().includes('contractor') ? 'contractor' : undefined}
+                      onNavigateToSettings={() => {
+                        // Navigate to settings
+                        toast.info('Opening business settings...');
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
             </Tabs>
           </div>
