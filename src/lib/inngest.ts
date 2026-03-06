@@ -122,6 +122,15 @@ type Events = {
       contactEmail?: string;
     };
   };
+  "booking/cancelled": {
+    data: {
+      bookingId: string;
+      businessId: string;
+      contactId?: string;
+      contactEmail?: string;
+      reason?: string;
+    };
+  };
 
   // ============ CRM CRON EVENTS ============
   "crm/lead.stale": {
