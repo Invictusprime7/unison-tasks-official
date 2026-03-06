@@ -910,7 +910,7 @@ async function fireInngestEvent(
     
     console.log(`[IntentExecutor] Firing Inngest event: ${inngestEventName}`, eventData);
     
-    const sendResult = await sendInngestEvent(inngestEventName, eventData);
+    const sendResult = await sendInngestEvent(inngestEventName, eventData as any);
     
     if (sendResult.success) {
       console.log(`[IntentExecutor] Inngest event sent successfully:`, sendResult.ids);
