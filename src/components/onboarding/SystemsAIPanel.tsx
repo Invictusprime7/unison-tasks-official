@@ -42,54 +42,6 @@ import { applyDesignProfileToTemplate } from "@/utils/designPatternExtractor";
 import { generateDesignVariation, randomFontPairing } from "@/utils/designVariation";
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 
-/**
- * Parse the AI response from template-react mode into VFS files.
- * Returns a Record<string, string> mapping file paths to content,
- * or null if the response is not valid React JSON output.
- */
-function parseReactResponse(raw: string): Record<string, string> | null {
-  let content = raw.trim();
-
-  // Strip <thinking> blocks
-  content = content.replace(/<thinking>[\s\S]*?<\/thinking>\s*/gi, '').trim();
-
-  // Strip markdown code fences
-  content = content.replace(/^```(?:json|jsx?|tsx?)\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-
-  // Strip reasoning text before JSON (some models dump planning text)
-  const jsonStart = content.indexOf('{');
-  if (jsonStart > 0) {
-    const preText = content.slice(0, jsonStart);
-    if (/\d\.\s*(UNDERSTAND|ANALY[SZ]E|PLAN|CONSIDER|DECIDE)|Font Mapping|Color Mapping|I'll |I will |Let me |Let's /i.test(preText)) {
-      console.log(`[SystemsAIPanel] Stripped ${preText.length} chars of reasoning before JSON`);
-      content = content.slice(jsonStart).trim();
-    }
-  }
-
-  try {
-    const parsed = JSON.parse(content);
-    if (parsed.files && typeof parsed.files === 'object') {
-      return parsed.files as Record<string, string>;
-    }
-    return null;
-  } catch {
-    // Try to extract the JSON object if there's trailing text
-    const lastBrace = content.lastIndexOf('}');
-    if (lastBrace > 0 && jsonStart !== -1) {
-      try {
-        const parsed = JSON.parse(content.slice(jsonStart, lastBrace + 1));
-        if (parsed.files && typeof parsed.files === 'object') {
-          return parsed.files as Record<string, string>;
-        }
-      } catch {
-        // fall through
-      }
-    }
-    console.warn('[SystemsAIPanel] Failed to parse React JSON response');
-    return null;
-  }
-}
-
 // Dropped file type
 interface DroppedFile {
   id: string;
@@ -495,7 +447,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         const chipLabel = codePromptChips.find(c => c.id === selectedCodeChip)?.label || "website";
         const chipBuildContext = buildSystemsBuildContextFromChip(selectedCodeChip);
         const designProfileContext = hasProfile ? getDesignPromptContext() : null;
-        const chipPrompt = `Create a complete, polished, production-ready ${chipLabel} website as a React application. ${codePrompt}${fileContext}`;
+        const chipPrompt = `Create a complete, polished, production-ready ${chipLabel} website. ${codePrompt}${fileContext}`;
         const enhancedChipPrompt = designProfileContext
           ? `${designProfileContext}\n\n---\n\nUser Request:\n${chipPrompt}`
           : chipPrompt;
@@ -512,13 +464,11 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
           const result = await supabase.functions.invoke("ai-code-assistant", {
             body: {
               messages: [{ role: "user", content: enhancedChipPrompt }],
-              mode: "template-react",
+              mode: "code",
               templateAction: "full-control",
               editMode: false,
               systemType: ref?.systemType,
-              templateName: ref?.templateName || chipLabel,
-              aesthetic: "modern professional",
-              source: CHIP_TO_INDUSTRY[selectedCodeChip] || "content",
+              templateName: ref?.templateName,
               attachments: attachments.length > 0 ? attachments : undefined,
               userDesignProfile: hasProfile ? {
                 projectCount: savedProjectCount,
@@ -547,37 +497,45 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         }
 
         const chipContent = (chipData?.content as string) || "";
-        const chipVfsFiles = parseReactResponse(chipContent);
+        const chipHtmlStart = chipContent.includes('<!DOCTYPE') ? chipContent.indexOf('<!DOCTYPE') : chipContent.indexOf('<html');
+        const chipHtmlEnd = chipContent.lastIndexOf('</html>');
+        const chipHtml = chipHtmlStart !== -1 && chipHtmlEnd !== -1
+          ? chipContent.slice(chipHtmlStart, chipHtmlEnd + 7)
+          : chipContent.replace(/```(?:html)?\n?/g, '').replace(/```\s*$/g, '').trim();
 
-        if (chipVfsFiles && Object.keys(chipVfsFiles).length > 0) {
-          console.log('[SystemsAIPanel] React chip generation:', Object.keys(chipVfsFiles).length, 'files');
-          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(chipVfsFiles));
+        if (chipHtml && chipHtml.length > 100) {
+          console.log('[SystemsAIPanel] ai-code-assistant chip generation:', chipHtml.length, 'chars');
+          // Create VFS with original HTML for preview + React wrapper for editing
+          const chipVfsFiles = templateToVFSFiles(chipHtml, chipLabel.replace(/[^a-zA-Z0-9]/g, ''));
+          chipVfsFiles['/index.html'] = chipHtml;
+          
+          sessionStorage.setItem('ai_assistant_generated_code', chipHtml);
           setDroppedFiles([]);
           navigate("/web-builder", {
             state: {
               vfsFiles: chipVfsFiles,
+              generatedCode: chipHtml,
               templateName: `AI ${chipLabel}`,
               aesthetic: "modern",
               startInPreview: true,
               systemType: ref?.systemType,
-              framework: "react",
               userDesignProfile: hasProfile ? { projectCount: savedProjectCount, dominantStyle: designProfile?.dominantStyle } : undefined,
               systemsBuildContext: chipBuildContext,
             },
           });
-          toast({ title: "React app generated!", description: "Opening in Web Builder..." });
+          toast({ title: "Website generated!", description: "Opening in Web Builder..." });
           return;
         }
       }
 
-      // Free-form prompt: ai-code-assistant in React mode
+      // Free-form prompt: ai-code-assistant with retry logic (same engine as in-builder AI)
       const freeformDesignContext = hasProfile ? getDesignPromptContext() : null;
-      const freeformPrompt = buildFreeformPrompt(codePrompt) + fileContext;
+      const basePrompt = buildFreeformPrompt(codePrompt) + fileContext;
       const enhancedFreeformPrompt = freeformDesignContext
-        ? `${freeformDesignContext}\n\n---\n\nUser Request:\n${freeformPrompt}`
-        : freeformPrompt;
+        ? `${freeformDesignContext}\n\n---\n\nUser Request:\n${basePrompt}`
+        : basePrompt;
 
-      console.log(`[SystemsAIPanel] Free-form React generation with ${droppedFiles.length} attachments${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
+      console.log(`[SystemsAIPanel] Free-form ai-code-assistant with ${droppedFiles.length} attachments${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
 
       const FREE_MAX_RETRIES = 2;
       let freeformData: Record<string, unknown> | null = null;
@@ -591,13 +549,10 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         const result = await supabase.functions.invoke("ai-code-assistant", {
           body: {
             messages: [{ role: "user", content: enhancedFreeformPrompt }],
-            mode: "template-react",
+            mode: "code",
             templateAction: "full-control",
             editMode: false,
             systemType: "content",
-            templateName: "Custom Website",
-            aesthetic: "modern professional",
-            source: "content",
             attachments: attachments.length > 0 ? attachments : undefined,
             userDesignProfile: hasProfile ? {
               projectCount: savedProjectCount,
@@ -624,23 +579,32 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
       }
 
       const freeformContent = (freeformData?.content as string) || "";
-      const vfsFiles = parseReactResponse(freeformContent);
+      // Extract clean HTML directly - prefer <!DOCTYPE html> boundaries
+      const freeHtmlStart = freeformContent.includes('<!DOCTYPE') ? freeformContent.indexOf('<!DOCTYPE') : freeformContent.indexOf('<html');
+      const freeHtmlEnd = freeformContent.lastIndexOf('</html>');
+      const generatedCode = freeHtmlStart !== -1 && freeHtmlEnd !== -1
+        ? freeformContent.slice(freeHtmlStart, freeHtmlEnd + 7)
+        : freeformContent.replace(/```(?:html)?\n?/g, '').replace(/```\s*$/g, '').trim();
 
-      if (vfsFiles && Object.keys(vfsFiles).length > 0) {
-        sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(vfsFiles));
+      if (generatedCode) {
+        // Create VFS with original HTML for preview + React wrapper for editing
+        const freeVfsFiles = templateToVFSFiles(generatedCode, 'CustomWebsite');
+        freeVfsFiles['/index.html'] = generatedCode;
+        
+        sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
         setDroppedFiles([]);
         navigate("/web-builder", {
           state: {
-            vfsFiles,
+            vfsFiles: freeVfsFiles,
+            generatedCode,
             templateName: "AI Generated",
             aesthetic: "modern",
             startInPreview: true,
             systemType: "content",
-            framework: "react",
             userDesignProfile: hasProfile ? { projectCount: savedProjectCount, dominantStyle: designProfile?.dominantStyle } : undefined,
           },
         });
-        toast({ title: "React app generated!", description: "Opening in Web Builder..." });
+        toast({ title: "Code generated!", description: "Opening in Web Builder..." });
       } else {
         toast({ title: "No code generated", description: "Please try a different prompt", variant: "destructive" });
       }
@@ -789,16 +753,16 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
  * Build an enhanced freeform prompt for ai-code-assistant (no chip selected)
  */
 function buildFreeformPrompt(prompt: string): string {
-  return `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY REACT WEBSITE APPLICATION
+  return `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY WEBSITE LANDING PAGE
 
 USER REQUEST: ${prompt}
 
-📋 CRITICAL REQUIREMENTS:
+📋 CRITICAL REQUIREMENTS - YOU MUST INCLUDE ALL OF THESE:
 
-1. **REACT + TYPESCRIPT** - Modern React components with TypeScript
-2. **TAILWIND CSS** - Use Tailwind utility classes for all styling
+1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html> and include full <html>, <head>, <body>
+2. **TAILWIND CSS** - Include <script src="https://cdn.tailwindcss.com"></script>
 3. **MULTI-SECTION LAYOUT** - Include AT MINIMUM:
-   - Navigation header with logo and menu links
+   - Navigation header with logo and menu links (use data-ut-intent="nav.goto" data-ut-path="/pagename.html" for nav links)
    - Hero section with compelling headline, subtext, and CTA button
    - Features/services section with 3-4 feature cards
    - Testimonials or social proof section
@@ -808,8 +772,19 @@ USER REQUEST: ${prompt}
 4. **REAL, COMPELLING CONTENT** - NOT placeholder text
 5. **POLISHED VISUAL DESIGN** - Modern color scheme, gradients, typography, hover effects
 6. **INTERACTIVE ELEMENTS** - Working navigation, hover states, scroll animations
-7. **COMPONENT ARCHITECTURE** - Separate section components (Hero.tsx, Features.tsx, etc.)
-8. **RESPONSIVE** - Mobile-first responsive design with proper breakpoints`;
+7. **BACKEND INTENT WIRING** - data-ut-intent attributes on CTAs
+8. **UI CONTROLS WITHOUT INTENTS** - data-no-intent on non-conversion elements
+9. **NAVIGATION LINKS** - All nav links MUST use data-ut-intent="nav.goto" data-ut-path="/pagename.html" for linked pages (about, services, contact, pricing, etc.)
+10. **CTA BUTTONS** - Redirect-worthy CTAs (Shop Now, Learn More, View Details, Get Started, etc.) MUST include data-ut-path pointing to their target page
+
+OUTPUT FORMAT:
+- Return ONLY a single complete HTML page (index.html)
+- Navigation links use data-ut-intent="nav.goto" with data-ut-path for ALL linked pages
+- CTA buttons that imply navigation MUST have data-ut-path attributes
+- The system will auto-generate matching pages for every data-ut-path target
+- NO \`<!-- PAGE: -->\` markers - generate only the main page
+- NO markdown, NO explanations
+- Start with <!DOCTYPE html>`;
 }
 
 export default SystemsAIPanel;

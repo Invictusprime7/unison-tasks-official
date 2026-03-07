@@ -2530,6 +2530,9 @@ export default function App() {
       const isHTML = generatedCode.trim().startsWith('<!DOCTYPE') || generatedCode.trim().startsWith('<html');
       if (isHTML) {
         const scaffoldResult = scaffoldMultiPageVFS(generatedCode);
+        // Store the original HTML as /preview.html so VFSPreview can render it directly
+        // (the scaffolder creates /index.html as a Vite entry point which VFSPreview skips)
+        scaffoldResult.files['/preview.html'] = generatedCode;
         virtualFS.importFiles(scaffoldResult.files);
         if (scaffoldResult.scaffoldedPages.length > 0) {
           console.log(`[WebBuilder] Auto-scaffolded ${scaffoldResult.scaffoldedPages.length} linked pages:`, 

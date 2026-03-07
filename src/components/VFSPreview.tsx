@@ -527,10 +527,17 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
     }
   }
   
-  // SECOND: Check if there's a standalone index.html - use it directly
+  // SECOND: Check for standalone HTML files that can be rendered directly
+  // Check /preview.html first (stored by WebBuilder for AI-generated HTML)
+  const previewHtml = files['/preview.html'] || files['preview.html'];
+  if (previewHtml && (previewHtml.includes('<!DOCTYPE') || previewHtml.includes('<html') || previewHtml.includes('<body'))) {
+    console.log('[VFSPreview] Using preview.html directly');
+    return injectNavScript(previewHtml);
+  }
+  
+  // Then check index.html - use if it's a complete HTML document (not a Vite entry point)
   const indexHtml = files['/index.html'] || files['index.html'];
   if (indexHtml) {
-    // If it's a complete HTML document (not just a Vite entry point), use it
     if (!indexHtml.includes('src="/src/main.tsx"') && 
         (indexHtml.includes('<!DOCTYPE') || indexHtml.includes('<html') || indexHtml.includes('<body'))) {
       console.log('[VFSPreview] Using index.html directly');
