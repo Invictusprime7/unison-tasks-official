@@ -209,6 +209,13 @@ export default {
         }),
       });
 
+      // Handle 410 Gone (CodeSandbox SSE deprecated) — signal caller to use Sandpack
+      if (response.status === 410) {
+        console.warn('[usePreviewService] Server-side preview API deprecated (CodeSandbox SSE discontinued). Use Sandpack client-side.');
+        setState(prev => ({ ...prev, loading: false, error: null }));
+        return null;
+      }
+
       const data: StartSessionResponse = await response.json();
 
       if (!data.success || !data.session) {

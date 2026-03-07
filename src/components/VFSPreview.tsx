@@ -1,13 +1,14 @@
 /**
- * VFSPreview - Docker-Only Preview Component
+ * VFSPreview - Multi-Backend Preview Component
  * 
- * A streamlined preview component using Docker-based Vite for live HMR.
- * Falls back to static HTML rendering when Docker is unavailable.
+ * A preview component supporting Docker-based Vite (local dev), Sandpack
+ * (in-browser bundling for production), and static HTML (last resort).
  * 
  * Features:
- * - Docker-based Vite preview with true HMR
- * - Automatic file sync from VFS
+ * - Docker-based Vite preview with true HMR (local dev)
+ * - Sandpack in-browser bundling (production fallback, replaces deprecated CodeSandbox SSE)
  * - Static HTML fallback (no external dependencies)
+ * - Automatic file sync from VFS
  * - Toolbar with status, controls, and logs
  * - Open in new tab
  */
@@ -26,17 +27,20 @@ import {
   ChevronDown,
   AlertCircle,
   Play,
-  Square
+  Square,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SandpackProvider, SandpackPreview, SandpackLayout } from '@codesandbox/sandpack-react';
 import { usePreviewService } from '@/hooks/usePreviewService';
+import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type PreviewBackend = 'docker' | 'local' | 'html' | 'loading' | 'none';
+type PreviewBackend = 'docker' | 'local' | 'sandpack' | 'html' | 'loading' | 'none';
 
 // Local Vite server URL (for development without Docker)
 const LOCAL_PREVIEW_URL = import.meta.env.VITE_LOCAL_PREVIEW_URL || '';
@@ -748,8 +752,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   // Docker preview service
   const dockerService = usePreviewService();
   
-  // Check if preview service is available (Docker gateway OR Vercel API in production)
-  const dockerConfigured = !!import.meta.env.VITE_PREVIEW_GATEWAY_URL || import.meta.env.PROD;
+  // Check if Docker gateway is explicitly configured (local dev only)
+  const dockerGatewayConfigured = !!import.meta.env.VITE_PREVIEW_GATEWAY_URL;
   
   // Check if local Vite server is configured
   const localViteConfigured = !!LOCAL_PREVIEW_URL;
@@ -761,6 +765,58 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     console.log('[VFSPreview] Files computed:', Object.keys(result), 'nodeFiles:', Object.keys(nodeFiles), 'propFiles:', Object.keys(propFiles || {}));
     return result;
   }, [nodes, propFiles]);
+  
+  // Determine if we have React/TS files that benefit from Sandpack bundling
+  const hasReactFiles = useMemo(() => {
+    return Object.keys(files).some(p => /\.(tsx?|jsx?)$/.test(p));
+  }, [files]);
+  
+  // Prepare Sandpack files and dependencies (only computed when needed)
+  const sandpackDeps = useMemo(() => {
+    if (!hasReactFiles) return { react: '^18.3.1', 'react-dom': '^18.3.1' };
+    const baseDeps: Record<string, string> = {
+      react: '^18.3.1',
+      'react-dom': '^18.3.1',
+      'react-router-dom': '^6.20.0',
+      'lucide-react': 'latest',
+      'clsx': 'latest',
+      'tailwind-merge': 'latest',
+      'framer-motion': 'latest',
+    };
+    const { dependencies } = getDependenciesForSandpack(files, baseDeps);
+    return dependencies;
+  }, [files, hasReactFiles]);
+  
+  // Determine Sandpack entry file
+  const sandpackEntryFile = useMemo(() => {
+    const candidates = ['/src/App.tsx', '/App.tsx', '/src/App.jsx', '/App.jsx'];
+    for (const candidate of candidates) {
+      if (files[candidate]) return candidate;
+    }
+    const firstCode = Object.keys(files).find(p => /\.(tsx?|jsx?)$/.test(p));
+    return firstCode || '/App.tsx';
+  }, [files]);
+  
+  // Ensure Sandpack has required entry files
+  const sandpackFiles = useMemo(() => {
+    if (!hasReactFiles) return files;
+    const result = { ...files };
+    if (!result['/index.html'] && !result['/public/index.html']) {
+      result['/index.html'] = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>`;
+    }
+    return result;
+  }, [files, hasReactFiles]);
   
   // Handle messages from preview iframe
   useEffect(() => {
@@ -844,6 +900,14 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     if (startAttemptedRef.current) return;
     startAttemptedRef.current = true;
 
+    // If forceBackend is specified, use it
+    if (forceBackend === 'sandpack') {
+      console.log('[VFSPreview] Force backend: sandpack');
+      setBackend('sandpack');
+      onReady?.();
+      return;
+    }
+
     // If local Vite dev server is configured, use it immediately
     if (localViteConfigured) {
       console.log('[VFSPreview] Using local Vite server:', LOCAL_PREVIEW_URL);
@@ -852,25 +916,34 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       return;
     }
 
-    // Auto-start Docker/CodeSandbox if configured and autoStart is enabled
-    if (dockerConfigured && autoStart) {
-      console.log('[VFSPreview] Auto-starting Docker/CodeSandbox preview...');
+    // Auto-start Docker gateway if explicitly configured (local dev with VITE_PREVIEW_GATEWAY_URL)
+    if (dockerGatewayConfigured && autoStart) {
+      console.log('[VFSPreview] Auto-starting Docker preview...');
       setBackend('loading');
       dockerService.startSession(nodes).then((session) => {
         if (session) {
-          console.log('[VFSPreview] Docker/CodeSandbox started:', session.id);
+          console.log('[VFSPreview] Docker started:', session.id);
           setBackend('docker');
           onReady?.();
         } else {
-          console.warn('[VFSPreview] Docker/CodeSandbox failed, falling back to HTML');
-          setBackend('html');
+          // Docker failed — fall back to Sandpack if we have React files, else HTML
+          console.warn('[VFSPreview] Docker failed, falling back to', hasReactFiles ? 'Sandpack' : 'HTML');
+          setBackend(hasReactFiles ? 'sandpack' : 'html');
           onReady?.();
         }
       }).catch((err) => {
-        console.error('[VFSPreview] Docker/CodeSandbox start error:', err);
-        setBackend('html');
+        console.error('[VFSPreview] Docker start error:', err);
+        setBackend(hasReactFiles ? 'sandpack' : 'html');
         onReady?.();
       });
+      return;
+    }
+
+    // Production or no Docker gateway — use Sandpack for React/TS, HTML for static content
+    if (hasReactFiles) {
+      console.log('[VFSPreview] Using Sandpack in-browser bundler (production)');
+      setBackend('sandpack');
+      onReady?.();
       return;
     }
 
@@ -880,7 +953,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     onReady?.();
   }, []);
   
-  // Sync file changes to Docker/CodeSandbox when running
+  // Sync file changes to Docker when running
   useEffect(() => {
     if (backend !== 'docker' || !dockerService.session || dockerService.session.status !== 'running') return;
     
@@ -891,8 +964,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   
   // Handlers
   const handleStartDocker = useCallback(async () => {
-    if (!dockerConfigured) {
-      onError?.('Preview service not available');
+    if (!dockerGatewayConfigured) {
+      onError?.('Docker gateway not configured');
       return;
     }
     
@@ -906,7 +979,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       setBackend('html');
       onError?.('Failed to start Docker preview');
     }
-  }, [dockerConfigured, dockerService, nodes, onReady, onError]);
+  }, [dockerGatewayConfigured, dockerService, nodes, onReady, onError]);
   
   const handleStopDocker = useCallback(async () => {
     await dockerService.stopSession();
@@ -970,11 +1043,13 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
                 'flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
                 backend === 'docker' && 'bg-green-500/20 text-green-400',
                 backend === 'local' && 'bg-blue-500/20 text-blue-400',
+                backend === 'sandpack' && 'bg-purple-500/20 text-purple-400',
                 backend === 'html' && 'bg-amber-500/20 text-amber-400',
                 backend === 'loading' && 'bg-blue-500/20 text-blue-400',
               )}>
                 {backend === 'docker' && <><Server className="h-3 w-3" /> Docker HMR</>}
                 {backend === 'local' && <><Server className="h-3 w-3" /> Local Vite</>}
+                {backend === 'sandpack' && <><Zap className="h-3 w-3" /> Sandpack</>}
                 {backend === 'html' && <><FileCode className="h-3 w-3" /> Static</>}
                 {backend === 'loading' && <><Loader2 className="h-3 w-3 animate-spin" /> Starting...</>}
               </div>
@@ -999,7 +1074,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
           
           <div className="flex items-center gap-1">
             {/* Start/Stop Docker */}
-            {dockerConfigured && (
+            {dockerGatewayConfigured && (
               <>
                 {backend === 'docker' ? (
                   <Button
@@ -1108,6 +1183,36 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
           </div>
+        )}
+        
+        {/* Sandpack In-Browser Preview */}
+        {backend === 'sandpack' && (
+          <SandpackProvider
+            template="react-ts"
+            files={sandpackFiles}
+            theme="light"
+            options={{
+              externalResources: ['https://cdn.tailwindcss.com'],
+              activeFile: sandpackEntryFile,
+              visibleFiles: [sandpackEntryFile],
+              autorun: true,
+              autoReload: true,
+              recompileMode: 'delayed',
+              recompileDelay: 300,
+            }}
+            customSetup={{
+              dependencies: sandpackDeps,
+            }}
+          >
+            <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
+              <SandpackPreview
+                showNavigator={false}
+                showRefreshButton={false}
+                showOpenInCodeSandbox={false}
+                style={{ height: '100%', minHeight: 0 }}
+              />
+            </SandpackLayout>
+          </SandpackProvider>
         )}
         
         {/* Logs Panel */}

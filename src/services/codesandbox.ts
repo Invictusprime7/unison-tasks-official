@@ -1,8 +1,12 @@
 /**
  * CodeSandbox Service
  * 
- * Creates and manages CodeSandbox projects for live preview.
- * Uses the CodeSandbox Define API to create sandboxes from VFS files.
+ * @deprecated The CodeSandbox Container Sandbox (SSE / Define API) has been
+ * discontinued. For live preview, use Sandpack (@codesandbox/sandpack-react)
+ * which runs entirely in the browser. See VFSPreview.tsx and SimplePreview.tsx.
+ * 
+ * This module is kept for backward compatibility but its API calls will fail.
+ * Use the Sandpack-based preview in VFSPreview instead.
  */
 
 import type { FileMap } from './previewSession';
