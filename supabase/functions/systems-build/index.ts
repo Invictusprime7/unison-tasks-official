@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-import-prefix
 import { serve } from "serve";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
