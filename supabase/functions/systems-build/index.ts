@@ -774,6 +774,9 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
     const data = await response.json();
     let generatedCode = String(data?.choices?.[0]?.message?.content ?? "").slice(0, 500_000);
 
+    // Strip any reasoning text the model dumped before the HTML
+    generatedCode = stripReasoningFromCode(generatedCode);
+
     // Clean up markdown code blocks if present
     generatedCode = cleanupCodeBlocks(generatedCode);
     
@@ -800,6 +803,37 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
     );
   }
 });
+
+/**
+ * Strip reasoning/planning text that AI models sometimes dump before actual code.
+ * Detects common patterns: numbered steps, "Font Mapping", "Color Mapping", "PLAN:", etc.
+ */
+function stripReasoningFromCode(code: string): string {
+  let cleaned = code.trim();
+
+  // Strip <thinking> blocks if present
+  cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>\s*/gi, '').trim();
+
+  // Find the first HTML marker
+  const markers = [
+    cleaned.indexOf('<!DOCTYPE'),
+    cleaned.indexOf('<html'),
+    cleaned.indexOf('<head'),
+    cleaned.indexOf('<!-- PAGE:'),
+  ].filter(i => i > 0);
+
+  if (markers.length > 0) {
+    const firstCode = Math.min(...markers);
+    const preText = cleaned.slice(0, firstCode);
+    // Only strip if the pre-text looks like reasoning (not a legitimate HTML comment or whitespace)
+    if (preText.length > 20 && /\d\.\s*(UNDERSTAND|ANALY[SZ]E|PLAN|CONSIDER|DECIDE)|Font Mapping|Color Mapping|MULTI-SECTION|LAYOUT|I'll |I will |Let me |Let's /i.test(preText)) {
+      console.log(`[systems-build] Stripped ${preText.length} chars of reasoning text before HTML`);
+      cleaned = cleaned.slice(firstCode).trim();
+    }
+  }
+
+  return cleaned;
+}
 
 function cleanupCodeBlocks(code: string): string {
   // Remove markdown code block wrappers

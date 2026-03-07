@@ -42,6 +42,50 @@ import { applyDesignProfileToTemplate } from "@/utils/designPatternExtractor";
 import { generateDesignVariation, randomFontPairing } from "@/utils/designVariation";
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 
+/**
+ * Extract clean code from AI response, stripping any chain-of-thought reasoning
+ * that the model may have dumped as plain text before/around the actual code.
+ */
+function extractCleanCode(raw: string): string {
+  let content = raw.trim();
+
+  // Strip <thinking> blocks
+  content = content.replace(/<thinking>[\s\S]*?<\/thinking>\s*/gi, '').trim();
+
+  // Strip markdown code fences
+  content = content.replace(/^```(?:html|jsx?|tsx?)\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
+  // Try to find HTML boundaries
+  const doctypeIdx = content.indexOf('<!DOCTYPE');
+  const htmlIdx = content.indexOf('<html');
+  const htmlEndIdx = content.lastIndexOf('</html>');
+  const htmlStart = doctypeIdx !== -1 ? doctypeIdx : htmlIdx;
+
+  if (htmlStart !== -1 && htmlEndIdx !== -1 && htmlEndIdx > htmlStart) {
+    return content.slice(htmlStart, htmlEndIdx + 7);
+  }
+
+  // If no HTML markers, strip any reasoning text before first tag or import
+  const codeMarkers = [
+    content.indexOf('<!DOCTYPE'),
+    content.indexOf('<html'),
+    content.indexOf('<head'),
+    content.indexOf('<div'),
+    content.indexOf('import '),
+  ].filter(i => i > 0);
+
+  if (codeMarkers.length > 0) {
+    const firstCode = Math.min(...codeMarkers);
+    const preText = content.slice(0, firstCode);
+    if (preText.length > 20 && /\d\.\s*(UNDERSTAND|ANALY[SZ]E|PLAN|CONSIDER|DECIDE)|Font Mapping|Color Mapping|MULTI-SECTION|LAYOUT|I'll |I will |Let me |Let's /i.test(preText)) {
+      console.log(`[SystemsAIPanel] Stripped ${preText.length} chars of reasoning text`);
+      content = content.slice(firstCode).trim();
+    }
+  }
+
+  return content;
+}
+
 // Dropped file type
 interface DroppedFile {
   id: string;
@@ -168,8 +212,8 @@ function buildBlueprintFromChip(chipId: string, prompt: string) {
       typography: { heading: fonts.heading, body: fonts.body },
     },
     design: {
-      layout: { hero_style: design.layout.hero_style as const, section_spacing: design.layout.section_spacing as const, navigation_style: design.layout.navigation_style as const },
-      effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: design.effects.glassmorphism, shadows: design.effects.shadows as const },
+      layout: { hero_style: design.layout.hero_style, section_spacing: design.layout.section_spacing, navigation_style: design.layout.navigation_style },
+      effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: design.effects.glassmorphism, shadows: design.effects.shadows },
       sections: { include_stats: design.sections.include_stats, include_testimonials: design.sections.include_testimonials, include_faq: design.sections.include_faq, include_cta_banner: design.sections.include_cta_banner, include_newsletter: design.sections.include_newsletter, include_social_proof: design.sections.include_social_proof },
     },
     intents: defaults.intents.map(i => ({ intent: i })),
@@ -497,11 +541,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         }
 
         const chipContent = (chipData?.content as string) || "";
-        const chipHtmlStart = chipContent.includes('<!DOCTYPE') ? chipContent.indexOf('<!DOCTYPE') : chipContent.indexOf('<html');
-        const chipHtmlEnd = chipContent.lastIndexOf('</html>');
-        const chipHtml = chipHtmlStart !== -1 && chipHtmlEnd !== -1
-          ? chipContent.slice(chipHtmlStart, chipHtmlEnd + 7)
-          : chipContent.replace(/```(?:html)?\n?/g, '').replace(/```\s*$/g, '').trim();
+        const chipHtml = extractCleanCode(chipContent);
 
         if (chipHtml && chipHtml.length > 100) {
           console.log('[SystemsAIPanel] ai-code-assistant chip generation:', chipHtml.length, 'chars');
@@ -574,12 +614,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
       }
 
       const freeformContent = (freeformData?.content as string) || "";
-      // Extract clean HTML directly - prefer <!DOCTYPE html> boundaries
-      const freeHtmlStart = freeformContent.includes('<!DOCTYPE') ? freeformContent.indexOf('<!DOCTYPE') : freeformContent.indexOf('<html');
-      const freeHtmlEnd = freeformContent.lastIndexOf('</html>');
-      const generatedCode = freeHtmlStart !== -1 && freeHtmlEnd !== -1
-        ? freeformContent.slice(freeHtmlStart, freeHtmlEnd + 7)
-        : freeformContent.replace(/```(?:html)?\n?/g, '').replace(/```\s*$/g, '').trim();
+      const generatedCode = extractCleanCode(freeformContent);
 
       if (generatedCode) {
         sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
