@@ -13,43 +13,30 @@
 
 import { inngest, type InngestEvents } from './inngest';
 import type { EmittedEvent, IntentManagers } from '@/runtime/intentExecutor';
+import { INTENT_EVENT_MAP } from '@/services/automationOrchestrator';
 
 // ============ EVENT MAPPING ============
 
 /**
- * Maps intent executor events to Inngest event names
+ * Maps intent executor events to Inngest event names.
+ * Uses canonical mapping from automationOrchestrator, with
+ * additional event-name aliases for the executor's emitted event names.
  */
 const INTENT_TO_INNGEST_EVENT: Record<string, keyof InngestEvents> = {
-  // Lead/Contact events
+  // Use canonical map as base
+  ...INTENT_EVENT_MAP,
+  
+  // Additional aliases for emitted event names (result.events[].name)
+  // These differ from the intent names because the executor emits past-tense events
   'lead.submitted': 'crm/lead.created',
   'lead.captured': 'crm/lead.created',
   'contact.submitted': 'crm/contact.created',
-  
-  // Booking events
   'booking.requested': 'booking/created',
-  'booking.confirmed': 'booking/created', // Will be updated once booking confirmed
-  'booking.reminder': 'booking/reminded',
-  'booking.noshow': 'booking/no.show',
-  
-  // Form events
   'form.submitted': 'form/submitted',
-  
-  // CRM pipeline events
-  'deal.won': 'crm/deal.stage.changed',
-  'deal.lost': 'crm/deal.stage.changed',
-  
-  // Order/checkout events  
-  'checkout.started': 'automation/trigger',
-  'order.created': 'automation/trigger',
-  'order.shipped': 'automation/trigger',
-  'order.delivered': 'automation/trigger',
-  
-  // Generic button events
-  'button.clicked': 'automation/trigger',
-  
-  // Cart events
+  'checkout.started': 'checkout/started',
   'cart.item_added': 'automation/trigger',
-  'cart.abandoned': 'automation/trigger',
+  'button.clicked': 'automation/trigger',
+  'newsletter.subscribed': 'newsletter/subscribed',
 };
 
 /**

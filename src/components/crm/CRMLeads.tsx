@@ -30,6 +30,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, DollarSign, Trash2, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { useCRMActions } from "@/hooks/useCRMActions";
+import { sendInngestEvent } from "@/services/inngestService";
 
 interface Lead {
   id: string;
@@ -74,6 +76,10 @@ export function CRMLeads() {
     source: "",
     notes: "",
   });
+
+  // Hook for automation event emission
+  const activeBizId = selectedBusinessId !== "all" ? selectedBusinessId : undefined;
+  const crm = useCRMActions(activeBizId);
 
   useEffect(() => {
     loadBusinesses();
@@ -145,12 +151,23 @@ export function CRMLeads() {
         if (error) throw error;
         toast.success("Lead updated");
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("crm_leads")
-          .insert(leadData);
+          .insert(leadData)
+          .select("id")
+          .single();
 
         if (error) throw error;
         toast.success("Lead created");
+
+        // Fire automation: crm/lead.created
+        if (activeBizId && data?.id) {
+          sendInngestEvent('crm/lead.created', {
+            leadId: data.id,
+            businessId: activeBizId,
+            source: formData.source || 'crm',
+          }).catch(console.warn);
+        }
       }
 
       setDialogOpen(false);
@@ -177,15 +194,30 @@ export function CRMLeads() {
     }
   }
 
-  async function updateStatus(id: string, status: string) {
+  async function updateStatus(id: string, newStatus: string) {
     try {
+      // Find the current lead to get old status
+      const lead = leads.find(l => l.id === id);
+      const oldStatus = lead?.status || 'unknown';
+
       const { error } = await supabase
         .from("crm_leads")
-        .update({ status })
+        .update({ status: newStatus })
         .eq("id", id);
 
       if (error) throw error;
       toast.success("Status updated");
+
+      // Fire automation: crm/lead.status.changed
+      if (activeBizId) {
+        sendInngestEvent('crm/lead.status.changed', {
+          leadId: id,
+          businessId: activeBizId,
+          previousStatus: oldStatus,
+          newStatus,
+        }).catch(console.warn);
+      }
+
       fetchLeads();
     } catch (error) {
       console.error("Error updating status:", error);

@@ -6,6 +6,7 @@
  */
 
 import { inngest } from "./inngest";
+import { executeMatchingRecipes } from "@/services/recipeExecutor";
 
 /**
  * Deal Stage Change Workflow
@@ -109,11 +110,15 @@ export const leadFollowUpWorkflow = inngest.createFunction(
   async ({ event, step }) => {
     const { leadId, businessId, email, phone } = event.data;
 
+    // Step 0: Execute matching recipes (e.g., contractor-lead-followup)
+    const recipeResults = await step.run("execute-recipes", async () => {
+      return executeMatchingRecipes(step, event.data as Record<string, unknown>);
+    });
+
     // Step 1: Immediate acknowledgment
     await step.run("acknowledge-lead", async () => {
       console.log(`New lead ${leadId} received - sending acknowledgment`);
-      // Send immediate confirmation email/SMS
-      return { acknowledged: true };
+      return { acknowledged: true, recipesRun: recipeResults.length };
     });
 
     // Step 2: Wait 30 minutes, then send first follow-up
@@ -163,6 +168,11 @@ export const bookingReminderWorkflow = inngest.createFunction(
   async ({ event, step }) => {
     const { bookingId, businessId, contactEmail, scheduledAt, service } = event.data;
     
+    // Step 0: Execute matching recipes (e.g., salon-booking-confirm, restaurant-reservation-confirm)
+    const recipeResults = await step.run("execute-recipes", async () => {
+      return executeMatchingRecipes(step, event.data as Record<string, unknown>);
+    });
+
     const scheduledDate = new Date(scheduledAt);
     const now = new Date();
     
@@ -500,11 +510,17 @@ export const automationTriggerWorkflow = inngest.createFunction(
   async ({ event, step }) => {
     const { automationId, businessId, triggerId, triggerType, payload } = event.data;
 
+    // Step 0: Execute any matching recipe steps attached to this event
+    const recipeResults = await step.run("execute-recipes", async () => {
+      const results = await executeMatchingRecipes(step, event.data as Record<string, unknown>);
+      return { recipesRun: results.length, results };
+    });
+
     // Log the trigger
     await step.run("log-trigger", async () => {
       console.log(`[Automation] Trigger: ${triggerType} (${triggerId}) for business ${businessId}`);
-      // TODO: Log to database for analytics
-      return { logged: true };
+      console.log(`[Automation] Recipes executed: ${recipeResults.recipesRun}`);
+      return { logged: true, recipesRun: recipeResults.recipesRun };
     });
 
     // Route based on trigger type
@@ -512,7 +528,6 @@ export const automationTriggerWorkflow = inngest.createFunction(
       case "checkout":
         await step.run("handle-checkout-trigger", async () => {
           console.log(`[Automation] Checkout started - items: ${JSON.stringify(payload.items)}`);
-          // TODO: Track checkout analytics
           return { handled: true, type: "checkout" };
         });
         break;
@@ -535,7 +550,6 @@ export const automationTriggerWorkflow = inngest.createFunction(
       case "button.clicked":
         await step.run("handle-button-click", async () => {
           console.log(`[Automation] Button clicked: ${JSON.stringify(payload)}`);
-          // TODO: Track engagement analytics
           return { handled: true, type: "button_click" };
         });
         break;
@@ -552,6 +566,7 @@ export const automationTriggerWorkflow = inngest.createFunction(
       triggerId,
       triggerType,
       processed: true,
+      recipesExecuted: recipeResults.recipesRun,
     };
   }
 );

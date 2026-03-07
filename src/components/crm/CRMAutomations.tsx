@@ -23,6 +23,16 @@ import { Label } from "@/components/ui/label";
 import { Search, Plus, Zap, Trash2, Edit } from "lucide-react";
 import { toast } from "sonner";
 
+// Map CRM automation trigger_event values to Inngest event names
+const TRIGGER_TO_INNGEST: Record<string, string> = {
+  contact_created: 'crm/contact.created',
+  lead_created: 'crm/lead.created',
+  lead_status_changed: 'crm/lead.status.changed',
+  deal_created: 'crm/deal.created',
+  deal_stage_changed: 'crm/deal.stage.changed',
+  form_submitted: 'form/submitted',
+};
+
 interface Automation {
   id: string;
   name: string;
@@ -87,11 +97,13 @@ export function CRMAutomations() {
     e.preventDefault();
 
     try {
+      const inngestEvent = TRIGGER_TO_INNGEST[formData.trigger_event] || formData.trigger_event;
+
       const automationData = {
         name: formData.name,
         trigger_event: formData.trigger_event,
         conditions: [],
-        actions: [],
+        actions: [{ type: 'inngest_dispatch', config: { event: inngestEvent } }],
       };
 
       if (editingAutomation) {

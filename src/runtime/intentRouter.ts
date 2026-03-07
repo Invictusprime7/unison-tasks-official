@@ -16,6 +16,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getDemoResponse, type BusinessSystemType } from "@/data/templates";
 import { normalizeIntent } from './intentAliases';
+import { classifyIntent } from './intentClassifier';
 import { 
   CORE_INTENTS, 
   type CoreIntent, 
@@ -604,11 +605,10 @@ function handlePayCancel(payload: IntentPayload): IntentResult {
  * - ACTION intents: CRM persistence + notifications via unified router
  */
 export async function handleIntent(intent: string, payload: IntentPayload): Promise<IntentResult> {
-  console.log("[IntentRouter] Handling intent:", intent, payload, { isDemoMode, currentSystemType, useUnifiedRouter });
-
   // Step 1: Normalize via alias system (handles messy template intents)
   const normalized = normalizeIntent(intent);
-  console.log(`[IntentRouter] Normalized: "${intent}" → "${normalized}"`);
+  const classification = classifyIntent(normalized);
+  console.log("[IntentRouter] Handling intent:", intent, { normalized, lane: classification.lane, payload });
   
   // Step 2: Handle demo mode - return mocked responses
   if (isDemoMode && currentSystemType && (isActionIntent(normalized) || isAutomationIntent(normalized))) {

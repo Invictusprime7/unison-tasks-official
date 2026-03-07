@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Search, Plus, DollarSign, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useCRMActions } from "@/hooks/useCRMActions";
 
 interface Deal {
   id: string;
@@ -39,17 +40,6 @@ interface Lead {
   title: string;
 }
 
-interface AutomationCondition {
-  field: string;
-  operator?: string;
-  value: string;
-}
-
-interface AutomationAction {
-  type: string;
-  config?: Record<string, any>;
-}
-
 const stages = [
   { id: "prospecting", label: "Prospecting", color: "bg-blue-100 border-blue-300" },
   { id: "negotiation", label: "Negotiation", color: "bg-yellow-100 border-yellow-300" },
@@ -57,7 +47,8 @@ const stages = [
   { id: "closed_lost", label: "Closed Lost", color: "bg-red-100 border-red-300" },
 ];
 
-export function CRMPipeline() {
+export function CRMPipeline({ businessId }: { businessId?: string } = {}) {
+  const crm = useCRMActions(businessId);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -138,11 +129,11 @@ export function CRMPipeline() {
         lead_id: formData.lead_id || null,
       };
 
-      const { error } = await supabase.from("crm_deals").insert(dealData);
+      // Use hook: inserts deal AND fires crm/deal.created event
+      const result = await crm.createDeal(dealData);
+      if (!result.success) throw new Error(result.error);
 
-      if (error) throw error;
       toast.success("Deal created");
-
       setDialogOpen(false);
       setFormData({
         title: "",
@@ -161,83 +152,15 @@ export function CRMPipeline() {
 
   async function updateDealStage(dealId: string, newStage: string, oldStage: string) {
     try {
-      const { error } = await supabase
-        .from("crm_deals")
-        .update({ stage: newStage })
-        .eq("id", dealId);
-
-      if (error) throw error;
-
-      // Trigger automation for stage change
-      await triggerStageChangeAutomation(dealId, oldStage, newStage);
+      // Use hook: updates stage AND fires crm/deal.stage.changed + orchestrator dispatch
+      const result = await crm.moveDealStage(dealId, oldStage, newStage);
+      if (!result.success) throw new Error(result.error);
 
       toast.success(`Deal moved to ${stages.find(s => s.id === newStage)?.label}`);
       fetchDeals();
     } catch (error) {
       console.error("Error updating deal stage:", error);
       toast.error("Failed to update deal stage");
-    }
-  }
-
-  async function triggerStageChangeAutomation(dealId: string, oldStage: string, newStage: string) {
-    try {
-      // Check for active automations for this trigger
-      const { data: automations, error } = await supabase
-        .from("crm_automations")
-        .select("*")
-        .eq("trigger_event", "deal_stage_changed")
-        .eq("is_active", true);
-
-      if (error) throw error;
-
-      // Trigger workflows based on conditions
-      for (const automation of automations || []) {
-        const conditions = Array.isArray(automation.conditions) 
-          ? (automation.conditions as unknown as AutomationCondition[]) 
-          : [];
-        
-        // Check if all conditions are satisfied
-        const shouldTrigger = conditions.length === 0 || conditions.every((condition) => {
-          // Check each condition based on its field
-          if (condition.field === "old_stage") {
-            return condition.value === oldStage;
-          }
-          if (condition.field === "new_stage" || condition.field === "stage") {
-            return condition.value === newStage;
-          }
-          // Unknown condition field - skip this condition
-          return true;
-        });
-
-        if (shouldTrigger) {
-          // Execute automation actions
-          const actions = Array.isArray(automation.actions) 
-            ? (automation.actions as unknown as AutomationAction[]) 
-            : [];
-          await executeAutomationActions(actions, dealId);
-        }
-      }
-    } catch (error) {
-      console.error("Error triggering automation:", error);
-    }
-  }
-
-  async function executeAutomationActions(actions: AutomationAction[], dealId: string) {
-    try {
-      for (const action of actions) {
-        if (action.type === "send_email") {
-          // TODO: Implement email sending via email service
-          console.log("TODO: Send email for deal:", dealId, action);
-        } else if (action.type === "create_task") {
-          // TODO: Create task in crm_activities table
-          console.log("TODO: Create task for deal:", dealId, action);
-        } else if (action.type === "update_field") {
-          // TODO: Update deal fields based on action config
-          console.log("TODO: Update field for deal:", dealId, action);
-        }
-      }
-    } catch (error) {
-      console.error("Error executing automation actions:", error);
     }
   }
 

@@ -12,6 +12,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { BUILT_IN_RECIPE_PACKS } from '@/services/recipeManagerService';
 
 // ============ TYPES ============
 
@@ -375,15 +376,28 @@ async function buildLookupResult(binding: IntentBinding | null): Promise<Binding
 
   // Fetch recipe details if bound
   if (binding.recipeIds.length > 0) {
-    // For now, return placeholder recipe info
-    // The full recipe lookup requires joining multiple tables
-    recipes = binding.recipeIds.map(recipeId => ({
-      id: recipeId,
-      name: recipeId.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase()),
-      trigger: 'unknown',
-      packId: '',
-      packName: 'Custom',
-    }));
+    recipes = binding.recipeIds.map(recipeId => {
+      // Look up from built-in packs for full info
+      for (const pack of BUILT_IN_RECIPE_PACKS) {
+        const recipe = pack.recipes.find(r => r.id === recipeId);
+        if (recipe) {
+          return {
+            id: recipe.id,
+            name: recipe.name,
+            trigger: recipe.trigger,
+            packId: pack.id,
+            packName: pack.name,
+          };
+        }
+      }
+      return {
+        id: recipeId,
+        name: recipeId.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase()),
+        trigger: binding.intent,
+        packId: '',
+        packName: 'Custom',
+      };
+    });
   }
 
   // Determine if automation should fire

@@ -1,6 +1,8 @@
 import React, { useMemo, useCallback } from "react";
 import type { PageNode } from "@/schemas/SiteGraph";
 import { type BrandColors, defaultBrand } from "@/types/brand";
+import { handleIntent } from "@/runtime/intentRouter";
+import { classifyIntent } from "@/runtime/intentClassifier";
 
 /** Local section type derived from PageNode */
 type PageSection = PageNode["sections"][number];
@@ -609,6 +611,35 @@ export function PageRenderer({
   className,
   style,
 }: PageRendererProps) {
+  // Self-wire: if no external callback provided, classify then route
+  const intentHandler = useCallback((intent: string, payload?: Record<string, unknown>) => {
+    if (onIntentTrigger) {
+      onIntentTrigger(intent, payload);
+      return;
+    }
+
+    const { lane } = classifyIntent(intent);
+
+    if (lane === 'immediate') {
+      // Handle locally — scroll, navigate, toggle — no network, no pipeline
+      if (intent === 'nav.anchor' && payload?.anchor) {
+        const id = String(payload.anchor).replace(/^#/, '');
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+      if (intent === 'nav.external' && payload?.url) {
+        window.open(String(payload.url), '_blank', 'noopener');
+        return;
+      }
+      // Other immediate intents — fire a DOM event for parent to catch
+      window.dispatchEvent(new CustomEvent(`intent:${intent}`, { detail: payload }));
+      return;
+    }
+
+    // Backend + automatable intents → full intent router
+    handleIntent(intent, payload).catch(console.warn);
+  }, [onIntentTrigger]);
+
   const renderedSections = useMemo(() => {
     return page.sections.map((section) => {
       const Renderer = sectionRenderers[section.type] || GenericSection;
@@ -617,11 +648,11 @@ export function PageRenderer({
           key={section.id}
           section={section}
           brand={brand}
-          onIntentTrigger={onIntentTrigger}
+          onIntentTrigger={intentHandler}
         />
       );
     });
-  }, [page.sections, brand, onIntentTrigger]);
+  }, [page.sections, brand, intentHandler]);
   
   return (
     <div

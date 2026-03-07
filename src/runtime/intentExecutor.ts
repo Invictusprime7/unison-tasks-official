@@ -24,10 +24,9 @@ import {
   isCoreIntent 
 } from '@/coreIntents';
 import { normalizeIntent } from './intentAliases';
-import { sendInngestEvent } from '@/services/inngestService';
 import { logIntentExecution, createLogEntryFromResult } from '@/services/intentExecutionLogger';
 import { lookupIntentBinding, recordBindingTriggered } from '@/services/intentBindingService';
-import type { InngestEvents } from '@/lib/inngest';
+import { dispatchAutomation } from '@/services/automationOrchestrator';
 
 // ============ TYPES ============
 
@@ -756,9 +755,12 @@ export async function executeIntent(
       }
     }
 
-    // Step 9: Fire Inngest events for automation intents
+    // Step 9: Dispatch automation via orchestrator (recipe matching + Inngest)
     if (result.ok && ctx.businessId && (isActionIntent(normalized) || isAutomationIntent(normalized))) {
-      await fireInngestEvent(normalized, ctx, result);
+      const dispatch = await dispatchAutomation(normalized, ctx, result);
+      if (dispatch.dispatched) {
+        console.log(`[IntentExecutor] Automation dispatched: ${dispatch.eventName}, ${dispatch.recipesMatched} recipes matched`);
+      }
     }
 
     // Step 10: Record binding trigger
@@ -859,146 +861,6 @@ export function getSupportedIntents(): string[] {
 }
 
 // ============ INNGEST INTEGRATION ============
-
-/**
- * Map intent names to Inngest event names
- */
-const INTENT_TO_INNGEST_EVENT: Partial<Record<string, keyof InngestEvents>> = {
-  // Lead/Contact
-  'contact.submit': 'crm/lead.created',
-  'lead.capture': 'crm/lead.created',
-  'newsletter.subscribe': 'crm/lead.created',
-  
-  // Booking
-  'booking.create': 'booking/created',
-  'booking.confirmed': 'booking/created',
-  'booking.reminder': 'booking/reminder.24h',
-  'booking.cancelled': 'booking/cancelled',
-  'booking.noshow': 'booking/no.show',
-  
-  // Cart/Commerce
-  'cart.checkout': 'crm/deal.created',
-  'cart.abandoned': 'booking/cancelled',
-  
-  // Deal lifecycle
-  'deal.won': 'crm/deal.stage.changed',
-  'deal.lost': 'crm/deal.stage.changed',
-  
-  // Orders
-  'order.created': 'crm/deal.created',
-};
-
-/**
- * Fire an Inngest event for automation intents
- */
-async function fireInngestEvent(
-  intent: string,
-  ctx: IntentContext,
-  result: IntentResult
-): Promise<void> {
-  const inngestEventName = INTENT_TO_INNGEST_EVENT[intent];
-  
-  if (!inngestEventName) {
-    // Not all intents need Inngest events - this is fine
-    console.log(`[IntentExecutor] No Inngest mapping for intent: ${intent}`);
-    return;
-  }
-
-  try {
-    // Build event data based on intent type
-    const eventData = buildInngestEventData(intent, ctx, result);
-    
-    console.log(`[IntentExecutor] Firing Inngest event: ${inngestEventName}`, eventData);
-    
-    const sendResult = await sendInngestEvent(inngestEventName, eventData as any);
-    
-    if (sendResult.success) {
-      console.log(`[IntentExecutor] Inngest event sent successfully:`, sendResult.ids);
-    } else {
-      console.warn(`[IntentExecutor] Inngest event failed:`, sendResult.error);
-    }
-  } catch (error) {
-    console.error(`[IntentExecutor] Failed to fire Inngest event:`, error);
-    // Don't throw - Inngest failure shouldn't break the main intent execution
-  }
-}
-
-/**
- * Build event data based on intent type
- */
-function buildInngestEventData(
-  intent: string,
-  ctx: IntentContext,
-  result: IntentResult
-): Record<string, unknown> {
-  const baseData = {
-    businessId: ctx.businessId || '',
-    timestamp: new Date().toISOString(),
-    source: 'intent-executor',
-  };
-
-  switch (intent) {
-    case 'contact.submit':
-    case 'lead.capture':
-    case 'newsletter.subscribe':
-      return {
-        ...baseData,
-        leadId: (result.data as { leadId?: string })?.leadId || `lead_${Date.now()}`,
-        email: ctx.payload?.email || ctx.email,
-        phone: ctx.payload?.phone || ctx.phone,
-      };
-
-    case 'booking.create':
-    case 'booking.confirmed':
-      return {
-        ...baseData,
-        bookingId: (result.data as { bookingId?: string })?.bookingId || `booking_${Date.now()}`,
-        contactEmail: ctx.payload?.customerEmail || ctx.email,
-        contactPhone: ctx.payload?.customerPhone || ctx.phone,
-        service: ctx.payload?.service || 'General',
-        scheduledAt: ctx.payload?.datetime || new Date().toISOString(),
-      };
-
-    case 'booking.reminder':
-      return {
-        ...baseData,
-        bookingId: ctx.payload?.bookingId || `booking_${Date.now()}`,
-        contactEmail: ctx.payload?.email || ctx.email,
-      };
-
-    case 'booking.cancelled':
-    case 'booking.noshow':
-      return {
-        ...baseData,
-        bookingId: ctx.payload?.bookingId || '',
-        reason: ctx.payload?.reason || intent.replace('booking.', ''),
-      };
-
-    case 'deal.won':
-    case 'deal.lost':
-      return {
-        ...baseData,
-        dealId: ctx.payload?.dealId || '',
-        previousStage: ctx.payload?.previousStage || 'negotiation',
-        newStage: intent === 'deal.won' ? 'closed_won' : 'closed_lost',
-        contactEmail: ctx.email,
-      };
-
-    case 'cart.checkout':
-    case 'order.created':
-      return {
-        ...baseData,
-        dealId: `order_${Date.now()}`,
-        title: 'Web Order',
-        value: ctx.payload?.total || ctx.payload?.value,
-        stage: 'prospecting',
-      };
-
-    default:
-      return {
-        ...baseData,
-        intent,
-        payload: ctx.payload || {},
-      };
-  }
-}
+// Automation dispatch is now handled by automationOrchestrator.ts
+// which provides: unified event mapping, recipe matching, and Inngest dispatch.
+// See: src/services/automationOrchestrator.ts

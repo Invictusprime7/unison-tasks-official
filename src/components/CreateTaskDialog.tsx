@@ -21,6 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Zap, ListPlus } from "lucide-react";
+import { sendInngestEvent } from "@/services/inngestService";
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -67,7 +68,7 @@ export const CreateTaskDialog = ({ open, onOpenChange, projectId, userId }: Crea
     const assigneeId = formData.get("assignee") as string;
     const dueDate = formData.get("due_date") as string;
 
-    const { error } = await supabase
+    const { data: inserted, error } = await supabase
       .from('tasks')
       .insert({
         title,
@@ -77,7 +78,9 @@ export const CreateTaskDialog = ({ open, onOpenChange, projectId, userId }: Crea
         created_by: userId,
         assignee_id: assigneeId || null,
         due_date: dueDate || null,
-      });
+      })
+      .select('id')
+      .single();
 
     setLoading(false);
 
@@ -88,6 +91,18 @@ export const CreateTaskDialog = ({ open, onOpenChange, projectId, userId }: Crea
         variant: "destructive",
       });
     } else {
+      // Fire automation event for task creation
+      if (inserted?.id) {
+        sendInngestEvent('automation/trigger', {
+          automationId: `task-${inserted.id}`,
+          businessId: projectId,
+          triggerId: `task_created_${Date.now()}`,
+          triggerType: 'task.created',
+          payload: { taskId: inserted.id, title, priority, assigneeId, projectId },
+          source: 'create-task-dialog',
+        }).catch(console.warn);
+      }
+
       toast({
         title: "Success",
         description: "Task created successfully!",

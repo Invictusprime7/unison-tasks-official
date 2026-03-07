@@ -27,6 +27,7 @@ import { Search, Plus, Play, Trash2, Edit, Workflow, Clock, Zap, Settings, Mouse
 import { toast } from "sonner";
 import { WorkflowStepBuilder, WorkflowStep } from "./WorkflowStepBuilder";
 import { AUTOMATION_INTENTS, ACTION_INTENTS } from "@/coreIntents";
+import { sendInngestEvent } from "@/services/inngestService";
 
 interface WorkflowType {
   id: string;
@@ -175,11 +176,17 @@ export function CRMWorkflows() {
 
   async function triggerWorkflow(workflow: WorkflowType) {
     try {
-      const { error } = await supabase.functions.invoke("workflow-trigger", {
-        body: { workflowId: workflow.id, triggerData: { triggered_by: "manual" } },
+      // Route through Inngest for durable execution instead of direct edge function
+      const result = await sendInngestEvent('automation/trigger', {
+        automationId: `workflow-${workflow.id}`,
+        businessId: workflow.id, // workflows don't have a business_id column, use workflow id as context
+        triggerId: `manual_${Date.now()}`,
+        triggerType: 'workflow.manual',
+        payload: { workflowId: workflow.id, steps: workflow.steps, triggerConfig: workflow.trigger_config },
+        source: 'crm-workflows-ui',
       });
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error || 'Failed to trigger workflow');
       toast.success("Workflow triggered");
     } catch (error) {
       console.error("Error triggering workflow:", error);

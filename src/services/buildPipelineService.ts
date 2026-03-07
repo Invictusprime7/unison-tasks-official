@@ -13,6 +13,9 @@
  */
 
 import { nanoid } from "nanoid";
+import { installAutomationsForBusiness, normalizeIndustry, INTENT_EVENT_MAP } from './automationOrchestrator';
+import { BUILT_IN_RECIPE_PACKS } from './recipeManagerService';
+import { upsertIntentBinding } from './intentBindingService';
 import type {
   SiteBundle,
   SiteBundleVersion,
@@ -683,90 +686,63 @@ export class BuildPipelineOrchestrator {
 
   /**
    * Stage 5: Automations Install
+   *
+   * Uses AutomationOrchestrator to:
+   * 1. Normalize industry → recipe pack industry key
+   * 2. Install correct BUILT_IN_RECIPE_PACKS via RecipeManagerService
+   * 3. Persist intent bindings to DB with recipe IDs attached
+   * 4. Record automation installs in the bundle
    */
   private async stageAutomations(state: BuildPipelineState, context: BuildPipelineContext): Promise<void> {
     const blueprint = state.bundle.blueprint;
-    const industry = blueprint?.industry || context.industry || "general";
+    const rawIndustry = blueprint?.industry || context.industry || "general";
+    const industry = normalizeIndustry(rawIndustry);
 
-    // Get applicable recipes based on industry
-    const recipes = this.getIndustryRecipes(industry);
-    const secretsRequired: SecretRequirement[] = [];
-
-    for (const recipe of recipes) {
-      // Check if secrets are required
-      const recipeSecrets = this.getRecipeSecrets(recipe.recipeId);
-      const needsSecrets = recipeSecrets.length > 0;
-
-      // Create automation install
-      const install: AutomationInstall = {
-        installId: nanoid(),
-        recipeId: recipe.recipeId,
-        enabled: !needsSecrets, // Disabled if secrets required
-        triggers: [{ type: "intent", intentId: "lead.submit" }],
-        runtime: { kind: "inngest", entrypoint: recipe.recipeId },
+    // Collect page data with intent bindings from Stage 4
+    const pages = Object.entries(state.bundle.pages).map(([pageId, page]) => {
+      const route = state.bundle.manifest.routes.find(r => r.pageId === pageId);
+      return {
+        pageId,
+        path: route?.path || "/",
+        intentBindings: (page.intentBindings || []).map(b => ({
+          intentId: b.intentId,
+          label: b.label || "",
+          target: { selector: b.target.selector },
+        })),
       };
-      
-      state.bundle.automations.installed.push(install);
+    });
 
-      // Track required secrets
-      if (needsSecrets) {
-        for (const secretKey of recipeSecrets) {
-          if (!secretsRequired.some(s => s.provider === secretKey)) {
-            secretsRequired.push({
-              provider: secretKey,
-              reason: `Required for ${recipe.name}`,
-            });
-          }
-        }
+    // Install recipe packs + persist bindings via the orchestrator
+    const result = await installAutomationsForBusiness(
+      context.businessId,
+      state.siteId,
+      rawIndustry,
+      pages
+    );
+
+    // Map installed packs back to bundle format
+    for (const packId of result.installedPacks) {
+      const pack = BUILT_IN_RECIPE_PACKS.find(p => p.id === packId);
+      if (!pack) continue;
+
+      for (const recipe of pack.recipes) {
+        const install: AutomationInstall = {
+          installId: nanoid(),
+          recipeId: recipe.id,
+          enabled: recipe.defaultEnabled,
+          triggers: [{ type: "intent", intentId: recipe.trigger }],
+          runtime: { kind: "inngest", entrypoint: recipe.id },
+        };
+        state.bundle.automations.installed.push(install);
       }
-
-      this.trace(state, "automations", "info", `Installed recipe: ${recipe.recipeId}`, {
-        enabled: !needsSecrets,
-        secretsNeeded: recipeSecrets,
-      });
     }
 
-    state.bundle.automations.secretsRequired = secretsRequired;
-  }
-
-  /**
-   * Get industry-specific automation recipes
-   */
-  private getIndustryRecipes(industry: string): Array<{ recipeId: string; name: string }> {
-    const baseRecipes = [
-      { recipeId: "lead-notification", name: "Lead Email Notification" },
-      { recipeId: "lead-crm-sync", name: "CRM Lead Sync" },
-    ];
-
-    const industryRecipes: Record<string, Array<{ recipeId: string; name: string }>> = {
-      contractor: [
-        { recipeId: "estimate-request", name: "Estimate Request Handler" },
-        { recipeId: "job-scheduling", name: "Job Scheduling" },
-      ],
-      restaurant: [
-        { recipeId: "reservation-handler", name: "Reservation Handler" },
-        { recipeId: "menu-update", name: "Menu Auto-Update" },
-      ],
-      ecommerce: [
-        { recipeId: "cart-abandonment", name: "Cart Abandonment Email" },
-        { recipeId: "order-confirmation", name: "Order Confirmation" },
-      ],
-    };
-
-    return [...baseRecipes, ...(industryRecipes[industry] || [])];
-  }
-
-  /**
-   * Get secrets required for a recipe
-   */
-  private getRecipeSecrets(recipeId: string): string[] {
-    const secretsMap: Record<string, string[]> = {
-      "lead-crm-sync": ["CRM_API_KEY"],
-      "cart-abandonment": ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"],
-      "order-confirmation": ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"],
-    };
-
-    return secretsMap[recipeId] || [];
+    this.trace(state, "automations", "info", "Installed automation recipe packs", {
+      industry,
+      packsInstalled: result.installedPacks,
+      bindingsCreated: result.bindingsCreated,
+      recipesEnabled: result.recipesEnabled,
+    });
   }
 
   /**
