@@ -39,6 +39,7 @@ import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types"
 import { cn } from "@/lib/utils";
 import { templateToVFSFiles } from "@/utils/templateToVFS";
 import { applyDesignProfileToTemplate } from "@/utils/designPatternExtractor";
+import { generateDesignVariation, randomFontPairing } from "@/utils/designVariation";
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 
 // Dropped file type
@@ -150,6 +151,9 @@ function buildBlueprintFromChip(chipId: string, prompt: string) {
 
   const defaults = INDUSTRY_DEFAULTS[chipId] || { palette: { primary: "#0EA5E9" }, intents: ["contact.submit"] };
 
+  const fonts = randomFontPairing();
+  const design = generateDesignVariation();
+
   return {
     version: "1.0",
     identity: {
@@ -161,12 +165,12 @@ function buildBlueprintFromChip(chipId: string, prompt: string) {
       tagline: `Professional ${chip?.label || "business"} services you can trust`,
       tone: "professional and friendly",
       palette: defaults.palette,
-      typography: { heading: "Plus Jakarta Sans", body: "Inter" },
+      typography: { heading: fonts.heading, body: fonts.body },
     },
     design: {
-      layout: { hero_style: "split" as const, section_spacing: "spacious" as const, navigation_style: "fixed" as const },
-      effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: true, shadows: "dramatic" as const },
-      sections: { include_stats: true, include_testimonials: true, include_faq: true, include_cta_banner: true, include_newsletter: true, include_social_proof: true },
+      layout: { hero_style: design.layout.hero_style as const, section_spacing: design.layout.section_spacing as const, navigation_style: design.layout.navigation_style as const },
+      effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: design.effects.glassmorphism, shadows: design.effects.shadows as const },
+      sections: { include_stats: design.sections.include_stats, include_testimonials: design.sections.include_testimonials, include_faq: design.sections.include_faq, include_cta_banner: design.sections.include_cta_banner, include_newsletter: design.sections.include_newsletter, include_social_proof: design.sections.include_social_proof },
     },
     intents: defaults.intents.map(i => ({ intent: i })),
   };

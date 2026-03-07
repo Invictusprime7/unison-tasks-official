@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { AICodeAssistant } from "@/components/creatives/AICodeAssistant";
 import { buildPageStructureContext } from "@/utils/pageStructureContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { generateDesignVariation, randomFontPairing } from "@/utils/designVariation";
 
 interface SystemLauncherProps {
   open: boolean;
@@ -255,6 +256,8 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
     try {
       // Build a blueprint from the selected system
       const industry = selectedTemplate.category;
+      const fonts = randomFontPairing();
+      const design = generateDesignVariation();
       const blueprint = {
         version: "1.0",
         identity: {
@@ -265,13 +268,9 @@ export const SystemLauncher = ({ open, onOpenChange }: SystemLauncherProps) => {
           business_name: `${system.name} Business`,
           tagline: `Professional ${system.name.toLowerCase()} services you can trust`,
           tone: "professional and friendly",
-          typography: { heading: "Plus Jakarta Sans", body: "Inter" },
+          typography: fonts,
         },
-        design: {
-          layout: { hero_style: "split" as const, section_spacing: "spacious" as const, navigation_style: "fixed" as const },
-          effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: true, shadows: "dramatic" as const },
-          sections: { include_stats: true, include_testimonials: true, include_faq: true, include_cta_banner: true, include_newsletter: true, include_social_proof: true },
-        },
+        design,
         intents: system.intents.map(i => ({ intent: i })),
       };
 

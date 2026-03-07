@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { getTemplatesByCategory } from "@/data/templates";
 import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
 import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
+import { generateDesignVariation, randomFontPairing } from "@/utils/designVariation";
 
 // Industry chip configurations
 const industryChips = [
@@ -120,6 +121,9 @@ function buildBlueprintFromChip(chipId: string, prompt: string, businessName?: s
   const industry = CHIP_TO_INDUSTRY[chipId] || "other";
   const defaults = INDUSTRY_DEFAULTS[chipId] || { palette: { primary: "#0EA5E9" }, intents: ["contact.submit"] };
 
+  const fonts = randomFontPairing();
+  const design = generateDesignVariation();
+
   return {
     version: "1.0",
     identity: {
@@ -131,13 +135,9 @@ function buildBlueprintFromChip(chipId: string, prompt: string, businessName?: s
       tagline: `Professional ${chip?.label || "business"} services you can trust`,
       tone: "professional and friendly",
       palette: defaults.palette,
-      typography: { heading: "Plus Jakarta Sans", body: "Inter" },
+      typography: fonts,
     },
-    design: {
-      layout: { hero_style: "split" as const, section_spacing: "spacious" as const, navigation_style: "fixed" as const },
-      effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: true, shadows: "dramatic" as const },
-      sections: { include_stats: true, include_testimonials: true, include_faq: true, include_cta_banner: true, include_newsletter: true, include_social_proof: true },
-    },
+    design,
     intents: defaults.intents.map(i => ({ intent: i })),
   };
 }
@@ -336,6 +336,9 @@ export function BusinessLauncher({ open, onOpenChange }: BusinessLauncherProps) 
    * Build generic blueprint for free-form prompts
    */
   const buildGenericBlueprint = (text: string, businessName?: string) => {
+    const fonts = randomFontPairing();
+    const design = generateDesignVariation();
+
     return {
       version: "1.0",
       identity: {
@@ -347,13 +350,9 @@ export function BusinessLauncher({ open, onOpenChange }: BusinessLauncherProps) 
         tagline: "Professional services you can trust",
         tone: "professional and friendly",
         palette: { primary: "#0EA5E9", secondary: "#22D3EE", accent: "#F59E0B", background: "#0F172A", foreground: "#F8FAFC" },
-        typography: { heading: "Plus Jakarta Sans", body: "Inter" },
+        typography: fonts,
       },
-      design: {
-        layout: { hero_style: "split" as const, section_spacing: "spacious" as const, navigation_style: "fixed" as const },
-        effects: { animations: true, scroll_animations: true, hover_effects: true, gradient_backgrounds: true, glassmorphism: true, shadows: "dramatic" as const },
-        sections: { include_stats: true, include_testimonials: true, include_faq: true, include_cta_banner: true, include_newsletter: true },
-      },
+      design,
       intents: [{ intent: "contact.submit" }, { intent: "quote.request" }],
     };
   };
