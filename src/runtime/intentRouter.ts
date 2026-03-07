@@ -611,7 +611,7 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
   console.log("[IntentRouter] Handling intent:", intent, { normalized, lane: classification.lane, payload });
   
   // Step 2: Handle demo mode - return mocked responses
-  if (isDemoMode && currentSystemType && (isActionIntent(normalized) || isAutomationIntent(normalized))) {
+  if (isDemoMode && currentSystemType && classification.lane === 'automatable') {
     const demoResponse = getDemoResponse(currentSystemType, normalized);
     if (demoResponse) {
       console.log("[IntentRouter] Demo mode response:", demoResponse);
@@ -637,64 +637,44 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     payload.projectId = defaultProjectId;
   }
 
-  // Step 4: Build IntentContext for executeIntent
-  const ctx: import('./intentExecutor').IntentContext = {
-    payload: { ...payload },
-    businessId: payload.businessId as string,
-    sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : undefined,
-    managers: {
-      navigation: {
-        goto: (path, p) => {
-          setCurrentPath(path);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('intent:nav.goto', { detail: { path, ...p } }));
-          }
-        },
-        external: (url) => {
-          // Emit event for VFS-based navigation instead of opening new tab
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('intent:nav.external', { detail: { url } }));
-          }
-        },
-        back: () => { if (typeof window !== 'undefined') window.history.back(); },
-        scrollTo: (anchor) => {
-          const targetId = anchor.startsWith('#') ? anchor.slice(1) : anchor;
-          const el = document.getElementById(targetId) || document.querySelector(`[data-section="${targetId}"]`);
-          el?.scrollIntoView({ behavior: 'smooth' });
-        },
-      },
-    },
-  };
+  // =========================================================================
+  // LANE-BASED ROUTING — The classifier is the single source of truth.
+  //   immediate  → client-side only, zero network, zero automation
+  //   backend    → one-shot edge function (pay, auth), NO automation pipeline
+  //   automatable → execute handler + dispatch automation
+  // =========================================================================
 
-  // Step 5: For action intents that need backend, check businessId gracefully
-  if ((isActionIntent(normalized) || isPayIntent(normalized)) && !payload.businessId) {
-    console.warn("[IntentRouter] Missing businessId for action intent, returning missing directive");
-    return {
-      success: false,
-      error: 'Business profile not configured yet',
-      ui: {
-        toast: { type: 'info', message: 'Setting up your business profile…' },
-      },
-    };
-  }
-
-  // Step 6: Route automation intents to automation-event Edge Function
-  if (isAutomationIntent(normalized)) {
-    const elementKey = typeof payload._elementKey === 'string' ? payload._elementKey : undefined;
-    return handleAutomationIntent(normalized, payload, elementKey);
-  }
-
-  // Step 7: For action intents with businessId, use the unified backend router
-  if (isCoreIntent(normalized) && (isActionIntent(normalized) || isPayIntent(normalized))) {
-    // Navigation intents skip backend
+  // ── IMMEDIATE LANE ──────────────────────────────────────────────────────
+  if (classification.lane === 'immediate') {
+    // Nav intents handled locally
     if (isNavIntent(normalized)) {
-      const { executeIntent } = await import('./intentExecutor');
-      const result = await executeIntent(normalized, ctx);
-      return adaptExecutorResult(result);
+      switch (normalized) {
+        case 'nav.goto':    return handleNavGoto(payload);
+        case 'nav.anchor':  return handleNavAnchor(payload);
+        case 'nav.external': return handleNavExternal(payload);
+      }
     }
 
-    // Payment intents
+    // All other immediate intents → executeIntent (client-side handlers)
+    const { executeIntent } = await import('./intentExecutor');
+    const ctx = buildIntentContext(payload);
+    const result = await executeIntent(normalized, ctx);
+    return adaptExecutorResult(result);
+  }
+
+  // ── BACKEND LANE ────────────────────────────────────────────────────────
+  // One-shot API calls: payments, auth, uploads, search.
+  // These NEVER enter the automation pipeline.
+  if (classification.lane === 'backend') {
+    // Payment intents → deterministic checkout/modal flow
     if (isPayIntent(normalized)) {
+      if (classification.requiresBusinessId && !payload.businessId) {
+        return {
+          success: false,
+          error: 'Business profile not configured yet',
+          ui: { toast: { type: 'info', message: 'Setting up your business profile…' } },
+        };
+      }
       switch (normalized) {
         case 'pay.checkout':
           return handlePayCheckout(payload, payload.businessId as string);
@@ -705,7 +685,36 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
       }
     }
 
-    // Action intents → unified backend router
+    // Auth intents → open auth modals via executor (no automation)
+    // cart.checkout → delegates to pay.checkout via executor (no automation)
+    const { executeIntent } = await import('./intentExecutor');
+    const ctx = buildIntentContext(payload);
+    const result = await executeIntent(normalized, ctx);
+    return adaptExecutorResult(result);
+  }
+
+  // ── AUTOMATABLE LANE ────────────────────────────────────────────────────
+  // Business events that feed the automation pipeline:
+  //   CRM writes, bookings, deals, orders, lifecycle events.
+
+  // Require businessId for automation intents
+  if (!payload.businessId) {
+    console.warn("[IntentRouter] Missing businessId for automatable intent");
+    return {
+      success: false,
+      error: 'Business profile not configured yet',
+      ui: { toast: { type: 'info', message: 'Setting up your business profile…' } },
+    };
+  }
+
+  // Pure automation events (booking.confirmed, deal.won, etc.) → automation-event Edge Function
+  if (isAutomationIntent(normalized) && !isActionIntent(normalized)) {
+    const elementKey = typeof payload._elementKey === 'string' ? payload._elementKey : undefined;
+    return handleAutomationIntent(normalized, payload, elementKey);
+  }
+
+  // Action intents (contact.submit, booking.create, etc.) → unified backend router
+  if (isActionIntent(normalized)) {
     if (useUnifiedRouter) {
       try {
         const routerPayload = {
@@ -732,36 +741,68 @@ export async function handleIntent(intent: string, payload: IntentPayload): Prom
     }
 
     // Legacy fallback for action intents
-    if (isActionIntent(normalized)) {
-      const handler = ACTION_HANDLERS[normalized];
-      let body: Record<string, unknown> = { ...payload };
-      if (normalized === 'contact.submit' || normalized === 'newsletter.subscribe' || normalized === 'quote.request') {
-        body = normalizeLeadPayload(normalized, payload);
-      }
-      if (normalized === 'booking.create') {
-        body = {
-          ...payload,
-          businessId: payload.businessId,
-          action: 'create',
-          customerName: (payload.customerName || payload.name) ?? undefined,
-          customerEmail: (payload.customerEmail || payload.email) ?? undefined,
-          customerPhone: (payload.customerPhone || payload.phone) ?? undefined,
-          startsAt: payload.startsAt || (payload.date && payload.time ? new Date(`${payload.date}T${payload.time}:00`).toISOString() : undefined),
-          serviceName: (payload.serviceName || payload.service) ?? undefined,
-          metadata: { intent: normalized, timestamp: new Date().toISOString(), page: typeof window !== 'undefined' ? window.location.href : undefined },
-        };
-      }
-      const { data, error } = await supabase.functions.invoke(handler, { body });
-      if (error) return { success: false, error: error.message };
-      if (data && typeof data === 'object' && 'success' in data) return data as IntentResult;
-      return { success: true, data };
+    const handler = ACTION_HANDLERS[normalized];
+    let body: Record<string, unknown> = { ...payload };
+    if (normalized === 'contact.submit' || normalized === 'newsletter.subscribe' || normalized === 'quote.request') {
+      body = normalizeLeadPayload(normalized, payload);
     }
+    if (normalized === 'booking.create') {
+      body = {
+        ...payload,
+        businessId: payload.businessId,
+        action: 'create',
+        customerName: (payload.customerName || payload.name) ?? undefined,
+        customerEmail: (payload.customerEmail || payload.email) ?? undefined,
+        customerPhone: (payload.customerPhone || payload.phone) ?? undefined,
+        startsAt: payload.startsAt || (payload.date && payload.time ? new Date(`${payload.date}T${payload.time}:00`).toISOString() : undefined),
+        serviceName: (payload.serviceName || payload.service) ?? undefined,
+        metadata: { intent: normalized, timestamp: new Date().toISOString(), page: typeof window !== 'undefined' ? window.location.href : undefined },
+      };
+    }
+    const { data, error } = await supabase.functions.invoke(handler, { body });
+    if (error) return { success: false, error: error.message };
+    if (data && typeof data === 'object' && 'success' in data) return data as IntentResult;
+    return { success: true, data };
   }
 
-  // Step 7: For everything else (auth, automation, nav, etc.) → executeIntent
+  // Fallback for any remaining automatable intents → executeIntent
   const { executeIntent } = await import('./intentExecutor');
+  const ctx = buildIntentContext(payload);
   const result = await executeIntent(normalized, ctx);
   return adaptExecutorResult(result);
+}
+
+/**
+ * Build an IntentContext from the router's payload.
+ * Centralizes manager wiring so every lane uses the same context shape.
+ */
+function buildIntentContext(payload: IntentPayload): import('./intentExecutor').IntentContext {
+  return {
+    payload: { ...payload },
+    businessId: payload.businessId as string,
+    sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : undefined,
+    managers: {
+      navigation: {
+        goto: (path, p) => {
+          setCurrentPath(path);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('intent:nav.goto', { detail: { path, ...p } }));
+          }
+        },
+        external: (url) => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('intent:nav.external', { detail: { url } }));
+          }
+        },
+        back: () => { if (typeof window !== 'undefined') window.history.back(); },
+        scrollTo: (anchor) => {
+          const targetId = anchor.startsWith('#') ? anchor.slice(1) : anchor;
+          const el = document.getElementById(targetId) || document.querySelector(`[data-section="${targetId}"]`);
+          el?.scrollIntoView({ behavior: 'smooth' });
+        },
+      },
+    },
+  };
 }
 
 /**

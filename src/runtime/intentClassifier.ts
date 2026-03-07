@@ -100,15 +100,48 @@ const PREFIX_LANES: Array<[string, IntentLane]> = [
 ];
 
 // ============================================================================
+// Explicit lane overrides
+// ============================================================================
+
+/**
+ * Override map for intents whose lane differs from their coreIntents category.
+ * These take priority over type-guard classification.
+ *
+ * auth.* and cart.* are listed in AUTOMATION_INTENTS (so isAutomationIntent
+ * returns true), but they must NOT enter the automation pipeline:
+ *   - auth intents open modals / call Supabase Auth (backend, one-shot)
+ *   - cart.add updates local cart state (immediate)
+ *   - cart.checkout delegates to pay.checkout (backend)
+ * Only cart.abandoned is a true automation event.
+ */
+const LANE_OVERRIDES: Record<string, IntentClassification> = {
+  'auth.login':      { lane: 'backend',   emitsEvent: false, requiresBusinessId: false, requiresNetwork: true },
+  'auth.register':   { lane: 'backend',   emitsEvent: false, requiresBusinessId: false, requiresNetwork: true },
+  'cart.add':        { lane: 'immediate', emitsEvent: false, requiresBusinessId: false, requiresNetwork: false },
+  'cart.checkout':   { lane: 'backend',   emitsEvent: false, requiresBusinessId: true,  requiresNetwork: true },
+  'cart.abandoned':  { lane: 'automatable', emitsEvent: true, requiresBusinessId: true, requiresNetwork: true },
+};
+
+// ============================================================================
 // Classifier
 // ============================================================================
 
 /**
  * Classify an intent string into an execution lane.
  * This is pure, deterministic, and has zero side effects.
+ *
+ * Evaluation order:
+ *   1. Explicit overrides  (catches auth/cart misclassifications)
+ *   2. Core-intent type guards  (nav → immediate, pay → backend, etc.)
+ *   3. Prefix table  (non-core intents)
+ *   4. Fallback → immediate  (safe default)
  */
 export function classifyIntent(intent: string): IntentClassification {
-  // 1. Core intents — use the type guards from coreIntents.ts
+  // 1. Explicit overrides — highest priority
+  const override = LANE_OVERRIDES[intent];
+  if (override) return override;
+
+  // 2. Core intents — use the type guards from coreIntents.ts
   if (isNavIntent(intent)) {
     return { lane: 'immediate', emitsEvent: false, requiresBusinessId: false, requiresNetwork: false };
   }
@@ -125,7 +158,7 @@ export function classifyIntent(intent: string): IntentClassification {
     return { lane: 'automatable', emitsEvent: true, requiresBusinessId: true, requiresNetwork: true };
   }
 
-  // 2. Non-core intents — classify by prefix
+  // 3. Non-core intents — classify by prefix
   const lower = intent.toLowerCase();
   for (const [prefix, lane] of PREFIX_LANES) {
     if (lower.startsWith(prefix)) {
@@ -138,7 +171,7 @@ export function classifyIntent(intent: string): IntentClassification {
     }
   }
 
-  // 3. Unknown intent — default to immediate (safe, no side effects)
+  // 4. Unknown intent — default to immediate (safe, no side effects)
   return { lane: 'immediate', emitsEvent: false, requiresBusinessId: false, requiresNetwork: false };
 }
 

@@ -24,6 +24,7 @@ import {
   isCoreIntent 
 } from '@/coreIntents';
 import { normalizeIntent } from './intentAliases';
+import { classifyIntent } from './intentClassifier';
 import { logIntentExecution, createLogEntryFromResult } from '@/services/intentExecutionLogger';
 import { lookupIntentBinding, recordBindingTriggered } from '@/services/intentBindingService';
 import { dispatchAutomation } from '@/services/automationOrchestrator';
@@ -756,7 +757,10 @@ export async function executeIntent(
     }
 
     // Step 9: Dispatch automation via orchestrator (recipe matching + Inngest)
-    if (result.ok && ctx.businessId && (isActionIntent(normalized) || isAutomationIntent(normalized))) {
+    // ONLY for 'automatable' lane — backend intents (auth, pay, cart.checkout)
+    // must NEVER enter the automation pipeline.
+    const { lane } = classifyIntent(normalized);
+    if (result.ok && ctx.businessId && lane === 'automatable') {
       const dispatch = await dispatchAutomation(normalized, ctx, result);
       if (dispatch.dispatched) {
         console.log(`[IntentExecutor] Automation dispatched: ${dispatch.eventName}, ${dispatch.recipesMatched} recipes matched`);
