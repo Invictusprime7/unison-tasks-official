@@ -43,47 +43,51 @@ import { generateDesignVariation, randomFontPairing } from "@/utils/designVariat
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 
 /**
- * Extract clean code from AI response, stripping any chain-of-thought reasoning
- * that the model may have dumped as plain text before/around the actual code.
+ * Parse the AI response from template-react mode into VFS files.
+ * Returns a Record<string, string> mapping file paths to content,
+ * or null if the response is not valid React JSON output.
  */
-function extractCleanCode(raw: string): string {
+function parseReactResponse(raw: string): Record<string, string> | null {
   let content = raw.trim();
 
   // Strip <thinking> blocks
   content = content.replace(/<thinking>[\s\S]*?<\/thinking>\s*/gi, '').trim();
 
   // Strip markdown code fences
-  content = content.replace(/^```(?:html|jsx?|tsx?)\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+  content = content.replace(/^```(?:json|jsx?|tsx?)\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
-  // Try to find HTML boundaries
-  const doctypeIdx = content.indexOf('<!DOCTYPE');
-  const htmlIdx = content.indexOf('<html');
-  const htmlEndIdx = content.lastIndexOf('</html>');
-  const htmlStart = doctypeIdx !== -1 ? doctypeIdx : htmlIdx;
-
-  if (htmlStart !== -1 && htmlEndIdx !== -1 && htmlEndIdx > htmlStart) {
-    return content.slice(htmlStart, htmlEndIdx + 7);
-  }
-
-  // If no HTML markers, strip any reasoning text before first tag or import
-  const codeMarkers = [
-    content.indexOf('<!DOCTYPE'),
-    content.indexOf('<html'),
-    content.indexOf('<head'),
-    content.indexOf('<div'),
-    content.indexOf('import '),
-  ].filter(i => i > 0);
-
-  if (codeMarkers.length > 0) {
-    const firstCode = Math.min(...codeMarkers);
-    const preText = content.slice(0, firstCode);
-    if (preText.length > 20 && /\d\.\s*(UNDERSTAND|ANALY[SZ]E|PLAN|CONSIDER|DECIDE)|Font Mapping|Color Mapping|MULTI-SECTION|LAYOUT|I'll |I will |Let me |Let's /i.test(preText)) {
-      console.log(`[SystemsAIPanel] Stripped ${preText.length} chars of reasoning text`);
-      content = content.slice(firstCode).trim();
+  // Strip reasoning text before JSON (some models dump planning text)
+  const jsonStart = content.indexOf('{');
+  if (jsonStart > 0) {
+    const preText = content.slice(0, jsonStart);
+    if (/\d\.\s*(UNDERSTAND|ANALY[SZ]E|PLAN|CONSIDER|DECIDE)|Font Mapping|Color Mapping|I'll |I will |Let me |Let's /i.test(preText)) {
+      console.log(`[SystemsAIPanel] Stripped ${preText.length} chars of reasoning before JSON`);
+      content = content.slice(jsonStart).trim();
     }
   }
 
-  return content;
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed.files && typeof parsed.files === 'object') {
+      return parsed.files as Record<string, string>;
+    }
+    return null;
+  } catch {
+    // Try to extract the JSON object if there's trailing text
+    const lastBrace = content.lastIndexOf('}');
+    if (lastBrace > 0 && jsonStart !== -1) {
+      try {
+        const parsed = JSON.parse(content.slice(jsonStart, lastBrace + 1));
+        if (parsed.files && typeof parsed.files === 'object') {
+          return parsed.files as Record<string, string>;
+        }
+      } catch {
+        // fall through
+      }
+    }
+    console.warn('[SystemsAIPanel] Failed to parse React JSON response');
+    return null;
+  }
 }
 
 // Dropped file type
@@ -491,7 +495,7 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         const chipLabel = codePromptChips.find(c => c.id === selectedCodeChip)?.label || "website";
         const chipBuildContext = buildSystemsBuildContextFromChip(selectedCodeChip);
         const designProfileContext = hasProfile ? getDesignPromptContext() : null;
-        const chipPrompt = `Create a complete, polished, production-ready ${chipLabel} website. ${codePrompt}${fileContext}`;
+        const chipPrompt = `Create a complete, polished, production-ready ${chipLabel} website as a React application. ${codePrompt}${fileContext}`;
         const enhancedChipPrompt = designProfileContext
           ? `${designProfileContext}\n\n---\n\nUser Request:\n${chipPrompt}`
           : chipPrompt;
@@ -508,11 +512,13 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
           const result = await supabase.functions.invoke("ai-code-assistant", {
             body: {
               messages: [{ role: "user", content: enhancedChipPrompt }],
-              mode: "code",
+              mode: "template-react",
               templateAction: "full-control",
               editMode: false,
               systemType: ref?.systemType,
-              templateName: ref?.templateName,
+              templateName: ref?.templateName || chipLabel,
+              aesthetic: "modern professional",
+              source: CHIP_TO_INDUSTRY[selectedCodeChip] || "content",
               attachments: attachments.length > 0 ? attachments : undefined,
               userDesignProfile: hasProfile ? {
                 projectCount: savedProjectCount,
@@ -541,36 +547,37 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         }
 
         const chipContent = (chipData?.content as string) || "";
-        const chipHtml = extractCleanCode(chipContent);
+        const chipVfsFiles = parseReactResponse(chipContent);
 
-        if (chipHtml && chipHtml.length > 100) {
-          console.log('[SystemsAIPanel] ai-code-assistant chip generation:', chipHtml.length, 'chars');
-          sessionStorage.setItem('ai_assistant_generated_code', chipHtml);
+        if (chipVfsFiles && Object.keys(chipVfsFiles).length > 0) {
+          console.log('[SystemsAIPanel] React chip generation:', Object.keys(chipVfsFiles).length, 'files');
+          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(chipVfsFiles));
           setDroppedFiles([]);
           navigate("/web-builder", {
             state: {
-              generatedCode: chipHtml,
+              vfsFiles: chipVfsFiles,
               templateName: `AI ${chipLabel}`,
               aesthetic: "modern",
               startInPreview: true,
               systemType: ref?.systemType,
+              framework: "react",
               userDesignProfile: hasProfile ? { projectCount: savedProjectCount, dominantStyle: designProfile?.dominantStyle } : undefined,
               systemsBuildContext: chipBuildContext,
             },
           });
-          toast({ title: "Website generated!", description: "Opening in Web Builder..." });
+          toast({ title: "React app generated!", description: "Opening in Web Builder..." });
           return;
         }
       }
 
-      // Free-form prompt: ai-code-assistant with retry logic (same engine as in-builder AI)
+      // Free-form prompt: ai-code-assistant in React mode
       const freeformDesignContext = hasProfile ? getDesignPromptContext() : null;
-      const basePrompt = buildFreeformPrompt(codePrompt) + fileContext;
+      const freeformPrompt = buildFreeformPrompt(codePrompt) + fileContext;
       const enhancedFreeformPrompt = freeformDesignContext
-        ? `${freeformDesignContext}\n\n---\n\nUser Request:\n${basePrompt}`
-        : basePrompt;
+        ? `${freeformDesignContext}\n\n---\n\nUser Request:\n${freeformPrompt}`
+        : freeformPrompt;
 
-      console.log(`[SystemsAIPanel] Free-form ai-code-assistant with ${droppedFiles.length} attachments${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
+      console.log(`[SystemsAIPanel] Free-form React generation with ${droppedFiles.length} attachments${hasProfile ? ` + design profile (${savedProjectCount} projects)` : ''}`);
 
       const FREE_MAX_RETRIES = 2;
       let freeformData: Record<string, unknown> | null = null;
@@ -584,10 +591,13 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
         const result = await supabase.functions.invoke("ai-code-assistant", {
           body: {
             messages: [{ role: "user", content: enhancedFreeformPrompt }],
-            mode: "code",
+            mode: "template-react",
             templateAction: "full-control",
             editMode: false,
             systemType: "content",
+            templateName: "Custom Website",
+            aesthetic: "modern professional",
+            source: "content",
             attachments: attachments.length > 0 ? attachments : undefined,
             userDesignProfile: hasProfile ? {
               projectCount: savedProjectCount,
@@ -614,22 +624,23 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
       }
 
       const freeformContent = (freeformData?.content as string) || "";
-      const generatedCode = extractCleanCode(freeformContent);
+      const vfsFiles = parseReactResponse(freeformContent);
 
-      if (generatedCode) {
-        sessionStorage.setItem('ai_assistant_generated_code', generatedCode);
+      if (vfsFiles && Object.keys(vfsFiles).length > 0) {
+        sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(vfsFiles));
         setDroppedFiles([]);
         navigate("/web-builder", {
           state: {
-            generatedCode,
+            vfsFiles,
             templateName: "AI Generated",
             aesthetic: "modern",
             startInPreview: true,
             systemType: "content",
+            framework: "react",
             userDesignProfile: hasProfile ? { projectCount: savedProjectCount, dominantStyle: designProfile?.dominantStyle } : undefined,
           },
         });
-        toast({ title: "Code generated!", description: "Opening in Web Builder..." });
+        toast({ title: "React app generated!", description: "Opening in Web Builder..." });
       } else {
         toast({ title: "No code generated", description: "Please try a different prompt", variant: "destructive" });
       }
@@ -778,16 +789,16 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
  * Build an enhanced freeform prompt for ai-code-assistant (no chip selected)
  */
 function buildFreeformPrompt(prompt: string): string {
-  return `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY WEBSITE LANDING PAGE
+  return `🚀 CREATE A COMPLETE, POLISHED, PRODUCTION-READY REACT WEBSITE APPLICATION
 
 USER REQUEST: ${prompt}
 
-📋 CRITICAL REQUIREMENTS - YOU MUST INCLUDE ALL OF THESE:
+📋 CRITICAL REQUIREMENTS:
 
-1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html> and include full <html>, <head>, <body>
-2. **TAILWIND CSS** - Include <script src="https://cdn.tailwindcss.com"></script>
+1. **REACT + TYPESCRIPT** - Modern React components with TypeScript
+2. **TAILWIND CSS** - Use Tailwind utility classes for all styling
 3. **MULTI-SECTION LAYOUT** - Include AT MINIMUM:
-   - Navigation header with logo and menu links (use data-ut-intent="nav.goto" data-ut-path="/pagename.html" for nav links)
+   - Navigation header with logo and menu links
    - Hero section with compelling headline, subtext, and CTA button
    - Features/services section with 3-4 feature cards
    - Testimonials or social proof section
@@ -797,19 +808,8 @@ USER REQUEST: ${prompt}
 4. **REAL, COMPELLING CONTENT** - NOT placeholder text
 5. **POLISHED VISUAL DESIGN** - Modern color scheme, gradients, typography, hover effects
 6. **INTERACTIVE ELEMENTS** - Working navigation, hover states, scroll animations
-7. **BACKEND INTENT WIRING** - data-ut-intent attributes on CTAs
-8. **UI CONTROLS WITHOUT INTENTS** - data-no-intent on non-conversion elements
-9. **NAVIGATION LINKS** - All nav links MUST use data-ut-intent="nav.goto" data-ut-path="/pagename.html" for linked pages (about, services, contact, pricing, etc.)
-10. **CTA BUTTONS** - Redirect-worthy CTAs (Shop Now, Learn More, View Details, Get Started, etc.) MUST include data-ut-path pointing to their target page
-
-OUTPUT FORMAT:
-- Return ONLY a single complete HTML page (index.html)
-- Navigation links use data-ut-intent="nav.goto" with data-ut-path for ALL linked pages
-- CTA buttons that imply navigation MUST have data-ut-path attributes
-- The system will auto-generate matching pages for every data-ut-path target
-- NO \`<!-- PAGE: -->\` markers - generate only the main page
-- NO markdown, NO explanations
-- Start with <!DOCTYPE html>`;
+7. **COMPONENT ARCHITECTURE** - Separate section components (Hero.tsx, Features.tsx, etc.)
+8. **RESPONSIVE** - Mobile-first responsive design with proper breakpoints`;
 }
 
 export default SystemsAIPanel;
