@@ -701,6 +701,44 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
     `;
   }
   
+  // Inject scroll-reveal fallback when extracted content uses [data-reveal] or .animate-on-scroll
+  // The reveal script lives in the React useEffect and is NOT in TEMPLATE_HTML, so we must add it.
+  const needsRevealFallback = bodyContent.includes('data-reveal') || bodyContent.includes('animate-on-scroll');
+  const revealFallback = needsRevealFallback ? `
+<script>
+(function(){
+  var els = document.querySelectorAll('[data-reveal]');
+  var scrollEls = document.querySelectorAll('.animate-on-scroll');
+  if (!els.length && !scrollEls.length) return;
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('revealed','visible','animate-visible'); observer.unobserve(e.target); } });
+    }, { threshold: 0.05 });
+    els.forEach(function(el) { observer.observe(el); });
+    scrollEls.forEach(function(el) { observer.observe(el); });
+  }
+  setTimeout(function() {
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    els.forEach(function(el) {
+      if (!el.classList.contains('revealed')) {
+        var r = el.getBoundingClientRect();
+        if (r.top < vh + 100) el.classList.add('revealed');
+      }
+    });
+    scrollEls.forEach(function(el) {
+      if (!el.classList.contains('visible')) {
+        var r = el.getBoundingClientRect();
+        if (r.top < vh + 100) { el.classList.add('visible'); el.classList.add('animate-visible'); }
+      }
+    });
+  }, 300);
+  setTimeout(function() {
+    document.querySelectorAll('[data-reveal]:not(.revealed)').forEach(function(el) { el.classList.add('revealed'); });
+    document.querySelectorAll('.animate-on-scroll:not(.visible)').forEach(function(el) { el.classList.add('visible'); el.classList.add('animate-visible'); });
+  }, 2000);
+})();
+</script>` : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -713,6 +751,7 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
 </head>
 <body class="${templateBodyClasses || 'bg-white'}">
   ${bodyContent}
+  ${revealFallback}
   ${PREVIEW_NAV_SCRIPT}
   ${INTERACTIVE_BEHAVIORS_SCRIPT}
 </body>

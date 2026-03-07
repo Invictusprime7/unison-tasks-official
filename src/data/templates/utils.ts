@@ -129,7 +129,7 @@ export default function App() {
     };
     container.addEventListener('click', handleToggle);
 
-    // Scroll reveal
+    // Scroll reveal with iframe-safe fallback
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -137,8 +137,25 @@ export default function App() {
           observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    }, { threshold: 0.05, rootMargin: '0px 0px 0px 0px' });
     container.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+
+    // Iframe-safe: force-reveal elements in viewport after 300ms
+    setTimeout(() => {
+      container.querySelectorAll('[data-reveal]:not(.revealed)').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < (window.innerHeight || document.documentElement.clientHeight) + 100) {
+          el.classList.add('revealed');
+        }
+      });
+    }, 300);
+
+    // Fallback: force-reveal ALL after 2s (IntersectionObserver is unreliable in iframes)
+    const fallbackTimer = setTimeout(() => {
+      container.querySelectorAll('[data-reveal]:not(.revealed)').forEach(el => {
+        el.classList.add('revealed');
+      });
+    }, 2000);
 
     // Tabs
     container.querySelectorAll('[data-tabs]').forEach((root) => {
@@ -275,6 +292,7 @@ export default function App() {
       container.removeEventListener('click', handleToggle);
       container.removeEventListener('click', handleDismiss, true);
       observer.disconnect();
+      clearTimeout(fallbackTimer);
     };
   }, []);
 
