@@ -839,16 +839,48 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     };
   }, [htmlPreview]);
   
-  // Initialize backend - simplified to always work with HTML first
+  // Initialize backend — try Docker/CodeSandbox first, fall back to HTML
   useEffect(() => {
-    // Docker is disabled for now, always use HTML
-    // This ensures preview always works
-    console.log('[VFSPreview] Initializing - using HTML backend');
+    if (startAttemptedRef.current) return;
+    startAttemptedRef.current = true;
+
+    // If local Vite dev server is configured, use it immediately
+    if (localViteConfigured) {
+      console.log('[VFSPreview] Using local Vite server:', LOCAL_PREVIEW_URL);
+      setBackend('local');
+      onReady?.();
+      return;
+    }
+
+    // Auto-start Docker/CodeSandbox if configured and autoStart is enabled
+    if (dockerConfigured && autoStart) {
+      console.log('[VFSPreview] Auto-starting Docker/CodeSandbox preview...');
+      setBackend('loading');
+      dockerService.startSession(nodes).then((session) => {
+        if (session) {
+          console.log('[VFSPreview] Docker/CodeSandbox started:', session.id);
+          setBackend('docker');
+          onReady?.();
+        } else {
+          console.warn('[VFSPreview] Docker/CodeSandbox failed, falling back to HTML');
+          setBackend('html');
+          onReady?.();
+        }
+      }).catch((err) => {
+        console.error('[VFSPreview] Docker/CodeSandbox start error:', err);
+        setBackend('html');
+        onReady?.();
+      });
+      return;
+    }
+
+    // No preview service available — use static HTML
+    console.log('[VFSPreview] No preview service configured, using HTML backend');
     setBackend('html');
     onReady?.();
   }, []);
   
-  // Sync file changes to Docker (if ever enabled)
+  // Sync file changes to Docker/CodeSandbox when running
   useEffect(() => {
     if (backend !== 'docker' || !dockerService.session || dockerService.session.status !== 'running') return;
     
@@ -912,11 +944,16 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     openInNewTab: handleOpenInNewTab,
   }), [handleRestart, handleStartDocker, handleStopDocker, backend, handleOpenInNewTab]);
   
-  // Determine preview URL - ALWAYS use htmlPreview for static mode
+  // Determine preview URL based on active backend
   const previewUrl = useMemo(() => {
-    const url = backend === 'docker' && dockerService.session?.iframeUrl
-      ? dockerService.session.iframeUrl
-      : htmlPreview; // Always use the generated HTML preview
+    let url: string;
+    if (backend === 'docker' && dockerService.session?.iframeUrl) {
+      url = dockerService.session.iframeUrl;
+    } else if (backend === 'local' && LOCAL_PREVIEW_URL) {
+      url = LOCAL_PREVIEW_URL;
+    } else {
+      url = htmlPreview;
+    }
     console.log('[VFSPreview] Preview URL:', url ? url.substring(0, 50) + '...' : 'NONE', 'backend:', backend);
     return url;
   }, [backend, dockerService.session, htmlPreview]);
