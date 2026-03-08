@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { SandpackProvider, SandpackPreview, SandpackLayout } from '@codesandbox/sandpack-react';
 import { usePreviewService } from '@/hooks/usePreviewService';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
+import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
 import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 
 // ============================================================================
@@ -826,36 +827,21 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     return dependencies;
   }, [files, hasReactFiles]);
   
-  // Determine Sandpack entry file
-  const sandpackEntryFile = useMemo(() => {
-    const candidates = ['/src/App.tsx', '/App.tsx', '/src/App.jsx', '/App.jsx'];
-    for (const candidate of candidates) {
-      if (files[candidate]) return candidate;
-    }
-    const firstCode = Object.keys(files).find(p => /\.(tsx?|jsx?)$/.test(p));
-    return firstCode || '/App.tsx';
-  }, [files]);
-  
-  // Ensure Sandpack has required entry files
+  // Prepare Sandpack files: flatten /src/ paths, process imports, add shims
   const sandpackFiles = useMemo(() => {
     if (!hasReactFiles) return files;
-    const result = { ...files };
-    if (!result['/index.html'] && !result['/public/index.html']) {
-      result['/index.html'] = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-  <div id="root"></div>
-</body>
-</html>`;
-    }
-    return result;
+    return prepareSandpackFiles(files);
   }, [files, hasReactFiles]);
+  
+  // Determine Sandpack entry file (from prepared/flattened files)
+  const sandpackEntryFile = useMemo(() => {
+    const candidates = ['/App.tsx', '/App.jsx'];
+    for (const candidate of candidates) {
+      if (sandpackFiles[candidate]) return candidate;
+    }
+    const firstCode = Object.keys(sandpackFiles).find(p => /\.(tsx?|jsx?)$/.test(p) && p !== '/hooks-shim.ts' && p !== '/main.tsx' && p !== '/index.tsx');
+    return firstCode || '/App.tsx';
+  }, [sandpackFiles]);
   
   // Handle messages from preview iframe
   useEffect(() => {
@@ -908,18 +894,17 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     });
   }, [files]);
   
-  // Generate HTML preview for fallback
+  // Generate HTML preview for fallback — intentionally excludes activeFile
+  // so that clicking a VFS tab doesn't regenerate the preview.
   const htmlPreview = useMemo(() => {
     console.log('[VFSPreview] ========== GENERATING HTML ==========');
-    console.log('[VFSPreview] Input files:', Object.keys(files), 'activeFile:', activeFile);
-    const html = generateStaticHtmlPreview(files, activeFile);
+    console.log('[VFSPreview] Input files:', Object.keys(files));
+    const html = generateStaticHtmlPreview(files);
     console.log('[VFSPreview] Generated HTML length:', html.length);
-    console.log('[VFSPreview] HTML preview (first 500 chars):', html.substring(0, 500));
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    console.log('[VFSPreview] Blob URL created:', url);
     return url;
-  }, [files, activeFile]);
+  }, [files]);
   
   // Cleanup blob URLs
   useEffect(() => {

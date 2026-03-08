@@ -1,0 +1,338 @@
+/**
+ * Sandpack File Preparation Utilities
+ * 
+ * Sandpack's react-ts template expects files at ROOT level (e.g., /App.tsx, not /src/App.tsx).
+ * This module flattens VFS paths, processes imports, and ensures essential files exist.
+ */
+
+const ALLOWED_IMPORTS = new Set([
+  'react',
+  'react-dom',
+  'react-dom/client',
+  'lucide-react',
+  'clsx',
+  'tailwind-merge',
+  'class-variance-authority',
+  '@radix-ui/react-slot',
+  'framer-motion',
+  'date-fns',
+  'recharts',
+  'inngest',
+]);
+
+const BASE_CSS = `
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  --radius: 0.75rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  margin: 0;
+  padding: 0;
+}
+`;
+
+const DEFAULT_MAIN = `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+`;
+
+const DEFAULT_APP = `import React from 'react';
+
+export default function App() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <p className="text-muted-foreground">Start coding to see preview</p>
+    </div>
+  );
+}
+`;
+
+const HOOKS_SHIM = `
+import { useState as reactUseState, useEffect as reactUseEffect, useCallback as reactUseCallback, useMemo as reactUseMemo, useRef as reactUseRef, useContext as reactUseContext, createContext } from 'react';
+
+export const useState = reactUseState;
+export const useEffect = reactUseEffect;
+export const useCallback = reactUseCallback;
+export const useMemo = reactUseMemo;
+export const useRef = reactUseRef;
+export const useContext = reactUseContext;
+
+export const useToast = () => {
+  const toast = (opts) => { console.log('[Toast]', opts.title, opts.description); };
+  return { toast, dismiss: () => {} };
+};
+export const useMobile = () => false;
+export const useSidebar = () => ({ open: false, toggle: () => {}, setOpen: () => {} });
+export const useTheme = () => {
+  const [theme, setTheme] = reactUseState('light');
+  return { theme, setTheme, toggleTheme: () => setTheme(t => t === 'light' ? 'dark' : 'light') };
+};
+export const useRouter = () => ({ push: () => {}, replace: () => {}, pathname: '/', back: () => {} });
+export const useParams = () => ({});
+export const useSearchParams = () => [new URLSearchParams(), () => {}];
+export const useQuery = () => ({ data: null, loading: false, error: null, refetch: () => Promise.resolve() });
+export const useMutation = () => [() => Promise.resolve(), { loading: false, error: null }];
+export const useForm = () => ({ register: () => ({}), handleSubmit: (fn) => fn, watch: () => '', errors: {}, reset: () => {} });
+export const useDebounce = (value) => value;
+export const useLocalStorage = (key, initial) => {
+  const [value, setValue] = reactUseState(initial);
+  return [value, setValue];
+};
+export const useMediaQuery = () => false;
+export const useOnClickOutside = () => {};
+export const useWindowSize = () => ({ width: 1024, height: 768 });
+export const useIntersectionObserver = () => ({ ref: { current: null }, inView: true });
+export const useAnimation = () => ({ ref: { current: null }, controls: {} });
+export const useReducer = (reducer, initial) => [initial, () => {}];
+export const useLayoutEffect = reactUseEffect;
+export const useAuth = () => ({
+  user: null, session: null, loading: false, isAuthenticated: false,
+  signIn: () => Promise.resolve({ error: 'Preview mode' }),
+  signUp: () => Promise.resolve({ error: 'Preview mode' }),
+  signOut: () => Promise.resolve(),
+});
+export const supabase = {
+  auth: {
+    signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Preview mode' } }),
+    signUp: () => Promise.resolve({ data: null, error: { message: 'Preview mode' } }),
+    signOut: () => Promise.resolve({ error: null }),
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+  },
+  from: () => ({
+    select: () => Promise.resolve({ data: [], error: null }),
+    insert: () => Promise.resolve({ data: null, error: null }),
+    update: () => Promise.resolve({ data: null, error: null }),
+    delete: () => Promise.resolve({ data: null, error: null }),
+  }),
+};
+export const useAssetRegistry = () => ({ assets: [], registerAsset: () => {}, getAsset: () => null, removeAsset: () => {} });
+export const useSceneModel = () => ({ scene: null, updateScene: () => {}, selectedNode: null, selectNode: () => {} });
+export const useDesignStudio = () => ({ scene: null, updateScene: () => {}, undo: () => {}, redo: () => {}, canUndo: false, canRedo: false });
+export const useVirtualFileSystem = () => ({ files: {}, createFile: () => {}, updateFile: () => {}, deleteFile: () => {}, readFile: () => '' });
+export const usePreviewSession = () => ({ session: null, isLoading: false, error: null, refresh: () => {} });
+export const useAIFileAnalysis = () => ({ analyze: () => Promise.resolve({}), isAnalyzing: false });
+export const useAITemplate = () => ({ generate: () => Promise.resolve(''), isGenerating: false });
+export const useCodeHistory = () => ({ history: [], push: () => {}, undo: () => '', redo: () => '', canUndo: false, canRedo: false });
+export const useDocument = () => ({ document: null, isLoading: false, save: () => Promise.resolve() });
+export const useGoHighLevelCRM = () => ({ contacts: [], pipelines: [], isLoading: false });
+export const useKeyboardShortcuts = () => {};
+export const usePageGenerator = () => ({ generate: () => Promise.resolve(''), isGenerating: false });
+export const useSubscription = () => ({ subscription: null, isLoading: false, tier: 'free' });
+export const useCanvasHistory = () => ({ history: [], push: () => {}, undo: () => {}, redo: () => {}, canUndo: false, canRedo: false });
+export const useTemplateAutomation = () => ({ automate: () => Promise.resolve(), isAutomating: false });
+export const useTemplateFiles = () => ({ files: [], upload: () => Promise.resolve(), delete: () => Promise.resolve() });
+export const useTemplateState = () => ({ state: {}, setState: () => {}, reset: () => {} });
+export const useWebBuilder = () => ({ pages: [], components: [], addPage: () => {}, addComponent: () => {} });
+export const useWebBuilderAI = () => ({ generate: () => Promise.resolve(''), isGenerating: false });
+export const useWebBuilderState = () => ({ state: {}, setState: () => {} });
+export const useWorkflowTrigger = () => ({ trigger: () => Promise.resolve(), isTriggering: false });
+export const useCounter = (initial = 0) => { const [count, setCount] = reactUseState(initial); return { count, increment: () => setCount(c => c + 1), decrement: () => setCount(c => c - 1) }; };
+export const useToggle = (initial = false) => { const [value, setValue] = reactUseState(initial); return [value, () => setValue(v => !v)]; };
+
+export default {
+  useState, useEffect, useCallback, useMemo, useRef, useContext,
+  useToast, useMobile, useSidebar, useTheme, useAuth, useRouter,
+  useParams, useSearchParams, useQuery, useMutation, useForm,
+  useDebounce, useLocalStorage, useMediaQuery, useOnClickOutside,
+  useWindowSize, useIntersectionObserver, useAnimation, useReducer,
+  useLayoutEffect, useAssetRegistry, useSceneModel, useDesignStudio,
+  useVirtualFileSystem, usePreviewSession, useAIFileAnalysis,
+  useAITemplate, useCodeHistory, useDocument, useGoHighLevelCRM,
+  useKeyboardShortcuts, usePageGenerator, useSubscription,
+  useCanvasHistory, useTemplateAutomation, useTemplateFiles,
+  useTemplateState, useWebBuilder, useWebBuilderAI, useWebBuilderState,
+  useWorkflowTrigger, useCounter, useToggle, supabase,
+};
+`;
+
+/**
+ * Process code to strip/transform imports that Sandpack can't resolve.
+ */
+export function processCode(code: string, filePath: string): string {
+  if (!/\.(tsx?|jsx?|mjs)$/.test(filePath)) {
+    return code;
+  }
+
+  let processed = code;
+
+  // Handle @/ path alias imports
+  processed = processed.replace(
+    /^import\s+(?:(?:\{([^}]*)\}|\*\s+as\s+(\w+)|(\w+))\s*,?\s*)*\s*from\s+['"]@\/([^'"]+)['"];?\s*$/gm,
+    (match, namedImports, namespaceImport, defaultImport, modulePath) => {
+      if (modulePath.startsWith('hooks/') || modulePath === 'hooks') {
+        if (namedImports) return `import { ${namedImports} } from './hooks-shim';`;
+        if (defaultImport) return `import ${defaultImport} from './hooks-shim';`;
+        if (namespaceImport) return `import * as ${namespaceImport} from './hooks-shim';`;
+        return `import hooks from './hooks-shim'; // [Preview] Shimmed: @/${modulePath}`;
+      }
+      if (modulePath.startsWith('integrations/supabase')) {
+        if (namedImports) return `import { ${namedImports} } from './hooks-shim';`;
+        if (defaultImport) return `import ${defaultImport} from './hooks-shim';`;
+        return `import { supabase } from './hooks-shim'; // [Preview] Shimmed: @/${modulePath}`;
+      }
+      return `// [Preview] Stripped: ${match.trim()}`;
+    }
+  );
+
+  // Process remaining imports
+  processed = processed.replace(
+    /^import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s*,?\s*)*\s*from\s+['"]([^'"]+)['"];?\s*$/gm,
+    (match, modulePath) => {
+      const baseModule = modulePath.split('/')[0];
+      if (ALLOWED_IMPORTS.has(modulePath) || ALLOWED_IMPORTS.has(baseModule)) return match;
+      if (/\.(css|scss|less)$/.test(modulePath)) return match;
+      if (modulePath.startsWith('./') || modulePath.startsWith('../')) {
+        if (modulePath.includes('hooks/')) {
+          const importMatch = match.match(/import\s+(?:\{([^}]+)\}|([\w]+))/);
+          if (importMatch) {
+            const namedImports = importMatch[1];
+            const defaultImport = importMatch[2];
+            if (namedImports) return `import { ${namedImports} } from './hooks-shim';`;
+            if (defaultImport) return `import ${defaultImport} from './hooks-shim';`;
+          }
+          return `import hooks from './hooks-shim'; // [Preview] Shimmed: ${modulePath}`;
+        }
+        return match;
+      }
+      if (modulePath.startsWith('@/')) return `// [Preview] Stripped: ${match.trim()}`;
+      return match;
+    }
+  );
+
+  // Remove unsupported hook calls
+  const unsupportedHooks = [
+    'useAssetRegistry', 'useTemplateState', 'useGoHighLevelCRM', 'useSupabaseClient',
+  ];
+  for (const hook of unsupportedHooks) {
+    processed = processed.replace(
+      new RegExp(`const\\s+\\{[^}]*\\}\\s*=\\s*${hook}\\([^)]*\\);?`, 'g'),
+      `// [Preview] Stripped ${hook} call`
+    );
+    processed = processed.replace(
+      new RegExp(`const\\s+\\w+\\s*=\\s*${hook}\\([^)]*\\);?`, 'g'),
+      `// [Preview] Stripped ${hook} call`
+    );
+    processed = processed.replace(
+      new RegExp(`${hook}\\([^)]*\\)`, 'g'),
+      '{}'
+    );
+  }
+
+  processed = processed.replace(/\n{3,}/g, '\n\n');
+  return processed;
+}
+
+/**
+ * Convert VFS files to Sandpack-compatible format.
+ * Flattens /src/ paths to root, processes imports, adds missing essentials.
+ */
+export function prepareSandpackFiles(files: Record<string, string>): Record<string, string> {
+  const sandpackFiles: Record<string, string> = {};
+  let hasApp = false;
+  let hasMain = false;
+  let hasCSS = false;
+
+  console.log('[sandpackFilePrep] Input VFS files:', Object.keys(files));
+
+  for (const [path, content] of Object.entries(files)) {
+    let normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+    // Skip files Sandpack doesn't need
+    if (normalizedPath.includes('node_modules') ||
+        normalizedPath.includes('/.') ||
+        normalizedPath.endsWith('.json') ||
+        normalizedPath.endsWith('.config.ts') ||
+        normalizedPath.endsWith('.config.js') ||
+        normalizedPath.includes('/public/')) {
+      continue;
+    }
+
+    // Flatten /src/ paths to root for Sandpack compatibility
+    if (normalizedPath.startsWith('/src/')) {
+      normalizedPath = normalizedPath.replace('/src/', '/');
+    }
+
+    // Flatten /styles/ to root
+    if (normalizedPath.startsWith('/styles/')) {
+      normalizedPath = normalizedPath.replace('/styles/', '/');
+    }
+
+    // Fix imports in content to match flattened paths
+    let processedContent = content;
+    processedContent = processedContent
+      .replace(/from\s+['"]\.\/src\//g, "from './")
+      .replace(/from\s+['"]src\//g, "from './")
+      .replace(/from\s+['"]\.\/styles\//g, "from './")
+      .replace(/import\s+['"]\.\/styles\//g, "import './");
+
+    processedContent = processCode(processedContent, normalizedPath);
+    sandpackFiles[normalizedPath] = processedContent;
+
+    if (normalizedPath === '/App.tsx' || normalizedPath === '/App.jsx') hasApp = true;
+    if (normalizedPath === '/main.tsx' || normalizedPath === '/main.jsx' || normalizedPath === '/index.tsx') hasMain = true;
+    if (normalizedPath.endsWith('.css')) hasCSS = true;
+  }
+
+  if (!hasCSS) sandpackFiles['/index.css'] = BASE_CSS;
+  if (!hasApp) sandpackFiles['/App.tsx'] = DEFAULT_APP;
+  if (!hasMain) sandpackFiles['/main.tsx'] = DEFAULT_MAIN;
+  sandpackFiles['/hooks-shim.ts'] = HOOKS_SHIM;
+
+  // Ensure index.html exists
+  if (!sandpackFiles['/index.html']) {
+    sandpackFiles['/index.html'] = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>`;
+  }
+
+  console.log('[sandpackFilePrep] Prepared files:', Object.keys(sandpackFiles));
+  return sandpackFiles;
+}
