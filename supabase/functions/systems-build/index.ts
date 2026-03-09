@@ -626,8 +626,11 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
           } catch { /* fall through */ }
         }
         
-        // If content is raw HTML, wrap it in a React component
-        if (filesJson.includes("<!DOCTYPE") || filesJson.includes("<html") || filesJson.includes("<header")) {
+        // If content is raw HTML (or JSX mixed with HTML comments/attributes), wrap it in a React component
+        const looksLikeRawHtml = filesJson.includes("<!DOCTYPE") || filesJson.includes("<html") || 
+          filesJson.includes("<header") || filesJson.includes("<!--") || 
+          / class="[^"]*"/.test(filesJson) || filesJson.includes("<nav") || filesJson.includes("<footer");
+        if (looksLikeRawHtml) {
           console.warn("[systems-build] Raw HTML detected, wrapping in React component");
           const escapedHtml = filesJson
             .replace(/\\/g, "\\\\")
@@ -682,7 +685,30 @@ export default function App() {
           );
         }
         
-        // Last resort: wrap raw code as a single React file
+        // Last resort: if it still looks like HTML/mixed content, wrap it safely
+        const stillHasHtml = filesJson.includes("<!--") || filesJson.includes("<header") || 
+          filesJson.includes("<html") || / class="/.test(filesJson);
+        if (stillHasHtml) {
+          console.warn("[systems-build] Last-resort HTML wrap for mixed content");
+          const safeEscaped = filesJson.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
+          const safeWrapped = {
+            "src/App.tsx": `export default function App() {
+  return <div dangerouslySetInnerHTML={{ __html: \`${safeEscaped}\` }} />;
+}`,
+          };
+          return new Response(
+            JSON.stringify({
+              files: safeWrapped,
+              entryPoint: "src/App.tsx",
+              framework: "react",
+              buildTool: "vite",
+              _meta: { ai_generated: true, outputFormat: "react", last_resort_html_wrap: true },
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Truly unknown format — wrap as plain React
         return new Response(
           JSON.stringify({
             files: { "src/App.tsx": filesJson },
