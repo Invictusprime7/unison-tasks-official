@@ -290,8 +290,8 @@ const Index = () => {
       {/* Footer */}
       <FooterSection />
 
-      {/* Business Launcher Dialog - New Flow */}
-      <BusinessLauncher open={launcherOpen} onOpenChange={setLauncherOpen} />
+      {/* System Launcher Wizard - Industry → Theme → Template */}
+      <SystemLauncher open={launcherOpen} onOpenChange={setLauncherOpen} />
     </div>
   );
 };
