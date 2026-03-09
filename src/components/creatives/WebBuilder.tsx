@@ -3757,7 +3757,7 @@ ${body.innerHTML}
   console.log('[WebBuilder] About to return JSX...');
 
   return (
-    <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#0a0a12]">
+    <div ref={mainContainerRef} className="flex flex-col h-screen bg-[#1a0a14]">
       {/* Interactive Element Highlighting Styles */}
       <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />
 
