@@ -10,12 +10,86 @@
  * - VFS-aware: auto-detects language from file extension
  */
 
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState, Component, type ReactNode, type ErrorInfo } from 'react';
 import Editor, { OnMount, loader } from '@monaco-editor/react';
 
 // Infer editor type from OnMount callback (avoids direct 'monaco-editor' dependency)
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
 import { cn } from '@/lib/utils';
+
+// ---------------------------------------------------------------------------
+// Fallback plain-text editor when Monaco fails to load
+// ---------------------------------------------------------------------------
+
+function FallbackEditor({
+  value,
+  onChange,
+  fileName,
+  height,
+  className,
+  onSave,
+  error,
+}: {
+  value: string;
+  onChange?: (value: string) => void;
+  fileName?: string;
+  height?: string;
+  className?: string;
+  onSave?: (value: string) => void;
+  error?: string;
+}) {
+  return (
+    <div className={cn('relative w-full overflow-hidden bg-[#1e1e1e]', className)} style={{ height }}>
+      {error && (
+        <div className="px-3 py-1.5 bg-amber-500/20 text-amber-300 text-xs border-b border-amber-500/30">
+          Code editor failed to load ({error}). Using plain-text fallback.
+        </div>
+      )}
+      <textarea
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            onSave?.(value);
+          }
+        }}
+        className="w-full h-full bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm p-4 resize-none outline-none border-none"
+        spellCheck={false}
+        style={{ tabSize: 2, fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace" }}
+      />
+      <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#007acc] flex items-center justify-between px-3 text-[11px] text-white/90 font-medium z-10 select-none">
+        <span>{fileName || 'untitled'} (fallback editor)</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Error boundary that catches Monaco render crashes
+// ---------------------------------------------------------------------------
+
+class MonacoErrorBoundary extends Component<
+  { children: ReactNode; fallbackProps: { value: string; onChange?: (v: string) => void; fileName?: string; height?: string; className?: string; onSave?: (v: string) => void } },
+  { hasError: boolean; errorMsg: string }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, errorMsg: '' };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMsg: error.message };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[VFSMonacoEditor] Monaco crashed:', error, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return <FallbackEditor {...this.props.fallbackProps} error={this.state.errorMsg} />;
+    }
+    return this.props.children;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -282,90 +356,100 @@ const VFSMonacoEditor: React.FC<VFSMonacoEditorProps> = ({
   }, [language]);
 
   return (
-    <div
-      className={cn(
-        'relative w-full overflow-hidden',
-        isAIProcessing && 'opacity-50 pointer-events-none',
-        className,
-      )}
-      style={{ height }}
-    >
-      {/* AI processing overlay */}
-      {isAIProcessing && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border shadow-lg">
-            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-muted-foreground font-medium">AI is processing…</span>
+    <MonacoErrorBoundary fallbackProps={{ value, onChange, fileName, height, className, onSave }}>
+      <div
+        className={cn(
+          'relative w-full overflow-hidden',
+          isAIProcessing && 'opacity-50 pointer-events-none',
+          className,
+        )}
+        style={{ height }}
+      >
+        {/* AI processing overlay */}
+        {isAIProcessing && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border shadow-lg">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-muted-foreground font-medium">AI is processing…</span>
+            </div>
+          </div>
+        )}
+
+        {/* Format indicator */}
+        {isFormatting && (
+          <div className="absolute top-2 right-16 z-20 px-2 py-1 rounded bg-primary/20 text-primary text-xs font-medium animate-pulse">
+            Formatting…
+          </div>
+        )}
+
+        <Editor
+          height="100%"
+          language={language}
+          value={value}
+          onChange={(v) => onChange?.(v || '')}
+          onMount={handleEditorDidMount}
+          theme="vs-dark"
+          loading={
+            <div className="flex items-center justify-center h-full bg-[#1e1e1e] text-white/50 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                Loading editor…
+              </div>
+            </div>
+          }
+          options={{
+            readOnly,
+            minimap: { enabled: true, maxColumn: 80 },
+            fontSize: 14,
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
+            fontLigatures: true,
+            lineNumbers: 'on',
+            renderLineHighlight: 'all',
+            roundedSelection: true,
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 2,
+            wordWrap: 'on',
+            formatOnPaste: true,
+            formatOnType: true,
+            suggestOnTriggerCharacters: true,
+            quickSuggestions: true,
+            inlineSuggest: { enabled: true },
+            bracketPairColorization: { enabled: true },
+            guides: {
+              bracketPairs: true,
+              indentation: true,
+            },
+            stickyScroll: { enabled: true },
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            smoothScrolling: true,
+            padding: { top: 8, bottom: 8 },
+            folding: true,
+            foldingStrategy: 'indentation',
+            showFoldingControls: 'mouseover',
+            matchBrackets: 'always',
+            colorDecorators: true,
+            linkedEditing: true,
+          }}
+        />
+
+        {/* Status bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#007acc] flex items-center justify-between px-3 text-[11px] text-white/90 font-medium z-10 select-none">
+          <div className="flex items-center gap-3">
+            <span>{fileName || 'untitled'}</span>
+            <span className="opacity-60">Ln {value.split('\n').length}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="opacity-70 cursor-pointer hover:opacity-100" onClick={handleFormat} title="Shift+Alt+F">
+              Prettier
+            </span>
+            <span className="uppercase tracking-wider">{language}</span>
+            <span className="opacity-60">UTF-8</span>
           </div>
         </div>
-      )}
-
-      {/* Format indicator */}
-      {isFormatting && (
-        <div className="absolute top-2 right-16 z-20 px-2 py-1 rounded bg-primary/20 text-primary text-xs font-medium animate-pulse">
-          Formatting…
-        </div>
-      )}
-
-      <Editor
-        height="100%"
-        language={language}
-        value={value}
-        onChange={(v) => onChange?.(v || '')}
-        onMount={handleEditorDidMount}
-        theme="vs-dark"
-        options={{
-          readOnly,
-          minimap: { enabled: true, maxColumn: 80 },
-          fontSize: 14,
-          fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
-          fontLigatures: true,
-          lineNumbers: 'on',
-          renderLineHighlight: 'all',
-          roundedSelection: true,
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          tabSize: 2,
-          wordWrap: 'on',
-          formatOnPaste: true,
-          formatOnType: true,
-          suggestOnTriggerCharacters: true,
-          quickSuggestions: true,
-          inlineSuggest: { enabled: true },
-          bracketPairColorization: { enabled: true },
-          guides: {
-            bracketPairs: true,
-            indentation: true,
-          },
-          stickyScroll: { enabled: true },
-          cursorBlinking: 'smooth',
-          cursorSmoothCaretAnimation: 'on',
-          smoothScrolling: true,
-          padding: { top: 8, bottom: 8 },
-          folding: true,
-          foldingStrategy: 'indentation',
-          showFoldingControls: 'mouseover',
-          matchBrackets: 'always',
-          colorDecorators: true,
-          linkedEditing: true,
-        }}
-      />
-
-      {/* Status bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#007acc] flex items-center justify-between px-3 text-[11px] text-white/90 font-medium z-10 select-none">
-        <div className="flex items-center gap-3">
-          <span>{fileName || 'untitled'}</span>
-          <span className="opacity-60">Ln {value.split('\n').length}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="opacity-70 cursor-pointer hover:opacity-100" onClick={handleFormat} title="Shift+Alt+F">
-            Prettier
-          </span>
-          <span className="uppercase tracking-wider">{language}</span>
-          <span className="opacity-60">UTF-8</span>
-        </div>
       </div>
-    </div>
+    </MonacoErrorBoundary>
   );
 };
 
