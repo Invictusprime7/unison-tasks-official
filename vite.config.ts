@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@radix-ui/react-compose-refs": path.resolve(__dirname, "./src/lib/compose-refs-shim.ts"),
     },
   },
   build: {
