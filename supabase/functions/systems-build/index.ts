@@ -460,7 +460,7 @@ function formatResearchContext(research: ResearchResult): string {
 
 /**
  * Sanitize React/TSX files to fix common HTML-in-JSX issues.
- * - Converts HTML comments <!-- --> to JSX {/* */}
+ * - Converts HTML comments to JSX comment syntax
  * - Converts class= to className=
  * - Converts for= to htmlFor=
  * - If content is predominantly raw HTML (has <body>, <!DOCTYPE>, etc.), 
