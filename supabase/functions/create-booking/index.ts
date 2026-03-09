@@ -157,7 +157,7 @@ serve(async (req) => {
   }
 });
 
-async function handleCreateBooking(supabase: any, body: BookingPayload) {
+async function handleCreateBooking(supabase: any, body: any) {
   const { 
     businessId, 
     serviceId, 
@@ -165,10 +165,12 @@ async function handleCreateBooking(supabase: any, body: BookingPayload) {
     customerName, 
     customerEmail, 
     customerPhone,
-    startsAt, 
     endsAt,
     notes 
   } = body;
+
+  // Accept startsAt OR datetime (caller compat)
+  const startsAt = body.startsAt || body.datetime;
 
   // Validate required fields
   if (!businessId || !customerName || !customerEmail) {
