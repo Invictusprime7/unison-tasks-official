@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { AlertCircle, Zap } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
-import { BusinessLauncher } from "@/components/onboarding/BusinessLauncher";
+import { SystemLauncher } from "@/components/onboarding/SystemLauncher";
 import { 
   NavigationBar,
   HeroSection, 
