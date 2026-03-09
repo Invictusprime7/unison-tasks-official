@@ -226,6 +226,17 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
       setIsLoading(true);
       setError(null);
       
+      // Validate projectId is a UUID before querying DB
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(projectId)) {
+        // Non-UUID projectId (e.g. "preview") - use defaults without DB query
+        console.log(`[useSiteBlueprint] Non-UUID projectId "${projectId}", using local defaults`);
+        const defaultBlueprint = createDefaultBlueprint(projectId, businessId || "", "other" as Industry, "My Business");
+        setBlueprint(defaultBlueprint);
+        onLoad?.(defaultBlueprint);
+        return defaultBlueprint;
+      }
+      
       // Fetch project (projects table has no direct relationship to businesses)
       const { data: projectData, error: projectError } = await supabase
         .from("projects")
