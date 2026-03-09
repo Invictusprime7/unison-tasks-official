@@ -2733,7 +2733,7 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ model: model.id, max_tokens: model.maxTokens, messages: aiMessages }),
+          body: JSON.stringify({ model: model.id, ...(model.id.startsWith('openai/') ? { max_completion_tokens: model.maxTokens } : { max_tokens: model.maxTokens }), messages: aiMessages }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
