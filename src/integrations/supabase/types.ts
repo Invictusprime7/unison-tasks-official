@@ -2702,6 +2702,10 @@ export type Database = {
         Returns: undefined
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      is_project_member: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
       jsonb_is_object: { Args: { j: Json }; Returns: boolean }
       jsonb_is_string_array: { Args: { j: Json }; Returns: boolean }
       validate_file_share_token: {
