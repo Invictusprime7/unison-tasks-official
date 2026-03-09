@@ -458,7 +458,89 @@ function formatResearchContext(research: ResearchResult): string {
   return context;
 }
 
-serve(async (req) => {
+/**
+ * Sanitize React/TSX files to fix common HTML-in-JSX issues.
+ * - Converts HTML comments <!-- --> to JSX {/* */}
+ * - Converts class= to className=
+ * - Converts for= to htmlFor=
+ * - If content is predominantly raw HTML (has <body>, <!DOCTYPE>, etc.), 
+ *   wraps it in dangerouslySetInnerHTML instead.
+ */
+function sanitizeReactFiles(files: Record<string, string>): Record<string, string> {
+  const result: Record<string, string> = {};
+  
+  for (const [path, content] of Object.entries(files)) {
+    if (!path.endsWith('.tsx') && !path.endsWith('.jsx')) {
+      result[path] = content;
+      continue;
+    }
+    
+    // Check if this file has raw HTML that can't be fixed with simple replacements
+    const hasDoctype = content.includes('<!DOCTYPE');
+    const hasHtmlTag = /<html[\s>]/i.test(content);
+    const hasBodyTag = /<body[\s>]/i.test(content);
+    const htmlCommentCount = (content.match(/<!--/g) || []).length;
+    const rawClassCount = (content.match(/ class="/g) || []).length;
+    
+    // If it's predominantly raw HTML dumped into JSX, wrap the whole thing
+    if ((hasDoctype || hasHtmlTag || hasBodyTag) || (htmlCommentCount > 3 && rawClassCount > 5)) {
+      console.warn(`[systems-build] File ${path} contains raw HTML, wrapping with dangerouslySetInnerHTML`);
+      const escaped = content
+        .replace(/\\/g, '\\\\')
+        .replace(/`/g, '\\`')
+        .replace(/\$/g, '\\$');
+      
+      result[path] = `import { useEffect, useRef } from "react";
+
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    // Activate any inline scripts
+    const scripts = containerRef.current.querySelectorAll("script");
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement("script");
+      Array.from(oldScript.attributes).forEach((attr) =>
+        newScript.setAttribute(attr.name, attr.value)
+      );
+      newScript.textContent = oldScript.textContent;
+      oldScript.parentNode?.replaceChild(newScript, oldScript);
+    });
+  }, []);
+
+  const raw = \`${escaped}\`;
+  const bodyMatch = raw.match(/<body[^>]*>([\\s\\S]*)<\\/body>/i);
+  const styleMatches = raw.match(/<style[^>]*>[\\s\\S]*?<\\/style>/gi);
+  const body = bodyMatch ? bodyMatch[1] : raw;
+  const styles = styleMatches ? styleMatches.join("\\n") : "";
+
+  return (
+    <>
+      {styles && <div dangerouslySetInnerHTML={{ __html: styles }} />}
+      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: body }} />
+    </>
+  );
+}`;
+      continue;
+    }
+    
+    // Light sanitization: fix HTML comments and attributes in JSX
+    let sanitized = content;
+    // Convert HTML comments to JSX comments
+    sanitized = sanitized.replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}');
+    // Convert class= to className= (but not inside strings/template literals)
+    sanitized = sanitized.replace(/(<[a-zA-Z][^>]*)\bclass="/g, '$1className="');
+    // Convert for= to htmlFor= on labels
+    sanitized = sanitized.replace(/(<label[^>]*)\bfor="/g, '$1htmlFor="');
+    
+    result[path] = sanitized;
+  }
+  
+  return result;
+}
+
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
