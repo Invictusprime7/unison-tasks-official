@@ -694,13 +694,22 @@ function prepareFiles(files: Record<string, string>): Record<string, string> {
 
     // Now process the code (strip unsupported imports)
     processedContent = processCode(processedContent, normalizedPath);
+
+    // Sandpack's react-ts template entry point is /index.tsx, NOT /main.tsx.
+    // Rename main.tsx → index.tsx so it's actually used as the entry.
+    if (normalizedPath === '/main.tsx') {
+      normalizedPath = '/index.tsx';
+    } else if (normalizedPath === '/main.jsx') {
+      normalizedPath = '/index.jsx';
+    }
+
     sandpackFiles[normalizedPath] = processedContent;
 
     // Track what we have
     if (normalizedPath === '/App.tsx' || normalizedPath === '/App.jsx') {
       hasApp = true;
     }
-    if (normalizedPath === '/main.tsx' || normalizedPath === '/main.jsx' || normalizedPath === '/index.tsx') {
+    if (normalizedPath === '/index.tsx' || normalizedPath === '/index.jsx') {
       hasMain = true;
     }
     if (normalizedPath.endsWith('.css')) {
@@ -718,7 +727,7 @@ function prepareFiles(files: Record<string, string>): Record<string, string> {
   }
 
   if (!hasMain) {
-    sandpackFiles['/main.tsx'] = DEFAULT_MAIN;
+    sandpackFiles['/index.tsx'] = DEFAULT_MAIN;
   }
 
   // Always add the hooks shim file for safe fallback imports
