@@ -255,44 +255,8 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
       const industry = "other" as Industry;
       const businessName = (business?.name as string) || (project.name as string) || "My Business";
       
-      // Check for stored blueprint in project metadata
-      const storedBlueprint = projectMetadata?.blueprint as BusinessBlueprint | undefined;
-      
-      let siteBlueprint: SiteBlueprint;
-      
-      if (storedBlueprint) {
-        // Convert stored BusinessBlueprint to SiteBlueprint
-        siteBlueprint = {
-          projectId,
-          businessId: bId || "",
-          industry: storedBlueprint.identity.industry,
-          businessModel: storedBlueprint.identity.business_model,
-          primaryGoal: storedBlueprint.identity.primary_goal,
-          brand: storedBlueprint.brand,
-          intentCatalog: storedBlueprint.intents,
-          navModel: {
-            items: getNavItemsForIndustry(storedBlueprint.identity.industry),
-            homeKey: "home",
-            style: {
-              position: storedBlueprint.design?.layout?.navigation_style || "fixed",
-              transparent: false,
-              showLogo: true,
-            },
-          },
-          automations: storedBlueprint.automations.rules,
-          dataContracts: {
-            leads: true,
-            bookings: storedBlueprint.identity.primary_goal === "get_bookings",
-            products: storedBlueprint.identity.industry === "ecommerce",
-            newsletter: true,
-            crm_leads: true,
-          },
-          _raw: storedBlueprint,
-        };
-      } else {
-        // Create default blueprint
-        siteBlueprint = createDefaultBlueprint(projectId, bId || "", industry, businessName);
-      }
+      // Create default blueprint (projects table has no metadata column for stored blueprints)
+      const siteBlueprint = createDefaultBlueprint(projectId, bId || "", industry, businessName);
       
       setBlueprint(siteBlueprint);
       onLoad?.(siteBlueprint);
