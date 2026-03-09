@@ -1705,7 +1705,7 @@ Learn from every bug fix to become better at prevention!`
         ? `${templateName} ${aesthetic || ''} ${source || ''}` 
         : userPromptText;
       
-      const variation = generateVariation(templatePromptText, variationSeed);
+      const variation = generateVariation(templatePromptText, variationSeed ?? undefined);
       const variationContext = variationToPromptContext(variation);
       
       console.log(`[ai-code-assistant] Template mode=${mode}, Industry=${variation.industry.name}, Colors=${variation.colorScheme.name}, Seed=${variation.seed}`);
