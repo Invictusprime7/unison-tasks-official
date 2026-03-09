@@ -226,21 +226,10 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
       setIsLoading(true);
       setError(null);
       
-      // Fetch project with business info
+      // Fetch project (projects table has no direct relationship to businesses)
       const { data: projectData, error: projectError } = await supabase
         .from("projects")
-        .select(`
-          id,
-          name,
-          metadata,
-          business:businesses(
-            id,
-            name,
-            industry,
-            notification_email,
-            metadata
-          )
-        `)
+        .select("id, name, description")
         .eq("id", projectId)
         .single();
       
@@ -248,18 +237,22 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
         throw new Error(`Failed to load project: ${projectError.message}`);
       }
       
-      // Cast to unknown first, then to Record for flexible property access
-      const project = projectData as unknown as Record<string, unknown>;
-      const projectBusiness = project.business as Record<string, unknown> | Array<Record<string, unknown>> | null;
+      const project = projectData as Record<string, unknown>;
       
-      // Extract business info
-      const business = Array.isArray(projectBusiness) 
-        ? projectBusiness[0] 
-        : projectBusiness;
+      // If businessId provided, fetch business separately; otherwise use project defaults
+      let business: Record<string, unknown> | null = null;
+      if (businessId) {
+        const { data: bizData } = await supabase
+          .from("businesses")
+          .select("id, name, notification_email")
+          .eq("id", businessId)
+          .single();
+        business = bizData as Record<string, unknown> | null;
+      }
       
-      const projectMetadata = project.metadata as Record<string, unknown> | null;
-      const bId = businessId || (business?.id as string);
-      const industry = ((business?.industry as string) || (projectMetadata?.industry as string) || "other") as Industry;
+      // Derive values with safe fallbacks
+      const bId = businessId || "";
+      const industry = "other" as Industry;
       const businessName = (business?.name as string) || (project.name as string) || "My Business";
       
       // Check for stored blueprint in project metadata
