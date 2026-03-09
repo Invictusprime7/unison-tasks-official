@@ -1,6 +1,6 @@
-import { useState, useRef, Suspense, lazy } from "react";
+import { useState, useRef, Suspense, lazy, Component, type ReactNode, type ErrorInfo } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FolderOpen } from "lucide-react";
+import { ArrowLeft, FolderOpen, AlertTriangle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VFSProvider } from "@/contexts/VFSContext";
@@ -10,6 +10,49 @@ const DesignStudio = lazy(() => import("@/components/creatives/DesignStudio").th
 const WebBuilder = lazy(() => import("@/components/creatives/WebBuilder").then(m => ({ default: m.WebBuilder })));
 const FileBrowser = lazy(() => import("@/components/creatives/design-studio/FileBrowser").then(m => ({ default: m.FileBrowser })));
 
+class VFSErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[VFS] Render error:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-full flex items-center justify-center bg-background">
+          <div className="text-center max-w-md p-8">
+            <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Design Studio failed to load</h2>
+            <p className="text-muted-foreground mb-4 text-sm">
+              {this.state.error?.message || "An unexpected error occurred."}
+            </p>
+            <Button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const DesignStudioPage = () => {
   const navigate = useNavigate();
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
@@ -17,6 +60,7 @@ const DesignStudioPage = () => {
   const [activeTab, setActiveTab] = useState<"canvas" | "web">("canvas");
 
   return (
+    <VFSErrorBoundary>
     <VFSProvider>
     <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden">
       <header className="h-10 sm:h-12 border-b border-gray-200 bg-white flex items-center justify-between px-2 sm:px-4 shrink-0 min-w-0">
@@ -71,6 +115,7 @@ const DesignStudioPage = () => {
       </Suspense>
     </div>
     </VFSProvider>
+    </VFSErrorBoundary>
   );
 };
 

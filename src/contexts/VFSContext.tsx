@@ -162,7 +162,9 @@ export function VFSProvider({
   // Auto-start preview on mount if configured
   useEffect(() => {
     if (autoStartPreview && dockerAvailable && vfs.hasFiles && !preview.session) {
-      preview.startSession(vfs.nodes);
+      preview.startSession(vfs.nodes).catch(err => {
+        console.warn('[VFSContext] Auto-start preview failed:', err);
+      });
     }
   }, [autoStartPreview, dockerAvailable, vfs.hasFiles]);
   
@@ -207,34 +209,49 @@ export function VFSProvider({
   
   // Enhanced import actions
   const importSavedProject = useCallback((data: string | object): SavedProjectData | null => {
-    const project = parseSavedProject(data);
-    if (project) {
-      vfs.importFiles(project.files);
-      console.log('[VFSContext] Imported saved project:', project.name, Object.keys(project.files).length, 'files');
+    try {
+      const project = parseSavedProject(data);
+      if (project) {
+        vfs.importFiles(project.files);
+        console.log('[VFSContext] Imported saved project:', project.name, Object.keys(project.files).length, 'files');
+      }
+      return project;
+    } catch (err) {
+      console.error('[VFSContext] Error importing saved project:', err);
+      return null;
     }
-    return project;
   }, [vfs]);
   
   const importFromWebpage = useCallback((html: string, sourceUrl?: string): VFSGenerationResult => {
-    const webContent = parseOnlineWebpage(html, sourceUrl);
-    const result = generateUniqueReactVFS(webContent, {
-      projectName: webContent.meta.title || 'ImportedSite',
-      splitComponents: true,
-      useTypeScript: true,
-    });
-    vfs.importFiles(result.files);
-    console.log('[VFSContext] Imported webpage:', sourceUrl || 'unknown', Object.keys(result.files).length, 'files');
-    return result;
+    try {
+      const webContent = parseOnlineWebpage(html, sourceUrl);
+      const result = generateUniqueReactVFS(webContent, {
+        projectName: webContent.meta.title || 'ImportedSite',
+        splitComponents: true,
+        useTypeScript: true,
+      });
+      vfs.importFiles(result.files);
+      console.log('[VFSContext] Imported webpage:', sourceUrl || 'unknown', Object.keys(result.files).length, 'files');
+      return result;
+    } catch (err) {
+      console.error('[VFSContext] Error importing webpage:', err);
+      return { files: {}, componentName: 'Error', entryPoint: '/src/App.tsx' } as VFSGenerationResult;
+    }
   }, [vfs]);
   
   const importFromCode = useCallback((code: string, projectName?: string): VFSGenerationResult => {
-    const result = transformCodeToVFS(code, {
-      projectName: projectName || 'Generated',
-      preferReact: true,
-    });
-    vfs.importFiles(result.files);
-    console.log('[VFSContext] Imported code:', result.componentName, Object.keys(result.files).length, 'files');
-    return result;
+    try {
+      const result = transformCodeToVFS(code, {
+        projectName: projectName || 'Generated',
+        preferReact: true,
+      });
+      vfs.importFiles(result.files);
+      console.log('[VFSContext] Imported code:', result.componentName, Object.keys(result.files).length, 'files');
+      return result;
+    } catch (err) {
+      console.error('[VFSContext] Error importing code:', err);
+      return { files: {}, componentName: 'Error', entryPoint: '/src/App.tsx' } as VFSGenerationResult;
+    }
   }, [vfs]);
   
   const parseWebContent = useCallback((html: string, sourceUrl?: string): ParsedWebContent => {

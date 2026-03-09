@@ -1,27 +1,85 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, Component, type ReactNode, type ErrorInfo } from "react";
 import { VFSProvider } from "@/contexts/VFSContext";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const WebBuilder = lazy(() =>
   import("@/components/creatives/WebBuilder").then((m) => ({ default: m.WebBuilder }))
 );
 
-const WebBuilderPage = () => (
-  <VFSProvider>
-    <div className="h-screen w-full">
-      <Suspense
-        fallback={
-          <div className="h-screen w-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading Web Builder...</p>
+// Inner error boundary that catches VFS/WebBuilder-specific crashes
+// and allows recovery without navigating away
+class VFSErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[VFS] Render error:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen w-full flex items-center justify-center bg-background">
+          <div className="text-center max-w-md p-8">
+            <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Web Builder failed to load</h2>
+            <p className="text-muted-foreground mb-4 text-sm">
+              {this.state.error?.message || "An unexpected error occurred during initialization."}
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+              <Button
+                onClick={() => window.location.href = "/creatives"}
+                variant="default"
+                size="sm"
+              >
+                Back to Creatives
+              </Button>
             </div>
           </div>
-        }
-      >
-        <WebBuilder />
-      </Suspense>
-    </div>
-  </VFSProvider>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const WebBuilderPage = () => (
+  <VFSErrorBoundary>
+    <VFSProvider>
+      <div className="h-screen w-full">
+        <Suspense
+          fallback={
+            <div className="h-screen w-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading Web Builder...</p>
+              </div>
+            </div>
+          }
+        >
+          <WebBuilder />
+        </Suspense>
+      </div>
+    </VFSProvider>
+  </VFSErrorBoundary>
 );
 
 export default WebBuilderPage;

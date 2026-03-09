@@ -441,24 +441,46 @@ export const SystemLauncher = ({
         throw error;
       }
 
+      // Handle both React fullstack output (files) and HTML output (code)
       const generatedCode = data?.code;
-      if (!generatedCode || generatedCode.length < 100) {
+      const generatedFiles = data?.files;
+
+      if (generatedFiles && typeof generatedFiles === "object") {
+        // React fullstack mode — pass VFS files to WebBuilder
+        navigate("/web-builder", {
+          state: {
+            vfsFiles: generatedFiles,
+            generatedCode:
+              generatedFiles["src/App.tsx"] ||
+              generatedFiles["App.tsx"] ||
+              "",
+            templateName: `AI ${selectedTemplate.name}`,
+            aesthetic: selectedTheme?.id,
+            templateCategory: selectedTemplate.category,
+            systemType: selectedSystem,
+            systemName: system.name,
+            preloadedIntents: system.intents,
+            startInPreview: true,
+          },
+        });
+      } else if (generatedCode && generatedCode.length >= 100) {
+        // HTML mode — pass raw code
+        navigate("/web-builder", {
+          state: {
+            generatedCode,
+            templateName: `AI ${selectedTemplate.name}`,
+            aesthetic: selectedTheme?.id,
+            templateCategory: selectedTemplate.category,
+            systemType: selectedSystem,
+            systemName: system.name,
+            preloadedIntents: system.intents,
+            startInPreview: true,
+          },
+        });
+      } else {
         toast.error("AI generation produced no output. Try again.");
         return;
       }
-
-      navigate("/web-builder", {
-        state: {
-          generatedCode,
-          templateName: `AI ${selectedTemplate.name}`,
-          aesthetic: selectedTheme?.id,
-          templateCategory: selectedTemplate.category,
-          systemType: selectedSystem,
-          systemName: system.name,
-          preloadedIntents: system.intents,
-          startInPreview: true,
-        },
-      });
 
       onOpenChange(false);
       resetState();
