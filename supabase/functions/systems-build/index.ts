@@ -626,8 +626,11 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
           } catch { /* fall through */ }
         }
         
-        // If content is raw HTML, wrap it in a React component
-        if (filesJson.includes("<!DOCTYPE") || filesJson.includes("<html") || filesJson.includes("<header")) {
+        // If content is raw HTML (or JSX mixed with HTML comments/attributes), wrap it in a React component
+        const looksLikeRawHtml = filesJson.includes("<!DOCTYPE") || filesJson.includes("<html") || 
+          filesJson.includes("<header") || filesJson.includes("<!--") || 
+          / class="[^"]*"/.test(filesJson) || filesJson.includes("<nav") || filesJson.includes("<footer");
+        if (looksLikeRawHtml) {
           console.warn("[systems-build] Raw HTML detected, wrapping in React component");
           const escapedHtml = filesJson
             .replace(/\\/g, "\\\\")
