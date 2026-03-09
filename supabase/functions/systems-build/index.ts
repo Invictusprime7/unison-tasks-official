@@ -589,9 +589,12 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
         filesJson = filesJson.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
         const parsed = JSON.parse(filesJson);
         
+        // Sanitize all .tsx files to fix HTML-in-JSX issues
+        const sanitizedFiles = sanitizeReactFiles(parsed.files || {});
+        
         return new Response(
           JSON.stringify({
-            files: parsed.files,
+            files: sanitizedFiles,
             entryPoint: parsed.entryPoint || "src/App.tsx",
             framework: "react",
             buildTool: "vite",
