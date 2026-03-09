@@ -55,9 +55,11 @@ export interface RecipeExecutionResult {
 /**
  * Inngest step interface — subset of what Inngest provides.
  * We accept this to stay decoupled from the full Inngest SDK types.
+ * Using `any` for return type to match Inngest's wrapped Promise type.
  */
 export interface InngestStepRunner {
-  run: <T>(id: string, fn: () => Promise<T>) => Promise<T>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  run: <T>(id: string, fn: () => Promise<T>) => Promise<any>;
   sleep: (id: string, duration: string) => Promise<void>;
 }
 
