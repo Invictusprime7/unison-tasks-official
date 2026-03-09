@@ -11,17 +11,20 @@ const corsHeaders = {
 interface BookingPayload {
   action: 'create' | 'cancel' | 'reschedule';
   businessId: string;
-  serviceId?: string;
-  slotId?: string;
-  bookingId?: string;
+  serviceId?: string | null;
+  slotId?: string | null;
+  bookingId?: string | null;
   customerName: string;
   customerEmail: string;
-  customerPhone?: string;
-  startsAt?: string;
-  endsAt?: string;
-  notes?: string;
-  newStartsAt?: string;
-  newEndsAt?: string;
+  customerPhone?: string | null;
+  startsAt?: string | null;
+  datetime?: string | null;
+  endsAt?: string | null;
+  notes?: string | null;
+  newStartsAt?: string | null;
+  newEndsAt?: string | null;
+  serviceName?: string | null;
+  [key: string]: unknown;
 }
 
 type BusinessSettings = {
