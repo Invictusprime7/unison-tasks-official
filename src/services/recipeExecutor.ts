@@ -58,8 +58,8 @@ export interface RecipeExecutionResult {
  * Using `any` for return type to match Inngest's wrapped Promise type.
  */
 export interface InngestStepRunner {
-  run: <T>(id: string, fn: () => Promise<T>) => Promise<T>;
-  sleep: (id: string, duration: string) => Promise<void>;
+  run: <T>(id: string, fn: () => Promise<T>) => Promise<any>;
+  sleep: (id: string, duration: string) => Promise<any>;
 }
 
 // ============================================================================
