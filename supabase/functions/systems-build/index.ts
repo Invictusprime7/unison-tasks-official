@@ -529,10 +529,38 @@ export default function App() {
     let sanitized = content;
     // Convert HTML comments to JSX comments
     sanitized = sanitized.replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}');
-    // Convert class= to className= (but not inside strings/template literals)
-    sanitized = sanitized.replace(/(<[a-zA-Z][^>]*)\bclass="/g, '$1className="');
+    // Convert class= to className= (globally in tag contexts, not just first occurrence)
+    sanitized = sanitized.replace(/\bclass="/g, 'className="');
     // Convert for= to htmlFor= on labels
-    sanitized = sanitized.replace(/(<label[^>]*)\bfor="/g, '$1htmlFor="');
+    sanitized = sanitized.replace(/\bfor="/g, 'htmlFor="');
+    // Convert inline style strings to JSX style objects: style="color: red; font-size: 16px"
+    sanitized = sanitized.replace(/\bstyle="([^"]*)"/g, (_match: string, styleStr: string) => {
+      try {
+        const pairs = styleStr.split(';').filter((s: string) => s.trim()).map((s: string) => {
+          const [prop, ...valParts] = s.split(':');
+          if (!prop || valParts.length === 0) return null;
+          const camelProp = prop.trim().replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
+          const val = valParts.join(':').trim();
+          // Keep numeric values as numbers if they're purely numeric
+          const isNumeric = /^\d+(\.\d+)?$/.test(val);
+          return `${camelProp}: ${isNumeric ? val : `"${val}"`}`;
+        }).filter(Boolean);
+        return `style={{${pairs.join(', ')}}}`;
+      } catch {
+        return `style={{}}`;
+      }
+    });
+    // Convert onclick/onchange etc to React equivalents
+    sanitized = sanitized.replace(/\bonclick="/g, 'onClick="');
+    sanitized = sanitized.replace(/\bonchange="/g, 'onChange="');
+    sanitized = sanitized.replace(/\bonsubmit="/g, 'onSubmit="');
+    sanitized = sanitized.replace(/\bonfocus="/g, 'onFocus="');
+    sanitized = sanitized.replace(/\bonblur="/g, 'onBlur="');
+    // Convert tabindex= to tabIndex=
+    sanitized = sanitized.replace(/\btabindex="/g, 'tabIndex="');
+    // Convert colspan/rowspan to camelCase
+    sanitized = sanitized.replace(/\bcolspan="/g, 'colSpan="');
+    sanitized = sanitized.replace(/\browspan="/g, 'rowSpan="');
     
     result[path] = sanitized;
   }
