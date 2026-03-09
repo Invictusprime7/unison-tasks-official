@@ -605,16 +605,91 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } catch (parseError) {
-        // If JSON parsing fails, return raw content
-        console.warn("[systems-build] Failed to parse React JSON, returning raw:", parseError);
+        // If JSON parsing fails, try to extract JSON from mixed content
+        console.warn("[systems-build] Failed to parse React JSON, attempting extraction:", parseError);
+        
+        // Try to find JSON in the response
+        const jsonMatch = filesJson.match(/\{[\s\S]*"files"\s*:\s*\{[\s\S]*\}[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            const extracted = JSON.parse(jsonMatch[0]);
+            return new Response(
+              JSON.stringify({
+                files: extracted.files,
+                entryPoint: extracted.entryPoint || "src/App.tsx",
+                framework: "react",
+                buildTool: "vite",
+                _meta: { ai_generated: true, outputFormat: "react", recovered: true },
+              }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } catch { /* fall through */ }
+        }
+        
+        // If content is raw HTML, wrap it in a React component
+        if (filesJson.includes("<!DOCTYPE") || filesJson.includes("<html") || filesJson.includes("<header")) {
+          console.warn("[systems-build] Raw HTML detected, wrapping in React component");
+          const escapedHtml = filesJson
+            .replace(/\\/g, "\\\\")
+            .replace(/`/g, "\\`")
+            .replace(/\$/g, "\\$");
+          
+          const wrappedFiles = {
+            "src/App.tsx": `import { useEffect, useRef } from "react";
+
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const scripts = containerRef.current.querySelectorAll("script");
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement("script");
+      Array.from(oldScript.attributes).forEach((attr) =>
+        newScript.setAttribute(attr.name, attr.value)
+      );
+      newScript.textContent = oldScript.textContent;
+      oldScript.parentNode?.replaceChild(newScript, oldScript);
+    });
+  }, []);
+
+  const html = \`${escapedHtml}\`;
+  
+  // Extract body content
+  const bodyMatch = html.match(/<body[^>]*>([\\s\\S]*)<\\/body>/i);
+  const styleMatch = html.match(/<style[^>]*>([\\s\\S]*?)<\\/style>/gi);
+  const bodyContent = bodyMatch ? bodyMatch[1] : html;
+  const styles = styleMatch ? styleMatch.join("\\n") : "";
+
+  return (
+    <>
+      <div dangerouslySetInnerHTML={{ __html: styles }} />
+      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: bodyContent }} />
+    </>
+  );
+}`,
+          };
+          
+          return new Response(
+            JSON.stringify({
+              files: wrappedFiles,
+              entryPoint: "src/App.tsx",
+              framework: "react",
+              buildTool: "vite",
+              _meta: { ai_generated: true, outputFormat: "react", html_wrapped: true },
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Last resort: wrap raw code as a single React file
         return new Response(
           JSON.stringify({
-            code: filesJson,
-            _meta: {
-              ai_generated: true,
-              outputFormat: "react",
-              parse_error: true,
-            },
+            files: { "src/App.tsx": filesJson },
+            entryPoint: "src/App.tsx",
+            framework: "react",
+            buildTool: "vite",
+            _meta: { ai_generated: true, outputFormat: "react", parse_error: true },
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
