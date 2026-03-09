@@ -7,7 +7,8 @@
   "regions": ["iad1"],
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@3.2.0"
+      "runtime": "@vercel/node@3.2.0",
+      "maxDuration": 30
     }
   },
   "crons": [
@@ -30,11 +31,36 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/_preview/(.*)",
+      "destination": "/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
+    {
+      "source": "/api/preview/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PATCH, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
     {
       "source": "/assets/(.*)\\.css",
       "headers": [

@@ -2609,47 +2609,21 @@ Write your <thinking> block FIRST, then immediately follow with your complete re
 Never include the <thinking> block explanation text in your final output.`;
 
     // Helper: parse and strip <thinking>…</thinking> from a raw model response
-    // Also strips untagged reasoning text that some models (Gemini) dump before the code
     const extractThinkingTags = (raw: string): { reasoning: string; content: string } => {
-      let reasoning = '';
-      let content = raw;
-
-      // Phase 1: Strip explicit <thinking> tags
-      const startMatch = content.match(/^\s*<thinking>([\s\S]*?)<\/thinking>\s*/i);
-      if (startMatch) {
-        reasoning = startMatch[1].trim();
-        content = content.slice(startMatch[0].length).trim();
-      } else {
-        const anyMatch = content.match(/<thinking>([\s\S]*?)<\/thinking>\s*/i);
-        if (anyMatch) {
-          reasoning = anyMatch[1].trim();
-          content = content.replace(/<thinking>[\s\S]*?<\/thinking>\s*/i, '').trim();
-        }
+      // Match both single-line and multi-line thinking blocks at the start of the response
+      const match = raw.match(/^\s*<thinking>([\s\S]*?)<\/thinking>\s*/i);
+      if (match) {
+        return { reasoning: match[1].trim(), content: raw.slice(match[0].length).trim() };
       }
-
-      // Phase 2: Strip untagged reasoning text before the actual code.
-      // Some models (Gemini 2.5 Flash) dump their chain-of-thought as plain text
-      // before the code without using <thinking> tags.
-      // Detect the first real code marker and strip everything before it.
-      const codeMarkers = [
-        content.indexOf('<!DOCTYPE'),
-        content.indexOf('<html'),
-        content.indexOf('<head'),
-        content.indexOf('```'),
-      ].filter(i => i > 0);
-
-      if (codeMarkers.length > 0) {
-        const firstCode = Math.min(...codeMarkers);
-        // Only strip if there's substantial text before the code (> 20 chars)
-        // that looks like reasoning (contains numbered steps, planning keywords, etc.)
-        const preText = content.slice(0, firstCode);
-        if (preText.length > 20 && /\d\.\s*(UNDERSTAND|ANALY[SZ]E|PLAN|CONSIDER|DECIDE)|Font Mapping|Color Mapping|MULTI-SECTION|LAYOUT|I'll |I will |Let me |Let's /i.test(preText)) {
-          reasoning = reasoning ? reasoning + '\n\n' + preText.trim() : preText.trim();
-          content = content.slice(firstCode).trim();
-        }
+      // Also handle thinking block anywhere in the response (some models insert it mid-text)
+      const anyMatch = raw.match(/<thinking>([\s\S]*?)<\/thinking>\s*/i);
+      if (anyMatch) {
+        return {
+          reasoning: anyMatch[1].trim(),
+          content: raw.replace(/<thinking>[\s\S]*?<\/thinking>\s*/i, '').trim(),
+        };
       }
-
-      return { reasoning, content };
+      return { reasoning: '', content: raw };
     };
 
     // Inject AI Site Elements Library knowledge when available.

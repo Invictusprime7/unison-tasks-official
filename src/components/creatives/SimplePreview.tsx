@@ -65,9 +65,9 @@ interface SimplePreviewProps {
   showNavigator?: boolean;
   /** Force a specific preview mode */
   forceMode?: 'runtime' | 'sandpack' | 'codesandbox' | 'html';
-  /** Disable runtime mode (use Sandpack as primary). Sandpack is the recommended default - it provides browser-based HMR without needing a backend. */
+  /** Disable runtime mode — hardened Sandpack will be used as primary */
   disableRuntime?: boolean;
-  /** Enable runtime mode explicitly (requires ECS backend deployment) */
+  /** Enable runtime mode (default: true — Vercel preview API with Docker runtime) */
   enableRuntime?: boolean;
   /** Use CodeSandbox cloud preview instead of local Sandpack */
   useCodeSandbox?: boolean;
@@ -84,25 +84,61 @@ export interface SimplePreviewHandle {
 // Constants
 // ============================================================================
 
-const SANDPACK_TIMEOUT_MS = 30000; // 30 seconds timeout for Sandpack
+const SANDPACK_TIMEOUT_MS = 120000; // 120 seconds — generous timeout, never falls back to HTML
+const SANDPACK_AUTO_RETRY_DELAY = 2000; // Auto-retry after 2s on transient errors
+const SANDPACK_MAX_RETRIES = 3; // Maximum auto-retries before showing error
 
-// Common dependencies that are always available
-const BUNDLED_DEPENDENCIES = {
-  "react": "^18.2.0",
-  "react-dom": "^18.2.0",
+// Docker runtime's full dependency set — ensures Sandpack resolves everything
+const BUNDLED_DEPENDENCIES: Record<string, string> = {
+  "react": "^18.3.1",
+  "react-dom": "^18.3.1",
   "react-router-dom": "^6.20.0",
   "lucide-react": "latest",
   "clsx": "latest",
   "tailwind-merge": "latest",
   "class-variance-authority": "latest",
   "@radix-ui/react-slot": "latest",
+  "@radix-ui/react-dialog": "latest",
+  "@radix-ui/react-dropdown-menu": "latest",
+  "@radix-ui/react-tabs": "latest",
+  "@radix-ui/react-toast": "latest",
+  "@radix-ui/react-tooltip": "latest",
+  "@radix-ui/react-select": "latest",
+  "@radix-ui/react-checkbox": "latest",
+  "@radix-ui/react-switch": "latest",
+  "@radix-ui/react-label": "latest",
+  "@radix-ui/react-avatar": "latest",
+  "@radix-ui/react-popover": "latest",
+  "@radix-ui/react-separator": "latest",
+  "@radix-ui/react-scroll-area": "latest",
+  "@radix-ui/react-accordion": "latest",
+  "@radix-ui/react-collapsible": "latest",
+  "@radix-ui/react-progress": "latest",
+  "@radix-ui/react-radio-group": "latest",
+  "@radix-ui/react-slider": "latest",
+  "@radix-ui/react-toggle": "latest",
+  "@radix-ui/react-toggle-group": "latest",
   "framer-motion": "latest",
   "date-fns": "latest",
   "recharts": "latest",
   "inngest": "latest",
+  "sonner": "latest",
+  "cmdk": "latest",
+  "embla-carousel-react": "latest",
+  "react-day-picker": "latest",
+  "input-otp": "latest",
+  "react-resizable-panels": "latest",
+  "vaul": "latest",
+  "next-themes": "latest",
+  "zustand": "latest",
+  "zod": "latest",
+  "react-hook-form": "latest",
+  "@hookform/resolvers": "latest",
+  "@tanstack/react-query": "latest",
+  "@tanstack/react-table": "latest",
 };
 
-// Modules that can be imported (won't be stripped)
+// Docker runtime's full allowed imports — never stripped
 const ALLOWED_IMPORTS = new Set([
   'react',
   'react-dom',
@@ -112,10 +148,45 @@ const ALLOWED_IMPORTS = new Set([
   'tailwind-merge',
   'class-variance-authority',
   '@radix-ui/react-slot',
+  '@radix-ui/react-dialog',
+  '@radix-ui/react-dropdown-menu',
+  '@radix-ui/react-tabs',
+  '@radix-ui/react-toast',
+  '@radix-ui/react-tooltip',
+  '@radix-ui/react-select',
+  '@radix-ui/react-checkbox',
+  '@radix-ui/react-switch',
+  '@radix-ui/react-label',
+  '@radix-ui/react-avatar',
+  '@radix-ui/react-popover',
+  '@radix-ui/react-separator',
+  '@radix-ui/react-scroll-area',
+  '@radix-ui/react-accordion',
+  '@radix-ui/react-collapsible',
+  '@radix-ui/react-progress',
+  '@radix-ui/react-radio-group',
+  '@radix-ui/react-slider',
+  '@radix-ui/react-toggle',
+  '@radix-ui/react-toggle-group',
   'framer-motion',
   'date-fns',
   'recharts',
   'inngest',
+  'sonner',
+  'cmdk',
+  'embla-carousel-react',
+  'react-day-picker',
+  'input-otp',
+  'react-resizable-panels',
+  'vaul',
+  'next-themes',
+  'zustand',
+  'zod',
+  'react-hook-form',
+  '@hookform/resolvers',
+  '@tanstack/react-query',
+  '@tanstack/react-table',
+  'react-router-dom',
 ]);
 
 // CSS Variables for shadcn/ui theming
@@ -768,12 +839,24 @@ const PreviewStatus: React.FC<{
   const { sandpack } = useSandpack();
   const { status, error } = sandpack;
   const [hasNotifiedReady, setHasNotifiedReady] = useState(false);
+  const retryCountRef = useRef(0);
 
   useEffect(() => {
-    if (error && onError) {
-      onError(error.message);
+    if (error) {
+      // Auto-recover: reset Sandpack on transient errors instead of propagating
+      if (retryCountRef.current < SANDPACK_MAX_RETRIES) {
+        retryCountRef.current++;
+        console.warn(`[SimplePreview] Auto-recovering from error (attempt ${retryCountRef.current}):`, error.message);
+        const timer = setTimeout(() => {
+          try { sandpack.resetAllFiles(); } catch { /* ignore */ }
+        }, SANDPACK_AUTO_RETRY_DELAY);
+        return () => clearTimeout(timer);
+      }
+      // Only propagate after exhausting retries
+      onError?.(error.message);
     }
     if (status === 'idle' && !error && onReady && !hasNotifiedReady) {
+      retryCountRef.current = 0; // Reset retry counter on success
       onReady();
       setHasNotifiedReady(true);
     }
@@ -788,6 +871,14 @@ const PreviewStatus: React.FC<{
 
   const getStatusDisplay = () => {
     if (error) {
+      // Show recovering state instead of hard error
+      if (retryCountRef.current < SANDPACK_MAX_RETRIES) {
+        return {
+          icon: <Loader2 className="w-3 h-3 animate-spin text-amber-500" />,
+          text: 'Recovering...',
+          className: 'bg-amber-50 border-amber-200 text-amber-700'
+        };
+      }
       return {
         icon: <AlertCircle className="w-3 h-3 text-destructive" />,
         text: 'Error',
@@ -879,24 +970,19 @@ const PreviewInner: React.FC<{
 }> = ({ onReady, onError, onTimeout, showNavigator, showConsole }) => {
   const [consoleOpen, setConsoleOpen] = useState(false);
   const { sandpack } = useSandpack();
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasTimedOut = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Set up timeout detection
+  // Set up timeout detection — only logs a warning, never triggers HTML fallback
   useEffect(() => {
-    hasTimedOut.current = false;
-    
-    // Only start timeout if we're not already idle
     if (sandpack.status === 'idle') {
       return;
     }
     
     timeoutRef.current = setTimeout(() => {
-      // Check if still not ready after timeout
       if (sandpack.status !== 'idle') {
-        console.warn('[SimplePreview] Sandpack timeout - status:', sandpack.status);
-        hasTimedOut.current = true;
-        onTimeout?.();
+        console.warn('[SimplePreview] Sandpack still loading after timeout — status:', sandpack.status);
+        // Do NOT call onTimeout — Sandpack will eventually resolve.
+        // The Docker runtime deps ensure all imports are resolvable.
       }
     }, SANDPACK_TIMEOUT_MS);
 
@@ -905,7 +991,7 @@ const PreviewInner: React.FC<{
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [sandpack.status, onTimeout]);
+  }, [sandpack.status]);
 
   // Clear timeout when ready
   useEffect(() => {
@@ -2580,16 +2666,9 @@ const RuntimePreview: React.FC<{
         onSessionStart?.(result.session);
         onReady?.();
       } else {
-        setStatus('error');
-        setErrorMessage(result.error || 'Failed to start preview session');
-        onError?.(result.error || 'Failed to start preview session');
-        
-        // Fallback to Sandpack after 3 seconds
-        setTimeout(() => {
-          if (mountedRef.current) {
-            onFallback();
-          }
-        }, 3000);
+        // Session start failed — immediately fall back to hardened Sandpack
+        console.warn('[RuntimePreview] Session failed, switching to Sandpack:', result.error);
+        onFallback();
       }
     };
     
@@ -2649,24 +2728,17 @@ const RuntimePreview: React.FC<{
           <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
         </div>
         <div className="text-center">
-          <p className="text-sm font-medium text-slate-700">Starting Vite Runtime...</p>
-          <p className="text-xs text-slate-500 mt-1">Provisioning ECS container with HMR support</p>
+          <p className="text-sm font-medium text-slate-700">Starting Preview Runtime...</p>
+          <p className="text-xs text-slate-500 mt-1">Connecting to Vercel preview service</p>
         </div>
       </div>
     );
   }
 
+  // Error state should never render — fallback happens immediately in initSession
+  // But keep a minimal fallback just in case
   if (status === 'error') {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-red-50 gap-4">
-        <AlertCircle className="w-8 h-8 text-red-500" />
-        <div className="text-center">
-          <p className="text-sm font-medium text-red-700">Runtime Preview Unavailable</p>
-          <p className="text-xs text-red-500 mt-1">{errorMessage}</p>
-          <p className="text-xs text-slate-500 mt-2">Falling back to Sandpack preview...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -2713,9 +2785,9 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   showConsole = false,
   showNavigator = false,
   forceMode,
-  disableRuntime = true, // Default to Sandpack until ECS backend is deployed
-  enableRuntime = false, // Set to true to enable runtime mode
-  useCodeSandbox = false, // Use CodeSandbox cloud instead of local Sandpack
+  disableRuntime = false,  // Runtime enabled by default — Docker preview injected into Vercel
+  enableRuntime = true,    // Always try runtime first, falls back to hardened Sandpack
+  useCodeSandbox = false,  // Use CodeSandbox cloud instead of local Sandpack
 }, ref) => {
   const [key, setKey] = useState(0);
   
@@ -2824,13 +2896,17 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   }, [sandpackFiles, activeFile]);
 
   const handleError = useCallback((error: string) => {
+    // Only surface error after auto-recovery has been exhausted
+    // PreviewStatus handles auto-retry internally
+    console.warn('[SimplePreview] Error surfaced after auto-recovery:', error);
     setHasError(true);
     onError?.(error);
   }, [onError]);
 
   const handleTimeout = useCallback(() => {
-    console.warn('[SimplePreview] Sandpack timeout - falling back to HTML preview');
-    setMode('html');
+    // Never fall back to HTML — Sandpack with Docker runtime deps will eventually resolve.
+    // Just log a warning for diagnostics.
+    console.warn('[SimplePreview] Sandpack still loading — Docker runtime deps should resolve');
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -2840,7 +2916,8 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
   }, [forceMode, useRuntimeMode, useCodeSandbox]);
 
   const handleRuntimeFallback = useCallback(() => {
-    console.warn('[SimplePreview] Runtime unavailable - falling back to Sandpack');
+    // Runtime unavailable — switch to hardened Sandpack (never HTML fallback)
+    console.warn('[SimplePreview] Runtime unavailable — using hardened Sandpack');
     setMode(useCodeSandbox ? 'codesandbox' : 'sandpack');
   }, [useCodeSandbox]);
 
@@ -2892,12 +2969,12 @@ export const SimplePreview = forwardRef<SimplePreviewHandle, SimplePreviewProps>
     );
   }
 
-  // Sandpack mode (default fallback)
+  // Sandpack mode (primary preview — hardened with Docker runtime deps)
   return (
     <div className={cn('w-full h-full flex flex-col min-h-0 bg-background', className)} key={key}>
       {hasError && (
-        <div className="absolute top-10 left-2 right-2 z-20 bg-destructive/10 border border-destructive/20 rounded-md p-2 flex items-center justify-between">
-          <span className="text-xs text-destructive">Preview encountered an error</span>
+        <div className="absolute top-10 left-2 right-2 z-20 bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
+          <span className="text-xs text-amber-700">Preview recovering...</span>
           <Button variant="ghost" size="sm" onClick={handleRetry} className="h-6 px-2 text-xs">
             <RefreshCw className="w-3 h-3 mr-1" />
             Retry

@@ -407,7 +407,7 @@ export function getSnapshotSize(fileMap: FileMap): number {
 
 // Base URL for preview service
 // Uses Vercel API routes by default (same-origin /api/preview)
-// Can be overridden with VITE_PREVIEW_API_URL for external preview service
+// Can be overridden with VITE_PREVIEW_API_URL for external Docker gateway
 const PREVIEW_API_BASE = import.meta.env.VITE_PREVIEW_API_URL || '/api/preview';
 
 // Session cache
@@ -416,6 +416,11 @@ let keepaliveInterval: NodeJS.Timeout | null = null;
 
 /**
  * Start a new preview session
+ * 
+ * The Vercel API route creates a session and returns metadata.
+ * If a Docker gateway is configured, it proxies to that.
+ * Otherwise, a Vercel-native session is created and the client
+ * renders via hardened Sandpack with Docker runtime dependencies.
  */
 export async function startPreviewSession(
   projectId: string,
@@ -442,6 +447,12 @@ export async function startPreviewSession(
     }
 
     const data = await response.json();
+
+    // Handle deprecated 410 response from old API (should not happen anymore)
+    if (data.deprecated) {
+      return { success: false, error: 'Preview API deprecated — using Sandpack fallback' };
+    }
+
     currentSession = data.session;
 
     // Start keepalive pings
