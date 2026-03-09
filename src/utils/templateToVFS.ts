@@ -14,6 +14,125 @@ interface ConvertOptions {
 }
 
 // ============================================================================
+// HTML Document Helpers
+// ============================================================================
+
+/**
+ * Detects if content is a full HTML document
+ */
+function isHtmlDocument(code: string): boolean {
+  const trimmed = code.trim();
+  return trimmed.startsWith('<!DOCTYPE') || 
+         trimmed.startsWith('<html') ||
+         (trimmed.includes('<head') && trimmed.includes('<body'));
+}
+
+/**
+ * Extracts body content from an HTML document
+ */
+function extractBodyContent(html: string): string {
+  // Try to extract body content
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    return bodyMatch[1].trim();
+  }
+  
+  // If no body tags, try to get content between html tags
+  const htmlMatch = html.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
+  if (htmlMatch) {
+    // Remove head section
+    const withoutHead = htmlMatch[1].replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '');
+    return withoutHead.trim();
+  }
+  
+  // Return original if no structure found
+  return html;
+}
+
+/**
+ * Extracts style blocks from HTML and returns both styles and clean HTML
+ */
+function extractStylesFromHtml(html: string): { styles: string; cleanHtml: string } {
+  const styleBlocks: string[] = [];
+  
+  // Extract inline styles from head
+  const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  if (headMatch) {
+    const headContent = headMatch[1];
+    const styleMatches = headContent.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+    for (const match of styleMatches) {
+      styleBlocks.push(match[1].trim());
+    }
+  }
+  
+  // Also extract any style blocks from body
+  const cleanHtml = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  
+  return {
+    styles: styleBlocks.join('\n\n'),
+    cleanHtml
+  };
+}
+
+/**
+ * Converts HTML document to React component with embedded styles
+ */
+function htmlDocToReactComponent(html: string, componentName: string = 'App'): string {
+  const { styles, cleanHtml } = extractStylesFromHtml(html);
+  const bodyContent = extractBodyContent(cleanHtml);
+  
+  // Escape backticks and ${} for template literal safety
+  const escapedBody = bodyContent
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
+  
+  const escapedStyles = styles
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
+
+  return `import React, { useEffect, useRef } from 'react';
+
+/**
+ * ${componentName} - Auto-converted from HTML template
+ */
+
+const TEMPLATE_STYLES = \`
+${escapedStyles}
+\`;
+
+const TEMPLATE_HTML = \`${escapedBody}\`;
+
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Inject styles
+  useEffect(() => {
+    if (!TEMPLATE_STYLES.trim()) return;
+    
+    const style = document.createElement('style');
+    style.setAttribute('data-template-styles', '');
+    style.textContent = TEMPLATE_STYLES;
+    document.head.appendChild(style);
+    
+    return () => {
+      style.remove();
+    };
+  }, []);
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="min-h-screen bg-background text-foreground"
+      dangerouslySetInnerHTML={{ __html: TEMPLATE_HTML }} 
+    />
+  );
+}
+`;
+}
+
+// ============================================================================
 // VFS File Structure Generator
 // ============================================================================
 
@@ -75,12 +194,14 @@ body {
 }
 `;
 
+  // Check if it's an HTML document first
+  if (isHtmlDocument(templateCode)) {
+    files['/src/App.tsx'] = htmlDocToReactComponent(templateCode, componentName);
+  }
   // Detect if it's already a full React component
-  const isFullComponent = templateCode.includes('export default function') ||
+  else if (templateCode.includes('export default function') ||
     templateCode.includes('export default const') ||
-    templateCode.includes('function App()');
-
-  if (isFullComponent) {
+    templateCode.includes('function App()')) {
     files['/src/App.tsx'] = templateCode;
   } else if (templateCode.includes('import ') || templateCode.includes('export ')) {
     // It's a React component but not the App — wrap it
