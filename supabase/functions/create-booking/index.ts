@@ -5,23 +5,26 @@ import { Resend } from "https://esm.sh/resend@2.0.0?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface BookingPayload {
   action: 'create' | 'cancel' | 'reschedule';
   businessId: string;
-  serviceId?: string;
-  slotId?: string;
-  bookingId?: string;
+  serviceId?: string | null;
+  slotId?: string | null;
+  bookingId?: string | null;
   customerName: string;
   customerEmail: string;
-  customerPhone?: string;
-  startsAt?: string;
-  endsAt?: string;
-  notes?: string;
-  newStartsAt?: string;
-  newEndsAt?: string;
+  customerPhone?: string | null;
+  startsAt?: string | null;
+  datetime?: string | null;
+  endsAt?: string | null;
+  notes?: string | null;
+  newStartsAt?: string | null;
+  newEndsAt?: string | null;
+  serviceName?: string | null;
+  [key: string]: unknown;
 }
 
 type BusinessSettings = {
@@ -89,23 +92,42 @@ serve(async (req) => {
     const bookingSchema = z.object({
       action: z.enum(['create', 'cancel', 'reschedule']).default('create'),
       businessId: z.string().uuid(),
-      serviceId: z.string().uuid().optional(),
-      slotId: z.string().uuid().optional(),
-      bookingId: z.string().uuid().optional(),
-      customerName: z.string().trim().min(1).max(120).default(''),
-      customerEmail: z.string().trim().email().max(255).default(''),
-      customerPhone: z.string().trim().max(40).optional(),
-      startsAt: z.string().trim().max(64).optional(),
-      endsAt: z.string().trim().max(64).optional(),
-      notes: z.string().trim().max(2000).optional(),
-      newStartsAt: z.string().trim().max(64).optional(),
-      newEndsAt: z.string().trim().max(64).optional(),
-    });
+      serviceId: z.string().uuid().optional().nullable(),
+      slotId: z.string().uuid().optional().nullable(),
+      bookingId: z.string().uuid().optional().nullable(),
+      customerName: z.string().trim().min(1).max(120),
+      customerEmail: z.string().trim().email().max(255),
+      customerPhone: z.string().trim().max(40).optional().nullable(),
+      // Accept both startsAt and datetime for compatibility
+      startsAt: z.string().trim().max(64).optional().nullable(),
+      datetime: z.string().trim().max(64).optional().nullable(),
+      endsAt: z.string().trim().max(64).optional().nullable(),
+      notes: z.string().trim().max(2000).optional().nullable(),
+      newStartsAt: z.string().trim().max(64).optional().nullable(),
+      newEndsAt: z.string().trim().max(64).optional().nullable(),
+      // Accept extra fields from callers without failing
+      serviceName: z.string().optional().nullable(),
+      service: z.string().optional().nullable(),
+      date: z.string().optional().nullable(),
+      time: z.string().optional().nullable(),
+    }).passthrough();
 
-    const parsed = bookingSchema.safeParse(await req.json().catch(() => null));
-    if (!parsed.success) {
+    const rawBody = await req.json().catch(() => null);
+    if (!rawBody || typeof rawBody !== 'object') {
+      console.error("[create-booking] Empty or non-JSON body received");
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid request body' }),
+        JSON.stringify({ success: false, error: 'Invalid request body: expected JSON object' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("[create-booking] Received fields:", Object.keys(rawBody));
+
+    const parsed = bookingSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      console.error("[create-booking] Validation errors:", JSON.stringify(parsed.error.issues));
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request body', details: parsed.error.issues }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -138,7 +160,7 @@ serve(async (req) => {
   }
 });
 
-async function handleCreateBooking(supabase: any, body: BookingPayload) {
+async function handleCreateBooking(supabase: any, body: any) {
   const { 
     businessId, 
     serviceId, 
@@ -146,10 +168,12 @@ async function handleCreateBooking(supabase: any, body: BookingPayload) {
     customerName, 
     customerEmail, 
     customerPhone,
-    startsAt, 
     endsAt,
     notes 
   } = body;
+
+  // Accept startsAt OR datetime (caller compat)
+  const startsAt = body.startsAt || body.datetime;
 
   // Validate required fields
   if (!businessId || !customerName || !customerEmail) {
