@@ -402,8 +402,10 @@ export function scaffoldMultiPageVFS(
   }
 
   // If we have multiple pages, generate a Router-based App.tsx
+  // Only include pages that actually have files in the VFS
   if (newTargets.length > 0 && !mainComponentCode.includes('BrowserRouter') && !mainComponentCode.includes('Routes')) {
-    files['/src/App.tsx'] = generateRouterApp(mainComponentCode, targets);
+    const pagesWithFiles = targets.filter(t => files[t.path]);
+    files['/src/App.tsx'] = generateRouterApp(mainComponentCode, pagesWithFiles);
   }
 
   // Ensure entry files exist
