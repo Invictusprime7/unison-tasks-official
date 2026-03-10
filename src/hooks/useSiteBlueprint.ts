@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { 
   BusinessBlueprint, 
@@ -218,6 +218,12 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   
+  // Store callbacks in refs to avoid re-creating `load` when they change
+  const onLoadRef = useRef(onLoad);
+  onLoadRef.current = onLoad;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  
   /**
    * Load the site blueprint from database
    */
@@ -233,7 +239,7 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
         console.log(`[useSiteBlueprint] Non-UUID projectId "${projectId}", using local defaults`);
         const defaultBlueprint = createDefaultBlueprint(projectId, businessId || "", "other" as Industry, "My Business");
         setBlueprint(defaultBlueprint);
-        onLoad?.(defaultBlueprint);
+        onLoadRef.current?.(defaultBlueprint);
         return defaultBlueprint;
       }
       
@@ -270,7 +276,7 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
       const siteBlueprint = createDefaultBlueprint(projectId, bId || "", industry, businessName);
       
       setBlueprint(siteBlueprint);
-      onLoad?.(siteBlueprint);
+      onLoadRef.current?.(siteBlueprint);
       
       return siteBlueprint;
       
@@ -278,12 +284,12 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
       const error = err as Error;
       console.error("[useSiteBlueprint] Error loading blueprint:", error);
       setError(error);
-      onError?.(error);
+      onErrorRef.current?.(error);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, businessId, onLoad, onError]);
+  }, [projectId, businessId]);
   
   /**
    * Update brand tokens

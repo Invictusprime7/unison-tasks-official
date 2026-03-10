@@ -13,7 +13,7 @@
  * that shares the same brand system, intent catalog, data sources, and navigation map"
  */
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useSiteBlueprint, type SiteBlueprint } from "./useSiteBlueprint";
 import { usePageGraph } from "./usePageGraph";
 import { useSitePreview, type SitePreviewState } from "./useSitePreview";
@@ -150,6 +150,12 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
     onError,
   } = options;
   
+  // Store callbacks in refs to prevent re-render loops
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  
   // State
   const [state, setState] = useState<SiteBuilderState>({
     phase: "loading",
@@ -163,10 +169,10 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
     projectId,
     businessId,
     autoFetch: true,
-    onError: (err) => {
+    onError: useCallback((err: Error) => {
       setState(prev => ({ ...prev, error: err }));
-      onError?.(err);
-    },
+      onErrorRef.current?.(err);
+    }, []),
   });
   
   // Page graph hook
@@ -174,10 +180,10 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
     projectId,
     businessId,
     industry,
-    onError: (err) => {
+    onError: useCallback((err: Error) => {
       setState(prev => ({ ...prev, error: err }));
-      onError?.(err);
-    },
+      onErrorRef.current?.(err);
+    }, []),
   });
   
   // Preview hook
@@ -385,7 +391,7 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
       }
       
       setState(prev => ({ ...prev, phase: "ready" }));
-      onReady?.();
+      onReadyRef.current?.();
     };
     
     init();

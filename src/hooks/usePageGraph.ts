@@ -147,6 +147,12 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingNavKey, setGeneratingNavKey] = useState<string | null>(null);
   
+  // Store callbacks in refs to prevent dependency-array churn
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const onPageGeneratedRef = useRef(onPageGenerated);
+  onPageGeneratedRef.current = onPageGenerated;
+  
   // Cache for in-flight generation requests
   const generationQueue = useRef<Map<string, Promise<PageNode | null>>>(new Map());
   
@@ -197,12 +203,12 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       
     } catch (err) {
       console.error("[usePageGraph] Failed to load page graph:", err);
-      onError?.(err as Error);
+      onErrorRef.current?.(err as Error);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, businessId, onError]);
+  }, [projectId, businessId]);
   
   /**
    * Save the page graph to database
@@ -292,13 +298,13 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
         await savePageGraph(updatedGraph);
         
         // Notify
-        onPageGenerated?.(newPage);
+        onPageGeneratedRef.current?.(newPage);
         
         return newPage;
         
       } catch (err) {
         console.error(`[usePageGraph] Failed to generate page for ${navKey}:`, err);
-        onError?.(err as Error);
+        onErrorRef.current?.(err as Error);
         return null;
       } finally {
         setIsGenerating(false);
@@ -309,7 +315,7 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
     
     generationQueue.current.set(navKey, generatePromise);
     return generatePromise;
-  }, [pageGraph, navItems, industry, projectId, businessId, loadPageGraph, savePageGraph, onPageGenerated, onError]);
+  }, [pageGraph, navItems, industry, projectId, businessId, loadPageGraph, savePageGraph]);
   
   /**
    * Force regenerate a page
@@ -346,18 +352,18 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       setPageGraph(updatedGraph);
       await savePageGraph(updatedGraph);
       
-      onPageGenerated?.(newPage);
+      onPageGeneratedRef.current?.(newPage);
       return newPage;
       
     } catch (err) {
       console.error(`[usePageGraph] Failed to regenerate page for ${navKey}:`, err);
-      onError?.(err as Error);
+      onErrorRef.current?.(err as Error);
       return null;
     } finally {
       setIsGenerating(false);
       setGeneratingNavKey(null);
     }
-  }, [pageGraph, navItems, industry, projectId, businessId, savePageGraph, onPageGenerated, onError]);
+  }, [pageGraph, navItems, industry, projectId, businessId, savePageGraph]);
   
   /**
    * Add a new page by intent (for "Add Page" flow)
@@ -405,17 +411,17 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       setPageGraph(updatedGraph);
       await savePageGraph(updatedGraph);
       
-      onPageGenerated?.(newPage);
+      onPageGeneratedRef.current?.(newPage);
       return newPage;
       
     } catch (err) {
       console.error(`[usePageGraph] Failed to add page by intent ${intent}:`, err);
-      onError?.(err as Error);
+      onErrorRef.current?.(err as Error);
       return null;
     } finally {
       setIsGenerating(false);
     }
-  }, [pageGraph, industry, projectId, businessId, loadPageGraph, savePageGraph, onPageGenerated, onError]);
+  }, [pageGraph, industry, projectId, businessId, loadPageGraph, savePageGraph]);
   
   /**
    * Refresh the page graph from database
