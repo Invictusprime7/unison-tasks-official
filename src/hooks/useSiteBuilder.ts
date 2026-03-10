@@ -391,7 +391,7 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
       }
       
       setState(prev => ({ ...prev, phase: "ready" }));
-      onReady?.();
+      onReadyRef.current?.();
     };
     
     init();
