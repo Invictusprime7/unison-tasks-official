@@ -13,7 +13,7 @@
  * that shares the same brand system, intent catalog, data sources, and navigation map"
  */
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useSiteBlueprint, type SiteBlueprint } from "./useSiteBlueprint";
 import { usePageGraph } from "./usePageGraph";
 import { useSitePreview, type SitePreviewState } from "./useSitePreview";
