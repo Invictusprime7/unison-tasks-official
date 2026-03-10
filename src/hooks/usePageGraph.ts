@@ -304,7 +304,7 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
         
       } catch (err) {
         console.error(`[usePageGraph] Failed to generate page for ${navKey}:`, err);
-        onError?.(err as Error);
+        onErrorRef.current?.(err as Error);
         return null;
       } finally {
         setIsGenerating(false);
@@ -315,7 +315,7 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
     
     generationQueue.current.set(navKey, generatePromise);
     return generatePromise;
-  }, [pageGraph, navItems, industry, projectId, businessId, loadPageGraph, savePageGraph, onPageGenerated, onError]);
+  }, [pageGraph, navItems, industry, projectId, businessId, loadPageGraph, savePageGraph]);
   
   /**
    * Force regenerate a page
