@@ -298,7 +298,7 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
         await savePageGraph(updatedGraph);
         
         // Notify
-        onPageGenerated?.(newPage);
+        onPageGeneratedRef.current?.(newPage);
         
         return newPage;
         
