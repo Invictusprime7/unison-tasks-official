@@ -180,10 +180,10 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
     projectId,
     businessId,
     industry,
-    onError: (err) => {
+    onError: useCallback((err: Error) => {
       setState(prev => ({ ...prev, error: err }));
-      onError?.(err);
-    },
+      onErrorRef.current?.(err);
+    }, []),
   });
   
   // Preview hook
