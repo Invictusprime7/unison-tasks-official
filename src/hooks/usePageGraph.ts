@@ -147,6 +147,12 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingNavKey, setGeneratingNavKey] = useState<string | null>(null);
   
+  // Store callbacks in refs to prevent dependency-array churn
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const onPageGeneratedRef = useRef(onPageGenerated);
+  onPageGeneratedRef.current = onPageGenerated;
+  
   // Cache for in-flight generation requests
   const generationQueue = useRef<Map<string, Promise<PageNode | null>>>(new Map());
   
