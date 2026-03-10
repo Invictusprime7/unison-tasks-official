@@ -219,9 +219,9 @@ export function useSiteBlueprint(options: UseSiteBlueprintOptions): UseSiteBluep
   const [error, setError] = useState<Error | null>(null);
   
   // Store callbacks in refs to avoid re-creating `load` when they change
-  const onLoadRef = React.useRef(onLoad);
+  const onLoadRef = useRef(onLoad);
   onLoadRef.current = onLoad;
-  const onErrorRef = React.useRef(onError);
+  const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
   
   /**
