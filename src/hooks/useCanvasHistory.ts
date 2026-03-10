@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Canvas as FabricCanvas } from "fabric";
 
 export interface HistoryState {
@@ -59,12 +59,12 @@ export const useCanvasHistory = (canvas: FabricCanvas | null, maxHistory = 50): 
     setCurrentIndex(-1);
   }, []);
 
-  return {
+  return useMemo(() => ({
     canUndo: currentIndex > 0,
     canRedo: currentIndex < history.length - 1,
     undo,
     redo,
     save,
     clear,
-  };
+  }), [currentIndex, history.length, undo, redo, save, clear]);
 };

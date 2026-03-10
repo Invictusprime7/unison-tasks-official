@@ -1144,6 +1144,7 @@ export default ${componentName};`;
   const importFiles = useCallback((files: Record<string, string>) => {
     console.log('[VFS] importFiles called with:', Object.keys(files));
     setNodes(prev => {
+      let changed = false;
       const newNodes = [...prev];
       
       Object.entries(files).forEach(([path, content]) => {
@@ -1154,11 +1155,17 @@ export default ${componentName};`;
         // Check if file already exists
         const existingFile = newNodes.find(n => n.type === 'file' && n.path === normalizedPath);
         if (existingFile) {
+          // Skip update if content is identical
+          if ((existingFile as VirtualFile).content === content) {
+            return;
+          }
           // Update existing file
+          changed = true;
           const idx = newNodes.indexOf(existingFile);
           newNodes[idx] = { ...existingFile, content } as VirtualFile;
         } else {
           // Create new file and any missing parent folders
+          changed = true;
           const pathParts = normalizedPath.split('/').filter(Boolean);
           const fileName = pathParts.pop()!;
           
@@ -1199,6 +1206,9 @@ export default ${componentName};`;
           });
         }
       });
+      
+      // Return previous array if nothing actually changed (prevents unnecessary re-renders)
+      if (!changed) return prev;
       
       console.log('[VFS] After import, total nodes:', newNodes.length, 'files:', newNodes.filter(n => n.type === 'file').length);
       return newNodes;

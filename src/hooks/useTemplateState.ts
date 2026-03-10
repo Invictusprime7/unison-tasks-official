@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Canvas as FabricCanvas } from 'fabric';
 import type { AIGeneratedTemplate } from '@/types/template';
 import { TemplateRenderer } from '@/utils/templateRenderer';
@@ -120,7 +120,7 @@ export const useTemplateState = (fabricCanvas: FabricCanvas | null) => {
     }
   }, [template, updateTemplate]);
 
-  return {
+  return useMemo(() => ({
     // State
     template,
     html,
@@ -132,5 +132,14 @@ export const useTemplateState = (fabricCanvas: FabricCanvas | null) => {
     updateTemplateData,
     clearTemplate,
     reRender,
-  };
+  }), [
+    template,
+    html,
+    css,
+    isRendering,
+    updateTemplate,
+    updateTemplateData,
+    clearTemplate,
+    reRender,
+  ]);
 };

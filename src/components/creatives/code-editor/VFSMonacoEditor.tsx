@@ -438,7 +438,7 @@ const VFSMonacoEditor: React.FC<VFSMonacoEditorProps> = ({
         <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#007acc] flex items-center justify-between px-3 text-[11px] text-white/90 font-medium z-10 select-none">
           <div className="flex items-center gap-3">
             <span>{fileName || 'untitled'}</span>
-            <span className="opacity-60">Ln {value.split('\n').length}</span>
+            <span className="opacity-60">Ln {(value ?? '').split('\n').length}</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="opacity-70 cursor-pointer hover:opacity-100" onClick={handleFormat} title="Shift+Alt+F">

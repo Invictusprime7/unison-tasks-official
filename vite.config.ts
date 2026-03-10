@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
       "@radix-ui/react-compose-refs": path.resolve(__dirname, "./src/lib/compose-refs-shim.ts"),
     },
+    dedupe: ['react', 'react-dom'],
   },
   build: {
     // Increase chunk size warning limit to 1000kb for large AI/Canvas libraries

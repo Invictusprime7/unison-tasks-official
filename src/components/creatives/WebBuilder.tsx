@@ -16,6 +16,7 @@ import {
 import { CloudPanel } from "./web-builder/CloudPanel";
 import { toast } from "sonner";
 import VFSMonacoEditor from './code-editor/VFSMonacoEditor';
+import { VFSCodeView } from './code-editor/VFSCodeView';
 import { SimplePreview, type SimplePreviewHandle } from '@/components/SimplePreview';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { DeployButton } from '@/components/DeployButton';
@@ -1090,6 +1091,15 @@ export default function App() {
   
   // Virtual file system for code editor
   const virtualFS = useVirtualFileSystem();
+  // Destructure stable callbacks for use in dependency arrays (avoids re-render loops)
+  const {
+    nodes: vfsNodes,
+    getSandpackFiles,
+    importFiles: vfsImportFiles,
+    updateFileContent: vfsUpdateFileContent,
+    resetToEmpty: vfsResetToEmpty,
+    loadDefaultTemplate: vfsLoadDefaultTemplate,
+  } = virtualFS;
   
   // AI → VFS orchestrator — auto-resolves dependencies and syncs to preview
   const aiVFS = useAIVFS(virtualFS, simplePreviewRef);
@@ -1187,17 +1197,14 @@ export default function App() {
   // Handle page switching in multi-page preview
   const handleSelectPage = useCallback((path: string) => {
     setActivePagePath(path);
-    const vfsFiles = virtualFS.getSandpackFiles();
+    const vfsFiles = getSandpackFiles();
     const pageContent = vfsFiles[path];
     if (pageContent) {
-      // Temporarily flag to avoid VFS sync loop
-      syncingFromVFSRef.current = true;
+      lastSyncedCodeRef.current = pageContent;
       setPreviewCode(pageContent);
       setEditorCode(pageContent);
-      lastSyncedCodeRef.current = pageContent;
-      setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
     }
-  }, [virtualFS]);
+  }, [getSandpackFiles]);
   
   // Handle adding a new page
   const handleAddPage = useCallback(() => {
@@ -1208,7 +1215,7 @@ export default function App() {
       .replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase())
       .replace(/^(.)/, (_, c) => c.toUpperCase());
     const path = `/src/pages/${componentName}.tsx`;
-    const vfsFiles = virtualFS.getSandpackFiles();
+    const vfsFiles = getSandpackFiles();
     if (vfsFiles[path]) {
       toast.error(`Page "${componentName}" already exists`);
       return;
@@ -1233,48 +1240,33 @@ export default function ${componentName}Page() {
   );
 }
 `;
-    virtualFS.importFiles({ [path]: newPageCode });
+    vfsImportFiles({ [path]: newPageCode });
     setActivePagePath(path);
-    syncingFromVFSRef.current = true;
+    lastSyncedCodeRef.current = newPageCode;
     setPreviewCode(newPageCode);
     setEditorCode(newPageCode);
-    lastSyncedCodeRef.current = newPageCode;
-    setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
     toast.success(`Page "${label}" created`);
-  }, [virtualFS, previewCode]);
+  }, [getSandpackFiles, vfsImportFiles, previewCode]);
   
   // Handle removing a page
   const handleRemovePage = useCallback((path: string) => {
     if (!confirm(`Delete page "${path}"?`)) return;
     // Find and delete the VFS node
-    const allFiles = virtualFS.getSandpackFiles();
+    const allFiles = getSandpackFiles();
     delete allFiles[path];
     // Re-import without the deleted page
-    virtualFS.importFiles(allFiles);
+    vfsImportFiles(allFiles);
     // Switch back to main page if we deleted the active one
     if (activePagePath === path) {
       handleSelectPage('/src/App.tsx');
     }
     toast.success('Page removed');
-  }, [virtualFS, activePagePath, handleSelectPage]);
+  }, [getSandpackFiles, vfsImportFiles, activePagePath, handleSelectPage]);
   
-  // Sync previewCode changes back to the active page's VFS entry
-  // This ensures edits in code view or AI apply to the correct page
-  // CRITICAL: Must sync even for single-page sites so AI edits reflect in VFSPreview
-  useEffect(() => {
-    if (syncingFromVFSRef.current) return;
-    if (!previewCode) return;
-    
-    // Determine the target path - for single page sites, use /index.html
-    const targetPath = pageTabs.length > 1 ? activePagePath : '/index.html';
-    
-    const vfsFiles = virtualFS.getSandpackFiles();
-    // Only sync if the content is different (prevents infinite loops)
-    if (vfsFiles[targetPath] !== previewCode) {
-      console.log('[WebBuilder] Syncing previewCode to VFS:', targetPath, 'length:', previewCode.length);
-      virtualFS.importFiles({ ...vfsFiles, [targetPath]: previewCode });
-    }
-  }, [previewCode, activePagePath, pageTabs.length]);
+  // NOTE: previewCode→VFS sync is handled by the main sync effect below (Effect A).
+  // A duplicate effect here previously wrote to /index.html and conflicted with
+  // Effect A (which writes to /src/App.tsx), creating a ping-pong infinite loop
+  // that triggered React error #185 (max update depth exceeded).
 
   // Intent Pipeline Overlay state
   const [pipelineOverlayOpen, setPipelineOverlayOpen] = useState(false);
@@ -1317,7 +1309,8 @@ export default function ${componentName}Page() {
     }, 2000);
     
     // Debounced HTML intent re-wiring (uses ref to avoid stale closures)
-    if (fileId.endsWith('.html') || fileId.endsWith('.htm')) {
+    const file = vfsNodes.find(n => n.id === fileId && n.type === 'file');
+    if (file?.path?.endsWith('.html') || file?.path?.endsWith('.htm')) {
       // Clear existing timer
       if (intentRewireTimerRef.current) {
         clearTimeout(intentRewireTimerRef.current);
@@ -1337,37 +1330,29 @@ export default function ${componentName}Page() {
   // Sync previewCode to VFS when it changes (for templates and AI-generated code)
   // This ensures the preview component sees the same code as the editor
   const lastSyncedCodeRef = useRef<string>('');
-  const syncingFromVFSRef = useRef(false);
   // Keep a stable ref to virtualFS so the sync effect doesn't re-run every render
   const virtualFSRef = useRef(virtualFS);
   virtualFSRef.current = virtualFS;
   
+  // Effect A: previewCode → VFS  (one-way sync, runs when AI/templates/page-nav set previewCode)
   useEffect(() => {
-    // Skip if we're syncing from VFS to avoid loops
-    if (syncingFromVFSRef.current) return;
-    
-    // Sync if previewCode has content and changed
+    // Sync if previewCode has content and actually changed since last sync
     if (previewCode && previewCode !== lastSyncedCodeRef.current) {
-      console.log('[WebBuilder] Syncing previewCode to VFS, length:', previewCode.length);
+      console.log('[WebBuilder] Effect A: Syncing previewCode to VFS, length:', previewCode.length);
       // Determine file type based on content
       const isReactCode = previewCode.includes('import ') || 
                      previewCode.includes('export default') ||
                      (previewCode.includes('function ') && previewCode.includes('return ('));
       
-      console.log('[WebBuilder] Content type detection - isReactCode:', isReactCode);
-      
       if (isReactCode) {
         // For React/TSX, sync to App.tsx or active page
         const targetPath = activePagePath.endsWith('.tsx') ? activePagePath : '/src/App.tsx';
-        console.log('[WebBuilder] Importing as', targetPath);
         virtualFSRef.current.importFiles({
           [targetPath]: previewCode,
         });
         lastSyncedCodeRef.current = previewCode;
       } else {
-        // Default: wrap in a React component and import to VFS,
-        // but keep lastSyncedCodeRef as the WRAPPED version so
-        // the VFS→previewCode sync (Effect B) won't overwrite previewCode.
+        // Default: wrap in a React component and import to VFS
         const targetPath = '/src/App.tsx';
         const wrapped = `import React from 'react';
 
@@ -1381,37 +1366,17 @@ export default function App() {
         virtualFSRef.current.importFiles({
           [targetPath]: wrapped,
         });
-        // Store the wrapped version so Effect B won't detect a mismatch
         lastSyncedCodeRef.current = wrapped;
       }
     }
-  }, [previewCode, activePagePath]); // virtualFS accessed via ref — not a dependency
+  }, [previewCode, activePagePath]);
   
-  // Sync VFS changes back to previewCode (for code editor edits)
-  // This keeps the legacy previewCode state in sync with VFS
-  useEffect(() => {
-    const activeFile = virtualFS.getActiveFile();
-    if (activeFile && activeFile.content !== lastSyncedCodeRef.current) {
-      // Check if this is a file that should update previewCode
-      const isMainFile = activeFile.path === '/src/App.tsx' || 
-                         activeFile.path === '/App.tsx' ||
-                         (activeFile.path?.endsWith('.html') && !activeFile.path?.includes('/src/'));
-      if (isMainFile) {
-        console.log('[WebBuilder] Syncing VFS to previewCode:', activeFile.path);
-        syncingFromVFSRef.current = true;
-        setPreviewCode(activeFile.content);
-        lastSyncedCodeRef.current = activeFile.content;
-        // Update activePagePath if it's an HTML file
-        if (activeFile.path?.endsWith('.html')) {
-          setActivePagePath(activeFile.path);
-        }
-        // Reset the flag after state update
-        setTimeout(() => {
-          syncingFromVFSRef.current = false;
-        }, 0);
-      }
-    }
-  }, [virtualFS.nodes, virtualFS.activeFileId]);
+  // NOTE: Effect B (VFS→previewCode) has been REMOVED.
+  // Previously, it watched virtualFS.nodes and called setPreviewCode() whenever the
+  // active file changed — but this created an unavoidable circular dependency:
+  //   previewCode→Effect A→importFiles→nodes change→Effect B→setPreviewCode→repeat
+  // Instead, code editor edits update VFS directly (which SimplePreview reads from VFS),
+  // and explicit callbacks (onSave, file selection) update previewCode when needed.
   
   // Auto-save functionality
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -1598,16 +1563,14 @@ export default function App() {
       // Only update if normalization changed something
       if (normalizedCode !== content && analysis.intents.length > 0) {
         console.log('[WebBuilder] Auto-rewired intents:', analysis.intents);
-        virtualFS.updateFileContent(fileId, normalizedCode);
+        vfsUpdateFileContent(fileId, normalizedCode);
         
         // Update preview if this is the active page
-        const file = virtualFS.nodes.find(n => n.id === fileId && n.type === 'file');
+        const file = vfsNodes.find(n => n.id === fileId && n.type === 'file');
         if (file && file.path === activePagePath) {
-          syncingFromVFSRef.current = true;
+          lastSyncedCodeRef.current = normalizedCode;
           setPreviewCode(normalizedCode);
           setEditorCode(normalizedCode);
-          lastSyncedCodeRef.current = normalizedCode;
-          setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
         }
         
         toast.success(`Auto-wired ${analysis.intents.length} button intent(s)`, {
@@ -1618,7 +1581,7 @@ export default function App() {
     } catch (err) {
       console.warn('[WebBuilder] Intent rewire failed:', err);
     }
-  }, [activeSystemType, virtualFS, activePagePath]);
+  }, [activeSystemType, vfsUpdateFileContent, vfsNodes, activePagePath]);
   
   // Keep the ref updated with the latest function (avoids stale closures in setTimeout)
   useEffect(() => {
@@ -1947,10 +1910,8 @@ export default function App() {
         const pageContent = vfsFiles[targetPath];
         if (pageContent) {
           setActivePagePath(targetPath);
-          syncingFromVFSRef.current = true;
-          setEditorCode(pageContent);
           lastSyncedCodeRef.current = pageContent;
-          setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+          setEditorCode(pageContent);
         }
         // Re-sync manifest to iframe so all pages are available for back-navigation
         setTimeout(() => {
@@ -1982,11 +1943,9 @@ export default function App() {
         
         // Update preview code — this triggers codeToHtml which injects intent wiring
         setActivePagePath(targetPath);
-        syncingFromVFSRef.current = true;
+        lastSyncedCodeRef.current = previewContent;
         setPreviewCode(previewContent);
         setEditorCode(rawContent); // Editor shows clean HTML without cache scripts
-        lastSyncedCodeRef.current = rawContent;
-        setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
         
         // Re-sync manifest after iframe reloads
         setTimeout(() => {
@@ -2026,11 +1985,9 @@ export default function App() {
         if (existingPage) {
           // Page exists in VFS - switch to it
           setActivePagePath(vfsPath);
-          syncingFromVFSRef.current = true;
+          lastSyncedCodeRef.current = existingPage;
           setPreviewCode(existingPage);
           setEditorCode(existingPage);
-          lastSyncedCodeRef.current = existingPage;
-          setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
           toast(`Navigated to ${label || path}`, { description: 'Page loaded from VFS' });
         } else {
           // Page doesn't exist - trigger AI generation
@@ -2366,7 +2323,7 @@ export default function App() {
   ) => {
     // Check VFS cache first (getSandpackFiles returns path-keyed object)
     const vfsPath = `/${pageName}.html`;
-    const vfsFiles = virtualFS.getSandpackFiles();
+    const vfsFiles = getSandpackFiles();
     const existingContent = vfsFiles[vfsPath] || generatedPages[pageName];
     if (existingContent) {
       const content = typeof existingContent === 'string' ? existingContent : (existingContent as any).content;
@@ -2375,11 +2332,9 @@ export default function App() {
         source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: content }, '*');
       } else {
         // Fallback: update preview code (re-creates iframe but ensures page shows)
-        syncingFromVFSRef.current = true;
+        lastSyncedCodeRef.current = content;
         setPreviewCode(content);
         setEditorCode(content);
-        lastSyncedCodeRef.current = content;
-        setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
       }
       setActivePagePath(vfsPath);
       toast(`Navigated to ${navLabel || pageName}`);
@@ -2433,7 +2388,7 @@ export default function App() {
           const parsed = JSON.parse(jsonCandidate);
           if (parsed.files && typeof parsed.files === 'object') {
             // Import all files to VFS
-            virtualFS.importFiles(parsed.files);
+            vfsImportFiles(parsed.files);
             // Use the main entry file for preview
             pageCode = parsed.files['/index.html'] || parsed.files['/src/App.tsx'] || 
                        parsed.files[`/pages/${pageName}.tsx`] || Object.values(parsed.files)[0] as string || '';
@@ -2458,7 +2413,7 @@ export default function App() {
 
       if (pageCode) {
         // Save to VFS for persistence
-        virtualFS.importFiles({ [vfsPath]: pageCode });
+        vfsImportFiles({ [vfsPath]: pageCode });
         setGeneratedPages(prev => ({ ...prev, [pageName]: pageCode }));
         
         // Send page content to iframe for IN-PLACE rendering
@@ -2466,17 +2421,14 @@ export default function App() {
           source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: pageCode }, '*');
         } else {
           // Fallback: update preview (re-creates iframe but ensures page shows)
-          syncingFromVFSRef.current = true;
+          lastSyncedCodeRef.current = pageCode;
           setPreviewCode(pageCode);
-          setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
         }
         
         // Update editor code to match
         setActivePagePath(vfsPath);
-        syncingFromVFSRef.current = true;
-        setEditorCode(pageCode);
         lastSyncedCodeRef.current = pageCode;
-        setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
+        setEditorCode(pageCode);
 
         toast.success(`${navLabel || pageName} page created!`);
       } else {
@@ -2492,7 +2444,7 @@ export default function App() {
       setIsGeneratingPage(false);
       setCurrentNavPage(null);
     }
-  }, [virtualFS, previewCode, generatedPages, businessDataContext, userDesignProfile]);
+  }, [getSandpackFiles, vfsImportFiles, previewCode, generatedPages, businessDataContext, userDesignProfile]);
 
   // Ref to always hold the latest triggerPageGeneration (avoids stale closure in INTENT_TRIGGER handler)
   const triggerPageGenRef = useRef(triggerPageGeneration);
@@ -2515,11 +2467,9 @@ export default function App() {
       
       if (pageContent) {
         // Force update the preview by setting the code
-        syncingFromVFSRef.current = true;
+        lastSyncedCodeRef.current = pageContent;
         setPreviewCode(pageContent);
         setEditorCode(pageContent);
-        lastSyncedCodeRef.current = pageContent;
-        setTimeout(() => { syncingFromVFSRef.current = false; }, 0);
         
         // Store in VFS for future navigation
         const vfsPath = `/${pageName}.html`;
@@ -2837,12 +2787,12 @@ ${html}
     
     // Also import to VFS for code editor
     const files = templateToVFSFiles(normalized.code, name);
-    virtualFS.importFiles(files);
+    vfsImportFiles(files);
     
     toast.success(`Loaded template: ${name}`, {
       description: 'Template loaded into preview'
     });
-  }, [systemType, manifestIdFromState, virtualFS]);
+  }, [systemType, manifestIdFromState, vfsImportFiles]);
 
   // Handle saving current template
   // Helper to get final HTML with customizer overrides baked in
@@ -2938,41 +2888,44 @@ ${html}
 
   // State management - template schema as source of truth
   const templateState = useTemplateState(fabricCanvas);
+  const { updateTemplate } = templateState;
 
   // History management - both canvas and code history
   const canvasHistory = useCanvasHistory(fabricCanvas);
+  const { undo: undoCanvas, redo: redoCanvas, canUndo: canUndoCanvas, canRedo: canRedoCanvas, save: saveCanvas } = canvasHistory;
   const codeHistory = useCodeHistory(100);
+  const { push: pushCodeHistory, undo: undoCode, redo: redoCode } = codeHistory;
 
   // Track code changes for undo/redo
   useEffect(() => {
     if (previewCode && !previewCode.includes('AI-generated code will appear here')) {
-      codeHistory.push(previewCode);
+      pushCodeHistory(previewCode);
     }
-  }, [previewCode]);
+  }, [previewCode, pushCodeHistory]);
 
   // Unified undo handler
   const handleUndo = useCallback(() => {
-    const previousCode = codeHistory.undo();
+    const previousCode = undoCode();
     if (previousCode) {
       setPreviewCode(previousCode);
       setEditorCode(previousCode);
       toast.success('Undo', { description: 'Previous state restored' });
-    } else if (canvasHistory.canUndo) {
-      canvasHistory.undo();
+    } else if (canUndoCanvas) {
+      undoCanvas();
     }
-  }, [codeHistory, canvasHistory]);
+  }, [undoCode, canUndoCanvas, undoCanvas]);
 
   // Unified redo handler
   const handleRedo = useCallback(() => {
-    const nextCode = codeHistory.redo();
+    const nextCode = redoCode();
     if (nextCode) {
       setPreviewCode(nextCode);
       setEditorCode(nextCode);
       toast.success('Redo', { description: 'Next state restored' });
-    } else if (canvasHistory.canRedo) {
-      canvasHistory.redo();
+    } else if (canRedoCanvas) {
+      redoCanvas();
     }
-  }, [codeHistory, canvasHistory]);
+  }, [redoCode, canRedoCanvas, redoCanvas]);
 
   // Manual refresh handler
   const handleRefreshPreview = useCallback(() => {
@@ -3076,7 +3029,7 @@ ${html}
     {
       ...defaultWebBuilderShortcuts.save,
       action: () => {
-        canvasHistory.save();
+        saveCanvas();
       },
     },
     {
@@ -3147,28 +3100,25 @@ ${html}
 
   // Handle generated templates from navigation state (Web Design Kit)
   useEffect(() => {
-    if (location.state?.generatedTemplate) {
-      const { generatedTemplate, templateName } = location.state;
-      console.log('[WebBuilder] Template received from route state:', generatedTemplate);
-      
-      // Ensure canvas is ready
-      if (!fabricCanvas) {
-        console.log('[WebBuilder] Canvas not ready, will process template when canvas is available');
-        return;
-      }
-
-      // Use template state to render the template
-      templateState.updateTemplate(generatedTemplate).then(() => {
-        console.log('[WebBuilder] ✅ Template successfully rendered from route state');
-        setShowPreview(true);
-        // Clear the state to prevent re-loading
-        window.history.replaceState({}, document.title);
-      }).catch((error) => {
-        console.error('[WebBuilder] ❌ Failed to render template from route state:', error);
-        toast.error('Failed to render template: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      });
+    if (!location.state?.generatedTemplate) return;
+    if (!fabricCanvas) {
+      console.log('[WebBuilder] Canvas not ready, will process template when canvas is available');
+      return;
     }
-  }, [location.state, fabricCanvas, templateState]);
+
+    const { generatedTemplate } = location.state;
+    console.log('[WebBuilder] Template received from route state:', generatedTemplate);
+
+    updateTemplate(generatedTemplate).then(() => {
+      console.log('[WebBuilder] ✅ Template successfully rendered from route state');
+      setShowPreview(true);
+      // Clear the state to prevent re-loading
+      window.history.replaceState({}, document.title);
+    }).catch((error) => {
+      console.error('[WebBuilder] ❌ Failed to render template from route state:', error);
+      toast.error('Failed to render template: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    });
+  }, [location.state, fabricCanvas, updateTemplate]);
 
   // Auto-adjust canvas height based on content
   const updateCanvasHeight = useCallback(() => {
@@ -3201,7 +3151,7 @@ ${html}
 
     const handleObjectModified = () => {
       updateCanvasHeight();
-      setTimeout(() => canvasHistory.save(), 100);
+      setTimeout(() => saveCanvas(), 100);
     };
 
     fabricCanvas.on("object:added", handleObjectModified);
@@ -3213,7 +3163,7 @@ ${html}
       fabricCanvas.off("object:removed", handleObjectModified);
       fabricCanvas.off("object:modified", handleObjectModified);
     };
-  }, [fabricCanvas, canvasHistory, canvasHeight, updateCanvasHeight]);
+  }, [fabricCanvas, saveCanvas, canvasHeight, updateCanvasHeight]);
 
   // Initialize drag-drop service on preview containers
   useEffect(() => {
@@ -3942,34 +3892,33 @@ ${body.innerHTML}
         {/* Right Section: View Mode, Save, AI Activity, Right Panel Toggle */}
         <div className="flex items-center gap-2">
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-0.5 bg-[#0d0d18] rounded-lg p-1">
-            <Button
-              variant={viewMode === "canvas" ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => setViewMode("canvas")}
-              className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "canvas" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
-              title="Canvas View"
-            >
-              <Square className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant={viewMode === "code" ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => setViewMode("code")}
-              className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "code" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
-              title="Code View"
-            >
-              <FileCode className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant={viewMode === "split" ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => setViewMode("split")}
-              className={cn("h-7 w-7 rounded-md transition-all duration-200", viewMode === "split" ? "bg-fuchsia-500 text-black font-bold shadow-[0_0_15px_rgba(255,0,255,0.6)]" : "text-fuchsia-400/70 hover:text-fuchsia-300 hover:bg-fuchsia-500/20")}
-              title="Split View"
-            >
-              <Layout className="h-3.5 w-3.5" />
-            </Button>
+          <div className="flex items-center bg-[#0d0d18]/80 backdrop-blur-sm rounded-xl p-0.5 border border-white/[0.06] shadow-lg shadow-black/20">
+            {([
+              { id: 'canvas' as const, icon: Square, label: 'Canvas' },
+              { id: 'code' as const, icon: FileCode, label: 'Code' },
+              { id: 'split' as const, icon: Layout, label: 'Split' },
+            ] as const).map(({ id, icon: Icon, label }) => {
+              const isActive = viewMode === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setViewMode(id)}
+                  className={cn(
+                    'relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-250 outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50',
+                    isActive
+                      ? 'bg-fuchsia-500 text-black shadow-[0_0_18px_rgba(255,0,255,0.55)] scale-[1.02]'
+                      : 'text-fuchsia-400/60 hover:text-fuchsia-300 hover:bg-fuchsia-500/[0.12]',
+                  )}
+                  title={`${label} View`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span className={cn('tracking-wide', isActive ? 'font-bold' : '')}>{label}</span>
+                  {isActive && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-fuchsia-300/60" />
+                  )}
+                </button>
+              );
+            })}
           </div>
           
           <div className="h-5 w-px bg-cyan-500/50" />
@@ -4591,143 +4540,39 @@ ${body.innerHTML}
               </div>
             )}
 
-            {/* Code Mode - Full Code Editor with Folder Structure */}
+            {/* Code Mode - VFS Code Editor */}
             {viewMode === 'code' && (
               <CodeViewErrorBoundary onFallbackClick={() => setViewMode('canvas')}>
-              <div className="w-full h-full bg-[#0d1117] rounded-lg overflow-hidden border border-white/10 shadow-xl" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-                <ResizablePanelGroup direction="horizontal" className="h-full">
-                  {/* Modern File Explorer */}
-                  <ResizablePanel defaultSize={22} minSize={18} maxSize={35}>
-                    <ModernFileExplorer
-                      nodes={virtualFS.nodes}
-                      activeFileId={virtualFS.activeFileId}
-                      onFileSelect={virtualFS.openFile}
-                      onCreateFile={virtualFS.createFile}
-                      onCreateFolder={virtualFS.createFolder}
-                      onDelete={virtualFS.deleteNode}
-                      onRename={virtualFS.renameNode}
-                      onDuplicate={virtualFS.duplicateNode}
-                      onToggleFolder={virtualFS.toggleFolder}
-                      onExpandAll={virtualFS.expandAll}
-                      onCollapseAll={virtualFS.collapseAll}
-                      modifiedFiles={modifiedFiles}
-                      aiGeneratedFiles={aiGeneratedFiles}
-                      recentlyChangedFiles={recentlyChangedFiles}
-                    />
-                  </ResizablePanel>
-
-                  <ResizableHandle withHandle className="bg-white/5 hover:bg-primary/20 transition-colors" />
-
-                  {/* Editor Panel */}
-                  <ResizablePanel defaultSize={78}>
-                    <div className="h-full flex flex-col">
-                      {/* Modern Editor Tabs */}
-                      <ModernEditorTabs
-                        tabs={virtualFS.getOpenFiles().map(f => ({ 
-                          id: f.id, 
-                          name: f.name,
-                          path: f.path,
-                          isModified: modifiedFiles.has(f.id),
-                          isAIGenerated: aiGeneratedFiles.has(f.id),
-                        }))}
-                        activeTabId={virtualFS.activeFileId}
-                        onTabSelect={virtualFS.openFile}
-                        onTabClose={virtualFS.closeTab}
-                        onCloseOthers={(keepId) => {
-                          const openFiles = virtualFS.getOpenFiles();
-                          openFiles.filter(f => f.id !== keepId).forEach(f => virtualFS.closeTab(f.id));
-                        }}
-                        onCloseAll={() => {
-                          const openFiles = virtualFS.getOpenFiles();
-                          openFiles.forEach(f => virtualFS.closeTab(f.id));
-                        }}
-                        modifiedTabs={modifiedFiles}
-                        aiGeneratedTabs={aiGeneratedFiles}
-                      />
-
-                      {/* Code Editor */}
-                      <div className="flex-1">
-                        {(() => {
-                          const activeFile = virtualFS.getActiveFile();
-                          if (activeFile) {
-                            const lang = (['javascript', 'typescript', 'html', 'css', 'json'].includes(activeFile.language)
-                              ? (activeFile.language === 'typescript' ? 'javascript' : activeFile.language)
-                              : 'javascript') as 'javascript' | 'html' | 'css' | 'json';
-                            return (
-                              <VFSMonacoEditor
-                                height="100%"
-                                fileName={activeFile.name}
-                                value={activeFile.content}
-                                onChange={(value) => {
-                                  virtualFS.updateFileContent(activeFile.id, value);
-                                  trackFileModification(activeFile.id, value);
-                                }}
-                                isAIProcessing={templateState.isRendering}
-                                onSave={(val) => {
-                                  virtualFS.updateFileContent(activeFile.id, val);
-                                  toast.success('File saved');
-                                }}
-                                className="w-full h-full"
-                              />
-                            );
-                          }
-                          // Show empty state with options when no files exist
-                          if (!virtualFS.hasFiles) {
-                            return (
-                              <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0f] via-[#0d0d14] to-[#0a0a0f] p-8">
-                                <div className="text-center max-w-md">
-                                  <h3 className="text-xl font-semibold text-white mb-2">No Project Loaded</h3>
-                                  <p className="text-sm text-white/50 mb-6">Load a template or generate code with AI to get started</p>
-                                  <div className="flex gap-3 justify-center flex-wrap">
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => virtualFS.loadDefaultTemplate()}
-                                      className="gap-2 bg-white/[0.04] border-white/[0.1] text-white/70 hover:text-white hover:bg-white/[0.08] transition-all duration-200"
-                                    >
-                                      <Layout className="w-4 h-4" />
-                                      Load React Template
-                                    </Button>
-                                    <Button
-                                      variant="default"
-                                      onClick={() => {
-                                        // Create a simple starter file
-                                        virtualFS.importFiles({
-                                          '/src/App.tsx': `import React from 'react';
-
-export default function App() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">Hello World</h1>
-        <p className="text-gray-600">Start editing to build something amazing!</p>
-      </div>
-    </div>
-  );
-}`,
-                                        });
-                                      }}
-                                      className="gap-2 bg-primary/90 hover:bg-primary shadow-lg shadow-primary/20"
-                                    >
-                                      <Plus className="w-4 h-4" />
-                                      Create New File
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return (
-                            <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0f] via-[#0d0d14] to-[#0a0a0f]">
-                              <p className="text-lg font-medium text-white/70">No file selected</p>
-                              <p className="text-sm mt-1 text-white/40">Select a file from the explorer to start editing</p>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              </div>
+                <VFSCodeView
+                  nodes={virtualFS.nodes}
+                  activeFileId={virtualFS.activeFileId}
+                  hasFiles={virtualFS.hasFiles}
+                  openFile={virtualFS.openFile}
+                  closeTab={virtualFS.closeTab}
+                  createFile={virtualFS.createFile}
+                  createFolder={virtualFS.createFolder}
+                  deleteNode={virtualFS.deleteNode}
+                  renameNode={virtualFS.renameNode}
+                  duplicateNode={virtualFS.duplicateNode}
+                  toggleFolder={virtualFS.toggleFolder}
+                  expandAll={virtualFS.expandAll}
+                  collapseAll={virtualFS.collapseAll}
+                  getActiveFile={virtualFS.getActiveFile}
+                  getOpenFiles={virtualFS.getOpenFiles}
+                  updateFileContent={virtualFS.updateFileContent}
+                  importFiles={virtualFS.importFiles}
+                  loadDefaultTemplate={virtualFS.loadDefaultTemplate}
+                  getSandpackFiles={virtualFS.getSandpackFiles}
+                  modifiedFiles={modifiedFiles}
+                  aiGeneratedFiles={aiGeneratedFiles}
+                  recentlyChangedFiles={recentlyChangedFiles}
+                  isAIProcessing={templateState.isRendering}
+                  onFileModified={trackFileModification}
+                  onSave={(fileId, val) => {
+                    toast.success('File saved');
+                  }}
+                  onSwitchToCanvas={() => setViewMode('canvas')}
+                />
               </CodeViewErrorBoundary>
             )}
 
@@ -4856,21 +4701,34 @@ export default function App() {
                     </div>
                     
                     <div className="flex-1">
-                      <VFSMonacoEditor
-                        height="100%"
-                        fileName="template.html"
-                        value={editorCode}
-                        onChange={(value) => {
-                          setEditorCode(value || '');
-                          setPreviewCode(value || '');
-                        }}
-                        isAIProcessing={templateState.isRendering}
-                        onSave={(val) => {
-                          setEditorCode(val);
-                          setPreviewCode(val);
-                          toast.success('Saved');
-                        }}
-                      />
+                      {(() => {
+                        const splitActiveFile = virtualFS.getActiveFile();
+                        const splitFileName = splitActiveFile?.name || 'App.tsx';
+                        const splitValue = splitActiveFile?.content || previewCode;
+                        return (
+                          <VFSMonacoEditor
+                            height="100%"
+                            fileName={splitFileName}
+                            value={splitValue}
+                            onChange={(value) => {
+                              if (splitActiveFile) {
+                                virtualFS.updateFileContent(splitActiveFile.id, value || '');
+                                trackFileModification(splitActiveFile.id, value || '');
+                              }
+                              // Also update previewCode for SimplePreview (HTML mode)
+                              setPreviewCode(value || '');
+                            }}
+                            isAIProcessing={templateState.isRendering}
+                            onSave={(val) => {
+                              if (splitActiveFile) {
+                                virtualFS.updateFileContent(splitActiveFile.id, val);
+                              }
+                              setPreviewCode(val);
+                              toast.success('Saved');
+                            }}
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -4884,7 +4742,8 @@ export default function App() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          navigator.clipboard.writeText(editorCode);
+                          const file = virtualFS.getActiveFile();
+                          navigator.clipboard.writeText(file?.content || previewCode);
                           toast('Code copied to clipboard!');
                         }}
                         className="flex-1 h-8 text-xs"

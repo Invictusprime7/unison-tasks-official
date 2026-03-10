@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 
 export interface CodeHistoryState {
   canUndo: boolean;
@@ -79,7 +79,7 @@ export const useCodeHistory = (maxHistory = 50): CodeHistoryState => {
     }
   }, []);
 
-  return {
+  return useMemo(() => ({
     canUndo: currentIndex > 0,
     canRedo: currentIndex < history.length - 1,
     undo,
@@ -88,5 +88,5 @@ export const useCodeHistory = (maxHistory = 50): CodeHistoryState => {
     clear,
     currentIndex,
     historyLength: history.length,
-  };
+  }), [currentIndex, history.length, undo, redo, push, clear]);
 };
