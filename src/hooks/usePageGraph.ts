@@ -203,12 +203,12 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       
     } catch (err) {
       console.error("[usePageGraph] Failed to load page graph:", err);
-      onError?.(err as Error);
+      onErrorRef.current?.(err as Error);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, businessId, onError]);
+  }, [projectId, businessId]);
   
   /**
    * Save the page graph to database
