@@ -411,17 +411,17 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       setPageGraph(updatedGraph);
       await savePageGraph(updatedGraph);
       
-      onPageGenerated?.(newPage);
+      onPageGeneratedRef.current?.(newPage);
       return newPage;
       
     } catch (err) {
       console.error(`[usePageGraph] Failed to add page by intent ${intent}:`, err);
-      onError?.(err as Error);
+      onErrorRef.current?.(err as Error);
       return null;
     } finally {
       setIsGenerating(false);
     }
-  }, [pageGraph, industry, projectId, businessId, loadPageGraph, savePageGraph, onPageGenerated, onError]);
+  }, [pageGraph, industry, projectId, businessId, loadPageGraph, savePageGraph]);
   
   /**
    * Refresh the page graph from database
