@@ -150,6 +150,12 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
     onError,
   } = options;
   
+  // Store callbacks in refs to prevent re-render loops
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  
   // State
   const [state, setState] = useState<SiteBuilderState>({
     phase: "loading",
@@ -163,10 +169,10 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
     projectId,
     businessId,
     autoFetch: true,
-    onError: (err) => {
+    onError: useCallback((err: Error) => {
       setState(prev => ({ ...prev, error: err }));
-      onError?.(err);
-    },
+      onErrorRef.current?.(err);
+    }, []),
   });
   
   // Page graph hook
