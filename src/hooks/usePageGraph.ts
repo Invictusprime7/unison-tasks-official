@@ -352,18 +352,18 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       setPageGraph(updatedGraph);
       await savePageGraph(updatedGraph);
       
-      onPageGenerated?.(newPage);
+      onPageGeneratedRef.current?.(newPage);
       return newPage;
       
     } catch (err) {
       console.error(`[usePageGraph] Failed to regenerate page for ${navKey}:`, err);
-      onError?.(err as Error);
+      onErrorRef.current?.(err as Error);
       return null;
     } finally {
       setIsGenerating(false);
       setGeneratingNavKey(null);
     }
-  }, [pageGraph, navItems, industry, projectId, businessId, savePageGraph, onPageGenerated, onError]);
+  }, [pageGraph, navItems, industry, projectId, businessId, savePageGraph]);
   
   /**
    * Add a new page by intent (for "Add Page" flow)
