@@ -1109,15 +1109,16 @@ export default function App() {
   const siteBuilderBusinessId = businessId || getOrCreatePreviewBusinessId(systemType);
   const siteBuilderIndustry = (systemType as any) || 'general';
   const siteBuilderRef = useRef<UseSiteBuilderReturn | null>(null);
+  const siteBuilderOnReady = useCallback(() => {
+    console.log('[WebBuilder] Site builder ready');
+  }, []);
   const siteBuilder = useSiteBuilder({
     projectId: projectId || 'preview',
     businessId: siteBuilderBusinessId,
     industry: siteBuilderIndustry,
     autoGenerateAll: false,
     debug: false,
-    onReady: () => {
-      console.log('[WebBuilder] Site builder ready');
-    },
+    onReady: siteBuilderOnReady,
   });
   siteBuilderRef.current = siteBuilder;
   
