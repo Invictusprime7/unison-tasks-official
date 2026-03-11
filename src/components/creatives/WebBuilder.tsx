@@ -682,6 +682,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const creatorPlayground = useCreatorPlayground();
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
+  const [playgroundModalOpen, setPlaygroundModalOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(true); // AI panel open by default for easy access
   const [iframeErrors, setIframeErrors] = useState<IframeError[]>([]);
   const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
