@@ -4039,22 +4039,6 @@ ${body.innerHTML}
             />
           </div>
           
-          <div className="h-5 w-px bg-cyan-500/50" />
-          
-          {/* AI Activity Indicator */}
-          <AIActivityPanel
-            events={aiActivity.events}
-            activityState={aiActivity.activityState}
-            attentionCount={aiActivity.attentionCount}
-            isLoading={aiActivity.isLoading}
-            onViewDetails={() => {
-              setLeftPanelCollapsed(false);
-              toast.info('View AI plugin details in the sidebar', {
-                description: 'Go to AI Plugins tab for full analysis',
-              });
-            }}
-          />
-          
           <div className="h-5 w-px bg-fuchsia-500/50" />
           
           {/* Right Panel Toggle */}
@@ -4276,7 +4260,7 @@ ${body.innerHTML}
                 <TabsTrigger value="business" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-orange-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,165,0,0.5)] transition-all duration-200">Business</TabsTrigger>
                 <TabsTrigger value="functional" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,0,255,0.5)] transition-all duration-200">Logic</TabsTrigger>
                 <TabsTrigger value="seo" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,255,0,0.5)] transition-all duration-200">SEO</TabsTrigger>
-                <TabsTrigger value="ai-plugins" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-lime-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all duration-200">AI</TabsTrigger>
+                <TabsTrigger value="ai-plugins" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-lime-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all duration-200"><Zap className="h-3 w-3" /></TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
