@@ -1021,6 +1021,33 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           }
         }
 
+        // Strategy 4: Raw HTML mixed with reasoning text (e.g. "I will generate...<!DOCTYPE html>...")
+        if (!multiFileOutput && !generatedCode) {
+          const rawHtml = extractRawHtmlFromMixed(trimmed);
+          if (rawHtml) {
+            console.log('[AIBuilderPanel] Extracted raw HTML from mixed content, wrapping in React component');
+            generatedCode = wrapHtmlInReactComponent(rawHtml);
+            // Extract explanation from the text before the HTML
+            const doctypeIdx = trimmed.indexOf('<!DOCTYPE');
+            const htmlIdx = doctypeIdx >= 0 ? doctypeIdx : trimmed.indexOf('<html');
+            if (htmlIdx > 0) {
+              explanationText = trimmed.slice(0, htmlIdx).trim();
+            }
+            if (!explanationText) {
+              explanationText = '✅ HTML site generated and wrapped for preview.';
+            }
+          }
+        }
+
+        // Strategy 5: Content is purely raw HTML (starts with <!DOCTYPE or <html)
+        if (!multiFileOutput && !generatedCode) {
+          if (/^\s*<!DOCTYPE/i.test(trimmed) || /^\s*<html[\s>]/i.test(trimmed)) {
+            console.log('[AIBuilderPanel] Content is raw HTML, wrapping in React component');
+            generatedCode = wrapHtmlInReactComponent(trimmed);
+            explanationText = '✅ HTML site generated and wrapped for preview.';
+          }
+        }
+
         // Extract explanation: everything that's NOT inside code fences
         if (!explanationText) {
           explanationText = aiContent
