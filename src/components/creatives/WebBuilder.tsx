@@ -14,6 +14,8 @@ import {
   FolderOpen, Cloud, CloudOff, Server, Layers, Settings, ExternalLink, GitBranch
 } from "lucide-react";
 import { CloudPanel } from "./web-builder/CloudPanel";
+import { CreatorPlaygroundPanel } from "./web-builder/CreatorPlaygroundPanel";
+import { useCreatorPlayground } from "@/hooks/useCreatorPlayground";
 import { toast } from "sonner";
 import VFSMonacoEditor from './code-editor/VFSMonacoEditor';
 import { VFSCodeView } from './code-editor/VFSCodeView';
