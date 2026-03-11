@@ -4496,13 +4496,13 @@ ${body.innerHTML}
             {/* Canvas Mode - AI Live Preview Only */}
             {viewMode === 'canvas' && (
               <div className="w-full h-full flex flex-col bg-white rounded-xl overflow-hidden border-2 border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.15)] relative">
-                <div className="h-10 backdrop-blur-md bg-gradient-to-r from-slate-100/95 to-slate-50/95 border-b border-slate-200/50 flex items-center justify-between px-4">
+                <div className="h-10 backdrop-blur-md bg-gradient-to-r from-[hsl(220,50%,15%)]/95 to-[hsl(220,45%,20%)]/95 border-b border-[hsl(220,40%,30%)]/50 flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       "w-2 h-2 rounded-full shadow-sm",
-                      builderMode === 'select' ? "bg-emerald-500" : "bg-slate-400"
+                      builderMode === 'select' ? "bg-emerald-400" : "bg-slate-500"
                     )} />
-                    <span className="text-xs font-medium text-slate-500">
+                    <span className="text-xs font-medium text-slate-300">
                       {builderMode === 'select' ? 'Select Mode' : 'Preview Mode'}
                     </span>
                     {useReactPreview && (
@@ -4518,7 +4518,7 @@ ${body.innerHTML}
                       size="icon"
                       onClick={handleUndo}
                       disabled={!codeHistory.canUndo}
-                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
+                      className="h-7 w-7 text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-40 rounded-md transition-all duration-200"
                       title="Undo (Ctrl+Z)"
                     >
                       <Undo2 className="h-4 w-4" />
@@ -4528,7 +4528,7 @@ ${body.innerHTML}
                       size="icon"
                       onClick={handleRedo}
                       disabled={!codeHistory.canRedo}
-                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
+                      className="h-7 w-7 text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-40 rounded-md transition-all duration-200"
                       title="Redo (Ctrl+Y)"
                     >
                       <Redo2 className="h-4 w-4" />
@@ -4538,7 +4538,7 @@ ${body.innerHTML}
                       size="icon"
                       onClick={handleRefreshPreview}
                       disabled={isRefreshing}
-                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
+                      className="h-7 w-7 text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-40 rounded-md transition-all duration-200"
                       title="Refresh Preview (F5)"
                     >
                       <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -4553,7 +4553,7 @@ ${body.innerHTML}
                           simplePreviewRef.current?.openInNewTab();
                         }
                       }}
-                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-md transition-all duration-200"
+                      className="h-7 w-7 text-slate-300 hover:text-white hover:bg-white/10 rounded-md transition-all duration-200"
                       title="Open preview in new tab"
                     >
                       <ExternalLink className="h-4 w-4" />
