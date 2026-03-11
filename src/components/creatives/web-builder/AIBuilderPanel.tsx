@@ -880,7 +880,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             /^export\s+default\s+function/m.test(trimmed) ||
             /^(?:const|function)\s+\w+.*=.*(?:=>|\{)/m.test(trimmed);
 
-          if (isReactComponent && trimmed.includes('return') && trimmed.includes('<')) {
+          // Reject if it contains config file content (module.exports, tailwind.config)
+          const hasConfigContent = /module\.exports\s*=/.test(trimmed) || 
+            /tailwind\.config\s*=/.test(trimmed);
+
+          if (isReactComponent && trimmed.includes('return') && trimmed.includes('<') && !hasConfigContent) {
             generatedCode = trimmed;
             explanationText = '✅ Component applied to your project.';
           }
@@ -937,10 +941,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (multiFileOutput) {
         console.log('[AIBuilderPanel] Multi-file output detected:', Object.keys(multiFileOutput));
         
-        // Normalize paths to ensure leading slash
+        // Normalize paths and filter out config files that shouldn't be in VFS
+        const BLOCKED_FILES = /\/(tailwind\.config|postcss\.config|vite\.config|tsconfig|package\.json|package-lock)/i;
         const normalizedFiles: Record<string, string> = {};
         for (const [path, content] of Object.entries(multiFileOutput)) {
           const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+          if (BLOCKED_FILES.test(normalizedPath)) {
+            console.warn('[AIBuilderPanel] Filtered out config file from AI output:', normalizedPath);
+            continue;
+          }
           normalizedFiles[normalizedPath] = content;
         }
         
