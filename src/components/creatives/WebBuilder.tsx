@@ -4495,7 +4495,7 @@ ${body.innerHTML}
             
             {/* Canvas Mode - AI Live Preview Only */}
             {viewMode === 'canvas' && (
-              <div className="w-full h-full flex flex-col bg-white rounded-xl overflow-hidden border-2 border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.15)] relative">
+              <div className="w-full h-full flex flex-col overflow-hidden relative">
                 <div className="h-10 backdrop-blur-md bg-[hsl(0,0%,5%)]/95 border-b border-white/10 flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
                     <div className={cn(
