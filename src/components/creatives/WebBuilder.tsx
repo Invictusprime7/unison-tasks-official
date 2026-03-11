@@ -679,6 +679,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     ((location.state as { manifestId?: string })?.manifestId as string) || null
   );
   const [isSavingProject, setIsSavingProject] = useState(false);
+  const creatorPlayground = useCreatorPlayground();
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const [aiPanelOpen, setAiPanelOpen] = useState(true); // AI panel open by default for easy access
