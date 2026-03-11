@@ -757,8 +757,12 @@ export default function App() {
       return;
     }
 
-    const iframe = simplePreviewRef.current?.getIframe();
-    const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+    // Try both preview refs — VFSPreview (primary) or SimplePreview (fallback)
+    const vfsIframe = livePreviewRef.current?.getIframe?.();
+    const simpleIframe = simplePreviewRef.current?.getIframe();
+    const iframe = vfsIframe || simpleIframe;
+    const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document || null;
+
     if (!iframeDoc || !iframeDoc.head) {
       console.log('[WebBuilder] Iframe not ready, falling back to full HTML replace');
       // Iframe not ready — fall back to full HTML replace (initial load)
@@ -773,7 +777,6 @@ export default function App() {
     }
 
     console.log('[WebBuilder] Patching iframe DOM, elementOverrides count:', templateCustomizer.elementOverrides.size);
-    console.log('[WebBuilder] elementOverrides keys:', Array.from(templateCustomizer.elementOverrides.keys()));
 
     // 0. Ensure color scheme is enforced (prevent dark mode inversion)
     if (!iframeDoc.querySelector('meta[name="color-scheme"]')) {
@@ -799,27 +802,22 @@ export default function App() {
     }
     styleEl.textContent = overrideCSS;
 
-    // Helper to safely query selectors - use the robust safeFindElement with fallbacks
+    // Helper to safely query selectors
     const safeQuery = (selector: string): Element | null => safeFindElement(iframeDoc, selector);
 
-    // 2. Apply text / image element overrides directly on DOM nodes
+    // 2. Apply text / image / style element overrides directly on DOM nodes
     templateCustomizer.elementOverrides.forEach((override) => {
       try {
-        console.log('[WebBuilder] Processing override for selector:', override.selector, override);
         if (override.textContent !== undefined) {
           const el = safeQuery(override.selector);
-          console.log('[WebBuilder] TextContent update - element found:', !!el);
           if (el) el.textContent = override.textContent;
         }
         if (override.imageSrc) {
           const el = safeQuery(override.selector) as HTMLImageElement | null;
-          console.log('[WebBuilder] ImageSrc update - element found:', !!el);
           if (el) el.setAttribute('src', override.imageSrc);
         }
-        // Inline style overrides (for per-element tweaks beyond the CSS sheet)
         if (override.styles && Object.keys(override.styles).length) {
           const el = safeQuery(override.selector) as HTMLElement | null;
-          console.log('[WebBuilder] Style update - element found:', !!el, 'styles:', override.styles);
           if (el) {
             Object.entries(override.styles).forEach(([k, v]) => {
               el.style.setProperty(
