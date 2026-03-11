@@ -4067,7 +4067,7 @@ ${body.innerHTML}
             className="h-8 px-2.5 rounded-lg text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/15 hover:shadow-[0_0_10px_rgba(0,200,100,0.3)] transition-all duration-200"
             title="Open Creator's Playground"
           >
-            <Zap className="h-4 w-4" />
+            <span className="text-sm">🕹️</span>
           </Button>
         </div>
       </div>
