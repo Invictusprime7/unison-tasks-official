@@ -200,15 +200,18 @@ function isRawCss(content: string): boolean {
 
 /**
  * Wrap raw CSS content in a valid React component so Sandpack can render it.
+ * Uses JSON.stringify to safely embed CSS as a string constant (avoids template literal parsing issues).
  */
 function wrapCssInReactComponent(css: string): string {
-  const escaped = css.replace(/`/g, '\\`').replace(/\${/g, '\\${');
+  const cssJsonStr = JSON.stringify(css);
   return `import React from 'react';
+
+const CSS_CONTENT = ${cssJsonStr};
 
 export default function App() {
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: \`${escaped}\` }} />
+      <style dangerouslySetInnerHTML={{ __html: CSS_CONTENT }} />
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-gray-500">Styles applied. Add HTML content to see the design.</p>
       </div>
@@ -220,6 +223,7 @@ export default function App() {
 
 /**
  * Process code to strip/transform imports that Sandpack can't resolve.
+ * Also fixes dangerouslySetInnerHTML template literals that contain CSS (which crash Babel).
  */
 export function processCode(code: string, filePath: string): string {
   if (!/\.(tsx?|jsx?|mjs)$/.test(filePath)) {
@@ -227,6 +231,20 @@ export function processCode(code: string, filePath: string): string {
   }
 
   let processed = code;
+
+  // FIX: Convert dangerouslySetInnerHTML={{ __html: `...CSS...` }} to use a string constant
+  // Babel crashes when template literals contain CSS syntax like :root { --var: value }
+  processed = processed.replace(
+    /dangerouslySetInnerHTML=\{\{\s*__html:\s*`([\s\S]*?)`\s*\}\}/g,
+    (_match, cssContent: string) => {
+      // Only fix if content looks like CSS (not simple HTML)
+      if (/:root|@import|@font-face|@media|@keyframes|--[\w-]+\s*:/.test(cssContent)) {
+        const jsonStr = JSON.stringify(cssContent);
+        return `dangerouslySetInnerHTML={{ __html: ${jsonStr} }}`;
+      }
+      return _match;
+    }
+  );
 
   // Handle @/ path alias imports
   processed = processed.replace(

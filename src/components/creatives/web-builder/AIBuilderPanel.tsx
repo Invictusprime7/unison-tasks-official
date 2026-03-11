@@ -1074,9 +1074,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               generatedCode = bestBlock;
               console.log('[AIBuilderPanel] Extracted React code from fence');
             } else if (isCssOnly) {
-              // CSS extracted from fence — wrap in React component with dangerouslySetInnerHTML
-              const escapedCss = bestBlock.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-              generatedCode = `import React from 'react';\n\nexport default function App() {\n  return (\n    <>\n      <style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />\n      <div style={{ minHeight: '100vh' }}><p>Styles applied.</p></div>\n    </>\n  );\n}`;
+              // CSS extracted from fence — wrap in React component using a const string (NOT template literal in JSX)
+              const cssJsonStr = JSON.stringify(bestBlock);
+              generatedCode = `import React from 'react';\n\nconst CSS_CONTENT = ${cssJsonStr};\n\nexport default function App() {\n  return (\n    <>\n      <style dangerouslySetInnerHTML={{ __html: CSS_CONTENT }} />\n      <div style={{ minHeight: '100vh' }}><p>Styles applied.</p></div>\n    </>\n  );\n}`;
               console.log('[AIBuilderPanel] Extracted CSS from fence, wrapped in React component');
             } else if (hasHtmlStructure) {
               generatedCode = wrapHtmlInReactComponent(bestBlock);
@@ -1167,13 +1167,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       // SAFETY NET 2: If generatedCode is raw CSS (:root, body {, @import, etc.), wrap in React component
       if (generatedCode && /^\s*(?::root|body|html|\*|@import|@font-face|@media|\/\*)\s*[{\/(]/m.test(generatedCode.trim()) && !generatedCode.includes('import ') && !generatedCode.includes('export ')) {
         console.warn('[AIBuilderPanel] Safety net: detected raw CSS being applied as TSX — wrapping in React component');
-        const escapedCss = generatedCode.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+        const cssJsonStr = JSON.stringify(generatedCode);
         generatedCode = `import React from 'react';
+
+const CSS_CONTENT = ${cssJsonStr};
 
 export default function App() {
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />
+      <style dangerouslySetInnerHTML={{ __html: CSS_CONTENT }} />
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p>Styles applied. Waiting for page content...</p>
       </div>
