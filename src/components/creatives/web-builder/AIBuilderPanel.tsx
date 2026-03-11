@@ -1173,7 +1173,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         generatedCode = stripModuleExportsBlocks(generatedCode);
         
         if (onApplyToVFS && !multiFileOutput) {
-          console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, isHtmlContent, codeLength: generatedCode.length });
+          console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
           onApplyToVFS({ [singleFilePath]: generatedCode });
           toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
         } else if (onCodeGenerated) {
