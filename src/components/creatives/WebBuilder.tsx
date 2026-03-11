@@ -2600,6 +2600,20 @@ export default function App() {
         }
       }
       
+      // Auto-hydrate Creator's Playground from AI-generated content
+      setTimeout(() => {
+        const files = virtualFS.getSandpackFiles();
+        if (Object.keys(files).length > 0) {
+          const result = creatorPlayground.hydrateFromVFS(virtualFS.nodes, files);
+          if (result.stats.pagesDetected > 0) {
+            console.log('[WebBuilder] Playground auto-hydrated from AI generation:', result.stats);
+            toast.success('Studio synced', {
+              description: `${result.stats.pagesDetected} pages${result.funnelAutoWired ? ` + funnel (${result.stats.funnelSteps} steps)` : ''} loaded`,
+            });
+          }
+        }
+      }, 300);
+      
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
       
