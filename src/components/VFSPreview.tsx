@@ -79,6 +79,10 @@ export interface VFSPreviewProps {
   siteId?: string;
   /** Device breakpoint for responsive preview */
   device?: 'desktop' | 'tablet' | 'mobile';
+  /** Enable element selection (edit mode) */
+  enableSelection?: boolean;
+  /** Callback when an element is selected */
+  onElementSelect?: (elementData: any) => void;
 }
 
 export interface VFSPreviewHandle {
