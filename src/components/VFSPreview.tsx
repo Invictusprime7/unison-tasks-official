@@ -786,6 +786,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   businessId,
   siteId,
   device = 'desktop',
+  enableSelection = false,
+  onElementSelect,
 }, ref) => {
   // State - default to 'html' so preview works immediately
   const [backend, setBackend] = useState<PreviewBackend>('html');
@@ -794,6 +796,9 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const [htmlPreviewSrc, setHtmlPreviewSrc] = useState<string | null>(null);
   const startAttemptedRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeReady, setIframeReady] = useState(false);
+  const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
+  const selectedElementRef = useRef<HTMLElement | null>(null);
   
   // Docker preview service
   const dockerService = usePreviewService();
