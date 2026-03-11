@@ -1217,13 +1217,32 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         // Strip any module.exports / tailwind.config blocks that AI embedded in component code
         generatedCode = stripModuleExportsBlocks(generatedCode);
         
-        if (onApplyToVFS && !multiFileOutput) {
-          console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
-          onApplyToVFS({ [singleFilePath]: generatedCode });
-          toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
-        } else if (onCodeGenerated) {
-          onCodeGenerated(generatedCode);
-          toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
+        // FINAL VALIDATION: Reject code that looks like AI reasoning/prose, not actual code
+        const looksLikeCode = generatedCode.includes('import ') || 
+          generatedCode.includes('export ') || 
+          generatedCode.includes('function ') ||
+          generatedCode.includes('dangerouslySetInnerHTML') ||
+          generatedCode.includes('return (') ||
+          /^\s*<!DOCTYPE/i.test(generatedCode) ||
+          /^\s*<html[\s>]/i.test(generatedCode);
+        
+        const looksLikeProse = /\b(I will|I need to|I'll|Let me|inspired|simplified|Here's my|I'm going to)\b/i.test(generatedCode.slice(0, 300));
+        
+        if (!looksLikeCode || (looksLikeProse && !generatedCode.includes('dangerouslySetInnerHTML'))) {
+          console.warn('[AIBuilderPanel] REJECTED: Generated code looks like AI reasoning, not actual code');
+          console.warn('[AIBuilderPanel] First 200 chars:', generatedCode.slice(0, 200));
+          generatedCode = null;
+        }
+
+        if (generatedCode) {
+          if (onApplyToVFS && !multiFileOutput) {
+            console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
+            onApplyToVFS({ [singleFilePath]: generatedCode });
+            toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
+          } else if (onCodeGenerated) {
+            onCodeGenerated(generatedCode);
+            toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
+          }
         }
       }
 
