@@ -35,6 +35,7 @@ import { SandpackProvider, SandpackPreview, SandpackLayout } from '@codesandbox/
 import { usePreviewService } from '@/hooks/usePreviewService';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
+import { getSelectedElementData, highlightElement, removeHighlight } from '@/utils/htmlElementSelector';
 import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 
 // ============================================================================
