@@ -4905,6 +4905,8 @@ ${body.innerHTML}
               onReplaceImage={handleFloatingImageReplace}
               onDelete={handleFloatingDelete}
               onDuplicate={handleFloatingDuplicate}
+              onMoveUp={handleFloatingMoveUp}
+              onMoveDown={handleFloatingMoveDown}
               onClear={() => setSelectedHTMLElement(null)}
               systemType={activeSystemType}
               systemsBuildContext={systemsBuildContextFromState}
