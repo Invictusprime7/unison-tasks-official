@@ -941,7 +941,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (multiFileOutput) {
         console.log('[AIBuilderPanel] Multi-file output detected:', Object.keys(multiFileOutput));
         
-        // Normalize paths and filter out config files that shouldn't be in VFS
+        // Normalize paths, filter config files, and strip module.exports from component content
         const BLOCKED_FILES = /\/(tailwind\.config|postcss\.config|vite\.config|tsconfig|package\.json|package-lock)/i;
         const normalizedFiles: Record<string, string> = {};
         for (const [path, content] of Object.entries(multiFileOutput)) {
@@ -950,7 +950,14 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             console.warn('[AIBuilderPanel] Filtered out config file from AI output:', normalizedPath);
             continue;
           }
-          normalizedFiles[normalizedPath] = content;
+          // Strip module.exports blocks from .tsx/.jsx files
+          let fileContent = content;
+          if (/\.(tsx|jsx)$/.test(normalizedPath) && content.includes('module.exports')) {
+            fileContent = content
+              .replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '')
+              .replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
+          }
+          normalizedFiles[normalizedPath] = fileContent;
         }
         
         if (onApplyToVFS) {
@@ -1029,6 +1036,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
       // AUTO-APPLY: Push generated code to VFS — prefer orchestrator for dep resolution
       if (generatedCode) {
+        // Strip any module.exports / tailwind.config blocks that AI embedded in component code
+        generatedCode = generatedCode
+          .replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '')
+          .replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
+        
         if (onApplyToVFS && !multiFileOutput) {
           console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, isHtmlContent, codeLength: generatedCode.length });
           onApplyToVFS({ [singleFilePath]: generatedCode });

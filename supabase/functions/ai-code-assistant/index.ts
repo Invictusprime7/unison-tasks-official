@@ -2910,6 +2910,38 @@ The image is already styled for the "${imagePlacement || 'top-left'}" position. 
       throw new Error(`All AI providers failed. Last error: ${lastError}. Please ensure at least one of LOVABLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY is set in your Supabase secrets.`);
     }
 
+    // Post-process: strip config files from JSON multi-file output
+    if (content.includes('"files"') && content.includes('"src/App.tsx"')) {
+      try {
+        let jsonStr = content.trim().replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.files && typeof parsed.files === 'object') {
+          const BLOCKED = /(tailwind\.config|postcss\.config|vite\.config|tsconfig|package\.json|package-lock)/i;
+          let changed = false;
+          for (const key of Object.keys(parsed.files)) {
+            if (BLOCKED.test(key)) {
+              delete parsed.files[key];
+              changed = true;
+              console.log(`[ai-code-assistant] Stripped blocked file from output: ${key}`);
+            }
+          }
+          // Also strip module.exports from any .tsx/.jsx file content
+          for (const [key, val] of Object.entries(parsed.files)) {
+            if ((key.endsWith('.tsx') || key.endsWith('.jsx')) && typeof val === 'string' && (val as string).includes('module.exports')) {
+              parsed.files[key] = (val as string)
+                .replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '')
+                .replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
+              changed = true;
+              console.log(`[ai-code-assistant] Stripped module.exports from: ${key}`);
+            }
+          }
+          if (changed) {
+            content = JSON.stringify(parsed);
+          }
+        }
+      } catch { /* not JSON, ignore */ }
+    }
+
     // Save learning session (async, don't wait)
     const originalUserPrompt = extractTextContent(messages[messages.length - 1]?.content);
     if (savePattern && originalUserPrompt) {

@@ -469,23 +469,39 @@ function formatResearchContext(research: ResearchResult): string {
 function sanitizeReactFiles(files: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};
   
+  // Filter out config files that shouldn't be in the VFS output
+  const BLOCKED_FILE_PATTERN = /(tailwind\.config|postcss\.config|vite\.config|tsconfig|package\.json|package-lock)/i;
+  
   for (const [path, content] of Object.entries(files)) {
+    // Skip config files entirely
+    if (BLOCKED_FILE_PATTERN.test(path)) {
+      console.warn(`[systems-build] Filtering out config file from AI output: ${path}`);
+      continue;
+    }
+    
     if (!path.endsWith('.tsx') && !path.endsWith('.jsx')) {
       result[path] = content;
       continue;
     }
     
-    // Check if this file has raw HTML that can't be fixed with simple replacements
-    const hasDoctype = content.includes('<!DOCTYPE');
-    const hasHtmlTag = /<html[\s>]/i.test(content);
-    const hasBodyTag = /<body[\s>]/i.test(content);
-    const htmlCommentCount = (content.match(/<!--/g) || []).length;
-    const rawClassCount = (content.match(/ class="/g) || []).length;
+    // Strip any module.exports / tailwind.config blocks that the AI embedded in component files
+    let cleaned = content;
+    // Remove "// tailwind.config.js (conceptual)" comment blocks + module.exports = {...} blocks
+    cleaned = cleaned.replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '');
+    // Remove standalone module.exports blocks
+    cleaned = cleaned.replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
     
+    // Check if this file has raw HTML that can't be fixed with simple replacements
+    const hasDoctype = cleaned.includes('<!DOCTYPE');
+    const hasHtmlTag = /<html[\s>]/i.test(cleaned);
+    const hasBodyTag = /<body[\s>]/i.test(cleaned);
+    const htmlCommentCount = (cleaned.match(/<!--/g) || []).length;
+    const rawClassCount = (cleaned.match(/ class="/g) || []).length;
+
     // If it's predominantly raw HTML dumped into JSX, wrap the whole thing
     if ((hasDoctype || hasHtmlTag || hasBodyTag) || (htmlCommentCount > 3 && rawClassCount > 5)) {
       console.warn(`[systems-build] File ${path} contains raw HTML, wrapping with dangerouslySetInnerHTML`);
-      const escaped = content
+      const escaped = cleaned
         .replace(/\\/g, '\\\\')
         .replace(/`/g, '\\`')
         .replace(/\$/g, '\\$');
@@ -526,7 +542,7 @@ export default function App() {
     }
     
     // Light sanitization: fix HTML comments and attributes in JSX
-    let sanitized = content;
+    let sanitized = cleaned;
     // Convert HTML comments to JSX comments
     sanitized = sanitized.replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}');
     // Convert class= to className= (globally in tag contexts, not just first occurrence)
