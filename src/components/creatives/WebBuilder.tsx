@@ -2481,6 +2481,14 @@ export default function App() {
         setEditorCode(pageCode);
 
         toast.success(`${navLabel || pageName} page created!`);
+        
+        // Re-hydrate playground with new page
+        setTimeout(() => {
+          const allFiles = getSandpackFiles();
+          if (Object.keys(allFiles).length > 0) {
+            creatorPlayground.hydrateFromVFS(virtualFS.nodes, allFiles);
+          }
+        }, 200);
       } else {
         throw new Error('No page content generated');
       }
