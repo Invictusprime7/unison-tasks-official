@@ -973,15 +973,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
         // Strategy 2: Check if content IS a React component (starts with import/export/function)
         if (!multiFileOutput && !generatedCode) {
-          const isReactComponent = /^import\s+/m.test(trimmed) ||
+          // Skip if content has markdown fences — let Strategy 3 handle it
+          const hasMarkdownFences = /```\w*\s*\n/m.test(trimmed);
+          
+          const isReactComponent = !hasMarkdownFences && (
+            /^import\s+/m.test(trimmed) ||
             /^export\s+default\s+function/m.test(trimmed) ||
-            /^(?:const|function)\s+\w+.*=.*(?:=>|\{)/m.test(trimmed);
+            /^(?:const|function)\s+\w+.*=.*(?:=>|\{)/m.test(trimmed)
+          );
 
           // Reject if it contains config file content (module.exports, tailwind.config)
           const hasConfigContent = /module\.exports\s*=/.test(trimmed) || 
             /tailwind\.config\s*=/.test(trimmed);
+          // Reject if it contains raw HTML (should be wrapped first)
+          const hasRawHtml = /<!DOCTYPE/i.test(trimmed) || /^<html[\s>]/im.test(trimmed);
 
-          if (isReactComponent && trimmed.includes('return') && trimmed.includes('<') && !hasConfigContent) {
+          if (isReactComponent && trimmed.includes('return') && trimmed.includes('<') && !hasConfigContent && !hasRawHtml) {
             generatedCode = trimmed;
             explanationText = '✅ Component applied to your project.';
           }
@@ -1097,13 +1104,14 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
 
-      // Determine content type for path selection
-      const isHtmlContent = generatedCode && (
-        generatedCode.includes('<!DOCTYPE') ||
-        generatedCode.includes('<html') ||
-        (generatedCode.includes('class=') && !generatedCode.includes('className'))
-      );
-      const singleFilePath = isHtmlContent ? '/index.html' : '/src/App.tsx';
+      // SAFETY NET: If generatedCode is still raw HTML (not wrapped in React), wrap it now
+      if (generatedCode && (/^\s*<!DOCTYPE/i.test(generatedCode) || /^\s*<html[\s>]/i.test(generatedCode))) {
+        console.warn('[AIBuilderPanel] Safety net: wrapping raw HTML that escaped extraction strategies');
+        generatedCode = wrapHtmlInReactComponent(generatedCode);
+      }
+
+      // All generated code should be React/TSX at this point — always use .tsx path
+      const singleFilePath = '/src/App.tsx';
 
       // Determine VFS edits from response
       const edits: VFSEdit[] = [];
@@ -1165,7 +1173,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         generatedCode = stripModuleExportsBlocks(generatedCode);
         
         if (onApplyToVFS && !multiFileOutput) {
-          console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, isHtmlContent, codeLength: generatedCode.length });
+          console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
           onApplyToVFS({ [singleFilePath]: generatedCode });
           toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
         } else if (onCodeGenerated) {
