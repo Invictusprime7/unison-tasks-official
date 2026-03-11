@@ -332,6 +332,13 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
 
     // Fix imports in content to match flattened paths
     let processedContent = content;
+
+    // SAFETY NET: If a .tsx/.jsx file contains raw CSS instead of React code, wrap it
+    if (/\.(tsx?|jsx?)$/.test(normalizedPath) && isRawCss(processedContent)) {
+      console.warn(`[sandpackFilePrep] Raw CSS detected in ${normalizedPath} — wrapping in React component`);
+      processedContent = wrapCssInReactComponent(processedContent);
+    }
+
     processedContent = processedContent
       .replace(/from\s+['"]\.\/src\//g, "from './")
       .replace(/from\s+['"]src\//g, "from './")
