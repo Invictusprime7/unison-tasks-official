@@ -4500,9 +4500,9 @@ ${body.innerHTML}
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       "w-2 h-2 rounded-full shadow-sm",
-                      builderMode === 'select' ? "bg-emerald-500" : "bg-slate-400"
+                      builderMode === 'select' ? "bg-emerald-400" : "bg-slate-500"
                     )} />
-                    <span className="text-xs font-medium text-slate-500">
+                    <span className="text-xs font-medium text-slate-300">
                       {builderMode === 'select' ? 'Select Mode' : 'Preview Mode'}
                     </span>
                     {useReactPreview && (
