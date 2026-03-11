@@ -4538,7 +4538,7 @@ ${body.innerHTML}
                       size="icon"
                       onClick={handleRefreshPreview}
                       disabled={isRefreshing}
-                      className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 disabled:opacity-40 rounded-md transition-all duration-200"
+                      className="h-7 w-7 text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-40 rounded-md transition-all duration-200"
                       title="Refresh Preview (F5)"
                     >
                       <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
