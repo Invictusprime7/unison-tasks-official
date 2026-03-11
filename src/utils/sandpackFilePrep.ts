@@ -223,6 +223,7 @@ export default function App() {
 
 /**
  * Process code to strip/transform imports that Sandpack can't resolve.
+ * Also fixes dangerouslySetInnerHTML template literals that contain CSS (which crash Babel).
  */
 export function processCode(code: string, filePath: string): string {
   if (!/\.(tsx?|jsx?|mjs)$/.test(filePath)) {
@@ -230,6 +231,20 @@ export function processCode(code: string, filePath: string): string {
   }
 
   let processed = code;
+
+  // FIX: Convert dangerouslySetInnerHTML={{ __html: `...CSS...` }} to use a string constant
+  // Babel crashes when template literals contain CSS syntax like :root { --var: value }
+  processed = processed.replace(
+    /dangerouslySetInnerHTML=\{\{\s*__html:\s*`([\s\S]*?)`\s*\}\}/g,
+    (_match, cssContent: string) => {
+      // Only fix if content looks like CSS (not simple HTML)
+      if (/:root|@import|@font-face|@media|@keyframes|--[\w-]+\s*:/.test(cssContent)) {
+        const jsonStr = JSON.stringify(cssContent);
+        return `dangerouslySetInnerHTML={{ __html: ${jsonStr} }}`;
+      }
+      return _match;
+    }
+  );
 
   // Handle @/ path alias imports
   processed = processed.replace(
