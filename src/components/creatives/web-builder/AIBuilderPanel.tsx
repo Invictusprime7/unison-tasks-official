@@ -998,9 +998,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           // Strip module.exports blocks from .tsx/.jsx files
           let fileContent = content;
           if (/\.(tsx|jsx)$/.test(normalizedPath) && content.includes('module.exports')) {
-            fileContent = content
-              .replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '')
-              .replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
+            fileContent = stripModuleExportsBlocks(content);
           }
           normalizedFiles[normalizedPath] = fileContent;
         }
