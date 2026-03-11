@@ -8,6 +8,8 @@
 
 import type { Asset, AssetReference } from "./asset";
 import type { AutomationWorkflow } from "./automation";
+import type { CreatorData } from "./creatorData";
+import type { PageRegistry } from "./pageRegistry";
 
 // ============================================================================
 // Core ID Types
