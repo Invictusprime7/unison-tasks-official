@@ -276,6 +276,8 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   onDelete,
   onDuplicate,
   onClear,
+  onMoveUp,
+  onMoveDown,
   onAIEditComplete,
   onRequestAI,
   className,
