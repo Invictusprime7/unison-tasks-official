@@ -4072,8 +4072,34 @@ ${body.innerHTML}
           >
             <Settings className="h-4 w-4" />
           </Button>
+
+          <div className="h-5 w-px bg-emerald-500/50" />
+
+          {/* Creator's Playground Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPlaygroundModalOpen(true)}
+            className="h-8 px-2.5 rounded-lg text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/15 hover:shadow-[0_0_10px_rgba(0,200,100,0.3)] transition-all duration-200"
+            title="Open Creator's Playground"
+          >
+            <Zap className="h-4 w-4" />
+          </Button>
         </div>
       </div>
+
+      {/* Creator's Playground Modal */}
+      <CreatorPlaygroundModal
+        open={playgroundModalOpen}
+        onOpenChange={setPlaygroundModalOpen}
+        playground={creatorPlayground}
+        onPageSelect={(pageId) => {
+          const page = creatorPlayground.pageRegistry.pages[pageId];
+          if (page?.path) {
+            toast.info(`Selected page: ${page.title}`, { description: page.path });
+          }
+        }}
+      />
 
       <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* AI Panel - static left side panel (always visible when builder opens) */}
