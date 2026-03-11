@@ -64,6 +64,10 @@ export interface UseCreatorPlaygroundReturn {
   addCollection: (collection: Omit<CreatorCollection, "collectionId" | "sortOrder">) => CreatorCollection;
   removeCollection: (collectionId: string) => void;
 
+  // Hydration — auto-populate from VFS
+  hydrateFromVFS: (nodes: VirtualNode[], sandpackFiles: Record<string, string>) => HydrationResult;
+  lastHydration: HydrationResult | null;
+
   // Dirty flag
   isDirty: boolean;
 }
