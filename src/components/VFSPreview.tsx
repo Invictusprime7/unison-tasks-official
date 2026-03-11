@@ -13,7 +13,7 @@
  * - Open in new tab
  */
 
-import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle, useRef, useMemo, Component, type ReactNode, type ErrorInfo } from 'react';
 import { cn } from '@/lib/utils';
 import { 
   RefreshCw, 
@@ -93,6 +93,34 @@ export interface VFSPreviewHandle {
   getBackend: () => PreviewBackend;
   openInNewTab: () => void;
   getIframe: () => HTMLIFrameElement | null;
+}
+
+// ============================================================================
+// Sandpack Error Boundary — catches Sandpack/Babel crashes and triggers fallback
+// ============================================================================
+
+class SandpackErrorBoundary extends Component<
+  { children: ReactNode; onFallback: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; onFallback: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[VFSPreview] Sandpack render crash:', error.message, info.componentStack);
+    this.props.onFallback();
+  }
+
+  render() {
+    if (this.state.hasError) return null; // Parent switches to HTML backend
+    return this.props.children;
+  }
 }
 
 // ============================================================================
@@ -1282,34 +1310,36 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
           </div>
         )}
         
-        {/* Sandpack In-Browser Preview */}
+        {/* Sandpack In-Browser Preview — wrapped in error boundary */}
         {backend === 'sandpack' && (
-          <SandpackProvider
-            template="react-ts"
-            files={sandpackFiles}
-            theme="light"
-            options={{
-              externalResources: ['https://cdn.tailwindcss.com'],
-              activeFile: sandpackEntryFile,
-              visibleFiles: [sandpackEntryFile],
-              autorun: true,
-              autoReload: true,
-              recompileMode: 'delayed',
-              recompileDelay: 300,
-            }}
-            customSetup={{
-              dependencies: sandpackDeps,
-            }}
-          >
-            <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
-              <SandpackPreview
-                showNavigator={false}
-                showRefreshButton={false}
-                showOpenInCodeSandbox={false}
-                style={{ height: '100%', minHeight: 0 }}
-              />
-            </SandpackLayout>
-          </SandpackProvider>
+          <SandpackErrorBoundary onFallback={() => { console.warn('[VFSPreview] Sandpack crashed, falling back to HTML'); setBackend('html'); }}>
+            <SandpackProvider
+              template="react-ts"
+              files={sandpackFiles}
+              theme="light"
+              options={{
+                externalResources: ['https://cdn.tailwindcss.com'],
+                activeFile: sandpackEntryFile,
+                visibleFiles: [sandpackEntryFile],
+                autorun: true,
+                autoReload: true,
+                recompileMode: 'delayed',
+                recompileDelay: 300,
+              }}
+              customSetup={{
+                dependencies: sandpackDeps,
+              }}
+            >
+              <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
+                <SandpackPreview
+                  showNavigator={false}
+                  showRefreshButton={false}
+                  showOpenInCodeSandbox={false}
+                  style={{ height: '100%', minHeight: 0 }}
+                />
+              </SandpackLayout>
+            </SandpackProvider>
+          </SandpackErrorBoundary>
         )}
         
         {/* Logs Panel */}
