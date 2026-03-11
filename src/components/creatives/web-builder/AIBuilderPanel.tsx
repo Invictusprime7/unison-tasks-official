@@ -880,7 +880,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             /^export\s+default\s+function/m.test(trimmed) ||
             /^(?:const|function)\s+\w+.*=.*(?:=>|\{)/m.test(trimmed);
 
-          if (isReactComponent && trimmed.includes('return') && trimmed.includes('<')) {
+          // Reject if it contains config file content (module.exports, tailwind.config)
+          const hasConfigContent = /module\.exports\s*=/.test(trimmed) || 
+            /tailwind\.config\s*=/.test(trimmed);
+
+          if (isReactComponent && trimmed.includes('return') && trimmed.includes('<') && !hasConfigContent) {
             generatedCode = trimmed;
             explanationText = '✅ Component applied to your project.';
           }
