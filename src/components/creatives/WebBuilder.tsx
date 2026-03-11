@@ -3858,7 +3858,7 @@ ${body.innerHTML}
             )}
             title={aiPanelOpen ? "Close AI Panel" : "Open AI Panel"}
           >
-            <Sparkles className="h-4 w-4" />
+            <span className="text-sm">⚡ AI</span>
           </Button>
           
           <div className="h-5 w-px bg-fuchsia-500/50" />
