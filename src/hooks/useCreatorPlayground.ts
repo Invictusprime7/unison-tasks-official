@@ -11,6 +11,8 @@ import type { CreatorData, CreatorProduct, CreatorService, CreatorForm, CreatorO
 import { createEmptyCreatorData } from "@/types/creatorData";
 import type { PageRegistry, BuilderPage, FunnelGraph, FunnelStep, BuilderPageType, FunnelRole } from "@/types/pageRegistry";
 import { createEmptyPageRegistry, createBuilderPage, createFunnelGraph, getNavPages, getFunnelPages, resolveNextFunnelPage } from "@/types/pageRegistry";
+import { hydratePlaygroundFromVFS, mergeHydrationResult, type HydrationResult } from "@/services/playgroundHydrator";
+import type { VirtualNode } from "@/hooks/useVirtualFileSystem";
 
 // ============================================================================
 // Hook State
