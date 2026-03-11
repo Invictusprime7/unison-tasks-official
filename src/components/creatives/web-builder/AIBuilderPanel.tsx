@@ -52,6 +52,51 @@ import type { SystemsBuildContext } from '@/types/systemsBuildContext';
 import { generateLibraryPrompt } from '@/data/siteElementsLibrary';
 
 // ============================================================================
+/**
+ * Strip module.exports blocks using brace-counting so nested objects are fully removed.
+ * Also strips leading comment lines (e.g. "// tailwind.config.js") before the block.
+ */
+function stripModuleExportsBlocks(code: string): string {
+  // First strip comment-prefixed config sections
+  code = code.replace(/(?:\/\/[^\n]*(?:tailwind|config)[^\n]*\n)+/gi, (match, offset) => {
+    // Only strip if followed by module.exports
+    const after = code.slice(offset + match.length).trimStart();
+    return after.startsWith('module.exports') ? '' : match;
+  });
+
+  let result = code;
+  let safetyCounter = 0;
+  while (safetyCounter++ < 5) {
+    const idx = result.indexOf('module.exports');
+    if (idx === -1) break;
+
+    // Find the opening brace
+    const braceStart = result.indexOf('{', idx);
+    if (braceStart === -1) {
+      // No brace — just remove the line
+      result = result.slice(0, idx) + result.slice(result.indexOf('\n', idx) + 1);
+      continue;
+    }
+
+    // Count braces to find matching close
+    let depth = 0;
+    let end = braceStart;
+    for (; end < result.length; end++) {
+      if (result[end] === '{') depth++;
+      else if (result[end] === '}') { depth--; if (depth === 0) break; }
+    }
+
+    // Remove from module.exports to closing }; (including optional semicolon/newline)
+    let removeEnd = end + 1;
+    if (result[removeEnd] === ';') removeEnd++;
+    while (result[removeEnd] === '\n' || result[removeEnd] === '\r') removeEnd++;
+
+    result = result.slice(0, idx) + result.slice(removeEnd);
+  }
+
+  return result.trim();
+}
+
 // Types
 // ============================================================================
 
