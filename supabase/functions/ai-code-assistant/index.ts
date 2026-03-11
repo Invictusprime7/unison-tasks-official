@@ -2299,8 +2299,6 @@ Return a single JSON object with this structure (no markdown, no explanations):
     "src/pages/Home.tsx": "// Home page composing sections...",
     "src/lib/utils.ts": "// cn() and utilities...",
     "src/types/index.ts": "// TypeScript types...",
-    "package.json": "{ \\"dependencies\\": {...} }",
-    "tailwind.config.js": "// Tailwind config with CSS vars...",
     "index.html": "<!-- HTML template with fonts -->"
   },
   "entryPoint": "src/App.tsx",
