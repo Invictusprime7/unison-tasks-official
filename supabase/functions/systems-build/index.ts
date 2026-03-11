@@ -501,7 +501,7 @@ function sanitizeReactFiles(files: Record<string, string>): Record<string, strin
     // If it's predominantly raw HTML dumped into JSX, wrap the whole thing
     if ((hasDoctype || hasHtmlTag || hasBodyTag) || (htmlCommentCount > 3 && rawClassCount > 5)) {
       console.warn(`[systems-build] File ${path} contains raw HTML, wrapping with dangerouslySetInnerHTML`);
-      const escaped = content
+      const escaped = cleaned
         .replace(/\\/g, '\\\\')
         .replace(/`/g, '\\`')
         .replace(/\$/g, '\\$');
