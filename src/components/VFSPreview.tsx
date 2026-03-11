@@ -96,6 +96,34 @@ export interface VFSPreviewHandle {
 }
 
 // ============================================================================
+// Sandpack Error Boundary — catches Sandpack/Babel crashes and triggers fallback
+// ============================================================================
+
+class SandpackErrorBoundary extends Component<
+  { children: ReactNode; onFallback: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; onFallback: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[VFSPreview] Sandpack render crash:', error.message, info.componentStack);
+    this.props.onFallback();
+  }
+
+  render() {
+    if (this.state.hasError) return null; // Parent switches to HTML backend
+    return this.props.children;
+  }
+}
+
+// ============================================================================
 // Constants
 // ============================================================================
 
