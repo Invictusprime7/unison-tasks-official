@@ -4039,22 +4039,6 @@ ${body.innerHTML}
             />
           </div>
           
-          <div className="h-5 w-px bg-cyan-500/50" />
-          
-          {/* AI Activity Indicator */}
-          <AIActivityPanel
-            events={aiActivity.events}
-            activityState={aiActivity.activityState}
-            attentionCount={aiActivity.attentionCount}
-            isLoading={aiActivity.isLoading}
-            onViewDetails={() => {
-              setLeftPanelCollapsed(false);
-              toast.info('View AI plugin details in the sidebar', {
-                description: 'Go to AI Plugins tab for full analysis',
-              });
-            }}
-          />
-          
           <div className="h-5 w-px bg-fuchsia-500/50" />
           
           {/* Right Panel Toggle */}
