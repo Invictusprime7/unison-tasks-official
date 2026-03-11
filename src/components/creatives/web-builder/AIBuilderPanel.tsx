@@ -1066,9 +1066,18 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               bestBlock.includes('<section') ||
               bestBlock.includes('<div')
             );
+            // Check if it's pure CSS (e.g. :root { ... })
+            const isCssOnly = /^\s*(?::root|body|html|\*|@import|@font-face|@media|\/\*)/m.test(bestBlock) &&
+              !bestBlock.includes('import ') && !bestBlock.includes('export ');
+            
             if (hasReactStructure) {
               generatedCode = bestBlock;
               console.log('[AIBuilderPanel] Extracted React code from fence');
+            } else if (isCssOnly) {
+              // CSS extracted from fence — wrap in React component with dangerouslySetInnerHTML
+              const escapedCss = bestBlock.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+              generatedCode = `import React from 'react';\n\nexport default function App() {\n  return (\n    <>\n      <style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />\n      <div style={{ minHeight: '100vh' }}><p>Styles applied.</p></div>\n    </>\n  );\n}`;
+              console.log('[AIBuilderPanel] Extracted CSS from fence, wrapped in React component');
             } else if (hasHtmlStructure) {
               generatedCode = wrapHtmlInReactComponent(bestBlock);
               console.log('[AIBuilderPanel] Extracted HTML from fence, wrapped in React component');
@@ -1149,10 +1158,28 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
 
-      // SAFETY NET: If generatedCode is still raw HTML (not wrapped in React), wrap it now
+      // SAFETY NET 1: If generatedCode is still raw HTML (not wrapped in React), wrap it now
       if (generatedCode && (/^\s*<!DOCTYPE/i.test(generatedCode) || /^\s*<html[\s>]/i.test(generatedCode))) {
         console.warn('[AIBuilderPanel] Safety net: wrapping raw HTML that escaped extraction strategies');
         generatedCode = wrapHtmlInReactComponent(generatedCode);
+      }
+
+      // SAFETY NET 2: If generatedCode is raw CSS (:root, body {, @import, etc.), wrap in React component
+      if (generatedCode && /^\s*(?::root|body|html|\*|@import|@font-face|@media|\/\*)\s*[{\/(]/m.test(generatedCode.trim()) && !generatedCode.includes('import ') && !generatedCode.includes('export ')) {
+        console.warn('[AIBuilderPanel] Safety net: detected raw CSS being applied as TSX — wrapping in React component');
+        const escapedCss = generatedCode.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+        generatedCode = `import React from 'react';
+
+export default function App() {
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p>Styles applied. Waiting for page content...</p>
+      </div>
+    </>
+  );
+}`;
       }
 
       // All generated code should be React/TSX at this point — always use .tsx path
