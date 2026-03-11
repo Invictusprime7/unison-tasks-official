@@ -185,6 +185,40 @@ export default {
 `;
 
 /**
+ * Detect if content is raw CSS (not valid JSX/TSX).
+ * Returns true if the content looks like a stylesheet rather than a React component.
+ */
+function isRawCss(content: string): boolean {
+  const trimmed = content.trim();
+  // Must NOT have React indicators
+  if (/\b(import\s+|export\s+(default\s+)?|function\s+\w+|const\s+\w+\s*=|class\s+\w+)/.test(trimmed)) {
+    return false;
+  }
+  // Must have CSS indicators
+  return /^(\s*(@import|@font-face|@media|@keyframes|@tailwind|:root|html|body|\*|\.[\w-]|#[\w-])\s*[{(])/m.test(trimmed);
+}
+
+/**
+ * Wrap raw CSS content in a valid React component so Sandpack can render it.
+ */
+function wrapCssInReactComponent(css: string): string {
+  const escaped = css.replace(/`/g, '\\`').replace(/\${/g, '\\${');
+  return `import React from 'react';
+
+export default function App() {
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: \`${escaped}\` }} />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-500">Styles applied. Add HTML content to see the design.</p>
+      </div>
+    </>
+  );
+}
+`;
+}
+
+/**
  * Process code to strip/transform imports that Sandpack can't resolve.
  */
 export function processCode(code: string, filePath: string): string {
