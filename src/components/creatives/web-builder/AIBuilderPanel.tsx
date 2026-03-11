@@ -1029,6 +1029,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
       // AUTO-APPLY: Push generated code to VFS — prefer orchestrator for dep resolution
       if (generatedCode) {
+        // Strip any module.exports / tailwind.config blocks that AI embedded in component code
+        generatedCode = generatedCode
+          .replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '')
+          .replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
+        
         if (onApplyToVFS && !multiFileOutput) {
           console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, isHtmlContent, codeLength: generatedCode.length });
           onApplyToVFS({ [singleFilePath]: generatedCode });
