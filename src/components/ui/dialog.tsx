@@ -69,11 +69,8 @@ DialogTrigger.displayName = "DialogTrigger";
 function DialogPortal({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
-  return typeof document !== "undefined"
-    ? (React as any).createPortal?.(children, document.body) ??
-        require("react-dom").createPortal(children, document.body)
-    : null;
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(children, document.body);
 }
 
 /* Close */
