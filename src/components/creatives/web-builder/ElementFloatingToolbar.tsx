@@ -44,6 +44,10 @@ interface ElementFloatingToolbarProps {
   onDelete: (selector: string) => void;
   onDuplicate: (selector: string) => void;
   onClear: () => void;
+  /** Move element/section up in DOM order */
+  onMoveUp?: (selector: string) => void;
+  /** Move element/section down in DOM order */
+  onMoveDown?: (selector: string) => void;
   /**
    * Called with the selector and AI-generated HTML snippet.
    * Return true/void to confirm the update was applied, false to signal failure.
