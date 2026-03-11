@@ -1104,13 +1104,14 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
 
-      // Determine content type for path selection
-      const isHtmlContent = generatedCode && (
-        generatedCode.includes('<!DOCTYPE') ||
-        generatedCode.includes('<html') ||
-        (generatedCode.includes('class=') && !generatedCode.includes('className'))
-      );
-      const singleFilePath = isHtmlContent ? '/index.html' : '/src/App.tsx';
+      // SAFETY NET: If generatedCode is still raw HTML (not wrapped in React), wrap it now
+      if (generatedCode && (/^\s*<!DOCTYPE/i.test(generatedCode) || /^\s*<html[\s>]/i.test(generatedCode))) {
+        console.warn('[AIBuilderPanel] Safety net: wrapping raw HTML that escaped extraction strategies');
+        generatedCode = wrapHtmlInReactComponent(generatedCode);
+      }
+
+      // All generated code should be React/TSX at this point — always use .tsx path
+      const singleFilePath = '/src/App.tsx';
 
       // Determine VFS edits from response
       const edits: VFSEdit[] = [];
