@@ -4658,10 +4658,11 @@ ${body.innerHTML}
                         autoStart={true}
                         showBackendIndicator={false}
                         device={device}
+                        enableSelection={builderMode === 'select'}
+                        onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                         onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                         onError={(err) => {
                           toast.error(`Preview error: ${err}`);
-                          // Capture error for AI debugging
                           setIframeErrors(prev => [...prev, {
                             type: 'runtime',
                             message: err,
