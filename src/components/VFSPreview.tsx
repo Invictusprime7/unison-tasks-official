@@ -91,6 +91,7 @@ export interface VFSPreviewHandle {
   stopDocker: () => Promise<void>;
   getBackend: () => PreviewBackend;
   openInNewTab: () => void;
+  getIframe: () => HTMLIFrameElement | null;
 }
 
 // ============================================================================
