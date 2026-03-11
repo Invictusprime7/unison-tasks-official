@@ -542,7 +542,7 @@ export default function App() {
     }
     
     // Light sanitization: fix HTML comments and attributes in JSX
-    let sanitized = content;
+    let sanitized = cleaned;
     // Convert HTML comments to JSX comments
     sanitized = sanitized.replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}');
     // Convert class= to className= (globally in tag contexts, not just first occurrence)
