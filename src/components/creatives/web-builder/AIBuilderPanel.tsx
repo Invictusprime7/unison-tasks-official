@@ -96,23 +96,49 @@ function stripModuleExportsBlocks(code: string): string {
 }
 
 /**
+ * Strip inline backtick code references from AI reasoning text.
+ * Converts "`<style>`" → "STYLE_TAG" etc. to prevent HTML tag matching in reasoning.
+ */
+function stripInlineCodeRefs(content: string): string {
+  return content.replace(/`[^`]*`/g, 'CODE_REF');
+}
+
+/**
  * Extract HTML from AI response that mixes reasoning text with raw HTML.
  * Handles cases like: "I will generate...<!DOCTYPE html><html>...</html>"
  * Returns the extracted HTML or null if no HTML found.
+ * 
+ * IMPORTANT: Ignores HTML tags mentioned inside backtick code references
+ * in reasoning text (e.g. "`<html>`", "`<style>`").
  */
 function extractRawHtmlFromMixed(content: string): string | null {
+  // Strip inline code refs so `<html>` in reasoning doesn't trigger false match
+  const cleaned = stripInlineCodeRefs(content);
+
   // Case 1: Content contains <!DOCTYPE html> — extract everything from there
-  const doctypeIdx = content.indexOf('<!DOCTYPE');
-  if (doctypeIdx === -1) {
-    // Case 2: Content contains <html — extract from there
-    const htmlIdx = content.indexOf('<html');
-    if (htmlIdx === -1) return null;
-    const extracted = content.slice(htmlIdx).trim();
-    if (extracted.includes('</html>')) return extracted;
-    return null;
+  const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
+  if (doctypeIdx >= 0) {
+    // Use the index from cleaned to slice from the ORIGINAL content
+    const originalDoctypeIdx = content.indexOf('<!DOCTYPE', Math.max(0, doctypeIdx - 50));
+    if (originalDoctypeIdx >= 0) {
+      return content.slice(originalDoctypeIdx).trim();
+    }
   }
-  const extracted = content.slice(doctypeIdx).trim();
-  return extracted;
+  
+  // Case 2: Content contains <html — but only if it looks like an actual tag (not inside prose)
+  // Match <html followed by > or whitespace+attributes, NOT inside backticks
+  const htmlTagRegex = /<html[\s>]/gi;
+  let match: RegExpExecArray | null;
+  while ((match = htmlTagRegex.exec(cleaned)) !== null) {
+    // Find the corresponding position in original content
+    const originalIdx = content.indexOf('<html', Math.max(0, match.index - 50));
+    if (originalIdx >= 0) {
+      const extracted = content.slice(originalIdx).trim();
+      if (extracted.includes('</html>')) return extracted;
+    }
+  }
+  
+  return null;
 }
 
 /**
