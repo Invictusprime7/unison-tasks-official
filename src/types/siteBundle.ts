@@ -8,6 +8,8 @@
 
 import type { Asset, AssetReference } from "./asset";
 import type { AutomationWorkflow } from "./automation";
+import type { CreatorData } from "./creatorData";
+import type { PageRegistry } from "./pageRegistry";
 
 // ============================================================================
 // Core ID Types
@@ -592,6 +594,16 @@ export interface SiteBundle {
 
   // publish artifact pointers (optional until published)
   publish?: PublishInfo;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Creator Data Layer — structured business content that all pages consume
+  // ═══════════════════════════════════════════════════════════════════════════
+  creatorData?: CreatorData;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Page Registry + Funnel Graph — canonical page management + funnel flow
+  // ═══════════════════════════════════════════════════════════════════════════
+  pageRegistry?: PageRegistry;
 }
 
 // ============================================================================
