@@ -1014,9 +1014,12 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               bestBlock.includes('<section') ||
               bestBlock.includes('<div')
             );
-            if (hasReactStructure || hasHtmlStructure) {
+            if (hasReactStructure) {
               generatedCode = bestBlock;
-              console.log('[AIBuilderPanel] Extracted code from fence, type:', hasReactStructure ? 'React' : 'HTML');
+              console.log('[AIBuilderPanel] Extracted React code from fence');
+            } else if (hasHtmlStructure) {
+              generatedCode = wrapHtmlInReactComponent(bestBlock);
+              console.log('[AIBuilderPanel] Extracted HTML from fence, wrapped in React component');
             }
           }
         }
