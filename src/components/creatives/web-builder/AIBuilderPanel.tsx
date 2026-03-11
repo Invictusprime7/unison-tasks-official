@@ -983,6 +983,25 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           jsonCandidate = jsonFenceMatch[1].trim();
         }
 
+      // Pre-processing: Detect if content is AI reasoning/prose with no usable code
+      // AI sometimes outputs planning text with inline HTML tag refs like `<style>`, `<nav>`
+      const isLikelyPureReasoning = (() => {
+        const stripped = stripInlineCodeRefs(trimmed);
+        const hasNoCodeStructure = !stripped.includes('import ') && 
+          !stripped.includes('export ') && 
+          !stripped.includes('function ') &&
+          !/<!DOCTYPE/i.test(stripped) &&
+          !/<html[\s>]/i.test(stripped);
+        const hasProseIndicators = /\b(I will|I need to|I'll|Let me|Here's|inspired|simplified)\b/i.test(trimmed);
+        const hasNoCodeFences = !/```\w*\s*\n/m.test(trimmed);
+        return hasNoCodeStructure && hasProseIndicators && hasNoCodeFences;
+      })();
+
+      if (isLikelyPureReasoning) {
+        console.warn('[AIBuilderPanel] Content appears to be pure AI reasoning — skipping code extraction');
+        explanationText = trimmed;
+      }
+
         // Strategy 1: Check for JSON multi-file output: {"files": {...}}
         if (jsonCandidate.startsWith('{') && jsonCandidate.includes('"files"')) {
           try {
