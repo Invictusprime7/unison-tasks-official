@@ -469,11 +469,27 @@ function formatResearchContext(research: ResearchResult): string {
 function sanitizeReactFiles(files: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};
   
+  // Filter out config files that shouldn't be in the VFS output
+  const BLOCKED_FILE_PATTERN = /(tailwind\.config|postcss\.config|vite\.config|tsconfig|package\.json|package-lock)/i;
+  
   for (const [path, content] of Object.entries(files)) {
+    // Skip config files entirely
+    if (BLOCKED_FILE_PATTERN.test(path)) {
+      console.warn(`[systems-build] Filtering out config file from AI output: ${path}`);
+      continue;
+    }
+    
     if (!path.endsWith('.tsx') && !path.endsWith('.jsx')) {
       result[path] = content;
       continue;
     }
+    
+    // Strip any module.exports / tailwind.config blocks that the AI embedded in component files
+    let cleaned = content;
+    // Remove "// tailwind.config.js (conceptual)" comment blocks + module.exports = {...} blocks
+    cleaned = cleaned.replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '');
+    // Remove standalone module.exports blocks
+    cleaned = cleaned.replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
     
     // Check if this file has raw HTML that can't be fixed with simple replacements
     const hasDoctype = content.includes('<!DOCTYPE');
