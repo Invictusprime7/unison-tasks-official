@@ -95,7 +95,7 @@ export function CreatorPlaygroundModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[92vw] h-[82vh] p-0 gap-0 bg-[#09090f] border border-emerald-500/30 shadow-[0_0_60px_rgba(0,200,100,0.12)] overflow-hidden [&>button]:text-emerald-400 [&>button]:hover:text-white">
+      <DialogContent className="max-w-5xl w-[92vw] h-[82vh] flex flex-col p-0 gap-0 bg-[#09090f] border border-emerald-500/30 shadow-[0_0_60px_rgba(0,200,100,0.12)] overflow-hidden [&>button]:text-emerald-400 [&>button]:hover:text-white">
         {/* Header */}
         <DialogHeader className="px-5 py-3 border-b border-emerald-500/20 bg-[#0a0a14] flex-shrink-0">
           <div className="flex items-center justify-between">
