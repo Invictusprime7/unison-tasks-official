@@ -2307,6 +2307,13 @@ Return a single JSON object with this structure (no markdown, no explanations):
 }
 \`\`\`
 
+## ⛔ FILES YOU MUST NEVER INCLUDE IN OUTPUT:
+- **tailwind.config.js** / **tailwind.config.ts** — already provided by the platform
+- **package.json** — dependencies are auto-resolved
+- **vite.config.ts** / **postcss.config.js** — already configured
+- **tsconfig.json** — already configured
+- Do NOT embed config file content (e.g. \`module.exports = { theme: ... }\`) inside component files
+
 ## QUALITY REQUIREMENTS (NON-NEGOTIABLE):
 - **MINIMUM 10 section components** - Header, Hero, Services, About, Team, Testimonials, Gallery, FAQ, CTA, Contact, Footer
 - **MINIMUM 6 service/feature items** with icons, titles, descriptions, pricing  
