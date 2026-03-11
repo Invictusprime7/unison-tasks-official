@@ -1043,6 +1043,65 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     }
   }, [backend, dockerService.session, htmlPreview]);
   
+  // Element selection for edit mode (works with HTML/Docker backends that use same-origin iframe)
+  useEffect(() => {
+    if (!enableSelection || !iframeRef.current || !iframeReady) return;
+    // Only works for same-origin iframes (blob: or docker localhost)
+    const iframe = iframeRef.current;
+    let iframeDoc: Document | null = null;
+    try {
+      iframeDoc = iframe.contentDocument || iframe.contentWindow?.document || null;
+    } catch { /* cross-origin */ }
+    if (!iframeDoc) return;
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target !== iframeDoc!.body && target !== iframeDoc!.documentElement) {
+        if (hoveredElement && hoveredElement !== target) removeHighlight(hoveredElement);
+        highlightElement(target, '#3b82f6');
+        setHoveredElement(target);
+      }
+    };
+
+    const handleMouseOut = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && hoveredElement === target) {
+        removeHighlight(target);
+        setHoveredElement(null);
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const target = e.target as HTMLElement;
+      if (target && target !== iframeDoc!.body && target !== iframeDoc!.documentElement) {
+        if (selectedElementRef.current && selectedElementRef.current !== target) {
+          removeHighlight(selectedElementRef.current);
+        }
+        const elementData = getSelectedElementData(target);
+        console.log('[VFSPreview] Element selected:', elementData);
+        onElementSelect?.(elementData);
+        selectedElementRef.current = target;
+        highlightElement(target, '#10b981');
+      }
+    };
+
+    iframeDoc.addEventListener('mouseover', handleMouseOver);
+    iframeDoc.addEventListener('mouseout', handleMouseOut);
+    iframeDoc.addEventListener('click', handleClick, true);
+
+    return () => {
+      if (iframeDoc) {
+        iframeDoc.removeEventListener('mouseover', handleMouseOver);
+        iframeDoc.removeEventListener('mouseout', handleMouseOut);
+        iframeDoc.removeEventListener('click', handleClick, true);
+      }
+      if (hoveredElement) removeHighlight(hoveredElement);
+      if (selectedElementRef.current) removeHighlight(selectedElementRef.current);
+    };
+  }, [enableSelection, iframeReady, onElementSelect, hoveredElement]);
+
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     refresh: handleRestart,
@@ -1050,6 +1109,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     stopDocker: handleStopDocker,
     getBackend: () => backend,
     openInNewTab: handleOpenInNewTab,
+    getIframe: () => iframeRef.current,
   }), [handleRestart, handleStartDocker, handleStopDocker, backend, handleOpenInNewTab]);
   
   // Determine preview URL based on active backend
