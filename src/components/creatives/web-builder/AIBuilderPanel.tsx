@@ -96,23 +96,49 @@ function stripModuleExportsBlocks(code: string): string {
 }
 
 /**
+ * Strip inline backtick code references from AI reasoning text.
+ * Converts "`<style>`" → "STYLE_TAG" etc. to prevent HTML tag matching in reasoning.
+ */
+function stripInlineCodeRefs(content: string): string {
+  return content.replace(/`[^`]*`/g, 'CODE_REF');
+}
+
+/**
  * Extract HTML from AI response that mixes reasoning text with raw HTML.
  * Handles cases like: "I will generate...<!DOCTYPE html><html>...</html>"
  * Returns the extracted HTML or null if no HTML found.
+ * 
+ * IMPORTANT: Ignores HTML tags mentioned inside backtick code references
+ * in reasoning text (e.g. "`<html>`", "`<style>`").
  */
 function extractRawHtmlFromMixed(content: string): string | null {
+  // Strip inline code refs so `<html>` in reasoning doesn't trigger false match
+  const cleaned = stripInlineCodeRefs(content);
+
   // Case 1: Content contains <!DOCTYPE html> — extract everything from there
-  const doctypeIdx = content.indexOf('<!DOCTYPE');
-  if (doctypeIdx === -1) {
-    // Case 2: Content contains <html — extract from there
-    const htmlIdx = content.indexOf('<html');
-    if (htmlIdx === -1) return null;
-    const extracted = content.slice(htmlIdx).trim();
-    if (extracted.includes('</html>')) return extracted;
-    return null;
+  const doctypeIdx = cleaned.indexOf('<!DOCTYPE');
+  if (doctypeIdx >= 0) {
+    // Use the index from cleaned to slice from the ORIGINAL content
+    const originalDoctypeIdx = content.indexOf('<!DOCTYPE', Math.max(0, doctypeIdx - 50));
+    if (originalDoctypeIdx >= 0) {
+      return content.slice(originalDoctypeIdx).trim();
+    }
   }
-  const extracted = content.slice(doctypeIdx).trim();
-  return extracted;
+  
+  // Case 2: Content contains <html — but only if it looks like an actual tag (not inside prose)
+  // Match <html followed by > or whitespace+attributes, NOT inside backticks
+  const htmlTagRegex = /<html[\s>]/gi;
+  let match: RegExpExecArray | null;
+  while ((match = htmlTagRegex.exec(cleaned)) !== null) {
+    // Find the corresponding position in original content
+    const originalIdx = content.indexOf('<html', Math.max(0, match.index - 50));
+    if (originalIdx >= 0) {
+      const extracted = content.slice(originalIdx).trim();
+      if (extracted.includes('</html>')) return extracted;
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -957,6 +983,25 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           jsonCandidate = jsonFenceMatch[1].trim();
         }
 
+      // Pre-processing: Detect if content is AI reasoning/prose with no usable code
+      // AI sometimes outputs planning text with inline HTML tag refs like `<style>`, `<nav>`
+      const isLikelyPureReasoning = (() => {
+        const stripped = stripInlineCodeRefs(trimmed);
+        const hasNoCodeStructure = !stripped.includes('import ') && 
+          !stripped.includes('export ') && 
+          !stripped.includes('function ') &&
+          !/<!DOCTYPE/i.test(stripped) &&
+          !/<html[\s>]/i.test(stripped);
+        const hasProseIndicators = /\b(I will|I need to|I'll|Let me|Here's|inspired|simplified)\b/i.test(trimmed);
+        const hasNoCodeFences = !/```\w*\s*\n/m.test(trimmed);
+        return hasNoCodeStructure && hasProseIndicators && hasNoCodeFences;
+      })();
+
+      if (isLikelyPureReasoning) {
+        console.warn('[AIBuilderPanel] Content appears to be pure AI reasoning — skipping code extraction');
+        explanationText = trimmed;
+      }
+
         // Strategy 1: Check for JSON multi-file output: {"files": {...}}
         if (jsonCandidate.startsWith('{') && jsonCandidate.includes('"files"')) {
           try {
@@ -1172,13 +1217,32 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         // Strip any module.exports / tailwind.config blocks that AI embedded in component code
         generatedCode = stripModuleExportsBlocks(generatedCode);
         
-        if (onApplyToVFS && !multiFileOutput) {
-          console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
-          onApplyToVFS({ [singleFilePath]: generatedCode });
-          toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
-        } else if (onCodeGenerated) {
-          onCodeGenerated(generatedCode);
-          toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
+        // FINAL VALIDATION: Reject code that looks like AI reasoning/prose, not actual code
+        const looksLikeCode = generatedCode.includes('import ') || 
+          generatedCode.includes('export ') || 
+          generatedCode.includes('function ') ||
+          generatedCode.includes('dangerouslySetInnerHTML') ||
+          generatedCode.includes('return (') ||
+          /^\s*<!DOCTYPE/i.test(generatedCode) ||
+          /^\s*<html[\s>]/i.test(generatedCode);
+        
+        const looksLikeProse = /\b(I will|I need to|I'll|Let me|inspired|simplified|Here's my|I'm going to)\b/i.test(generatedCode.slice(0, 300));
+        
+        if (!looksLikeCode || (looksLikeProse && !generatedCode.includes('dangerouslySetInnerHTML'))) {
+          console.warn('[AIBuilderPanel] REJECTED: Generated code looks like AI reasoning, not actual code');
+          console.warn('[AIBuilderPanel] First 200 chars:', generatedCode.slice(0, 200));
+          generatedCode = null;
+        }
+
+        if (generatedCode) {
+          if (onApplyToVFS && !multiFileOutput) {
+            console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
+            onApplyToVFS({ [singleFilePath]: generatedCode });
+            toast.success(isSurgicalEdit ? '✅ Edit applied with deps' : '✅ Code applied with dependencies');
+          } else if (onCodeGenerated) {
+            onCodeGenerated(generatedCode);
+            toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
+          }
         }
       }
 
