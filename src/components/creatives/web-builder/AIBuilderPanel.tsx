@@ -1066,9 +1066,18 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               bestBlock.includes('<section') ||
               bestBlock.includes('<div')
             );
+            // Check if it's pure CSS (e.g. :root { ... })
+            const isCssOnly = /^\s*(?::root|body|html|\*|@import|@font-face|@media|\/\*)/m.test(bestBlock) &&
+              !bestBlock.includes('import ') && !bestBlock.includes('export ');
+            
             if (hasReactStructure) {
               generatedCode = bestBlock;
               console.log('[AIBuilderPanel] Extracted React code from fence');
+            } else if (isCssOnly) {
+              // CSS extracted from fence — wrap in React component with dangerouslySetInnerHTML
+              const escapedCss = bestBlock.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+              generatedCode = `import React from 'react';\n\nexport default function App() {\n  return (\n    <>\n      <style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />\n      <div style={{ minHeight: '100vh' }}><p>Styles applied.</p></div>\n    </>\n  );\n}`;
+              console.log('[AIBuilderPanel] Extracted CSS from fence, wrapped in React component');
             } else if (hasHtmlStructure) {
               generatedCode = wrapHtmlInReactComponent(bestBlock);
               console.log('[AIBuilderPanel] Extracted HTML from fence, wrapped in React component');
