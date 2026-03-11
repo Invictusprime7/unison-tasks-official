@@ -462,6 +462,24 @@ export function useCreatorPlayground(
     patchCreatorData("collections", rest);
   }, [creatorData.collections, patchCreatorData]);
 
+  // --------------------------------------------------------------------------
+  // VFS Hydration
+  // --------------------------------------------------------------------------
+
+  const hydrateFromVFS = useCallback((nodes: VirtualNode[], sandpackFiles: Record<string, string>): HydrationResult => {
+    const result = hydratePlaygroundFromVFS(nodes, sandpackFiles);
+    
+    // Merge with existing state (idempotent)
+    const merged = mergeHydrationResult({ pageRegistry, creatorData }, result);
+    setPageRegistry(merged.pageRegistry);
+    setCreatorData(merged.creatorData);
+    setLastHydration(result);
+    setIsDirty(true);
+    
+    console.log('[useCreatorPlayground] Hydrated from VFS:', result.stats);
+    return result;
+  }, [pageRegistry, creatorData]);
+
   return {
     creatorData,
     pageRegistry,
@@ -474,6 +492,8 @@ export function useCreatorPlayground(
     addForm, updateForm, removeForm,
     updateBusinessInfo,
     addCollection, removeCollection,
+    hydrateFromVFS,
+    lastHydration,
     isDirty,
   };
 }
