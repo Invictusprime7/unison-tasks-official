@@ -4325,6 +4325,18 @@ ${body.innerHTML}
                   pluginInstanceId={cloudState.installedPacks?.[0]}
                 />
               </TabsContent>
+              <TabsContent value="playground" className="flex-1 m-0 min-h-0 overflow-hidden">
+                <CreatorPlaygroundPanel
+                  playground={creatorPlayground}
+                  selectedPageId={undefined}
+                  onPageSelect={(pageId) => {
+                    const page = creatorPlayground.pageRegistry.pages[pageId];
+                    if (page?.path) {
+                      toast.info(`Selected page: ${page.title}`, { description: page.path });
+                    }
+                  }}
+                />
+              </TabsContent>
               <TabsContent value="business" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <Tabs defaultValue="intents" className="flex flex-col h-full">
                   <TabsList className="w-full justify-start rounded-none bg-[#0a0a12] px-2 h-8 shrink-0 gap-1 border-b border-cyan-500/10">
