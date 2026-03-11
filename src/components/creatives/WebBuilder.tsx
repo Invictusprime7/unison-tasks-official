@@ -2567,6 +2567,14 @@ export default function App() {
           setEditorCode(entry);
           setPreviewCode(entry);
         }
+        // Auto-hydrate Creator's Playground from imported VFS
+        setTimeout(() => {
+          const files = virtualFS.getSandpackFiles();
+          if (Object.keys(files).length > 0) {
+            const result = creatorPlayground.hydrateFromVFS(virtualFS.nodes, files);
+            console.log('[WebBuilder] Playground hydrated from VFS import:', result.stats);
+          }
+        }, 200);
       }
     }
 
