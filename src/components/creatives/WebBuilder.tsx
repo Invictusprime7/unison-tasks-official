@@ -14,7 +14,7 @@ import {
   FolderOpen, Cloud, CloudOff, Server, Layers, Settings, ExternalLink, GitBranch
 } from "lucide-react";
 import { CloudPanel } from "./web-builder/CloudPanel";
-import { CreatorPlaygroundPanel } from "./web-builder/CreatorPlaygroundPanel";
+import { CreatorPlaygroundModal } from "./web-builder/CreatorPlaygroundModal";
 import { useCreatorPlayground } from "@/hooks/useCreatorPlayground";
 import { toast } from "sonner";
 import VFSMonacoEditor from './code-editor/VFSMonacoEditor';
@@ -682,6 +682,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const creatorPlayground = useCreatorPlayground();
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
+  const [playgroundModalOpen, setPlaygroundModalOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(true); // AI panel open by default for easy access
   const [iframeErrors, setIframeErrors] = useState<IframeError[]>([]);
   const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
@@ -4071,8 +4072,34 @@ ${body.innerHTML}
           >
             <Settings className="h-4 w-4" />
           </Button>
+
+          <div className="h-5 w-px bg-emerald-500/50" />
+
+          {/* Creator's Playground Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPlaygroundModalOpen(true)}
+            className="h-8 px-2.5 rounded-lg text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/15 hover:shadow-[0_0_10px_rgba(0,200,100,0.3)] transition-all duration-200"
+            title="Open Creator's Playground"
+          >
+            <Zap className="h-4 w-4" />
+          </Button>
         </div>
       </div>
+
+      {/* Creator's Playground Modal */}
+      <CreatorPlaygroundModal
+        open={playgroundModalOpen}
+        onOpenChange={setPlaygroundModalOpen}
+        playground={creatorPlayground}
+        onPageSelect={(pageId) => {
+          const page = creatorPlayground.pageRegistry.pages[pageId];
+          if (page?.path) {
+            toast.info(`Selected page: ${page.title}`, { description: page.path });
+          }
+        }}
+      />
 
       <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* AI Panel - static left side panel (always visible when builder opens) */}
@@ -4250,7 +4277,6 @@ ${body.innerHTML}
                 <TabsTrigger value="functional" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,0,255,0.5)] transition-all duration-200">Logic</TabsTrigger>
                 <TabsTrigger value="seo" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,255,0,0.5)] transition-all duration-200">SEO</TabsTrigger>
                 <TabsTrigger value="ai-plugins" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-lime-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all duration-200">AI</TabsTrigger>
-                <TabsTrigger value="playground" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-emerald-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,200,100,0.5)] transition-all duration-200">Studio</TabsTrigger>
               </TabsList>
               <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
             <ElementsSidebar
@@ -4354,18 +4380,6 @@ ${body.innerHTML}
                 <AIPluginsPanel 
                   businessId={businessId}
                   pluginInstanceId={cloudState.installedPacks?.[0]}
-                />
-              </TabsContent>
-              <TabsContent value="playground" className="flex-1 m-0 min-h-0 overflow-hidden">
-                <CreatorPlaygroundPanel
-                  playground={creatorPlayground}
-                  selectedPageId={undefined}
-                  onPageSelect={(pageId) => {
-                    const page = creatorPlayground.pageRegistry.pages[pageId];
-                    if (page?.path) {
-                      toast.info(`Selected page: ${page.title}`, { description: page.path });
-                    }
-                  }}
                 />
               </TabsContent>
               <TabsContent value="business" className="flex-1 m-0 min-h-0 overflow-hidden">
