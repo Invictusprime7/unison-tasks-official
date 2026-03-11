@@ -1267,12 +1267,14 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
             <iframe
               ref={iframeRef}
               src={previewUrl}
+              onLoad={() => setIframeReady(true)}
               className="h-full border-0 bg-white transition-all duration-300"
               style={{
                 width: device === 'mobile' ? '375px' : device === 'tablet' ? '768px' : '100%',
                 maxWidth: '100%',
                 boxShadow: device !== 'desktop' ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
                 borderRadius: device !== 'desktop' ? '12px' : '0',
+                pointerEvents: enableSelection ? 'auto' : undefined,
               }}
               title="VFS Preview"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
