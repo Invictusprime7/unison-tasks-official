@@ -1024,7 +1024,55 @@ export default function App() {
     setPreviewCode(res.code);
     toast.success('Element duplicated');
   }, [previewCode, applyElementDuplicate]);
-  
+
+  // Handle move up - swap element with its previous sibling in HTML source
+  const handleFloatingMoveUp = useCallback((selector: string) => {
+    try {
+      const trimmed = (previewCode || '').trim();
+      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
+      if (!trimmed.startsWith('<') || trimmed.includes('export default')) return;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+      const target = safeFindElement(doc, selector);
+      if (!target?.parentNode || !target.previousElementSibling) {
+        toast.info('Already at the top');
+        return;
+      }
+      target.parentNode.insertBefore(target, target.previousElementSibling);
+      const next = isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+      setEditorCode(next);
+      setPreviewCode(next);
+      setSelectedHTMLElement(null);
+      toast.success('Moved up');
+    } catch (err) {
+      console.error('[handleFloatingMoveUp]', err);
+    }
+  }, [previewCode]);
+
+  // Handle move down - swap element with its next sibling in HTML source
+  const handleFloatingMoveDown = useCallback((selector: string) => {
+    try {
+      const trimmed = (previewCode || '').trim();
+      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
+      if (!trimmed.startsWith('<') || trimmed.includes('export default')) return;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+      const target = safeFindElement(doc, selector);
+      if (!target?.parentNode || !target.nextElementSibling) {
+        toast.info('Already at the bottom');
+        return;
+      }
+      target.parentNode.insertBefore(target.nextElementSibling, target);
+      const next = isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+      setEditorCode(next);
+      setPreviewCode(next);
+      setSelectedHTMLElement(null);
+      toast.success('Moved down');
+    } catch (err) {
+      console.error('[handleFloatingMoveDown]', err);
+    }
+  }, [previewCode]);
+
   // Template file management
   const [fileManagerOpen, setFileManagerOpen] = useState(false);
   const templateFiles = useTemplateFiles();
@@ -4499,10 +4547,11 @@ ${body.innerHTML}
                       autoStart={true}
                       showBackendIndicator={false}
                       device={device}
+                      enableSelection={builderMode === 'select'}
+                      onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                       onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                       onError={(err) => {
                         toast.error(`Preview error: ${err}`);
-                        // Capture error for AI debugging
                         setIframeErrors(prev => [...prev, {
                           type: 'runtime',
                           message: err,
@@ -4657,10 +4706,11 @@ ${body.innerHTML}
                         autoStart={true}
                         showBackendIndicator={false}
                         device={device}
+                        enableSelection={builderMode === 'select'}
+                        onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                         onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                         onError={(err) => {
                           toast.error(`Preview error: ${err}`);
-                          // Capture error for AI debugging
                           setIframeErrors(prev => [...prev, {
                             type: 'runtime',
                             message: err,
@@ -4855,6 +4905,8 @@ ${body.innerHTML}
               onReplaceImage={handleFloatingImageReplace}
               onDelete={handleFloatingDelete}
               onDuplicate={handleFloatingDuplicate}
+              onMoveUp={handleFloatingMoveUp}
+              onMoveDown={handleFloatingMoveDown}
               onClear={() => setSelectedHTMLElement(null)}
               systemType={activeSystemType}
               systemsBuildContext={systemsBuildContextFromState}

@@ -35,6 +35,7 @@ import { SandpackProvider, SandpackPreview, SandpackLayout } from '@codesandbox/
 import { usePreviewService } from '@/hooks/usePreviewService';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
+import { getSelectedElementData, highlightElement, removeHighlight } from '@/utils/htmlElementSelector';
 import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 
 // ============================================================================
@@ -79,6 +80,10 @@ export interface VFSPreviewProps {
   siteId?: string;
   /** Device breakpoint for responsive preview */
   device?: 'desktop' | 'tablet' | 'mobile';
+  /** Enable element selection (edit mode) */
+  enableSelection?: boolean;
+  /** Callback when an element is selected */
+  onElementSelect?: (elementData: any) => void;
 }
 
 export interface VFSPreviewHandle {
@@ -87,6 +92,7 @@ export interface VFSPreviewHandle {
   stopDocker: () => Promise<void>;
   getBackend: () => PreviewBackend;
   openInNewTab: () => void;
+  getIframe: () => HTMLIFrameElement | null;
 }
 
 // ============================================================================
@@ -780,6 +786,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   businessId,
   siteId,
   device = 'desktop',
+  enableSelection = false,
+  onElementSelect,
 }, ref) => {
   // State - default to 'html' so preview works immediately
   const [backend, setBackend] = useState<PreviewBackend>('html');
@@ -788,6 +796,9 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const [htmlPreviewSrc, setHtmlPreviewSrc] = useState<string | null>(null);
   const startAttemptedRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeReady, setIframeReady] = useState(false);
+  const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null);
+  const selectedElementRef = useRef<HTMLElement | null>(null);
   
   // Docker preview service
   const dockerService = usePreviewService();
@@ -1032,6 +1043,65 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     }
   }, [backend, dockerService.session, htmlPreview]);
   
+  // Element selection for edit mode (works with HTML/Docker backends that use same-origin iframe)
+  useEffect(() => {
+    if (!enableSelection || !iframeRef.current || !iframeReady) return;
+    // Only works for same-origin iframes (blob: or docker localhost)
+    const iframe = iframeRef.current;
+    let iframeDoc: Document | null = null;
+    try {
+      iframeDoc = iframe.contentDocument || iframe.contentWindow?.document || null;
+    } catch { /* cross-origin */ }
+    if (!iframeDoc) return;
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target !== iframeDoc!.body && target !== iframeDoc!.documentElement) {
+        if (hoveredElement && hoveredElement !== target) removeHighlight(hoveredElement);
+        highlightElement(target, '#3b82f6');
+        setHoveredElement(target);
+      }
+    };
+
+    const handleMouseOut = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && hoveredElement === target) {
+        removeHighlight(target);
+        setHoveredElement(null);
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const target = e.target as HTMLElement;
+      if (target && target !== iframeDoc!.body && target !== iframeDoc!.documentElement) {
+        if (selectedElementRef.current && selectedElementRef.current !== target) {
+          removeHighlight(selectedElementRef.current);
+        }
+        const elementData = getSelectedElementData(target);
+        console.log('[VFSPreview] Element selected:', elementData);
+        onElementSelect?.(elementData);
+        selectedElementRef.current = target;
+        highlightElement(target, '#10b981');
+      }
+    };
+
+    iframeDoc.addEventListener('mouseover', handleMouseOver);
+    iframeDoc.addEventListener('mouseout', handleMouseOut);
+    iframeDoc.addEventListener('click', handleClick, true);
+
+    return () => {
+      if (iframeDoc) {
+        iframeDoc.removeEventListener('mouseover', handleMouseOver);
+        iframeDoc.removeEventListener('mouseout', handleMouseOut);
+        iframeDoc.removeEventListener('click', handleClick, true);
+      }
+      if (hoveredElement) removeHighlight(hoveredElement);
+      if (selectedElementRef.current) removeHighlight(selectedElementRef.current);
+    };
+  }, [enableSelection, iframeReady, onElementSelect, hoveredElement]);
+
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     refresh: handleRestart,
@@ -1039,6 +1109,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     stopDocker: handleStopDocker,
     getBackend: () => backend,
     openInNewTab: handleOpenInNewTab,
+    getIframe: () => iframeRef.current,
   }), [handleRestart, handleStartDocker, handleStopDocker, backend, handleOpenInNewTab]);
   
   // Determine preview URL based on active backend
@@ -1196,12 +1267,14 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
             <iframe
               ref={iframeRef}
               src={previewUrl}
+              onLoad={() => setIframeReady(true)}
               className="h-full border-0 bg-white transition-all duration-300"
               style={{
                 width: device === 'mobile' ? '375px' : device === 'tablet' ? '768px' : '100%',
                 maxWidth: '100%',
                 boxShadow: device !== 'desktop' ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
                 borderRadius: device !== 'desktop' ? '12px' : '0',
+                pointerEvents: enableSelection ? 'auto' : undefined,
               }}
               title="VFS Preview"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"

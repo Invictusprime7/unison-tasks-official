@@ -44,6 +44,10 @@ interface ElementFloatingToolbarProps {
   onDelete: (selector: string) => void;
   onDuplicate: (selector: string) => void;
   onClear: () => void;
+  /** Move element/section up in DOM order */
+  onMoveUp?: (selector: string) => void;
+  /** Move element/section down in DOM order */
+  onMoveDown?: (selector: string) => void;
   /**
    * Called with the selector and AI-generated HTML snippet.
    * Return true/void to confirm the update was applied, false to signal failure.
@@ -272,6 +276,8 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   onDelete,
   onDuplicate,
   onClear,
+  onMoveUp,
+  onMoveDown,
   onAIEditComplete,
   onRequestAI,
   className,
@@ -487,6 +493,25 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
             <span className="text-[10px] font-semibold">AI</span>
           </Button>
         )}
+
+        {/* Section/element reorder */}
+        {(onMoveUp || onMoveDown) && (
+          <>
+            <Separator orientation="vertical" className="h-6 mx-0.5 bg-white/[0.1]" />
+            {onMoveUp && (
+              <Button variant="ghost" size="sm" onClick={() => onMoveUp(selector)} className="h-7 w-7 p-0" title="Move Up">
+                <MoveUp className="w-3.5 h-3.5" />
+              </Button>
+            )}
+            {onMoveDown && (
+              <Button variant="ghost" size="sm" onClick={() => onMoveDown(selector)} className="h-7 w-7 p-0" title="Move Down">
+                <MoveDown className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </>
+        )}
+
+        <Separator orientation="vertical" className="h-6 mx-0.5 bg-white/[0.1]" />
 
         <Button variant="ghost" size="sm" onClick={() => onDuplicate(selector)} className="h-7 w-7 p-0" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Button>
         <Button variant="ghost" size="sm" onClick={() => onDelete(selector)} className="h-7 w-7 p-0 text-destructive hover:text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
