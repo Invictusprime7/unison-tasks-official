@@ -87,6 +87,7 @@ export function useCreatorPlayground(
     initialPageRegistry || createEmptyPageRegistry()
   );
   const [isDirty, setIsDirty] = useState(false);
+  const [lastHydration, setLastHydration] = useState<HydrationResult | null>(null);
 
   // --------------------------------------------------------------------------
   // Page CRUD
