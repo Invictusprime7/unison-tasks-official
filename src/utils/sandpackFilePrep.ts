@@ -200,15 +200,18 @@ function isRawCss(content: string): boolean {
 
 /**
  * Wrap raw CSS content in a valid React component so Sandpack can render it.
+ * Uses JSON.stringify to safely embed CSS as a string constant (avoids template literal parsing issues).
  */
 function wrapCssInReactComponent(css: string): string {
-  const escaped = css.replace(/`/g, '\\`').replace(/\${/g, '\\${');
+  const cssJsonStr = JSON.stringify(css);
   return `import React from 'react';
+
+const CSS_CONTENT = ${cssJsonStr};
 
 export default function App() {
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: \`${escaped}\` }} />
+      <style dangerouslySetInnerHTML={{ __html: CSS_CONTENT }} />
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-gray-500">Styles applied. Add HTML content to see the design.</p>
       </div>

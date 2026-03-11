@@ -1167,13 +1167,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       // SAFETY NET 2: If generatedCode is raw CSS (:root, body {, @import, etc.), wrap in React component
       if (generatedCode && /^\s*(?::root|body|html|\*|@import|@font-face|@media|\/\*)\s*[{\/(]/m.test(generatedCode.trim()) && !generatedCode.includes('import ') && !generatedCode.includes('export ')) {
         console.warn('[AIBuilderPanel] Safety net: detected raw CSS being applied as TSX — wrapping in React component');
-        const escapedCss = generatedCode.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+        const cssJsonStr = JSON.stringify(generatedCode);
         generatedCode = `import React from 'react';
+
+const CSS_CONTENT = ${cssJsonStr};
 
 export default function App() {
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />
+      <style dangerouslySetInnerHTML={{ __html: CSS_CONTENT }} />
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p>Styles applied. Waiting for page content...</p>
       </div>
