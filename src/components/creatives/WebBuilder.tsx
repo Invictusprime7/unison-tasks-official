@@ -2481,6 +2481,14 @@ export default function App() {
         setEditorCode(pageCode);
 
         toast.success(`${navLabel || pageName} page created!`);
+        
+        // Re-hydrate playground with new page
+        setTimeout(() => {
+          const allFiles = getSandpackFiles();
+          if (Object.keys(allFiles).length > 0) {
+            creatorPlayground.hydrateFromVFS(virtualFS.nodes, allFiles);
+          }
+        }, 200);
       } else {
         throw new Error('No page content generated');
       }
@@ -2567,6 +2575,14 @@ export default function App() {
           setEditorCode(entry);
           setPreviewCode(entry);
         }
+        // Auto-hydrate Creator's Playground from imported VFS
+        setTimeout(() => {
+          const files = virtualFS.getSandpackFiles();
+          if (Object.keys(files).length > 0) {
+            const result = creatorPlayground.hydrateFromVFS(virtualFS.nodes, files);
+            console.log('[WebBuilder] Playground hydrated from VFS import:', result.stats);
+          }
+        }, 200);
       }
     }
 
@@ -2591,6 +2607,20 @@ export default function App() {
           });
         }
       }
+      
+      // Auto-hydrate Creator's Playground from AI-generated content
+      setTimeout(() => {
+        const files = virtualFS.getSandpackFiles();
+        if (Object.keys(files).length > 0) {
+          const result = creatorPlayground.hydrateFromVFS(virtualFS.nodes, files);
+          if (result.stats.pagesDetected > 0) {
+            console.log('[WebBuilder] Playground auto-hydrated from AI generation:', result.stats);
+            toast.success('Studio synced', {
+              description: `${result.stats.pagesDetected} pages${result.funnelAutoWired ? ` + funnel (${result.stats.funnelSteps} steps)` : ''} loaded`,
+            });
+          }
+        }
+      }, 300);
       
       setEditorCode(generatedCode);
       setPreviewCode(generatedCode);
