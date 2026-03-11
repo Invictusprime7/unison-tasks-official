@@ -73,7 +73,6 @@ function stripModuleExportsBlocks(code: string): string {
     // Find the opening brace
     const braceStart = result.indexOf('{', idx);
     if (braceStart === -1) {
-      // No brace — just remove the line
       result = result.slice(0, idx) + result.slice(result.indexOf('\n', idx) + 1);
       continue;
     }
@@ -86,7 +85,6 @@ function stripModuleExportsBlocks(code: string): string {
       else if (result[end] === '}') { depth--; if (depth === 0) break; }
     }
 
-    // Remove from module.exports to closing }; (including optional semicolon/newline)
     let removeEnd = end + 1;
     if (result[removeEnd] === ';') removeEnd++;
     while (result[removeEnd] === '\n' || result[removeEnd] === '\r') removeEnd++;
@@ -95,6 +93,60 @@ function stripModuleExportsBlocks(code: string): string {
   }
 
   return result.trim();
+}
+
+/**
+ * Extract HTML from AI response that mixes reasoning text with raw HTML.
+ * Handles cases like: "I will generate...<!DOCTYPE html><html>...</html>"
+ * Returns the extracted HTML or null if no HTML found.
+ */
+function extractRawHtmlFromMixed(content: string): string | null {
+  // Case 1: Content contains <!DOCTYPE html> — extract everything from there
+  const doctypeIdx = content.indexOf('<!DOCTYPE');
+  if (doctypeIdx === -1) {
+    // Case 2: Content contains <html — extract from there
+    const htmlIdx = content.indexOf('<html');
+    if (htmlIdx === -1) return null;
+    const extracted = content.slice(htmlIdx).trim();
+    if (extracted.includes('</html>')) return extracted;
+    return null;
+  }
+  const extracted = content.slice(doctypeIdx).trim();
+  return extracted;
+}
+
+/**
+ * Wrap raw HTML in a React component so Sandpack can render it.
+ */
+function wrapHtmlInReactComponent(html: string): string {
+  // Extract <style> blocks
+  const styleBlocks: string[] = [];
+  const htmlWithoutStyle = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_, css) => {
+    styleBlocks.push(css);
+    return '';
+  });
+
+  // Extract body content (or use full HTML if no body tags)
+  let bodyContent = htmlWithoutStyle;
+  const bodyMatch = htmlWithoutStyle.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    bodyContent = bodyMatch[1];
+  }
+
+  // Sanitize for dangerouslySetInnerHTML
+  const escapedHtml = bodyContent.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+  const escapedCss = styleBlocks.join('\n').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+
+  return `import React from 'react';
+
+export default function App() {
+  return (
+    <>
+      ${escapedCss ? `<style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />` : ''}
+      <div dangerouslySetInnerHTML={{ __html: \`${escapedHtml}\` }} />
+    </>
+  );
+}`; 
 }
 
 // Types
@@ -962,10 +1014,40 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               bestBlock.includes('<section') ||
               bestBlock.includes('<div')
             );
-            if (hasReactStructure || hasHtmlStructure) {
+            if (hasReactStructure) {
               generatedCode = bestBlock;
-              console.log('[AIBuilderPanel] Extracted code from fence, type:', hasReactStructure ? 'React' : 'HTML');
+              console.log('[AIBuilderPanel] Extracted React code from fence');
+            } else if (hasHtmlStructure) {
+              generatedCode = wrapHtmlInReactComponent(bestBlock);
+              console.log('[AIBuilderPanel] Extracted HTML from fence, wrapped in React component');
             }
+          }
+        }
+
+        // Strategy 4: Raw HTML mixed with reasoning text (e.g. "I will generate...<!DOCTYPE html>...")
+        if (!multiFileOutput && !generatedCode) {
+          const rawHtml = extractRawHtmlFromMixed(trimmed);
+          if (rawHtml) {
+            console.log('[AIBuilderPanel] Extracted raw HTML from mixed content, wrapping in React component');
+            generatedCode = wrapHtmlInReactComponent(rawHtml);
+            // Extract explanation from the text before the HTML
+            const doctypeIdx = trimmed.indexOf('<!DOCTYPE');
+            const htmlIdx = doctypeIdx >= 0 ? doctypeIdx : trimmed.indexOf('<html');
+            if (htmlIdx > 0) {
+              explanationText = trimmed.slice(0, htmlIdx).trim();
+            }
+            if (!explanationText) {
+              explanationText = '✅ HTML site generated and wrapped for preview.';
+            }
+          }
+        }
+
+        // Strategy 5: Content is purely raw HTML (starts with <!DOCTYPE or <html)
+        if (!multiFileOutput && !generatedCode) {
+          if (/^\s*<!DOCTYPE/i.test(trimmed) || /^\s*<html[\s>]/i.test(trimmed)) {
+            console.log('[AIBuilderPanel] Content is raw HTML, wrapping in React component');
+            generatedCode = wrapHtmlInReactComponent(trimmed);
+            explanationText = '✅ HTML site generated and wrapped for preview.';
           }
         }
 
