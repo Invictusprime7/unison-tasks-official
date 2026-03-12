@@ -77,25 +77,8 @@ export class UniversalIntentRouter {
   constructor(config: IntentRouterConfig) {
     this.config = config;
     
-    // Configure the action catalog with provided managers
-    // Map our config to the catalog's expected format
-    configureActionCatalog({
-      nav: config.navigationManager ? {
-        goto: config.navigationManager.goto,
-        external: config.navigationManager.external,
-        back: () => window.history.back(),
-      } : undefined,
-      overlays: config.overlayManager ? {
-        open: config.overlayManager.open,
-        close: (id) => config.overlayManager?.close(id),
-        isOpen: () => false,
-      } : undefined,
-      comm: config.communicationManager ? {
-        call: config.communicationManager.call,
-        email: config.communicationManager.email,
-        sms: () => {}, // Not typically used
-      } : undefined,
-    });
+    // Configure the intent executor with provided managers
+    this.syncManagersToExecutor(config);
   }
   
   /**
