@@ -697,8 +697,8 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
           aesthetic: blueprint.brand.tone || "modern professional",
           source: blueprint.identity.industry,
           savePattern: true,
-          // Pass template HTML as reference for quality baseline
-          currentCode: templateHtml ? templateHtml.substring(0, 50000) : undefined,
+          // Pass template reference (React composition or HTML) for quality baseline
+          currentCode: templateHtml ? templateHtml.substring(0, 80000) : undefined,
           templateAction: templateHtml ? "use-as-schema" : undefined,
         }),
       });
