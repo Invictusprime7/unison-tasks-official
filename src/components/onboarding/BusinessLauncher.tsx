@@ -93,13 +93,26 @@ const INDUSTRY_DEFAULTS: Record<string, { palette: Record<string, string>; inten
 };
 
 /**
- * Get template reference for systems-build from chip selection
+ * Get template reference for systems-build from chip selection.
+ * Prefers React composition code from the section registry; falls back to legacy HTML.
  */
 function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; systemType: BusinessSystemType } | null {
   const systemType = CHIP_TO_SYSTEM[chipId];
   const category = CHIP_TO_CATEGORY[chipId];
   if (!systemType || !category) return null;
+
+  // Prefer composition-based React code
+  const compositionCode = getCompositionReactCode(category);
+  const compositionMeta = getCompositionMeta(category);
+  if (compositionCode && compositionMeta) {
+    return {
+      templateId: compositionMeta.compositionId,
+      templateHtml: compositionCode, // React TSX, not HTML
+      systemType,
+    };
+  }
   
+  // Fallback to legacy HTML templates
   const templates = getTemplatesByCategory(category);
   if (!templates.length) return null;
   
