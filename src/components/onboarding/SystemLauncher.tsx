@@ -41,13 +41,6 @@ import { cn } from "@/lib/utils";
 import { AICodeAssistant } from "@/components/creatives/AICodeAssistant";
 import { buildPageStructureContext } from "@/utils/pageStructureContext";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   generateDesignVariation,
   randomFontPairing,
 } from "@/utils/designVariation";
