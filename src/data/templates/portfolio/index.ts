@@ -341,7 +341,8 @@ export const portfolioTemplates: LayoutTemplate[] = [
     systemType: 'portfolio',
     systemName: 'Developer Portfolio',
     tags: ['portfolio', 'developer', 'creative-coding', 'bold'],
-    code: wrapInReactComponent(portfolioBold, 'kai.dev — Creative Developer'),
+    code: portfolioBold,
+    title: 'kai.dev — Creative Developer',
   },
 ];
 

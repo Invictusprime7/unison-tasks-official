@@ -364,7 +364,8 @@ export const realEstateTemplates: LayoutTemplate[] = [
     systemType: 'agency',
     systemName: 'RE Investment Platform',
     tags: ['realestate', 'investment', 'private-equity', 'bold'],
-    code: wrapInReactComponent(reBold, 'Greenstone Capital — RE Private Equity'),
+    code: reBold,
+    title: 'Greenstone Capital — RE Private Equity',
   },
 ];
 

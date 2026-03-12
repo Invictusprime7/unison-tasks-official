@@ -405,7 +405,8 @@ export const nonprofitTemplates: LayoutTemplate[] = [
     systemType: 'content',
     systemName: 'Nonprofit Platform',
     tags: ['nonprofit', 'environment', 'impact', 'bold', 'green'],
-    code: wrapInReactComponent(npBold, 'Project Green — Protect Our Planet'),
+    code: npBold,
+    title: 'Project Green — Protect Our Planet',
   },
 ];
 
