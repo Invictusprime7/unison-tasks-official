@@ -61,14 +61,8 @@ export {
 // ============ LEGACY (still used by useIntentRouter → universalIntentRouter chain) ============
 // TODO: Consolidate useIntentRouter to use intentExecutor directly, then remove these
 
-// Action Catalog - Legacy types only (execution now routed through intentExecutor)
-export {
-  type ActionCatalogEntry,
-  type ActionContext,
-  type OverlayManager,
-  type NavigationManager,
-  type CommunicationManager,
-} from './actionCatalog';
+// Legacy types re-exported from universalIntentRouter
+export { type ActionContext } from './universalIntentRouter';
 
 // Intent Resolver - Legacy resolution layer (build-time)
 export {

@@ -14,7 +14,14 @@
  * - AutoBinder pre-assigns intents at template generation time
  */
 
-import type { ActionContext } from './actionCatalog';
+// ActionContext type (formerly from actionCatalog, now inlined)
+export type ActionContext = {
+  payload?: Record<string, unknown>;
+  element?: HTMLElement;
+  businessId?: string;
+  phone?: string;
+  email?: string;
+};
 import { resolveIntent, extractButtonContext, type ResolvedIntent } from './intentResolver';
 import { normalizeIntent } from './intentAliases';
 import { executeIntent, configureIntentExecutor, type IntentContext, type IntentResult } from './intentExecutor';
