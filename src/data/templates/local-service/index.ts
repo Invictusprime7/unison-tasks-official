@@ -539,7 +539,8 @@ export const localServiceTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Contractor Quote System',
     tags: ['contractor', 'renovation', 'construction', 'quote', 'dark'],
-    code: wrapInReactComponent(serviceDark, 'Apex Contracting — Home Renovations'),
+    code: serviceDark,
+    title: 'Apex Contracting — Home Renovations',
   },
   {
     id: 'local-service-light-neighborhood',
