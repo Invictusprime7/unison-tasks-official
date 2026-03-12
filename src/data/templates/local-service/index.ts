@@ -550,7 +550,8 @@ export const localServiceTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Local Service Quote System',
     tags: ['plumber', 'local-service', 'neighborhood', 'quote', 'light'],
-    code: wrapInReactComponent(serviceLight, 'GreenLeaf Plumbing — Your Local Plumber'),
+    code: serviceLight,
+    title: 'GreenLeaf Plumbing — Your Local Plumber',
   },
   {
     id: 'local-service-bold-emergency',
