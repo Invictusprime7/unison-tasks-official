@@ -50,6 +50,7 @@ import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
 import { generateLibraryPrompt } from '@/data/siteElementsLibrary';
+import { analyzeReactSite, resolveEditTarget } from '@/utils/reactSiteAnalysis';
 
 // ============================================================================
 /**
@@ -245,6 +246,8 @@ interface AIBuilderPanelProps {
   systemsBuildContext?: SystemsBuildContext | null;
   /** Current VFS file list + dependency summary for AI awareness */
   vfsContext?: string | null;
+  /** Full VFS file map for component-level site analysis */
+  vfsFiles?: Record<string, string> | null;
   /** Direct VFS apply callback — bypasses legacy onCodeGenerated pipeline, uses AI→VFS orchestrator */
   onApplyToVFS?: (files: Record<string, string>) => void;
 }
@@ -623,6 +626,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   businessDataContext,
   systemsBuildContext,
   vfsContext,
+  vfsFiles,
   onApplyToVFS,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -825,6 +829,86 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       );
       const isSurgicalEdit = hasSurgicalKeyword && !!currentCode;
 
+      // Analyze VFS site structure for component-level targeting
+      let siteAnalysisContext = '';
+      let editTargetContext = '';
+      let resolvedTargetFile: string | null = null;
+      let isReactProject = false;
+      if (vfsFiles && Object.keys(vfsFiles).length > 0) {
+        // Detect if the VFS project is React-based (has .tsx/.jsx component files)
+        const vfsPaths = Object.keys(vfsFiles);
+        isReactProject = vfsPaths.some(p => /\.(tsx|jsx)$/.test(p) && !/\.d\.ts$/.test(p));
+        
+        try {
+          const analysis = analyzeReactSite(vfsFiles);
+          if (analysis.sectionMap) {
+            siteAnalysisContext = analysis.sectionMap;
+          }
+          // For surgical edits, resolve which component/file the user is targeting
+          if (isSurgicalEdit) {
+            const target = resolveEditTarget(rawInput, analysis);
+            if (target) {
+              resolvedTargetFile = target.file;
+              const targetFileContent = vfsFiles[target.file];
+              const contentSnippet = targetFileContent
+                ? targetFileContent.slice(0, 8000)
+                : '';
+              editTargetContext = [
+                '',
+                `🎯 EDIT TARGET RESOLVED (confidence: ${target.confidence}):`,
+                `  File: ${target.file}`,
+                `  Component: ${target.component}`,
+                target.section ? `  Section: ${target.section}` : '',
+                '',
+                contentSnippet ? `Current source of ${target.file}:` : '',
+                contentSnippet ? '```tsx' : '',
+                contentSnippet,
+                contentSnippet ? '```' : '',
+              ].filter(Boolean).join('\n');
+            }
+          }
+        } catch { /* analysis is best-effort */ }
+      } else if (currentCode) {
+        // Fallback: detect React from currentCode if no vfsFiles available
+        isReactProject = currentCode.includes('import ') && (
+          currentCode.includes('from \'react\'') ||
+          currentCode.includes('from "react"') ||
+          currentCode.includes('export default function') ||
+          currentCode.includes('export default const')
+        );
+      }
+
+      // Build theme/styling context from Systems AI blueprint so in-builder edits stay consistent
+      const themeContextBlock = (() => {
+        if (!systemsBuildContext) return '';
+        const { brand, design, identity } = systemsBuildContext;
+        const lines: string[] = ['[🎨 Theme & Styling — Match this design language for all new elements]'];
+        if (brand?.business_name) lines.push(`Business: ${brand.business_name}`);
+        if (brand?.tone) lines.push(`Tone: ${brand.tone}`);
+        if (brand?.palette) {
+          const p = brand.palette;
+          const colors = [
+            p.primary && `Primary: ${p.primary}`,
+            p.secondary && `Secondary: ${p.secondary}`,
+            p.accent && `Accent: ${p.accent}`,
+            p.background && `BG: ${p.background}`,
+            p.foreground && `FG: ${p.foreground}`,
+          ].filter(Boolean).join(' | ');
+          if (colors) lines.push(`Palette: ${colors}`);
+        }
+        if (brand?.typography) {
+          const t = brand.typography;
+          if (t.heading || t.body) lines.push(`Typography: ${t.heading || 'auto'} (headings) / ${t.body || 'auto'} (body)`);
+        }
+        if (design?.layout?.hero_style) lines.push(`Hero: ${design.layout.hero_style}`);
+        if (design?.buttons?.style) lines.push(`Buttons: ${design.buttons.style}`);
+        if (design?.effects?.glassmorphism) lines.push(`Effects: glassmorphism`);
+        if (design?.effects?.shadows) lines.push(`Shadows: ${design.effects.shadows}`);
+        if (design?.content?.writing_style) lines.push(`Writing Style: ${design.content.writing_style}`);
+        if (identity?.industry) lines.push(`Industry: ${identity.industry.replace(/_/g, ' ')}`);
+        return lines.length > 1 ? lines.join('\n') : '';
+      })();
+
       // Build rich context block for full-generation requests
       const contextLines: string[] = [];
       if (systemType) contextLines.push(`Business type: ${systemType}`);
@@ -836,24 +920,33 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (businessDataContext) contextLines.push(`\nBusiness data:\n${businessDataContext.slice(0, 800)}`);
       if (pageStructureContext) contextLines.push(`\nPage structure:\n${pageStructureContext.slice(0, 600)}`);
       if (backendStateContext) contextLines.push(`\nBackend state:\n${backendStateContext.slice(0, 400)}`);
-      if (vfsContext) contextLines.push(`\nCurrent VFS project files:\n${vfsContext.slice(0, 1200)}`);
+      if (vfsContext) contextLines.push(`\nCurrent VFS project files:\n${vfsContext.slice(0, 2400)}`);
+      if (siteAnalysisContext && !isSurgicalEdit) contextLines.push(`\nSite component structure:\n${siteAnalysisContext.slice(0, 1500)}`);
+      if (themeContextBlock) contextLines.push(`\n${themeContextBlock}`);
       const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
       // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted change
       const promptForAI = isSurgicalEdit
         ? [
-            '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED ELEMENT 🚨',
+            '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED ELEMENT/COMPONENT 🚨',
             '',
             `User Request: ${_userContent}${_fileContext}`,
+            editTargetContext,
+            siteAnalysisContext ? `\nSite component map:\n${siteAnalysisContext.slice(0, 1500)}` : '',
             '',
             '⚠️ CRITICAL SURGICAL EDIT RULES:',
-            '1. Output the COMPLETE template HTML — but ONLY modify the element the user asked about',
-            '2. Every section, script, style, image, text, and data attribute NOT mentioned MUST stay IDENTICAL',
-            '3. DO NOT re-generate, rephrase, or "improve" unmentioned sections',
-            '4. DO NOT change colors, fonts, layout, or content outside the targeted element',
-            '5. If the change is purely CSS/class-based, only modify the class list on that one element',
-            '6. Think of this like a diff — your output should be identical to the input except for the one change',
-          ].join('\n')
+            '1. Output ONLY the file(s) that need to change — do NOT regenerate the entire project',
+            '2. If the edit targets a specific component, output ONLY that component file with the change applied',
+            '3. For multi-file projects, use JSON format: {"files": {"/path/file.tsx": "...content..."}}',
+            '4. Every section, style, and data attribute NOT mentioned MUST stay IDENTICAL',
+            '5. DO NOT re-generate, rephrase, or "improve" unmentioned sections or components',
+            '6. DO NOT change colors, fonts, layout, or content outside the targeted element',
+            '7. If the change is purely CSS/class-based, only modify the class list on that one element',
+            '8. Think of this like a diff — your output should be identical to the input except for the one change',
+            '9. For React projects: preserve all imports, hooks, state, and component structure — only change the targeted JSX/logic',
+            '10. When adding new elements or modifying styles, match the existing theme — use the same colors, fonts, spacing, and design patterns',
+            themeContextBlock ? `\n${themeContextBlock}` : '',
+          ].filter(Boolean).join('\n')
         : `${_userContent}${_fileContext}${richContext}`;
 
       // Detect templateAction for the backend
@@ -913,9 +1006,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           response = await supabase.functions.invoke('ai-code-assistant', {
             body: {
               messages: [{ role: 'user', content: promptForAI }],
-              // Use 'code' mode for surgical edits (better targeted changes), 
-              // 'template-react' for full generation (multi-file VFS output)
-              mode: isSurgicalEdit ? 'code' : 'template-react',
+              // Always use template-react for React projects (even surgical edits)
+              // to ensure the AI generates React/TSX output, not raw HTML.
+              // The surgicalEdit flag tells the edge function to apply surgical constraints.
+              // Only fall back to 'code' mode for non-React (HTML template) surgical edits.
+              mode: isSurgicalEdit && !isReactProject ? 'code' : 'template-react',
               currentCode: truncatedCode,
               editMode: !!currentCode,
               surgicalEdit: isSurgicalEdit,
@@ -1184,8 +1279,10 @@ export default function App() {
 }`;
       }
 
-      // All generated code should be React/TSX at this point — always use .tsx path
-      const singleFilePath = '/src/App.tsx';
+      // Determine the target file path for single-file output.
+      // If site analysis resolved a specific component file, use that path
+      // to avoid overwriting the entire App.tsx with a single component's code.
+      const singleFilePath = resolvedTargetFile || '/src/App.tsx';
 
       // Determine VFS edits from response
       const edits: VFSEdit[] = [];

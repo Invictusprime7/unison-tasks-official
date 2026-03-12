@@ -24,7 +24,6 @@ import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { DeployButton } from '@/components/DeployButton';
 import { LiveHTMLPreview, type LiveHTMLPreviewHandle } from './LiveHTMLPreview';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
-import { ElementsSidebar, WebElement } from "./ElementsSidebar";
 import { CanvasDragDropService } from "@/services/canvasDragDropService";
 import { CodePreviewDialog } from "./web-builder/CodePreviewDialog";
 import { AIBuilderPanel, type VFSEdit, type IframeError } from "./web-builder/AIBuilderPanel";
@@ -4103,6 +4102,7 @@ ${body.innerHTML}
                 businessDataContext={businessDataContext}
                 systemsBuildContext={systemsBuildContextFromState}
                 vfsContext={aiVFS.getContext().summary}
+                vfsFiles={virtualFS.getSandpackFiles()}
                 onApplyToVFS={(files) => {
                   console.log('[WebBuilder] onApplyToVFS called with files:', Object.keys(files));
                   const result = aiVFS.applyCode(files);
@@ -4181,8 +4181,11 @@ ${body.innerHTML}
                   setPreviewCode(normalized.code);
                   
                   // Immediately sync to VFS for instant preview update
-                  const targetPath = pageTabs.length > 1 ? activePagePath : '/index.html';
                   const vfsFiles = virtualFS.getSandpackFiles();
+                  const isReactVFS = Object.keys(vfsFiles).some(f => /\.(tsx|jsx)$/.test(f));
+                  const targetPath = pageTabs.length > 1
+                    ? activePagePath
+                    : isReactVFS ? '/src/App.tsx' : '/index.html';
                   virtualFS.importFiles({ ...vfsFiles, [targetPath]: normalized.code });
                   console.log('[WebBuilder] VFS updated directly:', targetPath);
                   
@@ -4242,93 +4245,25 @@ ${body.innerHTML}
                 <div className="p-1 rounded-md bg-cyan-500/20">
                   <Layers className="w-3.5 h-3.5 text-cyan-400" />
                 </div>
-                <span className="text-xs font-bold text-cyan-400">Elements</span>
+                <span className="text-xs font-bold text-cyan-400">Builder Tools</span>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setLeftPanelCollapsed(true)}
                 className="h-6 w-6 text-cyan-400/50 hover:text-cyan-400 hover:bg-cyan-500/10 rounded transition-all duration-200"
-                title="Close Elements Panel"
+                title="Close Builder Tools Panel"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
             </div>
-            <Tabs defaultValue="elements" className="flex-1 flex flex-col min-h-0">
+            <Tabs defaultValue="business" className="flex-1 flex flex-col min-h-0">
               <TabsList className="w-full flex-wrap justify-start rounded-none border-b-2 border-cyan-500/30 bg-[#0a0a14] px-1.5 py-1.5 min-h-[44px] h-auto shrink-0 gap-1">
-                <TabsTrigger value="elements" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,255,0.5)] transition-all duration-200">Elements</TabsTrigger>
                 <TabsTrigger value="business" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-orange-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,165,0,0.5)] transition-all duration-200">Business</TabsTrigger>
                 <TabsTrigger value="functional" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,0,255,0.5)] transition-all duration-200">Logic</TabsTrigger>
                 <TabsTrigger value="seo" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(255,255,0,0.5)] transition-all duration-200">SEO</TabsTrigger>
                 <TabsTrigger value="ai-plugins" className="text-[10px] px-2 py-1 rounded-md text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-500/10 data-[state=active]:bg-lime-400 data-[state=active]:text-black data-[state=active]:font-bold data-[state=active]:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all duration-200">⚡ AI</TabsTrigger>
               </TabsList>
-              <TabsContent value="elements" className="flex-1 m-0 min-h-0 overflow-hidden">
-            <ElementsSidebar
-              onElementDragStart={(element) => {
-                dragDropServiceRef.current.onDragStart(element);
-                toast(`Dragging ${element.name}`, {
-                  description: 'Drop onto preview area to add element'
-                });
-              }}
-              onElementDragEnd={() => {
-                dragDropServiceRef.current.onDragEnd();
-              }}
-              onAIImageGenerated={(imageUrl, metadata) => {
-                // Create AI image element HTML
-                const imageAlt = (metadata?.prompt as string) || 'AI Generated Image';
-                const styleInfo = metadata?.style ? `<span className="text-xs opacity-75">Style: ${metadata.style}</span>` : '';
-                
-                const imageHtml = `
-                  <figure className="relative group overflow-hidden rounded-2xl shadow-2xl my-6">
-                    <img 
-                      src="${imageUrl}" 
-                      alt="${imageAlt}"
-                      loading="lazy"
-                      className="w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
-                      style={{ aspectRatio: '16/9', maxWidth: '100%' }}
-                    />
-                    <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <p className="text-sm font-medium">${imageAlt}</p>
-                      ${styleInfo}
-                    </figcaption>
-                  </figure>
-                `;
-                
-                // Use VFS to add image
-                const currentFiles = virtualFS.getSandpackFiles();
-                const patchFiles = elementToVFSPatch(currentFiles, imageHtml, 'AIImage');
-                virtualFS.importFiles(patchFiles);
-                
-                // Update legacy state
-                const newAppCode = patchFiles['/src/App.tsx'] || '';
-                if (newAppCode) {
-                  setEditorCode(newAppCode);
-                  setPreviewCode(newAppCode);
-                }
-                
-                toast('AI Image Added!', {
-                  description: 'AI-generated image added to VFS preview'
-                });
-              }}
-              onElementClick={(element: WebElement) => {
-                // Use VFS to add element
-                const currentFiles = virtualFS.getSandpackFiles();
-                const patchFiles = elementToVFSPatch(currentFiles, element.htmlTemplate, element.name);
-                virtualFS.importFiles(patchFiles);
-                
-                // Update legacy state for compatibility
-                const newAppCode = patchFiles['/src/App.tsx'] || '';
-                if (newAppCode) {
-                  setEditorCode(newAppCode);
-                  setPreviewCode(newAppCode);
-                }
-                
-                toast.success(`Added ${element.name}`, {
-                  description: 'Element added to VFS preview'
-                });
-              }}
-            />
-              </TabsContent>
 
               <TabsContent value="functional" className="flex-1 m-0 min-h-0 overflow-hidden">
                 <FunctionalBlocksPanel 

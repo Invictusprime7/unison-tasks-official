@@ -15,6 +15,7 @@
  */
 
 import { extractDependencies, getDependenciesForSandpack, type ExtractedDependencies } from '@/utils/dependencyExtractor';
+import { analyzeReactSite, type SiteAnalysis } from '@/utils/reactSiteAnalysis';
 
 // ============================================================================
 // Types
@@ -301,13 +302,15 @@ export function queryIframeState(previewHandle: PreviewHandle): {
 
 /**
  * Read all current VFS files and format them as context for the AI prompt.
- * This gives the AI full visibility into the current project state.
+ * This gives the AI full visibility into the current project state,
+ * including a structural analysis of React components and sections.
  */
 export function getVFSContextForAI(vfs: VFSHandle): {
   fileList: string[];
   fileContents: Record<string, string>;
   packageDeps: string[];
   summary: string;
+  siteAnalysis: SiteAnalysis | null;
 } {
   const files = vfs.getSandpackFiles();
   const fileList = Object.keys(files).sort();
@@ -322,15 +325,27 @@ export function getVFSContextForAI(vfs: VFSHandle): {
     } catch { /* ignore */ }
   }
 
-  // Build summary
+  // Analyze React component structure
+  let siteAnalysis: SiteAnalysis | null = null;
+  try {
+    siteAnalysis = analyzeReactSite(files);
+  } catch { /* ignore — analysis is optional */ }
+
+  // Build summary with site structure
   const codeFiles = fileList.filter(f => /\.(tsx?|jsx?|css|html)$/.test(f));
-  const summary = [
+  const summaryLines = [
     `Project has ${fileList.length} files (${codeFiles.length} code files).`,
     packageDeps.length > 0 ? `Dependencies: ${packageDeps.join(', ')}` : 'No package.json found.',
     `Code files: ${codeFiles.join(', ')}`,
-  ].join('\n');
+  ];
 
-  return { fileList, fileContents: files, packageDeps, summary };
+  if (siteAnalysis?.sectionMap) {
+    summaryLines.push('', 'Site Structure:', siteAnalysis.sectionMap);
+  }
+
+  const summary = summaryLines.join('\n');
+
+  return { fileList, fileContents: files, packageDeps, summary, siteAnalysis };
 }
 
 /**

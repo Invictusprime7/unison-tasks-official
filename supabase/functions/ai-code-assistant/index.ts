@@ -549,24 +549,30 @@ ${p.code_snippet.substring(0, 600)}${p.code_snippet.length > 600 ? '...' : ''}
     // Build template action context for specific edit operations
     const templateActionContext = templateAction ? `
 🎯 **TEMPLATE ACTION: ${templateAction.toUpperCase()}**
-${templateAction === 'add' ? `User wants to ADD new elements/sections to the template.
-- Identify the best location for new content
-- Maintain existing design patterns and styles
-- Ensure new elements match the template's visual language` : ''}
-${templateAction === 'remove' ? `User wants to REMOVE elements/sections from the template.
+${templateAction === 'add' ? `User wants to ADD new elements/sections/components to the project.
+- For React projects: create new component files or add JSX to existing components
+- Identify the best location for new content based on the site component map
+- Maintain existing design patterns, imports, and component structure
+- If adding a section to a page: import and render it in the parent component (App.tsx or relevant page)
+- Output modified files in JSON format: {"files": {"/path": "content"}}` : ''}
+${templateAction === 'remove' ? `User wants to REMOVE elements/sections/components from the project.
+- For React projects: remove the component usage from the parent, clean up unused imports
 - Carefully remove ONLY what's specified
-- Clean up any orphaned styles or empty containers
+- Clean up any orphaned styles, imports, or empty containers
 - Maintain structural integrity after removal` : ''}
-${templateAction === 'modify' ? `User wants to MODIFY existing elements/sections.
-- Make targeted changes without affecting other parts
-- Preserve overall design consistency
+${templateAction === 'modify' ? `User wants to MODIFY existing elements/sections/components.
+- For React projects: identify which file contains the targeted component using the site component map
+- Make targeted changes to ONLY that component's JSX, styles, or logic
+- Preserve all imports, hooks, state, props, and other component structure
+- Output only the modified file(s), not the entire project
 - Update only the specified properties/content` : ''}
 ${templateAction === 'suggest' ? `User wants UI/UX SUGGESTIONS for improvement.
 - Analyze current template for improvements
 - Suggest specific, actionable enhancements
 - Provide code examples for each suggestion
 - Consider accessibility, performance, and UX best practices` : ''}
-${templateAction === 'restyle' ? `User wants to RESTYLE the template visually.
+${templateAction === 'restyle' ? `User wants to RESTYLE the template/component visually.
+- For React projects: modify className props and CSS/style on targeted elements
 - Change colors, fonts, spacing as requested
 - Maintain layout and structure
 - Ensure consistent styling across all sections` : ''}
@@ -2647,16 +2653,27 @@ Never include the <thinking> block explanation text in your final output.`;
 
 🔒🔒🔒 SURGICAL EDIT OVERRIDE — HIGHEST PRIORITY 🔒🔒🔒
 This is a SURGICAL EDIT request. The user wants ONE specific change.
-Your output MUST be the COMPLETE template HTML, but with ONLY the requested element modified.
+
+FOR REACT/TSX PROJECTS:
+- If the user's prompt targets a specific component or section, output ONLY the modified file(s) using JSON format: {"files": {"/path/file.tsx": "...full file content..."}}
+- Preserve ALL imports, hooks, state declarations, and component structure in the file — only change the targeted JSX, logic, or styles.
+- If the edit targets a child component in a separate file, output only that child file — not the parent.
+- Keep all React patterns intact: hooks order, conditional rendering, map calls, event handlers.
+- For style changes on React components: modify only the className or style prop on the targeted element.
+
+FOR HTML TEMPLATES:
+- Output the COMPLETE template HTML, but with ONLY the requested element modified.
+
+UNIVERSAL RULES:
 EVERY other section, element, style, script, text, image, color, font, and data attribute MUST remain BYTE-FOR-BYTE IDENTICAL to the input.
 Think of this as applying a minimal diff — if a line wasn't mentioned by the user, it MUST NOT change.
-DO NOT "improve", reorganize, or modernize unmentioned parts of the template.
-DO NOT add new sections unless explicitly asked.
-DO NOT remove any sections, scripts, or styles.
+DO NOT "improve", reorganize, or modernize unmentioned parts of the code.
+DO NOT add new sections or components unless explicitly asked.
+DO NOT remove any sections, scripts, components, or styles.
 If the user asks to change ONE element's color, ONLY that element's color class changes. Nothing else.
 
 ⚠️ CRITICAL STYLE PRESERVATION ⚠️
-- Copy ALL <style> blocks from the input VERBATIM — character for character.
+- Copy ALL CSS/style blocks from the input VERBATIM — character for character.
 - DO NOT rewrite, reformat, consolidate, minify, or "clean up" any CSS.
 - DO NOT change CSS custom properties, color values, font-family declarations, or animation keyframes.
 - DO NOT change Tailwind utility classes on elements you were NOT asked to modify.
@@ -2665,11 +2682,11 @@ If the user asks to change ONE element's color, ONLY that element's color class 
 
 ⚠️ BACKEND / WIRING EDITS — EXTRA RULES ⚠️
 When the user asks to "wire", "connect", "integrate", "hook up", "link to backend", "add API call", "submit data", "save to database", or similar backend-wiring requests:
-- You are ONLY allowed to add/modify <script> blocks, data attributes (data-*), form action/method attributes, or fetch/API call logic.
+- You are ONLY allowed to add/modify script blocks, event handlers, data attributes (data-*), form attributes, or fetch/API call logic.
 - You MUST NOT change ANY visual styling: no class changes, no inline style changes, no CSS modifications.
-- You MUST NOT rearrange, rewrite, or "improve" any HTML structure or element order.
-- The ONLY acceptable changes are functional: adding event listeners, fetch calls, form handlers, script blocks.
-- Copy the entire template as-is and ONLY inject the minimal JavaScript/attributes needed for the backend wiring.
+- You MUST NOT rearrange, rewrite, or "improve" any HTML/JSX structure or element order.
+- The ONLY acceptable changes are functional: adding event listeners, fetch calls, form handlers, hooks, state.
+- Copy the entire file as-is and ONLY inject the minimal code needed for the backend wiring.
 🔒🔒🔒 END SURGICAL EDIT OVERRIDE 🔒🔒🔒
 ` : '';
 
