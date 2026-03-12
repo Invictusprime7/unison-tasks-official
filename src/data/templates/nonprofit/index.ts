@@ -394,7 +394,8 @@ export const nonprofitTemplates: LayoutTemplate[] = [
     systemType: 'content',
     systemName: 'Nonprofit Platform',
     tags: ['nonprofit', 'water', 'institutional', 'clean', 'light'],
-    code: wrapInReactComponent(npClean, 'WaterFirst Foundation — Clean Water'),
+    code: npClean,
+    title: 'WaterFirst Foundation — Clean Water',
   },
   {
     id: 'nonprofit-bold-impact',
