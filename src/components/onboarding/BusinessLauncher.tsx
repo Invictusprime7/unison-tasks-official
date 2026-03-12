@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getTemplatesByCategory } from "@/data/templates";
 import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
+import { getCompositionReactCode, getCompositionMeta } from "@/utils/compositionReference";
 import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 import { generateDesignVariation, randomFontPairing } from "@/utils/designVariation";
 

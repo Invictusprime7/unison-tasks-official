@@ -36,6 +36,7 @@ import {
 import { User } from "@supabase/supabase-js";
 import { getTemplatesByCategory } from "@/data/templates";
 import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
+import { getCompositionReactCode, getCompositionMeta } from "@/utils/compositionReference";
 import { cn } from "@/lib/utils";
 import { templateToVFSFiles } from "@/utils/templateToVFS";
 import { applyDesignProfileToTemplate } from "@/utils/designPatternExtractor";
