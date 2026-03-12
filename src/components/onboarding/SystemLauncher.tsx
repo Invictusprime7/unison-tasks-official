@@ -30,7 +30,7 @@ import {
   type LayoutTemplate,
   type LayoutCategory,
 } from "@/data/templates/types";
-import { getTemplatesByCategory } from "@/data/templates";
+import { getTemplatesByCategory, getTemplateReactCode } from "@/data/templates";
 import {
   getTemplateManifest,
   getDefaultManifestForSystem,
