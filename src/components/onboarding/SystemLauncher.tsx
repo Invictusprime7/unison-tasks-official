@@ -317,11 +317,19 @@ export const SystemLauncher = ({
       const fonts = randomFontPairing();
       const design = generateDesignVariation();
 
+      // Use contracts system for canonical intent resolution
+      const industryProfile = getIndustryForCategory(industry as LayoutCategory);
+      const canonicalIntents = industryProfile
+        ? getAllowedIntents(industryProfile.defaultCapabilities)
+        : system.intents;
+
       const blueprint = {
         version: "1.0",
         identity: {
           industry,
-          primary_goal: "Generate leads and grow the business",
+          primary_goal: industryProfile
+            ? (industryProfile.defaultCapabilities.includes('booking') ? 'bookings' : 'leads')
+            : "Generate leads and grow the business",
         },
         brand: {
           business_name: `${system.name} Business`,
@@ -332,7 +340,7 @@ export const SystemLauncher = ({
           typography: fonts,
         },
         design,
-        intents: system.intents.map((i) => ({ intent: i })),
+        intents: canonicalIntents.map((i) => ({ intent: i })),
       };
 
       const themeInstruction = selectedTheme
