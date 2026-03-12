@@ -632,7 +632,8 @@ export const restaurantTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Restaurant Reservation System',
     tags: ['restaurant', 'fine-dining', 'luxury', 'booking', 'dark'],
-    code: wrapInReactComponent(restaurantDark, 'Aurum — Fine Dining Restaurant'),
+    code: restaurantDark,
+    title: 'Aurum — Fine Dining Restaurant',
   },
   {
     id: 'restaurant-light-casual-bistro',
