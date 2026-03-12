@@ -423,7 +423,8 @@ export const coachingTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Life Coaching System',
     tags: ['coaching', 'life-coach', 'wellness', 'warm', 'light'],
-    code: wrapInReactComponent(coachingLight, 'Sarah Wells — Life Coach'),
+    code: coachingLight,
+    title: 'Sarah Wells — Life Coach',
   },
   {
     id: 'coaching-bold-motivational',
