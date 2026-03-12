@@ -796,7 +796,7 @@ export const SystemLauncher = ({
               className="flex flex-col"
             >
               {/* Header */}
-              <div className="px-6 pt-4 pb-3 flex items-center gap-3">
+              <div className="px-6 pt-4 pb-2 flex items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -829,37 +829,45 @@ export const SystemLauncher = ({
                     </div>
                   </div>
                 </div>
-                {/* Category filter */}
-                {availableCategories.length > 1 && (
-                  <div className="w-44">
-                    <Select
-                      value={categoryFilter}
-                      onValueChange={(v) => {
-                        const next = v as LayoutCategory | "all";
-                        setCategoryFilter(next);
+              </div>
+
+              {/* Category tabs */}
+              {availableCategories.length > 1 && (
+                <div className="px-6 pb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                  <button
+                    onClick={() => setCategoryFilter("all")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200",
+                      categoryFilter === "all"
+                        ? "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30"
+                        : "bg-white/[0.03] text-white/40 hover:bg-white/[0.06] hover:text-white/60"
+                    )}
+                  >
+                    All
+                  </button>
+                  {availableCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        setCategoryFilter(cat);
                         if (
                           selectedTemplate &&
-                          next !== "all" &&
-                          selectedTemplate.category !== next
+                          selectedTemplate.category !== cat
                         )
                           setSelectedTemplate(null);
                       }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200",
+                        categoryFilter === cat
+                          ? "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30"
+                          : "bg-white/[0.03] text-white/40 hover:bg-white/[0.06] hover:text-white/60"
+                      )}
                     >
-                      <SelectTrigger className="h-8 text-xs bg-white/[0.03] border-white/[0.08] text-white/60">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All categories</SelectItem>
-                        {availableCategories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {categoryLabels[cat] || cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+                      {categoryLabels[cat] || cat}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Template grid */}
               <ScrollArea className="flex-1 max-h-[46vh] px-6 pb-4">
