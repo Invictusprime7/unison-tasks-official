@@ -319,7 +319,8 @@ export const portfolioTemplates: LayoutTemplate[] = [
     systemType: 'portfolio',
     systemName: 'Designer Portfolio',
     tags: ['portfolio', 'designer', 'brand', 'minimal', 'dark'],
-    code: wrapInReactComponent(portfolioDark, 'Elena Voss — Brand Designer'),
+    code: portfolioDark,
+    title: 'Elena Voss — Brand Designer',
   },
   {
     id: 'portfolio-light-gallery',
