@@ -196,16 +196,7 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
     debug,
   });
   
-  // Intent router (for executing intents)
-  const intentRouter = useIntentRouter({
-    mode: "builder",
-    debug,
-    onNavigate: (path) => {
-      // Handle navigation intent
-      const navKey = path.replace(/^\//, "").replace(/\.html$/, "") || "home";
-      navigateTo(navKey);
-    },
-  });
+  
   
   // Derived brand colors
   const brand = useMemo((): BrandColors => {
