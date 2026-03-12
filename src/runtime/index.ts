@@ -61,18 +61,7 @@ export {
 // ============ LEGACY (still used by useIntentRouter → universalIntentRouter chain) ============
 // TODO: Consolidate useIntentRouter to use intentExecutor directly, then remove these
 
-// Legacy types re-exported from universalIntentRouter
-export { type ActionContext } from './universalIntentRouter';
-
-// Intent Resolver - Legacy resolution layer (build-time)
-export {
-  resolveIntent,
-  extractButtonContext,
-  type ButtonContext,
-  type ResolvedIntent,
-} from './intentResolver';
-
-// Universal Intent Router - Legacy orchestration layer
+// Universal Intent Router - orchestration layer
 export {
   UniversalIntentRouter,
   createIntentRouter,
@@ -80,4 +69,6 @@ export {
   setupPreviewRouter,
   setupProductionRouter,
   type IntentRouterConfig,
+  type ActionContext,
+  type ResolvedIntent,
 } from './universalIntentRouter';
