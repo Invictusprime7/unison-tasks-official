@@ -2624,8 +2624,10 @@ export default function App() {
       }, 300);
       
       // Ensure code is React-safe before setting (AI may return raw HTML)
-      const safeCode = (generatedCode.includes('<!-- ') || (generatedCode.includes('class=') && !generatedCode.includes('className=')))
-        ? (() => { const { getTemplateReactCode } = require('@/data/templates/utils'); return getTemplateReactCode({ code: generatedCode, title: templateName || 'Template' }); })()
+      const hasHtmlComments = generatedCode.includes('<!-- ');
+      const hasHtmlAttrs = generatedCode.includes('class=') && !generatedCode.includes('className=');
+      const safeCode = (hasHtmlComments || hasHtmlAttrs)
+        ? getTemplateReactCode({ code: generatedCode, title: templateName || 'Template' })
         : generatedCode;
       setEditorCode(safeCode);
       setPreviewCode(safeCode);
