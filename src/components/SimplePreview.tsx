@@ -93,6 +93,47 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
     if (rawCode.trim().startsWith('<!') || rawCode.trim().startsWith('<html')) {
       return rawCode;
     }
+
+    // Detect React/TSX component code and extract embedded HTML/CSS
+    if (rawCode.includes('import React') || rawCode.includes('export default function')) {
+      // Extract TEMPLATE_HTML and TEMPLATE_STYLES from React wrapper
+      const htmlMatch = rawCode.match(/const\s+TEMPLATE_HTML\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
+      const stylesMatch = rawCode.match(/const\s+TEMPLATE_STYLES\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
+      
+      if (htmlMatch) {
+        let bodyContent = '';
+        let styles = '';
+        try { bodyContent = JSON.parse(htmlMatch[1]); } catch { bodyContent = htmlMatch[1].slice(1, -1); }
+        if (stylesMatch) {
+          try { styles = JSON.parse(stylesMatch[1]); } catch { styles = stylesMatch[1].slice(1, -1); }
+        }
+        
+        // Extract body classes from the component
+        const bodyClassMatch = rawCode.match(/document\.body\.classList\.add\(([^)]+)\)/);
+        let bodyClasses = '';
+        if (bodyClassMatch) {
+          bodyClasses = bodyClassMatch[1].replace(/['"]/g, '').split(',').map(c => c.trim()).join(' ');
+        }
+        
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>${styles}</style>
+</head>
+<body class="${bodyClasses}">${bodyContent}</body>
+</html>`;
+      }
+      
+      // React code without TEMPLATE_HTML — can't render as static HTML
+      return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/></head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;background:#0a0a0f;color:#94a3b8;">
+<p>This preview requires the live React runtime. Use the in-app preview instead.</p>
+</body></html>`;
+    }
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
