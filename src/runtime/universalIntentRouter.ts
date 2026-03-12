@@ -261,30 +261,19 @@ export class UniversalIntentRouter {
     const rawIntent = resolved.intent;
     const normalizedIntent = rawIntent ? normalizeIntent(rawIntent) : null;
     
-    // Step 3: Execute via unified executor (NEW) or legacy catalog
+    // Step 3: Execute via unified executor
     if (normalizedIntent) {
-      // Build intent context
       const intentContext: IntentContext = {
         payload: resolved.payload || {},
         element,
-        // Business context will be hydrated by executor
       };
       
-      // Try new unified executor first
       const result: IntentResult = await executeIntent(normalizedIntent, intentContext);
       
       if (result.ok) {
-        console.log('[IntentRouter] Executed via unified executor:', normalizedIntent, result);
-      } else if (result.error?.code === 'UNKNOWN_INTENT') {
-        // Fallback to legacy ACTION_CATALOG
-        if (isValidIntent(rawIntent)) {
-          console.log('[IntentRouter] Falling back to legacy catalog:', rawIntent);
-          const actionContext: ActionContext = {
-            payload: resolved.payload || {},
-            element,
-          };
-          await executeAction(rawIntent, actionContext);
-        }
+        console.log('[IntentRouter] Executed:', normalizedIntent);
+      } else {
+        console.warn('[IntentRouter] Execution failed:', normalizedIntent, result.error);
       }
       
       this.config.onActionExecuted?.(normalizedIntent, { payload: resolved.payload, element }, result);
