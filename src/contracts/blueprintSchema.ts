@@ -165,7 +165,11 @@ export function createBlueprintFromIndustry(
     brand: {
       tone: options?.tone,
     },
-    crm: profile.crmPipeline,
+    crm: {
+      pipelineName: profile.crmPipeline.name,
+      stages: profile.crmPipeline.stages,
+      defaultStage: profile.crmPipeline.defaultStage,
+    },
     automationPack: profile.automationPack,
     contact: {
       email: options?.email,

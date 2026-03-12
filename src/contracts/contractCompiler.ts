@@ -321,7 +321,11 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
     requiredWorkflows,
     intentBindings,
     pages: compiledPages,
-    crm: blueprint.crm,
+    crm: {
+      name: blueprint.crm.pipelineName,
+      stages: blueprint.crm.stages,
+      defaultStage: blueprint.crm.defaultStage,
+    },
     automationPack: blueprint.automationPack,
   };
 }
