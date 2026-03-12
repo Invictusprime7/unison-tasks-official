@@ -14,7 +14,7 @@
  * - AutoBinder pre-assigns intents at template generation time
  */
 
-import { executeAction, isValidIntent, configureActionCatalog, type ActionContext } from './actionCatalog';
+import { configureActionCatalog, type ActionContext } from './actionCatalog';
 import { resolveIntent, extractButtonContext, type ResolvedIntent } from './intentResolver';
 import { normalizeIntent } from './intentAliases';
 import { executeIntent, configureIntentExecutor, type IntentContext, type IntentResult } from './intentExecutor';
