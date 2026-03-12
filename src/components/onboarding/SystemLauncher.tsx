@@ -217,7 +217,7 @@ export const SystemLauncher = ({
       const manifest =
         getTemplateManifest(selectedTemplate.id) ||
         getDefaultManifestForSystem(selectedSystem);
-      let effectiveCode = editedTemplateCode ?? selectedTemplate.code;
+      let effectiveCode = editedTemplateCode ?? getTemplateReactCode(selectedTemplate);
 
       if (selectedTheme && !editedTemplateFiles) {
         try {
