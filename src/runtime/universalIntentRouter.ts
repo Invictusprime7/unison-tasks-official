@@ -400,6 +400,42 @@ export class UniversalIntentRouter {
       } : undefined,
     });
   }
+
+  /**
+   * Extract a BindableNode from a DOM element for autoBinder resolution
+   */
+  private extractNodeFromElement(element: HTMLElement): import('./autoBinder').BindableNode {
+    const tag = element.tagName.toLowerCase();
+    let nodeType: 'button' | 'link' | 'form' | 'submit' | 'icon-button' | 'card-action' | 'cta' = 'button';
+    if (tag === 'a') nodeType = 'link';
+    if (element.getAttribute('type') === 'submit') nodeType = 'submit';
+    if (element.classList.contains('cta') || element.dataset.cta) nodeType = 'cta';
+    
+    return {
+      id: element.id || `click_${Math.random().toString(36).slice(2, 8)}`,
+      type: nodeType,
+      text: element.textContent?.trim(),
+      ariaLabel: element.getAttribute('aria-label') || undefined,
+      href: element.getAttribute('href') || undefined,
+      formType: element.closest('form')?.dataset.formType,
+      intent: element.dataset.utIntent || element.dataset.intent,
+      intentPayload: element.dataset.utPayload ? JSON.parse(element.dataset.utPayload) : undefined,
+    };
+  }
+}
+
+/**
+ * Convert a BindingResult to a ResolvedIntent
+ */
+function bindingToResolved(binding: BindingResult): ResolvedIntent {
+  return {
+    intent: binding.intent,
+    confidence: binding.confidence,
+    payload: binding.intentPayload,
+    source: binding.bindSource === 'explicit' ? 'explicit' : 
+            binding.bindSource === 'inferred' ? 'rule' : 
+            binding.bindSource === 'default' ? 'fallback' : 'rule',
+  };
 }
 
 /**
