@@ -1,71 +1,46 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, cardStyle, primaryButtonStyle, outlineButtonStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const PricingSection: React.FC<BaseSectionProps<'pricing'>> = ({ section, theme }) => {
-  const { headline, subheadline, tiers } = section.props;
+  const { headline, subheadline, tiers = [] } = section.props;
 
   return (
-    <section style={{ ...sectionStyle(theme), background: hsl(theme.colors.muted) }}>
-      <div style={containerStyle(theme)}>
-        {(headline || subheadline) && (
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            {headline && <h2 style={{ ...headingStyle(theme), fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>}
-            {subheadline && <p style={{ ...bodyStyle(theme), fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>{subheadline}</p>}
+    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+        {headline && (
+          <div className="text-center mb-12">
+            <h2 className="text-3xl mb-3" style={{ fontFamily: theme.typography.headingFont, fontWeight: theme.typography.headingWeight, color: hsl(theme.colors.foreground) }}>{headline}</h2>
+            {subheadline && <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>{subheadline}</p>}
           </div>
         )}
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${Math.min(tiers.length, 3)}, 1fr)`,
-          gap: '1.5rem',
-          alignItems: 'start',
-        }}>
+        <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(3, tiers.length)}, 1fr)` }}>
           {tiers.map((tier, i) => (
-            <div key={i} style={{
-              ...cardStyle(theme),
-              padding: '2.5rem',
-              border: tier.highlighted
-                ? `2px solid hsl(${theme.colors.primary})`
-                : `1px solid ${hsla(theme.colors.border, 1)}`,
-              position: 'relative',
-              transform: tier.highlighted ? 'scale(1.05)' : undefined,
-            }}>
-              {tier.badge && (
-                <span style={{
-                  position: 'absolute', top: '-0.75rem', left: '50%', transform: 'translateX(-50%)',
-                  padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600',
-                  background: `linear-gradient(135deg, hsl(${theme.colors.primary}), hsl(${theme.colors.secondary}))`,
-                  color: hsl(theme.colors.primaryForeground),
-                }}>
-                  {tier.badge}
-                </span>
-              )}
-              <h3 style={{ ...headingStyle(theme), fontSize: '1.25rem', marginBottom: '0.5rem' }}>{tier.name}</h3>
-              {tier.description && <p style={{ ...bodyStyle(theme), fontSize: '0.85rem', marginBottom: '1rem' }}>{tier.description}</p>}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '1.5rem' }}>
-                <span style={{ ...headingStyle(theme), fontSize: '2.5rem', color: hsl(theme.colors.primary) }}>{tier.price}</span>
-                {tier.period && <span style={{ ...bodyStyle(theme), fontSize: '0.9rem' }}>/{tier.period}</span>}
-              </div>
-              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem' }}>
-                {tier.features.map((feat, j) => (
-                  <li key={j} style={{
-                    ...bodyStyle(theme), fontSize: '0.9rem',
-                    padding: '0.5rem 0',
-                    borderBottom: `1px solid ${hsla(theme.colors.border, 0.5)}`,
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  }}>
-                    <span style={{ color: hsl(theme.colors.primary) }}>✓</span>
-                    {feat}
-                  </li>
+            <div
+              key={i}
+              className="p-6 flex flex-col"
+              style={{
+                background: hsl(theme.colors.card),
+                border: tier.highlighted ? `2px solid ${hsl(theme.colors.primary)}` : `1px solid ${hsla(theme.colors.border, 0.6)}`,
+                borderRadius: theme.radius,
+              }}
+            >
+              <h3 className="text-lg mb-1" style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.cardForeground) }}>{tier.name}</h3>
+              <div className="text-3xl font-bold mb-4" style={{ color: hsl(theme.colors.foreground) }}>{tier.price}<span className="text-sm font-normal" style={{ color: hsl(theme.colors.mutedForeground) }}>{tier.period && ` / ${tier.period}`}</span></div>
+              <ul className="space-y-2 mb-6 flex-1">
+                {tier.features.map((f, j) => (
+                  <li key={j} className="text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>✓ {f}</li>
                 ))}
               </ul>
               <a
                 href={tier.cta.href || '#'}
                 data-intent={tier.cta.intent}
+                className="block text-center text-sm font-medium py-2.5 transition-all hover:opacity-90"
                 style={{
-                  ...(tier.highlighted ? primaryButtonStyle(theme) : outlineButtonStyle(theme)),
-                  display: 'block', textAlign: 'center', textDecoration: 'none', width: '100%',
+                  background: tier.highlighted ? hsl(theme.colors.primary) : 'transparent',
+                  color: tier.highlighted ? hsl(theme.colors.primaryForeground) : hsl(theme.colors.foreground),
+                  border: tier.highlighted ? 'none' : `1px solid ${hsla(theme.colors.border, 1)}`,
+                  borderRadius: theme.radius,
                 }}
               >
                 {tier.cta.label}

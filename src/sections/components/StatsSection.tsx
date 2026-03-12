@@ -1,29 +1,46 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const StatsSection: React.FC<BaseSectionProps<'stats'>> = ({ section, theme }) => {
-  const { headline, items, layout = 'row' } = section.props;
+  const { headline, items = [] } = section.props;
 
   return (
-    <section style={{
-      ...sectionStyle(theme),
-      background: `linear-gradient(135deg, ${hsla(theme.colors.primary, 0.05)}, ${hsla(theme.colors.secondary, 0.05)})`,
-      borderTop: `1px solid ${hsla(theme.colors.border, 0.5)}`,
-      borderBottom: `1px solid ${hsla(theme.colors.border, 0.5)}`,
-    }}>
-      <div style={containerStyle(theme)}>
-        {headline && <h2 style={{ ...headingStyle(theme), fontSize: '2rem', textAlign: 'center', marginBottom: '3rem' }}>{headline}</h2>}
-        <div style={{
-          display: 'flex', justifyContent: 'center', gap: '4rem', flexWrap: 'wrap',
-        }}>
-          {items.map((stat, i) => (
-            <div key={i} style={{ textAlign: 'center' }}>
-              <div style={{ ...headingStyle(theme), fontSize: '3rem', color: hsl(theme.colors.primary), lineHeight: 1 }}>
-                {stat.value}
+    <section
+      style={{
+        padding: theme.sectionPadding,
+        background: hsla(theme.colors.primary, 0.03),
+        borderTop: `1px solid ${hsla(theme.colors.border, 0.3)}`,
+        borderBottom: `1px solid ${hsla(theme.colors.border, 0.3)}`,
+      }}
+    >
+      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+        {headline && (
+          <h2
+            className="text-2xl text-center mb-10"
+            style={{
+              fontFamily: theme.typography.headingFont,
+              fontWeight: theme.typography.headingWeight,
+              color: hsl(theme.colors.foreground),
+            }}
+          >
+            {headline}
+          </h2>
+        )}
+        <div className="flex justify-center gap-16 flex-wrap">
+          {items.map((s, i) => (
+            <div key={i} className="text-center">
+              <div
+                className="text-4xl font-bold leading-none"
+                style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.primary) }}
+              >
+                {s.value}
               </div>
-              <div style={{ ...bodyStyle(theme), fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.5rem' }}>
-                {stat.label}
+              <div
+                className="text-xs uppercase tracking-widest mt-2"
+                style={{ color: hsl(theme.colors.mutedForeground) }}
+              >
+                {s.label}
               </div>
             </div>
           ))}

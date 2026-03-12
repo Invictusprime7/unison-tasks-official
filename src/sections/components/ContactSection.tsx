@@ -1,76 +1,71 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, primaryButtonStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const ContactSection: React.FC<BaseSectionProps<'contact'>> = ({ section, theme }) => {
-  const { headline, description, fields, submitLabel = 'Send Message', submitIntent = 'contact.submit', phone, email, address } = section.props;
-
-  const defaultFields = fields || [
-    { name: 'name', type: 'text', placeholder: 'Your name', required: true },
-    { name: 'email', type: 'email', placeholder: 'your@email.com', required: true },
-    { name: 'message', type: 'textarea', placeholder: 'How can we help?', required: true },
-  ];
+  const { headline, description, submitLabel = 'Send Message', phone, email, address } = section.props;
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '0.75rem 1rem',
+    padding: '0.65rem 0.85rem',
     borderRadius: theme.radius,
-    border: `1px solid ${hsla(theme.colors.border, 1)}`,
+    border: `1px solid ${hsla(theme.colors.border, 0.8)}`,
     background: hsl(theme.colors.card),
     color: hsl(theme.colors.cardForeground),
     fontFamily: theme.typography.bodyFont,
-    fontSize: '0.9rem',
+    fontSize: '0.875rem',
     outline: 'none',
-    transition: 'border-color 0.2s',
   };
 
   return (
-    <section style={{ ...sectionStyle(theme), background: hsl(theme.colors.muted) }}>
-      <div style={{ ...containerStyle(theme), maxWidth: '900px' }}>
-        {(headline || description) && (
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            {headline && <h2 style={{ ...headingStyle(theme), fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>}
-            {description && <p style={{ ...bodyStyle(theme), fontSize: '1.1rem' }}>{description}</p>}
+    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.muted) }}>
+      <div className="mx-auto px-6" style={{ maxWidth: '640px' }}>
+        {headline && (
+          <div className="text-center mb-10">
+            <h2
+              className="text-3xl mb-3"
+              style={{
+                fontFamily: theme.typography.headingFont,
+                fontWeight: theme.typography.headingWeight,
+                color: hsl(theme.colors.foreground),
+              }}
+            >
+              {headline}
+            </h2>
+            {description && (
+              <p className="text-base" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                {description}
+              </p>
+            )}
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: (phone || email || address) ? '1fr 1fr' : '1fr', gap: '3rem' }}>
-          <form data-demo-form="true" data-intent={submitIntent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {defaultFields.map((field, i) => (
-              field.type === 'textarea' ? (
-                <textarea key={i} name={field.name} placeholder={field.placeholder} required={field.required} rows={4} style={inputStyle} />
-              ) : (
-                <input key={i} type={field.type} name={field.name} placeholder={field.placeholder} required={field.required} style={inputStyle} />
-              )
-            ))}
-            <button type="submit" style={{ ...primaryButtonStyle(theme), width: '100%' }}>
-              {submitLabel}
-            </button>
-          </form>
+        <form data-demo-form="true" data-intent="contact.submit" className="flex flex-col gap-3">
+          <input type="text" placeholder="Your name" style={inputStyle} />
+          <input type="email" placeholder="your@email.com" style={inputStyle} />
+          <textarea placeholder="How can we help?" rows={4} style={inputStyle} />
+          <button
+            type="submit"
+            className="w-full text-sm font-medium py-3 transition-all hover:opacity-90 cursor-pointer"
+            style={{
+              background: hsl(theme.colors.primary),
+              color: hsl(theme.colors.primaryForeground),
+              borderRadius: theme.radius,
+              border: 'none',
+              fontFamily: theme.typography.bodyFont,
+            }}
+          >
+            {submitLabel}
+          </button>
+        </form>
 
-          {(phone || email || address) && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {address && (
-                <div>
-                  <h4 style={{ ...headingStyle(theme), fontSize: '0.9rem', marginBottom: '0.25rem' }}>Address</h4>
-                  <p style={{ ...bodyStyle(theme), fontSize: '0.9rem' }}>{address}</p>
-                </div>
-              )}
-              {phone && (
-                <div>
-                  <h4 style={{ ...headingStyle(theme), fontSize: '0.9rem', marginBottom: '0.25rem' }}>Phone</h4>
-                  <p style={{ ...bodyStyle(theme), fontSize: '0.9rem' }}>{phone}</p>
-                </div>
-              )}
-              {email && (
-                <div>
-                  <h4 style={{ ...headingStyle(theme), fontSize: '0.9rem', marginBottom: '0.25rem' }}>Email</h4>
-                  <p style={{ ...bodyStyle(theme), fontSize: '0.9rem' }}>{email}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {(phone || email || address) && (
+          <div className="mt-8 text-center text-sm space-y-1" style={{ color: hsl(theme.colors.mutedForeground) }}>
+            {phone && <p>{phone}</p>}
+            {email && <p>{email}</p>}
+            {address && <p>{address}</p>}
+          </div>
+        )}
       </div>
     </section>
   );

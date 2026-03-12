@@ -1156,14 +1156,7 @@ export const templateManifests: Record<string, TemplateManifest> = {
   },
 };
 
-// ============================================================================
-// MERGE INDUSTRY TEMPLATE MANIFESTS
-// ============================================================================
-
-import { industryTemplateManifests } from './manifest-industry';
-
-// Merge industry-specific manifests (they take priority for matching IDs)
-Object.assign(templateManifests, industryTemplateManifests);
+// Industry-specific manifests were merged from manifest-industry.ts (removed)
 
 // ============================================================================
 // HELPER FUNCTIONS

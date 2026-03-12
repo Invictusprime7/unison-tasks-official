@@ -1,32 +1,24 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const GallerySection: React.FC<BaseSectionProps<'gallery'>> = ({ section, theme }) => {
-  const { headline, subheadline, items, columns = 3 } = section.props;
+  const { headline, subheadline, items = [], columns = 3 } = section.props;
 
   return (
-    <section style={{ ...sectionStyle(theme), background: hsl(theme.colors.muted) }}>
-      <div style={containerStyle(theme)}>
-        {(headline || subheadline) && (
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            {headline && <h2 style={{ ...headingStyle(theme), fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>}
-            {subheadline && <p style={{ ...bodyStyle(theme), fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>{subheadline}</p>}
+    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+        {headline && (
+          <div className="text-center mb-12">
+            <h2 className="text-3xl mb-3" style={{ fontFamily: theme.typography.headingFont, fontWeight: theme.typography.headingWeight, color: hsl(theme.colors.foreground) }}>{headline}</h2>
+            {subheadline && <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>{subheadline}</p>}
           </div>
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1rem' }}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
           {items.map((item, i) => (
-            <div key={i} style={{ position: 'relative', borderRadius: theme.radius, overflow: 'hidden', aspectRatio: '4/3' }}>
-              <img src={item.src} alt={item.alt} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }} />
-              {item.caption && (
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0,
-                  padding: '1rem', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                  color: '#fff', fontSize: '0.85rem', fontFamily: theme.typography.bodyFont,
-                }}>
-                  {item.caption}
-                </div>
-              )}
+            <div key={i} className="overflow-hidden" style={{ borderRadius: theme.radius, border: `1px solid ${hsla(theme.colors.border, 0.4)}` }}>
+              <div className="aspect-video" style={{ background: hsl(theme.colors.muted) }} />
+              {item.caption && <p className="p-3 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>{item.caption}</p>}
             </div>
           ))}
         </div>

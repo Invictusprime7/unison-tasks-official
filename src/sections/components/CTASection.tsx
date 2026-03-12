@@ -1,37 +1,62 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, primaryButtonStyle, outlineButtonStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const CTASection: React.FC<BaseSectionProps<'cta'>> = ({ section, theme }) => {
-  const { headline, description, ctas, layout = 'centered', backgroundImage } = section.props;
+  const { headline, description, ctas = [] } = section.props;
 
   return (
-    <section style={{
-      ...sectionStyle(theme),
-      background: backgroundImage
-        ? `linear-gradient(135deg, ${hsla(theme.colors.primary, 0.9)}, ${hsla(theme.colors.secondary, 0.9)}), url(${backgroundImage}) center/cover`
-        : `linear-gradient(135deg, ${hsla(theme.colors.primary, 0.1)}, ${hsla(theme.colors.secondary, 0.1)})`,
-      textAlign: layout === 'centered' ? 'center' : 'left',
-      position: 'relative',
-      overflow: 'hidden',
-      borderTop: `1px solid ${hsla(theme.colors.primary, 0.15)}`,
-      borderBottom: `1px solid ${hsla(theme.colors.primary, 0.15)}`,
-    }}>
-      <div style={containerStyle(theme)}>
-        <h2 style={{ ...headingStyle(theme), fontSize: '2.5rem', marginBottom: '1rem' }}>{headline}</h2>
-        {description && <p style={{ ...bodyStyle(theme), fontSize: '1.15rem', maxWidth: '600px', margin: layout === 'centered' ? '0 auto 2rem' : '0 0 2rem' }}>{description}</p>}
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: layout === 'centered' ? 'center' : 'flex-start', flexWrap: 'wrap' }}>
-          {ctas.map((cta, i) => (
+    <section
+      className="text-center"
+      style={{
+        padding: theme.sectionPadding,
+        background: hsla(theme.colors.primary, 0.04),
+        borderTop: `1px solid ${hsla(theme.colors.border, 0.4)}`,
+        borderBottom: `1px solid ${hsla(theme.colors.border, 0.4)}`,
+      }}
+    >
+      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+        <h2
+          className="text-3xl mb-4"
+          style={{
+            fontFamily: theme.typography.headingFont,
+            fontWeight: theme.typography.headingWeight,
+            color: hsl(theme.colors.foreground),
+          }}
+        >
+          {headline}
+        </h2>
+        {description && (
+          <p
+            className="text-base max-w-lg mx-auto mb-8"
+            style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
+          >
+            {description}
+          </p>
+        )}
+        <div className="flex gap-3 justify-center flex-wrap">
+          {ctas.map((c, i) => (
             <a
               key={i}
-              href={cta.href || '#'}
-              data-intent={cta.intent}
-              style={{
-                ...(cta.variant === 'outline' || cta.variant === 'secondary' ? outlineButtonStyle(theme) : primaryButtonStyle(theme)),
-                textDecoration: 'none',
-              }}
+              href={c.href || '#'}
+              data-intent={c.intent}
+              className="inline-block text-sm font-medium px-6 py-3 transition-all hover:opacity-90"
+              style={
+                c.variant === 'outline'
+                  ? {
+                      background: 'transparent',
+                      color: hsl(theme.colors.foreground),
+                      border: `1px solid ${hsla(theme.colors.border, 1)}`,
+                      borderRadius: theme.radius,
+                    }
+                  : {
+                      background: hsl(theme.colors.primary),
+                      color: hsl(theme.colors.primaryForeground),
+                      borderRadius: theme.radius,
+                    }
+              }
             >
-              {cta.label}
+              {c.label}
             </a>
           ))}
         </div>

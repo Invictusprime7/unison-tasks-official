@@ -1,41 +1,41 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, cardStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const FAQSection: React.FC<BaseSectionProps<'faq'>> = ({ section, theme }) => {
-  const { headline, subheadline, items } = section.props;
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const { headline, subheadline, items = [] } = section.props;
 
   return (
-    <section style={{ ...sectionStyle(theme), background: hsl(theme.colors.background) }}>
-      <div style={{ ...containerStyle(theme), maxWidth: '800px' }}>
-        {(headline || subheadline) && (
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            {headline && <h2 style={{ ...headingStyle(theme), fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>}
-            {subheadline && <p style={{ ...bodyStyle(theme), fontSize: '1.1rem' }}>{subheadline}</p>}
+    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+      <div className="mx-auto px-6" style={{ maxWidth: '720px' }}>
+        {headline && (
+          <div className="text-center mb-12">
+            <h2 className="text-3xl mb-3" style={{ fontFamily: theme.typography.headingFont, fontWeight: theme.typography.headingWeight, color: hsl(theme.colors.foreground) }}>{headline}</h2>
+            {subheadline && <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>{subheadline}</p>}
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="space-y-3">
           {items.map((item, i) => (
-            <div key={i} style={{ ...cardStyle(theme), overflow: 'hidden' }}>
-              <button
-                onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                style={{
-                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '1.25rem 1.5rem', border: 'none', cursor: 'pointer',
-                  background: 'transparent', textAlign: 'left',
-                  ...headingStyle(theme), fontSize: '1rem',
-                }}
+            <details
+              key={i}
+              className="group p-4"
+              style={{
+                background: hsl(theme.colors.card),
+                border: `1px solid ${hsla(theme.colors.border, 0.6)}`,
+                borderRadius: theme.radius,
+              }}
+            >
+              <summary
+                className="text-sm font-medium cursor-pointer list-none flex justify-between items-center"
+                style={{ color: hsl(theme.colors.cardForeground) }}
               >
                 {item.question}
-                <span style={{ fontSize: '1.25rem', color: hsl(theme.colors.mutedForeground), transition: 'transform 0.2s', transform: openIndex === i ? 'rotate(45deg)' : 'none' }}>+</span>
-              </button>
-              {openIndex === i && (
-                <div style={{ ...bodyStyle(theme), padding: '0 1.5rem 1.25rem', fontSize: '0.9rem', lineHeight: 1.7 }}>
-                  {item.answer}
-                </div>
-              )}
-            </div>
+                <span className="text-xs ml-2" style={{ color: hsl(theme.colors.mutedForeground) }}>+</span>
+              </summary>
+              <p className="text-sm leading-relaxed mt-3 pt-3" style={{ color: hsl(theme.colors.mutedForeground), borderTop: `1px solid ${hsla(theme.colors.border, 0.3)}` }}>
+                {item.answer}
+              </p>
+            </details>
           ))}
         </div>
       </div>

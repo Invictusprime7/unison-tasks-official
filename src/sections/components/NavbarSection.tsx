@@ -1,48 +1,43 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, headingStyle, bodyStyle, primaryButtonStyle, outlineButtonStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const NavbarSection: React.FC<BaseSectionProps<'navbar'>> = ({ section, theme }) => {
-  const { brand, links, cta, sticky = true, transparent } = section.props;
+  const { brand, links = [], cta } = section.props;
 
   return (
     <header
+      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
       style={{
-        position: sticky ? 'fixed' : 'relative',
-        top: 0, left: 0, right: 0,
-        zIndex: 50,
-        background: transparent ? 'transparent' : hsla(theme.colors.background, 0.85),
-        backdropFilter: 'blur(12px)',
-        borderBottom: `1px solid ${hsla(theme.colors.border, 0.5)}`,
-        transition: 'all 0.3s ease',
+        background: hsla(theme.colors.background, 0.92),
+        borderBottom: `1px solid ${hsla(theme.colors.border, 0.4)}`,
       }}
     >
-      <div style={{ ...containerStyle(theme), display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '5rem' }}>
+      <div
+        className="mx-auto flex items-center justify-between h-16 px-6"
+        style={{ maxWidth: theme.containerWidth }}
+      >
         <a
           href="#"
+          className="text-lg font-semibold tracking-tight"
           style={{
-            ...headingStyle(theme),
-            fontSize: '1.5rem',
-            textDecoration: 'none',
-            background: `linear-gradient(135deg, hsl(${theme.colors.primary}), hsl(${theme.colors.secondary}))`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            fontFamily: theme.typography.headingFont,
+            color: hsl(theme.colors.foreground),
           }}
         >
           {brand}
         </a>
 
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <nav className="flex items-center gap-8">
           {links.map((link, i) => (
             <a
               key={i}
               href={link.href}
               data-intent={link.intent}
+              className="text-sm transition-colors hover:opacity-80"
               style={{
-                ...bodyStyle(theme),
-                fontSize: '0.9rem',
-                textDecoration: 'none',
-                transition: 'color 0.2s',
+                fontFamily: theme.typography.bodyFont,
+                color: hsl(theme.colors.mutedForeground),
               }}
             >
               {link.label}
@@ -52,13 +47,13 @@ export const NavbarSection: React.FC<BaseSectionProps<'navbar'>> = ({ section, t
             <a
               href={cta.href || '#'}
               data-intent={cta.intent}
+              className="text-sm px-4 py-2 rounded-md transition-all hover:opacity-90"
               style={{
-                ...primaryButtonStyle(theme),
-                display: 'inline-flex',
-                alignItems: 'center',
-                textDecoration: 'none',
-                fontSize: '0.875rem',
-                padding: '0.5rem 1.25rem',
+                background: hsl(theme.colors.primary),
+                color: hsl(theme.colors.primaryForeground),
+                borderRadius: theme.radius,
+                fontFamily: theme.typography.bodyFont,
+                fontWeight: '500',
               }}
             >
               {cta.label}

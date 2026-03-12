@@ -1,45 +1,73 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, cardStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const TestimonialsSection: React.FC<BaseSectionProps<'testimonials'>> = ({ section, theme }) => {
-  const { headline, subheadline, items, layout = 'grid' } = section.props;
-  const cols = layout === 'single' ? 1 : items.length >= 3 ? 3 : 2;
+  const { headline, subheadline, items = [] } = section.props;
 
   return (
-    <section style={{ ...sectionStyle(theme), background: hsl(theme.colors.background) }}>
-      <div style={containerStyle(theme)}>
-        {(headline || subheadline) && (
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            {headline && <h2 style={{ ...headingStyle(theme), fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>}
-            {subheadline && <p style={{ ...bodyStyle(theme), fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>{subheadline}</p>}
+    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.muted) }}>
+      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+        {headline && (
+          <div className="text-center mb-12">
+            <h2
+              className="text-3xl mb-3"
+              style={{
+                fontFamily: theme.typography.headingFont,
+                fontWeight: theme.typography.headingWeight,
+                color: hsl(theme.colors.foreground),
+              }}
+            >
+              {headline}
+            </h2>
+            {subheadline && (
+              <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                {subheadline}
+              </p>
+            )}
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '1.5rem' }}>
+        <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(3, items.length)}, 1fr)` }}>
           {items.map((item, i) => (
-            <div key={i} style={{ ...cardStyle(theme), padding: '2rem' }}>
+            <div
+              key={i}
+              className="p-6"
+              style={{
+                background: hsl(theme.colors.card),
+                border: `1px solid ${hsla(theme.colors.border, 0.6)}`,
+                borderRadius: theme.radius,
+              }}
+            >
               {item.rating && (
-                <div style={{ marginBottom: '1rem', color: hsl(theme.colors.accent) }}>
-                  {'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}
+                <div className="mb-3 text-sm" style={{ color: hsl(theme.colors.accent) }}>
+                  {'★'.repeat(item.rating)}
+                  {'☆'.repeat(5 - item.rating)}
                 </div>
               )}
-              <blockquote style={{
-                ...bodyStyle(theme), fontSize: '1rem', lineHeight: 1.7,
-                fontStyle: 'italic', marginBottom: '1.5rem',
-                borderLeft: `3px solid ${hsla(theme.colors.primary, 0.3)}`,
-                paddingLeft: '1rem',
-              }}>
+              <blockquote
+                className="text-sm leading-relaxed mb-4 italic"
+                style={{
+                  fontFamily: theme.typography.bodyFont,
+                  color: hsl(theme.colors.cardForeground),
+                  borderLeft: `2px solid ${hsla(theme.colors.primary, 0.3)}`,
+                  paddingLeft: '1rem',
+                }}
+              >
                 "{item.quote}"
               </blockquote>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                {item.avatar && (
-                  <img src={item.avatar} alt={item.author} style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', objectFit: 'cover' }} />
-                )}
-                <div>
-                  <div style={{ ...headingStyle(theme), fontSize: '0.9rem' }}>{item.author}</div>
-                  {item.role && <div style={{ ...bodyStyle(theme), fontSize: '0.8rem' }}>{item.role}</div>}
+              <div>
+                <div
+                  className="text-sm font-medium"
+                  style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.cardForeground) }}
+                >
+                  {item.author}
                 </div>
+                {item.role && (
+                  <div className="text-xs mt-0.5" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                    {item.role}
+                  </div>
+                )}
               </div>
             </div>
           ))}

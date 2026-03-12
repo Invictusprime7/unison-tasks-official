@@ -1,58 +1,83 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, headingStyle, bodyStyle, primaryButtonStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const FooterSection: React.FC<BaseSectionProps<'footer'>> = ({ section, theme }) => {
-  const { brand, columns, socials, copyright, newsletter } = section.props;
+  const { brand, columns = [], socials = [], copyright, newsletter } = section.props;
 
   return (
-    <footer style={{
-      padding: '4rem 1rem 2rem',
-      background: hsl(theme.colors.card),
-      borderTop: `1px solid ${hsla(theme.colors.border, 1)}`,
-    }}>
-      <div style={containerStyle(theme)}>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${(columns?.length || 0) + 1}, 1fr)`, gap: '3rem', marginBottom: '3rem' }}>
-          {/* Brand column */}
+    <footer
+      className="px-6"
+      style={{
+        paddingTop: '3rem',
+        paddingBottom: '1.5rem',
+        background: hsl(theme.colors.card),
+        borderTop: `1px solid ${hsla(theme.colors.border, 0.5)}`,
+      }}
+    >
+      <div className="mx-auto" style={{ maxWidth: theme.containerWidth }}>
+        <div
+          className="grid gap-8 mb-8"
+          style={{ gridTemplateColumns: `repeat(${columns.length + 1}, 1fr)` }}
+        >
           <div>
-            <h3 style={{
-              ...headingStyle(theme), fontSize: '1.25rem', marginBottom: '1rem',
-              background: `linear-gradient(135deg, hsl(${theme.colors.primary}), hsl(${theme.colors.secondary}))`,
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>
+            <h3
+              className="text-lg mb-3"
+              style={{
+                fontFamily: theme.typography.headingFont,
+                fontWeight: theme.typography.headingWeight,
+                color: hsl(theme.colors.cardForeground),
+              }}
+            >
               {brand}
             </h3>
             {newsletter && (
-              <form data-demo-form="true" data-intent="newsletter.subscribe" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <form data-demo-form="true" data-intent="newsletter.subscribe" className="flex gap-2 mt-3">
                 <input
                   type="email"
                   placeholder="your@email.com"
+                  className="flex-1 text-sm px-3 py-2"
                   style={{
-                    flex: 1, padding: '0.5rem 0.75rem', borderRadius: theme.radius,
-                    border: `1px solid ${hsla(theme.colors.border, 1)}`,
+                    borderRadius: theme.radius,
+                    border: `1px solid ${hsla(theme.colors.border, 0.6)}`,
                     background: hsl(theme.colors.background),
                     color: hsl(theme.colors.foreground),
-                    fontSize: '0.85rem', fontFamily: theme.typography.bodyFont,
+                    outline: 'none',
                   }}
                 />
-                <button type="submit" style={{ ...primaryButtonStyle(theme), padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                <button
+                  type="submit"
+                  className="text-sm px-3 py-2 cursor-pointer hover:opacity-90"
+                  style={{
+                    background: hsl(theme.colors.primary),
+                    color: hsl(theme.colors.primaryForeground),
+                    borderRadius: theme.radius,
+                    border: 'none',
+                  }}
+                >
                   Subscribe
                 </button>
               </form>
             )}
           </div>
 
-          {/* Link columns */}
-          {columns?.map((col, i) => (
+          {columns.map((col, i) => (
             <div key={i}>
-              <h4 style={{ ...headingStyle(theme), fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+              <h4
+                className="text-xs uppercase tracking-widest mb-3 font-semibold"
+                style={{ color: hsl(theme.colors.cardForeground) }}
+              >
                 {col.title}
               </h4>
-              <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {col.links.map((link, j) => (
+              <ul className="space-y-2">
+                {col.links.map((l, j) => (
                   <li key={j}>
-                    <a href={link.href} data-intent={link.intent} style={{ ...bodyStyle(theme), textDecoration: 'none', fontSize: '0.85rem', transition: 'color 0.2s' }}>
-                      {link.label}
+                    <a
+                      href={l.href}
+                      className="text-sm hover:opacity-80 transition-opacity"
+                      style={{ color: hsl(theme.colors.mutedForeground), textDecoration: 'none' }}
+                    >
+                      {l.label}
                     </a>
                   </li>
                 ))}
@@ -61,19 +86,22 @@ export const FooterSection: React.FC<BaseSectionProps<'footer'>> = ({ section, t
           ))}
         </div>
 
-        {/* Bottom bar */}
-        <div style={{
-          borderTop: `1px solid ${hsla(theme.colors.border, 0.5)}`,
-          paddingTop: '1.5rem',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <p style={{ ...bodyStyle(theme), fontSize: '0.8rem' }}>
+        <div
+          className="flex justify-between items-center pt-4"
+          style={{ borderTop: `1px solid ${hsla(theme.colors.border, 0.3)}` }}
+        >
+          <p className="text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
             {copyright || `© ${new Date().getFullYear()} ${brand}. All rights reserved.`}
           </p>
-          {socials && socials.length > 0 && (
-            <div style={{ display: 'flex', gap: '1rem' }}>
+          {socials.length > 0 && (
+            <div className="flex gap-3">
               {socials.map((s, i) => (
-                <a key={i} href={s.url} style={{ ...bodyStyle(theme), textDecoration: 'none', fontSize: '0.85rem' }} target="_blank" rel="noopener noreferrer">
+                <a
+                  key={i}
+                  href={s.url}
+                  className="text-sm hover:opacity-80"
+                  style={{ color: hsl(theme.colors.mutedForeground), textDecoration: 'none' }}
+                >
                   {s.icon || s.platform}
                 </a>
               ))}

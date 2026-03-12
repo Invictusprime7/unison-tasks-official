@@ -1,34 +1,48 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, primaryButtonStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const AboutSection: React.FC<BaseSectionProps<'about'>> = ({ section, theme }) => {
-  const { headline, description, image, cta, layout = 'text-left' } = section.props;
-  const imageFirst = layout === 'text-right';
+  const { headline, description, image, cta, layout = 'centered' } = section.props;
 
   return (
-    <section style={{ ...sectionStyle(theme), background: hsl(theme.colors.background) }}>
-      <div style={{
-        ...containerStyle(theme),
-        display: 'grid',
-        gridTemplateColumns: image ? '1fr 1fr' : '1fr',
-        gap: '3rem',
-        alignItems: 'center',
-      }}>
-        {imageFirst && image && (
-          <img src={image} alt={headline || 'About'} style={{ width: '100%', borderRadius: theme.radius, boxShadow: `0 20px 40px ${hsla(theme.colors.primary, 0.1)}` }} />
+    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth, textAlign: layout === 'centered' ? 'center' : 'left' }}>
+        {headline && (
+          <h2
+            className="text-3xl mb-4"
+            style={{
+              fontFamily: theme.typography.headingFont,
+              fontWeight: theme.typography.headingWeight,
+              color: hsl(theme.colors.foreground),
+            }}
+          >
+            {headline}
+          </h2>
         )}
-        <div>
-          {headline && <h2 style={{ ...headingStyle(theme), fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>}
-          <p style={{ ...bodyStyle(theme), fontSize: '1.05rem', lineHeight: 1.8, marginBottom: '1.5rem' }}>{description}</p>
-          {cta && (
-            <a href={cta.href || '#'} data-intent={cta.intent} style={{ ...primaryButtonStyle(theme), display: 'inline-block', textDecoration: 'none' }}>
-              {cta.label}
-            </a>
-          )}
-        </div>
-        {!imageFirst && image && (
-          <img src={image} alt={headline || 'About'} style={{ width: '100%', borderRadius: theme.radius, boxShadow: `0 20px 40px ${hsla(theme.colors.primary, 0.1)}` }} />
+        <p
+          className="text-base leading-relaxed max-w-2xl"
+          style={{
+            fontFamily: theme.typography.bodyFont,
+            color: hsl(theme.colors.mutedForeground),
+            margin: layout === 'centered' ? '0 auto' : undefined,
+          }}
+        >
+          {description}
+        </p>
+        {cta && (
+          <a
+            href={cta.href || '#'}
+            data-intent={cta.intent}
+            className="inline-block mt-6 text-sm font-medium px-6 py-3 transition-all hover:opacity-90"
+            style={{
+              background: hsl(theme.colors.primary),
+              color: hsl(theme.colors.primaryForeground),
+              borderRadius: theme.radius,
+            }}
+          >
+            {cta.label}
+          </a>
         )}
       </div>
     </section>

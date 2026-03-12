@@ -1,136 +1,117 @@
 import React from 'react';
 import type { BaseSectionProps } from '../types';
-import { hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, primaryButtonStyle, outlineButtonStyle } from '../themeUtils';
+import { hsl, hsla } from '../themeUtils';
 
 export const HeroSection: React.FC<BaseSectionProps<'hero'>> = ({ section, theme }) => {
-  const { headline, subheadline, description, ctas = [], image, backgroundImage, layout = 'centered', badge, stats } = section.props;
-
-  const isSplit = layout === 'split';
+  const { headline, subheadline, ctas = [], badge, stats, layout = 'centered' } = section.props;
 
   return (
     <section
+      className="relative overflow-hidden"
       style={{
-        ...sectionStyle(theme),
+        padding: theme.sectionPadding,
         paddingTop: '8rem',
-        paddingBottom: '5rem',
-        background: backgroundImage
-          ? `linear-gradient(180deg, ${hsla(theme.colors.background, 0.9)}, ${hsla(theme.colors.background, 0.95)}), url(${backgroundImage}) center/cover`
-          : hsl(theme.colors.background),
-        position: 'relative',
-        overflow: 'hidden',
+        background: hsl(theme.colors.background),
       }}
     >
-      {/* Gradient orb decoration */}
-      <div style={{
-        position: 'absolute', top: '-30%', right: '-10%', width: '600px', height: '600px',
-        background: `radial-gradient(circle, ${hsla(theme.colors.primary, 0.08)} 0%, transparent 70%)`,
-        borderRadius: '50%', pointerEvents: 'none',
-      }} />
-
-      <div style={{
-        ...containerStyle(theme),
-        display: isSplit ? 'grid' : 'flex',
-        gridTemplateColumns: isSplit ? '1fr 1fr' : undefined,
-        flexDirection: isSplit ? undefined : 'column',
-        alignItems: 'center',
-        gap: '3rem',
-        textAlign: isSplit ? 'left' : 'center',
-        position: 'relative',
-      }}>
-        <div>
-          {badge && (
-            <span style={{
-              display: 'inline-block',
-              padding: '0.35rem 1rem',
-              borderRadius: '9999px',
-              fontSize: '0.8rem',
-              fontWeight: '600',
-              fontFamily: theme.typography.bodyFont,
-              background: hsla(theme.colors.primary, 0.12),
+      <div
+        className="mx-auto relative"
+        style={{
+          maxWidth: theme.containerWidth,
+          textAlign: layout === 'split' ? 'left' : 'center',
+        }}
+      >
+        {badge && (
+          <span
+            className="inline-block text-xs font-medium tracking-wide uppercase mb-6 px-3 py-1 rounded-full"
+            style={{
               color: hsl(theme.colors.primary),
-              border: `1px solid ${hsla(theme.colors.primary, 0.25)}`,
-              marginBottom: '1.5rem',
-            }}>
-              {badge}
-            </span>
-          )}
+              background: hsla(theme.colors.primary, 0.08),
+              border: `1px solid ${hsla(theme.colors.primary, 0.15)}`,
+            }}
+          >
+            {badge}
+          </span>
+        )}
 
-          <h1 style={{
-            ...headingStyle(theme),
-            fontSize: 'clamp(2.5rem, 5vw, 4rem)',
-            lineHeight: 1.1,
-            marginBottom: '1.5rem',
-          }}>
-            {headline}
-          </h1>
+        <h1
+          className="leading-tight mb-6"
+          style={{
+            fontFamily: theme.typography.headingFont,
+            fontWeight: theme.typography.headingWeight,
+            color: hsl(theme.colors.foreground),
+            fontSize: 'clamp(2.25rem, 4.5vw, 3.5rem)',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {headline}
+        </h1>
 
-          {subheadline && (
-            <p style={{
-              ...bodyStyle(theme),
-              fontSize: '1.25rem',
-              lineHeight: 1.6,
-              maxWidth: isSplit ? undefined : '640px',
-              margin: isSplit ? undefined : '0 auto',
+        {subheadline && (
+          <p
+            className="text-lg leading-relaxed mb-8"
+            style={{
+              fontFamily: theme.typography.bodyFont,
+              color: hsl(theme.colors.mutedForeground),
+              maxWidth: layout === 'split' ? undefined : '580px',
+              margin: layout === 'split' ? undefined : '0 auto',
               marginBottom: '2rem',
-            }}>
-              {subheadline}
-            </p>
-          )}
+            }}
+          >
+            {subheadline}
+          </p>
+        )}
 
-          {description && (
-            <p style={{ ...bodyStyle(theme), marginBottom: '2rem' }}>
-              {description}
-            </p>
-          )}
+        {ctas.length > 0 && (
+          <div
+            className="flex gap-3 flex-wrap"
+            style={{ justifyContent: layout === 'split' ? 'flex-start' : 'center' }}
+          >
+            {ctas.map((c, i) => (
+              <a
+                key={i}
+                href={c.href || '#'}
+                data-intent={c.intent}
+                className="inline-block text-sm font-medium px-6 py-3 transition-all hover:opacity-90"
+                style={
+                  c.variant === 'outline'
+                    ? {
+                        background: 'transparent',
+                        color: hsl(theme.colors.foreground),
+                        border: `1px solid ${hsla(theme.colors.border, 1)}`,
+                        borderRadius: theme.radius,
+                      }
+                    : {
+                        background: hsl(theme.colors.primary),
+                        color: hsl(theme.colors.primaryForeground),
+                        borderRadius: theme.radius,
+                      }
+                }
+              >
+                {c.label}
+              </a>
+            ))}
+          </div>
+        )}
 
-          {ctas.length > 0 && (
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: isSplit ? 'flex-start' : 'center', flexWrap: 'wrap' }}>
-              {ctas.map((cta, i) => (
-                <a
-                  key={i}
-                  href={cta.href || '#'}
-                  data-intent={cta.intent}
-                  style={cta.variant === 'outline' || cta.variant === 'secondary'
-                    ? outlineButtonStyle(theme)
-                    : primaryButtonStyle(theme)
-                  }
+        {stats && stats.length > 0 && (
+          <div className="flex gap-10 mt-12 flex-wrap" style={{ justifyContent: layout === 'split' ? 'flex-start' : 'center' }}>
+            {stats.map((s, i) => (
+              <div key={i} className="text-center">
+                <div
+                  className="text-3xl font-bold"
+                  style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.primary) }}
                 >
-                  {cta.label}
-                </a>
-              ))}
-            </div>
-          )}
-
-          {stats && stats.length > 0 && (
-            <div style={{
-              display: 'flex', gap: '2.5rem', marginTop: '3rem',
-              justifyContent: isSplit ? 'flex-start' : 'center',
-            }}>
-              {stats.map((stat, i) => (
-                <div key={i} style={{ textAlign: 'center' }}>
-                  <div style={{ ...headingStyle(theme), fontSize: '2rem', color: hsl(theme.colors.primary) }}>
-                    {stat.value}
-                  </div>
-                  <div style={{ ...bodyStyle(theme), fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    {stat.label}
-                  </div>
+                  {s.value}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {isSplit && image && (
-          <div style={{ position: 'relative' }}>
-            <img
-              src={image}
-              alt={headline}
-              style={{
-                width: '100%',
-                borderRadius: theme.radius,
-                boxShadow: `0 25px 50px -12px ${hsla(theme.colors.primary, 0.15)}`,
-              }}
-            />
+                <div
+                  className="text-xs uppercase tracking-widest mt-1"
+                  style={{ color: hsl(theme.colors.mutedForeground) }}
+                >
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
