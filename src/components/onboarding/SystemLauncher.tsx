@@ -1081,12 +1081,12 @@ export const SystemLauncher = ({
             {selectedTemplate && selectedSystem ? (
               <AICodeAssistant
                 currentCode={
-                  effectiveTemplateCode ?? selectedTemplate.code
+                  effectiveTemplateCode ?? getTemplateReactCode(selectedTemplate)
                 }
                 systemType={selectedSystem}
                 templateName={selectedTemplate.name}
                 pageStructureContext={buildPageStructureContext(
-                  effectiveTemplateCode ?? selectedTemplate.code
+                  effectiveTemplateCode ?? getTemplateReactCode(selectedTemplate)
                 )}
                 backendStateContext={
                   selectedManifest
