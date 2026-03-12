@@ -383,7 +383,8 @@ export const nonprofitTemplates: LayoutTemplate[] = [
     systemType: 'content',
     systemName: 'Nonprofit Platform',
     tags: ['nonprofit', 'charity', 'food-bank', 'warm', 'mission'],
-    code: wrapInReactComponent(npWarm, 'Harvest Hope — Fighting Hunger'),
+    code: npWarm,
+    title: 'Harvest Hope — Fighting Hunger',
   },
   {
     id: 'nonprofit-clean-institutional',
