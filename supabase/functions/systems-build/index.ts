@@ -626,24 +626,30 @@ Generate a site that matches the user's established design preferences while bei
       const researchContext = formatResearchContext(research);
       
       // Extract section structure from template for AI reference
-      const extractSectionStructure = (html: string): string => {
-        if (!html) return '';
+      // Supports both HTML (data-ut-section) and React composition format (type: 'section')
+      const extractSectionStructure = (code: string): string => {
+        if (!code) return '';
         const sections: string[] = [];
-        const sectionMatches = html.matchAll(/data-ut-section="([^"]+)"/g);
-        for (const match of sectionMatches) {
-          sections.push(match[1]);
-        }
-        return sections.length > 0 ? `Sections in reference: ${sections.join(', ')}` : '';
+        // HTML data attributes
+        const htmlMatches = code.matchAll(/data-ut-section="([^"]+)"/g);
+        for (const match of htmlMatches) sections.push(match[1]);
+        // React composition: type: 'hero', type: 'services', etc.
+        const reactMatches = code.matchAll(/type:\s*['"](\w[\w-]*)['"],?\s*props:/g);
+        for (const match of reactMatches) sections.push(match[1]);
+        const unique = [...new Set(sections)];
+        return unique.length > 0 ? `Sections in reference: ${unique.join(', ')}` : '';
       };
       
-      // Extract intents from template
-      const extractIntents = (html: string): string => {
-        if (!html) return '';
+      // Extract intents from template (HTML data-ut-intent or React data-intent props)
+      const extractIntents = (code: string): string => {
+        if (!code) return '';
         const intents = new Set<string>();
-        const intentMatches = html.matchAll(/data-ut-intent="([^"]+)"/g);
-        for (const match of intentMatches) {
-          intents.add(match[1]);
-        }
+        // HTML data attributes
+        const htmlMatches = code.matchAll(/data-ut-intent="([^"]+)"/g);
+        for (const match of htmlMatches) intents.add(match[1]);
+        // React: data-intent or intent property in props
+        const reactMatches = code.matchAll(/(?:data-intent|intent)["']?\s*[:=]\s*["']([^"']+)["']/g);
+        for (const match of reactMatches) intents.add(match[1]);
         return intents.size > 0 ? `Intents to wire: ${[...intents].join(', ')}` : '';
       };
       
