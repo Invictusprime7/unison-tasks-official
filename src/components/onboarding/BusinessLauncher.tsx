@@ -83,9 +83,8 @@ function getSystemTypeForChip(chipId: string): BusinessSystemType {
  * Prefers React composition code from the section registry; falls back to legacy HTML.
  */
 function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; systemType: BusinessSystemType } | null {
-  const systemType = CHIP_TO_SYSTEM[chipId];
-  const category = CHIP_TO_CATEGORY[chipId];
-  if (!systemType || !category) return null;
+  const systemType = getSystemTypeForChip(chipId);
+  const category = getCategoryForChip(chipId);
 
   // Prefer composition-based React code
   const compositionCode = getCompositionReactCode(category);
@@ -93,7 +92,7 @@ function getTemplateReference(chipId: string): { templateId: string; templateHtm
   if (compositionCode && compositionMeta) {
     return {
       templateId: compositionMeta.compositionId,
-      templateHtml: compositionCode, // React TSX, not HTML
+      templateHtml: compositionCode,
       systemType,
     };
   }
@@ -113,32 +112,72 @@ function getTemplateReference(chipId: string): { templateId: string; templateHtm
 }
 
 /**
- * Build a BusinessBlueprint from chip selection and prompt for systems-build
+ * Build a BusinessBlueprint from chip selection and prompt for systems-build.
+ * Now uses the canonical contracts system as the source of truth for
+ * capabilities, intents, and industry mapping.
  */
 function buildBlueprintFromChip(chipId: string, prompt: string, businessName?: string) {
   const chip = industryChips.find(c => c.id === chipId);
-  const industry = CHIP_TO_INDUSTRY[chipId] || "other";
-  const defaults = INDUSTRY_DEFAULTS[chipId] || { palette: { primary: "#0EA5E9" }, intents: ["contact.submit"] };
+  const canonicalIndustry = getCanonicalIndustry(chipId);
+  const name = businessName || chip?.label || "My Business";
 
-  const fonts = randomFontPairing();
-  const design = generateDesignVariation();
+  try {
+    // Use canonical blueprint from contracts system
+    const blueprint = createBlueprintFromIndustry(canonicalIndustry, name, {
+      prompt,
+    });
 
-  return {
-    version: "1.0",
-    identity: {
-      industry: industry,
-      primary_goal: "Generate leads and grow the business",
-    },
-    brand: {
-      business_name: businessName || chip?.label || "My Business",
-      tagline: `Professional ${chip?.label || "business"} services you can trust`,
-      tone: "professional and friendly",
-      palette: defaults.palette,
-      typography: fonts,
-    },
-    design,
-    intents: defaults.intents.map(i => ({ intent: i })),
-  };
+    // Compile to validate — log warnings but don't block
+    const compiled = compileContract(blueprint);
+    if (compiled.validation.warnings > 0) {
+      console.warn(`[BusinessLauncher] Blueprint warnings:`, compiled.validation.issues.filter(i => i.severity === 'warning'));
+    }
+
+    // Convert to the edge function's expected format (SystemsBuildContext shape)
+    const fonts = randomFontPairing();
+    const design = generateDesignVariation();
+
+    return {
+      version: "1.0",
+      identity: {
+        industry: canonicalIndustry,
+        primary_goal: blueprint.capabilities.primaryGoal,
+      },
+      brand: {
+        business_name: name,
+        tagline: blueprint.identity.tagline || `Professional ${chip?.label || "business"} services you can trust`,
+        tone: "professional and friendly",
+        typography: fonts,
+      },
+      design,
+      intents: blueprint.intents.allowed.map(i => ({ intent: i })),
+      // Pass compiled contract data for richer context
+      _contract: {
+        capabilities: blueprint.capabilities.enabled,
+        primaryCta: blueprint.intents.primaryCta,
+        requiredTables: compiled.requiredTables,
+        intentBindings: compiled.intentBindings,
+        pages: compiled.pages,
+      },
+    };
+  } catch (e) {
+    // Fallback if industry not found in contracts
+    console.warn(`[BusinessLauncher] Contract creation failed for "${canonicalIndustry}", using fallback`, e);
+    const fonts = randomFontPairing();
+    const design = generateDesignVariation();
+    return {
+      version: "1.0",
+      identity: { industry: canonicalIndustry, primary_goal: "Generate leads and grow the business" },
+      brand: {
+        business_name: name,
+        tagline: `Professional ${chip?.label || "business"} services you can trust`,
+        tone: "professional and friendly",
+        typography: fonts,
+      },
+      design,
+      intents: [{ intent: "contact.submit" }, { intent: "newsletter.subscribe" }],
+    };
+  }
 }
 
 interface ClarifyingQuestion {
