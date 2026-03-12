@@ -1,15 +1,17 @@
 /**
- * Intent Aliases - Maps legacy/alternate intents to canonical CORE_INTENTS
+ * Intent Aliases — MIGRATION BRIDGE ONLY
  * 
- * This solves the "70% usable" problem where templates emit different intent
- * namespaces that don't match the runtime handlers.
+ * @deprecated This module exists solely as a migration bridge.
+ * All new templates MUST use canonical CoreIntents directly from coreIntents.ts.
+ * Aliases should NOT be relied upon for new code — they will be removed
+ * once all legacy templates are migrated to the section registry.
+ * 
+ * The canonical pipeline is:
+ *   BusinessBlueprint → ContractCompiler → canonical intents only
+ * 
+ * See src/contracts/ for the new canonical system.
  * 
  * RULE: Everything normalizes to CORE_INTENTS before execution.
- * 
- * Vocabulary sources unified:
- * - coreIntents.ts (canonical)
- * - actionCatalog.ts (legacy runtime keys)
- * - templateIntentConfig.ts (per-category template intents)
  */
 
 import type { CoreIntent } from '@/coreIntents';
