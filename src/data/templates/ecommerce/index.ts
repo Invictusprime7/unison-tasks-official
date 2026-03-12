@@ -447,7 +447,8 @@ export const ecommerceTemplates: LayoutTemplate[] = [
     systemType: 'store',
     systemName: 'Fashion E-commerce',
     tags: ['ecommerce', 'fashion', 'luxury', 'store', 'dark'],
-    code: wrapInReactComponent(ecomDark, 'NOIR — Minimal Luxury Fashion'),
+    code: ecomDark,
+    title: 'NOIR — Minimal Luxury Fashion',
   },
   {
     id: 'ecommerce-light-product',
