@@ -304,10 +304,24 @@ export const wrapInHtmlDoc = wrapInReactComponent;
 
 /**
  * Gets the VFS-ready React code for a template.
- * If template already contains React imports, returns as-is.
- * Otherwise wraps raw HTML via wrapInReactComponent.
+ * 
+ * Priority:
+ * 1. Check if there's a section-registry composition for this template ID
+ * 2. If template already contains React imports, returns as-is
+ * 3. Otherwise wraps raw HTML via wrapInReactComponent
  */
-export const getTemplateReactCode = (template: { code: string; title?: string; name?: string }): string => {
+export const getTemplateReactCode = (template: { code: string; id?: string; title?: string; name?: string }): string => {
+  // Check for section-registry composition first
+  if (template.id) {
+    try {
+      const { getCompositionById, compositionToReactCode } = require('@/sections');
+      const composition = getCompositionById(template.id);
+      if (composition) {
+        return compositionToReactCode(composition);
+      }
+    } catch { /* sections library not available — fall through */ }
+  }
+
   // If already React code, return as-is
   if (template.code.includes('import React') || template.code.includes('export default function')) {
     return template.code;
