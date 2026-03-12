@@ -1,24 +1,23 @@
 /**
- * Contract Compiler — The missing center of gravity
+ * Contract Compiler — The governing control plane
  * 
  * Sits between SystemsAI and Preview/Builder.
  * 
  * Flow:
- *   BusinessBlueprint → ContractCompiler → Validated SiteBundle pieces
+ *   BusinessBlueprint → ContractCompiler → Validated CompiledContract
  * 
  * The compiler:
  * 1. Validates the blueprint against capability registry
  * 2. Canonicalizes all intents (rejects non-canonical)
- * 3. Resolves section compositions from registry
- * 4. Generates intent bindings from blueprint + section roles
- * 5. Validates page links and cross-references
- * 6. Outputs a ContractValidation result
+ * 3. Builds route policy from blueprint + capabilities
+ * 4. Resolves slot bindings from capabilities + section roles
+ * 5. Validates provisioning status
+ * 6. Outputs a CompiledContract — the ONLY valid preview input
  * 
  * RULE: Preview launches ONLY if the contract passes.
  */
 
 import {
-  CORE_INTENTS,
   isCoreIntent,
   isNavIntent,
   type CoreIntent,
@@ -35,6 +34,9 @@ import {
 } from './capabilityRegistry';
 import { getIndustryProfile } from './industryMatrix';
 import { getCompositionsByIndustry } from '@/sections/templates';
+import { buildRoutePolicy, type RoutePolicy } from './routePolicy';
+import { resolveSlotBindings, type SlotBindingPolicy } from './slotBindingPolicy';
+import { validateProvisioning, type ProvisioningReport } from './provisioningValidator';
 
 // ============================================================================
 // Validation Types
@@ -53,11 +55,14 @@ export interface ValidationIssue {
 export interface ContractValidation {
   valid: boolean;
   issues: ValidationIssue[];
-  /** Summary counts */
   errors: number;
   warnings: number;
   infos: number;
 }
+
+// ============================================================================
+// Compiled Contract — The ONLY valid preview input
+// ============================================================================
 
 export interface CompiledContract {
   /** Did the contract pass validation? */
@@ -76,6 +81,12 @@ export interface CompiledContract {
   crm: { name: string; stages: string[]; defaultStage: string };
   /** Automation pack */
   automationPack: string;
+  /** Route policy — canonical routing contract */
+  routePolicy: RoutePolicy;
+  /** Slot binding policy — deterministic CTA resolution */
+  slotBindingPolicy: SlotBindingPolicy;
+  /** Provisioning report — are intents actually operational? */
+  provisioningReport: ProvisioningReport;
 }
 
 export interface CompiledBinding {
@@ -83,7 +94,7 @@ export interface CompiledBinding {
   sectionType: string;
   intent: CoreIntent;
   params: Record<string, unknown>;
-  source: 'blueprint' | 'capability-default' | 'section-role';
+  source: 'blueprint' | 'capability-default' | 'section-role' | 'slot-policy';
 }
 
 export interface CompiledPage {
@@ -99,8 +110,17 @@ export interface CompiledPage {
 // Compiler
 // ============================================================================
 
-export function compileContract(blueprint: BusinessBlueprint): CompiledContract {
+export interface CompileOptions {
+  /** Is the backend installed for this business? */
+  backendInstalled?: boolean;
+}
+
+export function compileContract(
+  blueprint: BusinessBlueprint,
+  options: CompileOptions = {},
+): CompiledContract {
   const issues: ValidationIssue[] = [];
+  const { backendInstalled = false } = options;
 
   // ── 1. Validate identity ──────────────────────────────────────────────
   if (!blueprint.identity.businessName?.trim()) {
@@ -129,18 +149,17 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
         code: 'UNKNOWN_CAPABILITY',
         severity: 'error',
         message: `Unknown capability "${capId}"`,
-        path: `capabilities.enabled`,
+        path: 'capabilities.enabled',
       });
     }
 
-    // Check if capability is supported for this industry
     const cap = CAPABILITY_REGISTRY[capId];
     if (cap && !cap.supportedIndustries.includes(blueprint.identity.industry)) {
       issues.push({
         code: 'UNSUPPORTED_CAPABILITY',
         severity: 'warning',
         message: `Capability "${capId}" is not typically used in "${blueprint.identity.industry}" industry`,
-        path: `capabilities.enabled`,
+        path: 'capabilities.enabled',
       });
     }
   }
@@ -163,7 +182,6 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
     }
   }
 
-  // Check primary CTA is in allowed list
   if (!allowedIntents.includes(blueprint.intents.primaryCta)) {
     issues.push({
       code: 'PRIMARY_CTA_NOT_ALLOWED',
@@ -179,20 +197,18 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
   let hasHomePage = false;
 
   for (const page of blueprint.pages) {
-    // Check for duplicate paths
     if (pagePaths.has(page.path)) {
       issues.push({
         code: 'DUPLICATE_PAGE_PATH',
         severity: 'error',
         message: `Duplicate page path: "${page.path}"`,
-        path: `pages`,
+        path: 'pages',
       });
     }
     pagePaths.add(page.path);
 
     if (page.isHome || page.path === '/') hasHomePage = true;
 
-    // Check composition availability
     const compositions = industryProfile
       ? getCompositionsByIndustry(industryProfile.industry)
       : [];
@@ -216,10 +232,55 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
     });
   }
 
-  // ── 5. Generate intent bindings from section roles ────────────────────
+  // ── 5. Build route policy ─────────────────────────────────────────────
+  const routePolicy = buildRoutePolicy(
+    blueprint.pages,
+    blueprint.capabilities.enabled as CapabilityId[],
+  );
+
+  // Validate route links — all page paths must be in route policy
+  for (const page of blueprint.pages) {
+    if (!routePolicy.routes.some(r => r.path === page.path)) {
+      issues.push({
+        code: 'ORPHAN_PAGE_ROUTE',
+        severity: 'warning',
+        message: `Page "${page.title}" at "${page.path}" has no route policy entry`,
+        path: 'pages',
+      });
+    }
+  }
+
+  // ── 6. Resolve slot bindings ──────────────────────────────────────────
+  const slotBindingPolicy = resolveSlotBindings(
+    blueprint.capabilities.enabled as CapabilityId[],
+    blueprint.intents.primaryCta,
+  );
+
+  // Add warnings for unresolved slots
+  for (const u of slotBindingPolicy.unresolved) {
+    issues.push({
+      code: 'UNRESOLVED_SLOT_BINDING',
+      severity: 'info',
+      message: u.reason,
+      path: `slots.${u.section}.${u.slot}`,
+    });
+  }
+
+  // ── 7. Generate intent bindings (from slot policy + legacy bindings) ──
   const intentBindings: CompiledBinding[] = [];
 
-  // Hero primary CTA → blueprint primary intent
+  // Slot-policy-driven bindings (primary source)
+  for (const binding of slotBindingPolicy.resolved) {
+    intentBindings.push({
+      elementRole: `${binding.section}-${binding.slot}`,
+      sectionType: binding.section,
+      intent: binding.intent,
+      params: {},
+      source: 'slot-policy',
+    });
+  }
+
+  // Blueprint-level overrides
   intentBindings.push({
     elementRole: 'hero-primary-cta',
     sectionType: 'hero',
@@ -228,7 +289,6 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
     source: 'blueprint',
   });
 
-  // Hero secondary CTA → blueprint secondary intent or nav.anchor
   if (blueprint.intents.secondaryCta) {
     intentBindings.push({
       elementRole: 'hero-secondary-cta',
@@ -239,83 +299,45 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
     });
   }
 
-  // Navbar CTA → primary intent
-  intentBindings.push({
-    elementRole: 'navbar-cta',
-    sectionType: 'navbar',
-    intent: blueprint.intents.primaryCta,
-    params: {},
-    source: 'blueprint',
-  });
+  // ── 8. Validate provisioning ──────────────────────────────────────────
+  const provisioningReport = validateProvisioning(
+    blueprint.capabilities.enabled as CapabilityId[],
+    routePolicy,
+    backendInstalled,
+  );
 
-  // CTA banner → primary intent
-  intentBindings.push({
-    elementRole: 'cta-banner-primary',
-    sectionType: 'cta',
-    intent: blueprint.intents.primaryCta,
-    params: {},
-    source: 'blueprint',
-  });
-
-  // Contact section → contact.submit
-  if (allowedIntents.includes('contact.submit')) {
-    intentBindings.push({
-      elementRole: 'contact-form-submit',
-      sectionType: 'contact',
-      intent: 'contact.submit',
-      params: {},
-      source: 'capability-default',
-    });
+  // Add provisioning warnings
+  for (const cap of provisioningReport.capabilities) {
+    for (const check of cap.checks) {
+      if (check.status === 'missing') {
+        issues.push({
+          code: 'MISSING_PROVISIONING',
+          severity: 'error',
+          message: `${cap.capabilityName}: ${check.label} is missing`,
+          path: `provisioning.${cap.capabilityId}`,
+        });
+      } else if (check.status === 'stub') {
+        issues.push({
+          code: 'STUBBED_PROVISIONING',
+          severity: 'info',
+          message: `${cap.capabilityName}: ${check.label} is stubbed — ${check.detail || 'will work in preview'}`,
+          path: `provisioning.${cap.capabilityId}`,
+        });
+      }
+    }
   }
 
-  // Newsletter in footer → newsletter.subscribe
-  if (allowedIntents.includes('newsletter.subscribe')) {
-    intentBindings.push({
-      elementRole: 'footer-newsletter',
-      sectionType: 'footer',
-      intent: 'newsletter.subscribe',
-      params: {},
-      source: 'capability-default',
-    });
-  }
-
-  // Service card CTAs → primary intent
-  intentBindings.push({
-    elementRole: 'service-card-cta',
-    sectionType: 'services',
-    intent: blueprint.intents.primaryCta,
-    params: {},
-    source: 'section-role',
-  });
-
-  // Pricing tier CTAs → pay.checkout or auth.register
-  if (allowedIntents.includes('pay.checkout')) {
-    intentBindings.push({
-      elementRole: 'pricing-tier-cta',
-      sectionType: 'pricing',
-      intent: 'pay.checkout',
-      params: {},
-      source: 'section-role',
-    });
-  }
-
-  // ── 6. Gather provisioning requirements ───────────────────────────────
+  // ── 9. Gather provisioning requirements ───────────────────────────────
   const requiredTables = getRequiredTables(blueprint.capabilities.enabled as CapabilityId[]);
   const requiredWorkflows = getRequiredWorkflows(blueprint.capabilities.enabled as CapabilityId[]);
 
-  // ── 7. Compile result ────────────────────────────────────────────────
+  // ── 10. Compile result ───────────────────────────────────────────────
   const errors = issues.filter(i => i.severity === 'error').length;
   const warnings = issues.filter(i => i.severity === 'warning').length;
   const infos = issues.filter(i => i.severity === 'info').length;
 
   return {
-    validation: {
-      valid: errors === 0,
-      issues,
-      errors,
-      warnings,
-      infos,
-    },
+    validation: { valid: errors === 0, issues, errors, warnings, infos },
     canonicalIntents: canonicalIntents.length > 0 ? canonicalIntents : allowedIntents,
     requiredTables,
     requiredWorkflows,
@@ -327,6 +349,9 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
       defaultStage: blueprint.crm.defaultStage,
     },
     automationPack: blueprint.automationPack,
+    routePolicy,
+    slotBindingPolicy,
+    provisioningReport,
   };
 }
 
@@ -334,17 +359,10 @@ export function compileContract(blueprint: BusinessBlueprint): CompiledContract 
 // Quick Validation (for linting / CI)
 // ============================================================================
 
-/**
- * Validate that a set of intents are all canonical CoreIntents.
- * Returns non-canonical intents (should be empty for valid templates).
- */
 export function findNonCanonicalIntents(intents: string[]): string[] {
   return intents.filter(intent => !isCoreIntent(intent));
 }
 
-/**
- * Validate that template intents are within the allowed set for a capability profile.
- */
 export function validateIntentsAgainstCapabilities(
   intents: string[],
   capabilities: CapabilityId[]
@@ -364,4 +382,35 @@ export function validateIntentsAgainstCapabilities(
   }
 
   return issues;
+}
+
+// ============================================================================
+// Contract Gate — Rejects non-compiled preview input
+// ============================================================================
+
+/**
+ * Validate that a CompiledContract is safe to pass to preview.
+ * Returns true only if:
+ * - No validation errors
+ * - Provisioning is at least preview-ready
+ * - Route policy has a home page
+ * - All primary CTA slots are bound
+ */
+export function isPreviewReady(contract: CompiledContract): boolean {
+  if (!contract.validation.valid) return false;
+  if (!contract.provisioningReport.previewReady) return false;
+  if (!contract.routePolicy.routes.some(r => r.path === '/')) return false;
+  if (!contract.intentBindings.some(b => b.elementRole.includes('primary-cta'))) return false;
+  return true;
+}
+
+/**
+ * Validate that a CompiledContract is safe to publish.
+ * Stricter than preview — requires full provisioning.
+ */
+export function isPublishReady(contract: CompiledContract): boolean {
+  if (!isPreviewReady(contract)) return false;
+  if (!contract.provisioningReport.productionReady) return false;
+  if (contract.slotBindingPolicy.unresolved.length > 0) return false;
+  return true;
 }
