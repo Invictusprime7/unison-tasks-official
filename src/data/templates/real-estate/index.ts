@@ -342,7 +342,8 @@ export const realEstateTemplates: LayoutTemplate[] = [
     systemType: 'agency',
     systemName: 'Luxury Real Estate',
     tags: ['realestate', 'luxury', 'properties', 'dark'],
-    code: wrapInReactComponent(reDark, 'Sterling Realty — Luxury Real Estate'),
+    code: reDark,
+    title: 'Sterling Realty — Luxury Real Estate',
   },
   {
     id: 'realestate-light-modern',
