@@ -243,7 +243,8 @@ export const SystemLauncher = ({
               },
             });
           if (!aiError && aiData?.content) {
-            effectiveCode = aiData.content;
+            // Ensure AI-returned code is React-safe (may return raw HTML)
+            effectiveCode = getTemplateReactCode({ code: aiData.content, title: selectedTemplate.name });
           }
         } catch (e) {
           console.warn("[SystemLauncher] theme application failed", e);

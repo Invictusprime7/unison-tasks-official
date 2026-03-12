@@ -86,7 +86,8 @@ import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 import { BusinessSetupSuggestions } from "@/components/onboarding/BusinessSetupSuggestions";
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 import { useSiteBuilder, type UseSiteBuilderReturn } from "@/hooks/useSiteBuilder";
-import { useAIVFS } from "@/hooks/useAIVFS";
+import { useAIVFS } from '@/hooks/useAIVFS';
+import { getTemplateReactCode } from '@/data/templates/utils';
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -2622,8 +2623,14 @@ export default function App() {
         }
       }, 300);
       
-      setEditorCode(generatedCode);
-      setPreviewCode(generatedCode);
+      // Ensure code is React-safe before setting (AI may return raw HTML)
+      const hasHtmlComments = generatedCode.includes('<!-- ');
+      const hasHtmlAttrs = generatedCode.includes('class=') && !generatedCode.includes('className=');
+      const safeCode = (hasHtmlComments || hasHtmlAttrs)
+        ? getTemplateReactCode({ code: generatedCode, title: templateName || 'Template' })
+        : generatedCode;
+      setEditorCode(safeCode);
+      setPreviewCode(safeCode);
       
       // Set system type for intent routing if AI generated with system context
       if (navSystemType && !activeSystemType) {
