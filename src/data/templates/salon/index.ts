@@ -579,7 +579,8 @@ export const salonTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Editorial Salon System',
     tags: ['salon', 'beauty', 'editorial', 'booking', 'bold', 'fashion'],
-    code: wrapInReactComponent(salonBold, 'HAUS — Editorial Beauty'),
+    code: salonBold,
+    title: 'HAUS — Editorial Beauty',
   },
 ];
 

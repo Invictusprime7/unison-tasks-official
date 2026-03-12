@@ -561,7 +561,8 @@ export const localServiceTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Emergency Service System',
     tags: ['electrician', 'emergency', '24-7', 'urgent', 'bold'],
-    code: wrapInReactComponent(serviceBold, 'RapidFix Electric — 24/7 Emergency'),
+    code: serviceBold,
+    title: 'RapidFix Electric — 24/7 Emergency',
   },
 ];
 

@@ -654,7 +654,8 @@ export const restaurantTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Farm Restaurant System',
     tags: ['restaurant', 'farm-to-table', 'organic', 'booking', 'bold'],
-    code: wrapInReactComponent(restaurantBold, 'Roots & Harvest — Farm-to-Table'),
+    code: restaurantBold,
+    title: 'Roots & Harvest — Farm-to-Table',
   },
 ];
 
