@@ -427,7 +427,7 @@ export async function resolveIntent(
  * Only called in builder mode, never in production
  */
 async function resolveWithAI(ctx: ButtonContext): Promise<ResolvedIntent | null> {
-  const availableIntents = getAvailableIntents();
+  const availableIntents = [...CORE_INTENTS];
   
   const prompt = `You are an intent resolver. Given a button's context, return the most appropriate intent.
 
