@@ -458,7 +458,8 @@ export const ecommerceTemplates: LayoutTemplate[] = [
     systemType: 'store',
     systemName: 'Product Store',
     tags: ['ecommerce', 'skincare', 'beauty', 'clean', 'light'],
-    code: wrapInReactComponent(ecomLight, 'Lumina — Clean Beauty'),
+    code: ecomLight,
+    title: 'Lumina — Clean Beauty',
   },
   {
     id: 'ecommerce-bold-lifestyle',
