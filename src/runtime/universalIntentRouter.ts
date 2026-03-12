@@ -14,7 +14,14 @@
  * - AutoBinder pre-assigns intents at template generation time
  */
 
-import { configureActionCatalog, type ActionContext } from './actionCatalog';
+// ActionContext type (formerly from actionCatalog, now inlined)
+export type ActionContext = {
+  payload?: Record<string, unknown>;
+  element?: HTMLElement;
+  businessId?: string;
+  phone?: string;
+  email?: string;
+};
 import { resolveIntent, extractButtonContext, type ResolvedIntent } from './intentResolver';
 import { normalizeIntent } from './intentAliases';
 import { executeIntent, configureIntentExecutor, type IntentContext, type IntentResult } from './intentExecutor';
@@ -77,25 +84,8 @@ export class UniversalIntentRouter {
   constructor(config: IntentRouterConfig) {
     this.config = config;
     
-    // Configure the action catalog with provided managers
-    // Map our config to the catalog's expected format
-    configureActionCatalog({
-      nav: config.navigationManager ? {
-        goto: config.navigationManager.goto,
-        external: config.navigationManager.external,
-        back: () => window.history.back(),
-      } : undefined,
-      overlays: config.overlayManager ? {
-        open: config.overlayManager.open,
-        close: (id) => config.overlayManager?.close(id),
-        isOpen: () => false,
-      } : undefined,
-      comm: config.communicationManager ? {
-        call: config.communicationManager.call,
-        email: config.communicationManager.email,
-        sms: () => {}, // Not typically used
-      } : undefined,
-    });
+    // Configure the intent executor with provided managers
+    this.syncManagersToExecutor(config);
   }
   
   /**
@@ -378,27 +368,29 @@ export class UniversalIntentRouter {
   updateConfig(partial: Partial<IntentRouterConfig>): void {
     this.config = { ...this.config, ...partial };
     
-    // Re-configure action catalog if managers changed
+    // Re-configure executor if managers changed
     if (partial.navigationManager || partial.overlayManager || partial.communicationManager) {
-      const config = this.config;
-      configureActionCatalog({
-        nav: config.navigationManager ? {
-          goto: config.navigationManager.goto,
-          external: config.navigationManager.external,
-          back: () => window.history.back(),
-        } : undefined,
-        overlays: config.overlayManager ? {
-          open: config.overlayManager.open,
-          close: (id) => config.overlayManager?.close(id),
-          isOpen: () => false,
-        } : undefined,
-        comm: config.communicationManager ? {
-          call: config.communicationManager.call,
-          email: config.communicationManager.email,
-          sms: () => {},
-        } : undefined,
-      });
+      this.syncManagersToExecutor(this.config);
     }
+  }
+
+  /**
+   * Sync router config managers to the unified intent executor
+   */
+  private syncManagersToExecutor(config: IntentRouterConfig): void {
+    configureIntentExecutor({
+      navigation: config.navigationManager ? {
+        goto: config.navigationManager.goto,
+        external: config.navigationManager.external,
+        back: () => window.history.back(),
+        scrollTo: config.navigationManager.scrollTo || (() => {}),
+      } : undefined,
+      overlay: config.overlayManager ? {
+        open: config.overlayManager.open,
+        close: (id) => config.overlayManager?.close(id),
+        isOpen: () => false,
+      } : undefined,
+    });
   }
 }
 

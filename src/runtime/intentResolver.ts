@@ -8,15 +8,15 @@
  * 1. Check explicit data-ut-intent attribute (already resolved)
  * 2. Apply rule engine (catches 80-95% of cases)
  * 3. AI fallback for ambiguous cases (builder mode only)
- * 4. Validate against ACTION_CATALOG keys
+ * 4. Validate against CORE_INTENTS (canonical intent surface)
  * 
  * NOTE: This resolver may emit legacy intent keys (e.g., 'shop.add_to_cart').
  * These are AUTOMATICALLY normalized to CORE_INTENTS via the INTENT_ALIASES
  * system before execution. See runtime/intentAliases.ts.
  */
 
-import { getAvailableIntents, isValidIntent } from './actionCatalog';
-import { normalizeIntent } from './intentAliases';
+import { CORE_INTENTS, isCoreIntent } from '@/coreIntents';
+import { normalizeIntent, isNormalizedCoreIntent } from './intentAliases';
 
 export interface ButtonContext {
   // Text content
@@ -382,7 +382,7 @@ export async function resolveIntent(
   allowAI: boolean = false
 ): Promise<ResolvedIntent> {
   // Step 1: Check for explicit intent
-  if (ctx.existingIntent && isValidIntent(ctx.existingIntent)) {
+  if (ctx.existingIntent && isNormalizedCoreIntent(ctx.existingIntent)) {
     return {
       intent: ctx.existingIntent,
       confidence: 1.0,
@@ -427,7 +427,7 @@ export async function resolveIntent(
  * Only called in builder mode, never in production
  */
 async function resolveWithAI(ctx: ButtonContext): Promise<ResolvedIntent | null> {
-  const availableIntents = getAvailableIntents();
+  const availableIntents = [...CORE_INTENTS];
   
   const prompt = `You are an intent resolver. Given a button's context, return the most appropriate intent.
 
@@ -468,7 +468,7 @@ Return ONLY a JSON object with:
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0]);
-      if (result.intent && isValidIntent(result.intent)) {
+      if (result.intent && isCoreIntent(result.intent)) {
         return {
           intent: result.intent,
           confidence: result.confidence || 0.7,
