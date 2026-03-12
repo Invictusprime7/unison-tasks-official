@@ -174,7 +174,7 @@ export const SystemLauncher = ({
     ? businessSystems.find((s) => s.id === selectedSystem)
     : null;
   const effectiveTemplateCode = selectedTemplate
-    ? editedTemplateCode ?? selectedTemplate.code
+    ? editedTemplateCode ?? getTemplateReactCode(selectedTemplate)
     : null;
 
   // ─── Handlers ───
