@@ -317,8 +317,9 @@ export class UniversalIntentRouter {
         continue;
       }
       
-      const ctx = extractButtonContext(element);
-      const resolved = await resolveIntent(ctx, true); // Allow AI in annotation mode
+      const node = this.extractNodeFromElement(element);
+      const binding = bindIntent(node);
+      const resolved = bindingToResolved(binding);
       
       if (resolved.confidence >= 0.5) {
         this.annotateElement(element, resolved);
