@@ -22,10 +22,17 @@ export type ActionContext = {
   phone?: string;
   email?: string;
 };
-import { resolveIntent, extractButtonContext, type ResolvedIntent } from './intentResolver';
 import { normalizeIntent } from './intentAliases';
 import { executeIntent, configureIntentExecutor, type IntentContext, type IntentResult } from './intentExecutor';
-import { autoBindElement, type TemplateContext } from './autoBinder';
+import { autoBindElement, bindIntent, type TemplateContext, type BindingResult } from './autoBinder';
+
+// ResolvedIntent type (formerly from intentResolver, now canonical here)
+export interface ResolvedIntent {
+  intent: string;
+  confidence: number;
+  payload?: Record<string, unknown>;
+  source: 'explicit' | 'rule' | 'ai' | 'fallback';
+}
 
 export interface IntentRouterConfig {
   mode: 'builder' | 'production';
