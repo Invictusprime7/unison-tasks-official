@@ -330,7 +330,8 @@ export const portfolioTemplates: LayoutTemplate[] = [
     systemType: 'portfolio',
     systemName: 'Photography Portfolio',
     tags: ['portfolio', 'photographer', 'gallery', 'light'],
-    code: wrapInReactComponent(portfolioLight, 'James Morrison — Photography'),
+    code: portfolioLight,
+    title: 'James Morrison — Photography',
   },
   {
     id: 'portfolio-bold-experimental',
