@@ -557,7 +557,8 @@ export const salonTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Salon Appointment System',
     tags: ['salon', 'beauty', 'hair', 'booking', 'spa', 'premium', 'dark'],
-    code: wrapInReactComponent(salonLuxury, 'Luxe Beauty - Hair Salon'),
+    code: salonLuxury,
+    title: 'Luxe Beauty - Hair Salon',
   },
   {
     id: 'salon-light-wellness',
