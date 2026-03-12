@@ -382,7 +382,7 @@ export async function resolveIntent(
   allowAI: boolean = false
 ): Promise<ResolvedIntent> {
   // Step 1: Check for explicit intent
-  if (ctx.existingIntent && isValidIntent(ctx.existingIntent)) {
+  if (ctx.existingIntent && isNormalizedCoreIntent(ctx.existingIntent)) {
     return {
       intent: ctx.existingIntent,
       confidence: 1.0,
