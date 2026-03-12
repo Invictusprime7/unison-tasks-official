@@ -1,20 +1,27 @@
 /**
- * SystemHealthPanel
- * Shows intent status, manifest info, and publish readiness for the current system
+ * SystemHealthPanel — Contract-aware diagnostics panel
+ * 
+ * Consumes CompiledContract directly to show:
+ * - Provisioning status per capability
+ * - Slot binding coverage
+ * - Route policy validation
+ * - Intent coverage
+ * - Publish/preview readiness
  */
 
 import React, { useMemo } from 'react';
-import { 
-  CheckCircle2, 
-  AlertCircle, 
-  XCircle, 
-  Activity, 
+import {
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Activity,
   Zap,
   Shield,
   ChevronRight,
   Database,
   Workflow,
-  Users
+  Route,
+  Layers,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,143 +30,89 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { 
-  getSystemContract, 
-  type SystemContract,
-  type PublishCheck 
-} from '@/data/templates/contracts';
 import {
-  getDefaultManifestForSystem,
-  getManifestStats,
-  type TemplateManifest
-} from '@/data/templates/manifest';
-import { isCoreIntent } from '@/coreIntents';
-import { hasBackendHandler } from '@/runtime/intentRouter';
-import type { BusinessSystemType } from '@/data/templates/types';
+  type CompiledContract,
+  type ProvisioningStatus,
+  isPreviewReady,
+  isPublishReady,
+} from '@/contracts';
 
-interface IntentStatus {
-  intent: string;
-  label: string;
-  status: 'wired' | 'mocked' | 'broken';
-  required: boolean;
-}
+// ============================================================================
+// Props
+// ============================================================================
 
 interface SystemHealthPanelProps {
-  systemType: BusinessSystemType | null;
-  preloadedIntents?: string[];
-  /** Detected CTA slots in the current template DOM (data-ut-cta values) */
-  templateSlots?: string[];
-  /** True when the backend installer has been run for the current businessId */
-  backendInstalled?: boolean;
+  /** The compiled contract — the ONLY input this panel accepts */
+  contract: CompiledContract | null;
   onPublishCheck?: () => void;
   className?: string;
 }
 
-const intentLabels: Record<string, string> = {
-  'booking.create': 'Create Booking',
-  'contact.submit': 'Contact Form',
-  'quote.request': 'Quote Request',
-  'newsletter.subscribe': 'Newsletter Signup',
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+const StatusIcon: React.FC<{ status: ProvisioningStatus }> = ({ status }) => {
+  switch (status) {
+    case 'provisioned': return <CheckCircle2 className="w-4 h-4 text-primary" />;
+    case 'stub': return <AlertCircle className="w-4 h-4 text-accent-foreground" />;
+    case 'missing': return <XCircle className="w-4 h-4 text-destructive" />;
+  }
 };
 
+const StatusBadge: React.FC<{ status: ProvisioningStatus }> = ({ status }) => {
+  switch (status) {
+    case 'provisioned':
+      return <Badge variant="default" className="text-[10px] px-1.5 py-0">Live</Badge>;
+    case 'stub':
+      return <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-accent text-accent-foreground">Stub</Badge>;
+    case 'missing':
+      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Missing</Badge>;
+  }
+};
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
 export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
-  systemType,
-  preloadedIntents = [],
-  templateSlots = [],
-  backendInstalled = false,
+  contract,
   onPublishCheck,
   className,
 }) => {
-  const contract = useMemo(() => {
-    return systemType ? getSystemContract(systemType) : undefined;
-  }, [systemType]);
-
-  // Get manifest for backend info
-  const manifest = useMemo((): TemplateManifest | null => {
-    return systemType ? getDefaultManifestForSystem(systemType) : null;
-  }, [systemType]);
-
-  const manifestStats = useMemo(() => {
-    return manifest ? getManifestStats(manifest) : null;
-  }, [manifest]);
-
-  const intentStatuses = useMemo((): IntentStatus[] => {
-    if (!contract) return [];
-
-    const allIntents = [...new Set([...contract.requiredIntents, ...preloadedIntents])];
-    
-    return allIntents.map(intent => {
-      const isCore = isCoreIntent(intent);
-      const isWired = isCore && hasBackendHandler(intent as any);
-      const isRequired = contract.requiredIntents.includes(intent as any);
-      
-      return {
-        intent,
-        label: intentLabels[intent] || intent,
-        status: isWired ? 'wired' : 'mocked',
-        required: isRequired,
-      };
-    });
-  }, [contract, preloadedIntents]);
+  const previewReady = useMemo(() => contract ? isPreviewReady(contract) : false, [contract]);
+  const publishReady = useMemo(() => contract ? isPublishReady(contract) : false, [contract]);
 
   const healthScore = useMemo(() => {
-    if (intentStatuses.length === 0) return 0;
-    const wiredCount = intentStatuses.filter(s => s.status === 'wired').length;
-    return Math.round((wiredCount / intentStatuses.length) * 100);
-  }, [intentStatuses]);
+    if (!contract) return 0;
+    const prov = contract.provisioningReport;
+    const total = prov.provisioned + prov.stubbed + prov.missing;
+    if (total === 0) return 100;
+    return Math.round(((prov.provisioned + prov.stubbed * 0.5) / total) * 100);
+  }, [contract]);
 
-  const requiredMet = useMemo(() => {
-    const required = intentStatuses.filter(s => s.required);
-    const wired = required.filter(s => s.status === 'wired');
-    return { total: required.length, met: wired.length };
-  }, [intentStatuses]);
+  const slotStats = useMemo(() => {
+    if (!contract) return { total: 0, resolved: 0, fallback: 0 };
+    const policy = contract.slotBindingPolicy;
+    return {
+      total: policy.resolved.length,
+      resolved: policy.resolved.filter(r => r.source !== 'fallback').length,
+      fallback: policy.resolved.filter(r => r.source === 'fallback').length,
+    };
+  }, [contract]);
 
-  const slotCoverage = useMemo(() => {
-    if (!contract) return { total: 0, met: 0, missing: [] as string[] };
-    const requiredSlots = contract.requiredSlots || [];
-    const present = new Set(templateSlots);
-    const missing = requiredSlots.filter(s => !present.has(s));
-    return { total: requiredSlots.length, met: requiredSlots.length - missing.length, missing };
-  }, [contract, templateSlots]);
-
-  if (!systemType || !contract) {
+  if (!contract) {
     return (
       <Card className={cn("bg-card border-border", className)}>
         <CardContent className="p-4 text-center text-muted-foreground">
           <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">Select a system to view health status</p>
+          <p className="text-sm">No compiled contract — select a system to view diagnostics</p>
         </CardContent>
       </Card>
     );
   }
 
-  const getStatusIcon = (status: IntentStatus['status']) => {
-    switch (status) {
-      case 'wired':
-        return <CheckCircle2 className="w-4 h-4 text-primary" />;
-      case 'mocked':
-        return <AlertCircle className="w-4 h-4 text-accent-foreground" />;
-      case 'broken':
-        return <XCircle className="w-4 h-4 text-destructive" />;
-    }
-  };
-
-  const getStatusBadge = (status: IntentStatus['status']) => {
-    switch (status) {
-      case 'wired':
-        return <Badge variant="default" className="text-[10px] px-1.5 py-0">Live</Badge>;
-      case 'mocked':
-        return <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-accent text-accent-foreground">Demo</Badge>;
-      case 'broken':
-        return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Broken</Badge>;
-    }
-  };
-
-  const isPublishReady =
-    requiredMet.met === requiredMet.total &&
-    healthScore >= 80 &&
-    slotCoverage.met === slotCoverage.total &&
-    backendInstalled;
+  const { validation, provisioningReport, routePolicy } = contract;
 
   return (
     <Card className={cn("bg-card border-border", className)}>
@@ -167,127 +120,109 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
-            System Health
+            Contract Health
           </CardTitle>
-          <Badge 
-            variant={isPublishReady ? "default" : "secondary"}
-            className={cn(
-              "text-xs",
-              isPublishReady && "bg-primary text-primary-foreground"
-            )}
+          <Badge
+            variant={publishReady ? "default" : previewReady ? "secondary" : "destructive"}
+            className={cn("text-xs", publishReady && "bg-primary text-primary-foreground")}
           >
-            {isPublishReady ? 'Ready to Publish' : backendInstalled ? 'Not Ready' : 'Backend Not Installed'}
+            {publishReady ? 'Publish Ready' : previewReady ? 'Preview Only' : 'Not Ready'}
           </Badge>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Health Score */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Intent Coverage</span>
+            <span className="text-muted-foreground">Provisioning Health</span>
             <span className="font-medium">{healthScore}%</span>
           </div>
           <Progress value={healthScore} className="h-2" />
         </div>
 
-        {/* Backend Resources (from Manifest) */}
-        {manifestStats && (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
-              <Database className="w-4 h-4 text-primary mb-1" />
-              <span className="text-xs font-medium">{manifestStats.tableCount}</span>
-              <span className="text-[10px] text-muted-foreground">Tables</span>
-            </div>
-            <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
-              <Workflow className="w-4 h-4 text-primary mb-1" />
-              <span className="text-xs font-medium">{manifestStats.workflowCount}</span>
-              <span className="text-[10px] text-muted-foreground">Workflows</span>
-            </div>
-            <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
-              <Zap className="w-4 h-4 text-primary mb-1" />
-              <span className="text-xs font-medium">{manifestStats.intentCount}</span>
-              <span className="text-[10px] text-muted-foreground">Intents</span>
-            </div>
+        {/* Summary Stats */}
+        <div className="grid grid-cols-4 gap-2">
+          <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+            <Database className="w-4 h-4 text-primary mb-1" />
+            <span className="text-xs font-medium">{contract.requiredTables.length}</span>
+            <span className="text-[10px] text-muted-foreground">Tables</span>
           </div>
-        )}
-
-        {/* System Capabilities */}
-        {manifestStats && (
-          <div className="flex flex-wrap gap-1.5">
-            {manifestStats.hasBooking && (
-              <Badge variant="outline" className="text-[10px]">📅 Booking</Badge>
-            )}
-            {manifestStats.hasEcommerce && (
-              <Badge variant="outline" className="text-[10px]">🛒 E-commerce</Badge>
-            )}
-            {manifestStats.hasCRM && (
-              <Badge variant="outline" className="text-[10px]">👥 CRM Pipeline</Badge>
-            )}
+          <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+            <Workflow className="w-4 h-4 text-primary mb-1" />
+            <span className="text-xs font-medium">{contract.requiredWorkflows.length}</span>
+            <span className="text-[10px] text-muted-foreground">Workflows</span>
           </div>
-        )}
+          <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+            <Route className="w-4 h-4 text-primary mb-1" />
+            <span className="text-xs font-medium">{routePolicy.routes.length}</span>
+            <span className="text-[10px] text-muted-foreground">Routes</span>
+          </div>
+          <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50">
+            <Layers className="w-4 h-4 text-primary mb-1" />
+            <span className="text-xs font-medium">{slotStats.total}</span>
+            <span className="text-[10px] text-muted-foreground">Slots</span>
+          </div>
+        </div>
 
-        {/* Required Intents Status */}
+        {/* Validation Summary */}
+        <div className="flex gap-2">
+          {validation.errors > 0 && (
+            <Badge variant="destructive" className="text-[10px]">
+              {validation.errors} error{validation.errors !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          {validation.warnings > 0 && (
+            <Badge variant="secondary" className="text-[10px] bg-accent text-accent-foreground">
+              {validation.warnings} warning{validation.warnings !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          {validation.infos > 0 && (
+            <Badge variant="outline" className="text-[10px]">
+              {validation.infos} info{validation.infos !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          {validation.errors === 0 && validation.warnings === 0 && (
+            <Badge variant="default" className="text-[10px]">✓ Clean</Badge>
+          )}
+        </div>
+
+        {/* Slot Binding Coverage */}
         <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm">Required Intents</span>
+            <span className="text-sm">CTA Slots</span>
           </div>
           <span className={cn(
             "text-sm font-medium",
-            requiredMet.met === requiredMet.total ? "text-primary" : "text-destructive"
+            slotStats.fallback === 0 ? "text-primary" : "text-accent-foreground"
           )}>
-            {requiredMet.met}/{requiredMet.total}
-          </span>
-        </div>
-
-        {/* CTA Slot Coverage */}
-        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
-            <span className="text-sm">CTA Slots</span>
-          </div>
-          <span
-            className={cn(
-              "text-sm font-medium",
-              slotCoverage.met === slotCoverage.total ? 'text-primary' : 'text-destructive'
+            {slotStats.resolved}/{slotStats.total}
+            {slotStats.fallback > 0 && (
+              <span className="text-muted-foreground text-xs ml-1">({slotStats.fallback} fallback)</span>
             )}
-          >
-            {slotCoverage.met}/{slotCoverage.total}
           </span>
         </div>
-
-        {slotCoverage.missing.length > 0 && (
-          <div className="text-xs text-muted-foreground">
-            Missing: {slotCoverage.missing.slice(0, 4).join(', ')}
-            {slotCoverage.missing.length > 4 ? ` +${slotCoverage.missing.length - 4}` : ''}
-          </div>
-        )}
 
         <Separator />
 
-        {/* Intent List */}
+        {/* Capability Provisioning */}
         <div className="space-y-1">
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-            Intent Status
+            Capability Provisioning
           </h4>
-          <ScrollArea className="h-[200px]">
+          <ScrollArea className="h-[180px]">
             <div className="space-y-1">
-              {intentStatuses.map((status) => (
+              {provisioningReport.capabilities.map((cap) => (
                 <div
-                  key={status.intent}
+                  key={cap.capabilityId}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    {getStatusIcon(status.status)}
-                    <span className="text-sm">{status.label}</span>
-                    {status.required && (
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 border-primary/30 text-primary">
-                        Required
-                      </Badge>
-                    )}
+                    <StatusIcon status={cap.status} />
+                    <span className="text-sm">{cap.capabilityName}</span>
                   </div>
-                  {getStatusBadge(status.status)}
+                  <StatusBadge status={cap.status} />
                 </div>
               ))}
             </div>
@@ -296,33 +231,45 @@ export const SystemHealthPanel: React.FC<SystemHealthPanelProps> = ({
 
         <Separator />
 
-        {/* Publish Checks Preview */}
-        <div className="space-y-2">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Publish Checks
-          </h4>
-          {contract.publishChecks.slice(0, 3).map((check) => (
-            <div 
-              key={check.id}
-              className="flex items-center gap-2 text-sm text-muted-foreground"
-            >
-              <div className={cn(
-                "w-1.5 h-1.5 rounded-full",
-                check.severity === 'error' ? 'bg-destructive' : 
-                check.severity === 'warning' ? 'bg-accent-foreground' : 'bg-muted-foreground'
-              )} />
-              <span>{check.label}</span>
-            </div>
-          ))}
-        </div>
+        {/* Validation Issues */}
+        {validation.issues.length > 0 && (
+          <div className="space-y-1">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Issues
+            </h4>
+            <ScrollArea className="h-[120px]">
+              <div className="space-y-1">
+                {validation.issues.slice(0, 10).map((issue, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground p-1">
+                    <div className={cn(
+                      "w-1.5 h-1.5 rounded-full shrink-0",
+                      issue.severity === 'error' ? 'bg-destructive' :
+                      issue.severity === 'warning' ? 'bg-accent-foreground' : 'bg-muted-foreground'
+                    )} />
+                    <span className="truncate">{issue.message}</span>
+                  </div>
+                ))}
+                {validation.issues.length > 10 && (
+                  <p className="text-xs text-muted-foreground pl-4">
+                    +{validation.issues.length - 10} more
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
 
-        {/* Publish Button */}
+        {/* Action Button */}
         <Button
           className="w-full"
-          disabled={!isPublishReady}
+          disabled={!previewReady}
           onClick={onPublishCheck}
         >
-          {isPublishReady ? 'Run Publish Checks' : backendInstalled ? 'Complete CTA Wiring' : 'Install Backend Packs'}
+          {publishReady
+            ? 'Run Publish Checks'
+            : previewReady
+              ? 'Preview Ready — Install Backend to Publish'
+              : 'Resolve Errors First'}
           <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </CardContent>
