@@ -22,10 +22,17 @@ export type ActionContext = {
   phone?: string;
   email?: string;
 };
-import { resolveIntent, extractButtonContext, type ResolvedIntent } from './intentResolver';
 import { normalizeIntent } from './intentAliases';
 import { executeIntent, configureIntentExecutor, type IntentContext, type IntentResult } from './intentExecutor';
-import { autoBindElement, type TemplateContext } from './autoBinder';
+import { autoBindElement, bindIntent, type TemplateContext, type BindingResult } from './autoBinder';
+
+// ResolvedIntent type (formerly from intentResolver, now canonical here)
+export interface ResolvedIntent {
+  intent: string;
+  confidence: number;
+  payload?: Record<string, unknown>;
+  source: 'explicit' | 'rule' | 'ai' | 'fallback';
+}
 
 export interface IntentRouterConfig {
   mode: 'builder' | 'production';
@@ -229,11 +236,11 @@ export class UniversalIntentRouter {
     let resolved = resolvedIntentCache.get(element);
     
     if (!resolved) {
-      // Extract context
-      const ctx = extractButtonContext(element);
+      // Use autoBinder to resolve intent from element context
+      const node = this.extractNodeFromElement(element);
+      const binding = bindIntent(node);
       
-      // Resolve intent (AI only in builder mode)
-      resolved = await resolveIntent(ctx, this.config.mode === 'builder');
+      resolved = bindingToResolved(binding);
       
       // Cache for future clicks
       if (resolved.confidence >= 0.7) {
@@ -310,8 +317,9 @@ export class UniversalIntentRouter {
         continue;
       }
       
-      const ctx = extractButtonContext(element);
-      const resolved = await resolveIntent(ctx, true); // Allow AI in annotation mode
+      const node = this.extractNodeFromElement(element);
+      const binding = bindIntent(node);
+      const resolved = bindingToResolved(binding);
       
       if (resolved.confidence >= 0.5) {
         this.annotateElement(element, resolved);
@@ -392,6 +400,42 @@ export class UniversalIntentRouter {
       } : undefined,
     });
   }
+
+  /**
+   * Extract a BindableNode from a DOM element for autoBinder resolution
+   */
+  private extractNodeFromElement(element: HTMLElement): import('./autoBinder').BindableNode {
+    const tag = element.tagName.toLowerCase();
+    let nodeType: 'button' | 'link' | 'form' | 'submit' | 'icon-button' | 'card-action' | 'cta' = 'button';
+    if (tag === 'a') nodeType = 'link';
+    if (element.getAttribute('type') === 'submit') nodeType = 'submit';
+    if (element.classList.contains('cta') || element.dataset.cta) nodeType = 'cta';
+    
+    return {
+      id: element.id || `click_${Math.random().toString(36).slice(2, 8)}`,
+      type: nodeType,
+      text: element.textContent?.trim(),
+      ariaLabel: element.getAttribute('aria-label') || undefined,
+      href: element.getAttribute('href') || undefined,
+      formType: element.closest('form')?.dataset.formType,
+      intent: element.dataset.utIntent || element.dataset.intent,
+      intentPayload: element.dataset.utPayload ? JSON.parse(element.dataset.utPayload) : undefined,
+    };
+  }
+}
+
+/**
+ * Convert a BindingResult to a ResolvedIntent
+ */
+function bindingToResolved(binding: BindingResult): ResolvedIntent {
+  return {
+    intent: binding.intent,
+    confidence: binding.confidence,
+    payload: binding.intentPayload,
+    source: binding.bindSource === 'explicit' ? 'explicit' : 
+            binding.bindSource === 'inferred' ? 'rule' : 
+            binding.bindSource === 'default' ? 'fallback' : 'rule',
+  };
 }
 
 /**
