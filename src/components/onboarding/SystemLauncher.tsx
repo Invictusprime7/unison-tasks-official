@@ -46,6 +46,12 @@ import {
   randomFontPairing,
 } from "@/utils/designVariation";
 import { THEME_PRESETS, type ThemePreset } from "./themePresets";
+import {
+  createBlueprintFromIndustry,
+  compileContract,
+  getIndustryForCategory,
+  getAllowedIntents,
+} from "@/contracts";
 
 // ============================================================================
 // Component
