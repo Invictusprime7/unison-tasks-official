@@ -3,14 +3,8 @@
  * Shared helpers for template generation
  * 
  * REACT-ONLY: All templates output React component strings (.tsx)
+ * Uses JSON.stringify for CSS/HTML strings to prevent Babel parsing crashes in Sandpack.
  */
-
-/**
- * Escapes backticks and ${} in template content for safe embedding in template literals
- */
-function escapeForTemplateLiteral(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-}
 
 /**
  * Extracts <style> block content from HTML body strings
@@ -38,7 +32,9 @@ function extractScripts(body: string): { scripts: string; cleanBody: string } {
 
 /**
  * Wraps body content into a React component with embedded styles and interactive behavior.
- * Replaces the old wrapInHtmlDoc for the pure React/TSX pipeline.
+ * 
+ * IMPORTANT: Uses JSON.stringify for all embedded strings to prevent
+ * Babel/Sandpack crashes caused by CSS syntax inside template literals.
  * 
  * The component:
  * 1. Injects all <style> blocks via useEffect
@@ -50,9 +46,14 @@ export const wrapInReactComponent = (body: string, title: string = "Template"): 
   const { styles: extractedStyles, cleanBody: bodyAfterStyles } = extractStyles(body);
   const { scripts: extractedScripts, cleanBody: finalBody } = extractScripts(bodyAfterStyles);
 
-  const escapedStyles = escapeForTemplateLiteral(extractedStyles);
-  const escapedBody = escapeForTemplateLiteral(finalBody);
-  const escapedScripts = escapeForTemplateLiteral(extractedScripts);
+  const baseStyles = 'html { scroll-behavior: smooth; }\n@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }\ndetails > summary { list-style: none; cursor: pointer; }\ndetails > summary::-webkit-details-marker { display: none; }\n.tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }';
+  
+  const fullStyles = baseStyles + '\n' + extractedStyles;
+
+  // Use JSON.stringify for CSS/HTML strings — Babel-safe, no template literal parsing issues
+  const stylesJson = JSON.stringify(fullStyles);
+  const bodyJson = JSON.stringify(finalBody);
+  const titleJson = JSON.stringify(title);
 
   return `import React, { useEffect, useRef } from 'react';
 
@@ -61,16 +62,9 @@ export const wrapInReactComponent = (body: string, title: string = "Template"): 
  * Auto-generated React component from premium template
  */
 
-const TEMPLATE_STYLES = \`
-html { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-details > summary { list-style: none; cursor: pointer; }
-details > summary::-webkit-details-marker { display: none; }
-.tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }
-${escapedStyles}
-\`;
+const TEMPLATE_STYLES = ${stylesJson};
 
-const TEMPLATE_HTML = \`${escapedBody}\`;
+const TEMPLATE_HTML = ${bodyJson};
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,7 +78,7 @@ export default function App() {
     
     // Set body classes
     document.body.classList.add('bg-slate-950', 'text-white');
-    document.title = ${JSON.stringify(title)};
+    document.title = ${titleJson};
     
     return () => {
       style.remove();
@@ -307,3 +301,17 @@ export default function App() {
  * @deprecated Use wrapInReactComponent instead. Kept for backward compatibility during migration.
  */
 export const wrapInHtmlDoc = wrapInReactComponent;
+
+/**
+ * Gets the VFS-ready React code for a template.
+ * If template already contains React imports, returns as-is.
+ * Otherwise wraps raw HTML via wrapInReactComponent.
+ */
+export const getTemplateReactCode = (template: { code: string; title?: string; name?: string }): string => {
+  // If already React code, return as-is
+  if (template.code.includes('import React') || template.code.includes('export default function')) {
+    return template.code;
+  }
+  // Wrap raw HTML into React component
+  return wrapInReactComponent(template.code, template.title || template.name || 'Template');
+};

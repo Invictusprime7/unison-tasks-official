@@ -46,7 +46,10 @@ export interface LayoutTemplate {
   category: LayoutCategory;
   description: string;
   thumbnail?: string;
+  /** Raw HTML body content (styles + markup + scripts). Use getReactCode() for VFS. */
   code: string;
+  /** Display title used when wrapping to React component */
+  title?: string;
   tags?: string[];
   // NEW: System-level metadata
   systemType?: BusinessSystemType;
