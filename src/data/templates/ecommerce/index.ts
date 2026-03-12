@@ -469,7 +469,8 @@ export const ecommerceTemplates: LayoutTemplate[] = [
     systemType: 'store',
     systemName: 'Lifestyle Store',
     tags: ['ecommerce', 'outdoor', 'lifestyle', 'bold', 'adventure'],
-    code: wrapInReactComponent(ecomBold, 'SUMMIT — Performance Outdoor Gear'),
+    code: ecomBold,
+    title: 'SUMMIT — Performance Outdoor Gear',
   },
 ];
 

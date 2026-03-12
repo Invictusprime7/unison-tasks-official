@@ -434,7 +434,8 @@ export const coachingTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Speaker Coaching System',
     tags: ['coaching', 'speaker', 'motivational', 'bold', 'performance'],
-    code: wrapInReactComponent(coachingBold, 'Marcus Cole — Performance Coach'),
+    code: coachingBold,
+    title: 'Marcus Cole — Performance Coach',
   },
 ];
 
