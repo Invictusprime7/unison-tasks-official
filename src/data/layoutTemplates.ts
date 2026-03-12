@@ -2,14 +2,11 @@
  * Layout Templates
  * 
  * This file re-exports from the organized templates folder structure.
- * Templates are now organized by industry type and map to Business Systems:
- *   
- *   Business Systems → Template Categories:
- *      booking     → restaurant, contractor, salon
+ * Templates are now organized by industry type and map to Business Systems.
  * 
  * @see src/data/templates/index.ts for the main aggregation
  * @see src/data/templates/types.ts for Business System definitions
- * @see src/data/templates/industryProfiles.ts for Industry Capability Profiles
+ * @see src/contracts/ for the canonical contract-first architecture
  */
 
 // Re-export everything from the templates folder
@@ -21,22 +18,6 @@ export type {
   SystemContract,
   PublishCheck,
   DemoResponse,
-  // Industry Profile types (Phase 8)
-  IndustryType,
-  IndustryProfile,
-  SectionType,
-  ConversionObject,
-  ConversionObjectType,
-  IndustryThemePreset,
-  ValidationResult,
-  ValidationIssue,
-  TemplateForValidation,
-  ThemeTokens,
-  IndustryTheme,
-  ImageryGuidance,
-  ColorMoodPalette,
-  IndustryPromptContext,
-  GeneratedPrompt,
 } from './templates';
 
 export {
@@ -44,7 +25,6 @@ export {
   wrapInReactComponent,
   wrapInHtmlDoc, // deprecated alias
   getTemplateReactCode,
-  
   
   // Salon templates only
   salonTemplates,
@@ -70,40 +50,11 @@ export {
   getSystemContract,
   isRequiredIntent,
   getDemoResponse,
-  
-  // Industry Profiles (Phase 8 - Industry Differentiation)
-  industryProfiles,
-  getIndustryProfile,
-  isSectionAllowed,
-  isSectionExclusive,
-  isIntentAllowed,
-  getLayoutGrammar,
-  getConversionObject,
-  getThemePreset,
-  industryToSystemType,
-  getIndustriesForSystem,
-  
-  // Industry Validator
-  validateTemplate,
-  canAddSection,
-  canUseIntent,
-  getSuggestedSections,
-  getCorrectIntentForCta,
-  
-  // Industry Theme System
-  generateThemeTokens,
-  generateIndustryTheme,
-  generateCssString,
-  getImageryGuidance,
-  getColorMoodPalette,
-  getSectionStyles,
-  getCardStyles,
-  getButtonStyles,
-  
-  // Industry Prompt Generator
-  generateIndustryPrompt,
-  generateSectionPrompt,
-  generateValidationPrompt,
-  generateAutoFixPrompt,
-  generateSectionSuggestionPrompt,
+
+  // Advanced CSS System
+  ADVANCED_CSS,
+  INDUSTRY_COLOR_PALETTES,
+  generateIndustryCss,
+  SCROLL_REVEAL_SCRIPT,
+  INTERACTIVE_SCRIPT,
 } from './templates';

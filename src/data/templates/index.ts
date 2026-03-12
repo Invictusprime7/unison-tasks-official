@@ -21,60 +21,11 @@ export { systemContracts, getSystemContract, isRequiredIntent, getDemoResponse }
 export type { TemplateManifest, ProvisioningStatus, TableRequirement, WorkflowRequirement, IntentRequirement } from './manifest';
 export { templateManifests, getTemplateManifest, getDefaultManifestForSystem, validateManifest, getRequiredTables, getRequiredIntents } from './manifest';
 
-// Industry Profiles (Phase 8 - Industry Differentiation)
-export type { 
-  IndustryType, 
-  IndustryProfile, 
-  SectionType, 
-  ConversionObject, 
-  ConversionObjectType,
-  IndustryThemePreset 
-} from './industryProfiles';
-export { 
-  industryProfiles, 
-  getIndustryProfile, 
-  isSectionAllowed, 
-  isSectionExclusive,
-  isIntentAllowed,
-  getLayoutGrammar,
-  getConversionObject,
-  getThemePreset,
-  industryToSystemType,
-  getIndustriesForSystem
-} from './industryProfiles';
-
-// Industry Validator
-export type { ValidationResult, ValidationIssue, TemplateForValidation } from './industryValidator';
-export { 
-  validateTemplate, 
-  canAddSection, 
-  canUseIntent, 
-  getSuggestedSections,
-  getCorrectIntentForCta 
-} from './industryValidator';
-
-// Industry Theme System
-export type { ThemeTokens, IndustryTheme, ImageryGuidance, ColorMoodPalette } from './industryTheme';
-export {
-  generateThemeTokens,
-  generateIndustryTheme,
-  generateCssString,
-  getImageryGuidance,
-  getColorMoodPalette,
-  getSectionStyles,
-  getCardStyles,
-  getButtonStyles
-} from './industryTheme';
-
-// Industry Prompt Generator (AI Integration)
-export type { IndustryPromptContext, GeneratedPrompt } from './industryPromptGenerator';
-export {
-  generateIndustryPrompt,
-  generateSectionPrompt,
-  generateValidationPrompt,
-  generateAutoFixPrompt,
-  generateSectionSuggestionPrompt
-} from './industryPromptGenerator';
+// NOTE: Legacy industry modules (industryProfiles, industryValidator, industryTheme, 
+// industryPromptGenerator) have been removed. Use src/contracts/ instead:
+// - contracts/capabilityRegistry.ts for industry capabilities
+// - contracts/industryMatrix.ts for industry profiles
+// - contracts/contractCompiler.ts for validation
 
 // Utilities (wrapInReactComponent is the primary, wrapInHtmlDoc is deprecated alias)
 export { wrapInReactComponent, wrapInHtmlDoc, getTemplateReactCode } from './utils';
