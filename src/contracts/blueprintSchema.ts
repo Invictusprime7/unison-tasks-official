@@ -185,6 +185,3 @@ function inferPrimaryGoal(profile: IndustryProfile): BusinessBlueprint['capabili
   if (profile.defaultCapabilities.includes('quoting') || profile.defaultCapabilities.includes('lead-capture')) return 'leads';
   return 'newsletter';
 }
-
-// Avoid circular — re-import at module level for the error message
-const INDUSTRY_MATRIX_IMPORT = await import('./industryMatrix').then(m => m.INDUSTRY_MATRIX).catch(() => ({}));
