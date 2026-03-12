@@ -2622,8 +2622,12 @@ export default function App() {
         }
       }, 300);
       
-      setEditorCode(generatedCode);
-      setPreviewCode(generatedCode);
+      // Ensure code is React-safe before setting (AI may return raw HTML)
+      const safeCode = (generatedCode.includes('<!-- ') || (generatedCode.includes('class=') && !generatedCode.includes('className=')))
+        ? (() => { const { getTemplateReactCode } = require('@/data/templates/utils'); return getTemplateReactCode({ code: generatedCode, title: templateName || 'Template' }); })()
+        : generatedCode;
+      setEditorCode(safeCode);
+      setPreviewCode(safeCode);
       
       // Set system type for intent routing if AI generated with system context
       if (navSystemType && !activeSystemType) {
