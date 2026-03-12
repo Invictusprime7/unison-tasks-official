@@ -6,6 +6,9 @@
  * Uses JSON.stringify for CSS/HTML strings to prevent Babel parsing crashes in Sandpack.
  */
 
+import { getCompositionById } from '@/sections/templates';
+import { compositionToReactCode } from '@/sections/PageRenderer';
+
 /**
  * Extracts <style> block content from HTML body strings
  */
@@ -313,13 +316,10 @@ export const wrapInHtmlDoc = wrapInReactComponent;
 export const getTemplateReactCode = (template: { code: string; id?: string; title?: string; name?: string }): string => {
   // Check for section-registry composition first
   if (template.id) {
-    try {
-      const { getCompositionById, compositionToReactCode } = require('@/sections');
-      const composition = getCompositionById(template.id);
-      if (composition) {
-        return compositionToReactCode(composition);
-      }
-    } catch { /* sections library not available — fall through */ }
+    const composition = getCompositionById(template.id);
+    if (composition) {
+      return compositionToReactCode(composition);
+    }
   }
 
   // If already React code, return as-is
