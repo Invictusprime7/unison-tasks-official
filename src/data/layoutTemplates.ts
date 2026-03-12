@@ -1,15 +1,8 @@
 /**
  * Layout Templates
- * 
- * This file re-exports from the organized templates folder structure.
- * Templates are now organized by industry type and map to Business Systems.
- * 
- * @see src/data/templates/index.ts for the main aggregation
- * @see src/data/templates/types.ts for Business System definitions
- * @see src/contracts/ for the canonical contract-first architecture
+ * Re-exports from the organized templates folder.
  */
 
-// Re-export everything from the templates folder
 export type { 
   LayoutCategory, 
   LayoutTemplate,
@@ -23,16 +16,13 @@ export type {
 export {
   // Utilities
   wrapInReactComponent,
-  wrapInHtmlDoc, // deprecated alias
+  wrapInHtmlDoc,
   getTemplateReactCode,
   
-  // Salon templates only
-  salonTemplates,
-  
-  // Aggregated templates array
+  // Aggregated templates
   layoutTemplates,
   
-  // Helper functions
+  // Helpers
   getTemplatesByCategory,
   getTemplatesBySystem,
   getTemplateById,
@@ -45,16 +35,9 @@ export {
   getSystemById,
   getTemplatesForSystem,
   
-  // System Contracts (Phase 6)
+  // System Contracts
   systemContracts,
   getSystemContract,
   isRequiredIntent,
   getDemoResponse,
-
-  // Advanced CSS System
-  ADVANCED_CSS,
-  INDUSTRY_COLOR_PALETTES,
-  generateIndustryCss,
-  SCROLL_REVEAL_SCRIPT,
-  INTERACTIVE_SCRIPT,
 } from './templates';

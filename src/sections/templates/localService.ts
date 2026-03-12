@@ -1,8 +1,8 @@
 /**
  * Local Service / Contractor Booking Template — Minimal aesthetic
  */
-import type { TemplateComposition } from '../../types';
-import { THEME_MINIMAL_LIGHT } from '../../themes';
+import type { TemplateComposition } from '../types';
+import { THEME_MINIMAL_LIGHT } from '../themes';
 
 export const localServiceBooking: TemplateComposition = {
   id: 'local-service-booking',

@@ -1,8 +1,8 @@
 /**
  * Salon Booking Template — Minimal aesthetic
  */
-import type { TemplateComposition } from '../../types';
-import { THEME_MINIMAL_LIGHT } from '../../themes';
+import type { TemplateComposition } from '../types';
+import { THEME_MINIMAL_LIGHT } from '../themes';
 
 export const salonBooking: TemplateComposition = {
   id: 'salon-booking',
