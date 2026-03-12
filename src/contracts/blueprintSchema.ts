@@ -126,7 +126,7 @@ export function createBlueprintFromIndustry(
 ): BusinessBlueprint {
   const profile = getIndustryProfile(industry);
   if (!profile) {
-    throw new Error(`Unknown industry: ${industry}. Valid: ${Object.keys(INDUSTRY_MATRIX_IMPORT).join(', ')}`);
+    throw new Error(`Unknown industry: "${industry}"`);
   }
 
   const capabilities = [
