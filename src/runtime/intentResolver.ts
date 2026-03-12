@@ -468,7 +468,7 @@ Return ONLY a JSON object with:
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0]);
-      if (result.intent && isValidIntent(result.intent)) {
+      if (result.intent && isCoreIntent(result.intent)) {
         return {
           intent: result.intent,
           confidence: result.confidence || 0.7,
