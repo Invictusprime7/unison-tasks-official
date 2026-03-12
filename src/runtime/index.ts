@@ -58,17 +58,3 @@ export {
   type TemplateRuntimeContextValue,
 } from './TemplateRuntimeProvider';
 
-// ============ LEGACY (still used by useIntentRouter → universalIntentRouter chain) ============
-// TODO: Consolidate useIntentRouter to use intentExecutor directly, then remove these
-
-// Universal Intent Router - orchestration layer
-export {
-  UniversalIntentRouter,
-  createIntentRouter,
-  getActiveRouter,
-  setupPreviewRouter,
-  setupProductionRouter,
-  type IntentRouterConfig,
-  type ActionContext,
-  type ResolvedIntent,
-} from './universalIntentRouter';
