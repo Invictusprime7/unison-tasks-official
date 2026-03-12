@@ -568,7 +568,8 @@ export const salonTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Spa Booking System',
     tags: ['salon', 'spa', 'wellness', 'booking', 'light', 'holistic'],
-    code: wrapInReactComponent(salonLight, 'Serenity Spa & Wellness'),
+    code: salonLight,
+    title: 'Serenity Spa & Wellness',
   },
   {
     id: 'salon-bold-editorial',
