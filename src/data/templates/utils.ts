@@ -6,6 +6,9 @@
  * Uses JSON.stringify for CSS/HTML strings to prevent Babel parsing crashes in Sandpack.
  */
 
+import { getCompositionById } from '@/sections/templates';
+import { compositionToReactCode } from '@/sections/PageRenderer';
+
 /**
  * Extracts <style> block content from HTML body strings
  */
