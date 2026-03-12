@@ -32,75 +32,59 @@ import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types"
 import { getCompositionReactCode, getCompositionMeta } from "@/utils/compositionReference";
 import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 import { generateDesignVariation, randomFontPairing } from "@/utils/designVariation";
+import {
+  createBlueprintFromIndustry,
+  compileContract,
+  getIndustryProfile,
+  type BusinessBlueprint,
+} from "@/contracts";
 
 // Industry chip configurations
 const industryChips = [
-  { id: "local_service", label: "Local Service", icon: Settings, examples: "Plumber, Electrician, Cleaner" },
-  { id: "salon_spa", label: "Salon & Spa", icon: Scissors, examples: "Hair, Nails, Massage" },
-  { id: "restaurant", label: "Restaurant", icon: Utensils, examples: "Cafe, Bakery, Food Truck" },
-  { id: "ecommerce", label: "E-commerce", icon: ShoppingBag, examples: "Online Store, Boutique" },
-  { id: "creator_portfolio", label: "Creator", icon: Palette, examples: "Designer, Photographer" },
-  { id: "coaching_consulting", label: "Coaching", icon: Users, examples: "Coach, Consultant, Trainer" },
-  { id: "real_estate", label: "Real Estate", icon: Home, examples: "Agent, Property Manager" },
-  { id: "nonprofit", label: "Nonprofit", icon: Heart, examples: "Charity, Foundation" },
+  { id: "local_service", label: "Local Service", icon: Settings, examples: "Plumber, Electrician, Cleaner", canonicalIndustry: "local-service" },
+  { id: "salon_spa", label: "Salon & Spa", icon: Scissors, examples: "Hair, Nails, Massage", canonicalIndustry: "salon" },
+  { id: "restaurant", label: "Restaurant", icon: Utensils, examples: "Cafe, Bakery, Food Truck", canonicalIndustry: "restaurant" },
+  { id: "ecommerce", label: "E-commerce", icon: ShoppingBag, examples: "Online Store, Boutique", canonicalIndustry: "ecommerce" },
+  { id: "creator_portfolio", label: "Creator", icon: Palette, examples: "Designer, Photographer", canonicalIndustry: "portfolio" },
+  { id: "coaching_consulting", label: "Coaching", icon: Users, examples: "Coach, Consultant, Trainer", canonicalIndustry: "coaching" },
+  { id: "real_estate", label: "Real Estate", icon: Home, examples: "Agent, Property Manager", canonicalIndustry: "real-estate" },
+  { id: "nonprofit", label: "Nonprofit", icon: Heart, examples: "Charity, Foundation", canonicalIndustry: "nonprofit" },
 ];
 
-// Map chip IDs to BusinessSystemType for template lookup
-const CHIP_TO_SYSTEM: Record<string, BusinessSystemType> = {
-  local_service: "booking",
-  salon_spa: "booking",
-  restaurant: "booking",
-  ecommerce: "store",
-  creator_portfolio: "portfolio",
-  coaching_consulting: "booking",
-  real_estate: "agency",
-  nonprofit: "content",
-};
+/**
+ * Resolve canonical industry key from chip ID.
+ * Uses the contracts/industryMatrix as the single source of truth.
+ */
+function getCanonicalIndustry(chipId: string): string {
+  const chip = industryChips.find(c => c.id === chipId);
+  return chip?.canonicalIndustry || 'agency';
+}
 
-// Map chip IDs to LayoutCategory for direct template lookup
-const CHIP_TO_CATEGORY: Record<string, LayoutCategory> = {
-  local_service: "contractor",
-  salon_spa: "salon",
-  restaurant: "restaurant",
-  ecommerce: "store",
-  creator_portfolio: "portfolio",
-  coaching_consulting: "coaching",
-  real_estate: "realestate",
-  nonprofit: "nonprofit",
-};
+/**
+ * Get the LayoutCategory for a chip (used for template/composition lookup).
+ */
+function getCategoryForChip(chipId: string): LayoutCategory {
+  const industry = getCanonicalIndustry(chipId);
+  const profile = getIndustryProfile(industry);
+  return profile?.layoutCategories[0] || 'landing';
+}
 
-// Map chip IDs to industry string for the blueprint
-const CHIP_TO_INDUSTRY: Record<string, string> = {
-  local_service: "local_service",
-  salon_spa: "salon_spa",
-  restaurant: "restaurant",
-  ecommerce: "ecommerce",
-  creator_portfolio: "creator_portfolio",
-  coaching_consulting: "coaching_consulting",
-  real_estate: "real_estate",
-  nonprofit: "nonprofit",
-};
-
-// Industry-specific defaults for palette and intents
-const INDUSTRY_DEFAULTS: Record<string, { palette: Record<string, string>; intents: string[] }> = {
-  salon_spa: { palette: { primary: "#D4A574", secondary: "#8B6F4E", accent: "#E8D5C4", background: "#1A1A2E", foreground: "#F5F5F5" }, intents: ["booking.create", "contact.submit", "newsletter.subscribe"] },
-  restaurant: { palette: { primary: "#D4A574", secondary: "#8B4513", accent: "#FFD700", background: "#1A1A1A", foreground: "#FFFFFF" }, intents: ["booking.create", "contact.submit", "newsletter.subscribe"] },
-  local_service: { palette: { primary: "#0EA5E9", secondary: "#22D3EE", accent: "#F59E0B", background: "#0F172A", foreground: "#F8FAFC" }, intents: ["quote.request", "contact.submit", "booking.create"] },
-  ecommerce: { palette: { primary: "#8B5CF6", secondary: "#A78BFA", accent: "#F59E0B", background: "#0F0F0F", foreground: "#FFFFFF" }, intents: ["newsletter.subscribe", "contact.submit"] },
-  creator_portfolio: { palette: { primary: "#6366F1", secondary: "#818CF8", accent: "#F472B6", background: "#0A0A0A", foreground: "#FAFAFA" }, intents: ["contact.submit", "quote.request"] },
-  coaching_consulting: { palette: { primary: "#10B981", secondary: "#34D399", accent: "#F59E0B", background: "#0F172A", foreground: "#F8FAFC" }, intents: ["booking.create", "contact.submit", "newsletter.subscribe", "quote.request"] },
-  real_estate: { palette: { primary: "#D4AF37", secondary: "#C9B037", accent: "#1E3A5F", background: "#0A0A0A", foreground: "#FFFFFF" }, intents: ["contact.submit", "quote.request", "newsletter.subscribe"] },
-  nonprofit: { palette: { primary: "#E11D48", secondary: "#FB7185", accent: "#F59E0B", background: "#FFFFFF", foreground: "#1E293B" }, intents: ["contact.submit", "newsletter.subscribe"] },
-};
+/**
+ * Get the BusinessSystemType for a chip.
+ */
+function getSystemTypeForChip(chipId: string): BusinessSystemType {
+  const industry = getCanonicalIndustry(chipId);
+  const profile = getIndustryProfile(industry);
+  return profile?.systemType || 'agency';
+}
 
 /**
  * Get template reference for systems-build from chip selection.
  * Prefers React composition code from the section registry; falls back to legacy HTML.
  */
 function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; systemType: BusinessSystemType } | null {
-  const systemType = CHIP_TO_SYSTEM[chipId];
-  const category = CHIP_TO_CATEGORY[chipId];
-  if (!systemType || !category) return null;
+  const systemType = getSystemTypeForChip(chipId);
+  const category = getCategoryForChip(chipId);
 
   // Prefer composition-based React code
   const compositionCode = getCompositionReactCode(category);
@@ -108,7 +92,7 @@ function getTemplateReference(chipId: string): { templateId: string; templateHtm
   if (compositionCode && compositionMeta) {
     return {
       templateId: compositionMeta.compositionId,
-      templateHtml: compositionCode, // React TSX, not HTML
+      templateHtml: compositionCode,
       systemType,
     };
   }
@@ -128,32 +112,72 @@ function getTemplateReference(chipId: string): { templateId: string; templateHtm
 }
 
 /**
- * Build a BusinessBlueprint from chip selection and prompt for systems-build
+ * Build a BusinessBlueprint from chip selection and prompt for systems-build.
+ * Now uses the canonical contracts system as the source of truth for
+ * capabilities, intents, and industry mapping.
  */
 function buildBlueprintFromChip(chipId: string, prompt: string, businessName?: string) {
   const chip = industryChips.find(c => c.id === chipId);
-  const industry = CHIP_TO_INDUSTRY[chipId] || "other";
-  const defaults = INDUSTRY_DEFAULTS[chipId] || { palette: { primary: "#0EA5E9" }, intents: ["contact.submit"] };
+  const canonicalIndustry = getCanonicalIndustry(chipId);
+  const name = businessName || chip?.label || "My Business";
 
-  const fonts = randomFontPairing();
-  const design = generateDesignVariation();
+  try {
+    // Use canonical blueprint from contracts system
+    const blueprint = createBlueprintFromIndustry(canonicalIndustry, name, {
+      prompt,
+    });
 
-  return {
-    version: "1.0",
-    identity: {
-      industry: industry,
-      primary_goal: "Generate leads and grow the business",
-    },
-    brand: {
-      business_name: businessName || chip?.label || "My Business",
-      tagline: `Professional ${chip?.label || "business"} services you can trust`,
-      tone: "professional and friendly",
-      palette: defaults.palette,
-      typography: fonts,
-    },
-    design,
-    intents: defaults.intents.map(i => ({ intent: i })),
-  };
+    // Compile to validate — log warnings but don't block
+    const compiled = compileContract(blueprint);
+    if (compiled.validation.warnings > 0) {
+      console.warn(`[BusinessLauncher] Blueprint warnings:`, compiled.validation.issues.filter(i => i.severity === 'warning'));
+    }
+
+    // Convert to the edge function's expected format (SystemsBuildContext shape)
+    const fonts = randomFontPairing();
+    const design = generateDesignVariation();
+
+    return {
+      version: "1.0",
+      identity: {
+        industry: canonicalIndustry,
+        primary_goal: blueprint.capabilities.primaryGoal,
+      },
+      brand: {
+        business_name: name,
+        tagline: blueprint.identity.tagline || `Professional ${chip?.label || "business"} services you can trust`,
+        tone: "professional and friendly",
+        typography: fonts,
+      },
+      design,
+      intents: blueprint.intents.allowed.map(i => ({ intent: i })),
+      // Pass compiled contract data for richer context
+      _contract: {
+        capabilities: blueprint.capabilities.enabled,
+        primaryCta: blueprint.intents.primaryCta,
+        requiredTables: compiled.requiredTables,
+        intentBindings: compiled.intentBindings,
+        pages: compiled.pages,
+      },
+    };
+  } catch (e) {
+    // Fallback if industry not found in contracts
+    console.warn(`[BusinessLauncher] Contract creation failed for "${canonicalIndustry}", using fallback`, e);
+    const fonts = randomFontPairing();
+    const design = generateDesignVariation();
+    return {
+      version: "1.0",
+      identity: { industry: canonicalIndustry, primary_goal: "Generate leads and grow the business" },
+      brand: {
+        business_name: name,
+        tagline: `Professional ${chip?.label || "business"} services you can trust`,
+        tone: "professional and friendly",
+        typography: fonts,
+      },
+      design,
+      intents: [{ intent: "contact.submit" }, { intent: "newsletter.subscribe" }],
+    };
+  }
 }
 
 interface ClarifyingQuestion {
