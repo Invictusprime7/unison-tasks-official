@@ -123,8 +123,8 @@ function getTemplateReference(chipId: string): { templateId: string; templateHtm
   
   return {
     templateId: bestTemplate.id,
-    templateHtml: bestTemplate.code, // kept for backward compat
-    templateCode: bestTemplate.code, // React component string
+    templateHtml: bestTemplate.code, // raw HTML for AI reference
+    templateCode: bestTemplate.code, // raw HTML (wrapped to React at launch time)
     templateName: bestTemplate.name,
     systemType,
   };
