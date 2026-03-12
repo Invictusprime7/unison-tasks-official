@@ -61,13 +61,8 @@ export {
 // ============ LEGACY (still used by useIntentRouter → universalIntentRouter chain) ============
 // TODO: Consolidate useIntentRouter to use intentExecutor directly, then remove these
 
-// Action Catalog - Legacy execution layer
+// Action Catalog - Legacy types only (execution now routed through intentExecutor)
 export {
-  ACTION_CATALOG,
-  executeAction,
-  isValidIntent,
-  getAvailableIntents,
-  configureActionCatalog,
   type ActionCatalogEntry,
   type ActionContext,
   type OverlayManager,
