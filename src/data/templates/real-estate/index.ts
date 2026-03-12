@@ -353,7 +353,8 @@ export const realEstateTemplates: LayoutTemplate[] = [
     systemType: 'agency',
     systemName: 'Residential Real Estate',
     tags: ['realestate', 'residential', 'modern', 'light'],
-    code: wrapInReactComponent(reLight, 'HomeQuest Realty — Find Your Home'),
+    code: reLight,
+    title: 'HomeQuest Realty — Find Your Home',
   },
   {
     id: 'realestate-bold-investment',
