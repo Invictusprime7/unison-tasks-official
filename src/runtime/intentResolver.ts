@@ -8,15 +8,15 @@
  * 1. Check explicit data-ut-intent attribute (already resolved)
  * 2. Apply rule engine (catches 80-95% of cases)
  * 3. AI fallback for ambiguous cases (builder mode only)
- * 4. Validate against ACTION_CATALOG keys
+ * 4. Validate against CORE_INTENTS (canonical intent surface)
  * 
  * NOTE: This resolver may emit legacy intent keys (e.g., 'shop.add_to_cart').
  * These are AUTOMATICALLY normalized to CORE_INTENTS via the INTENT_ALIASES
  * system before execution. See runtime/intentAliases.ts.
  */
 
-import { getAvailableIntents, isValidIntent } from './actionCatalog';
-import { normalizeIntent } from './intentAliases';
+import { CORE_INTENTS, isCoreIntent } from '@/coreIntents';
+import { normalizeIntent, isNormalizedCoreIntent } from './intentAliases';
 
 export interface ButtonContext {
   // Text content
