@@ -6,7 +6,6 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 const RE_DARK_STYLES = `
@@ -343,7 +342,8 @@ export const realEstateTemplates: LayoutTemplate[] = [
     systemType: 'agency',
     systemName: 'Luxury Real Estate',
     tags: ['realestate', 'luxury', 'properties', 'dark'],
-    code: wrapInReactComponent(reDark, 'Sterling Realty — Luxury Real Estate'),
+    code: reDark,
+    title: 'Sterling Realty — Luxury Real Estate',
   },
   {
     id: 'realestate-light-modern',
@@ -353,7 +353,8 @@ export const realEstateTemplates: LayoutTemplate[] = [
     systemType: 'agency',
     systemName: 'Residential Real Estate',
     tags: ['realestate', 'residential', 'modern', 'light'],
-    code: wrapInReactComponent(reLight, 'HomeQuest Realty — Find Your Home'),
+    code: reLight,
+    title: 'HomeQuest Realty — Find Your Home',
   },
   {
     id: 'realestate-bold-investment',
@@ -363,7 +364,8 @@ export const realEstateTemplates: LayoutTemplate[] = [
     systemType: 'agency',
     systemName: 'RE Investment Platform',
     tags: ['realestate', 'investment', 'private-equity', 'bold'],
-    code: wrapInReactComponent(reBold, 'Greenstone Capital — RE Private Equity'),
+    code: reBold,
+    title: 'Greenstone Capital — RE Private Equity',
   },
 ];
 

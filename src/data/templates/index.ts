@@ -77,7 +77,7 @@ export {
 } from './industryPromptGenerator';
 
 // Utilities (wrapInReactComponent is the primary, wrapInHtmlDoc is deprecated alias)
-export { wrapInReactComponent, wrapInHtmlDoc } from './utils';
+export { wrapInReactComponent, wrapInHtmlDoc, getTemplateReactCode } from './utils';
 
 // Advanced CSS System
 export { 

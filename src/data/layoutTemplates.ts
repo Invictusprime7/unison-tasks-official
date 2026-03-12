@@ -43,6 +43,7 @@ export {
   // Utilities
   wrapInReactComponent,
   wrapInHtmlDoc, // deprecated alias
+  getTemplateReactCode,
   
   
   // Salon templates only

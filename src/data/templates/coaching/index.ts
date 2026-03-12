@@ -6,7 +6,6 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 const COACHING_DARK_STYLES = `
@@ -413,7 +412,8 @@ export const coachingTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Executive Coaching System',
     tags: ['coaching', 'executive', 'leadership', 'premium', 'dark'],
-    code: wrapInReactComponent(coachingDark, 'Elevate Executive Coaching'),
+    code: coachingDark,
+    title: 'Elevate Executive Coaching',
   },
   {
     id: 'coaching-light-approachable',
@@ -423,7 +423,8 @@ export const coachingTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Life Coaching System',
     tags: ['coaching', 'life-coach', 'wellness', 'warm', 'light'],
-    code: wrapInReactComponent(coachingLight, 'Sarah Wells — Life Coach'),
+    code: coachingLight,
+    title: 'Sarah Wells — Life Coach',
   },
   {
     id: 'coaching-bold-motivational',
@@ -433,7 +434,8 @@ export const coachingTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Speaker Coaching System',
     tags: ['coaching', 'speaker', 'motivational', 'bold', 'performance'],
-    code: wrapInReactComponent(coachingBold, 'Marcus Cole — Performance Coach'),
+    code: coachingBold,
+    title: 'Marcus Cole — Performance Coach',
   },
 ];
 

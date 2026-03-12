@@ -6,7 +6,6 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 const ECOM_DARK_STYLES = `
@@ -448,7 +447,8 @@ export const ecommerceTemplates: LayoutTemplate[] = [
     systemType: 'store',
     systemName: 'Fashion E-commerce',
     tags: ['ecommerce', 'fashion', 'luxury', 'store', 'dark'],
-    code: wrapInReactComponent(ecomDark, 'NOIR — Minimal Luxury Fashion'),
+    code: ecomDark,
+    title: 'NOIR — Minimal Luxury Fashion',
   },
   {
     id: 'ecommerce-light-product',
@@ -458,7 +458,8 @@ export const ecommerceTemplates: LayoutTemplate[] = [
     systemType: 'store',
     systemName: 'Product Store',
     tags: ['ecommerce', 'skincare', 'beauty', 'clean', 'light'],
-    code: wrapInReactComponent(ecomLight, 'Lumina — Clean Beauty'),
+    code: ecomLight,
+    title: 'Lumina — Clean Beauty',
   },
   {
     id: 'ecommerce-bold-lifestyle',
@@ -468,7 +469,8 @@ export const ecommerceTemplates: LayoutTemplate[] = [
     systemType: 'store',
     systemName: 'Lifestyle Store',
     tags: ['ecommerce', 'outdoor', 'lifestyle', 'bold', 'adventure'],
-    code: wrapInReactComponent(ecomBold, 'SUMMIT — Performance Outdoor Gear'),
+    code: ecomBold,
+    title: 'SUMMIT — Performance Outdoor Gear',
   },
 ];
 

@@ -6,7 +6,6 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 const PORT_DARK_STYLES = `
@@ -320,7 +319,8 @@ export const portfolioTemplates: LayoutTemplate[] = [
     systemType: 'portfolio',
     systemName: 'Designer Portfolio',
     tags: ['portfolio', 'designer', 'brand', 'minimal', 'dark'],
-    code: wrapInReactComponent(portfolioDark, 'Elena Voss — Brand Designer'),
+    code: portfolioDark,
+    title: 'Elena Voss — Brand Designer',
   },
   {
     id: 'portfolio-light-gallery',
@@ -330,7 +330,8 @@ export const portfolioTemplates: LayoutTemplate[] = [
     systemType: 'portfolio',
     systemName: 'Photography Portfolio',
     tags: ['portfolio', 'photographer', 'gallery', 'light'],
-    code: wrapInReactComponent(portfolioLight, 'James Morrison — Photography'),
+    code: portfolioLight,
+    title: 'James Morrison — Photography',
   },
   {
     id: 'portfolio-bold-experimental',
@@ -340,7 +341,8 @@ export const portfolioTemplates: LayoutTemplate[] = [
     systemType: 'portfolio',
     systemName: 'Developer Portfolio',
     tags: ['portfolio', 'developer', 'creative-coding', 'bold'],
-    code: wrapInReactComponent(portfolioBold, 'kai.dev — Creative Developer'),
+    code: portfolioBold,
+    title: 'kai.dev — Creative Developer',
   },
 ];
 

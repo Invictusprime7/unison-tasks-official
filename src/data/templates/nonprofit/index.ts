@@ -6,7 +6,6 @@
  */
 
 import { LayoutTemplate } from '../types';
-import { wrapInReactComponent } from '../utils';
 import { ADVANCED_CSS, INTERACTIVE_SCRIPT, SCROLL_REVEAL_SCRIPT } from '../advancedCss';
 
 const NP_WARM_STYLES = `
@@ -384,7 +383,8 @@ export const nonprofitTemplates: LayoutTemplate[] = [
     systemType: 'content',
     systemName: 'Nonprofit Platform',
     tags: ['nonprofit', 'charity', 'food-bank', 'warm', 'mission'],
-    code: wrapInReactComponent(npWarm, 'Harvest Hope — Fighting Hunger'),
+    code: npWarm,
+    title: 'Harvest Hope — Fighting Hunger',
   },
   {
     id: 'nonprofit-clean-institutional',
@@ -394,7 +394,8 @@ export const nonprofitTemplates: LayoutTemplate[] = [
     systemType: 'content',
     systemName: 'Nonprofit Platform',
     tags: ['nonprofit', 'water', 'institutional', 'clean', 'light'],
-    code: wrapInReactComponent(npClean, 'WaterFirst Foundation — Clean Water'),
+    code: npClean,
+    title: 'WaterFirst Foundation — Clean Water',
   },
   {
     id: 'nonprofit-bold-impact',
@@ -404,7 +405,8 @@ export const nonprofitTemplates: LayoutTemplate[] = [
     systemType: 'content',
     systemName: 'Nonprofit Platform',
     tags: ['nonprofit', 'environment', 'impact', 'bold', 'green'],
-    code: wrapInReactComponent(npBold, 'Project Green — Protect Our Planet'),
+    code: npBold,
+    title: 'Project Green — Protect Our Planet',
   },
 ];
 
