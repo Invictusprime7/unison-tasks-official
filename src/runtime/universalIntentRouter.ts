@@ -236,11 +236,11 @@ export class UniversalIntentRouter {
     let resolved = resolvedIntentCache.get(element);
     
     if (!resolved) {
-      // Extract context
-      const ctx = extractButtonContext(element);
+      // Use autoBinder to resolve intent from element context
+      const node = this.extractNodeFromElement(element);
+      const binding = bindIntent(node);
       
-      // Resolve intent (AI only in builder mode)
-      resolved = await resolveIntent(ctx, this.config.mode === 'builder');
+      resolved = bindingToResolved(binding);
       
       // Cache for future clicks
       if (resolved.confidence >= 0.7) {
