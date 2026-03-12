@@ -643,7 +643,8 @@ export const restaurantTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Bistro Reservation System',
     tags: ['restaurant', 'bistro', 'casual', 'booking', 'light'],
-    code: wrapInReactComponent(restaurantLight, "Bella's Bistro — Neighborhood Restaurant"),
+    code: restaurantLight,
+    title: "Bella's Bistro — Neighborhood Restaurant",
   },
   {
     id: 'restaurant-bold-farm-table',
