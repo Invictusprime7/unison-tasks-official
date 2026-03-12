@@ -36,6 +36,7 @@ import {
 import { User } from "@supabase/supabase-js";
 import { getTemplatesByCategory } from "@/data/templates";
 import type { BusinessSystemType, LayoutCategory } from "@/data/templates/types";
+import { getCompositionReactCode, getCompositionMeta } from "@/utils/compositionReference";
 import { cn } from "@/lib/utils";
 import { templateToVFSFiles } from "@/utils/templateToVFS";
 import { applyDesignProfileToTemplate } from "@/utils/designPatternExtractor";
@@ -106,25 +107,38 @@ const CHIP_TO_CATEGORY: Record<string, LayoutCategory> = {
 };
 
 /**
- * Picks the best template HTML for a given chip to use as AI reference.
- * Prefers the first (dark luxury) variant as it's typically the most premium.
+ * Picks the best template reference for a given chip.
+ * Prefers React composition code from the section registry; falls back to legacy HTML.
  */
 function getTemplateReference(chipId: string): { templateId: string; templateHtml: string; templateCode: string; templateName: string; systemType: BusinessSystemType } | null {
   const systemType = CHIP_TO_SYSTEM[chipId];
   const category = CHIP_TO_CATEGORY[chipId];
   if (!systemType || !category) return null;
+
+  // Prefer composition-based React code
+  const compositionCode = getCompositionReactCode(category);
+  const compositionMeta = getCompositionMeta(category);
+  if (compositionCode && compositionMeta) {
+    return {
+      templateId: compositionMeta.compositionId,
+      templateHtml: compositionCode,
+      templateCode: compositionCode,
+      templateName: compositionMeta.name,
+      systemType,
+    };
+  }
   
+  // Fallback to legacy HTML templates
   const templates = getTemplatesByCategory(category);
   if (!templates.length) return null;
   
-  // Pick first template (dark luxury variant) as the quality baseline
   const bestTemplate = templates[0];
   if (!bestTemplate.code || bestTemplate.code.length < 100) return null;
   
   return {
     templateId: bestTemplate.id,
-    templateHtml: bestTemplate.code, // raw HTML for AI reference
-    templateCode: bestTemplate.code, // raw HTML (wrapped to React at launch time)
+    templateHtml: bestTemplate.code,
+    templateCode: bestTemplate.code,
     templateName: bestTemplate.name,
     systemType,
   };

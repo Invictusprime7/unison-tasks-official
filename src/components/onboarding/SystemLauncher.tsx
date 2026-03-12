@@ -31,6 +31,7 @@ import {
   type LayoutCategory,
 } from "@/data/templates/types";
 import { getTemplatesByCategory, getTemplateReactCode } from "@/data/templates";
+import { getCompositionReactCode, getCompositionMeta } from "@/utils/compositionReference";
 import {
   getTemplateManifest,
   getDefaultManifestForSystem,
@@ -337,6 +338,12 @@ export const SystemLauncher = ({
 
       const userPrompt = `Create a unique, premium ${system.name.toLowerCase()} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.${themeInstruction}${customInstruction}`;
 
+      // Prefer composition-based React code over legacy HTML
+      const compositionCode = getCompositionReactCode(selectedTemplate.category);
+      const compositionMetaData = getCompositionMeta(selectedTemplate.category);
+      const referenceCode = compositionCode || selectedTemplate.code;
+      const referenceId = compositionMetaData?.compositionId || selectedTemplate.id;
+
       const { data, error } = await supabase.functions.invoke(
         "systems-build",
         {
@@ -344,8 +351,8 @@ export const SystemLauncher = ({
             blueprint,
             userPrompt,
             enhanceWithAI: true,
-            templateId: selectedTemplate.id,
-            templateHtml: selectedTemplate.code,
+            templateId: referenceId,
+            templateHtml: referenceCode,
             variantMode: true,
             variationSeed: `v${Date.now().toString(36)}_${Math.random()
               .toString(36)
