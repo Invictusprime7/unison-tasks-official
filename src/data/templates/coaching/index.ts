@@ -412,7 +412,8 @@ export const coachingTemplates: LayoutTemplate[] = [
     systemType: 'booking',
     systemName: 'Executive Coaching System',
     tags: ['coaching', 'executive', 'leadership', 'premium', 'dark'],
-    code: wrapInReactComponent(coachingDark, 'Elevate Executive Coaching'),
+    code: coachingDark,
+    title: 'Elevate Executive Coaching',
   },
   {
     id: 'coaching-light-approachable',
