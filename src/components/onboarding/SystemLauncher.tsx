@@ -201,6 +201,23 @@ export const SystemLauncher = ({
     setEditedTemplateFiles(null);
   };
 
+  const handleDeleteSavedTemplate = async (templateId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const dbId = templateId.replace("saved-", "");
+    const { error } = await supabase.from("design_templates").delete().eq("id", dbId);
+    if (error) {
+      toast.error("Failed to delete template");
+      return;
+    }
+    setUserSavedTemplates((prev) => prev.filter((t) => t.id !== templateId));
+    if (selectedTemplate?.id === templateId) {
+      setSelectedTemplate(null);
+      setEditedTemplateCode(null);
+      setEditedTemplateFiles(null);
+    }
+    toast.success("Template deleted");
+  };
+
   const handleLaunch = async () => {
     if (!selectedSystem || !selectedTemplate) return;
     const system = businessSystems.find((s) => s.id === selectedSystem);
