@@ -147,9 +147,8 @@ function extractRawHtmlFromMixed(content: string): string | null {
  * Uses htmlToJsx converter — no dangerouslySetInnerHTML.
  */
 function wrapHtmlInReactComponent(html: string): string {
-  // Use the shared converter from htmlToJsx utility
-  const { htmlDocToReactComponent: convert } = await import('@/utils/htmlToJsx');
-  return convert(html, 'App');
+  const { htmlDocToReactComponent } = require('@/utils/htmlToJsx');
+  return htmlDocToReactComponent(html, 'App');
 }
 
 // Types
