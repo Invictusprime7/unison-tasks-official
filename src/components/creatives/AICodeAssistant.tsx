@@ -892,6 +892,14 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         if (lowerMessage.match(/\b(make|add)\b.*\b(dynamic|interactive|animated|live|real-time)\b/)) {
           return 'full-control';
         }
+        // Auth/login flow requests — these are modify actions (wire existing elements)
+        if (lowerMessage.match(/\b(add|wire|connect|implement|enable)\b.*\b(sign\s*in|sign\s*up|login|logout|auth|authentication)\b/)) {
+          return 'modify';
+        }
+        // Routing/navigation requests
+        if (lowerMessage.match(/\b(add|wire|implement)\b.*\b(navigation|routing|redirect|page\s*link)\b/)) {
+          return 'modify';
+        }
         if (lowerMessage.match(/\b(add|insert|include|create new|put|place)\b.*\b(section|element|component|button|image|form|card|hero|footer|header|nav)/)) {
           return 'add';
         }
