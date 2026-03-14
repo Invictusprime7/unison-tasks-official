@@ -248,13 +248,14 @@ export const SystemLauncher = ({
                   {
                     role: "user",
                     content:
-                      `Apply the "${selectedTheme.label}" theme to this template.\n\n` +
-                      `${selectedTheme.promptGuidance}\n\n` +
+                      `Apply the "${selectedTheme.label}" aesthetic to this template.\n\n` +
+                      `${selectedTheme.styleDirective}\n\n` +
                       `STRICT RULES:\n` +
-                      `1. ONLY modify: font families, font sizes, font weights, colors, color schemes, text styling, backgrounds\n` +
-                      `2. DO NOT change: layout structure, section order, images, icons, button positions, navigation structure\n` +
-                      `3. PRESERVE ALL: data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes exactly as-is\n` +
-                      `4. PRESERVE ALL: form inputs, interactive elements, and their functionality\n\n` +
+                      `1. ONLY modify: font families, font sizes, font weights, colors, color schemes, text styling, backgrounds, border-radius, shadows\n` +
+                      `2. DO NOT change: text content, copy, headlines, descriptions, service names, industry-specific language\n` +
+                      `3. DO NOT change: layout structure, section order, images, icons, button positions, navigation structure\n` +
+                      `4. PRESERVE ALL: data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes exactly as-is\n` +
+                      `5. PRESERVE ALL: form inputs, interactive elements, and their functionality\n\n` +
                       `Output ONLY the complete updated code. No markdown, no explanations.`,
                   },
                 ],
@@ -364,9 +365,7 @@ export const SystemLauncher = ({
         brand: {
           business_name: `${system.name} Business`,
           tagline: `Professional ${system.name.toLowerCase()} services you can trust`,
-          tone: selectedTheme
-            ? selectedTheme.label.toLowerCase()
-            : "professional and friendly",
+          tone: "professional and friendly",
           typography: fonts,
         },
         design,
@@ -374,7 +373,7 @@ export const SystemLauncher = ({
       };
 
       const themeInstruction = selectedTheme
-        ? `\n\n🎨 THEME DIRECTION: ${selectedTheme.label}\n${selectedTheme.promptGuidance}\n`
+        ? `\n\n🎨 VISUAL AESTHETIC (colors/typography/formatting ONLY — do NOT change industry content or text copy): ${selectedTheme.label}\n${selectedTheme.styleDirective}\nPalette: bg=${selectedTheme.palette.bg}, fg=${selectedTheme.palette.fg}, accent=${selectedTheme.palette.accent}${selectedTheme.palette.accent2 ? `, accent2=${selectedTheme.palette.accent2}` : ''}\nTypography: heading=${selectedTheme.typography.headingFont}, body=${selectedTheme.typography.bodyFont}, weight=${selectedTheme.typography.headingWeight}\n`
         : "";
       const customInstruction = customPrompt.trim()
         ? `\n\nADDITIONAL INSTRUCTIONS: ${customPrompt.trim()}\n`
