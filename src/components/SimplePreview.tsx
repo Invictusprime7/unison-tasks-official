@@ -96,7 +96,7 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
 
     // Detect React/TSX component code and extract embedded HTML/CSS
     if (rawCode.includes('import React') || rawCode.includes('export default function')) {
-      // Extract TEMPLATE_HTML and TEMPLATE_STYLES from React wrapper
+      // Legacy: Extract TEMPLATE_HTML and TEMPLATE_STYLES from React wrapper
       const htmlMatch = rawCode.match(/const\s+TEMPLATE_HTML\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
       const stylesMatch = rawCode.match(/const\s+TEMPLATE_STYLES\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
       
@@ -108,7 +108,6 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
           try { styles = JSON.parse(stylesMatch[1]); } catch { styles = stylesMatch[1].slice(1, -1); }
         }
         
-        // Extract body classes from the component
         const bodyClassMatch = rawCode.match(/document\.body\.classList\.add\(([^)]+)\)/);
         let bodyClasses = '';
         if (bodyClassMatch) {
@@ -126,7 +125,42 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
 </html>`;
       }
       
-      // React code without TEMPLATE_HTML — can't render as static HTML
+      // Native JSX React component — extract TEMPLATE_CSS/TEMPLATE_STYLES for static preview
+      const cssMatch = rawCode.match(/const\s+(?:TEMPLATE_CSS|TEMPLATE_STYLES)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
+      let extractedCss = '';
+      if (cssMatch) {
+        try { extractedCss = JSON.parse(cssMatch[1]); } catch { extractedCss = ''; }
+      }
+
+      // Try to extract JSX return body for static preview
+      const returnMatch = rawCode.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+      if (returnMatch) {
+        // Convert className back to class for static HTML rendering
+        const jsxContent = returnMatch[1]
+          .replace(/className=/g, 'class=')
+          .replace(/\{\/\*[\s\S]*?\*\/\}/g, '') // Remove JSX comments
+          .replace(/style=\{\{([^}]*)\}\}/g, '') // Remove style objects (can't parse easily)
+          .replace(/\{[^}]*\}/g, ''); // Remove other JSX expressions
+        
+        const bodyClassMatch = rawCode.match(/document\.body\.classList\.add\(([^)]+)\)/);
+        let bodyClasses = '';
+        if (bodyClassMatch) {
+          bodyClasses = bodyClassMatch[1].replace(/['"]/g, '').split(',').map(c => c.trim()).join(' ');
+        }
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <style>${extractedCss}</style>
+</head>
+<body class="${bodyClasses}">${jsxContent}</body>
+</html>`;
+      }
+      
+      // React code we can't extract — show message
       return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/></head>
 <body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;background:#0a0a0f;color:#94a3b8;">
