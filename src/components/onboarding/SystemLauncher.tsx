@@ -638,8 +638,167 @@ export const SystemLauncher = ({
             </motion.div>
           )}
 
-          {/* ── Step 2: Theme ── */}
-          {step === "theme" && selectedSystemData && (
+          {/* ── Step 2: Templates ── */}
+          {step === "templates" && selectedSystemData && (
+            <motion.div
+              key="templates"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col"
+            >
+              <div className="px-6 pt-4 pb-2 flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleBack}
+                  className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/[0.06]"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">{selectedSystemData.icon}</span>
+                    <div>
+                      <h2 className="text-lg font-bold text-white tracking-tight">
+                        {selectedSystemData.name} Templates
+                      </h2>
+                      <p className="text-xs text-white/35">
+                        {systemTemplates.length} starters
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {availableCategories.length > 1 && (
+                <div className="px-6 pb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                  <button
+                    onClick={() => setCategoryFilter("all")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200",
+                      categoryFilter === "all"
+                        ? "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30"
+                        : "bg-white/[0.03] text-white/40 hover:bg-white/[0.06] hover:text-white/60"
+                    )}
+                  >
+                    All
+                  </button>
+                  {availableCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        setCategoryFilter(cat);
+                        if (selectedTemplate && selectedTemplate.category !== cat)
+                          setSelectedTemplate(null);
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200",
+                        categoryFilter === cat
+                          ? "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30"
+                          : "bg-white/[0.03] text-white/40 hover:bg-white/[0.06] hover:text-white/60"
+                      )}
+                    >
+                      {categoryLabels[cat] || cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <ScrollArea className="flex-1 max-h-[46vh] px-6 pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {visibleTemplates.map((template) => {
+                    const isSelected = selectedTemplate?.id === template.id;
+                    return (
+                      <motion.div
+                        key={template.id}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleTemplateSelect(template)}
+                        className={cn(
+                          "relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200",
+                          "border",
+                          isSelected
+                            ? "border-cyan-500/40 shadow-[0_0_20px_rgba(0,200,255,0.08)] bg-cyan-500/[0.03]"
+                            : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]"
+                        )}
+                      >
+                        <div className="aspect-[16/10] bg-white/[0.02] relative overflow-hidden">
+                          <div className="absolute inset-0 p-1.5 overflow-hidden">
+                            <div
+                              className="w-full h-full rounded bg-white transform scale-[0.25] origin-top-left"
+                              style={{ width: "400%", height: "400%", pointerEvents: "none" }}
+                              dangerouslySetInnerHTML={{
+                                __html: template.code.replace(/<script[\s\S]*?<\/script>/gi, ""),
+                              }}
+                            />
+                          </div>
+                          <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                            <Eye className="h-5 w-5 text-white/80" />
+                          </div>
+                          {isSelected && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg"
+                            >
+                              <Check className="h-3.5 w-3.5 text-[#07080F]" />
+                            </motion.div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <h3 className="font-medium text-xs text-white/80 mb-1 line-clamp-1">
+                            {template.name}
+                          </h3>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-white/[0.05] text-white/40 border-0">
+                              {categoryLabels[template.category] || template.category}
+                            </Badge>
+                            {template.tags?.slice(0, 1).map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0 text-white/25 border-white/[0.08]">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+
+              <div className="px-6 py-4 border-t border-white/[0.06] flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  {selectedTemplate ? (
+                    <div className="flex items-center gap-2.5">
+                      <Layout className="h-4 w-4 text-cyan-400/60 shrink-0" />
+                      <p className="text-sm font-medium text-white/80 truncate">
+                        {selectedTemplate.name}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-white/25">Select a template to continue</p>
+                  )}
+                </div>
+                <Button
+                  onClick={handleTemplateContinue}
+                  disabled={!selectedTemplate}
+                  className={cn(
+                    "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30",
+                    "hover:bg-cyan-500/25 hover:shadow-[0_0_16px_rgba(0,200,255,0.15)]",
+                    "transition-all"
+                  )}
+                >
+                  Continue
+                  <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step 3: Theme (styling only — no layout/content changes) ── */}
+          {step === "theme" && selectedSystemData && selectedTemplate && (
             <motion.div
               key="theme"
               initial={{ opacity: 0, y: 12 }}
@@ -648,7 +807,6 @@ export const SystemLauncher = ({
               transition={{ duration: 0.2 }}
               className="flex flex-col"
             >
-              {/* Header */}
               <div className="px-6 pt-4 pb-3 flex items-center gap-3">
                 <Button
                   variant="ghost"
@@ -663,11 +821,9 @@ export const SystemLauncher = ({
                     Choose your aesthetic
                   </h2>
                   <p className="text-xs text-white/35">
-                    Sets the visual direction for your{" "}
-                    <span className="text-cyan-400/70">
-                      {selectedSystemData.name.toLowerCase()}
-                    </span>{" "}
-                    site
+                    Style your{" "}
+                    <span className="text-cyan-400/70">{selectedTemplate.name}</span>{" "}
+                    template
                   </p>
                 </div>
               </div>
@@ -690,34 +846,20 @@ export const SystemLauncher = ({
                             : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]"
                         )}
                       >
-                        {/* Color swatches */}
                         <div className="flex gap-1.5 mb-3">
                           {[theme.palette.bg, theme.palette.accent, theme.palette.accent2 || theme.palette.fg].map(
                             (color, ci) => (
                               <div
                                 key={ci}
-                                className={cn(
-                                  "w-7 h-7 rounded-lg transition-transform duration-200",
-                                  isSelected && "scale-110"
-                                )}
-                                style={{
-                                  backgroundColor: color,
-                                  boxShadow: isSelected
-                                    ? `0 0 8px ${color}40`
-                                    : "none",
-                                }}
+                                className={cn("w-7 h-7 rounded-lg transition-transform duration-200", isSelected && "scale-110")}
+                                style={{ backgroundColor: color, boxShadow: isSelected ? `0 0 8px ${color}40` : "none" }}
                               />
                             )
                           )}
                         </div>
-
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-base opacity-70">
-                            {theme.icon}
-                          </span>
-                          <h3 className="font-semibold text-sm text-white/90">
-                            {theme.label}
-                          </h3>
+                          <span className="text-base opacity-70">{theme.icon}</span>
+                          <h3 className="font-semibold text-sm text-white/90">{theme.label}</h3>
                           {isSelected && (
                             <motion.div
                               initial={{ scale: 0 }}
@@ -728,22 +870,18 @@ export const SystemLauncher = ({
                             </motion.div>
                           )}
                         </div>
-                        <p className="text-xs text-white/30 leading-relaxed">
-                          {theme.description}
-                        </p>
+                        <p className="text-xs text-white/30 leading-relaxed">{theme.description}</p>
                       </motion.button>
                     );
                   })}
                 </div>
 
-                {/* Custom prompt */}
                 <div className="mt-5">
                   <label className="text-xs font-medium text-white/50 mb-2 block">
-                    Custom instructions{" "}
-                    <span className="text-white/20">(optional)</span>
+                    Custom instructions <span className="text-white/20">(optional)</span>
                   </label>
                   <textarea
-                    placeholder="e.g., Dark navy background, include testimonials from local customers…"
+                    placeholder="e.g., Dark navy background, warm earth tones…"
                     value={customPrompt}
                     onChange={(e) => setCustomPrompt(e.target.value)}
                     className={cn(
@@ -756,333 +894,76 @@ export const SystemLauncher = ({
                 </div>
               </ScrollArea>
 
-              {/* Footer */}
               <div className="px-6 py-4 border-t border-white/[0.06] flex items-center justify-between">
                 <div className="flex-1 text-sm">
                   {selectedTheme ? (
                     <span className="flex items-center gap-2 text-white/60">
                       <span className="text-lg">{selectedTheme.icon}</span>
                       <span>
-                        <span className="text-cyan-400 font-medium">
-                          {selectedTheme.label}
-                        </span>{" "}
-                        selected
+                        <span className="text-cyan-400 font-medium">{selectedTheme.label}</span> selected
                       </span>
                     </span>
                   ) : (
-                    <span className="text-white/25">
-                      No theme — default style will be used
-                    </span>
+                    <span className="text-white/25">No theme — default minimal style</span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
-                    onClick={handleThemeContinue}
-                    className="text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                    size="sm"
+                    onClick={() => setAiEditOpen(true)}
+                    disabled={isAIGenerating}
+                    className="text-white/40 hover:text-white/70 hover:bg-white/[0.04] h-9 text-xs"
                   >
-                    Skip
+                    <Zap className="mr-1.5 h-3.5 w-3.5" />
+                    AI edit
                   </Button>
                   <Button
-                    onClick={handleThemeContinue}
+                    size="sm"
+                    onClick={handleAIGenerate}
+                    disabled={isAIGenerating || isLaunching}
                     className={cn(
-                      "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30",
-                      "hover:bg-cyan-500/25 hover:shadow-[0_0_16px_rgba(0,200,255,0.15)]",
+                      "h-9 text-xs px-4",
+                      "bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/30",
+                      "hover:bg-fuchsia-500/25 hover:shadow-[0_0_16px_rgba(255,0,255,0.12)]"
+                    )}
+                  >
+                    {isAIGenerating ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Generating…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        AI Variation
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleLaunch}
+                    disabled={isLaunching || isAIGenerating}
+                    className={cn(
+                      "h-9 text-xs px-5",
+                      "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30",
+                      "hover:bg-cyan-500/30 hover:shadow-[0_0_20px_rgba(0,200,255,0.15)]",
                       "transition-all"
                     )}
                   >
-                    Continue
-                    <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Step 3: Templates ── */}
-          {step === "templates" && selectedSystemData && (
-            <motion.div
-              key="templates"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col"
-            >
-              {/* Header */}
-              <div className="px-6 pt-4 pb-2 flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleBack}
-                  className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/[0.06]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl">
-                      {selectedSystemData.icon}
-                    </span>
-                    <div>
-                      <h2 className="text-lg font-bold text-white tracking-tight">
-                        {selectedSystemData.name} Templates
-                      </h2>
-                      <p className="text-xs text-white/35">
-                        {systemTemplates.length} starters
-                        {selectedTheme && (
-                          <span>
-                            {" "}
-                            ·{" "}
-                            <span className="text-cyan-400/60">
-                              {selectedTheme.icon} {selectedTheme.label}
-                            </span>
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Category tabs */}
-              {availableCategories.length > 1 && (
-                <div className="px-6 pb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-                  <button
-                    onClick={() => setCategoryFilter("all")}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200",
-                      categoryFilter === "all"
-                        ? "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30"
-                        : "bg-white/[0.03] text-white/40 hover:bg-white/[0.06] hover:text-white/60"
-                    )}
-                  >
-                    All
-                  </button>
-                  {availableCategories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => {
-                        setCategoryFilter(cat);
-                        if (
-                          selectedTemplate &&
-                          selectedTemplate.category !== cat
-                        )
-                          setSelectedTemplate(null);
-                      }}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200",
-                        categoryFilter === cat
-                          ? "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30"
-                          : "bg-white/[0.03] text-white/40 hover:bg-white/[0.06] hover:text-white/60"
-                      )}
-                    >
-                      {categoryLabels[cat] || cat}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Template grid */}
-              <ScrollArea className="flex-1 max-h-[46vh] px-6 pb-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {visibleTemplates.map((template) => {
-                    const isSelected =
-                      selectedTemplate?.id === template.id;
-                    return (
-                      <motion.div
-                        key={template.id}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleTemplateSelect(template)}
-                        className={cn(
-                          "relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200",
-                          "border",
-                          isSelected
-                            ? "border-cyan-500/40 shadow-[0_0_20px_rgba(0,200,255,0.08)] bg-cyan-500/[0.03]"
-                            : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]"
-                        )}
-                      >
-                        {/* Preview */}
-                        <div className="aspect-[16/10] bg-white/[0.02] relative overflow-hidden">
-                          <div className="absolute inset-0 p-1.5 overflow-hidden">
-                            <div
-                              className="w-full h-full rounded bg-white transform scale-[0.25] origin-top-left"
-                              style={{
-                                width: "400%",
-                                height: "400%",
-                                pointerEvents: "none",
-                              }}
-                              dangerouslySetInnerHTML={{
-                                __html: (
-                                  isSelected
-                                    ? effectiveTemplateCode ??
-                                      template.code
-                                    : template.code
-                                )
-                                  .replace(
-                                    /<script[\s\S]*?<\/script>/gi,
-                                    ""
-                                  ),
-                              }}
-                            />
-                          </div>
-                          {/* Hover overlay */}
-                          <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                            <Eye className="h-5 w-5 text-white/80" />
-                          </div>
-                          {/* Selected check */}
-                          {isSelected && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg"
-                            >
-                              <Check className="h-3.5 w-3.5 text-[#07080F]" />
-                            </motion.div>
-                          )}
-                        </div>
-
-                        {/* Info */}
-                        <div className="p-3">
-                          <h3 className="font-medium text-xs text-white/80 mb-1 line-clamp-1">
-                            {template.name}
-                          </h3>
-                          <div className="flex items-center gap-1.5">
-                            <Badge
-                              variant="secondary"
-                              className="text-[9px] px-1.5 py-0 bg-white/[0.05] text-white/40 border-0"
-                            >
-                              {categoryLabels[template.category] ||
-                                template.category}
-                            </Badge>
-                            {template.tags?.slice(0, 1).map((tag) => (
-                              <Badge
-                                key={tag}
-                                variant="outline"
-                                className="text-[9px] px-1.5 py-0 text-white/25 border-white/[0.08]"
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-
-              {/* Footer */}
-              <div className="px-6 py-4 border-t border-white/[0.06]">
-                <div className="flex items-center justify-between gap-4">
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    {selectedTemplate ? (
-                      <div className="flex items-center gap-2.5">
-                        <Layout className="h-4 w-4 text-cyan-400/60 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-white/80 truncate">
-                            {selectedTemplate.name}
-                          </p>
-                          <p className="text-[11px] text-white/30">
-                            {selectedTheme
-                              ? `${selectedTheme.label} theme · `
-                              : ""}
-                            Ready to install
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-white/25">
-                        Select a template to continue
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Backend hints */}
-                  <div className="hidden lg:flex items-center gap-3 text-[10px] text-white/20">
-                    {selectedManifest && (
+                    {isLaunching ? (
                       <>
-                        <span className="flex items-center gap-1">
-                          <Database className="h-3 w-3 text-cyan-500/40" />
-                          {selectedManifest.tables.length}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Workflow className="h-3 w-3 text-cyan-500/40" />
-                          {selectedManifest.workflows.length}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Shield className="h-3 w-3 text-cyan-500/40" />
-                          {selectedManifest.intents.length}
-                        </span>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Installing…
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-1.5 h-3.5 w-3.5" />
+                        Start Building
+                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                       </>
                     )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setAiEditOpen(true)}
-                      disabled={!selectedTemplate || isAIGenerating}
-                      className="text-white/40 hover:text-white/70 hover:bg-white/[0.04] h-9 text-xs"
-                    >
-                      <Zap className="mr-1.5 h-3.5 w-3.5" />
-                      AI edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleAIGenerate}
-                      disabled={
-                        !selectedTemplate || isAIGenerating || isLaunching
-                      }
-                      className={cn(
-                        "h-9 text-xs px-4",
-                        "bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/30",
-                        "hover:bg-fuchsia-500/25 hover:shadow-[0_0_16px_rgba(255,0,255,0.12)]"
-                      )}
-                    >
-                      {isAIGenerating ? (
-                        <>
-                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          Generating…
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                          AI Variation
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleLaunch}
-                      disabled={
-                        !selectedTemplate || isLaunching || isAIGenerating
-                      }
-                      className={cn(
-                        "h-9 text-xs px-5",
-                        "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30",
-                        "hover:bg-cyan-500/30 hover:shadow-[0_0_20px_rgba(0,200,255,0.15)]",
-                        "transition-all"
-                      )}
-                    >
-                      {isLaunching ? (
-                        <>
-                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          Installing…
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="mr-1.5 h-3.5 w-3.5" />
-                          Start Building
-                          <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  </Button>
                 </div>
               </div>
             </motion.div>
