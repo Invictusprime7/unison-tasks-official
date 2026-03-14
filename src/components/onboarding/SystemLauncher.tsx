@@ -373,7 +373,7 @@ export const SystemLauncher = ({
       };
 
       const themeInstruction = selectedTheme
-        ? `\n\n🎨 THEME DIRECTION: ${selectedTheme.label}\n${selectedTheme.promptGuidance}\n`
+        ? `\n\n🎨 VISUAL AESTHETIC (colors/typography/formatting ONLY — do NOT change industry content or text copy): ${selectedTheme.label}\n${selectedTheme.styleDirective}\nPalette: bg=${selectedTheme.palette.bg}, fg=${selectedTheme.palette.fg}, accent=${selectedTheme.palette.accent}${selectedTheme.palette.accent2 ? `, accent2=${selectedTheme.palette.accent2}` : ''}\nTypography: heading=${selectedTheme.typography.headingFont}, body=${selectedTheme.typography.bodyFont}, weight=${selectedTheme.typography.headingWeight}\n`
         : "";
       const customInstruction = customPrompt.trim()
         ? `\n\nADDITIONAL INSTRUCTIONS: ${customPrompt.trim()}\n`
