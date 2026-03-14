@@ -248,13 +248,14 @@ export const SystemLauncher = ({
                   {
                     role: "user",
                     content:
-                      `Apply the "${selectedTheme.label}" theme to this template.\n\n` +
-                      `${selectedTheme.promptGuidance}\n\n` +
+                      `Apply the "${selectedTheme.label}" aesthetic to this template.\n\n` +
+                      `${selectedTheme.styleDirective}\n\n` +
                       `STRICT RULES:\n` +
-                      `1. ONLY modify: font families, font sizes, font weights, colors, color schemes, text styling, backgrounds\n` +
-                      `2. DO NOT change: layout structure, section order, images, icons, button positions, navigation structure\n` +
-                      `3. PRESERVE ALL: data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes exactly as-is\n` +
-                      `4. PRESERVE ALL: form inputs, interactive elements, and their functionality\n\n` +
+                      `1. ONLY modify: font families, font sizes, font weights, colors, color schemes, text styling, backgrounds, border-radius, shadows\n` +
+                      `2. DO NOT change: text content, copy, headlines, descriptions, service names, industry-specific language\n` +
+                      `3. DO NOT change: layout structure, section order, images, icons, button positions, navigation structure\n` +
+                      `4. PRESERVE ALL: data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes exactly as-is\n` +
+                      `5. PRESERVE ALL: form inputs, interactive elements, and their functionality\n\n` +
                       `Output ONLY the complete updated code. No markdown, no explanations.`,
                   },
                 ],
