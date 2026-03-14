@@ -439,7 +439,7 @@ export const SystemLauncher = ({
             startInPreview: true,
           },
         });
-      } else if (generatedCode && generatedCode.length >= 100) {
+      } else if (generatedCode && generatedCode.length >= 100 && looksLikeCode(generatedCode)) {
         // HTML mode — pass raw code
         navigate("/web-builder", {
           state: {
