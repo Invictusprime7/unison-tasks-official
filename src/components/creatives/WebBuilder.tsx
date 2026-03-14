@@ -2601,23 +2601,6 @@ export default function App() {
       console.log('[WebBuilder] Loading template code:', templateName, 'startInPreview:', startInPreview, 'systemType:', navSystemType);
       if (templateName) setCurrentTemplateName(templateName);
       
-      // Auto-scaffold multi-page VFS from generated HTML
-      const isHTML = generatedCode.trim().startsWith('<!DOCTYPE') || generatedCode.trim().startsWith('<html');
-      if (isHTML) {
-        const scaffoldResult = scaffoldMultiPageVFS(generatedCode);
-        // Store the original HTML as /preview.html so VFSPreview can render it directly
-        // (the scaffolder creates /index.html as a Vite entry point which VFSPreview skips)
-        scaffoldResult.files['/preview.html'] = generatedCode;
-        virtualFS.importFiles(scaffoldResult.files);
-        if (scaffoldResult.scaffoldedPages.length > 0) {
-          console.log(`[WebBuilder] Auto-scaffolded ${scaffoldResult.scaffoldedPages.length} linked pages:`, 
-            scaffoldResult.scaffoldedPages.map(p => p.path));
-          toast.success(`${scaffoldResult.pageCount} pages ready`, {
-            description: `Main page + ${scaffoldResult.scaffoldedPages.length} linked pages loaded into VFS`,
-          });
-        }
-      }
-      
       // Auto-hydrate Creator's Playground from AI-generated content
       setTimeout(() => {
         const files = virtualFS.getSandpackFiles();
@@ -2632,10 +2615,10 @@ export default function App() {
         }
       }, 300);
       
-      // Ensure code is React-safe before setting (AI may return raw HTML)
-      const isRawHTML = generatedCode.trim().startsWith('<!DOCTYPE') || 
-        generatedCode.trim().startsWith('<html') ||
-        (generatedCode.includes('<!-- ') || (generatedCode.includes('class=') && !generatedCode.includes('className=')));
+      // Ensure code is pure React/TSX — wrap any remaining HTML as safety net
+      const isRawHTML = !generatedCode.includes('import ') && !generatedCode.includes('export default') &&
+        (generatedCode.trim().startsWith('<!DOCTYPE') || generatedCode.trim().startsWith('<html') ||
+        generatedCode.includes('<!-- ') || (generatedCode.includes('class=') && !generatedCode.includes('className=')));
       const safeCode = isRawHTML
         ? getTemplateReactCode({ code: generatedCode, title: templateName || 'Template' })
         : generatedCode;
