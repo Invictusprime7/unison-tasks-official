@@ -454,16 +454,16 @@ export const SystemLauncher = ({
   };
 
   const handleBack = () => {
-    if (step === "templates") {
-      setStep("theme");
+    if (step === "theme") {
+      setStep("templates");
+      setSelectedTheme(null);
+    } else if (step === "templates") {
+      setStep("industry");
+      setSelectedSystem(null);
       setSelectedTemplate(null);
       setEditedTemplateCode(null);
       setEditedTemplateFiles(null);
       setCategoryFilter("all");
-    } else if (step === "theme") {
-      setStep("industry");
-      setSelectedSystem(null);
-      setSelectedTheme(null);
     }
   };
 
