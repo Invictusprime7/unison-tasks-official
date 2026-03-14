@@ -1197,7 +1197,9 @@ You are generating a DESIGN VARIANT of an existing template. The source template
 - Decorative elements (shapes, blurs, ornaments)
 - Animation styles and timing
 - Border styles and border-radius
-- Body copy and descriptions (NOT button labels or nav links)
+- Body copy and descriptions MUST stay faithful to the industry (a restaurant site talks about food/dining, a salon about beauty/wellness, etc.)
+- NEVER mix industry content (e.g. no haircut services on a restaurant page)
+- You may rewrite copy for freshness but the subject matter MUST match the industry
 
 SOURCE TEMPLATE (preserve all intents/labels, redesign everything else):
 \`\`\`html
