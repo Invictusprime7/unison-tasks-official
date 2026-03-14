@@ -716,6 +716,9 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
       // ai-code-assistant returns { content } with the React files JSON
       let filesJson = reactData.content || reactData.code || "";
       
+      // Strip AI reasoning blocks that may leak from LLM responses
+      filesJson = filesJson.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
+      
       // Try to parse the JSON response
       try {
         // Clean any markdown code fences
