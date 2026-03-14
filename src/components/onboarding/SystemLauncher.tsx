@@ -269,8 +269,12 @@ export const SystemLauncher = ({
               },
             });
           if (!aiError && aiData?.content) {
-            // Ensure AI-returned code is React-safe (may return raw HTML)
-            effectiveCode = getTemplateReactCode({ code: aiData.content, title: selectedTemplate.name });
+            const cleanedThemeCode = extractCleanCode(aiData.content);
+            if (cleanedThemeCode && looksLikeCode(cleanedThemeCode)) {
+              effectiveCode = getTemplateReactCode({ code: cleanedThemeCode, title: selectedTemplate.name });
+            } else {
+              console.warn("[SystemLauncher] Theme AI returned prose, ignoring");
+            }
           }
         } catch (e) {
           console.warn("[SystemLauncher] theme application failed", e);
