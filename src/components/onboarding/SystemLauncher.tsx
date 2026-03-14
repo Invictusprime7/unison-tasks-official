@@ -365,9 +365,7 @@ export const SystemLauncher = ({
         brand: {
           business_name: `${system.name} Business`,
           tagline: `Professional ${system.name.toLowerCase()} services you can trust`,
-          tone: selectedTheme
-            ? selectedTheme.label.toLowerCase()
-            : "professional and friendly",
+          tone: "professional and friendly",
           typography: fonts,
         },
         design,
