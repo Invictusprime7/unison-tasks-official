@@ -422,11 +422,10 @@ export const SystemLauncher = ({
       const generatedCode = generatedFiles?.["src/App.tsx"] || generatedFiles?.["App.tsx"] || data?.code;
 
       if (generatedFiles && typeof generatedFiles === "object" && Object.keys(generatedFiles).length > 0) {
-        // React VFS mode — pass VFS files to WebBuilder
+        // React VFS mode — pass VFS files as source of truth to WebBuilder
         navigate("/web-builder", {
           state: {
             vfsFiles: generatedFiles,
-            generatedCode: generatedFiles["src/App.tsx"] || generatedFiles["App.tsx"] || "",
             templateName: `AI ${selectedTemplate.name}`,
             aesthetic: selectedTheme?.id,
             templateCategory: selectedTemplate.category,
