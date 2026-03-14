@@ -293,7 +293,7 @@ export function BusinessLauncher({ open, onOpenChange }: BusinessLauncherProps) 
         ? `${designProfileContext}\n\n---\n\nUser Request:\n${prompt}`
         : prompt;
 
-      // Call systems-build edge function
+      // Call systems-build edge function with React output
       const { data, error } = await supabase.functions.invoke("systems-build", {
         body: {
           blueprint,
@@ -303,6 +303,7 @@ export function BusinessLauncher({ open, onOpenChange }: BusinessLauncherProps) 
           templateHtml: ref?.templateHtml,
           variantMode: true,
           variationSeed: `v${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+          outputFormat: "react",
           userDesignProfile: hasProfile ? {
             projectCount: savedProjectCount,
             dominantStyle: designProfile?.dominantStyle,
@@ -330,7 +331,9 @@ export function BusinessLauncher({ open, onOpenChange }: BusinessLauncherProps) 
       setBuildStatus("Finalizing pages...");
       await new Promise(r => setTimeout(r, 300));
 
-      const code = data?.code || "";
+      // Prefer React VFS files; fallback to single code string
+      const reactFiles = data?.files;
+      const code = reactFiles?.["src/App.tsx"] || reactFiles?.["App.tsx"] || data?.code || "";
       if (!code || code.length < 50) {
         throw new Error("Failed to generate website code");
       }
