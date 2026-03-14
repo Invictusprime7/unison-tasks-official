@@ -2647,38 +2647,31 @@ export default function App() {
       const { generatedTemplate, templateName, aesthetic } = location.state;
       console.log('[WebBuilder] Loading template from Web Design Kit:', templateName);
       
-      // Convert template to React component (not raw HTML)
-      const sectionsHtml = generatedTemplate.sections?.map((section: any) => `
-        <section className="py-16 px-6">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-4xl font-bold mb-8">${section.name}</h2>
-            <div className="grid gap-6 md:grid-cols-${section.components?.length > 2 ? '3' : '2'}">
-              ${(section.components || []).map((comp: any) => `
-              <div className="p-6 bg-white rounded-lg shadow-lg">
-                <h3 className="text-2xl font-semibold mb-4">${comp.props?.title || 'Component'}</h3>
-                <p className="text-gray-600">${comp.props?.description || 'Component content'}</p>
-              </div>`).join('\n              ')}
-            </div>
+      // Build HTML body from template sections, then wrap in React component
+      const sectionsHtml = (generatedTemplate.sections || []).map((section: any) => {
+        const colCount = section.components?.length > 2 ? 3 : 2;
+        const comps = (section.components || []).map((comp: any) =>
+          `<div class="p-6 bg-white rounded-lg shadow-lg">
+            <h3 class="text-2xl font-semibold mb-4">${comp.props?.title || 'Component'}</h3>
+            <p class="text-gray-600">${comp.props?.description || 'Component content'}</p>
+          </div>`
+        ).join('\n');
+        return `<section class="py-16 px-6">
+          <div class="max-w-7xl mx-auto">
+            <h2 class="text-4xl font-bold mb-8">${section.name}</h2>
+            <div class="grid gap-6 md:grid-cols-${colCount}">${comps}</div>
           </div>
-        </section>`).join('\n        ') || '';
+        </section>`;
+      }).join('\n');
 
-      const reactCode = `import React from 'react';
-
-export default function App() {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Generated Template: ${generatedTemplate.name} */}
-      ${sectionsHtml}
-    </div>
-  );
-}
-`;
+      const bodyHtml = `<div class="min-h-screen bg-gray-50">${sectionsHtml}</div>`;
+      const reactCode = getTemplateReactCode({ code: bodyHtml, title: generatedTemplate.name || templateName || 'Template' });
       
       setEditorCode(reactCode);
       setPreviewCode(reactCode);
       setViewMode('code');
-      toast(\`\${templateName || generatedTemplate.name} loaded!\`, {
-        description: \`\${aesthetic || generatedTemplate.description} - View and edit in Code Editor\`,
+      toast(`${templateName || generatedTemplate.name} loaded!`, {
+        description: `${aesthetic || generatedTemplate.description} - View and edit in Code Editor`,
       });
       window.history.replaceState({}, document.title);
     }
