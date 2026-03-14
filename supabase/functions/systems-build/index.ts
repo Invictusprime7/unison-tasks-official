@@ -821,83 +821,24 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
           } catch { /* fall through */ }
         }
         
-        // If content is raw HTML (or JSX mixed with HTML comments/attributes), wrap it in a React component
+        // If content is raw HTML, convert to native JSX React component
         const looksLikeRawHtml = filesJson.includes("<!DOCTYPE") || filesJson.includes("<html") || 
           filesJson.includes("<header") || filesJson.includes("<!--") || 
           / class="[^"]*"/.test(filesJson) || filesJson.includes("<nav") || filesJson.includes("<footer");
         if (looksLikeRawHtml) {
-          console.warn("[systems-build] Raw HTML detected, wrapping in React component");
-          const escapedHtml = filesJson
-            .replace(/\\/g, "\\\\")
-            .replace(/`/g, "\\`")
-            .replace(/\$/g, "\\$");
+          console.warn("[systems-build] Raw HTML detected, converting to native JSX component");
           
-          const wrappedFiles = {
-            "src/App.tsx": `import { useEffect, useRef } from "react";
-
-export default function App() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const scripts = containerRef.current.querySelectorAll("script");
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach((attr) =>
-        newScript.setAttribute(attr.name, attr.value)
-      );
-      newScript.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(newScript, oldScript);
-    });
-  }, []);
-
-  const html = \`${escapedHtml}\`;
-  
-  // Extract body content
-  const bodyMatch = html.match(/<body[^>]*>([\\s\\S]*)<\\/body>/i);
-  const styleMatch = html.match(/<style[^>]*>([\\s\\S]*?)<\\/style>/gi);
-  const bodyContent = bodyMatch ? bodyMatch[1] : html;
-  const styles = styleMatch ? styleMatch.join("\\n") : "";
-
-  return (
-    <>
-      <div dangerouslySetInnerHTML={{ __html: styles }} />
-      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: bodyContent }} />
-    </>
-  );
-}`,
+          const convertedFiles = {
+            "src/App.tsx": htmlToReactComponent(filesJson),
           };
           
           return new Response(
             JSON.stringify({
-              files: wrappedFiles,
+              files: convertedFiles,
               entryPoint: "src/App.tsx",
               framework: "react",
               buildTool: "vite",
-              _meta: { ai_generated: true, outputFormat: "react", html_wrapped: true },
-            }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        // Last resort: if it still looks like HTML/mixed content, wrap it safely
-        const stillHasHtml = filesJson.includes("<!--") || filesJson.includes("<header") || 
-          filesJson.includes("<html") || / class="/.test(filesJson);
-        if (stillHasHtml) {
-          console.warn("[systems-build] Last-resort HTML wrap for mixed content");
-          const safeEscaped = filesJson.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
-          const safeWrapped = {
-            "src/App.tsx": `export default function App() {
-  return <div dangerouslySetInnerHTML={{ __html: \`${safeEscaped}\` }} />;
-}`,
-          };
-          return new Response(
-            JSON.stringify({
-              files: safeWrapped,
-              entryPoint: "src/App.tsx",
-              framework: "react",
-              buildTool: "vite",
-              _meta: { ai_generated: true, outputFormat: "react", last_resort_html_wrap: true },
+              _meta: { ai_generated: true, outputFormat: "react", html_converted: true },
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

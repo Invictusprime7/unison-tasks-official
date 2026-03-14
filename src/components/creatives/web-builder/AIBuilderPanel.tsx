@@ -143,37 +143,13 @@ function extractRawHtmlFromMixed(content: string): string | null {
 }
 
 /**
- * Wrap raw HTML in a React component so Sandpack can render it.
+ * Convert raw HTML into a proper React component with native JSX.
+ * Uses htmlToJsx converter — no dangerouslySetInnerHTML.
  */
 function wrapHtmlInReactComponent(html: string): string {
-  // Extract <style> blocks
-  const styleBlocks: string[] = [];
-  const htmlWithoutStyle = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_, css) => {
-    styleBlocks.push(css);
-    return '';
-  });
-
-  // Extract body content (or use full HTML if no body tags)
-  let bodyContent = htmlWithoutStyle;
-  const bodyMatch = htmlWithoutStyle.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if (bodyMatch) {
-    bodyContent = bodyMatch[1];
-  }
-
-  // Sanitize for dangerouslySetInnerHTML
-  const escapedHtml = bodyContent.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-  const escapedCss = styleBlocks.join('\n').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-
-  return `import React from 'react';
-
-export default function App() {
-  return (
-    <>
-      ${escapedCss ? `<style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />` : ''}
-      <div dangerouslySetInnerHTML={{ __html: \`${escapedHtml}\` }} />
-    </>
-  );
-}`; 
+  // Use the shared converter from htmlToJsx utility
+  const { htmlDocToReactComponent: convert } = await import('@/utils/htmlToJsx');
+  return convert(html, 'App');
 }
 
 // Types
