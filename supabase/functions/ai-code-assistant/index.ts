@@ -689,19 +689,15 @@ For targeted modifications, you can use these structured tags that the parser wi
 Use these structured tags when making targeted, specific changes. For full template generation, use standard code blocks.
 
 🎯 **YOUR GOAL:** Transform this template into a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL page that you would be proud to showcase.` : ''}
-${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - VISUAL THEME ONLY, PRESERVE ALL CONTENT**
+${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - VISUAL STYLING ONLY**
 
-You are applying a design preset to modify ONLY the visual appearance of this template.
+You are applying a visual aesthetic preset. This changes ONLY colors, typography, and formatting.
 
-⚠️ **CRITICAL: PRESERVE ALL TEMPLATE CONTENT & CONTEXT**
-The template's business context, content, and purpose must remain EXACTLY the same:
-- If it's a RESTAURANT template: Keep all menu items, food names, prices, descriptions, cuisine context
-- If it's a PORTFOLIO template: Keep all project names, descriptions, skill lists, work examples
-- If it's a BOOKING template: Keep all service names, appointment types, scheduling context
-- If it's an ECOMMERCE template: Keep all product names, prices, descriptions, categories
-- If it's a BLOG template: Keep all article titles, excerpts, author names, dates
-- If it's a STARTUP template: Keep all feature descriptions, value propositions, team bios
+⚠️ **CRITICAL: PRESERVE ALL TEMPLATE CONTENT EXACTLY AS-IS**
 - ALL text content, headings, paragraphs, lists, labels, placeholders must stay identical
+- ALL industry-specific language (service names, menu items, product names, descriptions) must remain unchanged
+- The template's business context, purpose, and copy must remain EXACTLY the same
+- Do NOT rewrite, rephrase, or substitute any text content regardless of industry
 
 ✅ **YOU MUST ONLY CHANGE (visual styling):**
 - Font families (e.g., font-sans → font-serif, add Google Fonts via class)
@@ -709,24 +705,18 @@ The template's business context, content, and purpose must remain EXACTLY the sa
 - Font weights (font-normal, font-medium, font-bold, font-extrabold)
 - Text colors (text-gray-900 → text-slate-800, text-cyan-400, etc.)
 - Background colors (bg-white → bg-slate-900, bg-gradient-to-r, etc.)
-- Border colors and styles (border-gray-200 → border-pink-500, border-2)
+- Border colors, radius, and styles
 - Accent/primary colors for buttons, links, and highlights
 - Gradient colors and directions
-- Shadow effects (shadow-sm → shadow-xl, shadow-cyan-500/50)
+- Shadow effects
 - Text decoration, letter spacing, uppercase/lowercase styling
 - Hover/focus color states
 
 🚫 **YOU MUST NEVER CHANGE:**
 - ANY text content, headings, descriptions, labels, or placeholder text
-- Business-specific terms (menu items, service names, product names)
-- Layout structure (flex, grid, columns, rows)
+- Business-specific terms (they belong to the industry, not the aesthetic)
+- Layout structure (flex, grid, columns, rows, spacing, padding, margins)
 - Section order or arrangement
-- Hero formations or section compositions
-- Grid layouts (grid-cols-2, grid-cols-3, etc.)
-- Spacing between sections (py-16, mb-8, gap-4)
-- Padding and margin values
-- Width and height values
-- Position values
 - Images, icons, logos, or any visual assets
 - Button positions, sizes, or container layouts
 - Form structures and input placements
@@ -735,18 +725,8 @@ The template's business context, content, and purpose must remain EXACTLY the sa
 - Form inputs, interactive element functionality
 - HTML structure or element hierarchy
 
-📋 **PRESET THEME VISUAL GUIDELINES:**
-- **Editorial**: Serif fonts (Georgia, Playfair Display), muted earth tones (amber, stone, warm gray), elegant cream/beige backgrounds
-- **Minimal**: Clean sans-serif (Inter, Helvetica), strict monochrome black/white/gray, sharp contrast, no decoration
-- **Luxury**: Premium serif + thin sans (Didot, Futura), deep blacks (#0a0a0a), gold/champagne accents (#d4af37)
-- **Playful**: Rounded fonts (Nunito, Quicksand), bright saturated colors (pink, orange, teal), warm backgrounds
-- **Retro**: Vintage fonts (Courier, Roboto Slab), muted pastels, sepia/cream backgrounds, subtle textures
-- **Cyberpunk**: Tech fonts (Orbitron, Share Tech Mono), dark backgrounds (#0f0f23), neon accents (cyan-400, pink-500, purple-500), glowing shadows
-- **Glass**: Modern sans-serif, backdrop-blur effects, translucent backgrounds (bg-white/10), cool blue/purple tints
-- **Corporate**: Professional fonts (Open Sans, Roboto), navy blues (#1e3a5f), trustworthy grays, clean conservative palette
-
 🎯 **OUTPUT:**
-Return the COMPLETE HTML with visual theme applied. Keep every word of content identical. No markdown, no explanation.` : ''}
+Return the COMPLETE code with visual aesthetic applied. Keep every word of content identical. No markdown, no explanation.` : ''}
 ` : '';
 
             const editModeContext = editMode && currentCode ? `
