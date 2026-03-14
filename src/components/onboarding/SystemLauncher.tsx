@@ -400,6 +400,7 @@ export const SystemLauncher = ({
             variationSeed: `v${Date.now().toString(36)}_${Math.random()
               .toString(36)
               .slice(2, 8)}`,
+            outputFormat: "react",
           },
         }
       );
