@@ -417,7 +417,8 @@ export const SystemLauncher = ({
       }
 
       // Handle both React fullstack output (files) and HTML output (code)
-      const generatedCode = data?.code;
+      const rawGeneratedCode = data?.code;
+      const generatedCode = rawGeneratedCode ? extractCleanCode(rawGeneratedCode) : null;
       const generatedFiles = data?.files;
 
       if (generatedFiles && typeof generatedFiles === "object") {
