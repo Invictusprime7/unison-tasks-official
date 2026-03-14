@@ -2589,7 +2589,15 @@ export default function App() {
     }
 
     if (location.state?.generatedCode) {
-      const { generatedCode, templateName, aesthetic, startInPreview, systemType: navSystemType } = location.state;
+      const { templateName, aesthetic, startInPreview, systemType: navSystemType } = location.state;
+      // Sanitize AI output — strip prose/reasoning, keep only code
+      const rawCode = location.state.generatedCode;
+      const generatedCode = extractCleanCode(rawCode);
+      if (!generatedCode || !looksLikeCode(generatedCode)) {
+        console.warn('[WebBuilder] Rejected generatedCode — looks like prose, not code');
+        toast.error('Generated content was not valid code. Please try again.');
+        return;
+      }
       console.log('[WebBuilder] Loading template code:', templateName, 'startInPreview:', startInPreview, 'systemType:', navSystemType);
       if (templateName) setCurrentTemplateName(templateName);
       
