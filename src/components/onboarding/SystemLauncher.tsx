@@ -183,7 +183,7 @@ export const SystemLauncher = ({
     setSelectedSystem(systemId);
     setSelectedTemplate(null);
     setCategoryFilter("all");
-    setStep("theme");
+    setStep("templates");
   };
 
   const handleThemeSelect = (theme: ThemePreset) => {
@@ -192,7 +192,7 @@ export const SystemLauncher = ({
     );
   };
 
-  const handleThemeContinue = () => setStep("templates");
+  const handleTemplateContinue = () => setStep("theme");
 
   const handleTemplateSelect = (template: LayoutTemplate) => {
     setSelectedTemplate(template);
