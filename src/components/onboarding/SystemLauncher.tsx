@@ -528,17 +528,16 @@ export const SystemLauncher = ({
                   )}
                   <button
                     onClick={() => {
-                      if (isPast) {
-                        // Allow jumping back
-                        if (s === "industry") {
-                          setStep("industry");
-                          setSelectedSystem(null);
-                          setSelectedTheme(null);
-                          setSelectedTemplate(null);
-                        } else if (s === "theme") {
-                          setStep("theme");
-                          setSelectedTemplate(null);
-                        }
+                    if (isPast) {
+                      if (s === "industry") {
+                        setStep("industry");
+                        setSelectedSystem(null);
+                        setSelectedTheme(null);
+                        setSelectedTemplate(null);
+                      } else if (s === "templates") {
+                        setStep("templates");
+                        setSelectedTheme(null);
+                      }
                       }
                     }}
                     disabled={!isPast}
