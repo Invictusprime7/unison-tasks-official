@@ -2652,13 +2652,42 @@ Never include the <thinking> block explanation text in your final output.`;
 
     // For surgical edits, inject a strong system-level reinforcement that overrides
     // the general edit mode context. This ensures the AI only touches the targeted element.
+    // Also inject the relevant VFS file contents so the AI has full project context.
+    let vfsFilesContext = '';
+    if (surgicalEdit && vfsFiles && Object.keys(vfsFiles).length > 0) {
+      const vfsEntries = Object.entries(vfsFiles);
+      // Include up to ~80k chars of VFS context (prioritize .tsx/.jsx files)
+      const sorted = vfsEntries.sort(([a], [b]) => {
+        const aReact = /\.(tsx|jsx)$/.test(a) ? 0 : 1;
+        const bReact = /\.(tsx|jsx)$/.test(b) ? 0 : 1;
+        return aReact - bReact;
+      });
+      let totalChars = 0;
+      const MAX_VFS_CHARS = 80_000;
+      const included: string[] = [];
+      for (const [path, content] of sorted) {
+        if (totalChars + content.length > MAX_VFS_CHARS) continue;
+        included.push(`--- FILE: ${path} ---\n${content}\n--- END FILE ---`);
+        totalChars += content.length;
+      }
+      if (included.length > 0) {
+        vfsFilesContext = `\n\n📁 CURRENT PROJECT FILES (${included.length} files):\n${included.join('\n\n')}`;
+      }
+    }
+    
     const surgicalEditReinforcement = surgicalEdit ? `
 
 🔒🔒🔒 SURGICAL EDIT OVERRIDE — HIGHEST PRIORITY 🔒🔒🔒
 This is a SURGICAL EDIT request. The user wants ONE specific change.
 
+⚠️ MANDATORY OUTPUT FORMAT ⚠️
+You MUST output the modified code. Do NOT just explain what you would do.
+For multi-file React projects, output JSON: {"files": {"/path/file.tsx": "...full file content..."}, "explanation": "Brief summary"}
+For single-file edits, output the COMPLETE modified file content in a \`\`\`tsx code fence.
+NEVER respond with only text/reasoning — ALWAYS include the actual code with the change applied.
+
 FOR REACT/TSX PROJECTS:
-- If the user's prompt targets a specific component or section, output ONLY the modified file(s) using JSON format: {"files": {"/path/file.tsx": "...full file content..."}}
+- If the user's prompt targets a specific component or section, output ONLY the modified file(s) using JSON format: {"files": {"/path/file.tsx": "...content..."}}
 - Preserve ALL imports, hooks, state declarations, and component structure in the file — only change the targeted JSX, logic, or styles.
 - If the edit targets a child component in a separate file, output only that child file — not the parent.
 - Keep all React patterns intact: hooks order, conditional rendering, map calls, event handlers.
@@ -2691,6 +2720,7 @@ When the user asks to "wire", "connect", "integrate", "hook up", "link to backen
 - The ONLY acceptable changes are functional: adding event listeners, fetch calls, form handlers, hooks, state.
 - Copy the entire file as-is and ONLY inject the minimal code needed for the backend wiring.
 🔒🔒🔒 END SURGICAL EDIT OVERRIDE 🔒🔒🔒
+${vfsFilesContext}
 ` : '';
 
     const aiMessages = [
