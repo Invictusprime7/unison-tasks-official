@@ -1197,7 +1197,9 @@ You are generating a DESIGN VARIANT of an existing template. The source template
 - Decorative elements (shapes, blurs, ornaments)
 - Animation styles and timing
 - Border styles and border-radius
-- Body copy and descriptions (NOT button labels or nav links)
+- Body copy and descriptions MUST stay faithful to the industry (a restaurant site talks about food/dining, a salon about beauty/wellness, etc.)
+- NEVER mix industry content (e.g. no haircut services on a restaurant page)
+- You may rewrite copy for freshness but the subject matter MUST match the industry
 
 SOURCE TEMPLATE (preserve all intents/labels, redesign everything else):
 \`\`\`html
@@ -1208,10 +1210,10 @@ ${templateHtml.length > 20000 ? `\n[Template continues for ${templateHtml.length
 
 🏆 **PREMIUM REFERENCE TEMPLATE (QUALITY BASELINE):**
 
-Below is a PREMIUM, handcrafted HTML template for this industry. Use it as your QUALITY BASELINE — your output must MATCH OR EXCEED this level of design sophistication, section density, visual effects, and content quality.
+Below is a PREMIUM, handcrafted template for this industry. Use it as your QUALITY BASELINE — your output must MATCH OR EXCEED this level of design sophistication, section density, visual effects, and content quality.
 
 IMPORTANT RULES FOR USING THE REFERENCE:
-1. DO NOT copy the template verbatim — generate ORIGINAL content and design variations
+1. DO NOT copy the template verbatim — generate ORIGINAL design variations
 2. MATCH the structural quality: same number of sections, same density of components per section
 3. MATCH the visual quality: gradients, glassmorphism, hover effects, scroll animations
 4. MATCH the intent wiring: data-ut-intent, data-ut-cta, data-no-intent attributes
@@ -1219,6 +1221,7 @@ IMPORTANT RULES FOR USING THE REFERENCE:
 6. ADAPT the content to match the blueprint's business name, tagline, and brand colors
 7. USE the blueprint's color palette instead of the reference template's colors
 8. MAINTAIN the same level of Lucide icon usage and image integration
+9. ⚠️ ALL CONTENT MUST BE INDUSTRY-FAITHFUL — services, descriptions, testimonials, FAQs, and imagery must reflect the "${identity.industry}" industry. NEVER generate content from a different industry.
 
 Reference template (first 15000 chars for context):
 \`\`\`html
@@ -2102,13 +2105,19 @@ function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, use
    - Different card styles (if rounded, try sharp; if dark, try light)
    - Different image treatment (different Unsplash photos, different overlays)
    - Different animation timing and styles
-   - Different decorative elements (blob shapes, gradients, patterns)
+    - Different decorative elements (blob shapes, gradients, patterns)
 
-3. **MAINTAIN QUALITY:**
-   - Same or more sections
-   - Same content density
-   - Same mobile responsiveness
-   - Production-ready code quality
+3. **INDUSTRY-FAITHFUL CONTENT (CRITICAL):**
+    - ALL services, descriptions, testimonials, and FAQ content MUST reflect the "${identity.industry}" industry
+    - NEVER generate content from a different industry (e.g. no hair services on a restaurant site)
+    - You may rewrite copy for freshness but the subject matter MUST match the industry
+    - Use industry-appropriate Unsplash imagery (food for restaurants, beauty for salons, etc.)
+
+4. **MAINTAIN QUALITY:**
+    - Same or more sections
+    - Same content density
+    - Same mobile responsiveness
+    - Production-ready code quality
 
 4. **OUTPUT FORMAT:**
    - Output ONLY a single complete HTML document

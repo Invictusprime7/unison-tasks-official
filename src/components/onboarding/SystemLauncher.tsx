@@ -32,7 +32,7 @@ import {
   type LayoutCategory,
 } from "@/data/templates/types";
 import { getTemplatesByCategory, getTemplateReactCode } from "@/data/templates";
-import { getCompositionReactCode, getCompositionMeta } from "@/utils/compositionReference";
+import { getCompositionReactCode, getCompositionMeta, getCompositionContentContext } from "@/utils/compositionReference";
 import {
   getTemplateManifest,
   getDefaultManifestForSystem,
@@ -368,7 +368,13 @@ export const SystemLauncher = ({
         ? `\n\nADDITIONAL INSTRUCTIONS: ${customPrompt.trim()}\n`
         : "";
 
-      const userPrompt = `Create a unique, premium ${system.name.toLowerCase()} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.${themeInstruction}${customInstruction}`;
+      // Extract industry content context from the selected template composition
+      const contentContext = getCompositionContentContext(selectedTemplate.category);
+      const industryContextBlock = contentContext
+        ? `\n\n📋 INDUSTRY CONTENT CONTEXT (USE THIS AS YOUR CONTENT BASELINE — do NOT invent services/items from other industries):\n${contentContext}\n`
+        : '';
+
+      const userPrompt = `Create a unique, premium ${industry} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.${industryContextBlock}${themeInstruction}${customInstruction}`;
 
       // Prefer composition-based React code over legacy HTML
       const compositionCode = getCompositionReactCode(selectedTemplate.category);
