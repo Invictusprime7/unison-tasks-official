@@ -82,3 +82,61 @@ export function getCompositionMeta(category: LayoutCategory | string) {
     theme: comp.theme,
   };
 }
+
+/**
+ * Extract industry-specific content context from a template composition.
+ * Returns a structured text block describing services, testimonials, headlines,
+ * and other content that defines the industry. This is injected into the AI prompt
+ * to ensure generated sites reflect the correct industry.
+ */
+export function getCompositionContentContext(category: LayoutCategory | string): string | null {
+  const industry = CATEGORY_TO_INDUSTRY[category];
+  if (!industry) return null;
+
+  const compositions = getCompositionsByIndustry(industry);
+  if (!compositions.length) return null;
+
+  const comp = compositions[0];
+  const lines: string[] = [];
+
+  lines.push(`INDUSTRY: ${comp.name} (${comp.industry})`);
+
+  for (const section of comp.sections) {
+    const props = section.props as Record<string, unknown>;
+
+    // Headlines
+    if (props.headline) lines.push(`[${section.type}] Headline: "${props.headline}"`);
+    if (props.subheadline) lines.push(`[${section.type}] Subheadline: "${props.subheadline}"`);
+    if (props.description) lines.push(`[${section.type}] Description: "${props.description}"`);
+
+    // Service/feature items
+    const items = props.items as Array<{ title?: string; description?: string; price?: string; duration?: string }> | undefined;
+    if (Array.isArray(items) && items.length > 0) {
+      lines.push(`[${section.type}] Items:`);
+      items.forEach((item, i) => {
+        const parts = [item.title];
+        if (item.price) parts.push(`Price: ${item.price}`);
+        if (item.duration) parts.push(`Duration: ${item.duration}`);
+        if (item.description) parts.push(item.description);
+        lines.push(`  ${i + 1}. ${parts.join(' — ')}`);
+      });
+    }
+
+    // Stats
+    const stats = props.stats as Array<{ value?: string; label?: string }> | undefined;
+    if (Array.isArray(stats)) {
+      lines.push(`[${section.type}] Stats: ${stats.map(s => `${s.value} ${s.label}`).join(', ')}`);
+    }
+
+    // Brand name
+    if (props.brand) lines.push(`[${section.type}] Brand: "${props.brand}"`);
+
+    // Nav links
+    const links = props.links as Array<{ label?: string }> | undefined;
+    if (Array.isArray(links) && section.type === 'navbar') {
+      lines.push(`[navbar] Nav links: ${links.map(l => l.label).join(', ')}`);
+    }
+  }
+
+  return lines.join('\n');
+}

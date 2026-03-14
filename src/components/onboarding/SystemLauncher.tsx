@@ -32,7 +32,7 @@ import {
   type LayoutCategory,
 } from "@/data/templates/types";
 import { getTemplatesByCategory, getTemplateReactCode } from "@/data/templates";
-import { getCompositionReactCode, getCompositionMeta } from "@/utils/compositionReference";
+import { getCompositionReactCode, getCompositionMeta, getCompositionContentContext } from "@/utils/compositionReference";
 import {
   getTemplateManifest,
   getDefaultManifestForSystem,
