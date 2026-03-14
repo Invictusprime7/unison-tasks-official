@@ -982,6 +982,30 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 maxElements: 10,
               });
 
+          // Build compact VFS files payload for surgical edits (only relevant files, capped)
+          let vfsPayload: Record<string, string> | undefined;
+          if (isSurgicalEdit && isReactProject && vfsFiles) {
+            const MAX_VFS_PAYLOAD = 120_000;
+            let totalSize = 0;
+            vfsPayload = {};
+            // Prioritize resolved target file, then .tsx/.jsx, then .css
+            const sortedPaths = Object.keys(vfsFiles).sort((a, b) => {
+              if (resolvedTargetFile) {
+                if (a === resolvedTargetFile) return -1;
+                if (b === resolvedTargetFile) return 1;
+              }
+              const aReact = /\.(tsx|jsx)$/.test(a) ? 0 : /\.css$/.test(a) ? 1 : 2;
+              const bReact = /\.(tsx|jsx)$/.test(b) ? 0 : /\.css$/.test(b) ? 1 : 2;
+              return aReact - bReact;
+            });
+            for (const p of sortedPaths) {
+              const content = vfsFiles[p];
+              if (totalSize + content.length > MAX_VFS_PAYLOAD) continue;
+              vfsPayload[p] = content;
+              totalSize += content.length;
+            }
+          }
+
           response = await supabase.functions.invoke('ai-code-assistant', {
             body: {
               messages: [{ role: 'user', content: promptForAI }],
@@ -1000,6 +1024,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               systemsBuildContext: systemsBuildContext ?? undefined,
               siteElementsLibraryContext,
               attachments: _attachments.length > 0 ? _attachments : undefined,
+              // Send VFS files for surgical edit context
+              vfsFiles: vfsPayload,
             },
           });
           
