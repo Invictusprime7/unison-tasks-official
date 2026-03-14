@@ -498,8 +498,8 @@ export const SystemLauncher = ({
         <DialogHeader className="sr-only">
           <DialogTitle>Launch Your Website</DialogTitle>
           <DialogDescription>
-            Choose your industry, pick an aesthetic theme, then select a
-            template.
+            Choose your industry, select a template, then pick a visual
+            theme.
           </DialogDescription>
         </DialogHeader>
 
