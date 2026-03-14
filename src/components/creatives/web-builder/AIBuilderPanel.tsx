@@ -1221,6 +1221,23 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           }
         }
 
+        // Strategy 6 (surgical edit fallback): Extract JSON {"files": {...}} from prose
+        // AI may return: "Here's the change:\n```json\n{\"files\": {...}}\n```\nI changed X"
+        if (!multiFileOutput && !generatedCode && isSurgicalEdit) {
+          // Try to find {"files": embedded anywhere in the content
+          const filesJsonMatch = trimmed.match(/\{[\s\S]*?"files"\s*:\s*\{[\s\S]*?\}\s*\}/);
+          if (filesJsonMatch) {
+            try {
+              const parsed = JSON.parse(filesJsonMatch[0]);
+              if (parsed.files && typeof parsed.files === 'object') {
+                multiFileOutput = parsed.files;
+                explanationText = parsed.explanation || '✅ Surgical edit applied.';
+                console.log('[AIBuilderPanel] Strategy 6: Extracted multi-file JSON from prose:', Object.keys(multiFileOutput!));
+              }
+            } catch { /* not valid JSON, continue */ }
+          }
+        }
+
         // Extract explanation: everything that's NOT inside code fences
         if (!explanationText) {
           explanationText = aiContent
