@@ -331,10 +331,13 @@ export const getTemplateReactCode = (template: { code: string; id?: string; titl
     }
   }
 
+  // Strip AI reasoning blocks before any processing
+  let code = template.code.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
+
   // If already React code, return as-is
-  if (template.code.includes('import React') || template.code.includes('export default function')) {
-    return template.code;
+  if (code.includes('import React') || code.includes('export default function')) {
+    return code;
   }
   // Wrap raw HTML into React component
-  return wrapInReactComponent(template.code, template.title || template.name || 'Template');
+  return wrapInReactComponent(code, template.title || template.name || 'Template');
 };
