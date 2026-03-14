@@ -2557,11 +2557,22 @@ export default function App() {
 
   // Load template from navigation state (from Web Design Kit)
   useEffect(() => {
+    const navState = location.state as {
+      vfsFiles?: Record<string, string>;
+      generatedCode?: string;
+      generatedTemplate?: any;
+      templateName?: string;
+      aesthetic?: string;
+      startInPreview?: boolean;
+      systemType?: string;
+    } | null;
+
     // If a pre-built VFS plan was passed (e.g. from System Launcher AI edits), import it first.
-    if (location.state?.vfsFiles) {
-      const vfsFiles = (location.state as { vfsFiles?: Record<string, string> })?.vfsFiles;
-      if (vfsFiles && Object.keys(vfsFiles).length > 0) {
+    if (navState?.vfsFiles) {
+      const vfsFiles = navState.vfsFiles;
+      if (Object.keys(vfsFiles).length > 0) {
         virtualFS.importFiles(vfsFiles);
+
         // Find React entry point — prioritize /src/App.tsx, then /App.tsx
         const entry = vfsFiles["/src/App.tsx"] || vfsFiles["/App.tsx"] || Object.values(vfsFiles)[0];
         if (entry) {
@@ -2570,21 +2581,50 @@ export default function App() {
           setEditorCode(safeEntry);
           setPreviewCode(safeEntry);
         }
+
+        // Keep builder metadata in sync for VFS-first launches
+        if (navState.templateName) setCurrentTemplateName(navState.templateName);
+        if (navState.systemType && !activeSystemType) {
+          setActiveSystemType(navState.systemType as BusinessSystemType);
+          console.log('[WebBuilder] Set active system type from VFS generation:', navState.systemType);
+        }
+
         // Auto-hydrate Creator's Playground from imported VFS
         setTimeout(() => {
           const files = virtualFS.getSandpackFiles();
           if (Object.keys(files).length > 0) {
             const result = creatorPlayground.hydrateFromVFS(virtualFS.nodes, files);
             console.log('[WebBuilder] Playground hydrated from VFS import:', result.stats);
+            if (result.stats.pagesDetected > 0) {
+              toast.success('Studio synced', {
+                description: `${result.stats.pagesDetected} pages${result.funnelAutoWired ? ` + funnel (${result.stats.funnelSteps} steps)` : ''} loaded`,
+              });
+            }
           }
         }, 200);
+
+        if (navState.startInPreview) {
+          setViewMode('canvas');
+          toast(`${navState.templateName || 'Template'} loaded!`, {
+            description: `${navState.aesthetic || 'custom'} - Preview your AI-generated website`,
+          });
+          if (navState.systemType) {
+            setTimeout(() => setShowBusinessSetup(true), 1500);
+          }
+        } else {
+          setViewMode('code');
+        }
+
+        // Prevent re-processing generatedCode when vfsFiles already represent source of truth
+        window.history.replaceState({}, document.title);
+        return;
       }
     }
 
-    if (location.state?.generatedCode) {
-      const { templateName, aesthetic, startInPreview, systemType: navSystemType } = location.state;
+    if (navState?.generatedCode) {
+      const { templateName, aesthetic, startInPreview, systemType: navSystemType } = navState;
       // Sanitize AI output — strip prose/reasoning, keep only code
-      const rawCode = location.state.generatedCode;
+      const rawCode = navState.generatedCode;
       const generatedCode = extractCleanCode(rawCode);
       if (!generatedCode || !looksLikeCode(generatedCode)) {
         console.warn('[WebBuilder] Rejected generatedCode — looks like prose, not code');
@@ -2643,8 +2683,8 @@ export default function App() {
       }
       // Clear the state to prevent re-loading on subsequent renders
       window.history.replaceState({}, document.title);
-    } else if (location.state?.generatedTemplate) {
-      const { generatedTemplate, templateName, aesthetic } = location.state;
+    } else if (navState?.generatedTemplate) {
+      const { generatedTemplate, templateName, aesthetic } = navState;
       console.log('[WebBuilder] Loading template from Web Design Kit:', templateName);
       
       // Build HTML body from template sections, then wrap in React component

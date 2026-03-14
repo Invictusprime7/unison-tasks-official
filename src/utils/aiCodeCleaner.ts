@@ -60,7 +60,8 @@ export function extractCleanCode(input: string): string {
   const exportIdx = trimmed.search(/^export\s+default\s+function/m);
   if (exportIdx > 0) {
     const textBefore = trimmed.slice(0, exportIdx);
-    if (looksLikeProse(textBefore)) {
+    // Keep legitimate code preambles (imports/constants/types/comments)
+    if (looksLikeProse(textBefore) && !hasCodePreamble(textBefore)) {
       return trimmed.slice(exportIdx).trim();
     }
   }
@@ -111,6 +112,19 @@ function looksLikeProse(text: string): boolean {
     /\b(I will|Let me|Here is|Here's|This is|First|Now|Next|Start|Sure|Great|OK|Okay|Below|Above|following|changes|modify|update)\b/i.test(t);
 
   return hasSentences || (startsWithWord && hasProsePatterns);
+}
+
+/**
+ * Detect if the text already contains real code declarations before export.
+ * Prevents stripping needed constants like TEMPLATE_HTML when prose detection is noisy.
+ */
+function hasCodePreamble(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+
+  return /(^|\n)\s*(import\s+|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|type\s+\w+\s*=|interface\s+\w+\s*\{|function\s+\w+\s*\(|class\s+\w+\s+)/m.test(t)
+    || /const\s+TEMPLATE_(HTML|STYLES)\s*=/.test(t)
+    || /\/\*\*[\s\S]*?\*\//.test(t);
 }
 
 /**
