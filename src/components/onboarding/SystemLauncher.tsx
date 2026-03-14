@@ -417,20 +417,16 @@ export const SystemLauncher = ({
         throw error;
       }
 
-      // Handle both React fullstack output (files) and HTML output (code)
-      const rawGeneratedCode = data?.code;
-      const generatedCode = rawGeneratedCode ? extractCleanCode(rawGeneratedCode) : null;
+      // React fullstack output — expect files from outputFormat:"react"
       const generatedFiles = data?.files;
+      const generatedCode = generatedFiles?.["src/App.tsx"] || generatedFiles?.["App.tsx"] || data?.code;
 
-      if (generatedFiles && typeof generatedFiles === "object") {
-        // React fullstack mode — pass VFS files to WebBuilder
+      if (generatedFiles && typeof generatedFiles === "object" && Object.keys(generatedFiles).length > 0) {
+        // React VFS mode — pass VFS files to WebBuilder
         navigate("/web-builder", {
           state: {
             vfsFiles: generatedFiles,
-            generatedCode:
-              generatedFiles["src/App.tsx"] ||
-              generatedFiles["App.tsx"] ||
-              "",
+            generatedCode: generatedFiles["src/App.tsx"] || generatedFiles["App.tsx"] || "",
             templateName: `AI ${selectedTemplate.name}`,
             aesthetic: selectedTheme?.id,
             templateCategory: selectedTemplate.category,
@@ -440,11 +436,20 @@ export const SystemLauncher = ({
             startInPreview: true,
           },
         });
-      } else if (generatedCode && generatedCode.length >= 100 && looksLikeCode(generatedCode)) {
-        // HTML mode — pass raw code
+      } else if (generatedCode && typeof generatedCode === "string" && generatedCode.length >= 100) {
+        // Fallback: single-file output — clean and validate
+        const cleaned = extractCleanCode(generatedCode);
+        if (!cleaned || !looksLikeCode(cleaned)) {
+          toast.error("AI generation produced invalid output. Try again.");
+          return;
+        }
+        // Ensure it's React-compatible (wrap HTML if needed)
+        const reactCode = (cleaned.includes('import ') || cleaned.includes('export default'))
+          ? cleaned
+          : getTemplateReactCode({ code: cleaned, title: selectedTemplate.name });
         navigate("/web-builder", {
           state: {
-            generatedCode,
+            generatedCode: reactCode,
             templateName: `AI ${selectedTemplate.name}`,
             aesthetic: selectedTheme?.id,
             templateCategory: selectedTemplate.category,
