@@ -458,22 +458,126 @@ function formatResearchContext(research: ResearchResult): string {
   return context;
 }
 
+// ============================================================================
+// HTML → JSX inline converter (can't import from src/ in edge functions)
+// ============================================================================
+
+const JSX_ATTR_MAP: Record<string, string> = {
+  class: 'className', for: 'htmlFor', tabindex: 'tabIndex',
+  colspan: 'colSpan', rowspan: 'rowSpan', readonly: 'readOnly',
+  autofocus: 'autoFocus', maxlength: 'maxLength', minlength: 'minLength',
+  cellpadding: 'cellPadding', cellspacing: 'cellSpacing',
+  crossorigin: 'crossOrigin', enctype: 'encType',
+  contenteditable: 'contentEditable', accesskey: 'accessKey',
+  datetime: 'dateTime', frameborder: 'frameBorder', srcdoc: 'srcDoc',
+  srcset: 'srcSet', usemap: 'useMap', inputmode: 'inputMode',
+  onclick: 'onClick', onchange: 'onChange', onsubmit: 'onSubmit',
+  onfocus: 'onFocus', onblur: 'onBlur', onkeydown: 'onKeyDown',
+  onkeyup: 'onKeyUp', onmouseover: 'onMouseOver', onmouseout: 'onMouseOut',
+  onload: 'onLoad', onerror: 'onError',
+};
+
+const VOID_ELEMENTS = new Set([
+  'area','base','br','col','embed','hr','img','input',
+  'link','meta','param','source','track','wbr',
+]);
+
+function styleStringToJsxObject(s: string): string {
+  const pairs = s.split(';').map(p => p.trim()).filter(Boolean).map(p => {
+    const ci = p.indexOf(':');
+    if (ci < 0) return null;
+    const prop = p.slice(0, ci).trim().replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
+    const val = p.slice(ci + 1).trim();
+    return `${prop}: ${/^\d+(\.\d+)?$/.test(val) ? val : JSON.stringify(val)}`;
+  }).filter(Boolean);
+  return `{{ ${pairs.join(', ')} }}`;
+}
+
+function convertHtmlAttrs(attrs: string): string {
+  let r = attrs;
+  r = r.replace(/\bstyle="([^"]*)"/g, (_: string, s: string) => `style={${styleStringToJsxObject(s)}}`);
+  for (const [html, jsx] of Object.entries(JSX_ATTR_MAP)) {
+    r = r.replace(new RegExp(`\\b${html}=`, 'g'), `${jsx}=`);
+  }
+  return r;
+}
+
+function rawHtmlToJsx(html: string): string {
+  let jsx = html;
+  jsx = jsx.replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}');
+  jsx = jsx.replace(/<([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)(\s*\/?\s*)>/g,
+    (_f: string, tag: string, attrs: string, close: string) => {
+      const converted = convertHtmlAttrs(attrs);
+      if (VOID_ELEMENTS.has(tag.toLowerCase()) && !close.includes('/')) {
+        return `<${tag}${converted} />`;
+      }
+      return `<${tag}${converted}${close}>`;
+    });
+  for (const ve of VOID_ELEMENTS) {
+    jsx = jsx.replace(new RegExp(`</${ve}>`, 'gi'), '');
+  }
+  return jsx;
+}
+
+function extractBodyContent(html: string): string {
+  const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (m) return m[1].trim();
+  return html
+    .replace(/<!DOCTYPE[^>]*>/gi, '')
+    .replace(/<\/?html[^>]*>/gi, '')
+    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+    .replace(/<\/?body[^>]*>/gi, '')
+    .trim();
+}
+
+function extractCssBlocks(html: string): string[] {
+  const blocks: string[] = [];
+  let m: RegExpExecArray | null;
+  const re = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+  while ((m = re.exec(html)) !== null) { if (m[1].trim()) blocks.push(m[1].trim()); }
+  return blocks;
+}
+
+/**
+ * Convert a raw HTML document/fragment into a proper React component string.
+ * No dangerouslySetInnerHTML — produces native JSX.
+ */
+function htmlToReactComponent(html: string): string {
+  const styles = extractCssBlocks(html);
+  const body = extractBodyContent(html)
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  const jsxBody = rawHtmlToJsx(body);
+  const cssStr = styles.length > 0 ? JSON.stringify(styles.join('\n\n')) : '';
+
+  let code = `import React${cssStr ? ', { useEffect }' : ''} from "react";\n\n`;
+  if (cssStr) code += `const TEMPLATE_CSS = ${cssStr};\n\n`;
+  code += `export default function App() {\n`;
+  if (cssStr) {
+    code += `  useEffect(() => {\n`;
+    code += `    const s = document.createElement('style');\n`;
+    code += `    s.setAttribute('data-template', '');\n`;
+    code += `    s.textContent = TEMPLATE_CSS;\n`;
+    code += `    document.head.appendChild(s);\n`;
+    code += `    return () => { s.remove(); };\n`;
+    code += `  }, []);\n\n`;
+  }
+  code += `  return (\n    <div className="min-h-screen">\n      ${jsxBody}\n    </div>\n  );\n}`;
+  return code;
+}
+
 /**
  * Sanitize React/TSX files to fix common HTML-in-JSX issues.
+ * - Converts HTML attributes to JSX equivalents
  * - Converts HTML comments to JSX comment syntax
- * - Converts class= to className=
- * - Converts for= to htmlFor=
- * - If content is predominantly raw HTML (has <body>, <!DOCTYPE>, etc.), 
- *   wraps it in dangerouslySetInnerHTML instead.
+ * - If content is predominantly raw HTML, converts to native JSX component
  */
 function sanitizeReactFiles(files: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {};
   
-  // Filter out config files that shouldn't be in the VFS output
   const BLOCKED_FILE_PATTERN = /(tailwind\.config|postcss\.config|vite\.config|tsconfig|package\.json|package-lock)/i;
   
   for (const [path, content] of Object.entries(files)) {
-    // Skip config files entirely
     if (BLOCKED_FILE_PATTERN.test(path)) {
       console.warn(`[systems-build] Filtering out config file from AI output: ${path}`);
       continue;
@@ -484,72 +588,28 @@ function sanitizeReactFiles(files: Record<string, string>): Record<string, strin
       continue;
     }
     
-    // Strip any module.exports / tailwind.config blocks that the AI embedded in component files
     let cleaned = content;
-    // Remove "// tailwind.config.js (conceptual)" comment blocks + module.exports = {...} blocks
     cleaned = cleaned.replace(/\/\/\s*tailwind\.config[^\n]*\n(?:\/\/[^\n]*\n)*\s*module\.exports\s*=\s*\{[\s\S]*?\n\};\s*/gi, '');
-    // Remove standalone module.exports blocks
     cleaned = cleaned.replace(/\bmodule\.exports\s*=\s*\{[\s\S]*?\n\};\s*/g, '');
     
-    // Check if this file has raw HTML that can't be fixed with simple replacements
     const hasDoctype = cleaned.includes('<!DOCTYPE');
     const hasHtmlTag = /<html[\s>]/i.test(cleaned);
     const hasBodyTag = /<body[\s>]/i.test(cleaned);
     const htmlCommentCount = (cleaned.match(/<!--/g) || []).length;
     const rawClassCount = (cleaned.match(/ class="/g) || []).length;
 
-    // If it's predominantly raw HTML dumped into JSX, wrap the whole thing
+    // If it's predominantly raw HTML, convert to proper React JSX
     if ((hasDoctype || hasHtmlTag || hasBodyTag) || (htmlCommentCount > 3 && rawClassCount > 5)) {
-      console.warn(`[systems-build] File ${path} contains raw HTML, wrapping with dangerouslySetInnerHTML`);
-      const escaped = cleaned
-        .replace(/\\/g, '\\\\')
-        .replace(/`/g, '\\`')
-        .replace(/\$/g, '\\$');
-      
-      result[path] = `import { useEffect, useRef } from "react";
-
-export default function App() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    // Activate any inline scripts
-    const scripts = containerRef.current.querySelectorAll("script");
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach((attr) =>
-        newScript.setAttribute(attr.name, attr.value)
-      );
-      newScript.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(newScript, oldScript);
-    });
-  }, []);
-
-  const raw = \`${escaped}\`;
-  const bodyMatch = raw.match(/<body[^>]*>([\\s\\S]*)<\\/body>/i);
-  const styleMatches = raw.match(/<style[^>]*>[\\s\\S]*?<\\/style>/gi);
-  const body = bodyMatch ? bodyMatch[1] : raw;
-  const styles = styleMatches ? styleMatches.join("\\n") : "";
-
-  return (
-    <>
-      {styles && <div dangerouslySetInnerHTML={{ __html: styles }} />}
-      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: body }} />
-    </>
-  );
-}`;
+      console.warn(`[systems-build] File ${path} contains raw HTML, converting to native JSX`);
+      result[path] = htmlToReactComponent(cleaned);
       continue;
     }
     
-    // Light sanitization: fix HTML comments and attributes in JSX
+    // Light sanitization for mostly-valid JSX
     let sanitized = cleaned;
-    // Convert HTML comments to JSX comments
     sanitized = sanitized.replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}');
-    // Convert class= to className= (globally in tag contexts, not just first occurrence)
     sanitized = sanitized.replace(/\bclass="/g, 'className="');
-    // Convert for= to htmlFor= on labels
     sanitized = sanitized.replace(/\bfor="/g, 'htmlFor="');
-    // Convert inline style strings to JSX style objects: style="color: red; font-size: 16px"
     sanitized = sanitized.replace(/\bstyle="([^"]*)"/g, (_match: string, styleStr: string) => {
       try {
         const pairs = styleStr.split(';').filter((s: string) => s.trim()).map((s: string) => {
@@ -557,7 +617,6 @@ export default function App() {
           if (!prop || valParts.length === 0) return null;
           const camelProp = prop.trim().replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
           const val = valParts.join(':').trim();
-          // Keep numeric values as numbers if they're purely numeric
           const isNumeric = /^\d+(\.\d+)?$/.test(val);
           return `${camelProp}: ${isNumeric ? val : `"${val}"`}`;
         }).filter(Boolean);
@@ -566,15 +625,12 @@ export default function App() {
         return `style={{}}`;
       }
     });
-    // Convert onclick/onchange etc to React equivalents
     sanitized = sanitized.replace(/\bonclick="/g, 'onClick="');
     sanitized = sanitized.replace(/\bonchange="/g, 'onChange="');
     sanitized = sanitized.replace(/\bonsubmit="/g, 'onSubmit="');
     sanitized = sanitized.replace(/\bonfocus="/g, 'onFocus="');
     sanitized = sanitized.replace(/\bonblur="/g, 'onBlur="');
-    // Convert tabindex= to tabIndex=
     sanitized = sanitized.replace(/\btabindex="/g, 'tabIndex="');
-    // Convert colspan/rowspan to camelCase
     sanitized = sanitized.replace(/\bcolspan="/g, 'colSpan="');
     sanitized = sanitized.replace(/\browspan="/g, 'rowSpan="');
     
@@ -765,83 +821,24 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
           } catch { /* fall through */ }
         }
         
-        // If content is raw HTML (or JSX mixed with HTML comments/attributes), wrap it in a React component
+        // If content is raw HTML, convert to native JSX React component
         const looksLikeRawHtml = filesJson.includes("<!DOCTYPE") || filesJson.includes("<html") || 
           filesJson.includes("<header") || filesJson.includes("<!--") || 
           / class="[^"]*"/.test(filesJson) || filesJson.includes("<nav") || filesJson.includes("<footer");
         if (looksLikeRawHtml) {
-          console.warn("[systems-build] Raw HTML detected, wrapping in React component");
-          const escapedHtml = filesJson
-            .replace(/\\/g, "\\\\")
-            .replace(/`/g, "\\`")
-            .replace(/\$/g, "\\$");
+          console.warn("[systems-build] Raw HTML detected, converting to native JSX component");
           
-          const wrappedFiles = {
-            "src/App.tsx": `import { useEffect, useRef } from "react";
-
-export default function App() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const scripts = containerRef.current.querySelectorAll("script");
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach((attr) =>
-        newScript.setAttribute(attr.name, attr.value)
-      );
-      newScript.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(newScript, oldScript);
-    });
-  }, []);
-
-  const html = \`${escapedHtml}\`;
-  
-  // Extract body content
-  const bodyMatch = html.match(/<body[^>]*>([\\s\\S]*)<\\/body>/i);
-  const styleMatch = html.match(/<style[^>]*>([\\s\\S]*?)<\\/style>/gi);
-  const bodyContent = bodyMatch ? bodyMatch[1] : html;
-  const styles = styleMatch ? styleMatch.join("\\n") : "";
-
-  return (
-    <>
-      <div dangerouslySetInnerHTML={{ __html: styles }} />
-      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: bodyContent }} />
-    </>
-  );
-}`,
+          const convertedFiles = {
+            "src/App.tsx": htmlToReactComponent(filesJson),
           };
           
           return new Response(
             JSON.stringify({
-              files: wrappedFiles,
+              files: convertedFiles,
               entryPoint: "src/App.tsx",
               framework: "react",
               buildTool: "vite",
-              _meta: { ai_generated: true, outputFormat: "react", html_wrapped: true },
-            }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        // Last resort: if it still looks like HTML/mixed content, wrap it safely
-        const stillHasHtml = filesJson.includes("<!--") || filesJson.includes("<header") || 
-          filesJson.includes("<html") || / class="/.test(filesJson);
-        if (stillHasHtml) {
-          console.warn("[systems-build] Last-resort HTML wrap for mixed content");
-          const safeEscaped = filesJson.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
-          const safeWrapped = {
-            "src/App.tsx": `export default function App() {
-  return <div dangerouslySetInnerHTML={{ __html: \`${safeEscaped}\` }} />;
-}`,
-          };
-          return new Response(
-            JSON.stringify({
-              files: safeWrapped,
-              entryPoint: "src/App.tsx",
-              framework: "react",
-              buildTool: "vite",
-              _meta: { ai_generated: true, outputFormat: "react", last_resort_html_wrap: true },
+              _meta: { ai_generated: true, outputFormat: "react", html_converted: true },
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

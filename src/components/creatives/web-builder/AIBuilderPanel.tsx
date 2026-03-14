@@ -51,6 +51,7 @@ import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
 import { generateLibraryPrompt } from '@/data/siteElementsLibrary';
 import { analyzeReactSite, resolveEditTarget } from '@/utils/reactSiteAnalysis';
+import { htmlDocToReactComponent as htmlDocToReactComponentFn } from '@/utils/htmlToJsx';
 
 // ============================================================================
 /**
@@ -143,37 +144,10 @@ function extractRawHtmlFromMixed(content: string): string | null {
 }
 
 /**
- * Wrap raw HTML in a React component so Sandpack can render it.
+ * Convert raw HTML into a proper React component with native JSX.
  */
 function wrapHtmlInReactComponent(html: string): string {
-  // Extract <style> blocks
-  const styleBlocks: string[] = [];
-  const htmlWithoutStyle = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_, css) => {
-    styleBlocks.push(css);
-    return '';
-  });
-
-  // Extract body content (or use full HTML if no body tags)
-  let bodyContent = htmlWithoutStyle;
-  const bodyMatch = htmlWithoutStyle.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if (bodyMatch) {
-    bodyContent = bodyMatch[1];
-  }
-
-  // Sanitize for dangerouslySetInnerHTML
-  const escapedHtml = bodyContent.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-  const escapedCss = styleBlocks.join('\n').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-
-  return `import React from 'react';
-
-export default function App() {
-  return (
-    <>
-      ${escapedCss ? `<style dangerouslySetInnerHTML={{ __html: \`${escapedCss}\` }} />` : ''}
-      <div dangerouslySetInnerHTML={{ __html: \`${escapedHtml}\` }} />
-    </>
-  );
-}`; 
+  return htmlDocToReactComponentFn(html, 'App');
 }
 
 // Types
@@ -1169,9 +1143,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               generatedCode = bestBlock;
               console.log('[AIBuilderPanel] Extracted React code from fence');
             } else if (isCssOnly) {
-              // CSS extracted from fence — wrap in React component using a const string (NOT template literal in JSX)
+              // CSS extracted from fence — inject via useEffect (no dangerouslySetInnerHTML)
               const cssJsonStr = JSON.stringify(bestBlock);
-              generatedCode = `import React from 'react';\n\nconst CSS_CONTENT = ${cssJsonStr};\n\nexport default function App() {\n  return (\n    <>\n      <style dangerouslySetInnerHTML={{ __html: CSS_CONTENT }} />\n      <div style={{ minHeight: '100vh' }}><p>Styles applied.</p></div>\n    </>\n  );\n}`;
+              generatedCode = `import React, { useEffect } from 'react';\n\nconst CSS_CONTENT = ${cssJsonStr};\n\nexport default function App() {\n  useEffect(() => {\n    const s = document.createElement('style');\n    s.textContent = CSS_CONTENT;\n    document.head.appendChild(s);\n    return () => { s.remove(); };\n  }, []);\n\n  return (\n    <div style={{ minHeight: '100vh' }}><p>Styles applied.</p></div>\n  );\n}`;
               console.log('[AIBuilderPanel] Extracted CSS from fence, wrapped in React component');
             } else if (hasHtmlStructure) {
               generatedCode = wrapHtmlInReactComponent(bestBlock);
