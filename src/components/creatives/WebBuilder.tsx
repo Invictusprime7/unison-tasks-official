@@ -2561,21 +2561,14 @@ export default function App() {
     if (location.state?.vfsFiles) {
       const vfsFiles = (location.state as { vfsFiles?: Record<string, string> })?.vfsFiles;
       if (vfsFiles && Object.keys(vfsFiles).length > 0) {
-        // Auto-scaffold any missing linked pages from the main HTML
-        const mainHtml = vfsFiles["/index.html"];
-        if (mainHtml) {
-          const scaffoldResult = scaffoldMultiPageVFS(mainHtml, vfsFiles);
-          virtualFS.importFiles(scaffoldResult.files);
-          if (scaffoldResult.scaffoldedPages.length > 0) {
-            console.log(`[WebBuilder] Auto-scaffolded ${scaffoldResult.scaffoldedPages.length} linked pages from VFS import`);
-          }
-        } else {
-          virtualFS.importFiles(vfsFiles);
-        }
-        const entry = vfsFiles["/index.html"] || vfsFiles["/src/App.tsx"] || vfsFiles["/App.tsx"];
+        virtualFS.importFiles(vfsFiles);
+        // Find React entry point — prioritize /src/App.tsx, then /App.tsx
+        const entry = vfsFiles["/src/App.tsx"] || vfsFiles["/App.tsx"] || Object.values(vfsFiles)[0];
         if (entry) {
-          setEditorCode(entry);
-          setPreviewCode(entry);
+          // Ensure React imports are present
+          const safeEntry = ensureReactImports(entry);
+          setEditorCode(safeEntry);
+          setPreviewCode(safeEntry);
         }
         // Auto-hydrate Creator's Playground from imported VFS
         setTimeout(() => {
