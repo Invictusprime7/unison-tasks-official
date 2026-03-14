@@ -397,6 +397,7 @@ serve(async (req: Request) => {
       navLabel,
       siteElementsLibraryContext,
       surgicalEdit = false,
+      vfsFiles,
     } = parsed.data;
     
     // Suppress unused variable warnings - these are used in specific modes
