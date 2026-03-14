@@ -53,6 +53,7 @@ import {
   getIndustryForCategory,
   getAllowedIntents,
 } from "@/contracts";
+import { extractCleanCode, looksLikeCode } from "@/utils/aiCodeCleaner";
 
 // ============================================================================
 // Component
@@ -268,8 +269,12 @@ export const SystemLauncher = ({
               },
             });
           if (!aiError && aiData?.content) {
-            // Ensure AI-returned code is React-safe (may return raw HTML)
-            effectiveCode = getTemplateReactCode({ code: aiData.content, title: selectedTemplate.name });
+            const cleanedThemeCode = extractCleanCode(aiData.content);
+            if (cleanedThemeCode && looksLikeCode(cleanedThemeCode)) {
+              effectiveCode = getTemplateReactCode({ code: cleanedThemeCode, title: selectedTemplate.name });
+            } else {
+              console.warn("[SystemLauncher] Theme AI returned prose, ignoring");
+            }
           }
         } catch (e) {
           console.warn("[SystemLauncher] theme application failed", e);
@@ -412,7 +417,8 @@ export const SystemLauncher = ({
       }
 
       // Handle both React fullstack output (files) and HTML output (code)
-      const generatedCode = data?.code;
+      const rawGeneratedCode = data?.code;
+      const generatedCode = rawGeneratedCode ? extractCleanCode(rawGeneratedCode) : null;
       const generatedFiles = data?.files;
 
       if (generatedFiles && typeof generatedFiles === "object") {
@@ -433,7 +439,7 @@ export const SystemLauncher = ({
             startInPreview: true,
           },
         });
-      } else if (generatedCode && generatedCode.length >= 100) {
+      } else if (generatedCode && generatedCode.length >= 100 && looksLikeCode(generatedCode)) {
         // HTML mode — pass raw code
         navigate("/web-builder", {
           state: {
@@ -1034,7 +1040,14 @@ export const SystemLauncher = ({
                   "- (not installed yet; business data will be available after install)"
                 }
                 onCodeGenerated={(code) => {
-                  setEditedTemplateCode(code);
+                  const cleaned = extractCleanCode(code);
+                  if (cleaned && looksLikeCode(cleaned)) {
+                    setEditedTemplateCode(cleaned);
+                  } else {
+                    console.warn("[SystemLauncher] AI edit returned prose, ignoring");
+                    toast.error("AI returned text instead of code. Try again.");
+                    return;
+                  }
                   setEditedTemplateFiles(null);
                 }}
                 onFilesPatch={(files) => {
