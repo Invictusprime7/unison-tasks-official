@@ -166,8 +166,8 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       setIsLoading(true);
       
       // Try to load from Supabase (page_graphs table)
-      const { data, error } = await supabase
-        .from("page_graphs")
+      const { data, error } = await (supabase
+        .from("page_graphs") as any)
         .select("*")
         .eq("project_id", projectId)
         .single();
