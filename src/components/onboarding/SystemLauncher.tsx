@@ -23,6 +23,7 @@ import {
   Shield,
   Sparkles,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import {
   businessSystems,
@@ -198,6 +199,23 @@ export const SystemLauncher = ({
     setSelectedTemplate(template);
     setEditedTemplateCode(null);
     setEditedTemplateFiles(null);
+  };
+
+  const handleDeleteSavedTemplate = async (templateId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const dbId = templateId.replace("saved-", "");
+    const { error } = await supabase.from("design_templates").delete().eq("id", dbId);
+    if (error) {
+      toast.error("Failed to delete template");
+      return;
+    }
+    setUserSavedTemplates((prev) => prev.filter((t) => t.id !== templateId));
+    if (selectedTemplate?.id === templateId) {
+      setSelectedTemplate(null);
+      setEditedTemplateCode(null);
+      setEditedTemplateFiles(null);
+    }
+    toast.success("Template deleted");
   };
 
   const handleLaunch = async () => {
@@ -747,20 +765,31 @@ export const SystemLauncher = ({
                             </motion.div>
                           )}
                         </div>
-                        <div className="p-3">
-                          <h3 className="font-medium text-xs text-white/80 mb-1 line-clamp-1">
-                            {template.name}
-                          </h3>
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-white/[0.05] text-white/40 border-0">
-                              {categoryLabels[template.category] || template.category}
-                            </Badge>
-                            {template.tags?.slice(0, 1).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0 text-white/25 border-white/[0.08]">
-                                {tag}
+                        <div className="p-3 flex items-start justify-between gap-1">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-medium text-xs text-white/80 mb-1 line-clamp-1">
+                              {template.name}
+                            </h3>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-white/[0.05] text-white/40 border-0">
+                                {categoryLabels[template.category] || template.category}
                               </Badge>
-                            ))}
+                              {template.tags?.slice(0, 1).map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0 text-white/25 border-white/[0.08]">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
+                          {template.id.startsWith("saved-") && (
+                            <button
+                              onClick={(e) => handleDeleteSavedTemplate(template.id, e)}
+                              className="shrink-0 p-1 rounded-md text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="Delete saved template"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       </motion.div>
                     );
