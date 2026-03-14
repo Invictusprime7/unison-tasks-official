@@ -8,6 +8,7 @@
 
 import { getCompositionById } from '@/sections/templates';
 import { compositionToReactCode } from '@/sections/PageRenderer';
+import { ensureReactImports } from '@/utils/aiCodeCleaner';
 
 /**
  * Extracts <style> block content from HTML body strings
