@@ -791,7 +791,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         const packKeywords = {
           leads: ['leads pack', 'lead capture', 'contact form', 'newsletter', 'waitlist', 'lead generation'],
           booking: ['booking pack', 'appointment', 'scheduler', 'calendar', 'book now', 'booking system'],
-          auth: ['auth pack', 'authentication', 'login', 'signup', 'sign in', 'sign up', 'user accounts'],
+          auth: ['auth pack', 'authentication pack', 'user accounts pack'],
         };
         
         const packsToInstall: string[] = [];
@@ -803,17 +803,43 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         }
         
         // Check for explicit install/setup/add language
-        const isInstallRequest = lowerMessage.match(/\b(install|setup|set up|add|enable|configure|wire|connect)\b/);
+        const isInstallRequest = lowerMessage.match(/\b(install|setup|set up|enable|configure)\b.*\b(pack|system)\b/);
         
         if (isInstallRequest && packsToInstall.length > 0) {
           return { type: 'install_pack', packs: packsToInstall };
         }
         
-        // Detect button wiring requests
+        // Detect dynamic intent wiring requests — auth, routing, forms
+        // These should go through the AI code path (not pack install) for intent wiring
+        const authWireMatch = lowerMessage.match(/\b(add|wire|connect|implement|enable)\b.*\b(sign\s*in|sign\s*up|login|logout|sign\s*out|auth|authentication)\b.*\b(button|logic|flow|functionality|to)\b/);
+        if (authWireMatch) {
+          // Determine the specific auth intent
+          let intent = 'auth.signin';
+          if (lowerMessage.match(/sign\s*up|register|create\s+account/)) intent = 'auth.signup';
+          if (lowerMessage.match(/sign\s*out|log\s*out/)) intent = 'auth.signout';
+          
+          // Try to identify target button from prompt
+          const targetMatch = lowerMessage.match(/(?:to\s+(?:the\s+)?|on\s+(?:the\s+)?)([\w\s]+?)(?:\s+button|\s*$)/);
+          const selector = targetMatch ? `button:contains('${targetMatch[1].trim()}')` : '.auth-btn, .login-btn, .signin-btn';
+          
+          return { type: 'wire_button', selector, intent };
+        }
+
+        // Detect booking/contact wiring requests
+        const bookingWireMatch = lowerMessage.match(/\b(add|wire|connect|implement)\b.*\b(booking|appointment|schedule)\b.*\b(button|logic|flow|functionality|to)\b/);
+        if (bookingWireMatch) {
+          return { type: 'wire_button', selector: '.book-btn, .booking-btn', intent: 'booking.create' };
+        }
+
+        const contactWireMatch = lowerMessage.match(/\b(add|wire|connect|implement)\b.*\b(contact|inquiry|message)\b.*\b(form|button|logic|functionality|to)\b/);
+        if (contactWireMatch) {
+          return { type: 'wire_button', selector: '.contact-btn', intent: 'contact.submit' };
+        }
+
+        // Detect generic button wiring requests
         const wireMatch = lowerMessage.match(/wire\s+(the\s+)?([\w\s]+)\s+button/i);
         if (wireMatch) {
           const buttonName = wireMatch[2].trim();
-          // Infer intent from button name
           let intent = 'contact.submit';
           if (buttonName.match(/book|schedule|appointment/i)) intent = 'booking.create';
           if (buttonName.match(/subscribe|newsletter/i)) intent = 'newsletter.subscribe';
