@@ -2105,13 +2105,19 @@ function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, use
    - Different card styles (if rounded, try sharp; if dark, try light)
    - Different image treatment (different Unsplash photos, different overlays)
    - Different animation timing and styles
-   - Different decorative elements (blob shapes, gradients, patterns)
+    - Different decorative elements (blob shapes, gradients, patterns)
 
-3. **MAINTAIN QUALITY:**
-   - Same or more sections
-   - Same content density
-   - Same mobile responsiveness
-   - Production-ready code quality
+3. **INDUSTRY-FAITHFUL CONTENT (CRITICAL):**
+    - ALL services, descriptions, testimonials, and FAQ content MUST reflect the "${identity.industry}" industry
+    - NEVER generate content from a different industry (e.g. no hair services on a restaurant site)
+    - You may rewrite copy for freshness but the subject matter MUST match the industry
+    - Use industry-appropriate Unsplash imagery (food for restaurants, beauty for salons, etc.)
+
+4. **MAINTAIN QUALITY:**
+    - Same or more sections
+    - Same content density
+    - Same mobile responsiveness
+    - Production-ready code quality
 
 4. **OUTPUT FORMAT:**
    - Output ONLY a single complete HTML document
