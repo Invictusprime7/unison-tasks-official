@@ -680,42 +680,27 @@ function generateMonolithicApp(
 ): string {
   const jsx = htmlToJsx(content.html);
   
-  // Escape for template literal if using dangerouslySetInnerHTML
-  const needsDangerousHtml = content.html.length > 10000 || 
-    content.html.includes('<script') ||
-    content.html.match(/\{[^}]+\}/);
-  
-  if (needsDangerousHtml) {
-    const escapedHtml = content.html
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$\{/g, '\\${');
-    
-    return `import React from 'react';
+  // Always use native JSX — no dangerouslySetInnerHTML
+  const cssStr = content.styles?.length 
+    ? JSON.stringify(content.styles.join('\n\n')) 
+    : '';
 
-export default function ${componentName}() {
-  const htmlContent = \`${escapedHtml}\`;
-  
-  return (
-    <div 
-      className="min-h-screen"
-      dangerouslySetInnerHTML={{ __html: htmlContent }}
-    />
-  );
-}
-`;
+  let code = `import React${cssStr ? ', { useEffect }' : ''} from 'react';\n\n`;
+  if (cssStr) {
+    code += `const TEMPLATE_CSS = ${cssStr};\n\n`;
   }
-  
-  return `import React from 'react';
-
-export default function ${componentName}() {
-  return (
-    <div className="min-h-screen">
-      ${jsx}
-    </div>
-  );
-}
-`;
+  code += `export default function ${componentName}() {\n`;
+  if (cssStr) {
+    code += `  useEffect(() => {\n`;
+    code += `    const s = document.createElement('style');\n`;
+    code += `    s.setAttribute('data-template', '');\n`;
+    code += `    s.textContent = TEMPLATE_CSS;\n`;
+    code += `    document.head.appendChild(s);\n`;
+    code += `    return () => { s.remove(); };\n`;
+    code += `  }, []);\n\n`;
+  }
+  code += `  return (\n    <div className="min-h-screen">\n      ${jsx}\n    </div>\n  );\n}\n`;
+  return code;
 }
 
 /**
