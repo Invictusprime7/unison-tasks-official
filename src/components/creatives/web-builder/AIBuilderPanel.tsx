@@ -900,6 +900,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
       // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted change
+      // AND mandate that it outputs actual code, not just reasoning
       const promptForAI = isSurgicalEdit
         ? [
             '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED ELEMENT/COMPONENT 🚨',
@@ -907,6 +908,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             `User Request: ${_userContent}${_fileContext}`,
             editTargetContext,
             siteAnalysisContext ? `\nSite component map:\n${siteAnalysisContext.slice(0, 1500)}` : '',
+            '',
+            '⚠️ MANDATORY: You MUST output the modified code, not just explain the change.',
+            'For multi-file React projects: output JSON {"files": {"/path/file.tsx": "...content..."}, "explanation": "..."}',
+            'For single-file: output the full modified file in a ```tsx code fence.',
             '',
             '⚠️ CRITICAL SURGICAL EDIT RULES:',
             '1. Output ONLY the file(s) that need to change — do NOT regenerate the entire project',
