@@ -144,11 +144,9 @@ function extractRawHtmlFromMixed(content: string): string | null {
 
 /**
  * Convert raw HTML into a proper React component with native JSX.
- * Uses htmlToJsx converter — no dangerouslySetInnerHTML.
  */
 function wrapHtmlInReactComponent(html: string): string {
-  const { htmlDocToReactComponent } = require('@/utils/htmlToJsx');
-  return htmlDocToReactComponent(html, 'App');
+  return htmlDocToReactComponentFn(html, 'App');
 }
 
 // Types
