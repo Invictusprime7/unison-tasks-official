@@ -2029,6 +2029,39 @@ export type Database = {
         }
         Relationships: []
       }
+      page_graphs: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          nav_index: Json
+          pages: Json
+          project_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          nav_index?: Json
+          pages?: Json
+          project_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          nav_index?: Json
+          pages?: Json
+          project_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       page_sections: {
         Row: {
           created_at: string | null
