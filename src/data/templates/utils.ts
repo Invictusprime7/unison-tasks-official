@@ -45,8 +45,17 @@ function extractScripts(body: string): { scripts: string; cleanBody: string } {
  * 3. Renders HTML content via dangerouslySetInnerHTML (preserves Tailwind classes)
  */
 export const wrapInReactComponent = (body: string, title: string = "Template"): string => {
+  // Strip AI reasoning blocks that may leak from LLM responses
+  let cleanedBody = body.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+  // Also strip markdown-style reasoning that starts with numbered analysis
+  cleanedBody = cleanedBody.replace(/^[\s\S]*?(?=<!DOCTYPE|<html|<header|<section|<nav|<div|<main)/i, (match) => {
+    // Only strip if it looks like prose before HTML
+    if (/\b(UNDERSTAND|ANALYSE|PLAN|CONSIDER|DECIDE|I will|I need|Let me)\b/i.test(match)) return '';
+    return match;
+  });
+  
   // Extract styles and scripts from the body content
-  const { styles: extractedStyles, cleanBody: bodyAfterStyles } = extractStyles(body);
+  const { styles: extractedStyles, cleanBody: bodyAfterStyles } = extractStyles(cleanedBody);
   const { scripts: extractedScripts, cleanBody: finalBody } = extractScripts(bodyAfterStyles);
 
   const baseStyles = 'html { scroll-behavior: smooth; }\n@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }\ndetails > summary { list-style: none; cursor: pointer; }\ndetails > summary::-webkit-details-marker { display: none; }\n.tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }';
@@ -322,10 +331,13 @@ export const getTemplateReactCode = (template: { code: string; id?: string; titl
     }
   }
 
+  // Strip AI reasoning blocks before any processing
+  let code = template.code.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
+
   // If already React code, return as-is
-  if (template.code.includes('import React') || template.code.includes('export default function')) {
-    return template.code;
+  if (code.includes('import React') || code.includes('export default function')) {
+    return code;
   }
   // Wrap raw HTML into React component
-  return wrapInReactComponent(template.code, template.title || template.name || 'Template');
+  return wrapInReactComponent(code, template.title || template.name || 'Template');
 };

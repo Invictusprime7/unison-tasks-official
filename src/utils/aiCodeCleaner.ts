@@ -20,7 +20,8 @@
 export function extractCleanCode(input: string): string {
   if (!input || typeof input !== 'string') return input || '';
 
-  const trimmed = input.trim();
+  // Strip AI reasoning blocks (<thinking>...</thinking>) first
+  let trimmed = input.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
 
   // 1. If content has markdown code blocks with a language, extract the largest one
   const fenceMatches = [...trimmed.matchAll(
