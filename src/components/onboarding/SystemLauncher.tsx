@@ -301,10 +301,16 @@ export const SystemLauncher = ({
 
       const businessId = data.data.businessId as string;
 
+      // Always pass as VFS files for multi-file React project support
+      const vfsFiles = editedTemplateFiles || {
+        '/src/App.tsx': effectiveCode,
+        '/src/main.tsx': `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
+        '/src/index.css': `:root {\n  --background: 222.2 84% 4.9%;\n  --foreground: 210 40% 98%;\n}\n\nbody {\n  margin: 0;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}\n`,
+      };
+
       navigate("/web-builder", {
         state: {
-          generatedCode: effectiveCode,
-          vfsFiles: editedTemplateFiles,
+          vfsFiles,
           templateName: selectedTemplate.name,
           aesthetic: selectedTheme?.id,
           designPreset: selectedTheme?.id,
@@ -315,6 +321,7 @@ export const SystemLauncher = ({
           businessId,
           manifestId: manifest.id,
           isProvisioned: true,
+          startInPreview: true,
         },
       });
 
