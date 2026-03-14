@@ -1085,7 +1085,16 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
       // Pre-processing: Detect if content is AI reasoning/prose with no usable code
       // AI sometimes outputs planning text with inline HTML tag refs like `<style>`, `<nav>`
+      // For surgical edits, we're stricter — if there are code fences OR JSON, always try extraction
       const isLikelyPureReasoning = (() => {
+        if (isSurgicalEdit) {
+          // In surgical edit mode, only skip if there's truly zero code anywhere
+          const hasAnyCode = /```\w*\s*\n/m.test(trimmed) || 
+            (trimmed.includes('"files"') && trimmed.includes('{')) ||
+            trimmed.includes('import ') ||
+            trimmed.includes('export ');
+          return !hasAnyCode && !trimmed.includes('className') && !trimmed.includes('function ');
+        }
         const stripped = stripInlineCodeRefs(trimmed);
         const hasNoCodeStructure = !stripped.includes('import ') && 
           !stripped.includes('export ') && 
