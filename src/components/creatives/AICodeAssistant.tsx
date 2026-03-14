@@ -1413,9 +1413,11 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     ] : [
       "🚀 Full AI control - improve everything",
       "Create a modern hero section",
+      "Add sign in/sign up to auth button",
       "Add cart + checkout flow",
+      "Wire booking button to booking form",
+      "Add navigation routing to all links",
       "Build a pricing section with 3 tiers",
-      "Generate a features showcase",
       "Make elements dynamic & interactive",
     ],
     design: [

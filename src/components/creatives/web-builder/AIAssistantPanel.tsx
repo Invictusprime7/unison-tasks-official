@@ -427,9 +427,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
 
   const quickPrompts = [
     '🚀 Full AI control - transform this page',
+    'Add sign in logic to auth button',
+    'Wire booking button to booking form',
+    'Add navigation routing to all links',
     'Add cart + checkout flow',
     'Make everything dynamic',
-    'Create a landing page for a SaaS',
   ];
 
   if (!isOpen) return null;
