@@ -1210,10 +1210,10 @@ ${templateHtml.length > 20000 ? `\n[Template continues for ${templateHtml.length
 
 🏆 **PREMIUM REFERENCE TEMPLATE (QUALITY BASELINE):**
 
-Below is a PREMIUM, handcrafted HTML template for this industry. Use it as your QUALITY BASELINE — your output must MATCH OR EXCEED this level of design sophistication, section density, visual effects, and content quality.
+Below is a PREMIUM, handcrafted template for this industry. Use it as your QUALITY BASELINE — your output must MATCH OR EXCEED this level of design sophistication, section density, visual effects, and content quality.
 
 IMPORTANT RULES FOR USING THE REFERENCE:
-1. DO NOT copy the template verbatim — generate ORIGINAL content and design variations
+1. DO NOT copy the template verbatim — generate ORIGINAL design variations
 2. MATCH the structural quality: same number of sections, same density of components per section
 3. MATCH the visual quality: gradients, glassmorphism, hover effects, scroll animations
 4. MATCH the intent wiring: data-ut-intent, data-ut-cta, data-no-intent attributes
@@ -1221,6 +1221,7 @@ IMPORTANT RULES FOR USING THE REFERENCE:
 6. ADAPT the content to match the blueprint's business name, tagline, and brand colors
 7. USE the blueprint's color palette instead of the reference template's colors
 8. MAINTAIN the same level of Lucide icon usage and image integration
+9. ⚠️ ALL CONTENT MUST BE INDUSTRY-FAITHFUL — services, descriptions, testimonials, FAQs, and imagery must reflect the "${identity.industry}" industry. NEVER generate content from a different industry.
 
 Reference template (first 15000 chars for context):
 \`\`\`html
