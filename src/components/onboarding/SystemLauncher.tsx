@@ -483,7 +483,7 @@ export const SystemLauncher = ({
     saved: "My Designs",
   };
 
-  const stepKeys: WizardStep[] = ["industry", "theme", "templates"];
+  const stepKeys: WizardStep[] = ["industry", "templates", "theme"];
   const currentStepIdx = stepKeys.indexOf(step);
 
   return (
