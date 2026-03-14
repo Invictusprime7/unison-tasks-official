@@ -900,6 +900,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       const richContext = contextLines.length ? `\n\n[Context]\n${contextLines.join('\n')}` : '';
 
       // For surgical edits, inject a strict prompt guard so the AI makes ONLY the targeted change
+      // AND mandate that it outputs actual code, not just reasoning
       const promptForAI = isSurgicalEdit
         ? [
             '🚨 SURGICAL EDIT MODE — CHANGE ONLY THE TARGETED ELEMENT/COMPONENT 🚨',
@@ -907,6 +908,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             `User Request: ${_userContent}${_fileContext}`,
             editTargetContext,
             siteAnalysisContext ? `\nSite component map:\n${siteAnalysisContext.slice(0, 1500)}` : '',
+            '',
+            '⚠️ MANDATORY: You MUST output the modified code, not just explain the change.',
+            'For multi-file React projects: output JSON {"files": {"/path/file.tsx": "...content..."}, "explanation": "..."}',
+            'For single-file: output the full modified file in a ```tsx code fence.',
             '',
             '⚠️ CRITICAL SURGICAL EDIT RULES:',
             '1. Output ONLY the file(s) that need to change — do NOT regenerate the entire project',
@@ -977,6 +982,30 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 maxElements: 10,
               });
 
+          // Build compact VFS files payload for surgical edits (only relevant files, capped)
+          let vfsPayload: Record<string, string> | undefined;
+          if (isSurgicalEdit && isReactProject && vfsFiles) {
+            const MAX_VFS_PAYLOAD = 120_000;
+            let totalSize = 0;
+            vfsPayload = {};
+            // Prioritize resolved target file, then .tsx/.jsx, then .css
+            const sortedPaths = Object.keys(vfsFiles).sort((a, b) => {
+              if (resolvedTargetFile) {
+                if (a === resolvedTargetFile) return -1;
+                if (b === resolvedTargetFile) return 1;
+              }
+              const aReact = /\.(tsx|jsx)$/.test(a) ? 0 : /\.css$/.test(a) ? 1 : 2;
+              const bReact = /\.(tsx|jsx)$/.test(b) ? 0 : /\.css$/.test(b) ? 1 : 2;
+              return aReact - bReact;
+            });
+            for (const p of sortedPaths) {
+              const content = vfsFiles[p];
+              if (totalSize + content.length > MAX_VFS_PAYLOAD) continue;
+              vfsPayload[p] = content;
+              totalSize += content.length;
+            }
+          }
+
           response = await supabase.functions.invoke('ai-code-assistant', {
             body: {
               messages: [{ role: 'user', content: promptForAI }],
@@ -995,6 +1024,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               systemsBuildContext: systemsBuildContext ?? undefined,
               siteElementsLibraryContext,
               attachments: _attachments.length > 0 ? _attachments : undefined,
+              // Send VFS files for surgical edit context
+              vfsFiles: vfsPayload,
             },
           });
           
@@ -1054,7 +1085,16 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
       // Pre-processing: Detect if content is AI reasoning/prose with no usable code
       // AI sometimes outputs planning text with inline HTML tag refs like `<style>`, `<nav>`
+      // For surgical edits, we're stricter — if there are code fences OR JSON, always try extraction
       const isLikelyPureReasoning = (() => {
+        if (isSurgicalEdit) {
+          // In surgical edit mode, only skip if there's truly zero code anywhere
+          const hasAnyCode = /```\w*\s*\n/m.test(trimmed) || 
+            (trimmed.includes('"files"') && trimmed.includes('{')) ||
+            trimmed.includes('import ') ||
+            trimmed.includes('export ');
+          return !hasAnyCode && !trimmed.includes('className') && !trimmed.includes('function ');
+        }
         const stripped = stripInlineCodeRefs(trimmed);
         const hasNoCodeStructure = !stripped.includes('import ') && 
           !stripped.includes('export ') && 
@@ -1178,6 +1218,23 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             console.log('[AIBuilderPanel] Content is raw HTML, wrapping in React component');
             generatedCode = wrapHtmlInReactComponent(trimmed);
             explanationText = '✅ HTML site generated and wrapped for preview.';
+          }
+        }
+
+        // Strategy 6 (surgical edit fallback): Extract JSON {"files": {...}} from prose
+        // AI may return: "Here's the change:\n```json\n{\"files\": {...}}\n```\nI changed X"
+        if (!multiFileOutput && !generatedCode && isSurgicalEdit) {
+          // Try to find {"files": embedded anywhere in the content
+          const filesJsonMatch = trimmed.match(/\{[\s\S]*?"files"\s*:\s*\{[\s\S]*?\}\s*\}/);
+          if (filesJsonMatch) {
+            try {
+              const parsed = JSON.parse(filesJsonMatch[0]);
+              if (parsed.files && typeof parsed.files === 'object') {
+                multiFileOutput = parsed.files;
+                explanationText = parsed.explanation || '✅ Surgical edit applied.';
+                console.log('[AIBuilderPanel] Strategy 6: Extracted multi-file JSON from prose:', Object.keys(multiFileOutput!));
+              }
+            } catch { /* not valid JSON, continue */ }
           }
         }
 
