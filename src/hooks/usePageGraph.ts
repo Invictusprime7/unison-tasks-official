@@ -166,8 +166,8 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
       setIsLoading(true);
       
       // Try to load from Supabase (page_graphs table)
-      const { data, error } = await supabase
-        .from("page_graphs")
+      const { data, error } = await (supabase
+        .from("page_graphs") as any)
         .select("*")
         .eq("project_id", projectId)
         .single();
@@ -215,8 +215,8 @@ export function usePageGraph(options: UsePageGraphOptions): UsePageGraphReturn {
    */
   const savePageGraph = useCallback(async (graph: PageGraph): Promise<void> => {
     try {
-      const { error } = await supabase
-        .from("page_graphs")
+      const { error } = await (supabase
+        .from("page_graphs") as any)
         .upsert({
           project_id: graph.projectId,
           business_id: graph.businessId,
