@@ -408,32 +408,20 @@ export function SystemsAIPanel({ user, onAuthRequired }: SystemsAIPanelProps) {
       if (selectedCodeChip) {
         const ref = getTemplateReference(selectedCodeChip);
         
-        // If we have a premium template, customize it with user's design profile
-        // This applies color preferences and style patterns while preserving template quality
-        if (ref && ref.templateHtml) {
+        // If we have a premium template, use its React code directly
+        if (ref && ref.templateCode) {
           console.log(`[SystemsAIPanel] Using pre-built template: ${ref.templateId} (${ref.templateName})`);
           
-          // Apply user design profile customizations if available
-          const customizedHtml = hasProfile 
-            ? applyDesignProfileToTemplate(ref.templateHtml, designProfile)
-            : ref.templateHtml;
+          // The templateCode is already React/TSX from the composition registry
+          const reactCode = ref.templateCode;
           
           console.log(`[SystemsAIPanel] Design profile ${hasProfile ? 'applied' : 'not available'} (${savedProjectCount} projects)`);
           
-          // Convert HTML template to React VFS files (preserves all styles)
-          const vfsFiles = templateToVFSFiles(customizedHtml, ref.templateName.replace(/[^a-zA-Z0-9]/g, ''));
-          
-          // Add the original HTML as index.html for HTML preview mode
-          vfsFiles['/index.html'] = customizedHtml;
-          
-          console.log('[SystemsAIPanel] Converted to VFS:', Object.keys(vfsFiles).length, 'files');
-          
-          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify(vfsFiles));
+          sessionStorage.setItem('ai_assistant_generated_code', JSON.stringify({ "src/App.tsx": reactCode }));
           setDroppedFiles([]); // Clear files on success
           navigate("/web-builder", {
             state: {
-              vfsFiles: vfsFiles,
-              generatedCode: customizedHtml, // Pass customized HTML for preview
+              generatedCode: reactCode,
               templateName: ref.templateName,
               aesthetic: "premium",
               startInPreview: true,
