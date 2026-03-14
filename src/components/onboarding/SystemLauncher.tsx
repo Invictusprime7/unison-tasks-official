@@ -62,12 +62,12 @@ interface SystemLauncherProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type WizardStep = "industry" | "theme" | "templates";
+type WizardStep = "industry" | "templates" | "theme";
 
 const STEP_META: Record<WizardStep, { num: number; label: string }> = {
   industry: { num: 1, label: "Industry" },
-  theme: { num: 2, label: "Theme" },
-  templates: { num: 3, label: "Template" },
+  templates: { num: 2, label: "Template" },
+  theme: { num: 3, label: "Theme" },
 };
 
 export const SystemLauncher = ({
