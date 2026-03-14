@@ -358,6 +358,8 @@ serve(async (req: Request) => {
       siteElementsLibraryContext: z.string().max(50_000).optional(),
       // Surgical edit mode — the user wants a targeted change, not full-page generation
       surgicalEdit: z.boolean().optional(),
+      // VFS project files for multi-file surgical edit context
+      vfsFiles: z.record(z.string(), z.string().max(100_000)).optional(),
     });
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
