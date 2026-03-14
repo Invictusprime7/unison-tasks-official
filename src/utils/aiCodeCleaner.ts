@@ -146,3 +146,27 @@ function isPureMarkdownOrProse(text: string): boolean {
 
   return false;
 }
+
+/**
+ * Ensure React imports are present in a TSX/JSX file that uses hooks.
+ * Prevents "useRef is not defined" and similar errors in Sandpack.
+ */
+export function ensureReactImports(code: string): string {
+  if (!code || typeof code !== 'string') return code;
+  
+  // Already has React import
+  if (/import\s+React|from\s+['"]react['"]/.test(code)) return code;
+  
+  // No export default = probably not a component file
+  if (!code.includes('export default')) return code;
+  
+  // Detect which hooks are used
+  const hooks = ['useRef', 'useEffect', 'useState', 'useCallback', 'useMemo', 'useContext', 'useReducer', 'useLayoutEffect']
+    .filter(h => code.includes(h));
+  
+  const importLine = hooks.length > 0
+    ? `import React, { ${hooks.join(', ')} } from 'react';\n\n`
+    : `import React from 'react';\n\n`;
+  
+  return importLine + code;
+}

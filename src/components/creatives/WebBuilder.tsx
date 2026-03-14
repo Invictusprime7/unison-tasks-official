@@ -73,7 +73,7 @@ import type { BusinessSystemType } from "@/data/templates/types";
 import { normalizeTemplateForCtaContract, type TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { supabase } from "@/integrations/supabase/client";
 import { buildPageStructureContext } from "@/utils/pageStructureContext";
-import { extractCleanCode, looksLikeCode } from "@/utils/aiCodeCleaner";
+import { extractCleanCode, looksLikeCode, ensureReactImports } from "@/utils/aiCodeCleaner";
 import { AIActivityPanel } from "@/components/ai-agent/AIActivityPanel";
 import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
 import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
@@ -2561,21 +2561,14 @@ export default function App() {
     if (location.state?.vfsFiles) {
       const vfsFiles = (location.state as { vfsFiles?: Record<string, string> })?.vfsFiles;
       if (vfsFiles && Object.keys(vfsFiles).length > 0) {
-        // Auto-scaffold any missing linked pages from the main HTML
-        const mainHtml = vfsFiles["/index.html"];
-        if (mainHtml) {
-          const scaffoldResult = scaffoldMultiPageVFS(mainHtml, vfsFiles);
-          virtualFS.importFiles(scaffoldResult.files);
-          if (scaffoldResult.scaffoldedPages.length > 0) {
-            console.log(`[WebBuilder] Auto-scaffolded ${scaffoldResult.scaffoldedPages.length} linked pages from VFS import`);
-          }
-        } else {
-          virtualFS.importFiles(vfsFiles);
-        }
-        const entry = vfsFiles["/index.html"] || vfsFiles["/src/App.tsx"] || vfsFiles["/App.tsx"];
+        virtualFS.importFiles(vfsFiles);
+        // Find React entry point — prioritize /src/App.tsx, then /App.tsx
+        const entry = vfsFiles["/src/App.tsx"] || vfsFiles["/App.tsx"] || Object.values(vfsFiles)[0];
         if (entry) {
-          setEditorCode(entry);
-          setPreviewCode(entry);
+          // Ensure React imports are present
+          const safeEntry = ensureReactImports(entry);
+          setEditorCode(safeEntry);
+          setPreviewCode(safeEntry);
         }
         // Auto-hydrate Creator's Playground from imported VFS
         setTimeout(() => {
@@ -2654,62 +2647,32 @@ export default function App() {
       const { generatedTemplate, templateName, aesthetic } = location.state;
       console.log('[WebBuilder] Loading template from Web Design Kit:', templateName);
       
-      // Convert template to HTML code
-      const htmlCode = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${generatedTemplate.name}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Template: ${generatedTemplate.name} */
-        /* Colors: Primary ${generatedTemplate.brandKit.primaryColor}, Secondary ${generatedTemplate.brandKit.secondaryColor} */
-        
-        html {
-            scroll-behavior: smooth;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.6s ease-out;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Generated Template: ${generatedTemplate.name} -->
-    <!-- ${generatedTemplate.description} -->
-    
-    ${generatedTemplate.sections.map(section => `
-    <!-- Section: ${section.name} (${section.type}) -->
-    <section class="py-16 px-6">
-        <div class="max-w-7xl mx-auto">
+      // Build HTML body from template sections, then wrap in React component
+      const sectionsHtml = (generatedTemplate.sections || []).map((section: any) => {
+        const colCount = section.components?.length > 2 ? 3 : 2;
+        const comps = (section.components || []).map((comp: any) =>
+          `<div class="p-6 bg-white rounded-lg shadow-lg">
+            <h3 class="text-2xl font-semibold mb-4">${comp.props?.title || 'Component'}</h3>
+            <p class="text-gray-600">${comp.props?.description || 'Component content'}</p>
+          </div>`
+        ).join('\n');
+        return `<section class="py-16 px-6">
+          <div class="max-w-7xl mx-auto">
             <h2 class="text-4xl font-bold mb-8">${section.name}</h2>
-            <div class="grid gap-6 md:grid-cols-${section.components.length > 2 ? '3' : '2'}">
-                ${section.components.map(comp => `
-                <div class="p-6 bg-white rounded-lg shadow-lg">
-                    <h3 class="text-2xl font-semibold mb-4">${comp.props.title || 'Component'}</h3>
-                    <p class="text-gray-600">${comp.props.description || 'Component content'}</p>
-                </div>
-                `).join('\n                ')}
-            </div>
-        </div>
-    </section>
-    `).join('\n    ')}
-</body>
-</html>`;
+            <div class="grid gap-6 md:grid-cols-${colCount}">${comps}</div>
+          </div>
+        </section>`;
+      }).join('\n');
+
+      const bodyHtml = `<div class="min-h-screen bg-gray-50">${sectionsHtml}</div>`;
+      const reactCode = getTemplateReactCode({ code: bodyHtml, title: generatedTemplate.name || templateName || 'Template' });
       
-      setEditorCode(htmlCode);
-      setPreviewCode(htmlCode);
-      setViewMode('code'); // Start in code view to show the template in CodeMirror
+      setEditorCode(reactCode);
+      setPreviewCode(reactCode);
+      setViewMode('code');
       toast(`${templateName || generatedTemplate.name} loaded!`, {
         description: `${aesthetic || generatedTemplate.description} - View and edit in Code Editor`,
       });
-      // Clear the state to prevent re-loading on subsequent renders
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);

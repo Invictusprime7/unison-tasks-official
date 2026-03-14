@@ -5,6 +5,8 @@
  * This module flattens VFS paths, processes imports, and ensures essential files exist.
  */
 
+import { ensureReactImports } from '@/utils/aiCodeCleaner';
+
 const ALLOWED_IMPORTS = new Set([
   'react',
   'react-dom',
@@ -355,6 +357,11 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
     if (/\.(tsx?|jsx?)$/.test(normalizedPath) && isRawCss(processedContent)) {
       console.warn(`[sandpackFilePrep] Raw CSS detected in ${normalizedPath} — wrapping in React component`);
       processedContent = wrapCssInReactComponent(processedContent);
+    }
+
+    // SAFETY NET: Ensure React imports are present for files using hooks
+    if (/\.(tsx?|jsx?)$/.test(normalizedPath) && !isRawCss(processedContent)) {
+      processedContent = ensureReactImports(processedContent);
     }
 
     processedContent = processedContent

@@ -1059,9 +1059,9 @@ export const SystemLauncher = ({
                 onFilesPatch={(files) => {
                   setEditedTemplateFiles(files);
                   const entry =
-                    files["/index.html"] ||
                     files["/src/App.tsx"] ||
-                    files["/App.tsx"];
+                    files["/App.tsx"] ||
+                    Object.values(files).find(v => v.includes('export default'));
                   if (entry) setEditedTemplateCode(entry);
                   return true;
                 }}

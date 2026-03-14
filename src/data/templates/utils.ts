@@ -8,6 +8,7 @@
 
 import { getCompositionById } from '@/sections/templates';
 import { compositionToReactCode } from '@/sections/PageRenderer';
+import { ensureReactImports } from '@/utils/aiCodeCleaner';
 
 /**
  * Extracts <style> block content from HTML body strings
@@ -334,21 +335,14 @@ export const getTemplateReactCode = (template: { code: string; id?: string; titl
   // Strip AI reasoning blocks before any processing
   let code = template.code.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
 
-  // If already React code, ensure imports are present
+  // If already React code, return with imports ensured
   if (code.includes('import React') || code.includes('from "react"') || code.includes("from 'react'")) {
     return code;
   }
   
-  // Has React hooks/JSX but missing import — prepend it
+  // Has React component but missing import — use shared utility
   if (code.includes('export default function') || code.includes('export default ')) {
-    const needsRef = code.includes('useRef');
-    const needsEffect = code.includes('useEffect');
-    const needsState = code.includes('useState');
-    const hooks = [needsRef && 'useRef', needsEffect && 'useEffect', needsState && 'useState'].filter(Boolean);
-    const importLine = hooks.length > 0
-      ? `import React, { ${hooks.join(', ')} } from 'react';\n\n`
-      : `import React from 'react';\n\n`;
-    return importLine + code;
+    return ensureReactImports(code);
   }
   // Wrap raw HTML into React component
   return wrapInReactComponent(code, template.title || template.name || 'Template');
