@@ -670,8 +670,9 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   }
 
   // Native JSX — extract return body and convert className back to class for static HTML
+  // IMPORTANT: Match only JSX returns (starting with <), NOT arrow function returns like `return () => {`
   if (!bodyContent) {
-    const returnMatch = appContent.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+    const returnMatch = appContent.match(/return\s*\(\s*(<[\s\S]*?)\s*\)\s*;?\s*\}/s);
     if (returnMatch && returnMatch[1].includes('className=')) {
       bodyContent = returnMatch[1]
         .replace(/className=/g, 'class=')
@@ -696,27 +697,27 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   
   if (!bodyContent) {
     // Try multiple patterns to extract JSX return content
-    // Pattern 1: Arrow function component with return
-    let returnMatch = appContent.match(/=>\s*\{\s*return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+    // Pattern 1: Arrow function component with JSX return (must start with <)
+    let returnMatch = appContent.match(/=>\s*\{\s*return\s*\(\s*(<[\s\S]*?)\s*\)\s*;?\s*\}/s);
     
-    // Pattern 2: Regular function with return
+    // Pattern 2: Regular function with JSX return
     if (!returnMatch || returnMatch[1].trim().length < 20) {
-      returnMatch = appContent.match(/function\s+\w+[^{]*\{\s*return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+      returnMatch = appContent.match(/function\s+\w+[^{]*\{\s*return\s*\(\s*(<[\s\S]*?)\s*\)\s*;?\s*\}/s);
     }
     
     // Pattern 3: Arrow function with implicit return (no braces)
     if (!returnMatch || returnMatch[1].trim().length < 20) {
-      returnMatch = appContent.match(/=>\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*$/ms);
+      returnMatch = appContent.match(/=>\s*\(\s*(<[\s\S]*?)\s*\)\s*;?\s*$/ms);
     }
     
-    // Pattern 4: Generic return statement
+    // Pattern 4: Generic JSX return statement (must start with <)
     if (!returnMatch || returnMatch[1].trim().length < 20) {
-      returnMatch = appContent.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+      returnMatch = appContent.match(/return\s*\(\s*(<[\s\S]*?)\s*\)\s*;?\s*\}/s);
     }
     
-    // Pattern 5: Look for the main JSX block with multiline content (more greedy)
+    // Pattern 5: Look for the main JSX block with multiline content (more greedy, must start with <)
     if (!returnMatch || returnMatch[1].trim().length < 20) {
-      returnMatch = appContent.match(/return\s*\(([\s\S]+)\)\s*;?\s*\}/s);
+      returnMatch = appContent.match(/return\s*\(\s*(<[\s\S]+)\)\s*;?\s*\}/s);
     }
     
     console.log('[VFSPreview] Return match found:', !!returnMatch, 'content length:', returnMatch?.[1]?.length || 0);
