@@ -681,8 +681,8 @@ function generateMonolithicApp(
   const jsx = htmlToJsx(content.html);
   
   // Always use native JSX — no dangerouslySetInnerHTML
-  const cssStr = content.styles?.length 
-    ? JSON.stringify(content.styles.join('\n\n')) 
+  const cssStr = content.css?.trim() 
+    ? JSON.stringify(content.css) 
     : '';
 
   let code = `import React${cssStr ? ', { useEffect }' : ''} from 'react';\n\n`;
