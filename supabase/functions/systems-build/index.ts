@@ -1013,6 +1013,9 @@ export default function App() {
     const data = await response.json();
     let generatedCode = String(data?.choices?.[0]?.message?.content ?? "").slice(0, 500_000);
 
+    // Strip AI reasoning blocks
+    generatedCode = generatedCode.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
+
     // Clean up markdown code blocks if present
     generatedCode = cleanupCodeBlocks(generatedCode);
     
