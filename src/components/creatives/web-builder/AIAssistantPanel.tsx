@@ -221,6 +221,14 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
       if (lowerMessage.match(/\b(make|add)\b.*\b(dynamic|interactive|animated|live|real-time)\b/)) {
         return 'full-control';
       }
+      // Auth/login flow requests — modify to wire intent attributes
+      if (lowerMessage.match(/\b(add|wire|connect|implement|enable)\b.*\b(sign\s*in|sign\s*up|login|logout|auth|authentication)\b/)) {
+        return 'modify';
+      }
+      // Routing/navigation wiring
+      if (lowerMessage.match(/\b(add|wire|implement)\b.*\b(navigation|routing|redirect|page\s*link)\b/)) {
+        return 'modify';
+      }
       if (lowerMessage.match(/\b(add|insert|include|create new|put|place)\b.*\b(section|element|component|button|image|form|card|hero|footer|header|nav)/)) {
         return 'add';
       }
@@ -419,9 +427,11 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
 
   const quickPrompts = [
     '🚀 Full AI control - transform this page',
+    'Add sign in logic to auth button',
+    'Wire booking button to booking form',
+    'Add navigation routing to all links',
     'Add cart + checkout flow',
     'Make everything dynamic',
-    'Create a landing page for a SaaS',
   ];
 
   if (!isOpen) return null;
