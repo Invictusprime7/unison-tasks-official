@@ -357,6 +357,11 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
       processedContent = wrapCssInReactComponent(processedContent);
     }
 
+    // SAFETY NET: Ensure React imports are present for files using hooks
+    if (/\.(tsx?|jsx?)$/.test(normalizedPath) && !isRawCss(processedContent)) {
+      processedContent = ensureReactImports(processedContent);
+    }
+
     processedContent = processedContent
       .replace(/from\s+['"]\.\/src\//g, "from './")
       .replace(/from\s+['"]src\//g, "from './")
