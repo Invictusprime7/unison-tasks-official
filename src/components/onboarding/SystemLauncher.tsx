@@ -1040,7 +1040,14 @@ export const SystemLauncher = ({
                   "- (not installed yet; business data will be available after install)"
                 }
                 onCodeGenerated={(code) => {
-                  setEditedTemplateCode(code);
+                  const cleaned = extractCleanCode(code);
+                  if (cleaned && looksLikeCode(cleaned)) {
+                    setEditedTemplateCode(cleaned);
+                  } else {
+                    console.warn("[SystemLauncher] AI edit returned prose, ignoring");
+                    toast.error("AI returned text instead of code. Try again.");
+                    return;
+                  }
                   setEditedTemplateFiles(null);
                 }}
                 onFilesPatch={(files) => {
