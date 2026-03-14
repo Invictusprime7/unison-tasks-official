@@ -344,48 +344,38 @@ function generatePageComponent(componentName: string, html: string): string {
     bodyContent = bodyMatch[1];
   }
   
-  // Extract head styles/scripts for injection
+  // Extract head styles for injection
   const headStyles = extractHeadContent(html);
   
-  const escapedHtml = bodyContent
-    .replace(/\\/g, '\\\\')
-    .replace(/`/g, '\\`')
-    .replace(/\$\{/g, '\\${');
+  // Convert HTML to JSX-safe markup
+  const jsxBody = bodyContent
+    .replace(/ class="/g, ' className="')
+    .replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}')
+    .replace(/<br>/gi, '<br />')
+    .replace(/<hr>/gi, '<hr />')
+    .replace(/<img([^>]*?)(?<!\/)>/gi, '<img$1 />')
+    .replace(/<input([^>]*?)(?<!\/)>/gi, '<input$1 />')
+    .replace(/<link([^>]*?)(?<!\/)>/gi, '<link$1 />')
+    .replace(/<meta([^>]*?)(?<!\/)>/gi, '<meta$1 />')
+    .replace(/<source([^>]*?)(?<!\/)>/gi, '<source$1 />');
   
-  const escapedHead = headStyles
-    .replace(/\\/g, '\\\\')
-    .replace(/`/g, '\\`')
-    .replace(/\$\{/g, '\\${');
+  const headCssJson = headStyles.trim() ? JSON.stringify(headStyles) : '';
   
-  return `import React, { useEffect, useRef } from 'react';
-
-export default function ${componentName}() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  
+  return `import React${headCssJson ? ', { useEffect }' : ''} from 'react';
+${headCssJson ? `\nconst PAGE_STYLES = ${headCssJson};\n` : ''}
+export default function ${componentName}() {${headCssJson ? `
   useEffect(() => {
-    // Inject scripts after render
-    if (containerRef.current) {
-      const scripts = containerRef.current.querySelectorAll('script');
-      scripts.forEach(oldScript => {
-        const newScript = document.createElement('script');
-        if (oldScript.src) {
-          newScript.src = oldScript.src;
-        } else {
-          newScript.textContent = oldScript.textContent;
-        }
-        oldScript.parentNode?.replaceChild(newScript, oldScript);
-      });
-    }
+    const s = document.createElement('style');
+    s.setAttribute('data-page-styles', '');
+    s.textContent = PAGE_STYLES;
+    document.head.appendChild(s);
+    return () => { s.remove(); };
   }, []);
-  
+` : ''}
   return (
-    <>
-      <div dangerouslySetInnerHTML={{ __html: \`${escapedHead}\` }} />
-      <div 
-        ref={containerRef}
-        dangerouslySetInnerHTML={{ __html: \`${escapedHtml}\` }}
-      />
-    </>
+    <div className="page-container">
+      ${jsxBody}
+    </div>
   );
 }
 `;

@@ -580,23 +580,28 @@ ${routes}
 }
 
 /**
- * Generate a page component file from PageBundle
+ * Generate a page component file from PageBundle — uses native JSX
  */
 function generatePageFile(page: PageBundle): string {
   const componentName = sanitizeComponentName(page.path);
-  
-  // If page has HTML content, use dangerouslySetInnerHTML
   const htmlContent = page.output?.html || '<div>Page content not generated</div>';
+  
+  // Convert HTML to JSX-compatible markup
+  const jsxContent = htmlContent
+    .replace(/ class="/g, ' className="')
+    .replace(/<!--([\s\S]*?)-->/g, '{/* $1 */}')
+    .replace(/<br>/gi, '<br />')
+    .replace(/<hr>/gi, '<hr />')
+    .replace(/<img([^>]*?)(?<!\/)>/gi, '<img$1 />');
   
   return `
 import React from 'react';
 
 export default function ${componentName}() {
   return (
-    <div 
-      className="page-container"
-      dangerouslySetInnerHTML={{ __html: ${JSON.stringify(htmlContent)} }}
-    />
+    <div className="page-container">
+      ${jsxContent}
+    </div>
   );
 }
 `.trim();

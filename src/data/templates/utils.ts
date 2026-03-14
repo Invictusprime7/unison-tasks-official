@@ -2,13 +2,14 @@
  * Layout Templates - Utility Functions
  * Shared helpers for template generation
  * 
- * REACT-ONLY: All templates output React component strings (.tsx)
- * Uses JSON.stringify for CSS/HTML strings to prevent Babel parsing crashes in Sandpack.
+ * REACT-ONLY: All templates output native React/JSX component strings (.tsx)
+ * No dangerouslySetInnerHTML — uses htmlToJsx converter for HTML→JSX.
  */
 
 import { getCompositionById } from '@/sections/templates';
 import { compositionToReactCode } from '@/sections/PageRenderer';
 import { ensureReactImports } from '@/utils/aiCodeCleaner';
+import { htmlToJsx, htmlDocToReactComponent, isHtmlDocument } from '@/utils/htmlToJsx';
 
 /**
  * Extracts <style> block content from HTML body strings
@@ -35,37 +36,39 @@ function extractScripts(body: string): { scripts: string; cleanBody: string } {
 }
 
 /**
- * Wraps body content into a React component with embedded styles and interactive behavior.
- * 
- * IMPORTANT: Uses JSON.stringify for all embedded strings to prevent
- * Babel/Sandpack crashes caused by CSS syntax inside template literals.
+ * Wraps body content into a React component with native JSX — no dangerouslySetInnerHTML.
  * 
  * The component:
- * 1. Injects all <style> blocks via useEffect
- * 2. Runs interactive scripts (tabs, carousel, scroll-reveal) via useEffect
- * 3. Renders HTML content via dangerouslySetInnerHTML (preserves Tailwind classes)
+ * 1. Converts HTML to valid JSX (class→className, style strings→objects, etc.)
+ * 2. Injects <style> blocks via useEffect
+ * 3. Runs interactive scripts (tabs, carousel, scroll-reveal) via useEffect
  */
 export const wrapInReactComponent = (body: string, title: string = "Template"): string => {
+  // If it's a full HTML document, delegate to the document converter
+  if (isHtmlDocument(body)) {
+    return htmlDocToReactComponent(body, 'App');
+  }
+
   // Strip AI reasoning blocks that may leak from LLM responses
   let cleanedBody = body.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
-  // Also strip markdown-style reasoning that starts with numbered analysis
   cleanedBody = cleanedBody.replace(/^[\s\S]*?(?=<!DOCTYPE|<html|<header|<section|<nav|<div|<main)/i, (match) => {
-    // Only strip if it looks like prose before HTML
     if (/\b(UNDERSTAND|ANALYSE|PLAN|CONSIDER|DECIDE|I will|I need|Let me)\b/i.test(match)) return '';
     return match;
   });
   
   // Extract styles and scripts from the body content
   const { styles: extractedStyles, cleanBody: bodyAfterStyles } = extractStyles(cleanedBody);
-  const { scripts: extractedScripts, cleanBody: finalBody } = extractScripts(bodyAfterStyles);
+  const { cleanBody: finalBody } = extractScripts(bodyAfterStyles);
 
   const baseStyles = 'html { scroll-behavior: smooth; }\n@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }\ndetails > summary { list-style: none; cursor: pointer; }\ndetails > summary::-webkit-details-marker { display: none; }\n.tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }';
   
   const fullStyles = baseStyles + '\n' + extractedStyles;
 
-  // Use JSON.stringify for CSS/HTML strings — Babel-safe, no template literal parsing issues
+  // Convert HTML body to valid JSX
+  const jsxBody = htmlToJsx(finalBody);
+  
+  // Use JSON.stringify for CSS string — Babel-safe
   const stylesJson = JSON.stringify(fullStyles);
-  const bodyJson = JSON.stringify(finalBody);
   const titleJson = JSON.stringify(title);
 
   return `import React, { useEffect, useRef } from 'react';
@@ -76,8 +79,6 @@ export const wrapInReactComponent = (body: string, title: string = "Template"): 
  */
 
 const TEMPLATE_STYLES = ${stylesJson};
-
-const TEMPLATE_HTML = ${bodyJson};
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,7 +100,7 @@ export default function App() {
     };
   }, []);
 
-  // Run interactive scripts after HTML is mounted
+  // Run interactive scripts after JSX is mounted
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -120,21 +121,6 @@ export default function App() {
       el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
     };
     container.addEventListener('click', handleClick);
-
-    // Data-toggle
-    const handleToggle = (e: Event) => {
-      const t = e.target;
-      if (!(t instanceof Element)) return;
-      const btn = t.closest('[data-toggle]');
-      if (!btn) return;
-      const selector = btn.getAttribute('data-toggle');
-      if (!selector) return;
-      const panel = document.querySelector(selector);
-      if (!(panel instanceof HTMLElement)) return;
-      panel.classList.toggle('hidden');
-      panel.setAttribute('aria-hidden', panel.classList.contains('hidden') ? 'true' : 'false');
-    };
-    container.addEventListener('click', handleToggle);
 
     // Scroll reveal with iframe-safe fallback
     const observer = new IntersectionObserver((entries) => {
@@ -157,7 +143,7 @@ export default function App() {
       });
     }, 300);
 
-    // Fallback: force-reveal ALL after 2s (IntersectionObserver is unreliable in iframes)
+    // Fallback: force-reveal ALL after 2s
     const fallbackTimer = setTimeout(() => {
       container.querySelectorAll('[data-reveal]:not(.revealed)').forEach(el => {
         el.classList.add('revealed');
@@ -229,54 +215,6 @@ export default function App() {
       });
     });
 
-    // Pricing switch
-    container.querySelectorAll('[data-pricing]').forEach((root) => {
-      const checkbox = root.querySelector('[data-pricing-switch]') as HTMLInputElement | null;
-      if (!checkbox) return;
-      const apply = () => {
-        const annual = checkbox.checked;
-        root.querySelectorAll('[data-price-monthly]').forEach(el => el.classList.toggle('hidden', annual));
-        root.querySelectorAll('[data-price-annual]').forEach(el => el.classList.toggle('hidden', !annual));
-      };
-      checkbox.addEventListener('change', apply);
-      apply();
-    });
-
-    // Sticky dismiss
-    const stickyStoragePrefix = 'stickyDismissed:';
-    container.querySelectorAll('[data-sticky-key]').forEach(el => {
-      if (!(el instanceof HTMLElement)) return;
-      const key = el.getAttribute('data-sticky-key');
-      if (!key) return;
-      try {
-        if (localStorage.getItem(stickyStoragePrefix + key) === '1') {
-          el.classList.add('hidden');
-          el.setAttribute('aria-hidden', 'true');
-        }
-      } catch { /* ignore */ }
-    });
-
-    const handleDismiss = (e: Event) => {
-      const t = e.target;
-      if (!(t instanceof Element)) return;
-      const btn = t.closest('[data-dismiss]');
-      if (!btn) return;
-      const selector = btn.getAttribute('data-dismiss') || '';
-      const key = btn.getAttribute('data-dismiss-key') || undefined;
-      const sticky = selector && selector !== 'closest'
-        ? document.querySelector(selector)
-        : btn.closest('[data-sticky]') || btn.closest('[data-sticky-key]');
-      if (!sticky || !(sticky instanceof HTMLElement)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      sticky.classList.add('hidden');
-      sticky.setAttribute('aria-hidden', 'true');
-      if (key) {
-        try { localStorage.setItem(stickyStoragePrefix + key, '1'); } catch { /* ignore */ }
-      }
-    };
-    container.addEventListener('click', handleDismiss, true);
-
     // Demo forms
     container.querySelectorAll('form[data-demo-form]').forEach(form => {
       if (!(form instanceof HTMLFormElement)) return;
@@ -286,25 +224,25 @@ export default function App() {
         const host = form.closest('[data-demo-form-host]') || form;
         const existing = host.querySelector('[data-demo-toast]');
         if (existing) existing.remove();
-        const toast = document.createElement('div');
-        toast.setAttribute('data-demo-toast', '');
-        toast.className = 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200';
-        toast.textContent = msg;
-        host.appendChild(toast);
+        const toastEl = document.createElement('div');
+        toastEl.setAttribute('data-demo-toast', '');
+        toastEl.className = 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200';
+        toastEl.textContent = msg;
+        host.appendChild(toastEl);
       });
     });
 
     return () => {
       container.removeEventListener('click', handleClick);
-      container.removeEventListener('click', handleToggle);
-      container.removeEventListener('click', handleDismiss, true);
       observer.disconnect();
       clearTimeout(fallbackTimer);
     };
   }, []);
 
   return (
-    <div ref={containerRef} dangerouslySetInnerHTML={{ __html: TEMPLATE_HTML }} />
+    <div ref={containerRef} className="min-h-screen">
+      ${jsxBody}
+    </div>
   );
 }
 `;
@@ -321,7 +259,7 @@ export const wrapInHtmlDoc = wrapInReactComponent;
  * Priority:
  * 1. Check if there's a section-registry composition for this template ID
  * 2. If template already contains React imports, returns as-is
- * 3. Otherwise wraps raw HTML via wrapInReactComponent
+ * 3. Otherwise converts raw HTML into native JSX React component
  */
 export const getTemplateReactCode = (template: { code: string; id?: string; title?: string; name?: string }): string => {
   // Check for section-registry composition first
@@ -344,6 +282,12 @@ export const getTemplateReactCode = (template: { code: string; id?: string; titl
   if (code.includes('export default function') || code.includes('export default ')) {
     return ensureReactImports(code);
   }
-  // Wrap raw HTML into React component
+
+  // Full HTML document → convert to native JSX component
+  if (isHtmlDocument(code)) {
+    return htmlDocToReactComponent(code, 'App');
+  }
+
+  // Raw HTML fragment → wrap in React component with native JSX
   return wrapInReactComponent(code, template.title || template.name || 'Template');
 };

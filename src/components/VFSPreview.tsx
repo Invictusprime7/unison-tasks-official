@@ -623,13 +623,13 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   
   console.log('[VFSPreview] Attempting to extract JSX from content, length:', appContent.length);
   
-  // Look for TEMPLATE_HTML const pattern (from wrapInReactComponent)
-  // This matches: const TEMPLATE_HTML = `...`;
+  // Look for TEMPLATE_HTML const pattern (legacy from wrapInReactComponent)
   const templateHtmlMatch = appContent.match(/const\s+TEMPLATE_HTML\s*=\s*`([\s\S]*?)`;/);
   const templateStylesMatch = appContent.match(/const\s+TEMPLATE_STYLES\s*=\s*`([\s\S]*?)`;/);
+  // Also check JSON.stringify'd version
+  const templateHtmlJsonMatch = !templateHtmlMatch ? appContent.match(/const\s+TEMPLATE_HTML\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/) : null;
   
   if (templateHtmlMatch) {
-    // Unescape template literal escapes that wrapInReactComponent added
     bodyContent = templateHtmlMatch[1]
       .replace(/\\`/g, '`')
       .replace(/\\\$/g, '$')
@@ -641,8 +641,6 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
         .replace(/\\\\/g, '\\');
     }
     
-    // Extract body classes set by the React component's useEffect
-    // Pattern: document.body.classList.add('bg-slate-950', 'text-white')
     const bodyClassMatch = appContent.match(/document\.body\.classList\.add\(([^)]+)\)/);
     if (bodyClassMatch) {
       const classes = bodyClassMatch[1]
@@ -654,14 +652,45 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
     }
     
     console.log('[VFSPreview] Found TEMPLATE_HTML const, content length:', bodyContent.length, 'bodyClasses:', templateBodyClasses);
+  } else if (templateHtmlJsonMatch) {
+    try { bodyContent = JSON.parse(templateHtmlJsonMatch[1]); } catch { bodyContent = ''; }
+    if (templateStylesMatch) {
+      try { templateStyles = JSON.parse(templateStylesMatch[1]); } catch { /* ignore */ }
+    }
+    console.log('[VFSPreview] Found TEMPLATE_HTML (JSON), content length:', bodyContent.length);
   }
   
-  // Also try inline dangerouslySetInnerHTML pattern
+  // Try inline dangerouslySetInnerHTML pattern
   if (!bodyContent) {
     const dangerousMatch = appContent.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*`([\s\S]*?)`\s*\}\}/s);
     if (dangerousMatch) {
       bodyContent = dangerousMatch[1];
       console.log('[VFSPreview] Found inline dangerouslySetInnerHTML content');
+    }
+  }
+
+  // Native JSX — extract return body and convert className back to class for static HTML
+  if (!bodyContent) {
+    const returnMatch = appContent.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+    if (returnMatch && returnMatch[1].includes('className=')) {
+      bodyContent = returnMatch[1]
+        .replace(/className=/g, 'class=')
+        .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+        .replace(/style=\{\{([^}]*)\}\}/g, '')
+        .replace(/\{[^}]*\}/g, '');
+      
+      // Extract CSS from TEMPLATE_CSS or TEMPLATE_STYLES const
+      const cssMatch = appContent.match(/const\s+(?:TEMPLATE_CSS|TEMPLATE_STYLES)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
+      if (cssMatch) {
+        try { templateStyles = JSON.parse(cssMatch[1]); } catch { /* ignore */ }
+      }
+      
+      const bodyClassMatch = appContent.match(/document\.body\.classList\.add\(([^)]+)\)/);
+      if (bodyClassMatch) {
+        templateBodyClasses = bodyClassMatch[1].replace(/['"]/g, '').split(',').map(c => c.trim()).join(' ');
+      }
+      
+      console.log('[VFSPreview] Extracted native JSX return body, length:', bodyContent.length);
     }
   }
   
