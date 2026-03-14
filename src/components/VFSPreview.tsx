@@ -670,8 +670,9 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   }
 
   // Native JSX — extract return body and convert className back to class for static HTML
+  // IMPORTANT: Match only JSX returns (starting with <), NOT arrow function returns like `return () => {`
   if (!bodyContent) {
-    const returnMatch = appContent.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*\}/s);
+    const returnMatch = appContent.match(/return\s*\(\s*(<[\s\S]*?)\s*\)\s*;?\s*\}/s);
     if (returnMatch && returnMatch[1].includes('className=')) {
       bodyContent = returnMatch[1]
         .replace(/className=/g, 'class=')
