@@ -19,8 +19,10 @@ import {
   FileText, ShoppingBag, Briefcase, GitBranch, Settings,
   Plus, Trash2, Copy, Home, Eye, EyeOff, GripVertical,
   ArrowRight, ChevronDown, ChevronUp, Star, FormInput,
-  Gauge, Zap,
+  Gauge, Zap, Rocket,
 } from "lucide-react";
+import { SetupWizardPanel } from "./setup-wizard/SetupWizardPanel";
+import { useSetupWizard } from "@/hooks/useSetupWizard";
 import { cn } from "@/lib/utils";
 import type { UseCreatorPlaygroundReturn } from "@/hooks/useCreatorPlayground";
 import type { BuilderPageType, FunnelRole } from "@/types/pageRegistry";
