@@ -437,7 +437,9 @@ export function BusinessSetupSuggestions({
               variant="outline"
               onClick={() => {
                 onOpenChange(false);
-                if (projectId) {
+                if (onOpenSetupWizard) {
+                  onOpenSetupWizard();
+                } else if (projectId) {
                   navigate(`/project/${projectId}/setup`);
                 } else {
                   navigate('/cloud', { state: { tab: 'projects' } });
