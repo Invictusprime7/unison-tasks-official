@@ -184,6 +184,7 @@ export function CreatorPlaygroundModal({
           <div className="flex-1 min-w-0 flex flex-col">
             <ScrollArea className="flex-1">
               <div className="p-5">
+                {activeSection === "launch" && <SetupWizardPanel wizard={setupWizard} businessId={businessId} />}
                 {activeSection === "overview" && <OverviewSection playground={playground} onNavigate={setActiveSection} />}
                 {activeSection === "pages" && <PagesSection playground={playground} onPageSelect={onPageSelect} />}
                 {activeSection === "funnels" && <FunnelsSection playground={playground} />}
