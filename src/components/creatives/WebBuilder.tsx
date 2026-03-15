@@ -121,6 +121,98 @@ function escapeCSSSelector(selector: string): string {
 }
 
 /**
+ * Detect if code is JSX/TSX (React component)
+ */
+function isJsxCode(code: string): boolean {
+  const trimmed = code.trim();
+  return trimmed.includes('export default') || trimmed.includes('import React') || trimmed.includes('import {') || /^(const|function)\s+\w+/.test(trimmed);
+}
+
+/**
+ * Extract the JSX return body from a React component for DOM manipulation.
+ * Returns { jsx, before, after } where jsx is the inner HTML-like content.
+ */
+function extractJsxReturnBody(code: string): { jsx: string; before: string; after: string } | null {
+  // Match return ( ... ) with balanced parens
+  const returnIdx = code.search(/return\s*\(/);
+  if (returnIdx === -1) return null;
+
+  const parenStart = code.indexOf('(', returnIdx);
+  let depth = 0;
+  let parenEnd = -1;
+  for (let i = parenStart; i < code.length; i++) {
+    if (code[i] === '(') depth++;
+    else if (code[i] === ')') {
+      depth--;
+      if (depth === 0) { parenEnd = i; break; }
+    }
+  }
+  if (parenEnd === -1) return null;
+
+  const jsx = code.slice(parenStart + 1, parenEnd).trim();
+  const before = code.slice(0, parenStart + 1);
+  const after = code.slice(parenEnd);
+  return { jsx, before, after };
+}
+
+/**
+ * Convert JSX fragment to parseable HTML and back
+ */
+function jsxToHtml(jsx: string): string {
+  return jsx
+    .replace(/className=/g, 'class=')
+    .replace(/\{\/\*.*?\*\/\}/gs, '') // remove JSX comments
+    .replace(/\{`([^`]*)`\}/g, '$1') // template literals to text
+    .replace(/\{"([^"]*)"\}/g, '$1'); // string expressions to text
+}
+
+function htmlToJsx(html: string): string {
+  return html.replace(/\bclass=/g, 'className=');
+}
+
+/**
+ * Perform a DOM operation on code (HTML or JSX).
+ * domOp receives a Document and returns the modified HTML string or null on failure.
+ */
+function withDomManipulation(
+  code: string,
+  domOp: (doc: Document, isDoc: boolean) => string | null
+): { ok: true; code: string } | { ok: false; code: string } {
+  const trimmed = (code || '').trim();
+
+  // JSX/TSX path
+  if (isJsxCode(trimmed)) {
+    const extracted = extractJsxReturnBody(trimmed);
+    if (!extracted) return { ok: false, code };
+
+    const html = jsxToHtml(extracted.jsx);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<!DOCTYPE html><html><body>${html}</body></html>`, 'text/html');
+
+    const result = domOp(doc, false);
+    if (result === null) return { ok: false, code };
+
+    const newJsx = htmlToJsx(result);
+    const newCode = `${extracted.before}\n    ${newJsx}\n  ${extracted.after}`;
+    return { ok: true, code: newCode };
+  }
+
+  // HTML path (original behavior)
+  const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
+  if (!trimmed.startsWith('<')) {
+    return { ok: false, code };
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+
+  const result = domOp(doc, isDoc);
+  if (result === null) return { ok: false, code };
+
+  return { ok: true, code: result };
+}
+
+/**
  * Safely query a selector with escaping, trying multiple fallback strategies
  */
 function safeFindElement(doc: Document, selector: string): Element | null {
