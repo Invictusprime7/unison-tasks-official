@@ -130,19 +130,32 @@ function isJsxCode(code: string): boolean {
 
 /**
  * Extract the JSX return body from a React component for DOM manipulation.
- * Returns { jsx, before, after } where jsx is the inner HTML-like content.
+ * Handles both `return (...)` and arrow `=> (...)` patterns.
  */
 function extractJsxReturnBody(code: string): { jsx: string; before: string; after: string } | null {
-  // Match return ( ... ) with balanced parens
-  const returnIdx = code.search(/return\s*\(/);
+  // Try `return (` first, then `=> (`
+  let returnIdx = code.search(/return\s*\(/);
+  if (returnIdx === -1) {
+    returnIdx = code.search(/=>\s*\(/);
+  }
   if (returnIdx === -1) return null;
 
   const parenStart = code.indexOf('(', returnIdx);
   let depth = 0;
   let parenEnd = -1;
+  let inString: string | null = null;
+  let escaped = false;
   for (let i = parenStart; i < code.length; i++) {
-    if (code[i] === '(') depth++;
-    else if (code[i] === ')') {
+    const ch = code[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (inString) {
+      if (ch === inString) inString = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') { inString = ch; continue; }
+    if (ch === '(') depth++;
+    else if (ch === ')') {
       depth--;
       if (depth === 0) { parenEnd = i; break; }
     }
@@ -156,18 +169,53 @@ function extractJsxReturnBody(code: string): { jsx: string; before: string; afte
 }
 
 /**
- * Convert JSX fragment to parseable HTML and back
+ * Convert JSX fragment to parseable HTML.
+ * Strips JSX-specific syntax so DOMParser can build a matching DOM tree.
  */
 function jsxToHtml(jsx: string): string {
-  return jsx
-    .replace(/className=/g, 'class=')
-    .replace(/\{\/\*.*?\*\/\}/gs, '') // remove JSX comments
-    .replace(/\{`([^`]*)`\}/g, '$1') // template literals to text
-    .replace(/\{"([^"]*)"\}/g, '$1'); // string expressions to text
+  let html = jsx;
+  // Remove JSX comments {/* ... */}
+  html = html.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  // Remove conditional rendering blocks: {condition && <...>} → keep inner JSX
+  // Simple: strip `{someExpr && ` and trailing `}`
+  html = html.replace(/\{[^{}]*?&&\s*/g, '');
+  // Remove ternary wrappers: {cond ? <A/> : <B/>} — too complex, just strip expression curlies
+  // Remove JSX expression attributes: key={...}, onClick={...}, style={{...}}, ref={...}
+  // Match attr={...} with balanced braces
+  html = html.replace(/\b(\w+)=\{/g, (match, attr) => {
+    // Keep className (convert to class), keep src/href/alt if string-like
+    if (attr === 'className') return 'class={';
+    return `data-jsx-${attr}={`;
+  });
+  // Now strip all {...} expressions (balanced braces)
+  let prev = '';
+  while (prev !== html) {
+    prev = html;
+    html = html.replace(/\{[^{}]*\}/g, (m) => {
+      // If it's a class={...} value, extract the string
+      return '';
+    });
+  }
+  // Fix class= that lost its value — remove broken attributes
+  html = html.replace(/\bclass=\s*(?=\s|>|\/)/g, '');
+  html = html.replace(/\bdata-jsx-\w+=\s*(?=\s|>|\/)/g, '');
+  // className= to class= (any remaining)
+  html = html.replace(/className=/g, 'class=');
+  // Convert self-closing JSX components to divs for structure preservation
+  // e.g. <ComponentName ... /> → remove (they don't produce DOM children)
+  html = html.replace(/<[A-Z]\w*[^>]*\/>/g, '');
+  // Convert JSX components (PascalCase) opening/closing to div
+  html = html.replace(/<([A-Z]\w*)(\s)/g, '<div data-component="$1"$2');
+  html = html.replace(/<([A-Z]\w*)>/g, '<div data-component="$1">');
+  html = html.replace(/<\/[A-Z]\w*>/g, '</div>');
+  return html;
 }
 
 function htmlToJsx(html: string): string {
-  return html.replace(/\bclass=/g, 'className=');
+  return html
+    .replace(/\bclass=/g, 'className=')
+    .replace(/\s*data-component="[^"]*"/g, '')
+    .replace(/\s*data-jsx-\w+="[^"]*"/g, '');
 }
 
 /**
@@ -183,7 +231,10 @@ function withDomManipulation(
   // JSX/TSX path
   if (isJsxCode(trimmed)) {
     const extracted = extractJsxReturnBody(trimmed);
-    if (!extracted) return { ok: false, code };
+    if (!extracted) {
+      console.warn('[withDomManipulation] Could not extract JSX return body');
+      return { ok: false, code };
+    }
 
     const html = jsxToHtml(extracted.jsx);
     const parser = new DOMParser();
@@ -192,6 +243,10 @@ function withDomManipulation(
     const result = domOp(doc, false);
     if (result === null) return { ok: false, code };
 
+    // For JSX: we can't reliably reconstruct JSX from manipulated HTML.
+    // Instead, identify what was removed/changed and apply that to the original JSX source.
+    // For delete: find the element in the original JSX and remove it.
+    // Fallback: use the converted result
     const newJsx = htmlToJsx(result);
     const newCode = `${extracted.before}\n    ${newJsx}\n  ${extracted.after}`;
     return { ok: true, code: newCode };
