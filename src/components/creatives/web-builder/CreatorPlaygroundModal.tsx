@@ -3,7 +3,7 @@
  * with internal sidebar navigation + content area.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +19,10 @@ import {
   FileText, ShoppingBag, Briefcase, GitBranch, Settings,
   Plus, Trash2, Copy, Home, Eye, EyeOff, GripVertical,
   ArrowRight, ChevronDown, ChevronUp, Star, FormInput,
-  Gauge, Zap,
+  Gauge, Zap, Rocket,
 } from "lucide-react";
+import { SetupWizardPanel } from "./setup-wizard/SetupWizardPanel";
+import { useSetupWizard } from "@/hooks/useSetupWizard";
 import { cn } from "@/lib/utils";
 import type { UseCreatorPlaygroundReturn } from "@/hooks/useCreatorPlayground";
 import type { BuilderPageType, FunnelRole } from "@/types/pageRegistry";
@@ -58,9 +60,10 @@ const FUNNEL_ROLE_OPTIONS: { value: FunnelRole; label: string }[] = [
   { value: "thankyou", label: "Thank You" },
 ];
 
-type Section = "pages" | "funnels" | "products" | "services" | "forms" | "business" | "overview";
+type Section = "pages" | "funnels" | "products" | "services" | "forms" | "business" | "overview" | "launch";
 
-const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
+const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; highlight?: boolean }[] = [
+  { id: "launch", label: "Launch Wizard", icon: Rocket, highlight: true },
   { id: "overview", label: "Overview", icon: Gauge },
   { id: "pages", label: "Pages", icon: FileText },
   { id: "funnels", label: "Funnels", icon: GitBranch },
@@ -79,6 +82,8 @@ interface CreatorPlaygroundModalProps {
   onOpenChange: (open: boolean) => void;
   playground: UseCreatorPlaygroundReturn;
   onPageSelect?: (pageId: string) => void;
+  businessId?: string | null;
+  initialSection?: Section;
 }
 
 // ============================================================================
@@ -90,8 +95,18 @@ export function CreatorPlaygroundModal({
   onOpenChange,
   playground,
   onPageSelect,
+  businessId = null,
+  initialSection,
 }: CreatorPlaygroundModalProps) {
-  const [activeSection, setActiveSection] = useState<Section>("overview");
+  const [activeSection, setActiveSection] = useState<Section>(initialSection || "overview");
+  const setupWizard = useSetupWizard(businessId);
+
+  // Allow external callers to set the initial section
+  useEffect(() => {
+    if (initialSection && open) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -124,19 +139,28 @@ export function CreatorPlaygroundModal({
         <div className="flex flex-1 min-h-0">
           {/* Internal Sidebar */}
           <nav className="w-48 flex-shrink-0 border-r border-emerald-500/15 bg-[#0a0a12] py-2">
-            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+            {NAV_ITEMS.map(({ id, label, icon: Icon, highlight }) => (
               <button
                 key={id}
                 onClick={() => setActiveSection(id)}
                 className={cn(
                   "w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium transition-all duration-150",
                   activeSection === id
-                    ? "bg-emerald-500/15 text-emerald-400 border-r-2 border-emerald-400 shadow-[inset_-8px_0_20px_rgba(0,200,100,0.05)]"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    ? highlight
+                      ? "bg-violet-500/15 text-violet-400 border-r-2 border-violet-400 shadow-[inset_-8px_0_20px_rgba(139,92,246,0.05)]"
+                      : "bg-emerald-500/15 text-emerald-400 border-r-2 border-emerald-400 shadow-[inset_-8px_0_20px_rgba(0,200,100,0.05)]"
+                    : highlight
+                      ? "text-violet-400/70 hover:text-violet-400 hover:bg-violet-500/10"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
                 )}
               >
                 <Icon className="h-3.5 w-3.5 flex-shrink-0" />
                 {label}
+                {id === "launch" && setupWizard.completedCount < setupWizard.totalCount && (
+                  <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-violet-500/40 text-violet-400 bg-violet-500/10">
+                    {setupWizard.completedCount}/{setupWizard.totalCount}
+                  </Badge>
+                )}
                 {id === "pages" && (
                   <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-border/40">
                     {playground.getAllPages().length}
@@ -160,6 +184,7 @@ export function CreatorPlaygroundModal({
           <div className="flex-1 min-w-0 flex flex-col">
             <ScrollArea className="flex-1">
               <div className="p-5">
+                {activeSection === "launch" && <SetupWizardPanel wizard={setupWizard} businessId={businessId} />}
                 {activeSection === "overview" && <OverviewSection playground={playground} onNavigate={setActiveSection} />}
                 {activeSection === "pages" && <PagesSection playground={playground} onPageSelect={onPageSelect} />}
                 {activeSection === "funnels" && <FunnelsSection playground={playground} />}

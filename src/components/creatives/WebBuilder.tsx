@@ -684,6 +684,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const [playgroundModalOpen, setPlaygroundModalOpen] = useState(false);
+  const [playgroundInitialSection, setPlaygroundInitialSection] = useState<"launch" | undefined>(undefined);
   const [aiPanelOpen, setAiPanelOpen] = useState(true); // AI panel open by default for easy access
   const [iframeErrors, setIframeErrors] = useState<IframeError[]>([]);
   const dragDropServiceRef = useRef<CanvasDragDropService>(CanvasDragDropService.getInstance());
@@ -4086,8 +4087,13 @@ ${body.innerHTML}
       {/* Creator's Playground Modal */}
       <CreatorPlaygroundModal
         open={playgroundModalOpen}
-        onOpenChange={setPlaygroundModalOpen}
+        onOpenChange={(open) => {
+          setPlaygroundModalOpen(open);
+          if (!open) setPlaygroundInitialSection(undefined);
+        }}
         playground={creatorPlayground}
+        businessId={businessId || null}
+        initialSection={playgroundInitialSection}
         onPageSelect={(pageId) => {
           const page = creatorPlayground.pageRegistry.pages[pageId];
           if (page?.path) {
@@ -5196,6 +5202,10 @@ ${body.innerHTML}
         templateName={currentTemplateName}
         projectId={projectId || templateFiles.currentTemplateId || undefined}
         businessId={businessId || undefined}
+        onOpenSetupWizard={() => {
+          setPlaygroundInitialSection("launch");
+          setPlaygroundModalOpen(true);
+        }}
         onSkip={() => {
           console.log('[WebBuilder] User skipped business setup suggestions');
         }}

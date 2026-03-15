@@ -73,12 +73,13 @@ interface BusinessSetupSuggestionsProps {
   onOpenChange: (open: boolean) => void;
   systemType?: BusinessSystemType | null;
   templateName?: string | null;
-  projectId?: string | null;  // Project ID for navigation
-  businessId?: string | null; // Business ID for context
+  projectId?: string | null;
+  businessId?: string | null;
   detectedIntents?: string[];
   onNavigateToSettings?: () => void;
   onNavigateToStripe?: () => void;
   onNavigateToSupabase?: () => void;
+  onOpenSetupWizard?: () => void;
   onSkip?: () => void;
 }
 
@@ -272,6 +273,7 @@ export function BusinessSetupSuggestions({
   onNavigateToSettings,
   onNavigateToStripe,
   onNavigateToSupabase,
+  onOpenSetupWizard,
   onSkip,
 }: BusinessSetupSuggestionsProps) {
   const navigate = useNavigate();
@@ -435,7 +437,9 @@ export function BusinessSetupSuggestions({
               variant="outline"
               onClick={() => {
                 onOpenChange(false);
-                if (projectId) {
+                if (onOpenSetupWizard) {
+                  onOpenSetupWizard();
+                } else if (projectId) {
                   navigate(`/project/${projectId}/setup`);
                 } else {
                   navigate('/cloud', { state: { tab: 'projects' } });
