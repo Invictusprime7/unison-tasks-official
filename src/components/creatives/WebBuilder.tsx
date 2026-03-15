@@ -5202,6 +5202,10 @@ ${body.innerHTML}
         templateName={currentTemplateName}
         projectId={projectId || templateFiles.currentTemplateId || undefined}
         businessId={businessId || undefined}
+        onOpenSetupWizard={() => {
+          setPlaygroundInitialSection("launch");
+          setPlaygroundModalOpen(true);
+        }}
         onSkip={() => {
           console.log('[WebBuilder] User skipped business setup suggestions');
         }}
