@@ -793,6 +793,47 @@ export type Database = {
           },
         ]
       }
+      business_setup_progress: {
+        Row: {
+          business_id: string
+          completed_at: string | null
+          config: Json
+          created_at: string
+          id: string
+          status: string
+          step_id: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          completed_at?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          status?: string
+          step_id: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          completed_at?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          status?: string
+          step_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_setup_progress_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       businesses: {
         Row: {
           created_at: string
