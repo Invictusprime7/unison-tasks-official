@@ -273,6 +273,7 @@ export function BusinessSetupSuggestions({
   onNavigateToSettings,
   onNavigateToStripe,
   onNavigateToSupabase,
+  onOpenSetupWizard,
   onSkip,
 }: BusinessSetupSuggestionsProps) {
   const navigate = useNavigate();
