@@ -60,9 +60,10 @@ const FUNNEL_ROLE_OPTIONS: { value: FunnelRole; label: string }[] = [
   { value: "thankyou", label: "Thank You" },
 ];
 
-type Section = "pages" | "funnels" | "products" | "services" | "forms" | "business" | "overview";
+type Section = "pages" | "funnels" | "products" | "services" | "forms" | "business" | "overview" | "launch";
 
-const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
+const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; highlight?: boolean }[] = [
+  { id: "launch", label: "Launch Wizard", icon: Rocket, highlight: true },
   { id: "overview", label: "Overview", icon: Gauge },
   { id: "pages", label: "Pages", icon: FileText },
   { id: "funnels", label: "Funnels", icon: GitBranch },
