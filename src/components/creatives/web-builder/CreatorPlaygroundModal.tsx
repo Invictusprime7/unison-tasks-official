@@ -95,8 +95,18 @@ export function CreatorPlaygroundModal({
   onOpenChange,
   playground,
   onPageSelect,
+  businessId = null,
+  initialSection,
 }: CreatorPlaygroundModalProps) {
-  const [activeSection, setActiveSection] = useState<Section>("overview");
+  const [activeSection, setActiveSection] = useState<Section>(initialSection || "overview");
+  const setupWizard = useSetupWizard(businessId);
+
+  // Allow external callers to set the initial section
+  useEffect(() => {
+    if (initialSection && open) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
