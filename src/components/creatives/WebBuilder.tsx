@@ -121,6 +121,98 @@ function escapeCSSSelector(selector: string): string {
 }
 
 /**
+ * Detect if code is JSX/TSX (React component)
+ */
+function isJsxCode(code: string): boolean {
+  const trimmed = code.trim();
+  return trimmed.includes('export default') || trimmed.includes('import React') || trimmed.includes('import {') || /^(const|function)\s+\w+/.test(trimmed);
+}
+
+/**
+ * Extract the JSX return body from a React component for DOM manipulation.
+ * Returns { jsx, before, after } where jsx is the inner HTML-like content.
+ */
+function extractJsxReturnBody(code: string): { jsx: string; before: string; after: string } | null {
+  // Match return ( ... ) with balanced parens
+  const returnIdx = code.search(/return\s*\(/);
+  if (returnIdx === -1) return null;
+
+  const parenStart = code.indexOf('(', returnIdx);
+  let depth = 0;
+  let parenEnd = -1;
+  for (let i = parenStart; i < code.length; i++) {
+    if (code[i] === '(') depth++;
+    else if (code[i] === ')') {
+      depth--;
+      if (depth === 0) { parenEnd = i; break; }
+    }
+  }
+  if (parenEnd === -1) return null;
+
+  const jsx = code.slice(parenStart + 1, parenEnd).trim();
+  const before = code.slice(0, parenStart + 1);
+  const after = code.slice(parenEnd);
+  return { jsx, before, after };
+}
+
+/**
+ * Convert JSX fragment to parseable HTML and back
+ */
+function jsxToHtml(jsx: string): string {
+  return jsx
+    .replace(/className=/g, 'class=')
+    .replace(/\{\/\*.*?\*\/\}/gs, '') // remove JSX comments
+    .replace(/\{`([^`]*)`\}/g, '$1') // template literals to text
+    .replace(/\{"([^"]*)"\}/g, '$1'); // string expressions to text
+}
+
+function htmlToJsx(html: string): string {
+  return html.replace(/\bclass=/g, 'className=');
+}
+
+/**
+ * Perform a DOM operation on code (HTML or JSX).
+ * domOp receives a Document and returns the modified HTML string or null on failure.
+ */
+function withDomManipulation(
+  code: string,
+  domOp: (doc: Document, isDoc: boolean) => string | null
+): { ok: true; code: string } | { ok: false; code: string } {
+  const trimmed = (code || '').trim();
+
+  // JSX/TSX path
+  if (isJsxCode(trimmed)) {
+    const extracted = extractJsxReturnBody(trimmed);
+    if (!extracted) return { ok: false, code };
+
+    const html = jsxToHtml(extracted.jsx);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<!DOCTYPE html><html><body>${html}</body></html>`, 'text/html');
+
+    const result = domOp(doc, false);
+    if (result === null) return { ok: false, code };
+
+    const newJsx = htmlToJsx(result);
+    const newCode = `${extracted.before}\n    ${newJsx}\n  ${extracted.after}`;
+    return { ok: true, code: newCode };
+  }
+
+  // HTML path (original behavior)
+  const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
+  if (!trimmed.startsWith('<')) {
+    return { ok: false, code };
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+
+  const result = domOp(doc, isDoc);
+  if (result === null) return { ok: false, code };
+
+  return { ok: true, code: result };
+}
+
+/**
  * Safely query a selector with escaping, trying multiple fallback strategies
  */
 function safeFindElement(doc: Document, selector: string): Element | null {
@@ -899,116 +991,56 @@ export default function App() {
 
 
   const applyElementHtmlUpdate = useCallback((code: string, selector: string, newHtml: string) => {
-    try {
-      const trimmed = (code || '').trim();
-      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
-      // This targeted replace is only safe for HTML templates.
-      if (!trimmed.startsWith('<') || trimmed.includes('export default') || trimmed.includes('import React')) {
-        return { ok: false as const, code };
-      }
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
-
-      // Use safe selector finding with escaping and fallbacks
+    return withDomManipulation(code, (doc, isDoc) => {
       const target = safeFindElement(doc, selector);
-
       if (!target) {
         console.warn('[applyElementHtmlUpdate] No match for selector:', selector);
-        return { ok: false as const, code };
+        return null;
       }
-
-      // Replace outerHTML via DOM manipulation
       const container = doc.createElement('div');
       container.innerHTML = newHtml;
       const replacement = container.firstElementChild as Element | null;
-      if (!replacement) return { ok: false as const, code };
+      if (!replacement) return null;
       target.replaceWith(replacement);
-
-      const next = isDoc
-        ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`
-        : doc.body.innerHTML;
-      return { ok: true as const, code: next };
-    } catch (err) {
-      console.error('[applyElementHtmlUpdate] Error:', err);
-      return { ok: false as const, code };
-    }
+      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+    });
   }, []);
 
-  // Delete an element from HTML source by selector
+  // Delete an element from source by selector (HTML or JSX)
   const applyElementDelete = useCallback((code: string, selector: string) => {
-    try {
-      const trimmed = (code || '').trim();
-      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
-      if (!trimmed.startsWith('<') || trimmed.includes('export default') || trimmed.includes('import React')) {
-        return { ok: false as const, code };
-      }
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
-
-      // Use safe selector finding with escaping and fallbacks
+    return withDomManipulation(code, (doc, isDoc) => {
       const target = safeFindElement(doc, selector);
-
       if (!target) {
         console.warn('[applyElementDelete] No match for selector:', selector);
-        return { ok: false as const, code };
+        return null;
       }
-
       target.remove();
-
-      const next = isDoc
-        ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`
-        : doc.body.innerHTML;
-      return { ok: true as const, code: next };
-    } catch (err) {
-      console.error('[applyElementDelete] Error:', err);
-      return { ok: false as const, code };
-    }
+      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+    });
   }, []);
 
-  // Duplicate an element in HTML source by selector
+  // Duplicate an element in source by selector (HTML or JSX)
   const applyElementDuplicate = useCallback((code: string, selector: string) => {
-    try {
-      const trimmed = (code || '').trim();
-      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
-      if (!trimmed.startsWith('<') || trimmed.includes('export default') || trimmed.includes('import React')) {
-        return { ok: false as const, code };
-      }
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
-
-      // Use safe selector finding with escaping and fallbacks
+    return withDomManipulation(code, (doc, isDoc) => {
       const target = safeFindElement(doc, selector);
-
       if (!target || !target.parentNode) {
         console.warn('[applyElementDuplicate] No match for selector:', selector);
-        return { ok: false as const, code };
+        return null;
       }
-
       const clone = target.cloneNode(true) as Element;
-      // Update id if present to avoid duplicates
       if (clone.id) {
         clone.id = `${clone.id}-copy-${Date.now()}`;
       }
       target.parentNode.insertBefore(clone, target.nextSibling);
-
-      const next = isDoc
-        ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`
-        : doc.body.innerHTML;
-      return { ok: true as const, code: next };
-    } catch (err) {
-      console.error('[applyElementDuplicate] Error:', err);
-      return { ok: false as const, code };
-    }
+      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+    });
   }, []);
 
   // Handle delete from floating toolbar - updates source code
   const handleFloatingDelete = useCallback((selector: string) => {
     const res = applyElementDelete(previewCode, selector);
     if (!res.ok) {
-      toast.error('Delete not supported for this template type (HTML only)');
+      toast.error('Could not delete element. Try selecting a different element.');
       return;
     }
     setEditorCode(res.code);
@@ -1021,7 +1053,7 @@ export default function App() {
   const handleFloatingDuplicate = useCallback((selector: string) => {
     const res = applyElementDuplicate(previewCode, selector);
     if (!res.ok) {
-      toast.error('Duplicate not supported for this template type (HTML only)');
+      toast.error('Could not duplicate element. Try selecting a different element.');
       return;
     }
     setEditorCode(res.code);
@@ -1029,52 +1061,40 @@ export default function App() {
     toast.success('Element duplicated');
   }, [previewCode, applyElementDuplicate]);
 
-  // Handle move up - swap element with its previous sibling in HTML source
+  // Handle move up - swap element with its previous sibling
   const handleFloatingMoveUp = useCallback((selector: string) => {
-    try {
-      const trimmed = (previewCode || '').trim();
-      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
-      if (!trimmed.startsWith('<') || trimmed.includes('export default')) return;
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+    const res = withDomManipulation(previewCode, (doc, isDoc) => {
       const target = safeFindElement(doc, selector);
-      if (!target?.parentNode || !target.previousElementSibling) {
-        toast.info('Already at the top');
-        return;
-      }
+      if (!target?.parentNode || !target.previousElementSibling) return null;
       target.parentNode.insertBefore(target, target.previousElementSibling);
-      const next = isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
-      setEditorCode(next);
-      setPreviewCode(next);
-      setSelectedHTMLElement(null);
-      toast.success('Moved up');
-    } catch (err) {
-      console.error('[handleFloatingMoveUp]', err);
+      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+    });
+    if (!res.ok) {
+      toast.info('Already at the top');
+      return;
     }
+    setEditorCode(res.code);
+    setPreviewCode(res.code);
+    setSelectedHTMLElement(null);
+    toast.success('Moved up');
   }, [previewCode]);
 
-  // Handle move down - swap element with its next sibling in HTML source
+  // Handle move down - swap element with its next sibling
   const handleFloatingMoveDown = useCallback((selector: string) => {
-    try {
-      const trimmed = (previewCode || '').trim();
-      const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
-      if (!trimmed.startsWith('<') || trimmed.includes('export default')) return;
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
+    const res = withDomManipulation(previewCode, (doc, isDoc) => {
       const target = safeFindElement(doc, selector);
-      if (!target?.parentNode || !target.nextElementSibling) {
-        toast.info('Already at the bottom');
-        return;
-      }
+      if (!target?.parentNode || !target.nextElementSibling) return null;
       target.parentNode.insertBefore(target.nextElementSibling, target);
-      const next = isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
-      setEditorCode(next);
-      setPreviewCode(next);
-      setSelectedHTMLElement(null);
-      toast.success('Moved down');
-    } catch (err) {
-      console.error('[handleFloatingMoveDown]', err);
+      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+    });
+    if (!res.ok) {
+      toast.info('Already at the bottom');
+      return;
     }
+    setEditorCode(res.code);
+    setPreviewCode(res.code);
+    setSelectedHTMLElement(null);
+    toast.success('Moved down');
   }, [previewCode]);
 
   // Template file management
