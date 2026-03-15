@@ -82,6 +82,8 @@ interface CreatorPlaygroundModalProps {
   onOpenChange: (open: boolean) => void;
   playground: UseCreatorPlaygroundReturn;
   onPageSelect?: (pageId: string) => void;
+  businessId?: string | null;
+  initialSection?: Section;
 }
 
 // ============================================================================
