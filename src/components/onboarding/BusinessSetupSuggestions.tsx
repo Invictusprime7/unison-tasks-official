@@ -73,12 +73,13 @@ interface BusinessSetupSuggestionsProps {
   onOpenChange: (open: boolean) => void;
   systemType?: BusinessSystemType | null;
   templateName?: string | null;
-  projectId?: string | null;  // Project ID for navigation
-  businessId?: string | null; // Business ID for context
+  projectId?: string | null;
+  businessId?: string | null;
   detectedIntents?: string[];
   onNavigateToSettings?: () => void;
   onNavigateToStripe?: () => void;
   onNavigateToSupabase?: () => void;
+  onOpenSetupWizard?: () => void;
   onSkip?: () => void;
 }
 
