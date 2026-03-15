@@ -4087,8 +4087,13 @@ ${body.innerHTML}
       {/* Creator's Playground Modal */}
       <CreatorPlaygroundModal
         open={playgroundModalOpen}
-        onOpenChange={setPlaygroundModalOpen}
+        onOpenChange={(open) => {
+          setPlaygroundModalOpen(open);
+          if (!open) setPlaygroundInitialSection(undefined);
+        }}
         playground={creatorPlayground}
+        businessId={businessId || null}
+        initialSection={playgroundInitialSection}
         onPageSelect={(pageId) => {
           const page = creatorPlayground.pageRegistry.pages[pageId];
           if (page?.path) {
