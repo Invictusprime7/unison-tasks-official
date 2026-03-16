@@ -1954,25 +1954,23 @@ Each section must be a standalone component in src/components/sections/:
 - **Contact.tsx** - Contact form with name, email, message fields
 - **Footer.tsx** - Footer with links, contact info, and social icons
 
-## INTENT HANDLER HOOKS:
-Create a useIntentHandlers.ts hook:
+## INTENT HANDLERS (USE HOOKS-SHIM - DO NOT CREATE CUSTOM HOOK FILES):
+The preview environment provides a pre-built \`useIntentHandlers\` hook via the hooks-shim.
+Import it like any other hook - it is ALREADY available. DO NOT create a useIntentHandlers.ts file.
+
 \`\`\`tsx
-export function useIntentHandlers() {
-  const handleBooking = (service?: string) => {
-    console.log('Booking intent:', service);
-    // Scroll to booking form or open modal
-  };
-  
-  const handleContact = (data: FormData) => {
-    console.log('Contact submitted:', Object.fromEntries(data));
-  };
-  
-  const handleNewsletter = (email: string) => {
-    console.log('Newsletter signup:', email);
-  };
-  
-  return { handleBooking, handleContact, handleNewsletter };
-}
+// In your component - just import and use:
+import { useIntentHandlers } from './hooks-shim';
+// OR it will be auto-shimmed from: import { useIntentHandlers } from '@/hooks/useIntentHandlers';
+
+const { handleBooking, handleContact, handleNewsletter, handleNavigation, handleAuth } = useIntentHandlers();
+\`\`\`
+
+For buttons and interactive elements, PREFER using data-ut-intent attributes:
+\`\`\`tsx
+<button data-ut-intent="booking.create">Book Now</button>
+<button data-ut-intent="nav.goto" data-ut-payload='{"path":"#contact"}'>Contact Us</button>
+<form data-ut-intent="contact.submit">...</form>
 \`\`\`
 
 ## OUTPUT FORMAT:
@@ -1982,28 +1980,8 @@ Return a single JSON object with this structure (no markdown, no explanations):
 \`\`\`json
 {
   "files": {
-    "src/App.tsx": "// Main app with routing...",
-    "src/main.tsx": "// Entry point with React DOM...",
-    "src/index.css": "/* Global styles with CSS variables */",
-    "src/components/ui/Button.tsx": "// Reusable button...",
-    "src/components/ui/Card.tsx": "// Reusable card...",
-    "src/components/ui/Input.tsx": "// Form input...",
-    "src/components/sections/Header.tsx": "// Navigation header...",
-    "src/components/sections/Hero.tsx": "// Hero section...",
-    "src/components/sections/Services.tsx": "// Services grid (6+ items)...",
-    "src/components/sections/About.tsx": "// About section...",
-    "src/components/sections/Team.tsx": "// Team members (3+)...",
-    "src/components/sections/Testimonials.tsx": "// Testimonials (3+)...",
-    "src/components/sections/Gallery.tsx": "// Image gallery (6+)...",
-    "src/components/sections/FAQ.tsx": "// FAQ accordion (5+)...",
-    "src/components/sections/CTA.tsx": "// Call to action...",
-    "src/components/sections/Contact.tsx": "// Contact form...",
-    "src/components/sections/Footer.tsx": "// Footer...",
-    "src/hooks/useIntentHandlers.ts": "// Intent handler hooks...",
-    "src/pages/Home.tsx": "// Home page composing sections...",
-    "src/lib/utils.ts": "// cn() and utilities...",
-    "src/types/index.ts": "// TypeScript types...",
-    "index.html": "<!-- HTML template with fonts -->"
+    "src/App.tsx": "// Main app composing all sections inline or importing from components...",
+    "src/index.css": "/* Global styles with CSS variables */"
   },
   "entryPoint": "src/App.tsx",
   "framework": "react",
