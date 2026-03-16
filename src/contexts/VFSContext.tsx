@@ -353,6 +353,17 @@ export function VFSProvider({
     // Combined helpers
     getPreviewUrl,
     isPreviewRunning,
+    
+    // Event Bus
+    eventBus: vfsEventBus,
+    
+    // Snapshots
+    createSnapshot,
+    undo: undoSnapshot,
+    redo: redoSnapshot,
+    canUndo: vfsSnapshotManager.canUndo,
+    canRedo: vfsSnapshotManager.canRedo,
+    getDiff,
   };
   
   return (
