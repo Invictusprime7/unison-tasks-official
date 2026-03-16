@@ -973,7 +973,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
           ? currentCode.substring(0, 6000) + '\n... (code truncated for context)'
           : currentCode;
           
-        enhancedPrompt = `I need help fixing rendering/error issues in my code. Here's the current code:\n\n\`\`\`html\n${truncatedCode}\n\`\`\`\n\nIssue: ${userMessage.content}\n\nPlease analyze the code, identify the issue, and provide a fixed version with explanation.${slotContext}`;
+        enhancedPrompt = `I need help fixing rendering/error issues in my React/TSX code. Here's the current code:\n\n\`\`\`tsx\n${truncatedCode}\n\`\`\`\n\nIssue: ${userMessage.content}\n\nPlease analyze the code, identify the issue, and provide a fixed version as valid React/TSX with explanation.${slotContext}`;
         console.log('[AICodeAssistant] Debug mode: Enhanced prompt created with code context');
       } else if (mode === "code") {
         // For surgical (non-full-control) edits on an existing template, force snippet-only output
