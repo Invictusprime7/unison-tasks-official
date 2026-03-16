@@ -4685,6 +4685,27 @@ ${html}
                     toast.success('File saved');
                   }}
                   onSwitchToCanvas={() => setViewMode('canvas')}
+                  onUndo={() => {
+                    const snap = vfsSnapshotManager.undo();
+                    if (!snap) return false;
+                    virtualFS.importFiles(snap.files);
+                    return true;
+                  }}
+                  onRedo={() => {
+                    const snap = vfsSnapshotManager.redo();
+                    if (!snap) return false;
+                    virtualFS.importFiles(snap.files);
+                    return true;
+                  }}
+                  canUndo={vfsSnapshotManager.canUndo}
+                  canRedo={vfsSnapshotManager.canRedo}
+                  undoCount={vfsSnapshotManager.undoCount}
+                  redoCount={vfsSnapshotManager.redoCount}
+                  onCreateSnapshot={(label) => {
+                    const files = virtualFS.getSandpackFiles();
+                    const snap = vfsSnapshotManager.createSnapshot(files, label, 'manual');
+                    return snap.id;
+                  }}
                 />
               </CodeViewErrorBoundary>
             )}
