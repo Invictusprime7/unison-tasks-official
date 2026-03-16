@@ -241,7 +241,7 @@ function InlinePreview({ files, className, device }: InlinePreviewProps) {
   // Prepare files for Sandpack
   const { sandpackFiles, dependencies } = useMemo(() => {
     const prepared = prepareSandpackFiles(files);
-    const deps = getDependenciesForSandpack(files);
+    const { dependencies: deps } = getDependenciesForSandpack(files);
     return { sandpackFiles: prepared, dependencies: deps };
   }, [files, refreshKey]);
 
