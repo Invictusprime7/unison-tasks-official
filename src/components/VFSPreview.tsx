@@ -101,24 +101,46 @@ export interface VFSPreviewHandle {
 
 class SandpackErrorBoundary extends Component<
   { children: ReactNode; onFallback: () => void },
-  { hasError: boolean }
+  { hasError: boolean; error: Error | null; retryCount: number }
 > {
   constructor(props: { children: ReactNode; onFallback: () => void }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null, retryCount: 0 };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[VFSPreview] Sandpack render crash:', error.message, info.componentStack);
-    this.props.onFallback();
+    // Only fall back to HTML after 3 retry attempts
+    if (this.state.retryCount >= 2) {
+      this.props.onFallback();
+    }
   }
 
   render() {
-    if (this.state.hasError) return null; // Parent switches to HTML backend
+    if (this.state.hasError) {
+      if (this.state.retryCount >= 2) return null;
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#0f172a', color: 'white', padding: '40px' }}>
+          <div style={{ textAlign: 'center', maxWidth: '400px' }}>
+            <div style={{ fontSize: '36px', marginBottom: '12px' }}>⚡</div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Preview Loading</h3>
+            <p style={{ margin: '0 0 16px 0', color: '#94a3b8', fontSize: '13px' }}>
+              {this.state.error?.message || 'Sandpack encountered an issue. Retrying...'}
+            </p>
+            <button
+              onClick={() => this.setState(s => ({ hasError: false, error: null, retryCount: s.retryCount + 1 }))}
+              style={{ padding: '8px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
+            >
+              Retry ({2 - this.state.retryCount} attempts left)
+            </button>
+          </div>
+        </div>
+      );
+    }
     return this.props.children;
   }
 }
