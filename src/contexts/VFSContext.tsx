@@ -219,6 +219,35 @@ export function VFSProvider({
   const isPreviewRunning = useCallback(() => {
     return preview.session?.status === 'running';
   }, [preview.session]);
+
+  // Snapshot helpers
+  const createSnapshot = useCallback((label: string): string => {
+    const files = vfs.getSandpackFiles();
+    const snap = vfsSnapshotManager.createSnapshot(files, label, 'manual');
+    return snap.id;
+  }, [vfs]);
+
+  const undoSnapshot = useCallback((): boolean => {
+    const snapshot = vfsSnapshotManager.undo();
+    if (!snapshot) return false;
+    vfs.importFiles(snapshot.files);
+    return true;
+  }, [vfs]);
+
+  const redoSnapshot = useCallback((): boolean => {
+    const snapshot = vfsSnapshotManager.redo();
+    if (!snapshot) return false;
+    vfs.importFiles(snapshot.files);
+    return true;
+  }, [vfs]);
+
+  const getDiff = useCallback((snapshotId?: string): DiffSummary | null => {
+    const currentFiles = vfs.getSandpackFiles();
+    if (snapshotId) {
+      return vfsSnapshotManager.diffFromSnapshot(snapshotId, currentFiles);
+    }
+    return vfsSnapshotManager.diffFromPrevious(currentFiles);
+  }, [vfs]);
   
   // Enhanced import actions
   const importSavedProject = useCallback((data: string | object): SavedProjectData | null => {
