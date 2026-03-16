@@ -41,6 +41,9 @@ import { BuildOutputPanel } from './BuildOutputPanel';
 import { vfsEventBus } from '@/services/vfsEventBus';
 import { vfsSnapshotManager, type DiffSummary } from '@/services/vfsSnapshotManager';
 import { analyzeImportGraph, getAffectedFiles, type ImportGraph, type AffectedFiles } from '@/services/importGraphAnalyzer';
+import { SandpackProvider, SandpackPreview, SandpackLayout } from '@codesandbox/sandpack-react';
+import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
+import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
 
 // ---------------------------------------------------------------------------
 // Error Boundary
