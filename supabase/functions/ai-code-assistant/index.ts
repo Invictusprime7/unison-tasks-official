@@ -645,13 +645,13 @@ You have FULL AUTHORITY to make ANY UI/UX decisions to improve this template. Th
 - Add data-ut-cta labels for CTA tracking
 
 **OUTPUT REQUIREMENTS:**
-1. Return COMPLETE, PRODUCTION-READY HTML
+1. Return COMPLETE, PRODUCTION-READY React/TSX components
 2. Use Tailwind CSS with design token classes (bg-primary, text-foreground, etc.)
-3. Include all necessary <style> blocks for custom animations
-4. Include all <script> blocks for interactivity
+3. Use CSS-in-JS or index.css for custom animations (NOT <style> tags)
+4. Use React hooks for interactivity (NOT <script> tags)
 5. Ensure responsive design (mobile-first with sm:, md:, lg: breakpoints)
 6. Wire ALL conversion elements with data-ut-intent
-7. No markdown, no explanations - just the complete HTML code
+7. For multi-file: output JSON {"files": {"src/App.tsx": "...", ...}}. For single file: use \`\`\`tsx code fence.
 
 📦 **STRUCTURED OUTPUT FORMATS (ADVANCED):**
 For targeted modifications, you can use these structured tags that the parser will extract:
