@@ -16,6 +16,9 @@
 
 import { extractDependencies, getDependenciesForSandpack, type ExtractedDependencies } from '@/utils/dependencyExtractor';
 import { analyzeReactSite, type SiteAnalysis } from '@/utils/reactSiteAnalysis';
+import { vfsEventBus } from '@/services/vfsEventBus';
+import { vfsSnapshotManager } from '@/services/vfsSnapshotManager';
+import { getGraphSummaryForAI } from '@/services/importGraphAnalyzer';
 
 // ============================================================================
 // Types
