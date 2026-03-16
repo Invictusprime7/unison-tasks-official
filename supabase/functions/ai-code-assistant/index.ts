@@ -763,14 +763,40 @@ ${currentCode.substring(0, maxCodeLength)}${currentCode.length > maxCodeLength ?
 ðŸš¨ðŸš¨ðŸš¨ **ABSOLUTE EDIT MODE REQUIREMENTS - VIOLATION = USER DATA LOSS** ðŸš¨ðŸš¨ðŸš¨
 
 **STRUCTURAL INTEGRITY RULES (MANDATORY):**
-1. **SECTION COUNT LOCK** - Count <section> tags in input. Your output MUST have >= that count. NEVER reduce.
-2. **SCRIPT BLOCK LOCK** - Copy ALL <script> blocks EXACTLY as they appear. NEVER remove or simplify.
-3. **STYLE BLOCK LOCK** - Copy ALL <style> blocks EXACTLY as they appear. NEVER remove or consolidate.
+1. **COMPONENT COUNT LOCK** - Count section components in input. Your output MUST have >= that count. NEVER reduce.
+2. **IMPORT LOCK** - Preserve ALL import statements EXACTLY. NEVER remove imports.
+3. **HOOKS LOCK** - Preserve ALL React hooks (useState, useEffect, etc.) EXACTLY. NEVER remove or simplify.
 4. **TEXT CONTENT LOCK** - DO NOT change any text, headings, paragraphs, button labels UNLESS specifically requested
 5. **IMAGE URLs LOCK** - NEVER modify src attributes on images unless requested
-6. **COLOR PALETTE LOCK** - NEVER change bg-*, text-*, border-* color classes unless requested
+6. **COLOR PALETTE LOCK** - NEVER change bg-*, text-*, border-* Tailwind classes unless requested
 7. **FONT CLASSES LOCK** - NEVER change font-*, text-size, leading-* unless requested
 8. **DATA ATTRIBUTES LOCK** - ALL data-* attributes MUST be preserved exactly
+
+**ADDITIVE CHANGE PRINCIPLE:**
+- If user says "center the hero" → ADD centering classes to hero. NOTHING ELSE CHANGES.
+- If user says "add animation" → ADD animation classes. NOTHING ELSE CHANGES.
+- If user says "make it bigger" → MODIFY size classes on target element. NOTHING ELSE CHANGES.
+- If user says "change the color" → MODIFY color classes on target element. NOTHING ELSE CHANGES.
+
+**OUTPUT VERIFICATION CHECKLIST (MANDATORY - CHECK BEFORE OUTPUTTING):**
+□ Component count: Input has N sections → Output has N sections? (If not, STOP and fix)
+□ Import count: Input has N imports → Output has N imports? (If not, STOP and fix)
+□ Footer present: Input has footer → Output has footer? (If not, STOP and fix)
+□ Header/Nav present: Input has header/nav → Output has header/nav? (If not, STOP and fix)
+□ All text content preserved word-for-word?
+□ All image URLs preserved?
+□ All Tailwind classes preserved?
+□ Only the specifically requested change was made?
+
+🚫 **FATAL ERRORS THAT CAUSE DATA LOSS (ZERO TOLERANCE):**
+- Reducing the number of components/sections (e.g., 8 sections → 3 sections = FATAL)
+- Removing ANY import statements (build breaks = FATAL)
+- Removing ANY React hooks (functionality breaks = FATAL)
+- Removing the footer component (user content lost = FATAL)
+- Generating a "simplified" or "cleaner" version (DATA LOSS = FATAL)
+- Outputting a "new" component instead of editing existing (DATA LOSS = FATAL)
+- Changing text content without being asked
+- Replacing specific images with different ones
 
 **ADDITIVE CHANGE PRINCIPLE:**
 - If user says "center the hero" â†’ ADD centering classes to hero. NOTHING ELSE CHANGES.
