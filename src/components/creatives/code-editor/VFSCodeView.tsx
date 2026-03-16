@@ -638,8 +638,17 @@ export function VFSCodeView({
                 </ResizablePanel>
               </>
             )}
-          </ResizablePanelGroup>
+        </ResizablePanelGroup>
         </div>
+
+        {/* ============================================================== */}
+        {/* Build Output / Terminal                                         */}
+        {/* ============================================================== */}
+        <BuildOutputPanel
+          isCollapsed={terminalCollapsed}
+          onToggleCollapse={() => setTerminalCollapsed(v => !v)}
+          maxHeight="160px"
+        />
 
         {/* ============================================================== */}
         {/* Status Bar                                                      */}
