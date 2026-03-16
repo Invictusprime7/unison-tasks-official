@@ -22,6 +22,8 @@ import {
   type ParsedWebContent,
   type VFSGenerationResult 
 } from '@/utils/aiWebParser';
+import { vfsEventBus, type VFSEventBus } from '@/services/vfsEventBus';
+import { vfsSnapshotManager, type DiffSummary } from '@/services/vfsSnapshotManager';
 
 // ============================================================================
 // Types
