@@ -744,19 +744,19 @@ You are editing an EXISTING saved template in an iframe. The user's site is LIVE
 
 ðŸ“Š **MANDATORY ELEMENT COUNT VALIDATION:**
 Before outputting, COUNT these elements in your output vs the input:
-- <section> tags: Input count MUST equal output count (unless explicitly adding/removing)
-- <script> blocks: Input count MUST equal output count
-- <style> blocks: Input count MUST equal output count
-- <header>/<nav>/<footer>: MUST be preserved exactly
+- React components/sections: Input count MUST equal output count (unless explicitly adding/removing)
+- Import statements: ALL MUST be preserved
+- Hooks (useState, useEffect, etc.): ALL MUST be preserved
+- JSX elements (header, nav, footer): MUST be preserved exactly
 - data-ut-intent attributes: ALL MUST be preserved
 - Form elements: ALL MUST be preserved
 
-WARNING: **IF YOUR OUTPUT HAS FEWER ELEMENTS THAN INPUT = FATAL ERROR**
+WARNING: **IF YOUR OUTPUT HAS FEWER COMPONENTS THAN INPUT = FATAL ERROR**
 
 ${templateStructure}
 ${templateActionContext}
-**CURRENT TEMPLATE CODE (${currentCode.length > maxCodeLength ? 'truncated' : 'full'}):**
-\`\`\`html
+**CURRENT CODE (${currentCode.length > maxCodeLength ? 'truncated' : 'full'}):**
+\`\`\`tsx
 ${currentCode.substring(0, maxCodeLength)}${currentCode.length > maxCodeLength ? '\n... (truncated for context)' : ''}
 \`\`\`
 
