@@ -138,7 +138,7 @@ export function useAIVFS(
   // Get VFS context for AI prompts
   const getContext = useCallback(() => {
     if (!vfs) {
-      return { fileList: [] as string[], fileContents: {} as Record<string, string>, packageDeps: [] as string[], summary: 'VFS not available', siteAnalysis: null };
+      return { fileList: [] as string[], fileContents: {} as Record<string, string>, packageDeps: [] as string[], summary: 'VFS not available', siteAnalysis: null, importGraph: '' };
     }
     return getVFSContextForAI(vfs);
   }, [vfs]);
