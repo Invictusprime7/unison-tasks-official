@@ -11,6 +11,7 @@ const ALLOWED_IMPORTS = new Set([
   'react',
   'react-dom',
   'react-dom/client',
+  'react-router-dom',
   'lucide-react',
   'clsx',
   'tailwind-merge',
