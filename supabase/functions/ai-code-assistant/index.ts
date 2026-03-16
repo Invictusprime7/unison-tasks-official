@@ -703,10 +703,11 @@ You are applying a visual aesthetic preset. This changes ONLY colors, typography
 - Navigation structure
 - ANY data-ut-intent, data-intent, data-ut-cta, data-no-intent attributes
 - Form inputs, interactive element functionality
-- HTML structure or element hierarchy
+- JSX structure or component hierarchy
+- React hooks or state management
 
 🎯 **OUTPUT:**
-Return the COMPLETE code with visual aesthetic applied. Keep every word of content identical. No markdown, no explanation.` : ''}
+Return the COMPLETE React/TSX code with visual aesthetic applied. Keep every word of content identical. Output as \`\`\`tsx code fence or JSON {"files": {...}}.` : ''}
 ` : '';
 
             const editModeContext = editMode && currentCode ? `
