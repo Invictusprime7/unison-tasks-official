@@ -6,6 +6,7 @@
 
 import { useContext } from 'react';
 import VFSContext, { type VFSContextValue } from '@/contexts/VFSContext';
+export type { DiffSummary } from '@/services/vfsSnapshotManager';
 
 // ============================================================================
 // Main VFS Hook
@@ -94,6 +95,15 @@ export function useVFSImport() {
     reset: resetToEmpty,
     loadTemplate: loadDefaultTemplate,
   };
+}
+
+// ============================================================================
+// Snapshot/Undo Hook
+// ============================================================================
+
+export function useVFSSnapshots() {
+  const { createSnapshot, undo, redo, canUndo, canRedo, getDiff, eventBus } = useVFS();
+  return { createSnapshot, undo, redo, canUndo, canRedo, getDiff, eventBus };
 }
 
 // ============================================================================

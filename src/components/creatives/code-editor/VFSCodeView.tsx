@@ -37,6 +37,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 import { getFileIcon } from '@/hooks/useVirtualFileSystem';
+import { BuildOutputPanel } from './BuildOutputPanel';
 
 // ---------------------------------------------------------------------------
 // Error Boundary
@@ -338,6 +339,7 @@ export function VFSCodeView({
   const [showPreview, setShowPreview] = useState(false);
   const [showExplorer, setShowExplorer] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [terminalCollapsed, setTerminalCollapsed] = useState(true);
 
   // Derive active file
   const activeFile = useMemo(() => getActiveFile(), [getActiveFile, activeFileId, nodes]);
@@ -636,8 +638,17 @@ export function VFSCodeView({
                 </ResizablePanel>
               </>
             )}
-          </ResizablePanelGroup>
+        </ResizablePanelGroup>
         </div>
+
+        {/* ============================================================== */}
+        {/* Build Output / Terminal                                         */}
+        {/* ============================================================== */}
+        <BuildOutputPanel
+          isCollapsed={terminalCollapsed}
+          onToggleCollapse={() => setTerminalCollapsed(v => !v)}
+          maxHeight="160px"
+        />
 
         {/* ============================================================== */}
         {/* Status Bar                                                      */}

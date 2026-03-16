@@ -22,6 +22,8 @@ import {
   type ParsedWebContent,
   type VFSGenerationResult 
 } from '@/utils/aiWebParser';
+import { vfsEventBus, type VFSEventBus } from '@/services/vfsEventBus';
+import { vfsSnapshotManager, type DiffSummary } from '@/services/vfsSnapshotManager';
 
 // ============================================================================
 // Types
@@ -83,6 +85,17 @@ export interface VFSContextValue {
   // Combined helpers
   getPreviewUrl: () => string | null;
   isPreviewRunning: () => boolean;
+  
+  // Event Bus
+  eventBus: VFSEventBus;
+  
+  // Snapshots / Undo-Redo
+  createSnapshot: (label: string) => string;
+  undo: () => boolean;
+  redo: () => boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  getDiff: (snapshotId?: string) => DiffSummary | null;
 }
 
 const VFSContext = createContext<VFSContextValue | null>(null);
@@ -206,6 +219,35 @@ export function VFSProvider({
   const isPreviewRunning = useCallback(() => {
     return preview.session?.status === 'running';
   }, [preview.session]);
+
+  // Snapshot helpers
+  const createSnapshot = useCallback((label: string): string => {
+    const files = vfs.getSandpackFiles();
+    const snap = vfsSnapshotManager.createSnapshot(files, label, 'manual');
+    return snap.id;
+  }, [vfs]);
+
+  const undoSnapshot = useCallback((): boolean => {
+    const snapshot = vfsSnapshotManager.undo();
+    if (!snapshot) return false;
+    vfs.importFiles(snapshot.files);
+    return true;
+  }, [vfs]);
+
+  const redoSnapshot = useCallback((): boolean => {
+    const snapshot = vfsSnapshotManager.redo();
+    if (!snapshot) return false;
+    vfs.importFiles(snapshot.files);
+    return true;
+  }, [vfs]);
+
+  const getDiff = useCallback((snapshotId?: string): DiffSummary | null => {
+    const currentFiles = vfs.getSandpackFiles();
+    if (snapshotId) {
+      return vfsSnapshotManager.diffFromSnapshot(snapshotId, currentFiles);
+    }
+    return vfsSnapshotManager.diffFromPrevious(currentFiles);
+  }, [vfs]);
   
   // Enhanced import actions
   const importSavedProject = useCallback((data: string | object): SavedProjectData | null => {
@@ -311,6 +353,17 @@ export function VFSProvider({
     // Combined helpers
     getPreviewUrl,
     isPreviewRunning,
+    
+    // Event Bus
+    eventBus: vfsEventBus,
+    
+    // Snapshots
+    createSnapshot,
+    undo: undoSnapshot,
+    redo: redoSnapshot,
+    canUndo: vfsSnapshotManager.canUndo,
+    canRedo: vfsSnapshotManager.canRedo,
+    getDiff,
   };
   
   return (

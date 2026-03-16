@@ -16,6 +16,9 @@
 
 import { extractDependencies, getDependenciesForSandpack, type ExtractedDependencies } from '@/utils/dependencyExtractor';
 import { analyzeReactSite, type SiteAnalysis } from '@/utils/reactSiteAnalysis';
+import { vfsEventBus } from '@/services/vfsEventBus';
+import { vfsSnapshotManager } from '@/services/vfsSnapshotManager';
+import { getGraphSummaryForAI } from '@/services/importGraphAnalyzer';
 
 // ============================================================================
 // Types
@@ -125,17 +128,21 @@ export function applyAIOutputToVFS(
   let depExtraction: ExtractedDependencies | null = null;
   let depExtractionMs = 0;
 
-  try {
-    // 1. Get current VFS state
-    const currentFiles = preserveExisting ? vfs.getSandpackFiles() : {};
+  // Emit AI apply start event
+  vfsEventBus.emit('ai:apply:start', { files: Object.keys(aiFiles) });
 
-    // 2. Merge AI output with existing files
+  try {
+    // 0. Snapshot current state for undo
+    const currentFiles = preserveExisting ? vfs.getSandpackFiles() : {};
+    vfsSnapshotManager.createSnapshot(currentFiles, `Before AI edit (${Object.keys(aiFiles).length} files)`, 'ai');
+
+    // 1. Merge AI output with existing files
     const mergedFiles: Record<string, string> = {
       ...currentFiles,
       ...aiFiles,
     };
 
-    // 3. Extract dependencies from ALL files (existing + new)
+    // 2. Extract dependencies from ALL files (existing + new)
     if (!skipDeps && autoResolveDeps) {
       const depStart = performance.now();
       const { dependencies, extractionInfo } = getDependenciesForSandpack(mergedFiles, baseDependencies);
@@ -144,7 +151,12 @@ export function applyAIOutputToVFS(
 
       onDepsResolved?.(extractionInfo);
 
-      // 4. Generate dynamic package.json
+      // Emit deps resolved event
+      const prevDeps = Object.keys((currentFiles['/package.json'] ? JSON.parse(currentFiles['/package.json'] || '{}').dependencies : {}) || {});
+      const newDeps = Object.keys(dependencies).filter(d => !prevDeps.includes(d));
+      vfsEventBus.emit('deps:resolved', { dependencies, newDeps, removedDeps: [] });
+
+      // 3. Generate dynamic package.json
       const packageJson = generatePackageJson(dependencies, mergedFiles);
       mergedFiles['/package.json'] = packageJson;
 
@@ -156,11 +168,15 @@ export function applyAIOutputToVFS(
       });
     }
 
-    // 5. Import all files into VFS atomically
+    // 4. Import all files into VFS atomically
     vfs.importFiles(mergedFiles);
 
     const filesWritten = Object.keys(aiFiles);
     onFilesWritten?.(filesWritten);
+
+    // Emit AI apply complete event
+    vfsEventBus.emit('ai:apply:complete', { filesWritten });
+    vfsEventBus.emit('build:success', {});
 
     console.log('[AIVFSOrchestrator] Applied AI output:', {
       newFiles: filesWritten.length,
@@ -183,6 +199,10 @@ export function applyAIOutputToVFS(
     const msg = err instanceof Error ? err.message : String(err);
     errors.push(msg);
     console.error('[AIVFSOrchestrator] Error applying AI output:', msg);
+
+    // Emit error events
+    vfsEventBus.emit('ai:apply:error', { message: msg });
+    vfsEventBus.emit('build:error', { message: msg });
 
     return {
       success: false,
@@ -311,6 +331,7 @@ export function getVFSContextForAI(vfs: VFSHandle): {
   packageDeps: string[];
   summary: string;
   siteAnalysis: SiteAnalysis | null;
+  importGraph: string;
 } {
   const files = vfs.getSandpackFiles();
   const fileList = Object.keys(files).sort();
@@ -331,7 +352,13 @@ export function getVFSContextForAI(vfs: VFSHandle): {
     siteAnalysis = analyzeReactSite(files);
   } catch { /* ignore — analysis is optional */ }
 
-  // Build summary with site structure
+  // Analyze import graph
+  let importGraph = '';
+  try {
+    importGraph = getGraphSummaryForAI(files);
+  } catch { /* ignore */ }
+
+  // Build summary with site structure + graph
   const codeFiles = fileList.filter(f => /\.(tsx?|jsx?|css|html)$/.test(f));
   const summaryLines = [
     `Project has ${fileList.length} files (${codeFiles.length} code files).`,
@@ -343,9 +370,13 @@ export function getVFSContextForAI(vfs: VFSHandle): {
     summaryLines.push('', 'Site Structure:', siteAnalysis.sectionMap);
   }
 
+  if (importGraph) {
+    summaryLines.push('', importGraph);
+  }
+
   const summary = summaryLines.join('\n');
 
-  return { fileList, fileContents: files, packageDeps, summary, siteAnalysis };
+  return { fileList, fileContents: files, packageDeps, summary, siteAnalysis, importGraph };
 }
 
 /**
