@@ -331,6 +331,7 @@ export function getVFSContextForAI(vfs: VFSHandle): {
   packageDeps: string[];
   summary: string;
   siteAnalysis: SiteAnalysis | null;
+  importGraph: string;
 } {
   const files = vfs.getSandpackFiles();
   const fileList = Object.keys(files).sort();
@@ -351,7 +352,13 @@ export function getVFSContextForAI(vfs: VFSHandle): {
     siteAnalysis = analyzeReactSite(files);
   } catch { /* ignore — analysis is optional */ }
 
-  // Build summary with site structure
+  // Analyze import graph
+  let importGraph = '';
+  try {
+    importGraph = getGraphSummaryForAI(files);
+  } catch { /* ignore */ }
+
+  // Build summary with site structure + graph
   const codeFiles = fileList.filter(f => /\.(tsx?|jsx?|css|html)$/.test(f));
   const summaryLines = [
     `Project has ${fileList.length} files (${codeFiles.length} code files).`,
@@ -363,9 +370,13 @@ export function getVFSContextForAI(vfs: VFSHandle): {
     summaryLines.push('', 'Site Structure:', siteAnalysis.sectionMap);
   }
 
+  if (importGraph) {
+    summaryLines.push('', importGraph);
+  }
+
   const summary = summaryLines.join('\n');
 
-  return { fileList, fileContents: files, packageDeps, summary, siteAnalysis };
+  return { fileList, fileContents: files, packageDeps, summary, siteAnalysis, importGraph };
 }
 
 /**
