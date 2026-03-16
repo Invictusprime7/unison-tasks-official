@@ -37,6 +37,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 import { getFileIcon } from '@/hooks/useVirtualFileSystem';
+import { BuildOutputPanel } from './BuildOutputPanel';
 
 // ---------------------------------------------------------------------------
 // Error Boundary
