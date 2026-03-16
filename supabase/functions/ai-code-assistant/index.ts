@@ -499,7 +499,7 @@ Generate a site that matches the user's established design preferences while bei
     const learnedPatterns = patterns && patterns.length > 0 ? (patterns as CodePattern[]).map((p: CodePattern) => `
 📐 **${p.pattern_type.toUpperCase()}** — ${p.description || 'N/A'}
 Tags: ${(p.tags || []).join(', ')} | Used ${p.usage_count}× | ${p.success_rate}% success
-\`\`\`html
+\`\`\`tsx
 ${p.code_snippet.substring(0, 600)}${p.code_snippet.length > 600 ? '...' : ''}
 \`\`\`
 `).join('\n') : 'No learned patterns yet - but I will learn from every successful interaction!';
