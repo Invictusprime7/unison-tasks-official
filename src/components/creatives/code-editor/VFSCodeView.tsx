@@ -236,43 +236,24 @@ interface InlinePreviewProps {
 const DEVICE_WIDTHS = { desktop: '100%', tablet: '768px', mobile: '375px' };
 
 function InlinePreview({ files, className, device }: InlinePreviewProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const srcdoc = useMemo(() => {
-    const htmlFile = files['/public/index.html'] || files['/index.html'];
-    const appTsx = files['/src/App.tsx'] || files['/src/App.jsx'] || files['/App.tsx'];
-    const css = files['/src/styles/index.css'] || files['/src/index.css'] || files['/styles.css'] || '';
-
-    if (htmlFile && (htmlFile.includes('<!DOCTYPE') || htmlFile.includes('<html'))) {
-      return htmlFile;
-    }
-
-    if (appTsx) {
-      const jsxMatch = appTsx.match(/return\s*\(\s*([\s\S]*?)\s*\);?\s*\}/);
-      const jsx = jsxMatch?.[1] || '<div>Preview not available</div>';
-      const html = jsx
-        .replace(/className=/g, 'class=')
-        .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-        .replace(/\{[^}]*\}/g, '');
-      return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>${css}</style>
-  <style>body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }</style>
-</head>
-<body>${html}</body>
-</html>`;
-    }
-
-    const allCSS = Object.entries(files).filter(([p]) => p.endsWith('.css')).map(([, c]) => c).join('\n');
-    const allHTML = Object.entries(files).filter(([p]) => p.endsWith('.html') || p.endsWith('.htm')).map(([, c]) => c).join('\n');
-    if (allHTML) return allHTML;
-    return `<!DOCTYPE html><html><head><style>${allCSS}</style></head><body><p style="padding:2rem;color:#555;">No previewable content</p></body></html>`;
+  // Prepare files for Sandpack
+  const { sandpackFiles, dependencies } = useMemo(() => {
+    const prepared = prepareSandpackFiles(files);
+    const deps = getDependenciesForSandpack(files);
+    return { sandpackFiles: prepared, dependencies: deps };
   }, [files, refreshKey]);
+
+  const hasContent = Object.keys(sandpackFiles).length > 0;
+
+  if (!hasContent) {
+    return (
+      <div className={cn('relative w-full h-full flex items-center justify-center bg-muted/20', className)}>
+        <p className="text-sm text-muted-foreground">No previewable content</p>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('relative w-full h-full flex flex-col', className)}>
@@ -300,17 +281,27 @@ function InlinePreview({ files, className, device }: InlinePreviewProps) {
           </TooltipProvider>
         </div>
       </div>
-      {/* Preview iframe */}
-      <div className="flex-1 min-h-0 bg-white flex items-start justify-center overflow-auto">
-        <iframe
-          ref={iframeRef}
+      {/* Sandpack-powered preview */}
+      <div className="flex-1 min-h-0 bg-white overflow-hidden" style={{ width: DEVICE_WIDTHS[device] === '100%' ? '100%' : DEVICE_WIDTHS[device], margin: DEVICE_WIDTHS[device] !== '100%' ? '0 auto' : undefined }}>
+        <SandpackProvider
           key={refreshKey}
-          srcDoc={srcdoc}
-          sandbox="allow-scripts allow-same-origin"
-          className="border-0 h-full transition-all duration-300"
-          style={{ width: DEVICE_WIDTHS[device] }}
-          title="Live Preview"
-        />
+          template="react-ts"
+          files={sandpackFiles}
+          customSetup={{ dependencies }}
+          options={{
+            externalResources: ['https://cdn.tailwindcss.com'],
+            autorun: true,
+            autoReload: true,
+          }}
+          theme="dark"
+        >
+          <SandpackPreview
+            showNavigator={false}
+            showRefreshButton={false}
+            showOpenInCodeSandbox={false}
+            style={{ height: '100%', width: '100%' }}
+          />
+        </SandpackProvider>
       </div>
     </div>
   );
