@@ -339,6 +339,7 @@ export function VFSCodeView({
   const [showPreview, setShowPreview] = useState(false);
   const [showExplorer, setShowExplorer] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [terminalCollapsed, setTerminalCollapsed] = useState(true);
 
   // Derive active file
   const activeFile = useMemo(() => getActiveFile(), [getActiveFile, activeFileId, nodes]);
