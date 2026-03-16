@@ -169,6 +169,14 @@ export const useWebBuilderState = () => ({ state: {}, setState: () => {} });
 export const useWorkflowTrigger = () => ({ trigger: () => Promise.resolve(), isTriggering: false });
 export const useCounter = (initial = 0) => { const [count, setCount] = reactUseState(initial); return { count, increment: () => setCount(c => c + 1), decrement: () => setCount(c => c - 1) }; };
 export const useToggle = (initial = false) => { const [value, setValue] = reactUseState(initial); return [value, () => setValue(v => !v)]; };
+export const useIntentHandlers = () => ({
+  handleBooking: (service) => { const el = document.querySelector('[data-ut-intent="booking.create"]'); if (el) el.click(); else console.log('[Intent] booking.create:', service); },
+  handleContact: (data) => { console.log('[Intent] contact.submit:', data); },
+  handleNewsletter: (email) => { console.log('[Intent] newsletter.subscribe:', email); },
+  handleNavigation: (path) => { const section = document.querySelector(path); if (section) section.scrollIntoView({ behavior: 'smooth' }); },
+  handleAuth: (action) => { console.log('[Intent] auth.' + action); },
+});
+export const useNavigate = () => (path) => { if (path.startsWith('#')) { const el = document.querySelector(path); if (el) el.scrollIntoView({ behavior: 'smooth' }); } else { window.location.hash = path; } };
 
 export default {
   useState, useEffect, useCallback, useMemo, useRef, useContext,
@@ -182,7 +190,7 @@ export default {
   useKeyboardShortcuts, usePageGenerator, useSubscription,
   useCanvasHistory, useTemplateAutomation, useTemplateFiles,
   useTemplateState, useWebBuilder, useWebBuilderAI, useWebBuilderState,
-  useWorkflowTrigger, useCounter, useToggle, supabase,
+  useWorkflowTrigger, useCounter, useToggle, useIntentHandlers, useNavigate, supabase,
 };
 `;
 
