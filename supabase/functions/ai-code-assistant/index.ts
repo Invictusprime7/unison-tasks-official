@@ -654,41 +654,21 @@ You have FULL AUTHORITY to make ANY UI/UX decisions to improve this template. Th
 7. For multi-file: output JSON {"files": {"src/App.tsx": "...", ...}}. For single file: use \`\`\`tsx code fence.
 
 📦 **STRUCTURED OUTPUT FORMATS (ADVANCED):**
-For targeted modifications, you can use these structured tags that the parser will extract:
+For targeted modifications, use these formats:
 
-**File patches (multi-file changes):**
-<file path="/index.html">...html content...</file>
-<file path="/styles.css">...css content...</file>
+**Multi-file React patches (PREFERRED):**
+\`\`\`json
+{"files": {"src/components/Hero.tsx": "...component content...", "src/components/Features.tsx": "...component content..."}}
+\`\`\`
 
-**Builder actions:**
-<action type="install_pack" pack="leads"/>
-<action type="wire_button" selector=".book-btn" intent="booking.create"/>
+**Single file edit:**
+\`\`\`tsx
+// Complete component with changes applied
+\`\`\`
 
-**Style modifications (targeted):**
-<style element=".hero-title" property="color" value="#ff6b6b"/>
-<style element=".cta-button" property="background" value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"/>
+Use JSON multi-file format when making changes across files; use tsx code fences for single-file edits.
 
-**Section operations:**
-<section operation="add" type="testimonials" position="after:features">...html...</section>
-<section operation="remove" id="faq"/>
-<section operation="reorder" from="2" to="0"/>
-
-**Element operations:**
-<element operation="modify" selector=".hero h1" attribute="class" value="text-6xl font-bold"/>
-<element operation="add" parent=".features-grid">...new card html...</element>
-<element operation="delete" selector=".outdated-banner"/>
-
-**Intent wiring:**
-<intent on=".subscribe-btn" action="newsletter.subscribe" label="Subscribe Now"/>
-<intent on=".book-appointment" action="booking.create" payload='{"service":"consultation"}'/>
-
-**Layout changes:**
-<layout selector=".services" type="grid" columns="3" gap="6"/>
-<layout selector=".hero-content" type="flex" align="center" justify="between"/>
-
-Use these structured tags when making targeted, specific changes. For full template generation, use standard code blocks.
-
-🎯 **YOUR GOAL:** Transform this template into a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL page that you would be proud to showcase.` : ''}
+🎯 **YOUR GOAL:** Transform this template into a HIGH-CONVERTING, VISUALLY STUNNING, FULLY FUNCTIONAL React application that you would be proud to showcase.` : ''}
 ${templateAction === 'apply-design-preset' ? `🎨 **DESIGN PRESET APPLICATION MODE - VISUAL STYLING ONLY**
 
 You are applying a visual aesthetic preset. This changes ONLY colors, typography, and formatting.
