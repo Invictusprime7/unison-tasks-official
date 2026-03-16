@@ -92,6 +92,7 @@ import { useSiteBuilder, type UseSiteBuilderReturn } from "@/hooks/useSiteBuilde
 import { useAIVFS } from '@/hooks/useAIVFS';
 import { getTemplateReactCodeWithCSS } from '@/data/templates/utils';
 import { extractEmbeddedCSS } from '@/utils/templateToVFS';
+import { vfsSnapshotManager } from '@/services/vfsSnapshotManager';
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -4685,6 +4686,27 @@ ${html}
                     toast.success('File saved');
                   }}
                   onSwitchToCanvas={() => setViewMode('canvas')}
+                  onUndo={() => {
+                    const snap = vfsSnapshotManager.undo();
+                    if (!snap) return false;
+                    virtualFS.importFiles(snap.files);
+                    return true;
+                  }}
+                  onRedo={() => {
+                    const snap = vfsSnapshotManager.redo();
+                    if (!snap) return false;
+                    virtualFS.importFiles(snap.files);
+                    return true;
+                  }}
+                  canUndo={vfsSnapshotManager.canUndo}
+                  canRedo={vfsSnapshotManager.canRedo}
+                  undoCount={vfsSnapshotManager.undoCount}
+                  redoCount={vfsSnapshotManager.redoCount}
+                  onCreateSnapshot={(label) => {
+                    const files = virtualFS.getSandpackFiles();
+                    const snap = vfsSnapshotManager.createSnapshot(files, label, 'manual');
+                    return snap.id;
+                  }}
                 />
               </CodeViewErrorBoundary>
             )}

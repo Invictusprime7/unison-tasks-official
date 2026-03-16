@@ -1,16 +1,15 @@
 /**
- * VFSCodeView — Self-contained Code Editor interface for the WebBuilder
- *
- * A modern IDE-like code editing experience with glassmorphism design,
- * file tree, tabbed editor, breadcrumbs, status bar, and live preview.
+ * VFSCodeView — IDE-grade Code Editor with event bus, undo/redo, 
+ * import graph awareness, and integrated build output.
  *
  * Architecture:
- *   ┌─ Toolbar (breadcrumbs, actions) ──────────────────────────────┐
- *   │ ResizablePanelGroup (horizontal)                              │
- *   │ ├── Panel 1: File Explorer (collapsible)                      │
- *   │ ├── Panel 2: Tabs + Monaco Editor                             │
- *   │ └── Panel 3: Live Preview (togglable)                         │
- *   └─ Status Bar (file info, cursor, language) ───────────────────┘
+ *   ┌─ Toolbar (breadcrumbs, undo/redo, graph info, actions) ─────────┐
+ *   │ ResizablePanelGroup (horizontal)                                 │
+ *   │ ├── Panel 1: File Explorer (collapsible)                         │
+ *   │ ├── Panel 2: Tabs + Monaco Editor                                │
+ *   │ └── Panel 3: Live Preview (togglable)                            │
+ *   ├─ Build Output Panel (collapsible terminal)                       │
+ *   └─ Status Bar (file info, cursor, lang, undo stack, graph) ───────┘
  */
 
 import React, { useCallback, useMemo, useRef, useState, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
@@ -33,11 +32,15 @@ import {
   PanelLeftClose, PanelLeftOpen, Copy, Download, Terminal,
   Sparkles, Save, Monitor, Tablet, Smartphone, Maximize2,
   GitBranch, Circle, Braces, Hash, Type, Code2,
+  Undo2, Redo2, Camera, Network, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { VirtualNode, VirtualFile } from '@/hooks/useVirtualFileSystem';
 import { getFileIcon } from '@/hooks/useVirtualFileSystem';
 import { BuildOutputPanel } from './BuildOutputPanel';
+import { vfsEventBus } from '@/services/vfsEventBus';
+import { vfsSnapshotManager, type DiffSummary } from '@/services/vfsSnapshotManager';
+import { analyzeImportGraph, getAffectedFiles, type ImportGraph, type AffectedFiles } from '@/services/importGraphAnalyzer';
 
 // ---------------------------------------------------------------------------
 // Error Boundary
@@ -148,18 +151,20 @@ function Breadcrumbs({ path, className }: { path?: string; className?: string })
 // Minimap-style file stats
 // ---------------------------------------------------------------------------
 
-function FileStats({ nodes }: { nodes: VirtualNode[] }) {
+function FileStats({ nodes, undoCount, redoCount, graphNodeCount }: {
+  nodes: VirtualNode[];
+  undoCount: number;
+  redoCount: number;
+  graphNodeCount: number;
+}) {
   const stats = useMemo(() => {
     const files = nodes.filter((n) => n.type === 'file') as VirtualFile[];
     const folders = nodes.filter((n) => n.type === 'folder');
-    const byLang: Record<string, number> = {};
     let totalLines = 0;
     for (const f of files) {
-      const lang = f.language || 'other';
-      byLang[lang] = (byLang[lang] || 0) + 1;
       totalLines += (f.content?.split('\n').length || 0);
     }
-    return { fileCount: files.length, folderCount: folders.length, totalLines, byLang };
+    return { fileCount: files.length, folderCount: folders.length, totalLines };
   }, [nodes]);
 
   return (
@@ -167,7 +172,51 @@ function FileStats({ nodes }: { nodes: VirtualNode[] }) {
       <span>{stats.fileCount} files</span>
       <span>{stats.folderCount} folders</span>
       <span>{stats.totalLines.toLocaleString()} lines</span>
+      {undoCount > 0 && (
+        <span className="text-cyan-400/50">{undoCount} undo</span>
+      )}
+      {redoCount > 0 && (
+        <span className="text-cyan-400/50">{redoCount} redo</span>
+      )}
+      {graphNodeCount > 0 && (
+        <span className="text-fuchsia-400/40 flex items-center gap-0.5">
+          <Network className="w-2.5 h-2.5" />
+          {graphNodeCount} deps
+        </span>
+      )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Affected Files Indicator
+// ---------------------------------------------------------------------------
+
+function AffectedFilesIndicator({ affected, className }: { affected: AffectedFiles | null; className?: string }) {
+  if (!affected || (affected.direct.length === 0 && affected.transitive.length === 0)) return null;
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={cn('flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/15', className)}>
+            <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
+            <span className="text-[10px] text-amber-300 font-medium">
+              {affected.direct.length + affected.transitive.length} affected
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs max-w-[280px]">
+          <div className="space-y-1">
+            {affected.direct.length > 0 && (
+              <div><span className="font-semibold">Direct:</span> {affected.direct.slice(0, 5).join(', ')}{affected.direct.length > 5 ? ` +${affected.direct.length - 5}` : ''}</div>
+            )}
+            {affected.transitive.length > 0 && (
+              <div><span className="font-semibold">Transitive:</span> {affected.transitive.slice(0, 5).join(', ')}{affected.transitive.length > 5 ? ` +${affected.transitive.length - 5}` : ''}</div>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -298,6 +347,15 @@ export interface VFSCodeViewProps {
   recentlyChangedFiles: Set<string>;
   isAIProcessing?: boolean;
 
+  // Snapshot / Undo-Redo
+  onUndo?: () => boolean;
+  onRedo?: () => boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  undoCount?: number;
+  redoCount?: number;
+  onCreateSnapshot?: (label: string) => string;
+
   // Callbacks
   onFileModified?: (fileId: string, content: string) => void;
   onSave?: (fileId: string, content: string) => void;
@@ -332,6 +390,13 @@ export function VFSCodeView({
   aiGeneratedFiles,
   recentlyChangedFiles,
   isAIProcessing = false,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
+  undoCount = 0,
+  redoCount = 0,
+  onCreateSnapshot,
   onFileModified,
   onSave,
   onSwitchToCanvas,
@@ -340,6 +405,9 @@ export function VFSCodeView({
   const [showExplorer, setShowExplorer] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [terminalCollapsed, setTerminalCollapsed] = useState(true);
+
+  // Import graph analysis (lazy, cached)
+  const graphCacheRef = useRef<{ keys: string; graph: ImportGraph } | null>(null);
 
   // Derive active file
   const activeFile = useMemo(() => getActiveFile(), [getActiveFile, activeFileId, nodes]);
@@ -375,6 +443,31 @@ export function VFSCodeView({
     return { lang, lines, chars };
   }, [activeFile]);
 
+  // Import graph — compute lazily on file changes
+  const importGraph = useMemo((): ImportGraph | null => {
+    const files = getSandpackFiles();
+    const keys = Object.keys(files).sort().join(',');
+    if (graphCacheRef.current?.keys === keys) return graphCacheRef.current.graph;
+    try {
+      const graph = analyzeImportGraph(files);
+      graphCacheRef.current = { keys, graph };
+      return graph;
+    } catch {
+      return null;
+    }
+  }, [getSandpackFiles, nodes]);
+
+  // Affected files for the active file
+  const affectedFiles = useMemo((): AffectedFiles | null => {
+    if (!activeFile?.path) return null;
+    try {
+      const files = getSandpackFiles();
+      return getAffectedFiles(activeFile.path, files);
+    } catch {
+      return null;
+    }
+  }, [activeFile?.path, getSandpackFiles, nodes]);
+
   // Close helpers
   const handleCloseOthers = useCallback(
     (keepId: string) => {
@@ -387,12 +480,20 @@ export function VFSCodeView({
     openFiles.forEach((f) => closeTab(f.id));
   }, [openFiles, closeTab]);
 
-  // File edit handler
+  // File edit handler — emit event + track modification
   const handleFileChange = useCallback(
     (value: string) => {
       if (!activeFile) return;
       updateFileContent(activeFile.id, value);
       onFileModified?.(activeFile.id, value);
+
+      // Emit file update event
+      vfsEventBus.emit('file:updated', {
+        path: activeFile.path,
+        content: value,
+        previousContent: activeFile.content,
+        source: 'user',
+      });
     },
     [activeFile, updateFileContent, onFileModified],
   );
@@ -414,6 +515,40 @@ export function VFSCodeView({
     }
   }, [activeFile]);
 
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    if (onUndo) return onUndo();
+    return false;
+  }, [onUndo]);
+
+  const handleRedo = useCallback(() => {
+    if (onRedo) return onRedo();
+    return false;
+  }, [onRedo]);
+
+  // Snapshot handler
+  const handleSnapshot = useCallback(() => {
+    if (onCreateSnapshot) {
+      onCreateSnapshot(`Manual snapshot — ${new Date().toLocaleTimeString()}`);
+    }
+  }, [onCreateSnapshot]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo]);
+
   return (
     <VFSCodeViewErrorBoundary onFallbackClick={onSwitchToCanvas}>
       <div
@@ -424,7 +559,7 @@ export function VFSCodeView({
         {/* Top Toolbar                                                     */}
         {/* ============================================================== */}
         <div className="h-10 flex-shrink-0 flex items-center justify-between px-2 bg-gradient-to-r from-[#0d0d1a] via-[#0f0f1e] to-[#0d0d1a] border-b border-fuchsia-500/10">
-          {/* Left: File explorer toggle + breadcrumbs */}
+          {/* Left: File explorer toggle + breadcrumbs + undo/redo */}
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <TooltipProvider delayDuration={300}>
               <Tooltip>
@@ -444,8 +579,68 @@ export function VFSCodeView({
 
             <div className="h-4 w-px bg-white/[0.06]" />
 
+            {/* Undo / Redo */}
+            <TooltipProvider delayDuration={300}>
+              <div className="flex items-center gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleUndo}
+                      disabled={!canUndo}
+                      className="h-7 w-7 text-white/30 hover:text-white/70 hover:bg-white/[0.06] rounded-md transition-all disabled:opacity-20"
+                    >
+                      <Undo2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Undo (⌘Z)</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRedo}
+                      disabled={!canRedo}
+                      className="h-7 w-7 text-white/30 hover:text-white/70 hover:bg-white/[0.06] rounded-md transition-all disabled:opacity-20"
+                    >
+                      <Redo2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Redo (⌘⇧Z)</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+
+            <div className="h-4 w-px bg-white/[0.06]" />
+
+            {/* Snapshot button */}
+            {onCreateSnapshot && (
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleSnapshot}
+                      className="h-7 w-7 text-cyan-400/40 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-md transition-all"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Create Snapshot</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            <div className="h-4 w-px bg-white/[0.06]" />
+
             {/* Breadcrumbs */}
             <Breadcrumbs path={activeFile?.path} className="min-w-0 overflow-hidden" />
+
+            {/* Affected files indicator */}
+            <AffectedFilesIndicator affected={affectedFiles} className="ml-1 flex-shrink-0" />
 
             {/* AI processing indicator */}
             <AnimatePresence>
@@ -682,8 +877,13 @@ export function VFSCodeView({
             )}
           </div>
 
-          {/* Right: project stats */}
-          <FileStats nodes={nodes} />
+          {/* Right: project stats + undo/redo/graph counts */}
+          <FileStats
+            nodes={nodes}
+            undoCount={undoCount}
+            redoCount={redoCount}
+            graphNodeCount={importGraph?.nodeCount || 0}
+          />
         </div>
       </div>
     </VFSCodeViewErrorBoundary>
