@@ -85,6 +85,17 @@ export interface VFSContextValue {
   // Combined helpers
   getPreviewUrl: () => string | null;
   isPreviewRunning: () => boolean;
+  
+  // Event Bus
+  eventBus: VFSEventBus;
+  
+  // Snapshots / Undo-Redo
+  createSnapshot: (label: string) => string;
+  undo: () => boolean;
+  redo: () => boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  getDiff: (snapshotId?: string) => DiffSummary | null;
 }
 
 const VFSContext = createContext<VFSContextValue | null>(null);
