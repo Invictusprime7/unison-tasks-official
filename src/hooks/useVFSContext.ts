@@ -98,6 +98,15 @@ export function useVFSImport() {
 }
 
 // ============================================================================
+// Snapshot/Undo Hook
+// ============================================================================
+
+export function useVFSSnapshots() {
+  const { createSnapshot, undo, redo, canUndo, canRedo, getDiff, eventBus } = useVFS();
+  return { createSnapshot, undo, redo, canUndo, canRedo, getDiff, eventBus };
+}
+
+// ============================================================================
 // Type exports
 // ============================================================================
 
