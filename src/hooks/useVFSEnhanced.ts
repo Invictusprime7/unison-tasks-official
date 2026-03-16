@@ -116,7 +116,7 @@ export function useVFSEnhanced(): UseVFSEnhancedReturn {
 
   const createSnapshot = useCallback((label: string, source: 'manual' | 'ai' | 'import' | 'system' = 'manual') => {
     const files = vfs.getSandpackFiles();
-    const snap = vfsSnapshotManager.createSnapshot(files, label, source);
+    const snap = vfsSnapshotManager.createSnapshot(files, label, source === 'system' ? 'auto' : source);
     vfsEventBus.emit<SnapshotEvent>('snapshot:created', {
       snapshotId: snap.id,
       label,
