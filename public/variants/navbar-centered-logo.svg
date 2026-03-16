@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none">
+  <rect width="240" height="140" rx="8" fill="#0f0f1a"/>
+  <!-- Centered logo navbar -->
+  <rect x="8" y="8" width="224" height="32" rx="4" fill="#ffffff" fill-opacity="0.03"/>
+  <line x1="8" y1="40" x2="232" y2="40" stroke="#ffffff" stroke-opacity="0.06"/>
+  <!-- Left links -->
+  <rect x="30" y="20" width="24" height="5" rx="2" fill="#ffffff" opacity="0.3"/>
+  <rect x="62" y="20" width="24" height="5" rx="2" fill="#ffffff" opacity="0.3"/>
+  <!-- Centered brand -->
+  <rect x="100" y="16" width="40" height="10" rx="3" fill="#ffffff" opacity="0.85"/>
+  <!-- Right links + CTA -->
+  <rect x="154" y="20" width="24" height="5" rx="2" fill="#ffffff" opacity="0.3"/>
+  <rect x="186" y="17" width="34" height="12" rx="6" fill="#a78bfa"/>
+  <!-- Page body -->
+  <rect x="40" y="60" width="160" height="8" rx="3" fill="#ffffff" opacity="0.12"/>
+  <rect x="50" y="76" width="140" height="5" rx="2" fill="#ffffff" opacity="0.06"/>
+</svg>

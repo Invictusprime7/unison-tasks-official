@@ -60,6 +60,7 @@ import { EditorTabs } from "./code-editor/EditorTabs";
 import { ModernEditorTabs } from "./code-editor/ModernEditorTabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { templateToVFSFiles, elementToVFSPatch } from "@/utils/templateToVFS";
+import { htmlToJsx } from "@/utils/htmlToJsx";
 import { setDefaultBusinessId, setCurrentSystemType, setDemoMode, handleIntent, IntentPayload } from "@/runtime/intentRouter";
 import { buildRedirectPageContext } from "@/utils/redirectPageGenerator";
 import { scaffoldMultiPageVFS } from "@/utils/multiPageScaffolder";
@@ -78,6 +79,7 @@ import { AIActivityPanel } from "@/components/ai-agent/AIActivityPanel";
 import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
 import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
+import { getVariantById, extractSectionContentFromJSX, findSectionBounds } from '@/sections/variants';
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
 import { usePageSEO } from "@/hooks/usePageSEO";
@@ -88,7 +90,8 @@ import { BusinessSetupSuggestions } from "@/components/onboarding/BusinessSetupS
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
 import { useSiteBuilder, type UseSiteBuilderReturn } from "@/hooks/useSiteBuilder";
 import { useAIVFS } from '@/hooks/useAIVFS';
-import { getTemplateReactCode } from '@/data/templates/utils';
+import { getTemplateReactCodeWithCSS } from '@/data/templates/utils';
+import { extractEmbeddedCSS } from '@/utils/templateToVFS';
 
 function getOrCreatePreviewBusinessId(systemType?: string): string {
   const key = systemType ? `webbuilder_businessId:${systemType}` : 'webbuilder_businessId';
@@ -121,19 +124,10 @@ function escapeCSSSelector(selector: string): string {
 }
 
 /**
- * Detect if code is JSX/TSX (React component)
- */
-function isJsxCode(code: string): boolean {
-  const trimmed = code.trim();
-  return trimmed.includes('export default') || trimmed.includes('import React') || trimmed.includes('import {') || /^(const|function)\s+\w+/.test(trimmed);
-}
-
-/**
- * Extract the JSX return body from a React component for DOM manipulation.
+ * Extract the JSX return body from a React component.
  * Handles both `return (...)` and arrow `=> (...)` patterns.
  */
 function extractJsxReturnBody(code: string): { jsx: string; before: string; after: string } | null {
-  // Try `return (` first, then `=> (`
   let returnIdx = code.search(/return\s*\(/);
   if (returnIdx === -1) {
     returnIdx = code.search(/=>\s*\(/);
@@ -169,102 +163,184 @@ function extractJsxReturnBody(code: string): { jsx: string; before: string; afte
 }
 
 /**
- * Convert JSX fragment to parseable HTML.
- * Strips JSX-specific syntax so DOMParser can build a matching DOM tree.
+ * Find an element's start and end offsets in a JSX source string by a CSS-like selector.
+ * Supports: tag, #id, tag:nth-of-type(n), and nested selectors with >.
+ * Returns the character offsets in the source, or null if not found.
  */
-function jsxToHtml(jsx: string): string {
-  let html = jsx;
-  // Remove JSX comments {/* ... */}
-  html = html.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
-  // Remove conditional rendering blocks: {condition && <...>} → keep inner JSX
-  // Simple: strip `{someExpr && ` and trailing `}`
-  html = html.replace(/\{[^{}]*?&&\s*/g, '');
-  // Remove ternary wrappers: {cond ? <A/> : <B/>} — too complex, just strip expression curlies
-  // Remove JSX expression attributes: key={...}, onClick={...}, style={{...}}, ref={...}
-  // Match attr={...} with balanced braces
-  html = html.replace(/\b(\w+)=\{/g, (match, attr) => {
-    // Keep className (convert to class), keep src/href/alt if string-like
-    if (attr === 'className') return 'class={';
-    return `data-jsx-${attr}={`;
-  });
-  // Now strip all {...} expressions (balanced braces)
-  let prev = '';
-  while (prev !== html) {
-    prev = html;
-    html = html.replace(/\{[^{}]*\}/g, (m) => {
-      // If it's a class={...} value, extract the string
-      return '';
-    });
-  }
-  // Fix class= that lost its value — remove broken attributes
-  html = html.replace(/\bclass=\s*(?=\s|>|\/)/g, '');
-  html = html.replace(/\bdata-jsx-\w+=\s*(?=\s|>|\/)/g, '');
-  // className= to class= (any remaining)
-  html = html.replace(/className=/g, 'class=');
-  // Convert self-closing JSX components to divs for structure preservation
-  // e.g. <ComponentName ... /> → remove (they don't produce DOM children)
-  html = html.replace(/<[A-Z]\w*[^>]*\/>/g, '');
-  // Convert JSX components (PascalCase) opening/closing to div
-  html = html.replace(/<([A-Z]\w*)(\s)/g, '<div data-component="$1"$2');
-  html = html.replace(/<([A-Z]\w*)>/g, '<div data-component="$1">');
-  html = html.replace(/<\/[A-Z]\w*>/g, '</div>');
-  return html;
-}
+function findElementBoundsInJSX(
+  source: string,
+  selector: string
+): { start: number; end: number } | null {
+  // Parse the selector into segments: "body > section:nth-of-type(2) > div > h1" 
+  // → [{tag: 'section', index: 1}, {tag: 'div', index: 0}, {tag: 'h1', index: 0}]
+  const parts = selector
+    .split(/\s*>\s*/)
+    .map(s => s.trim())
+    .filter(s => s && s !== 'body' && s !== 'html');
 
-function htmlToJsx(html: string): string {
-  return html
-    .replace(/\bclass=/g, 'className=')
-    .replace(/\s*data-component="[^"]*"/g, '')
-    .replace(/\s*data-jsx-\w+="[^"]*"/g, '');
+  if (parts.length === 0) return null;
+
+  let searchSource = source;
+  let baseOffset = 0;
+
+  for (let pi = 0; pi < parts.length; pi++) {
+    const part = parts[pi];
+    const isLast = pi === parts.length - 1;
+
+    // Parse the part: tag, tag:nth-of-type(n), #id, tag.class
+    let tagName = '';
+    let nthIndex = 0; // 0-based
+    let id = '';
+
+    const idMatch = part.match(/#([a-zA-Z0-9_-]+)/);
+    if (idMatch) {
+      id = idMatch[1];
+      tagName = part.split('#')[0] || '';
+    }
+
+    const nthMatch = part.match(/:nth-of-type\((\d+)\)/);
+    if (nthMatch) {
+      nthIndex = parseInt(nthMatch[1], 10) - 1; // Convert 1-based to 0-based
+      tagName = part.split(':')[0] || '';
+    }
+
+    if (!tagName && !id) {
+      // Plain tag or tag.class
+      tagName = part.split('.')[0].split(':')[0].split('[')[0];
+    }
+
+    if (!tagName && !id) return null;
+
+    // Find the element
+    if (id) {
+      // Find by id attribute
+      const idPattern = new RegExp(`<(\\w+)\\b[^>]*\\bid=["'{]${id}["'}][^>]*>`, 'i');
+      const idFound = idPattern.exec(searchSource);
+      if (!idFound) return null;
+      const foundTag = idFound[1];
+      const start = baseOffset + idFound.index;
+      const end = findJSXClosingTag(source, start, foundTag);
+      if (end === -1) return null;
+      if (isLast) return { start, end };
+      // Narrow search to inside this element
+      searchSource = source.substring(start + idFound[0].length, end);
+      baseOffset = start + idFound[0].length;
+    } else {
+      // Find by tag name and nth-of-type index
+      const tagPattern = new RegExp(`<${tagName}\\b`, 'gi');
+      let match: RegExpExecArray | null;
+      let count = 0;
+      let found = false;
+
+      while ((match = tagPattern.exec(searchSource)) !== null) {
+        if (count === nthIndex) {
+          const start = baseOffset + match.index;
+          const end = findJSXClosingTag(source, start, tagName);
+          if (end === -1) return null;
+          if (isLast) return { start, end };
+          // Narrow search to inside this element
+          const openEnd = source.indexOf('>', start) + 1;
+          searchSource = source.substring(openEnd, end);
+          baseOffset = openEnd;
+          found = true;
+          break;
+        }
+        count++;
+      }
+      if (!found) return null;
+    }
+  }
+
+  return null;
 }
 
 /**
- * Perform a DOM operation on code (HTML or JSX).
- * domOp receives a Document and returns the modified HTML string or null on failure.
+ * Find the closing tag offset for a JSX element, handling nested same-tag elements.
  */
-function withDomManipulation(
-  code: string,
-  domOp: (doc: Document, isDoc: boolean) => string | null
-): { ok: true; code: string } | { ok: false; code: string } {
-  const trimmed = (code || '').trim();
+function findJSXClosingTag(source: string, openStart: number, tagName: string): number {
+  // Check for self-closing tag first
+  const selfCloseCheck = source.substring(openStart, openStart + 500);
+  const selfCloseMatch = selfCloseCheck.match(new RegExp(`^<${tagName}\\b[^>]*/>`,'i'));
+  if (selfCloseMatch) return openStart + selfCloseMatch[0].length;
 
-  // JSX/TSX path
-  if (isJsxCode(trimmed)) {
-    const extracted = extractJsxReturnBody(trimmed);
-    if (!extracted) {
-      console.warn('[withDomManipulation] Could not extract JSX return body');
-      return { ok: false, code };
+  const lcTag = tagName.toLowerCase();
+  let depth = 0;
+  let i = openStart;
+
+  while (i < source.length) {
+    const openMatch = source.substring(i).match(new RegExp(`^<${lcTag}\\b`, 'i'));
+    if (openMatch) {
+      const afterOpen = source.substring(i).match(new RegExp(`^<${lcTag}\\b[^>]*/>`,'i'));
+      if (afterOpen) {
+        i += afterOpen[0].length;
+        continue;
+      }
+      depth++;
+      i += openMatch[0].length;
+      continue;
     }
 
-    const html = jsxToHtml(extracted.jsx);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(`<!DOCTYPE html><html><body>${html}</body></html>`, 'text/html');
+    const closeMatch = source.substring(i).match(new RegExp(`^<\\/${lcTag}\\s*>`, 'i'));
+    if (closeMatch) {
+      depth--;
+      if (depth === 0) {
+        return i + closeMatch[0].length;
+      }
+      i += closeMatch[0].length;
+      continue;
+    }
 
-    const result = domOp(doc, false);
+    // Skip string literals
+    if (source[i] === '"' || source[i] === "'") {
+      const q = source[i];
+      i++;
+      while (i < source.length && source[i] !== q) {
+        if (source[i] === '\\') i++;
+        i++;
+      }
+      i++;
+      continue;
+    }
+    if (source[i] === '`') {
+      i++;
+      while (i < source.length && source[i] !== '`') {
+        if (source[i] === '\\') i++;
+        i++;
+      }
+      i++;
+      continue;
+    }
+
+    i++;
+  }
+  return -1;
+}
+
+/**
+ * Perform a source-level manipulation on TSX code.
+ * The operation receives the return body JSX and returns modified JSX, or null on failure.
+ * For TSX: extracts return body, applies op, reconstructs.
+ */
+function withSourceManipulation(
+  code: string,
+  sourceOp: (jsx: string) => string | null
+): { ok: true; code: string } | { ok: false; code: string } {
+  const trimmed = (code || '').trim();
+  if (!trimmed) return { ok: false, code };
+
+  const extracted = extractJsxReturnBody(trimmed);
+  if (!extracted) {
+    // Try operating on the code directly (e.g., JSX fragment)
+    const result = sourceOp(trimmed);
     if (result === null) return { ok: false, code };
-
-    // For JSX: we can't reliably reconstruct JSX from manipulated HTML.
-    // Instead, identify what was removed/changed and apply that to the original JSX source.
-    // For delete: find the element in the original JSX and remove it.
-    // Fallback: use the converted result
-    const newJsx = htmlToJsx(result);
-    const newCode = `${extracted.before}\n    ${newJsx}\n  ${extracted.after}`;
-    return { ok: true, code: newCode };
+    return { ok: true, code: result };
   }
 
-  // HTML path (original behavior)
-  const isDoc = trimmed.toLowerCase().startsWith('<!doctype') || trimmed.toLowerCase().startsWith('<html');
-  if (!trimmed.startsWith('<')) {
-    return { ok: false, code };
-  }
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(isDoc ? trimmed : `<!DOCTYPE html><html><body>${trimmed}</body></html>`, 'text/html');
-
-  const result = domOp(doc, isDoc);
+  const result = sourceOp(extracted.jsx);
   if (result === null) return { ok: false, code };
 
-  return { ok: true, code: result };
+  const newCode = `${extracted.before}\n    ${result}\n  ${extracted.after}`;
+  return { ok: true, code: newCode };
 }
 
 /**
@@ -878,23 +954,22 @@ export default function App() {
 
   // Parse template when previewCode changes (but NOT when customizer is applying overrides)
   useEffect(() => {
-    if (previewCode && previewCode.trim().startsWith('<')) {
-      // Skip re-parsing if the change came from customizer applying overrides
-      // This prevents resetting the images array and losing user-uploaded data URLs
-      if (templateCustomizer.consumeCustomizerApplyFlag()) {
-        return;
-      }
-      templateCustomizer.parseTemplate(previewCode);
+    if (!previewCode || !previewCode.trim()) return;
+    // Skip re-parsing if the change came from customizer applying overrides
+    // This prevents resetting the images array and losing user-uploaded data URLs
+    if (templateCustomizer.consumeCustomizerApplyFlag()) {
+      return;
     }
+    // All templates are TSX — use regex-based section + image extraction
+    templateCustomizer.parseSectionsFromJSX(previewCode);
   }, [previewCode]);
 
-  // Apply customizer overrides to preview
+  // Apply customizer overrides to preview (TSX source — image replacements)
   const applyCustomizerOverrides = useCallback(() => {
     if (!templateCustomizer.isDirty) return;
-    // Always apply on the original (base) HTML, not the already-customized previewCode
-    const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
-    if (!baseHtml) return;
-    const customized = templateCustomizer.applyOverrides(baseHtml);
+    const baseSource = templateCustomizer.getOriginalSource() || previewCode;
+    if (!baseSource) return;
+    const customized = templateCustomizer.applyOverrides(baseSource);
     if (customized !== previewCode) {
       setPreviewCode(customized);
       setEditorCode(customized);
@@ -917,11 +992,11 @@ export default function App() {
     const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document || null;
 
     if (!iframeDoc || !iframeDoc.head) {
-      console.log('[WebBuilder] Iframe not ready, falling back to full HTML replace');
-      // Iframe not ready — fall back to full HTML replace (initial load)
-      const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
-      if (!baseHtml) return;
-      const customized = templateCustomizer.applyOverrides(baseHtml);
+      console.log('[WebBuilder] Iframe not ready — applying source-level overrides');
+      // Iframe not ready — apply source-level overrides (image replacements) via TSX
+      const baseSource = templateCustomizer.getOriginalSource() || previewCode;
+      if (!baseSource) return;
+      const customized = templateCustomizer.applyOverrides(baseSource);
       if (customized !== previewCode) {
         setPreviewCode(customized);
         setEditorCode(customized);
@@ -1002,10 +1077,10 @@ export default function App() {
       } catch { /* ignore selector errors */ }
     });
 
-    // 4. Keep previewCode AND editorCode in sync so changes persist in the VFS
-    const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
-    if (baseHtml) {
-      const customized = templateCustomizer.applyOverrides(baseHtml);
+    // 4. Keep previewCode AND editorCode in sync — apply TSX source-level overrides (images)
+    const baseSource = templateCustomizer.getOriginalSource() || previewCode;
+    if (baseSource) {
+      const customized = templateCustomizer.applyOverrides(baseSource);
       if (customized !== previewCode) {
         setPreviewCode(customized);
         setEditorCode(customized);
@@ -1045,49 +1120,42 @@ export default function App() {
   }, [templateCustomizer]);
 
 
-  const applyElementHtmlUpdate = useCallback((code: string, selector: string, newHtml: string) => {
-    return withDomManipulation(code, (doc, isDoc) => {
-      const target = safeFindElement(doc, selector);
-      if (!target) {
+  const applyElementHtmlUpdate = useCallback((code: string, selector: string, newJsx: string) => {
+    return withSourceManipulation(code, (jsx) => {
+      const bounds = findElementBoundsInJSX(jsx, selector);
+      if (!bounds) {
         console.warn('[applyElementHtmlUpdate] No match for selector:', selector);
         return null;
       }
-      const container = doc.createElement('div');
-      container.innerHTML = newHtml;
-      const replacement = container.firstElementChild as Element | null;
-      if (!replacement) return null;
-      target.replaceWith(replacement);
-      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+      return jsx.substring(0, bounds.start) + newJsx + jsx.substring(bounds.end);
     });
   }, []);
 
-  // Delete an element from source by selector (HTML or JSX)
+  // Delete an element from TSX source by selector
   const applyElementDelete = useCallback((code: string, selector: string) => {
-    return withDomManipulation(code, (doc, isDoc) => {
-      const target = safeFindElement(doc, selector);
-      if (!target) {
+    return withSourceManipulation(code, (jsx) => {
+      const bounds = findElementBoundsInJSX(jsx, selector);
+      if (!bounds) {
         console.warn('[applyElementDelete] No match for selector:', selector);
         return null;
       }
-      target.remove();
-      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+      // Remove the element and any trailing whitespace/newline
+      const after = jsx.substring(bounds.end).replace(/^\s*\n?/, '');
+      return jsx.substring(0, bounds.start).replace(/\n\s*$/, '\n') + after;
     });
   }, []);
 
-  // Duplicate an element in source by selector (HTML or JSX)
+  // Duplicate an element in TSX source by selector
   const applyElementDuplicate = useCallback((code: string, selector: string) => {
-    return withDomManipulation(code, (doc, isDoc) => {
-      const target = safeFindElement(doc, selector);
-      if (!target || !target.parentNode) {
+    return withSourceManipulation(code, (jsx) => {
+      const bounds = findElementBoundsInJSX(jsx, selector);
+      if (!bounds) {
         console.warn('[applyElementDuplicate] No match for selector:', selector);
         return null;
       }
-      const clone = target.cloneNode(true) as Element;
-      if (clone.id) {
-        clone.id = `${clone.id}-copy-${Date.now()}`;
-      }
-      target.parentNode.insertBefore(clone, target.nextSibling);
-      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+      const element = jsx.substring(bounds.start, bounds.end);
+      // Insert a copy right after the original, preserving indentation
+      return jsx.substring(0, bounds.end) + '\n' + element + jsx.substring(bounds.end);
     });
   }, []);
 
@@ -1116,13 +1184,24 @@ export default function App() {
     toast.success('Element duplicated');
   }, [previewCode, applyElementDuplicate]);
 
-  // Handle move up - swap element with its previous sibling
+  // Handle move up - swap element with its previous sibling in TSX source
   const handleFloatingMoveUp = useCallback((selector: string) => {
-    const res = withDomManipulation(previewCode, (doc, isDoc) => {
-      const target = safeFindElement(doc, selector);
-      if (!target?.parentNode || !target.previousElementSibling) return null;
-      target.parentNode.insertBefore(target, target.previousElementSibling);
-      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+    const res = withSourceManipulation(previewCode, (jsx) => {
+      const bounds = findElementBoundsInJSX(jsx, selector);
+      if (!bounds) return null;
+      // Find the previous sibling element (scan backwards from bounds.start)
+      const before = jsx.substring(0, bounds.start);
+      // Find the last element ending before our start
+      const prevMatch = before.match(/.*(<(\w+)\b[^>]*>[\s\S]*<\/\2\s*>)\s*$/);
+      const prevSelfClose = before.match(/.*(<(\w+)\b[^>]*\/>)\s*$/);
+      const prevEl = prevMatch || prevSelfClose;
+      if (!prevEl) return null;
+      const prevStart = before.lastIndexOf(prevEl[1]);
+      if (prevStart === -1) return null;
+      const current = jsx.substring(bounds.start, bounds.end);
+      const prevElement = jsx.substring(prevStart, bounds.start);
+      // Swap: current before previous
+      return jsx.substring(0, prevStart) + current + prevElement + jsx.substring(bounds.end);
     });
     if (!res.ok) {
       toast.info('Already at the top');
@@ -1134,13 +1213,24 @@ export default function App() {
     toast.success('Moved up');
   }, [previewCode]);
 
-  // Handle move down - swap element with its next sibling
+  // Handle move down - swap element with its next sibling in TSX source
   const handleFloatingMoveDown = useCallback((selector: string) => {
-    const res = withDomManipulation(previewCode, (doc, isDoc) => {
-      const target = safeFindElement(doc, selector);
-      if (!target?.parentNode || !target.nextElementSibling) return null;
-      target.parentNode.insertBefore(target.nextElementSibling, target);
-      return isDoc ? `<!DOCTYPE html>\n${doc.documentElement.outerHTML}` : doc.body.innerHTML;
+    const res = withSourceManipulation(previewCode, (jsx) => {
+      const bounds = findElementBoundsInJSX(jsx, selector);
+      if (!bounds) return null;
+      // Find the next sibling element (scan forward from bounds.end)
+      const after = jsx.substring(bounds.end);
+      const nextMatch = after.match(/^\s*<(\w+)\b/);
+      if (!nextMatch) return null;
+      const nextTagName = nextMatch[1];
+      const nextStart = bounds.end + (after.length - after.trimStart().length);
+      const nextEnd = findJSXClosingTag(jsx, nextStart, nextTagName);
+      if (nextEnd === -1) return null;
+      const current = jsx.substring(bounds.start, bounds.end);
+      const whitespace = jsx.substring(bounds.end, nextStart);
+      const nextElement = jsx.substring(nextStart, nextEnd);
+      // Swap: next before current
+      return jsx.substring(0, bounds.start) + nextElement + whitespace + current + jsx.substring(nextEnd);
     });
     if (!res.ok) {
       toast.info('Already at the bottom');
@@ -1310,6 +1400,56 @@ export default function App() {
       return () => clearTimeout(timeoutId);
     }
   }, [pageManifest]);
+
+  // Apply variant section swaps — replace section JSX blocks in VFS source code
+  useEffect(() => {
+    const activeVariants = templateCustomizer.activeVariants;
+    if (!activeVariants || Object.keys(activeVariants).length === 0) return;
+
+    const pageNode = vfsNodes.find(
+      (n: { type: string; path?: string }) => n.type === 'file' && n.path === activePagePath
+    ) as { id: string; content: string } | undefined;
+    if (!pageNode) return;
+
+    let source = pageNode.content;
+    let modified = false;
+
+    for (const [sectionId, variantId] of Object.entries(activeVariants)) {
+      try {
+        const variant = getVariantById(variantId);
+        if (!variant?.renderJSX) continue;
+
+        // Skip if this variant is already applied in source
+        if (source.includes(`data-variant="${variantId}"`)) continue;
+
+        const sectionInfo = templateCustomizer.sections.find(s => s.id === sectionId);
+        if (!sectionInfo) continue;
+        const tagName = sectionInfo.tagName || 'section';
+        const idx = sectionInfo.order ?? parseInt(sectionId.replace(/^\D+-/, ''), 10);
+        if (isNaN(idx)) continue;
+
+        // Find section boundaries in the JSX source
+        const bounds = findSectionBounds(source, tagName, idx);
+        if (!bounds) continue;
+
+        // Extract content and render the new variant JSX
+        const sectionJSX = source.substring(bounds.start, bounds.end);
+        const content = extractSectionContentFromJSX(sectionJSX);
+        const newJSX = variant.renderJSX(content);
+
+        // Splice the replacement into the source
+        source = source.substring(0, bounds.start) + newJSX + source.substring(bounds.end);
+        modified = true;
+        console.log('[WebBuilder] VFS variant swap applied:', sectionId, '→', variantId);
+      } catch (e) {
+        console.warn('[WebBuilder] VFS variant swap failed for', sectionId, e);
+      }
+    }
+
+    if (modified) {
+      vfsUpdateFileContent(pageNode.id, source);
+    }
+  }, [templateCustomizer.activeVariants, templateCustomizer.sections, vfsNodes, vfsUpdateFileContent, activePagePath]);
   
   // Re-sync manifest when preview code changes (iframe reloads)
   useEffect(() => {
@@ -1467,35 +1607,12 @@ export default function ${componentName}Page() {
     // Sync if previewCode has content and actually changed since last sync
     if (previewCode && previewCode !== lastSyncedCodeRef.current) {
       console.log('[WebBuilder] Effect A: Syncing previewCode to VFS, length:', previewCode.length);
-      // Determine file type based on content
-      const isReactCode = previewCode.includes('import ') || 
-                     previewCode.includes('export default') ||
-                     (previewCode.includes('function ') && previewCode.includes('return ('));
-      
-      if (isReactCode) {
-        // For React/TSX, sync to App.tsx or active page
-        const targetPath = activePagePath.endsWith('.tsx') ? activePagePath : '/src/App.tsx';
-        virtualFSRef.current.importFiles({
-          [targetPath]: previewCode,
-        });
-        lastSyncedCodeRef.current = previewCode;
-      } else {
-        // Default: wrap in a React component and import to VFS
-        const targetPath = '/src/App.tsx';
-        const wrapped = `import React from 'react';
-
-export default function App() {
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      ${previewCode}
-    </div>
-  );
-}`;
-        virtualFSRef.current.importFiles({
-          [targetPath]: wrapped,
-        });
-        lastSyncedCodeRef.current = wrapped;
-      }
+      // All code is TSX — import directly to VFS as the active page file
+      const targetPath = activePagePath.endsWith('.tsx') ? activePagePath : '/src/App.tsx';
+      virtualFSRef.current.importFiles({
+        [targetPath]: previewCode,
+      });
+      lastSyncedCodeRef.current = previewCode;
     }
   }, [previewCode, activePagePath]);
   
@@ -2645,7 +2762,18 @@ export default function App() {
 
     // If a pre-built VFS plan was passed (e.g. from System Launcher AI edits), import it first.
     if (navState?.vfsFiles) {
-      const vfsFiles = navState.vfsFiles;
+      const vfsFiles = { ...navState.vfsFiles };
+
+      // Extract embedded TEMPLATE_STYLES/TEMPLATE_CSS from App.tsx and route to CSS file
+      const appKey = vfsFiles["/src/App.tsx"] ? "/src/App.tsx" : vfsFiles["/App.tsx"] ? "/App.tsx" : null;
+      if (appKey && !vfsFiles["/src/template.css"]) {
+        const { cleanCode, css } = extractEmbeddedCSS(vfsFiles[appKey]);
+        if (css) {
+          vfsFiles[appKey] = cleanCode;
+          vfsFiles["/src/template.css"] = css;
+        }
+      }
+
       if (Object.keys(vfsFiles).length > 0) {
         virtualFS.importFiles(vfsFiles);
 
@@ -2728,11 +2856,23 @@ export default function App() {
       const isRawHTML = !generatedCode.includes('import ') && !generatedCode.includes('export default') &&
         (generatedCode.trim().startsWith('<!DOCTYPE') || generatedCode.trim().startsWith('<html') ||
         generatedCode.includes('<!-- ') || (generatedCode.includes('class=') && !generatedCode.includes('className=')));
-      const safeCode = isRawHTML
-        ? getTemplateReactCode({ code: generatedCode, title: templateName || 'Template' })
-        : generatedCode;
-      setEditorCode(safeCode);
-      setPreviewCode(safeCode);
+      if (isRawHTML) {
+        const result = getTemplateReactCodeWithCSS({ code: generatedCode, title: templateName || 'Template' });
+        setEditorCode(result.code);
+        setPreviewCode(result.code);
+        // Ensure template.css exists in VFS when component imports it
+        if (result.css) {
+          vfsImportFiles({ '/src/template.css': result.css });
+        }
+      } else {
+        // Extract any legacy TEMPLATE_STYLES/TEMPLATE_CSS from React code
+        const { cleanCode, css } = extractEmbeddedCSS(generatedCode);
+        setEditorCode(cleanCode);
+        setPreviewCode(cleanCode);
+        if (css) {
+          vfsImportFiles({ '/src/template.css': css });
+        }
+      }
       
       // Set system type for intent routing if AI generated with system context
       if (navSystemType && !activeSystemType) {
@@ -2963,11 +3103,11 @@ ${html}
   }, [systemType, manifestIdFromState, vfsImportFiles]);
 
   // Handle saving current template
-  // Helper to get final HTML with customizer overrides baked in
-  const getFinalHtmlWithOverrides = useCallback(() => {
+  // Helper to get final TSX with customizer overrides baked in
+  const getFinalCodeWithOverrides = useCallback(() => {
     if (templateCustomizer.isDirty) {
-      const baseHtml = templateCustomizer.getOriginalHtml() || previewCode;
-      return templateCustomizer.applyOverrides(baseHtml);
+      const baseSource = templateCustomizer.getOriginalSource() || previewCode;
+      return templateCustomizer.applyOverrides(baseSource);
     }
     return previewCode;
   }, [templateCustomizer, previewCode]);
@@ -2977,19 +3117,19 @@ ${html}
     description: string,
     isPublic: boolean
   ) => {
-    const finalCode = getFinalHtmlWithOverrides();
+    const finalCode = getFinalCodeWithOverrides();
     await templateFiles.saveTemplate(name, description, isPublic, finalCode);
-  }, [templateFiles, getFinalHtmlWithOverrides]);
+  }, [templateFiles, getFinalCodeWithOverrides]);
 
   // Handle quick save (update existing template)
   const handleQuickSave = useCallback(async () => {
     if (templateFiles.currentTemplateId) {
-      const finalCode = getFinalHtmlWithOverrides();
+      const finalCode = getFinalCodeWithOverrides();
       await templateFiles.updateTemplate(templateFiles.currentTemplateId, finalCode);
     } else {
       setFileManagerOpen(true);
     }
-  }, [templateFiles, getFinalHtmlWithOverrides]);
+  }, [templateFiles, getFinalCodeWithOverrides]);
 
   // Handle save to projects from preview
   const handleSaveToProjects = useCallback(async (saveAsNew: boolean = false) => {
@@ -3001,7 +3141,7 @@ ${html}
     setIsSavingProject(true);
     try {
       const isUpdating = templateFiles.currentTemplateId && !saveAsNew;
-      const finalCode = getFinalHtmlWithOverrides();
+      const finalCode = getFinalCodeWithOverrides();
       
       if (isUpdating) {
         // Update existing template
@@ -3021,7 +3161,7 @@ ${html}
     } finally {
       setIsSavingProject(false);
     }
-  }, [saveProjectName, saveProjectDescription, templateFiles, getFinalHtmlWithOverrides, clearDraft]);
+  }, [saveProjectName, saveProjectDescription, templateFiles, getFinalCodeWithOverrides, clearDraft]);
 
   // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {
@@ -3357,7 +3497,7 @@ ${html}
       console.log('[WebBuilder] ✅ Drag-drop initialized on:', container.dataset.dropZone);
     });
 
-    // Handle drop events - render elements with smart positioning
+    // Handle drop events - inject elements into JSX source via VFS
     const handleDropEvent = (data: unknown) => {
       const dropData = data as { 
         element: { 
@@ -3374,175 +3514,28 @@ ${html}
       
       const { element, context } = dropData;
       
-      // Parse the current HTML to insert at the right position
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(previewCode || '<body></body>', 'text/html');
-      const body = doc.body;
+      // Convert HTML template to valid JSX (class→className, style strings→objects, etc.)
+      const jsxElement = htmlToJsx(element.htmlTemplate);
       
-      // Create wrapper for the new element with data attributes for reordering
-      const wrapper = doc.createElement('div');
-      wrapper.setAttribute('data-element-id', `element-${Date.now()}`);
-      wrapper.setAttribute('data-element-type', element.category);
-      wrapper.setAttribute('draggable', 'true');
-      wrapper.setAttribute('class', 'canvas-element');
-      wrapper.innerHTML = element.htmlTemplate;
+      // Wrap in a container div with data attributes for identification
+      const wrappedJsx = `<div data-element-id="element-${Date.now()}" data-element-type="${element.category}">\n        ${jsxElement}\n      </div>`;
       
-      // Smart positioning based on drop context
-      if (context.position === 'prepend') {
-        body.insertBefore(wrapper, body.firstChild);
-      } else if (context.position === 'append' || !body.children.length) {
-        body.appendChild(wrapper);
-      } else {
-        // Insert at a specific position based on drop location
-        const children = Array.from(body.children);
-        const middleIndex = Math.floor(children.length / 2);
-        const referenceNode = children[middleIndex];
-        body.insertBefore(wrapper, referenceNode);
+      // Get current VFS files and patch App.tsx with the new element
+      const currentFiles = getSandpackFiles();
+      const patchedFiles = elementToVFSPatch(currentFiles, wrappedJsx, element.name);
+      
+      // Apply to VFS — triggers Sandpack rebundle
+      vfsImportFiles(patchedFiles);
+      
+      // Update previewCode/editorCode to stay in sync
+      const updatedApp = patchedFiles['/src/App.tsx'];
+      if (updatedApp) {
+        setPreviewCode(updatedApp);
+        setEditorCode(updatedApp);
       }
-      
-      // Get the updated HTML with proper formatting
-      const newCode = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .canvas-element {
-      position: relative;
-      cursor: move;
-      transition: opacity 0.3s, transform 0.3s;
-    }
-    .canvas-element:hover {
-      opacity: 0.95;
-    }
-    .canvas-element.dragging {
-      opacity: 0.5;
-    }
-    .canvas-element.drag-over-top::before {
-      content: '';
-      position: absolute;
-      top: -2px;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #3B82F6, #8B5CF6);
-      border-radius: 2px;
-    }
-    .canvas-element.drag-over-bottom::after {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #3B82F6, #8B5CF6);
-      border-radius: 2px;
-    }
-  </style>
-</head>
-<body>
-${body.innerHTML}
-<script>
-  // Enable reordering of elements via drag and drop
-  (function() {
-    let draggedElement = null;
-    let dragOverElement = null;
-    
-    function handleDragStart(e) {
-      draggedElement = e.currentTarget;
-      draggedElement.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/html', draggedElement.innerHTML);
-    }
-    
-    function handleDragOver(e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      
-      if (!draggedElement || e.currentTarget === draggedElement) return;
-      
-      const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
-      dragOverElement = e.currentTarget;
-      
-      // Remove previous indicators
-      document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
-        el.classList.remove('drag-over-top', 'drag-over-bottom');
-      });
-      
-      // Add indicator
-      if (afterElement) {
-        dragOverElement.classList.add('drag-over-bottom');
-      } else {
-        dragOverElement.classList.add('drag-over-top');
-      }
-    }
-    
-    function handleDragLeave(e) {
-      e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
-    }
-    
-    function handleDrop(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      if (!draggedElement || !dragOverElement || draggedElement === dragOverElement) return;
-      
-      const afterElement = getDragAfterElement(dragOverElement, e.clientY);
-      
-      if (afterElement) {
-        dragOverElement.parentNode.insertBefore(draggedElement, dragOverElement.nextSibling);
-      } else {
-        dragOverElement.parentNode.insertBefore(draggedElement, dragOverElement);
-      }
-      
-      dragOverElement.classList.remove('drag-over-top', 'drag-over-bottom');
-    }
-    
-    function handleDragEnd(e) {
-      e.currentTarget.classList.remove('dragging');
-      document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
-        el.classList.remove('drag-over-top', 'drag-over-bottom');
-      });
-      draggedElement = null;
-      dragOverElement = null;
-    }
-    
-    function getDragAfterElement(container, y) {
-      const box = container.getBoundingClientRect();
-      const offset = y - box.top;
-      return offset > box.height / 2;
-    }
-    
-    // Attach event listeners to all canvas elements
-    function initDragAndDrop() {
-      document.querySelectorAll('.canvas-element').forEach(element => {
-        element.addEventListener('dragstart', handleDragStart);
-        element.addEventListener('dragover', handleDragOver);
-        element.addEventListener('dragleave', handleDragLeave);
-        element.addEventListener('drop', handleDrop);
-        element.addEventListener('dragend', handleDragEnd);
-      });
-    }
-    
-    // Initialize on load and when new elements are added
-    initDragAndDrop();
-    
-    // Observe for new elements
-    const observer = new MutationObserver(() => {
-      initDragAndDrop();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-  })();
-</script>
-</body>
-</html>`;
-      
-      setPreviewCode(newCode);
-      setEditorCode(newCode);
       
       toast.success(`Added ${element.name}`, {
-        description: `${element.category} element added. Drag to reorder!`,
+        description: `${element.category} element added to preview`,
         duration: 3000
       });
     };

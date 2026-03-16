@@ -22,7 +22,7 @@ export type { TemplateManifest, ProvisioningStatus, TableRequirement, WorkflowRe
 export { templateManifests, getTemplateManifest, getDefaultManifestForSystem, validateManifest, getRequiredTables, getRequiredIntents } from './manifest';
 
 // Utilities
-export { wrapInReactComponent, wrapInHtmlDoc, getTemplateReactCode } from './utils';
+export { wrapInReactComponent, wrapInReactComponentWithCSS, wrapInHtmlDoc, getTemplateReactCode, getTemplateReactCodeWithCSS } from './utils';
 
 import type { LayoutCategory, LayoutTemplate, BusinessSystemType } from './types';
 import { businessSystems } from './types';

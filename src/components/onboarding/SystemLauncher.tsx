@@ -31,7 +31,7 @@ import {
   type LayoutTemplate,
   type LayoutCategory,
 } from "@/data/templates/types";
-import { getTemplatesByCategory, getTemplateReactCode } from "@/data/templates";
+import { getTemplatesByCategory, getTemplateReactCode, getTemplateReactCodeWithCSS } from "@/data/templates";
 import { getCompositionReactCode, getCompositionMeta, getCompositionContentContext } from "@/utils/compositionReference";
 import {
   getTemplateManifest,
@@ -236,7 +236,9 @@ export const SystemLauncher = ({
       const manifest =
         getTemplateManifest(selectedTemplate.id) ||
         getDefaultManifestForSystem(selectedSystem);
-      let effectiveCode = editedTemplateCode ?? getTemplateReactCode(selectedTemplate);
+      let effectiveResult = editedTemplateCode 
+        ? { code: editedTemplateCode, css: '' }
+        : getTemplateReactCodeWithCSS(selectedTemplate);
 
       if (selectedTheme && !editedTemplateFiles) {
         try {
@@ -261,9 +263,9 @@ export const SystemLauncher = ({
                 ],
                 mode: "design",
                 currentCode:
-                  effectiveCode.length > 20_000
-                    ? effectiveCode.slice(0, 20_000)
-                    : effectiveCode,
+                  effectiveResult.code.length > 20_000
+                    ? effectiveResult.code.slice(0, 20_000)
+                    : effectiveResult.code,
                 editMode: true,
                 templateAction: "apply-design-preset",
                 aesthetic: selectedTheme.id,
@@ -272,7 +274,7 @@ export const SystemLauncher = ({
           if (!aiError && aiData?.content) {
             const cleanedThemeCode = extractCleanCode(aiData.content);
             if (cleanedThemeCode && looksLikeCode(cleanedThemeCode)) {
-              effectiveCode = getTemplateReactCode({ code: cleanedThemeCode, title: selectedTemplate.name });
+              effectiveResult = getTemplateReactCodeWithCSS({ code: cleanedThemeCode, title: selectedTemplate.name });
             } else {
               console.warn("[SystemLauncher] Theme AI returned prose, ignoring");
             }
@@ -303,10 +305,12 @@ export const SystemLauncher = ({
       const businessId = data.data.businessId as string;
 
       // Always pass as VFS files for multi-file React project support
+      const baseCSS = `:root {\n  --background: 222.2 84% 4.9%;\n  --foreground: 210 40% 98%;\n}\n\nbody {\n  margin: 0;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}\n`;
       const vfsFiles = editedTemplateFiles || {
-        '/src/App.tsx': effectiveCode,
-        '/src/main.tsx': `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
-        '/src/index.css': `:root {\n  --background: 222.2 84% 4.9%;\n  --foreground: 210 40% 98%;\n}\n\nbody {\n  margin: 0;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}\n`,
+        '/src/App.tsx': effectiveResult.code,
+        '/src/main.tsx': `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
+        '/src/index.css': baseCSS,
+        ...(effectiveResult.css ? { '/src/template.css': effectiveResult.css } : {}),
       };
 
       navigate("/web-builder", {
@@ -449,12 +453,20 @@ export const SystemLauncher = ({
           return;
         }
         // Ensure it's React-compatible (wrap HTML if needed)
-        const reactCode = (cleaned.includes('import ') || cleaned.includes('export default'))
-          ? cleaned
-          : getTemplateReactCode({ code: cleaned, title: selectedTemplate.name });
+        const reactResult = (cleaned.includes('import ') || cleaned.includes('export default'))
+          ? { code: cleaned, css: '' }
+          : getTemplateReactCodeWithCSS({ code: cleaned, title: selectedTemplate.name });
+        const fallbackVfsFiles: Record<string, string> = {
+          '/src/App.tsx': reactResult.code,
+          '/src/main.tsx': `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
+          '/src/index.css': `:root {\n  --background: 222.2 84% 4.9%;\n  --foreground: 210 40% 98%;\n}\n\nbody {\n  margin: 0;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}\n`,
+        };
+        if (reactResult.css) {
+          fallbackVfsFiles['/src/template.css'] = reactResult.css;
+        }
         navigate("/web-builder", {
           state: {
-            generatedCode: reactCode,
+            vfsFiles: fallbackVfsFiles,
             templateName: `AI ${selectedTemplate.name}`,
             aesthetic: selectedTheme?.id,
             templateCategory: selectedTemplate.category,

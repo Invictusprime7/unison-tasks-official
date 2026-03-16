@@ -623,23 +623,42 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   
   console.log('[VFSPreview] Attempting to extract JSX from content, length:', appContent.length);
   
-  // Look for TEMPLATE_HTML const pattern (legacy from wrapInReactComponent)
+  // Check for CSS in VFS /src/template.css file first (new pattern)
+  const templateCssFile = files['/src/template.css'] || files['src/template.css'] || '';
+  if (templateCssFile) {
+    templateStyles = templateCssFile;
+    console.log('[VFSPreview] Found template.css in VFS, length:', templateStyles.length);
+  }
+  
+  // Also check index.css for additional styles
+  const indexCssFile = files['/src/index.css'] || files['src/index.css'] || '';
+
+  // Legacy: Look for TEMPLATE_HTML const pattern (from legacy wrapInReactComponent)
   const templateHtmlMatch = appContent.match(/const\s+TEMPLATE_HTML\s*=\s*`([\s\S]*?)`;/);
   const templateStylesMatch = appContent.match(/const\s+TEMPLATE_STYLES\s*=\s*`([\s\S]*?)`;/);
   // Also check JSON.stringify'd version
   const templateHtmlJsonMatch = !templateHtmlMatch ? appContent.match(/const\s+TEMPLATE_HTML\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/) : null;
+  
+  // Legacy: Extract embedded TEMPLATE_STYLES/TEMPLATE_CSS from component code
+  if (!templateStyles) {
+    if (templateStylesMatch) {
+      templateStyles = templateStylesMatch[1]
+        .replace(/\\`/g, '`')
+        .replace(/\\\$/g, '$')
+        .replace(/\\\\/g, '\\');
+    } else {
+      const cssMatch = appContent.match(/const\s+(?:TEMPLATE_CSS|TEMPLATE_STYLES)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
+      if (cssMatch) {
+        try { templateStyles = JSON.parse(cssMatch[1]); } catch { /* ignore */ }
+      }
+    }
+  }
   
   if (templateHtmlMatch) {
     bodyContent = templateHtmlMatch[1]
       .replace(/\\`/g, '`')
       .replace(/\\\$/g, '$')
       .replace(/\\\\/g, '\\');
-    if (templateStylesMatch) {
-      templateStyles = templateStylesMatch[1]
-        .replace(/\\`/g, '`')
-        .replace(/\\\$/g, '$')
-        .replace(/\\\\/g, '\\');
-    }
     
     const bodyClassMatch = appContent.match(/document\.body\.classList\.add\(([^)]+)\)/);
     if (bodyClassMatch) {
@@ -654,7 +673,7 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
     console.log('[VFSPreview] Found TEMPLATE_HTML const, content length:', bodyContent.length, 'bodyClasses:', templateBodyClasses);
   } else if (templateHtmlJsonMatch) {
     try { bodyContent = JSON.parse(templateHtmlJsonMatch[1]); } catch { bodyContent = ''; }
-    if (templateStylesMatch) {
+    if (!templateStyles && templateStylesMatch) {
       try { templateStyles = JSON.parse(templateStylesMatch[1]); } catch { /* ignore */ }
     }
     console.log('[VFSPreview] Found TEMPLATE_HTML (JSON), content length:', bodyContent.length);
@@ -679,12 +698,6 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
         .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
         .replace(/style=\{\{([^}]*)\}\}/g, '')
         .replace(/\{[^}]*\}/g, '');
-      
-      // Extract CSS from TEMPLATE_CSS or TEMPLATE_STYLES const
-      const cssMatch = appContent.match(/const\s+(?:TEMPLATE_CSS|TEMPLATE_STYLES)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/s);
-      if (cssMatch) {
-        try { templateStyles = JSON.parse(cssMatch[1]); } catch { /* ignore */ }
-      }
       
       const bodyClassMatch = appContent.match(/document\.body\.classList\.add\(([^)]+)\)/);
       if (bodyClassMatch) {
@@ -812,6 +825,7 @@ function generateStaticHtmlPreview(files: Record<string, string>, activeFile?: s
   <title>VFS Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>${BASE_CSS}</style>
+  ${indexCssFile ? `<style>${indexCssFile}</style>` : ''}
   ${templateStyles ? `<style>${templateStyles}</style>` : ''}
 </head>
 <body class="${templateBodyClasses || 'bg-white'}">

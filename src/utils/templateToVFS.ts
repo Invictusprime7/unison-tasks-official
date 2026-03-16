@@ -5,7 +5,48 @@
  * All output is native JSX React components — no dangerouslySetInnerHTML.
  */
 
-import { isHtmlDocument, htmlDocToReactComponent } from './htmlToJsx';
+import { isHtmlDocument, htmlDocToReactComponentWithCSS } from './htmlToJsx';
+
+// ============================================================================
+// Embedded CSS Extraction
+// ============================================================================
+
+/**
+ * Extracts embedded TEMPLATE_STYLES or TEMPLATE_CSS from component code
+ * and returns a clean component with a CSS import instead.
+ */
+export function extractEmbeddedCSS(code: string): { cleanCode: string; css: string } {
+  // Match const TEMPLATE_STYLES = "..." or const TEMPLATE_CSS = "..."
+  const constMatch = code.match(/const\s+(?:TEMPLATE_STYLES|TEMPLATE_CSS)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')\s*;?\n?/s);
+  if (!constMatch) return { cleanCode: code, css: '' };
+
+  let css = '';
+  try { css = JSON.parse(constMatch[1]); } catch { return { cleanCode: code, css: '' }; }
+
+  let cleanCode = code;
+
+  // Remove the const declaration
+  cleanCode = cleanCode.replace(constMatch[0], '');
+
+  // Remove the useEffect that injects styles via DOM
+  cleanCode = cleanCode.replace(
+    /\s*\/\/\s*Inject styles\n?\s*useEffect\(\(\)\s*=>\s*\{[^}]*document\.createElement\('style'\)[^}]*\}\s*;\s*\}\s*,\s*\[\]\);?\n?/s,
+    '\n'
+  );
+
+  // Add CSS import if not already present
+  if (!cleanCode.includes("import './template.css'")) {
+    cleanCode = cleanCode.replace(
+      /(import React[\s\S]*?from\s+['"]react['"];?\n)/,
+      "$1import './template.css';\n"
+    );
+  }
+
+  // Clean up empty lines left behind
+  cleanCode = cleanCode.replace(/\n{3,}/g, '\n\n');
+
+  return { cleanCode, css };
+}
 
 // ============================================================================
 // VFS File Structure Generator
@@ -71,13 +112,22 @@ body {
 
   // Check if it's an HTML document first
   if (isHtmlDocument(templateCode)) {
-    files['/src/App.tsx'] = htmlDocToReactComponent(templateCode, componentName);
+    const result = htmlDocToReactComponentWithCSS(templateCode, componentName);
+    files['/src/App.tsx'] = result.code;
+    if (result.css) {
+      files['/src/template.css'] = result.css;
+    }
   }
   // Detect if it's already a full React component
   else if (templateCode.includes('export default function') ||
     templateCode.includes('export default const') ||
     templateCode.includes('function App()')) {
-    files['/src/App.tsx'] = templateCode;
+    // Extract any embedded TEMPLATE_STYLES/TEMPLATE_CSS and route to CSS file
+    const { cleanCode, css } = extractEmbeddedCSS(templateCode);
+    files['/src/App.tsx'] = cleanCode;
+    if (css) {
+      files['/src/template.css'] = css;
+    }
   } else if (templateCode.includes('import ') || templateCode.includes('export ')) {
     // It's a React component but not the App — wrap it
     const cleanCode = templateCode

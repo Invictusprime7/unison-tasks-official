@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none">
+  <rect width="240" height="140" rx="8" fill="#0f0f1a"/>
+  <!-- Split card container -->
+  <rect x="12" y="20" width="216" height="100" rx="10" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1" fill="#ffffff" fill-opacity="0.02"/>
+  <!-- Left text column -->
+  <rect x="24" y="36" width="80" height="7" rx="3" fill="#ffffff" opacity="0.8"/>
+  <rect x="24" y="50" width="70" height="4" rx="2" fill="#ffffff" opacity="0.25"/>
+  <rect x="24" y="58" width="60" height="4" rx="2" fill="#ffffff" opacity="0.25"/>
+  <rect x="24" y="78" width="40" height="14" rx="7" fill="#a78bfa"/>
+  <rect x="70" y="78" width="36" height="14" rx="7" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
+  <!-- Right visual column -->
+  <rect x="130" y="20" width="98" height="100" rx="10" fill="#a78bfa" opacity="0.06"/>
+  <rect x="164" y="58" width="30" height="16" rx="4" fill="#a78bfa" opacity="0.3"/>
+  <rect x="160" y="80" width="38" height="4" rx="2" fill="#ffffff" opacity="0.15"/>
+</svg>

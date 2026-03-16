@@ -12,14 +12,18 @@ import React, { useEffect } from 'react';
 import type { TemplateComposition, SectionEntry, SectionType } from './types';
 import { getSectionComponent } from './registry';
 import { themeToCSS, hsl } from './themeUtils';
+import { resolveVariantComponent } from './variants';
+import type { ActiveVariantMap } from './variants';
 
 interface PageRendererProps {
   template: TemplateComposition;
   /** Override theme (for live theme switching in builder) */
   themeOverride?: TemplateComposition['theme'];
+  /** Active variant overrides per section instance, keyed by section.id */
+  activeVariants?: ActiveVariantMap;
 }
 
-export const PageRenderer: React.FC<PageRendererProps> = ({ template, themeOverride }) => {
+export const PageRenderer: React.FC<PageRendererProps> = ({ template, themeOverride, activeVariants = {} }) => {
   const theme = themeOverride || template.theme;
 
   // Inject global styles (keyframes, scroll effects)
@@ -51,14 +55,20 @@ export const PageRenderer: React.FC<PageRendererProps> = ({ template, themeOverr
       {template.sections
         .filter(s => !s.hidden)
         .map(section => {
-          const Component = getSectionComponent(section.type);
+          // Check if a variant override is active for this section instance
+          const VariantComponent = resolveVariantComponent(
+            section.type,
+            section.id,
+            activeVariants
+          );
+          const Component = VariantComponent || getSectionComponent(section.type);
           if (!Component) {
             console.warn(`[PageRenderer] Unknown section type: ${section.type}`);
             return null;
           }
           return (
             <Component
-              key={section.id}
+              key={`${section.id}-${activeVariants[section.id] || 'default'}`}
               section={section as SectionEntry<any>}
               theme={theme}
             />

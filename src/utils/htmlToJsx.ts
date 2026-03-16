@@ -81,7 +81,7 @@ function styleStringToObject(styleStr: string): string {
       return `${camelProp}: ${isNumeric ? val : JSON.stringify(val)}`;
     })
     .filter(Boolean);
-  return `{{ ${pairs.join(', ')} }}`;
+  return `{ ${pairs.join(', ')} }`;
 }
 
 // ============================================================================
@@ -184,47 +184,38 @@ function stripScripts(html: string): string {
 }
 
 /**
- * Detect if content is a full HTML document
+ * Detect if content is a full HTML document (not a React/TSX component).
+ * Guards against false positives from TSX code that mentions HTML tags in
+ * comments, strings, or JSX expressions.
  */
 export function isHtmlDocument(code: string): boolean {
   const t = code.trim();
+  // If it starts with an import/export or function declaration, it's TSX
+  if (/^(import |export |const |function |\/\*\*|\/\/)/.test(t)) return false;
   return t.startsWith('<!DOCTYPE') ||
     t.startsWith('<html') ||
     (t.includes('<head') && t.includes('<body'));
 }
 
 /**
- * Convert a full HTML document (or fragment) into a complete React/TSX
- * component string that uses native JSX — no dangerouslySetInnerHTML.
+ * Convert a full HTML document (or fragment) into a React/TSX component
+ * and extracted CSS. No DOM injection — CSS goes to a separate file.
  */
-export function htmlDocToReactComponent(html: string, componentName = 'App'): string {
+export function htmlDocToReactComponentWithCSS(html: string, componentName = 'App'): { code: string; css: string } {
   const styles = extractStyles(html);
   const bodyRaw = extractBody(stripScripts(html));
-  // Remove any remaining <style> tags from body
   const bodyClean = bodyRaw.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
   const jsxBody = htmlToJsx(bodyClean);
 
-  const cssString = styles.length > 0 ? styles.join('\n\n') : '';
-  const cssJsonStr = cssString ? JSON.stringify(cssString) : '';
+  const css = styles.length > 0 ? styles.join('\n\n') : '';
 
   const lines: string[] = [];
-  lines.push(`import React, { useEffect } from 'react';`);
+  lines.push(`import React from 'react';`);
+  if (css) {
+    lines.push(`import './template.css';`);
+  }
   lines.push('');
-  if (cssJsonStr) {
-    lines.push(`const TEMPLATE_CSS = ${cssJsonStr};`);
-    lines.push('');
-  }
   lines.push(`export default function ${componentName}() {`);
-  if (cssJsonStr) {
-    lines.push(`  useEffect(() => {`);
-    lines.push(`    const style = document.createElement('style');`);
-    lines.push(`    style.setAttribute('data-template', '');`);
-    lines.push(`    style.textContent = TEMPLATE_CSS;`);
-    lines.push(`    document.head.appendChild(style);`);
-    lines.push(`    return () => { style.remove(); };`);
-    lines.push(`  }, []);`);
-    lines.push('');
-  }
   lines.push(`  return (`);
   lines.push(`    <div className="min-h-screen">`);
   lines.push(`      ${jsxBody}`);
@@ -232,7 +223,15 @@ export function htmlDocToReactComponent(html: string, componentName = 'App'): st
   lines.push(`  );`);
   lines.push(`}`);
 
-  return lines.join('\n');
+  return { code: lines.join('\n'), css };
+}
+
+/**
+ * Convert a full HTML document (or fragment) into a complete React/TSX
+ * component string. Backward-compatible wrapper — embeds CSS via import.
+ */
+export function htmlDocToReactComponent(html: string, componentName = 'App'): string {
+  return htmlDocToReactComponentWithCSS(html, componentName).code;
 }
 
 /**

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" fill="none">
+  <rect width="240" height="140" rx="8" fill="#0f0f1a"/>
+  <!-- Gradient banner background -->
+  <defs>
+    <linearGradient id="gb" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="16" width="224" height="108" rx="8" fill="url(#gb)" opacity="0.8"/>
+  <!-- White text centered -->
+  <rect x="60" y="40" width="120" height="8" rx="3" fill="#ffffff" opacity="0.95"/>
+  <rect x="70" y="56" width="100" height="5" rx="2" fill="#ffffff" opacity="0.5"/>
+  <rect x="78" y="66" width="84" height="5" rx="2" fill="#ffffff" opacity="0.5"/>
+  <!-- White inverted buttons -->
+  <rect x="72" y="86" width="44" height="16" rx="8" fill="#ffffff" opacity="0.95"/>
+  <rect x="124" y="86" width="44" height="16" rx="8" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1"/>
+</svg>

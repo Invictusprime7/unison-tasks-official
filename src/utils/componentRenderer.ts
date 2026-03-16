@@ -4,7 +4,7 @@
  */
 
 import { Canvas as FabricCanvas, Rect, IText, FabricImage } from 'fabric';
-import { htmlToJsx } from './aiWebParser';
+import { htmlToJsx } from './htmlToJsx';
 
 export interface ComponentConfig {
   type: 'hero' | 'card' | 'button' | 'section' | 'form' | 'navigation' | 'custom';

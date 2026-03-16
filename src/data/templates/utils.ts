@@ -9,7 +9,7 @@
 import { getCompositionById } from '@/sections/templates';
 import { compositionToReactCode } from '@/sections/PageRenderer';
 import { ensureReactImports } from '@/utils/aiCodeCleaner';
-import { htmlToJsx, htmlDocToReactComponent, isHtmlDocument } from '@/utils/htmlToJsx';
+import { htmlToJsx, htmlDocToReactComponentWithCSS, isHtmlDocument } from '@/utils/htmlToJsx';
 
 /**
  * Extracts <style> block content from HTML body strings
@@ -43,10 +43,15 @@ function extractScripts(body: string): { scripts: string; cleanBody: string } {
  * 2. Injects <style> blocks via useEffect
  * 3. Runs interactive scripts (tabs, carousel, scroll-reveal) via useEffect
  */
-export const wrapInReactComponent = (body: string, title: string = "Template"): string => {
+/**
+ * Wraps body content into a React component with native JSX.
+ * Returns component code + extracted CSS separately.
+ * No DOM style injection — CSS is meant for a .css file import.
+ */
+export const wrapInReactComponentWithCSS = (body: string, title: string = "Template"): { code: string; css: string } => {
   // If it's a full HTML document, delegate to the document converter
   if (isHtmlDocument(body)) {
-    return htmlDocToReactComponent(body, 'App');
+    return htmlDocToReactComponentWithCSS(body, 'App');
   }
 
   // Strip AI reasoning blocks that may leak from LLM responses
@@ -60,44 +65,32 @@ export const wrapInReactComponent = (body: string, title: string = "Template"): 
   const { styles: extractedStyles, cleanBody: bodyAfterStyles } = extractStyles(cleanedBody);
   const { cleanBody: finalBody } = extractScripts(bodyAfterStyles);
 
-  const baseStyles = 'html { scroll-behavior: smooth; }\n@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }\ndetails > summary { list-style: none; cursor: pointer; }\ndetails > summary::-webkit-details-marker { display: none; }\n.tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }';
+  const baseStyles = `html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+.tw-focus:focus-visible { outline: 2px solid rgba(56, 189, 248, 0.8); outline-offset: 3px; }`;
   
-  const fullStyles = baseStyles + '\n' + extractedStyles;
+  const css = baseStyles + '\n' + extractedStyles;
 
   // Convert HTML body to valid JSX
   const jsxBody = htmlToJsx(finalBody);
   
-  // Use JSON.stringify for CSS string — Babel-safe
-  const stylesJson = JSON.stringify(fullStyles);
   const titleJson = JSON.stringify(title);
 
-  return `import React, { useEffect, useRef } from 'react';
+  const code = `import React, { useEffect, useRef } from 'react';
+import './template.css';
 
 /**
  * ${title}
  * Auto-generated React component from premium template
  */
 
-const TEMPLATE_STYLES = ${stylesJson};
-
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Inject styles
   useEffect(() => {
-    const style = document.createElement('style');
-    style.setAttribute('data-template-styles', '');
-    style.textContent = TEMPLATE_STYLES;
-    document.head.appendChild(style);
-    
-    // Set body classes
-    document.body.classList.add('bg-slate-950', 'text-white');
     document.title = ${titleJson};
-    
-    return () => {
-      style.remove();
-      document.body.classList.remove('bg-slate-950', 'text-white');
-    };
   }, []);
 
   // Run interactive scripts after JSX is mounted
@@ -246,6 +239,16 @@ export default function App() {
   );
 }
 `;
+
+  return { code, css };
+};
+
+/**
+ * Backward-compatible wrapper — returns just component code string.
+ * CSS import (`./template.css`) is included in the component.
+ */
+export const wrapInReactComponent = (body: string, title: string = "Template"): string => {
+  return wrapInReactComponentWithCSS(body, title).code;
 };
 
 /**
@@ -254,19 +257,15 @@ export default function App() {
 export const wrapInHtmlDoc = wrapInReactComponent;
 
 /**
- * Gets the VFS-ready React code for a template.
- * 
- * Priority:
- * 1. Check if there's a section-registry composition for this template ID
- * 2. If template already contains React imports, returns as-is
- * 3. Otherwise converts raw HTML into native JSX React component
+ * Gets VFS-ready React code + extracted CSS for a template.
+ * Returns { code, css } where css should go into /src/template.css.
  */
-export const getTemplateReactCode = (template: { code: string; id?: string; title?: string; name?: string }): string => {
+export const getTemplateReactCodeWithCSS = (template: { code: string; id?: string; title?: string; name?: string }): { code: string; css: string } => {
   // Check for section-registry composition first
   if (template.id) {
     const composition = getCompositionById(template.id);
     if (composition) {
-      return compositionToReactCode(composition);
+      return { code: compositionToReactCode(composition), css: '' };
     }
   }
 
@@ -275,19 +274,27 @@ export const getTemplateReactCode = (template: { code: string; id?: string; titl
 
   // If already React code, return with imports ensured
   if (code.includes('import React') || code.includes('from "react"') || code.includes("from 'react'")) {
-    return code;
+    return { code, css: '' };
   }
   
   // Has React component but missing import — use shared utility
   if (code.includes('export default function') || code.includes('export default ')) {
-    return ensureReactImports(code);
+    return { code: ensureReactImports(code), css: '' };
   }
 
-  // Full HTML document → convert to native JSX component
+  // Full HTML document → convert to native JSX component + CSS
   if (isHtmlDocument(code)) {
-    return htmlDocToReactComponent(code, 'App');
+    return htmlDocToReactComponentWithCSS(code, 'App');
   }
 
-  // Raw HTML fragment → wrap in React component with native JSX
-  return wrapInReactComponent(code, template.title || template.name || 'Template');
+  // Raw HTML fragment → wrap in React component with native JSX + CSS
+  return wrapInReactComponentWithCSS(code, template.title || template.name || 'Template');
+};
+
+/**
+ * Gets the VFS-ready React code for a template.
+ * Backward-compatible wrapper — returns just the component code.
+ */
+export const getTemplateReactCode = (template: { code: string; id?: string; title?: string; name?: string }): string => {
+  return getTemplateReactCodeWithCSS(template).code;
 };

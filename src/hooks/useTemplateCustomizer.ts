@@ -1,14 +1,15 @@
 /**
- * useTemplateCustomizer - Full DOM Control Customization Engine
+ * useTemplateCustomizer - TSX Source Customization Engine
  * 
  * Manages theme overrides, typography, colors, section ordering,
- * element-level edits, and image replacements for HTML templates.
+ * element-level edits, and image replacements for React/TSX templates.
  * 
- * Operates as an HTML manipulation pipeline:
- * AI Output → Customizer Overrides → Preview Iframe
+ * Operates on TSX source strings via regex — no DOM parsing.
+ * AI Output (TSX) → Customizer Overrides (CSS + source edits) → VFS → Preview
  */
 
 import { useState, useCallback, useRef, useMemo } from 'react';
+import type { VariantId, ActiveVariantMap } from '@/sections/variants';
 
 // ============================================================================
 // Types
@@ -267,8 +268,9 @@ export const useTemplateCustomizer = () => {
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [overrideVersion, setOverrideVersion] = useState(0); // Increments on every change to trigger reactivity
-  const originalHtmlRef = useRef<string>('');
-  const isCustomizerApplyingRef = useRef(false); // Prevents parseTemplate from running on customizer output
+  const [activeVariants, setActiveVariants] = useState<ActiveVariantMap>({});
+  const originalSourceRef = useRef<string>('');
+  const isCustomizerApplyingRef = useRef(false); // Prevents re-parsing when customizer applies overrides
   
   // Track whether global theme settings have been explicitly modified
   // This prevents element-level edits from triggering unwanted global color overrides
@@ -277,61 +279,122 @@ export const useTemplateCustomizer = () => {
   const [hasSpacingModified, setHasSpacingModified] = useState(false);
   const [hasSectionsReordered, setHasSectionsReordered] = useState(false);
 
-  // ---- Parse template structure ----
-  const parseTemplate = useCallback((html: string) => {
-    if (!html || !html.trim()) return;
-    originalHtmlRef.current = html;
+  // ---- Parse template structure (LEGACY — delegates to parseSectionsFromJSX) ----
+  const parseTemplate = useCallback((source: string) => {
+    if (!source || !source.trim()) return;
+    // All templates are now TSX — delegate to the JSX parser
+    parseSectionsFromJSX(source);
+  }, // eslint-disable-next-line react-hooks/exhaustive-deps
+  []);
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+  // ---- Parse sections from JSX/TSX source (for VFS React templates) ----
+  const parseSectionsFromJSX = useCallback((jsxSource: string) => {
+    if (!jsxSource || !jsxSource.trim()) return;
 
-    // Extract sections
-    const sectionEls = doc.querySelectorAll('body > section, body > header, body > footer, body > main, body > nav, body > div[class*="section"], body > div[id]');
     const parsedSections: SectionInfo[] = [];
 
-    sectionEls.forEach((el, index) => {
-      const htmlEl = el as HTMLElement;
-      const heading = htmlEl.querySelector('h1, h2, h3');
-      const textPreview = (heading?.textContent || htmlEl.textContent || '').trim().substring(0, 80);
-      const id = htmlEl.id || `section-${index}`;
+    // Match JSX tags: <section, <header, <nav, <footer, <main
+    // Captures the tag name, any id/className attributes, and surrounding content
+    const sectionTagRegex = /<(section|header|nav|footer|main)\b([^>]*?)>/gi;
+    let match: RegExpExecArray | null;
+    let index = 0;
+
+    while ((match = sectionTagRegex.exec(jsxSource)) !== null) {
+      const tagName = match[1].toLowerCase();
+      const attrs = match[2];
+      
+      // Extract id from id="..." or id={'...'}
+      const idMatch = attrs.match(/\bid=["'{]([^"'}]+)["'}]/);
+      const id = idMatch?.[1] || `${tagName}-${index}`;
+
+      // Extract className for heuristic label detection
+      const classMatch = attrs.match(/className=["'{]([^"'}]+)["'}]/);
+      const className = classMatch?.[1] || '';
+
+      // Look ahead in the source for the first heading inside this section
+      const tagEndPos = match.index + match[0].length;
+      // Find the closing tag (simplified — look for next few hundred chars)
+      const lookahead = jsxSource.substring(tagEndPos, tagEndPos + 2000);
+      const headingMatch = lookahead.match(/<h[123][^>]*>([^<]+)</);
+      const headingText = headingMatch?.[1]?.trim() || '';
+
+      // Grab a text preview from the content
+      const textPreview = headingText ||
+        (lookahead.match(/>([A-Z][^<]{5,80})</)?.[1]?.trim() || '');
+
+      // Infer a human-readable label
+      let label = headingText;
+      if (!label) {
+        // Try class-based heuristics
+        const lowerClass = className.toLowerCase();
+        const lowerId = id.toLowerCase();
+        if (tagName === 'nav' || lowerId.includes('nav') || lowerClass.includes('nav')) label = 'Navigation';
+        else if (tagName === 'header' || lowerId.includes('header')) label = 'Header';
+        else if (tagName === 'footer' || lowerId.includes('footer') || lowerClass.includes('footer')) label = 'Footer';
+        else if (lowerId.includes('hero') || lowerClass.includes('hero')) label = 'Hero';
+        else if (lowerId.includes('cta') || lowerClass.includes('cta')) label = 'Call to Action';
+        else if (lowerId.includes('service') || lowerClass.includes('service')) label = 'Services';
+        else if (lowerId.includes('feature') || lowerClass.includes('feature')) label = 'Features';
+        else if (lowerId.includes('pricing') || lowerClass.includes('pricing')) label = 'Pricing';
+        else if (lowerId.includes('testimonial') || lowerClass.includes('testimonial')) label = 'Testimonials';
+        else if (lowerId.includes('contact') || lowerClass.includes('contact')) label = 'Contact';
+        else if (lowerId.includes('about') || lowerClass.includes('about')) label = 'About';
+        else if (lowerId.includes('faq') || lowerClass.includes('faq')) label = 'FAQ';
+        else if (lowerId.includes('team') || lowerClass.includes('team')) label = 'Team';
+        else if (lowerId.includes('gallery') || lowerClass.includes('gallery')) label = 'Gallery';
+        else if (lowerId.includes('stats') || lowerClass.includes('stats')) label = 'Statistics';
+        else label = tagName.charAt(0).toUpperCase() + tagName.slice(1);
+      }
 
       parsedSections.push({
         id,
-        tagName: htmlEl.tagName.toLowerCase(),
-        label: heading?.textContent?.trim() || htmlEl.tagName.toLowerCase() + (htmlEl.className ? `.${htmlEl.className.split(' ')[0]}` : ''),
+        tagName,
+        label,
         visible: true,
         order: index,
         height: 'auto',
-        selector: htmlEl.id ? `#${htmlEl.id}` : `body > ${htmlEl.tagName.toLowerCase()}:nth-of-type(${index + 1})`,
-        preview: textPreview,
+        selector: id !== `${tagName}-${index}` ? `#${id}` : `${tagName}:nth-of-type(${index + 1})`,
+        preview: textPreview.substring(0, 80),
       });
-    });
 
-    setSections(parsedSections);
-
-    // Extract images
-    const imgEls = doc.querySelectorAll('img');
-    const parsedImages: ImageInfo[] = [];
-
-    imgEls.forEach((img, index) => {
-      parsedImages.push({
-        id: `img-${index}`,
-        src: img.getAttribute('src') || '',
-        alt: img.getAttribute('alt') || '',
-        selector: img.id ? `#${img.id}` : `img:nth-of-type(${index + 1})`,
-        width: img.getAttribute('width') || 'auto',
-        height: img.getAttribute('height') || 'auto',
-      });
-    });
-
-    setImages(parsedImages);
-
-    // Try to extract existing colors from the template
-    const styleContent = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi)?.join('') || '';
-    const bodyBg = styleContent.match(/background(?:-color)?:\s*([^;]+)/i);
-    if (bodyBg) {
-      // Don't override user's custom colors on parse
+      index++;
     }
+
+    // If we found sections, update state
+    if (parsedSections.length > 0) {
+      setSections(parsedSections);
+    }
+
+    // Extract images from JSX source via regex
+    const parsedImages: ImageInfo[] = [];
+    const imgPattern = /<img\b([^>]*?)(?:\/>|>)/gi;
+    let imgMatch: RegExpExecArray | null;
+    let imgIndex = 0;
+    while ((imgMatch = imgPattern.exec(jsxSource)) !== null) {
+      const attrs = imgMatch[1];
+      const srcMatch = attrs.match(/src=["'{]([^"'}]+)["'}]/);
+      const altMatch = attrs.match(/alt=["'{]([^"'}]*)["'}]/);
+      const widthMatch = attrs.match(/width=["'{]([^"'}]+)["'}]/);
+      const heightMatch = attrs.match(/height=["'{]([^"'}]+)["'}]/);
+      const idMatch = attrs.match(/id=["'{]([^"'}]+)["'}]/);
+      if (srcMatch?.[1]) {
+        parsedImages.push({
+          id: `img-${imgIndex}`,
+          src: srcMatch[1],
+          alt: altMatch?.[1] || '',
+          selector: idMatch?.[1] ? `#${idMatch[1]}` : `img:nth-of-type(${imgIndex + 1})`,
+          width: widthMatch?.[1] || 'auto',
+          height: heightMatch?.[1] || 'auto',
+        });
+        imgIndex++;
+      }
+    }
+    if (parsedImages.length > 0) {
+      setImages(parsedImages);
+    }
+
+    // Store original source for reference
+    originalSourceRef.current = jsxSource;
   }, []);
 
   // ---- Apply theme preset ----
@@ -395,6 +458,23 @@ export const useTemplateCustomizer = () => {
       s.id === sectionId ? { ...s, height } : s
     ));
     setIsDirty(true);
+  }, []);
+
+  // ---- Section variant selection ----
+  const setActiveVariant = useCallback((sectionId: string, variantId: VariantId) => {
+    setActiveVariants(prev => ({ ...prev, [sectionId]: variantId }));
+    setIsDirty(true);
+    setOverrideVersion(v => v + 1);
+  }, []);
+
+  const clearActiveVariant = useCallback((sectionId: string) => {
+    setActiveVariants(prev => {
+      const next = { ...prev };
+      delete next[sectionId];
+      return next;
+    });
+    setIsDirty(true);
+    setOverrideVersion(v => v + 1);
   }, []);
 
   // ---- Image replacement ----
@@ -574,115 +654,47 @@ section, [class*="section"] {
     return cssBlocks.join('\n');
   }, [colors, typography, spacing, sections, elementOverrides, hasColorsModified, hasTypographyModified, hasSpacingModified]);
 
-  // ---- Apply overrides to HTML ----
-  const applyOverrides = useCallback((html: string): string => {
-    if (!html || !html.trim()) return html;
-    if (!isDirty) return html;
+  // ---- Apply overrides to TSX source ----
+  // Returns the modified TSX source with image replacements applied.
+  // CSS overrides (colors, typography, spacing, element styles) are injected
+  // directly into the iframe by the WebBuilder override useEffect — not embedded in source.
+  const applyOverrides = useCallback((source: string): string => {
+    if (!source || !source.trim()) return source;
+    if (!isDirty) return source;
 
-    // Always apply on the original (base) HTML to avoid cumulative mangling
-    const baseHtml = originalHtmlRef.current || html;
+    const baseSource = originalSourceRef.current || source;
+    let result = baseSource;
 
-    const overrideCSS = generateOverrideCSS();
-
-    // Fast path: if only element overrides / CSS changed (no section reorder, no image replace),
-    // just inject CSS into existing HTML without DOM parse+serialize (prevents section reordering)
-    const hasImageChanges = images.some(img => {
-      // Check if any image src differs from what's in the original HTML
-      const parser = new DOMParser();
-      const origDoc = parser.parseFromString(baseHtml, 'text/html');
-      const el = safeQuerySelector(origDoc, img.selector) as HTMLImageElement;
-      return el && el.getAttribute('src') !== img.src;
-    });
-    const hasTextOverrides = Array.from(elementOverrides.values()).some(o => o.textContent !== undefined || o.imageSrc);
-
-    const needsDomManipulation = hasSectionsReordered || hasImageChanges || hasTextOverrides;
-
-    if (!needsDomManipulation) {
-      // CSS-only path: just inject/replace the override <style> block — no DOM restructuring
-      let result = baseHtml;
-      // Remove any existing customizer overrides
-      result = result.replace(/<style id="customizer-overrides">[\s\S]*?<\/style>\s*/g, '');
-      
-      if (overrideCSS.trim()) {
-        if (result.includes('</head>')) {
-          result = result.replace('</head>', `<style id="customizer-overrides">${overrideCSS}</style>\n</head>`);
-        } else {
-          result = `<style id="customizer-overrides">${overrideCSS}</style>\n${result}`;
-        }
-      }
-      isCustomizerApplyingRef.current = true;
-      return result;
-    }
-
-    // Full DOM manipulation path (only when sections reordered, images changed, or text overrides)
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(baseHtml, 'text/html');
-
-    // Reorder sections ONLY if explicitly reordered by user
-    if (hasSectionsReordered) {
-      const body = doc.body;
-      const sectionElements: { el: Element; order: number }[] = [];
-
-      sections.forEach(section => {
-        const el = safeQuerySelector(doc, section.selector);
-        if (el) {
-          sectionElements.push({ el, order: section.order });
-        }
-      });
-
-      if (sectionElements.length > 1) {
-        sectionElements.sort((a, b) => a.order - b.order);
-        sectionElements.forEach(({ el }) => {
-          body.appendChild(el);
-        });
-      }
-    }
-
-    // Replace images
+    // Replace images in TSX source (regex-based — find <img ... src="old" and replace)
     images.forEach(img => {
-      let el = safeQuerySelector(doc, img.selector) as HTMLImageElement;
-      if (!el) {
-        const allImgs = doc.querySelectorAll('img');
-        const idx = parseInt(img.id.replace('img-', ''), 10);
-        if (!isNaN(idx) && idx < allImgs.length) {
-          el = allImgs[idx] as HTMLImageElement;
+      const idx = parseInt(img.id.replace('img-', ''), 10);
+      if (isNaN(idx)) return;
+
+      // Find the nth <img> tag in the source
+      const imgPattern = /<img\b[^>]*?src=["']([^"']*)["'][^>]*?\/?>/gi;
+      let imgMatch: RegExpExecArray | null;
+      let count = 0;
+      while ((imgMatch = imgPattern.exec(result)) !== null) {
+        if (count === idx) {
+          const originalSrc = imgMatch[1];
+          if (originalSrc !== img.src) {
+            // Replace src attribute value
+            const oldTag = imgMatch[0];
+            let newTag = oldTag.replace(/src=["'][^"']*["']/, `src="${img.src}"`);
+            if (img.alt) {
+              newTag = newTag.replace(/alt=["'][^"']*["']/, `alt="${img.alt}"`);
+            }
+            result = result.substring(0, imgMatch.index) + newTag + result.substring(imgMatch.index + oldTag.length);
+          }
+          break;
         }
-      }
-      if (el && el.getAttribute('src') !== img.src) {
-        el.setAttribute('src', img.src);
-        if (img.alt) el.setAttribute('alt', img.alt);
+        count++;
       }
     });
 
-    // Apply text content overrides
-    elementOverrides.forEach(override => {
-      if (override.textContent !== undefined) {
-        const el = safeQuerySelector(doc, override.selector);
-        if (el) el.textContent = override.textContent;
-      }
-      if (override.imageSrc) {
-        const el = safeQuerySelector(doc, override.selector) as HTMLImageElement;
-        if (el) el.setAttribute('src', override.imageSrc);
-      }
-    });
-
-    // Inject override CSS
-    let result = new XMLSerializer().serializeToString(doc);
-
-    // Fix serialization issues
-    result = result.replace(/xmlns="[^"]*"/g, '');
-    result = '<!DOCTYPE html>' + result.replace(/^<\?xml[^?]*\?>/, '');
-
-    // Inject override styles before </head>
-    if (result.includes('</head>')) {
-      result = result.replace('</head>', `<style id="customizer-overrides">${overrideCSS}</style>\n</head>`);
-    } else {
-      result = `<style id="customizer-overrides">${overrideCSS}</style>\n${result}`;
-    }
     isCustomizerApplyingRef.current = true;
-
     return result;
-  }, [isDirty, generateOverrideCSS, sections, images, elementOverrides, hasSectionsReordered]);
+  }, [isDirty, images]);
 
   // ---- Check if customizer just applied (to skip parseTemplate) ----
   const consumeCustomizerApplyFlag = useCallback((): boolean => {
@@ -693,8 +705,10 @@ section, [class*="section"] {
     return false;
   }, []);
 
-  // ---- Get original HTML ----
-  const getOriginalHtml = useCallback(() => originalHtmlRef.current, []);
+  // ---- Get original source (TSX) ----
+  const getOriginalSource = useCallback(() => originalSourceRef.current, []);
+  // Legacy alias
+  const getOriginalHtml = getOriginalSource;
 
   // ---- Reset all ----
   const resetAll = useCallback(() => {
@@ -708,6 +722,7 @@ section, [class*="section"] {
     setHasTypographyModified(false);
     setHasSpacingModified(false);
     setHasSectionsReordered(false);
+    setActiveVariants({});
   }, []);
 
   return {
@@ -719,6 +734,7 @@ section, [class*="section"] {
     images,
     elementOverrides,
     activePresetId,
+    activeVariants,
     isDirty,
     overrideVersion,
     presets: THEME_PRESETS,
@@ -726,6 +742,7 @@ section, [class*="section"] {
 
     // Template parsing
     parseTemplate,
+    parseSectionsFromJSX,
 
     // Theme
     applyPreset,
@@ -737,6 +754,10 @@ section, [class*="section"] {
     toggleSectionVisibility,
     reorderSections,
     resizeSection,
+
+    // Variants
+    setActiveVariant,
+    clearActiveVariant,
 
     // Images
     replaceImage,
@@ -751,6 +772,7 @@ section, [class*="section"] {
     resetAll,
     consumeCustomizerApplyFlag,
     getOriginalHtml,
+    getOriginalSource,
   };
 };
 

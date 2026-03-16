@@ -19,10 +19,43 @@ import { Switch } from '@/components/ui/switch';
 import {
   Palette, Type, Layers, Image, Sparkles, RotateCcw,
   ChevronUp, ChevronDown, Eye, EyeOff, GripVertical,
-  Upload, Link, X, Check, ArrowUpDown,
+  Upload, Link, X, Check, ArrowUpDown, LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { TemplateCustomizerReturn } from '@/hooks/useTemplateCustomizer';
+import type { TemplateCustomizerReturn, SectionInfo } from '@/hooks/useTemplateCustomizer';
+import { SectionVariantSelector } from './SectionVariantSelector';
+import type { SectionType } from '@/sections/types';
+
+/**
+ * Infer the SectionType from a parsed SectionInfo.
+ * Uses the tag name, ID, and label heuristics to map DOM sections
+ * back to the section registry's SectionType.
+ */
+function inferSectionType(section: SectionInfo): SectionType {
+  const id = section.id.toLowerCase();
+  const label = section.label.toLowerCase();
+  const tag = section.tagName.toLowerCase();
+
+  if (tag === 'nav' || id.includes('nav') || label.includes('nav')) return 'navbar';
+  if (tag === 'footer' || id.includes('footer') || label.includes('footer')) return 'footer';
+  if (id.includes('hero') || label.includes('hero')) return 'hero';
+  if (id.includes('cta') || label.includes('call to action') || label.includes('cta')) return 'cta';
+  if (id.includes('service') || label.includes('service')) return 'services';
+  if (id.includes('feature') || label.includes('feature')) return 'features';
+  if (id.includes('pricing') || label.includes('pricing')) return 'pricing';
+  if (id.includes('testimonial') || label.includes('testimonial') || label.includes('review')) return 'testimonials';
+  if (id.includes('team') || label.includes('team')) return 'team';
+  if (id.includes('gallery') || label.includes('gallery')) return 'gallery';
+  if (id.includes('faq') || label.includes('faq')) return 'faq';
+  if (id.includes('contact') || label.includes('contact')) return 'contact';
+  if (id.includes('stat') || label.includes('stat') || label.includes('number')) return 'stats';
+  if (id.includes('about') || label.includes('about')) return 'about';
+
+  // Fallback: header tag is likely a navbar
+  if (tag === 'header') return 'navbar';
+
+  return 'hero'; // safe fallback
+}
 
 interface TemplateCustomizerPanelProps {
   customizer: TemplateCustomizerReturn;
@@ -139,9 +172,12 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
 
       {/* Tabs */}
       <Tabs defaultValue="theme" className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mx-2 mt-1.5 grid grid-cols-5 h-7 bg-[#0d0d18]">
+        <TabsList className="mx-2 mt-1.5 grid grid-cols-6 h-7 bg-[#0d0d18]">
           <TabsTrigger value="theme" className="text-xs px-1 data-[state=active]:bg-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,255,0,0.5)] text-yellow-400/60 hover:text-yellow-300">
             <Sparkles className="w-3.5 h-3.5" />
+          </TabsTrigger>
+          <TabsTrigger value="layouts" className="text-xs px-1 data-[state=active]:bg-violet-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(139,92,246,0.5)] text-violet-400/60 hover:text-violet-300">
+            <LayoutGrid className="w-3.5 h-3.5" />
           </TabsTrigger>
           <TabsTrigger value="colors" className="text-xs px-1 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(0,255,255,0.5)] text-cyan-400/60 hover:text-cyan-300">
             <Palette className="w-3.5 h-3.5" />
@@ -183,6 +219,26 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                 ))}
               </div>
             </Section>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Layout Variants */}
+        <TabsContent value="layouts" className="flex-1 mt-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="px-3 py-2">
+              <SectionVariantSelector
+                sections={customizer.sections.map(s => ({
+                  id: s.id,
+                  type: inferSectionType(s),
+                  label: s.label,
+                }))}
+                activeVariants={customizer.activeVariants}
+                onVariantSelect={(sectionId, variantId) => {
+                  customizer.setActiveVariant(sectionId, variantId);
+                  onApply();
+                }}
+              />
+            </div>
           </ScrollArea>
         </TabsContent>
 
