@@ -4656,6 +4656,19 @@ ${html}
                       device={device}
                       enableSelection={builderMode === 'select'}
                       onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
+                      onNavigate={(path) => {
+                        const pageName = path.replace(/^\//, '').replace(/\.html$/, '') || 'index';
+                        if (pageName !== 'index') {
+                          triggerPageGenRef.current(pageName, pageName, null);
+                        }
+                      }}
+                      onIntentTrigger={(intent, payload) => {
+                        if (intent === 'nav.goto' && payload.path) {
+                          const pageName = String(payload.path).replace(/^\//, '').replace(/\.html$/, '');
+                          if (pageName) triggerPageGenRef.current(pageName, String(payload.text || pageName), null);
+                        }
+                      }}
+                      businessId={businessId || undefined}
                       onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                       onError={(err) => {
                         toast.error(`Preview error: ${err}`);
@@ -4836,6 +4849,19 @@ ${html}
                         device={device}
                         enableSelection={builderMode === 'select'}
                         onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
+                        onNavigate={(path) => {
+                          const pageName = path.replace(/^\//, '').replace(/\.html$/, '') || 'index';
+                          if (pageName !== 'index') {
+                            triggerPageGenRef.current(pageName, pageName, null);
+                          }
+                        }}
+                        onIntentTrigger={(intent, payload) => {
+                          if (intent === 'nav.goto' && payload.path) {
+                            const pageName = String(payload.path).replace(/^\//, '').replace(/\.html$/, '');
+                            if (pageName) triggerPageGenRef.current(pageName, String(payload.text || pageName), null);
+                          }
+                        }}
+                        businessId={businessId || undefined}
                         onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                         onError={(err) => {
                           toast.error(`Preview error: ${err}`);
