@@ -203,3 +203,25 @@ export function ensureReactImports(code: string): string {
   
   return importLine + code;
 }
+
+/**
+ * Fix broken SVG elements in AI-generated code.
+ * AI models sometimes output `<dc.path>`, `<dc.circle>`, `<dc.line>` etc.
+ * instead of plain `<path>`, `<circle>`, `<line>` SVG elements.
+ * Also fixes other common SVG generation issues.
+ */
+export function sanitizeSvgElements(code: string): string {
+  if (!code || typeof code !== 'string') return code;
+
+  // Fix dc.element → element  (e.g. <dc.path ... /> → <path ... />)
+  // Handles both self-closing and open/close tags
+  let fixed = code.replace(/<dc\.(\w+)/g, '<$1');
+  fixed = fixed.replace(/<\/dc\.(\w+)/g, '</$1');
+
+  // Fix other common namespace prefixes AI may hallucinate
+  // e.g. <svg.path>, <lucide.path>, <icon.path>
+  fixed = fixed.replace(/<(?:svg|lucide|icon|ic)\.(\w+)/g, '<$1');
+  fixed = fixed.replace(/<\/(?:svg|lucide|icon|ic)\.(\w+)/g, '</$1');
+
+  return fixed;
+}
