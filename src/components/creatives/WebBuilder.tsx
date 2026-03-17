@@ -2761,13 +2761,15 @@ export default ${componentName}Page;`;
       console.log('[WebBuilder] Navigation reload required for:', pageName);
       
       if (pageContent) {
+        const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+        const vfsPath = `/src/pages/${componentName}.tsx`;
+        
         // Force update the preview by setting the code
         lastSyncedCodeRef.current = pageContent;
         setPreviewCode(pageContent);
         setEditorCode(pageContent);
         
-        // Store in VFS for future navigation
-        const vfsPath = `/${pageName}.html`;
+        // Store in VFS as React component for future navigation
         virtualFS.importFiles({ [vfsPath]: pageContent });
         setActivePagePath(vfsPath);
       }
