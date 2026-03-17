@@ -72,8 +72,27 @@ export function extractCleanCode(input: string): string {
     return '';
   }
 
-  // 6. Already starts with code — return as-is
-  return trimmed;
+  // 6. Already starts with code — strip any trailing markdown artifacts
+  return stripMarkdownArtifacts(trimmed);
+}
+
+/**
+ * Remove markdown/HTML code-fence artifacts that leak into extracted code.
+ * Handles: trailing ```, </code>, </pre>, and leading ``` language tags.
+ */
+function stripMarkdownArtifacts(code: string): string {
+  let cleaned = code;
+  
+  // Strip trailing markdown code fence closers and HTML code/pre tags
+  cleaned = cleaned.replace(/\s*```\s*$/g, '');
+  cleaned = cleaned.replace(/\s*<\/code>\s*<\/pre>\s*$/g, '');
+  cleaned = cleaned.replace(/\s*<\/code>\s*$/g, '');
+  cleaned = cleaned.replace(/\s*<\/pre>\s*$/g, '');
+  
+  // Strip leading markdown code fence openers (```tsx, ```jsx, etc.)
+  cleaned = cleaned.replace(/^```(?:html|jsx|tsx|javascript|js|typescript|ts)?\s*\n/g, '');
+  
+  return cleaned;
 }
 
 /**
