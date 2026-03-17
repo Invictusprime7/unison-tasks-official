@@ -5,7 +5,7 @@
  * This module flattens VFS paths, processes imports, and ensures essential files exist.
  */
 
-import { ensureReactImports } from '@/utils/aiCodeCleaner';
+import { ensureReactImports, sanitizeSvgElements } from '@/utils/aiCodeCleaner';
 
 const ALLOWED_IMPORTS = new Set([
   'react',
@@ -391,6 +391,8 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
     // SAFETY NET: Ensure React imports are present for files using hooks
     if (/\.(tsx?|jsx?)$/.test(normalizedPath) && !isRawCss(processedContent)) {
       processedContent = ensureReactImports(processedContent);
+      // Fix broken SVG elements (dc.path, svg.circle, etc.)
+      processedContent = sanitizeSvgElements(processedContent);
     }
 
     processedContent = processedContent
