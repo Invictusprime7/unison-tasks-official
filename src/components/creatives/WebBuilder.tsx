@@ -2221,23 +2221,22 @@ export default function ${componentName}Page() {
           return; // Anchor links already work in the preview
         }
         
-        // Normalize path
-        const htmlPath = path.endsWith('.html') ? path : `${path.replace(/\/$/, '')}.html`;
-        const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
+        // Normalize path to React page file
+        const pageName = path.replace(/^\//, '').replace(/\.html$/, '').replace(/[^a-zA-Z0-9-]/g, '-') || 'page';
+        const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+        const vfsPath = `/src/pages/${componentName}.tsx`;
         const vfsFiles = virtualFS.getSandpackFiles();
         const existingPage = vfsFiles[vfsPath];
         
         if (existingPage) {
-          // Page exists in VFS - switch to it
+          // Page exists in VFS - open in editor
           setActivePagePath(vfsPath);
           lastSyncedCodeRef.current = existingPage;
-          setPreviewCode(existingPage);
           setEditorCode(existingPage);
-          toast(`Navigated to ${label || path}`, { description: 'Page loaded from VFS' });
+          toast(`Navigated to ${label || path}`, { description: 'React page loaded from VFS' });
         } else {
           // Page doesn't exist - trigger AI generation
-          const pageName = path.replace(/^\//, '').replace(/\.html$/, '').replace(/[^a-zA-Z0-9-]/g, '-') || 'page';
-          console.log('[WebBuilder] Page not in VFS, generating:', pageName, label);
+          console.log('[WebBuilder] React page not in VFS, generating:', pageName, label);
           triggerPageGenRef.current(pageName, label || pageName, null, undefined);
         }
         return;
