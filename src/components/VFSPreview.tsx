@@ -242,6 +242,14 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
         onNavigate?.(data.path);
       }
       
+      // Forward NAV_PAGE_GENERATE from Sandpack iframe to WebBuilder
+      if (data.type === 'NAV_PAGE_GENERATE') {
+        const pageName = data.pageName || '';
+        if (pageName && pageName !== 'index') {
+          onNavigate?.(pageName);
+        }
+      }
+      
       if (data.type === 'INTENT_TRIGGER') {
         const { intent, payload } = data;
         const enrichedPayload = {

@@ -69,6 +69,39 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
+// Nav click interceptor — bridges link clicks to parent WebBuilder for auto page generation
+(function initNavInterceptor() {
+  document.addEventListener('click', function(e) {
+    var el = e.target.closest('a[href], [data-ut-intent="nav.goto"], [data-ut-path]');
+    if (!el) return;
+    var path = el.getAttribute('data-ut-path') || el.getAttribute('href') || '';
+    if (!path || path === '#' || path.startsWith('http') || path.startsWith('mailto:') || path.startsWith('tel:') || path.startsWith('javascript:')) return;
+    // Allow hash anchors for in-page scrolling
+    if (path.startsWith('#')) {
+      var target = document.querySelector(path);
+      if (target) { target.scrollIntoView({ behavior: 'smooth' }); e.preventDefault(); }
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    var pageName = path.replace(/^\\//, '').replace(/\\.html$/, '') || 'index';
+    if (pageName === 'index') return;
+    window.parent.postMessage({
+      type: 'NAV_PAGE_GENERATE',
+      pageName: pageName,
+      navLabel: el.textContent ? el.textContent.trim().substring(0, 40) : pageName,
+      requestId: 'click-' + Date.now()
+    }, '*');
+  }, true);
+
+  // Listen for NAV_ROUTE from parent to update hash router
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'NAV_ROUTE' && e.data.route) {
+      window.location.hash = e.data.route;
+    }
+  });
+})();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
