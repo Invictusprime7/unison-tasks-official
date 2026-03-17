@@ -243,6 +243,11 @@ export function processCode(code: string, filePath: string): string {
 
   let processed = code;
 
+  // Strip leaked markdown code-fence artifacts (```, </code></pre>)
+  processed = processed.replace(/\s*```\s*$/g, '');
+  processed = processed.replace(/\s*<\/code>\s*<\/pre>\s*$/g, '');
+  processed = processed.replace(/^```(?:html|jsx|tsx|javascript|js|typescript|ts)?\s*\n/g, '');
+
   // FIX: Convert dangerouslySetInnerHTML={{ __html: `...CSS...` }} to use a string constant
   // Babel crashes when template literals contain CSS syntax like :root { --var: value }
   processed = processed.replace(
