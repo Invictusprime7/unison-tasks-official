@@ -273,6 +273,20 @@ function isRawCss(content: string): boolean {
   return /^(\s*(@import|@font-face|@media|@keyframes|@tailwind|:root|html|body|\*|\.[\w-]|#[\w-])\s*[{(])/m.test(trimmed);
 }
 
+function injectPreviewNavBridge(code: string, filePath: string): string {
+  if (!/^\/(?:main|index)\.(?:tsx?|jsx?)$/.test(filePath)) return code;
+  if (code.includes('__initLovablePreviewNavBridge')) return code;
+
+  const importBlock = code.match(/^(?:import[^
+]*
+)+/);
+  if (importBlock) {
+    return `${importBlock[0]}\n${PREVIEW_NAV_BRIDGE}\n__initLovablePreviewNavBridge();\n\n${code.slice(importBlock[0].length)}`;
+  }
+
+  return `${PREVIEW_NAV_BRIDGE}\n__initLovablePreviewNavBridge();\n\n${code}`;
+}
+
 /**
  * Wrap raw CSS content in a valid React component so Sandpack can render it.
  * Uses JSON.stringify to safely embed CSS as a string constant (avoids template literal parsing issues).
