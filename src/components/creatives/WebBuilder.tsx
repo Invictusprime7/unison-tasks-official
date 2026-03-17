@@ -402,12 +402,13 @@ function safeFindElement(doc: Document, selector: string): Element | null {
 }
 
 /**
- * Build a context-aware prompt for dynamic page generation
- * Used when user clicks navigation links to generate linked pages on-the-fly
+ * Build a context-aware prompt for dynamic React page generation.
+ * Called when user clicks a redirect-worthy button and the target page
+ * doesn't exist in VFS yet. Output is a React/TSX component.
  */
 function buildDynamicPagePrompt(
   pageName: string,
-  pageContext: string,
+  _pageContext: string,
   navLabel: string,
   mainPageCode: string,
   options?: {
@@ -418,145 +419,139 @@ function buildDynamicPagePrompt(
     };
   }
 ): string {
-  // Extract brand/styling context from main page
+  // Extract Tailwind class patterns from main page for consistency
   const colorMatch = mainPageCode.match(/(?:bg-|text-|from-|to-)([a-z]+-\d+)/g);
   const colors = colorMatch ? [...new Set(colorMatch)].slice(0, 10).join(', ') : 'blue, purple, gray';
-  
-  // Page-specific prompts based on context
+
+  // Extract CSS variable usage
+  const cssVarMatch = mainPageCode.match(/hsl\(var\(--[\w-]+\)\)/g);
+  const cssVars = cssVarMatch ? [...new Set(cssVarMatch)].slice(0, 8).join(', ') : '';
+
   const pagePrompts: Record<string, string> = {
-    checkout: `Create a COMPLETE checkout page with:
-- Order summary section showing cart items with prices
+    checkout: `Create a checkout page component with:
+- Order summary section with cart items and prices
 - Shipping address form (name, email, address, city, state, zip)
-- Payment section with card input fields (card number, expiry, CVV)
+- Payment section with card input fields
 - Order total with subtotal, shipping, tax breakdown
-- "Complete Purchase" button with data-ut-intent="checkout.complete"
+- "Complete Purchase" button with onClick={() => alert('Order placed!')}
 - Trust badges and secure payment icons
-- Back to cart link`,
-    
-    cart: `Create a COMPLETE shopping cart page with:
+- Back to home link using Link from react-router-dom`,
+
+    cart: `Create a shopping cart page component with:
 - Cart items list with product images, names, quantities, prices
-- Quantity adjusters (+/- buttons) with data-no-intent
+- Quantity adjusters (+/- buttons)
 - Remove item buttons
 - Subtotal calculation
-- "Proceed to Checkout" button with data-ut-intent="checkout.start"
-- "Continue Shopping" link back to main page
-- Empty cart state message`,
-    
-    booking: `Create a COMPLETE booking/appointment page with:
-- Service selection dropdown or cards
-- Date picker calendar UI
+- "Proceed to Checkout" link to /checkout
+- "Continue Shopping" link back to /
+- Empty cart state`,
+
+    booking: `Create a booking/appointment page component with:
+- Service selection cards
+- Date picker calendar UI (use native date input)
 - Available time slots grid
 - Customer info form (name, email, phone)
 - Special requests textarea
-- "Confirm Booking" button with data-ut-intent="booking.create"
+- "Confirm Booking" button with form submit handler
 - Cancellation policy notice`,
-    
-    contact: `Create a COMPLETE contact page with:
-- Contact form (name, email, phone, subject, message)
-- Form validation styling
-- "Send Message" button with data-ut-intent="contact.submit"
-- Business contact info (address, phone, email, hours)
-- Embedded map placeholder
+
+    contact: `Create a contact page component with:
+- Contact form (name, email, phone, subject, message) with useState
+- Form validation and submit handler
+- Business contact info section (address, phone, email, hours)
+- Map placeholder
 - Social media links`,
-    
-    services: `Create a COMPLETE services page with:
+
+    services: `Create a services page component with:
 - Hero section with services overview
 - Individual service cards with icons, descriptions, pricing
-- "Book Now" buttons with data-ut-intent="booking.create"
-- Service comparison table (if applicable)
-- FAQ section about services
+- "Book Now" buttons linking to /booking
+- Service comparison or FAQ section
 - CTA to contact for custom quotes`,
-    
-    about: `Create a COMPLETE about page with:
+
+    about: `Create an about page component with:
 - Company story/mission section
 - Team member profiles with photos and bios
 - Company values or philosophy
 - Timeline or milestones
-- Awards/certifications
+- Awards/certifications section
 - CTA to contact or learn more`,
-    
-    products: `Create a COMPLETE products catalog page with:
-- Product grid with images, names, prices
-- Filter/sort controls (data-no-intent on these)
-- "Add to Cart" buttons with data-ut-intent="cart.add"
-- Product quick view modals
+
+    products: `Create a products catalog page component with:
+- Product grid with images, names, prices using .map()
+- Filter/sort controls using useState
+- "Add to Cart" buttons
+- Product quick view capability
 - Pagination or load more
 - Featured products section`,
-    
-    login: `Create a COMPLETE login page with:
-- Login form (email, password)
-- "Sign In" button with data-ut-intent="auth.signin"
+
+    login: `Create a login page component with:
+- Login form (email, password) with useState
+- "Sign In" button with form submit handler
 - "Forgot Password" link
-- "Create Account" link
+- "Create Account" link to /signup
 - Social login buttons (Google, Apple)
 - Remember me checkbox`,
-    
-    signup: `Create a COMPLETE registration page with:
-- Signup form (name, email, password, confirm password)
+
+    signup: `Create a registration page component with:
+- Signup form (name, email, password, confirm password) with useState
 - Password strength indicator
 - Terms & conditions checkbox
-- "Create Account" button with data-ut-intent="auth.signup"
-- Already have account? Sign in link
+- "Create Account" button with form submit handler
+- Already have account? Sign in link to /login
 - Social signup options`,
-    
-    pricing: `Create a COMPLETE pricing page with:
-- 3 pricing tiers (Basic, Pro, Enterprise)
+
+    pricing: `Create a pricing page component with:
+- 3 pricing tiers (Basic, Pro, Enterprise) as a data array
 - Feature comparison table
-- Toggle for monthly/yearly pricing
-- "Get Started" buttons with appropriate intents
+- Toggle for monthly/yearly pricing using useState
+- "Get Started" buttons
 - FAQ about billing
 - Money-back guarantee notice`,
-    
-    gallery: `Create a COMPLETE gallery/portfolio page with:
+
+    gallery: `Create a gallery/portfolio page component with:
 - Masonry or grid image gallery
-- Category filter tabs (data-no-intent)
-- Lightbox-style image viewing
+- Category filter tabs using useState
+- Lightbox-style image viewing with useState
 - Project descriptions
 - Client testimonials
 - CTA to inquire about projects`,
   };
 
-  const specificPrompt = pagePrompts[pageName.toLowerCase()] || 
-    `Create a complete ${navLabel || pageName} page with relevant content, forms, and call-to-action buttons properly wired with data-ut-intent attributes.`;
+  const specificPrompt = pagePrompts[pageName.toLowerCase()] ||
+    `Create a complete ${navLabel || pageName} page component with relevant content, interactive elements using useState, and call-to-action buttons.`;
 
-  return `🚀 CREATE A DYNAMIC "${navLabel || pageName.toUpperCase()}" PAGE
+  return `🚀 CREATE A REACT PAGE COMPONENT: "${navLabel || pageName.toUpperCase()}"
 
-This page is part of a multi-page website. The user clicked "${navLabel}" from the main page.
+This page is part of a multi-page React website using react-router-dom.
+The user clicked "${navLabel}" from the main page.
 
 ${specificPrompt}
 
 📋 CRITICAL REQUIREMENTS:
 
-1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html>, include Tailwind CSS
-2. **MATCH MAIN PAGE STYLING** - Use similar colors: ${colors}
-3. **BACK BUTTON** - MUST include a prominent "← Back to Home" button/link at the top of the page with data-ut-intent="nav.goto" data-ut-path="/index.html". This is MANDATORY.
-4. **NAVIGATION** - Include header with nav links back to main page and other pages
-5. **REAL CONTENT** - Write actual text, not placeholders
-6. **WORKING INTENTS** - Wire all CTAs with data-ut-intent, data-ut-cta, data-intent attributes
-7. **RESPONSIVE** - Mobile-first with md: and lg: breakpoints
-8. **FOOTER** - Match the main page footer style
-9. **NO NEW TABS** - NEVER use target="_blank" or window.open. All links must navigate in-place.
+1. **REACT COMPONENT** — Export a default function component. Use React hooks (useState, useEffect) for interactivity.
+2. **IMPORTS** — Only import from: 'react', 'react-router-dom' (Link, useNavigate). NO external UI libraries.
+3. **TAILWIND CSS** — Use Tailwind utility classes for all styling. Use semantic CSS variables: hsl(var(--background)), hsl(var(--foreground)), hsl(var(--primary)), hsl(var(--primary-foreground)), hsl(var(--muted)), hsl(var(--muted-foreground)), hsl(var(--border)), hsl(var(--card)), hsl(var(--accent)).
+4. **MATCH MAIN PAGE STYLING** — Use similar Tailwind classes: ${colors}${cssVars ? `\n   CSS vars found: ${cssVars}` : ''}
+5. **NAVIGATION** — Include a header with <Link to="/"> for home and links to other pages.
+6. **BACK BUTTON** — Include a prominent <Link to="/">← Back to Home</Link> in the header.
+7. **REAL CONTENT** — Write actual text, not "Lorem ipsum" placeholders.
+8. **RESPONSIVE** — Mobile-first with md: and lg: breakpoints.
+9. **FOOTER** — Match the main page footer style.
+10. **NO HTML DOCUMENTS** — Do NOT output <!DOCTYPE html> or <html> tags. This is a React component.
 
-${options?.businessContext ? `📊 BUSINESS CONTEXT:
-${options.businessContext}` : ''}
+${options?.businessContext ? `📊 BUSINESS CONTEXT:\n${options.businessContext}` : ''}
 
 ${options?.designProfile?.dominantStyle ? `🎨 USER DESIGN PREFERENCES:
 - Dominant Style: ${options.designProfile.dominantStyle}
 - Industry: ${options.designProfile.industryHints?.join(', ') || 'general'}
-Match the user's established design preferences while being unique.` : ''}
-
-🔌 INTENT WIRING:
-- Navigation: data-ut-intent="nav.goto" data-ut-path="/index.html"
-- Forms: data-ut-intent on submit buttons (contact.submit, booking.create, etc.)
-- E-commerce: cart.add, cart.view, checkout.start, checkout.complete
-- Auth: auth.signin, auth.signup, auth.signout
-- Add data-no-intent to UI controls that shouldn't trigger actions (filters, tabs, quantity adjusters)
-- IMPORTANT: All navigation MUST use data-ut-intent="nav.goto" with data-ut-path. NEVER use target="_blank".
+Match the user's established design preferences.` : ''}
 
 CONTEXT FROM MAIN PAGE (extract styling patterns):
 ${mainPageCode.substring(0, 2000)}
 
-OUTPUT: Complete HTML page only, no markdown, no explanations.`;
+OUTPUT: A single React/TSX component file. No markdown fences, no explanations. Just the code starting with import statements.`;
 }
 
 /**
