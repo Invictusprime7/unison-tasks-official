@@ -33,7 +33,7 @@ export function extractCleanCode(input: string): string {
       (a[1]?.length ?? 0) >= (b[1]?.length ?? 0) ? a : b
     );
     const code = best[1]?.trim();
-    if (code && code.length > 20) return code;
+    if (code && code.length > 20) return stripMarkdownArtifacts(code);
   }
 
   // 2. If content contains a full HTML document, strip everything before it
