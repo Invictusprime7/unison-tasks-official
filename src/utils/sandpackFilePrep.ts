@@ -412,6 +412,15 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
   if (!hasMain) sandpackFiles['/main.tsx'] = DEFAULT_MAIN;
   sandpackFiles['/hooks-shim.ts'] = HOOKS_SHIM;
 
+  // Ensure template.css exists if any file imports it
+  const anyImportsTemplateCss = Object.values(sandpackFiles).some(c =>
+    typeof c === 'string' && /import\s+['"]\.\/template\.css['"]/.test(c)
+  );
+  if (anyImportsTemplateCss && !sandpackFiles['/template.css']) {
+    // Provide an empty CSS file so Sandpack doesn't crash
+    sandpackFiles['/template.css'] = '/* template styles */\n';
+  }
+
   // Ensure index.html exists (with click interceptor for nav intents)
   if (!sandpackFiles['/index.html']) {
     sandpackFiles['/index.html'] = `<!DOCTYPE html>
