@@ -465,6 +465,7 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
       .replace(/import\s+['"]\.\/styles\//g, "import './");
 
     processedContent = processCode(processedContent, normalizedPath);
+    processedContent = injectPreviewNavBridge(processedContent, normalizedPath);
     sandpackFiles[normalizedPath] = processedContent;
 
     if (normalizedPath === '/App.tsx' || normalizedPath === '/App.jsx') hasApp = true;
