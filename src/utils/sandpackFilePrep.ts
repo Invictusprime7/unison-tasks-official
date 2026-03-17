@@ -64,43 +64,59 @@ body {
 }
 `;
 
+const PREVIEW_NAV_BRIDGE = `function __initLovablePreviewNavBridge() {
+  const bridgeWindow = window as Window & { __lovablePreviewNavBridgeInstalled?: boolean };
+  if (bridgeWindow.__lovablePreviewNavBridgeInstalled) return;
+  bridgeWindow.__lovablePreviewNavBridgeInstalled = true;
+
+  const normalizePath = (rawPath: string) => rawPath.replace(/^\//, '').replace(/\.html(?:[?#].*)?$/, '').replace(/[?#].*$/, '') || 'index';
+
+  document.addEventListener('click', function (event) {
+    const target = event.target as HTMLElement | null;
+    const el = target?.closest?.('a[href], [data-ut-intent="nav.goto"], [data-ut-path]') as HTMLElement | null;
+    if (!el) return;
+
+    const path = el.getAttribute('data-ut-path') || el.getAttribute('href') || '';
+    if (!path || path === '#' || path.startsWith('http') || path.startsWith('mailto:') || path.startsWith('tel:') || path.startsWith('javascript:')) return;
+
+    if (path.startsWith('#')) {
+      const section = document.querySelector(path);
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+        event.preventDefault();
+      }
+      return;
+    }
+
+    const pageName = normalizePath(path);
+    if (pageName === 'index') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    window.parent.postMessage({
+      type: 'NAV_PAGE_GENERATE',
+      pageName,
+      navLabel: el.textContent ? el.textContent.trim().substring(0, 40) : pageName,
+      requestId: 'click-' + Date.now(),
+    }, '*');
+  }, true);
+
+  window.addEventListener('message', function (event) {
+    if (event.data?.type === 'NAV_ROUTE' && event.data.route) {
+      window.location.hash = event.data.route;
+    }
+  });
+}
+`;
+
 const DEFAULT_MAIN = `import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-// Nav click interceptor — bridges link clicks to parent WebBuilder for auto page generation
-(function initNavInterceptor() {
-  document.addEventListener('click', function(e) {
-    var el = e.target.closest('a[href], [data-ut-intent="nav.goto"], [data-ut-path]');
-    if (!el) return;
-    var path = el.getAttribute('data-ut-path') || el.getAttribute('href') || '';
-    if (!path || path === '#' || path.startsWith('http') || path.startsWith('mailto:') || path.startsWith('tel:') || path.startsWith('javascript:')) return;
-    // Allow hash anchors for in-page scrolling
-    if (path.startsWith('#')) {
-      var target = document.querySelector(path);
-      if (target) { target.scrollIntoView({ behavior: 'smooth' }); e.preventDefault(); }
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    var pageName = path.replace(/^\\//, '').replace(/\\.html$/, '') || 'index';
-    if (pageName === 'index') return;
-    window.parent.postMessage({
-      type: 'NAV_PAGE_GENERATE',
-      pageName: pageName,
-      navLabel: el.textContent ? el.textContent.trim().substring(0, 40) : pageName,
-      requestId: 'click-' + Date.now()
-    }, '*');
-  }, true);
-
-  // Listen for NAV_ROUTE from parent to update hash router
-  window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'NAV_ROUTE' && e.data.route) {
-      window.location.hash = e.data.route;
-    }
-  });
-})();
+${PREVIEW_NAV_BRIDGE}
+__initLovablePreviewNavBridge();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
