@@ -456,7 +456,7 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
     sandpackFiles['/template.css'] = '/* template styles */\n';
   }
 
-  // Ensure index.html exists (with click interceptor for nav intents)
+  // Ensure index.html exists (minimal — click interceptor is now in main.tsx)
   if (!sandpackFiles['/index.html']) {
     sandpackFiles['/index.html'] = `<!DOCTYPE html>
 <html lang="en">
@@ -468,32 +468,6 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
 </head>
 <body>
   <div id="root"></div>
-  <script>
-    // Intercept nav clicks and bridge to parent WebBuilder
-    document.addEventListener('click', function(e) {
-      var el = e.target.closest('a[href], [data-ut-intent="nav.goto"], [data-ut-path]');
-      if (!el) return;
-      var path = el.getAttribute('data-ut-path') || el.getAttribute('href') || '';
-      if (!path || path === '#' || path.startsWith('http') || path.startsWith('mailto:') || path.startsWith('tel:')) return;
-      e.preventDefault();
-      e.stopPropagation();
-      var pageName = path.replace(/^\\//, '').replace(/\\.html$/, '') || 'index';
-      if (pageName === 'index' || pageName === '#') return;
-      var requestId = 'click-' + Date.now();
-      window.parent.postMessage({
-        type: 'NAV_PAGE_GENERATE',
-        pageName: pageName,
-        navLabel: el.textContent ? el.textContent.trim().substring(0, 40) : pageName,
-        requestId: requestId
-      }, '*');
-    }, true);
-    // Listen for NAV_ROUTE from parent to update hash router
-    window.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'NAV_ROUTE' && e.data.route) {
-        window.location.hash = e.data.route;
-      }
-    });
-  </script>
 </body>
 </html>`;
   }
