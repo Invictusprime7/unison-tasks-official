@@ -3849,42 +3849,59 @@ ${html}
     setIsPanning(false);
   };
 
-  // Scroll navigation functions
-  const scrollToTop = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+  // Scroll navigation functions — post message to iframe or scroll container
+  const postScrollToIframe = useCallback((command: 'top' | 'bottom' | 'up' | 'down') => {
+    const iframe = useReactPreview
+      ? livePreviewRef.current?.getIframe?.()
+      : simplePreviewRef.current?.getIframe();
+    if (iframe?.contentWindow) {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (doc) {
+          const scrollable = doc.scrollingElement || doc.documentElement;
+          switch (command) {
+            case 'top':
+              scrollable.scrollTo({ top: 0, behavior: 'smooth' });
+              break;
+            case 'bottom':
+              scrollable.scrollTo({ top: scrollable.scrollHeight, behavior: 'smooth' });
+              break;
+            case 'up':
+              scrollable.scrollBy({ top: -300, behavior: 'smooth' });
+              break;
+            case 'down':
+              scrollable.scrollBy({ top: 300, behavior: 'smooth' });
+              break;
+          }
+          return;
+        }
+      } catch {
+        // Cross-origin — fall through to container scroll
+      }
     }
-  };
+    // Fallback: scroll the outer container
+    if (scrollContainerRef.current) {
+      switch (command) {
+        case 'top':
+          scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+          break;
+        case 'bottom':
+          scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+          break;
+        case 'up':
+          scrollContainerRef.current.scrollBy({ top: -300, behavior: 'smooth' });
+          break;
+        case 'down':
+          scrollContainerRef.current.scrollBy({ top: 300, behavior: 'smooth' });
+          break;
+      }
+    }
+  }, [useReactPreview]);
 
-  const scrollToBottom = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: scrollContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  const scrollUp = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        top: -300,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  const scrollDown = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        top: 300,
-        behavior: 'smooth'
-      });
-    }
-  };
+  const scrollToTop = () => postScrollToIframe('top');
+  const scrollToBottom = () => postScrollToIframe('bottom');
+  const scrollUp = () => postScrollToIframe('up');
+  const scrollDown = () => postScrollToIframe('down');
 
   // Handle touch gestures for mobile
   useEffect(() => {
