@@ -391,6 +391,8 @@ export function prepareSandpackFiles(files: Record<string, string>): Record<stri
     // SAFETY NET: Ensure React imports are present for files using hooks
     if (/\.(tsx?|jsx?)$/.test(normalizedPath) && !isRawCss(processedContent)) {
       processedContent = ensureReactImports(processedContent);
+      // Fix broken SVG elements (dc.path, svg.circle, etc.)
+      processedContent = sanitizeSvgElements(processedContent);
     }
 
     processedContent = processedContent
