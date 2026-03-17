@@ -3279,15 +3279,16 @@ ${html}
     }
   }, [redoCode, canRedoCanvas, redoCanvas]);
 
-  // Manual refresh handler
+  // Manual refresh handler — works for both VFSPreview (React/Sandpack) and SimplePreview (srcdoc)
   const handleRefreshPreview = useCallback(() => {
-    if (simplePreviewRef.current) {
-      setIsRefreshing(true);
+    setIsRefreshing(true);
+    if (useReactPreview && livePreviewRef.current) {
+      livePreviewRef.current.refresh();
+    } else if (simplePreviewRef.current) {
       simplePreviewRef.current.refresh();
-      // Clear loading state after iframe has time to load
-      setTimeout(() => setIsRefreshing(false), 600);
     }
-  }, []);
+    setTimeout(() => setIsRefreshing(false), 600);
+  }, [useReactPreview]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
