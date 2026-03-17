@@ -5,7 +5,7 @@
  * This module flattens VFS paths, processes imports, and ensures essential files exist.
  */
 
-import { ensureReactImports } from '@/utils/aiCodeCleaner';
+import { ensureReactImports, sanitizeSvgElements } from '@/utils/aiCodeCleaner';
 
 const ALLOWED_IMPORTS = new Set([
   'react',
