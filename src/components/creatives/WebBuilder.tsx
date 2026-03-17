@@ -402,12 +402,13 @@ function safeFindElement(doc: Document, selector: string): Element | null {
 }
 
 /**
- * Build a context-aware prompt for dynamic page generation
- * Used when user clicks navigation links to generate linked pages on-the-fly
+ * Build a context-aware prompt for dynamic React page generation.
+ * Called when user clicks a redirect-worthy button and the target page
+ * doesn't exist in VFS yet. Output is a React/TSX component.
  */
 function buildDynamicPagePrompt(
   pageName: string,
-  pageContext: string,
+  _pageContext: string,
   navLabel: string,
   mainPageCode: string,
   options?: {
@@ -418,145 +419,139 @@ function buildDynamicPagePrompt(
     };
   }
 ): string {
-  // Extract brand/styling context from main page
+  // Extract Tailwind class patterns from main page for consistency
   const colorMatch = mainPageCode.match(/(?:bg-|text-|from-|to-)([a-z]+-\d+)/g);
   const colors = colorMatch ? [...new Set(colorMatch)].slice(0, 10).join(', ') : 'blue, purple, gray';
-  
-  // Page-specific prompts based on context
+
+  // Extract CSS variable usage
+  const cssVarMatch = mainPageCode.match(/hsl\(var\(--[\w-]+\)\)/g);
+  const cssVars = cssVarMatch ? [...new Set(cssVarMatch)].slice(0, 8).join(', ') : '';
+
   const pagePrompts: Record<string, string> = {
-    checkout: `Create a COMPLETE checkout page with:
-- Order summary section showing cart items with prices
+    checkout: `Create a checkout page component with:
+- Order summary section with cart items and prices
 - Shipping address form (name, email, address, city, state, zip)
-- Payment section with card input fields (card number, expiry, CVV)
+- Payment section with card input fields
 - Order total with subtotal, shipping, tax breakdown
-- "Complete Purchase" button with data-ut-intent="checkout.complete"
+- "Complete Purchase" button with onClick={() => alert('Order placed!')}
 - Trust badges and secure payment icons
-- Back to cart link`,
-    
-    cart: `Create a COMPLETE shopping cart page with:
+- Back to home link using Link from react-router-dom`,
+
+    cart: `Create a shopping cart page component with:
 - Cart items list with product images, names, quantities, prices
-- Quantity adjusters (+/- buttons) with data-no-intent
+- Quantity adjusters (+/- buttons)
 - Remove item buttons
 - Subtotal calculation
-- "Proceed to Checkout" button with data-ut-intent="checkout.start"
-- "Continue Shopping" link back to main page
-- Empty cart state message`,
-    
-    booking: `Create a COMPLETE booking/appointment page with:
-- Service selection dropdown or cards
-- Date picker calendar UI
+- "Proceed to Checkout" link to /checkout
+- "Continue Shopping" link back to /
+- Empty cart state`,
+
+    booking: `Create a booking/appointment page component with:
+- Service selection cards
+- Date picker calendar UI (use native date input)
 - Available time slots grid
 - Customer info form (name, email, phone)
 - Special requests textarea
-- "Confirm Booking" button with data-ut-intent="booking.create"
+- "Confirm Booking" button with form submit handler
 - Cancellation policy notice`,
-    
-    contact: `Create a COMPLETE contact page with:
-- Contact form (name, email, phone, subject, message)
-- Form validation styling
-- "Send Message" button with data-ut-intent="contact.submit"
-- Business contact info (address, phone, email, hours)
-- Embedded map placeholder
+
+    contact: `Create a contact page component with:
+- Contact form (name, email, phone, subject, message) with useState
+- Form validation and submit handler
+- Business contact info section (address, phone, email, hours)
+- Map placeholder
 - Social media links`,
-    
-    services: `Create a COMPLETE services page with:
+
+    services: `Create a services page component with:
 - Hero section with services overview
 - Individual service cards with icons, descriptions, pricing
-- "Book Now" buttons with data-ut-intent="booking.create"
-- Service comparison table (if applicable)
-- FAQ section about services
+- "Book Now" buttons linking to /booking
+- Service comparison or FAQ section
 - CTA to contact for custom quotes`,
-    
-    about: `Create a COMPLETE about page with:
+
+    about: `Create an about page component with:
 - Company story/mission section
 - Team member profiles with photos and bios
 - Company values or philosophy
 - Timeline or milestones
-- Awards/certifications
+- Awards/certifications section
 - CTA to contact or learn more`,
-    
-    products: `Create a COMPLETE products catalog page with:
-- Product grid with images, names, prices
-- Filter/sort controls (data-no-intent on these)
-- "Add to Cart" buttons with data-ut-intent="cart.add"
-- Product quick view modals
+
+    products: `Create a products catalog page component with:
+- Product grid with images, names, prices using .map()
+- Filter/sort controls using useState
+- "Add to Cart" buttons
+- Product quick view capability
 - Pagination or load more
 - Featured products section`,
-    
-    login: `Create a COMPLETE login page with:
-- Login form (email, password)
-- "Sign In" button with data-ut-intent="auth.signin"
+
+    login: `Create a login page component with:
+- Login form (email, password) with useState
+- "Sign In" button with form submit handler
 - "Forgot Password" link
-- "Create Account" link
+- "Create Account" link to /signup
 - Social login buttons (Google, Apple)
 - Remember me checkbox`,
-    
-    signup: `Create a COMPLETE registration page with:
-- Signup form (name, email, password, confirm password)
+
+    signup: `Create a registration page component with:
+- Signup form (name, email, password, confirm password) with useState
 - Password strength indicator
 - Terms & conditions checkbox
-- "Create Account" button with data-ut-intent="auth.signup"
-- Already have account? Sign in link
+- "Create Account" button with form submit handler
+- Already have account? Sign in link to /login
 - Social signup options`,
-    
-    pricing: `Create a COMPLETE pricing page with:
-- 3 pricing tiers (Basic, Pro, Enterprise)
+
+    pricing: `Create a pricing page component with:
+- 3 pricing tiers (Basic, Pro, Enterprise) as a data array
 - Feature comparison table
-- Toggle for monthly/yearly pricing
-- "Get Started" buttons with appropriate intents
+- Toggle for monthly/yearly pricing using useState
+- "Get Started" buttons
 - FAQ about billing
 - Money-back guarantee notice`,
-    
-    gallery: `Create a COMPLETE gallery/portfolio page with:
+
+    gallery: `Create a gallery/portfolio page component with:
 - Masonry or grid image gallery
-- Category filter tabs (data-no-intent)
-- Lightbox-style image viewing
+- Category filter tabs using useState
+- Lightbox-style image viewing with useState
 - Project descriptions
 - Client testimonials
 - CTA to inquire about projects`,
   };
 
-  const specificPrompt = pagePrompts[pageName.toLowerCase()] || 
-    `Create a complete ${navLabel || pageName} page with relevant content, forms, and call-to-action buttons properly wired with data-ut-intent attributes.`;
+  const specificPrompt = pagePrompts[pageName.toLowerCase()] ||
+    `Create a complete ${navLabel || pageName} page component with relevant content, interactive elements using useState, and call-to-action buttons.`;
 
-  return `🚀 CREATE A DYNAMIC "${navLabel || pageName.toUpperCase()}" PAGE
+  return `🚀 CREATE A REACT PAGE COMPONENT: "${navLabel || pageName.toUpperCase()}"
 
-This page is part of a multi-page website. The user clicked "${navLabel}" from the main page.
+This page is part of a multi-page React website using react-router-dom.
+The user clicked "${navLabel}" from the main page.
 
 ${specificPrompt}
 
 📋 CRITICAL REQUIREMENTS:
 
-1. **COMPLETE HTML DOCUMENT** - Start with <!DOCTYPE html>, include Tailwind CSS
-2. **MATCH MAIN PAGE STYLING** - Use similar colors: ${colors}
-3. **BACK BUTTON** - MUST include a prominent "← Back to Home" button/link at the top of the page with data-ut-intent="nav.goto" data-ut-path="/index.html". This is MANDATORY.
-4. **NAVIGATION** - Include header with nav links back to main page and other pages
-5. **REAL CONTENT** - Write actual text, not placeholders
-6. **WORKING INTENTS** - Wire all CTAs with data-ut-intent, data-ut-cta, data-intent attributes
-7. **RESPONSIVE** - Mobile-first with md: and lg: breakpoints
-8. **FOOTER** - Match the main page footer style
-9. **NO NEW TABS** - NEVER use target="_blank" or window.open. All links must navigate in-place.
+1. **REACT COMPONENT** — Export a default function component. Use React hooks (useState, useEffect) for interactivity.
+2. **IMPORTS** — Only import from: 'react', 'react-router-dom' (Link, useNavigate). NO external UI libraries.
+3. **TAILWIND CSS** — Use Tailwind utility classes for all styling. Use semantic CSS variables: hsl(var(--background)), hsl(var(--foreground)), hsl(var(--primary)), hsl(var(--primary-foreground)), hsl(var(--muted)), hsl(var(--muted-foreground)), hsl(var(--border)), hsl(var(--card)), hsl(var(--accent)).
+4. **MATCH MAIN PAGE STYLING** — Use similar Tailwind classes: ${colors}${cssVars ? `\n   CSS vars found: ${cssVars}` : ''}
+5. **NAVIGATION** — Include a header with <Link to="/"> for home and links to other pages.
+6. **BACK BUTTON** — Include a prominent <Link to="/">← Back to Home</Link> in the header.
+7. **REAL CONTENT** — Write actual text, not "Lorem ipsum" placeholders.
+8. **RESPONSIVE** — Mobile-first with md: and lg: breakpoints.
+9. **FOOTER** — Match the main page footer style.
+10. **NO HTML DOCUMENTS** — Do NOT output <!DOCTYPE html> or <html> tags. This is a React component.
 
-${options?.businessContext ? `📊 BUSINESS CONTEXT:
-${options.businessContext}` : ''}
+${options?.businessContext ? `📊 BUSINESS CONTEXT:\n${options.businessContext}` : ''}
 
 ${options?.designProfile?.dominantStyle ? `🎨 USER DESIGN PREFERENCES:
 - Dominant Style: ${options.designProfile.dominantStyle}
 - Industry: ${options.designProfile.industryHints?.join(', ') || 'general'}
-Match the user's established design preferences while being unique.` : ''}
-
-🔌 INTENT WIRING:
-- Navigation: data-ut-intent="nav.goto" data-ut-path="/index.html"
-- Forms: data-ut-intent on submit buttons (contact.submit, booking.create, etc.)
-- E-commerce: cart.add, cart.view, checkout.start, checkout.complete
-- Auth: auth.signin, auth.signup, auth.signout
-- Add data-no-intent to UI controls that shouldn't trigger actions (filters, tabs, quantity adjusters)
-- IMPORTANT: All navigation MUST use data-ut-intent="nav.goto" with data-ut-path. NEVER use target="_blank".
+Match the user's established design preferences.` : ''}
 
 CONTEXT FROM MAIN PAGE (extract styling patterns):
 ${mainPageCode.substring(0, 2000)}
 
-OUTPUT: Complete HTML page only, no markdown, no explanations.`;
+OUTPUT: A single React/TSX component file. No markdown fences, no explanations. Just the code starting with import statements.`;
 }
 
 /**
@@ -1855,19 +1850,23 @@ export default function ${componentName}Page() {
   // AI context (page structure + backend state + business data + redirect pages)
   const pageStructureContext = useMemo(() => buildPageStructureContext(previewCode), [previewCode]);
   
-  // Build redirect page context from VFS for in-builder AI awareness
+  // Build redirect page context from VFS for in-builder AI awareness (React pages)
   const redirectPageContext = useMemo(() => {
     const vfsFiles = virtualFS.getSandpackFiles();
-    const htmlPages = Object.keys(vfsFiles).filter(p => p.endsWith('.html') && p !== '/index.html');
-    if (htmlPages.length === 0) return '';
+    const pageFiles = Object.keys(vfsFiles).filter(p => 
+      p.match(/\/src\/pages\/\w+\.tsx$/) && p !== '/src/App.tsx'
+    );
+    if (pageFiles.length === 0) return '';
     
-    const lines = ['\n=== REDIRECT PAGES IN VFS ==='];
-    htmlPages.forEach(p => {
+    const lines = ['\n=== REACT PAGES IN VFS ==='];
+    pageFiles.forEach(p => {
       const content = vfsFiles[p] || '';
-      const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
-      lines.push(`- ${p} (${titleMatch?.[1] || 'Untitled'}, ${content.length} chars)`);
+      const nameMatch = p.match(/\/(\w+)\.tsx$/);
+      const componentName = nameMatch?.[1] || 'Unknown';
+      const exportMatch = content.match(/export default function (\w+)/);
+      lines.push(`- ${p} (${exportMatch?.[1] || componentName}, ${content.length} chars)`);
     });
-    lines.push('You can edit any page. Apply nav/footer/brand changes across ALL pages.');
+    lines.push('All pages are React components. Apply nav/footer/brand changes across ALL pages.');
     return lines.join('\n');
   }, [virtualFS.nodes]);
   
@@ -2222,23 +2221,22 @@ export default function ${componentName}Page() {
           return; // Anchor links already work in the preview
         }
         
-        // Normalize path
-        const htmlPath = path.endsWith('.html') ? path : `${path.replace(/\/$/, '')}.html`;
-        const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
+        // Normalize path to React page file
+        const pageName = path.replace(/^\//, '').replace(/\.html$/, '').replace(/[^a-zA-Z0-9-]/g, '-') || 'page';
+        const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+        const vfsPath = `/src/pages/${componentName}.tsx`;
         const vfsFiles = virtualFS.getSandpackFiles();
         const existingPage = vfsFiles[vfsPath];
         
         if (existingPage) {
-          // Page exists in VFS - switch to it
+          // Page exists in VFS - open in editor
           setActivePagePath(vfsPath);
           lastSyncedCodeRef.current = existingPage;
-          setPreviewCode(existingPage);
           setEditorCode(existingPage);
-          toast(`Navigated to ${label || path}`, { description: 'Page loaded from VFS' });
+          toast(`Navigated to ${label || path}`, { description: 'React page loaded from VFS' });
         } else {
           // Page doesn't exist - trigger AI generation
-          const pageName = path.replace(/^\//, '').replace(/\.html$/, '').replace(/[^a-zA-Z0-9-]/g, '-') || 'page';
-          console.log('[WebBuilder] Page not in VFS, generating:', pageName, label);
+          console.log('[WebBuilder] React page not in VFS, generating:', pageName, label);
           triggerPageGenRef.current(pageName, label || pageName, null, undefined);
         }
         return;
@@ -2313,32 +2311,33 @@ export default function ${componentName}Page() {
         }
         
         if (path) {
-          // Page navigation within multi-page VFS
-          const htmlPath = path.endsWith('.html') ? path : `${path}.html`;
-          const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
+          // Page navigation within multi-page React VFS
+          const pageName = path.replace(/^\//, '').replace(/\.html$/, '').replace(/[^a-zA-Z0-9-]/g, '-') || 'page';
+          const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+          const vfsPath = `/src/pages/${componentName}.tsx`;
           const vfsFiles = virtualFS.getSandpackFiles();
           const existingPage = vfsFiles[vfsPath];
           
           if (existingPage) {
-            // Page exists in VFS — render in-place via iframe message
-            if (source && requestId) {
-              source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: existingPage }, '*');
-            }
+            // Page exists in VFS — navigate via React Router
             setActivePagePath(vfsPath);
+            if (source && requestId) {
+              source.postMessage({ type: 'NAV_ROUTE', requestId, route: `/${pageName}` }, '*');
+            }
             toast(`Navigated to ${buttonLabel || path}`);
             sendResultToIframe({ success: true });
           } else {
             // Page doesn't exist in VFS → generate it with AI
-            console.log('[WebBuilder] Page not in VFS, generating:', path, buttonLabel);
-            const pageName = classification.suggestedPageType || path.replace(/^\//, '').replace(/\.html$/, '') || 'details';
-            triggerPageGenRef.current(pageName, buttonLabel || pageName, source, requestId);
+            console.log('[WebBuilder] React page not in VFS, generating:', pageName, buttonLabel);
+            const targetName = classification.suggestedPageType || pageName || 'details';
+            triggerPageGenRef.current(targetName, buttonLabel || targetName, source, requestId);
           }
         }
         return;
       }
 
       if (intent === 'nav.external') {
-        // Treat external links as in-page navigation — generate a page for it
+        // Treat external links as in-page navigation — generate a React page for it
         const url = (payload as any)?.url || (payload as any)?.path || '';
         const pageName = url.replace(/^https?:\/\/[^/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
         const label = buttonLabel || url || 'External Page';
@@ -2363,17 +2362,18 @@ export default function ${componentName}Page() {
       // Check for redirect-worthy intents that aren't nav.goto/button.click
       if (classification.category === 'redirect' && !['booking.create', 'contact.submit', 'newsletter.subscribe', 'quote.request', 'lead.capture'].includes(intent)) {
         const pageName = classification.suggestedPageType || 'details';
-        const vfsPath = `/${pageName}.html`;
+        const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+        const vfsPath = `/src/pages/${componentName}.tsx`;
         const vfsFilesForCheck = virtualFS.getSandpackFiles();
         const existingPage = vfsFilesForCheck[vfsPath];
         if (!existingPage) {
-          console.log('[WebBuilder] Redirect-worthy intent, generating page:', pageName, buttonLabel);
+          console.log('[WebBuilder] Redirect-worthy intent, generating React page:', pageName, buttonLabel);
           triggerPageGenRef.current(pageName, buttonLabel, source, requestId);
           return;
         }
-        // Page exists in VFS, render in-place
+        // Page exists in VFS, navigate via React Router
         if (source && requestId) {
-          source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: existingPage }, '*');
+          source.postMessage({ type: 'NAV_ROUTE', requestId, route: `/${pageName}` }, '*');
         }
         setActivePagePath(vfsPath);
         toast(`Navigated to ${buttonLabel || pageName}`);
@@ -2557,7 +2557,7 @@ export default function ${componentName}Page() {
   const [currentNavPage, setCurrentNavPage] = useState<string | null>(null);
 
   /**
-   * Trigger AI page generation with full context injection.
+   * Trigger AI page generation with full context injection (React/TSX only).
    * Called by the label classifier when a redirect-worthy button is clicked
    * and the target page doesn't exist in VFS.
    */
@@ -2567,22 +2567,24 @@ export default function ${componentName}Page() {
     source: Window | null,
     requestId?: string,
   ) => {
-    // Check VFS cache first (getSandpackFiles returns path-keyed object)
-    const vfsPath = `/${pageName}.html`;
+    const componentName = pageName
+      .replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase())
+      .replace(/^\w/, c => c.toUpperCase());
+    const vfsPath = `/src/pages/${componentName}.tsx`;
     const vfsFiles = getSandpackFiles();
+
+    // Check VFS cache first
     const existingContent = vfsFiles[vfsPath] || generatedPages[pageName];
     if (existingContent) {
-      const content = typeof existingContent === 'string' ? existingContent : (existingContent as any).content;
-      if (source && requestId) {
-        // In-place rendering via iframe message
-        source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: content }, '*');
-      } else {
-        // Fallback: update preview code (re-creates iframe but ensures page shows)
-        lastSyncedCodeRef.current = content;
-        setPreviewCode(content);
-        setEditorCode(content);
-      }
+      // Page exists — navigate via React Router
       setActivePagePath(vfsPath);
+      const content = typeof existingContent === 'string' ? existingContent : (existingContent as any).content;
+      lastSyncedCodeRef.current = content;
+      setEditorCode(content);
+      // Tell preview to navigate via hash router
+      if (source && requestId) {
+        source.postMessage({ type: 'NAV_ROUTE', requestId, route: `/${pageName}` }, '*');
+      }
       toast(`Navigated to ${navLabel || pageName}`);
       return;
     }
@@ -2605,13 +2607,10 @@ export default function ${componentName}Page() {
           mode: "template-react",
           templateAction: "full-control",
           editMode: false,
-          // navPageGen=true: skip chain-of-thought, cap output tokens, reduce per-model timeouts
           navPageGen: true,
-          // Industry context for research-augmented page generation
           systemType: activeSystemType ?? undefined,
           navPageName: pageName,
           navLabel: navLabel,
-          // Pass user design profile for personalized page generation
           userDesignProfile: userDesignProfile ? {
             projectCount: userDesignProfile.projectCount,
             dominantStyle: userDesignProfile.dominantStyle,
@@ -2624,8 +2623,10 @@ export default function ${componentName}Page() {
 
       const content = data?.content || "";
       
-      // Handle JSON multi-file output from template-react mode
+      // Extract React component code from AI response
       let pageCode = '';
+      
+      // Handle JSON multi-file output
       const jsonFenceMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$/i);
       const jsonCandidate = jsonFenceMatch ? jsonFenceMatch[1].trim() : content.trim();
       
@@ -2633,11 +2634,9 @@ export default function ${componentName}Page() {
         try {
           const parsed = JSON.parse(jsonCandidate);
           if (parsed.files && typeof parsed.files === 'object') {
-            // Import all files to VFS
             vfsImportFiles(parsed.files);
-            // Use the main entry file for preview
-            pageCode = parsed.files['/index.html'] || parsed.files['/src/App.tsx'] || 
-                       parsed.files[`/pages/${pageName}.tsx`] || Object.values(parsed.files)[0] as string || '';
+            pageCode = parsed.files[vfsPath] || parsed.files[`/src/pages/${componentName}.tsx`] ||
+                       parsed.files['/src/App.tsx'] || Object.values(parsed.files)[0] as string || '';
             console.log('[WebBuilder] Nav page multi-file output:', Object.keys(parsed.files));
           }
         } catch { /* not valid JSON, continue with fence extraction */ }
@@ -2645,7 +2644,7 @@ export default function ${componentName}Page() {
       
       // Fall back to fence extraction
       if (!pageCode) {
-        let codeMatch = content.match(/```(?:html|jsx|tsx|javascript|js|typescript|ts)\n([\s\S]*?)```/);
+        let codeMatch = content.match(/```(?:tsx|jsx|typescript|ts)\n([\s\S]*?)```/);
         if (!codeMatch) codeMatch = content.match(/```\n([\s\S]*?)```/);
         
         pageCode = codeMatch ? codeMatch[1].trim() : content.trim();
@@ -2657,32 +2656,74 @@ export default function ${componentName}Page() {
           .trim();
       }
 
+      // Strip any leaked HTML document wrapper (AI sometimes wraps in <!DOCTYPE>)
+      if (pageCode.includes('<!DOCTYPE') || pageCode.includes('<html')) {
+        console.warn('[WebBuilder] AI returned HTML document instead of React component, extracting body');
+        const bodyMatch = pageCode.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) {
+          // Wrap extracted body in a React component
+          pageCode = `import { Link } from 'react-router-dom';
+
+export default function ${componentName}Page() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      ${bodyMatch[1].replace(/ class="/g, ' className="').replace(/<br>/gi, '<br />').replace(/<hr>/gi, '<hr />').replace(/<img([^>]*?)(?<!\/)>/gi, '<img$1 />')}
+    </div>
+  );
+}`;
+        }
+      }
+
+      // Ensure the code has a default export
+      if (pageCode && !pageCode.includes('export default')) {
+        pageCode = `import { Link } from 'react-router-dom';
+
+${pageCode}
+
+export default ${componentName}Page;`;
+      }
+
+      // Ensure React import
+      if (pageCode && !pageCode.includes("from 'react'") && !pageCode.includes('from "react"')) {
+        pageCode = `import React from 'react';\n${pageCode}`;
+      }
+
       if (pageCode) {
-        // Save to VFS for persistence
+        // Save to VFS as .tsx page component
         vfsImportFiles({ [vfsPath]: pageCode });
         setGeneratedPages(prev => ({ ...prev, [pageName]: pageCode }));
         
-        // Send page content to iframe for IN-PLACE rendering
-        if (source && requestId) {
-          source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: pageCode }, '*');
-        } else {
-          // Fallback: update preview (re-creates iframe but ensures page shows)
-          lastSyncedCodeRef.current = pageCode;
-          setPreviewCode(pageCode);
+        // Re-scaffold the router to include the new page
+        const allFiles = getSandpackFiles();
+        allFiles[vfsPath] = pageCode;
+        const scaffolded = scaffoldMultiPageVFS(allFiles['/src/App.tsx'] || previewCode, allFiles);
+        
+        // Import the updated App.tsx with router if new routes were added
+        if (scaffolded.scaffoldedPages.length > 0 || scaffolded.files['/src/App.tsx'] !== allFiles['/src/App.tsx']) {
+          vfsImportFiles(scaffolded.files);
+          // Update preview to reflect new router
+          const newAppCode = scaffolded.files['/src/App.tsx'] || previewCode;
+          lastSyncedCodeRef.current = newAppCode;
+          setPreviewCode(newAppCode);
         }
         
-        // Update editor code to match
+        // Set editor to the new page file
         setActivePagePath(vfsPath);
         lastSyncedCodeRef.current = pageCode;
         setEditorCode(pageCode);
 
+        // Tell preview to navigate to the new route
+        if (source && requestId) {
+          source.postMessage({ type: 'NAV_ROUTE', requestId, route: `/${pageName}` }, '*');
+        }
+
         toast.success(`${navLabel || pageName} page created!`);
         
-        // Re-hydrate playground with new page
+        // Re-hydrate playground
         setTimeout(() => {
-          const allFiles = getSandpackFiles();
-          if (Object.keys(allFiles).length > 0) {
-            creatorPlayground.hydrateFromVFS(virtualFS.nodes, allFiles);
+          const updatedFiles = getSandpackFiles();
+          if (Object.keys(updatedFiles).length > 0) {
+            creatorPlayground.hydrateFromVFS(virtualFS.nodes, updatedFiles);
           }
         }, 200);
       } else {
@@ -2698,7 +2739,7 @@ export default function ${componentName}Page() {
       setIsGeneratingPage(false);
       setCurrentNavPage(null);
     }
-  }, [getSandpackFiles, vfsImportFiles, previewCode, generatedPages, businessDataContext, userDesignProfile]);
+  }, [getSandpackFiles, vfsImportFiles, previewCode, generatedPages, businessDataContext, userDesignProfile, activeSystemType]);
 
   // Ref to always hold the latest triggerPageGeneration (avoids stale closure in INTENT_TRIGGER handler)
   const triggerPageGenRef = useRef(triggerPageGeneration);
@@ -2720,13 +2761,15 @@ export default function ${componentName}Page() {
       console.log('[WebBuilder] Navigation reload required for:', pageName);
       
       if (pageContent) {
+        const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+        const vfsPath = `/src/pages/${componentName}.tsx`;
+        
         // Force update the preview by setting the code
         lastSyncedCodeRef.current = pageContent;
         setPreviewCode(pageContent);
         setEditorCode(pageContent);
         
-        // Store in VFS for future navigation
-        const vfsPath = `/${pageName}.html`;
+        // Store in VFS as React component for future navigation
         virtualFS.importFiles({ [vfsPath]: pageContent });
         setActivePagePath(vfsPath);
       }
