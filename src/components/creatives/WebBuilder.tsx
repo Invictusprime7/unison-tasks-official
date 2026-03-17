@@ -2311,32 +2311,33 @@ export default function ${componentName}Page() {
         }
         
         if (path) {
-          // Page navigation within multi-page VFS
-          const htmlPath = path.endsWith('.html') ? path : `${path}.html`;
-          const vfsPath = htmlPath.startsWith('/') ? htmlPath : `/${htmlPath}`;
+          // Page navigation within multi-page React VFS
+          const pageName = path.replace(/^\//, '').replace(/\.html$/, '').replace(/[^a-zA-Z0-9-]/g, '-') || 'page';
+          const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+          const vfsPath = `/src/pages/${componentName}.tsx`;
           const vfsFiles = virtualFS.getSandpackFiles();
           const existingPage = vfsFiles[vfsPath];
           
           if (existingPage) {
-            // Page exists in VFS — render in-place via iframe message
-            if (source && requestId) {
-              source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: existingPage }, '*');
-            }
+            // Page exists in VFS — navigate via React Router
             setActivePagePath(vfsPath);
+            if (source && requestId) {
+              source.postMessage({ type: 'NAV_ROUTE', requestId, route: `/${pageName}` }, '*');
+            }
             toast(`Navigated to ${buttonLabel || path}`);
             sendResultToIframe({ success: true });
           } else {
             // Page doesn't exist in VFS → generate it with AI
-            console.log('[WebBuilder] Page not in VFS, generating:', path, buttonLabel);
-            const pageName = classification.suggestedPageType || path.replace(/^\//, '').replace(/\.html$/, '') || 'details';
-            triggerPageGenRef.current(pageName, buttonLabel || pageName, source, requestId);
+            console.log('[WebBuilder] React page not in VFS, generating:', pageName, buttonLabel);
+            const targetName = classification.suggestedPageType || pageName || 'details';
+            triggerPageGenRef.current(targetName, buttonLabel || targetName, source, requestId);
           }
         }
         return;
       }
 
       if (intent === 'nav.external') {
-        // Treat external links as in-page navigation — generate a page for it
+        // Treat external links as in-page navigation — generate a React page for it
         const url = (payload as any)?.url || (payload as any)?.path || '';
         const pageName = url.replace(/^https?:\/\/[^/]+\/?/, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'external';
         const label = buttonLabel || url || 'External Page';
@@ -2361,17 +2362,18 @@ export default function ${componentName}Page() {
       // Check for redirect-worthy intents that aren't nav.goto/button.click
       if (classification.category === 'redirect' && !['booking.create', 'contact.submit', 'newsletter.subscribe', 'quote.request', 'lead.capture'].includes(intent)) {
         const pageName = classification.suggestedPageType || 'details';
-        const vfsPath = `/${pageName}.html`;
+        const componentName = pageName.replace(/[-_\s]+(.)/g, (_, c) => c.toUpperCase()).replace(/^\w/, c => c.toUpperCase());
+        const vfsPath = `/src/pages/${componentName}.tsx`;
         const vfsFilesForCheck = virtualFS.getSandpackFiles();
         const existingPage = vfsFilesForCheck[vfsPath];
         if (!existingPage) {
-          console.log('[WebBuilder] Redirect-worthy intent, generating page:', pageName, buttonLabel);
+          console.log('[WebBuilder] Redirect-worthy intent, generating React page:', pageName, buttonLabel);
           triggerPageGenRef.current(pageName, buttonLabel, source, requestId);
           return;
         }
-        // Page exists in VFS, render in-place
+        // Page exists in VFS, navigate via React Router
         if (source && requestId) {
-          source.postMessage({ type: 'NAV_PAGE_READY', requestId, pageContent: existingPage }, '*');
+          source.postMessage({ type: 'NAV_ROUTE', requestId, route: `/${pageName}` }, '*');
         }
         setActivePagePath(vfsPath);
         toast(`Navigated to ${buttonLabel || pageName}`);
