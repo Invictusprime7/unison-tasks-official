@@ -1850,19 +1850,23 @@ export default function ${componentName}Page() {
   // AI context (page structure + backend state + business data + redirect pages)
   const pageStructureContext = useMemo(() => buildPageStructureContext(previewCode), [previewCode]);
   
-  // Build redirect page context from VFS for in-builder AI awareness
+  // Build redirect page context from VFS for in-builder AI awareness (React pages)
   const redirectPageContext = useMemo(() => {
     const vfsFiles = virtualFS.getSandpackFiles();
-    const htmlPages = Object.keys(vfsFiles).filter(p => p.endsWith('.html') && p !== '/index.html');
-    if (htmlPages.length === 0) return '';
+    const pageFiles = Object.keys(vfsFiles).filter(p => 
+      p.match(/\/src\/pages\/\w+\.tsx$/) && p !== '/src/App.tsx'
+    );
+    if (pageFiles.length === 0) return '';
     
-    const lines = ['\n=== REDIRECT PAGES IN VFS ==='];
-    htmlPages.forEach(p => {
+    const lines = ['\n=== REACT PAGES IN VFS ==='];
+    pageFiles.forEach(p => {
       const content = vfsFiles[p] || '';
-      const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
-      lines.push(`- ${p} (${titleMatch?.[1] || 'Untitled'}, ${content.length} chars)`);
+      const nameMatch = p.match(/\/(\w+)\.tsx$/);
+      const componentName = nameMatch?.[1] || 'Unknown';
+      const exportMatch = content.match(/export default function (\w+)/);
+      lines.push(`- ${p} (${exportMatch?.[1] || componentName}, ${content.length} chars)`);
     });
-    lines.push('You can edit any page. Apply nav/footer/brand changes across ALL pages.');
+    lines.push('All pages are React components. Apply nav/footer/brand changes across ALL pages.');
     return lines.join('\n');
   }, [virtualFS.nodes]);
   
