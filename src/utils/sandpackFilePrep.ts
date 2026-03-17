@@ -277,9 +277,7 @@ function injectPreviewNavBridge(code: string, filePath: string): string {
   if (!/^\/(?:main|index)\.(?:tsx?|jsx?)$/.test(filePath)) return code;
   if (code.includes('__initLovablePreviewNavBridge')) return code;
 
-  const importBlock = code.match(/^(?:import[^
-]*
-)+/);
+  const importBlock = code.match(/^(?:import[^\n]*\n)+/);
   if (importBlock) {
     return `${importBlock[0]}\n${PREVIEW_NAV_BRIDGE}\n__initLovablePreviewNavBridge();\n\n${code.slice(importBlock[0].length)}`;
   }
