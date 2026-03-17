@@ -177,7 +177,22 @@ export const useIntentHandlers = () => ({
   handleNavigation: (path) => { const section = document.querySelector(path); if (section) section.scrollIntoView({ behavior: 'smooth' }); },
   handleAuth: (action) => { console.log('[Intent] auth.' + action); },
 });
-export const useNavigate = () => (path) => { if (path.startsWith('#')) { const el = document.querySelector(path); if (el) el.scrollIntoView({ behavior: 'smooth' }); } else { window.location.hash = path; } };
+export const useNavigate = () => (path) => {
+  if (path.startsWith('#')) {
+    const el = document.querySelector(path);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    // Post to parent for page generation / routing
+    const requestId = 'nav-' + Date.now();
+    const pageName = path.replace(/^\//, '').replace(/\.html$/, '') || 'index';
+    window.parent.postMessage({
+      type: 'NAV_PAGE_GENERATE',
+      pageName,
+      navLabel: pageName.charAt(0).toUpperCase() + pageName.slice(1),
+      requestId,
+    }, '*');
+  }
+};
 
 export default {
   useState, useEffect, useCallback, useMemo, useRef, useContext,
