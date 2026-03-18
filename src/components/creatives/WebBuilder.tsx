@@ -3148,6 +3148,34 @@ ${html}
     });
   }, [systemType, manifestIdFromState, vfsImportFiles]);
 
+  // Handle section layout swap from SectionLayoutPicker
+  const handleSwapSection = useCallback((sectionId: string, variantId: string) => {
+    console.log('[WebBuilder] Section swap:', sectionId, '→', variantId);
+    const currentCode = previewCode;
+    if (!currentCode) {
+      toast.error('No template loaded to swap sections');
+      return;
+    }
+
+    const swappedCode = swapSectionVariant(currentCode, sectionId, variantId as VariantId);
+    if (swappedCode === currentCode) {
+      toast.error('Could not swap section — variant or section not found');
+      return;
+    }
+
+    setEditorCode(swappedCode);
+    setPreviewCode(swappedCode);
+
+    // Sync to VFS
+    const files = templateToVFSFiles(swappedCode, currentTemplateName || 'Untitled');
+    vfsImportFiles(files);
+
+    const variant = getVariantById(variantId as VariantId);
+    toast.success(`Swapped ${sectionId} → ${variant?.name || variantId}`, {
+      description: 'Section layout updated, theme preserved',
+    });
+  }, [previewCode, currentTemplateName, vfsImportFiles]);
+
   // Handle saving current template
   // Helper to get final TSX with customizer overrides baked in
   const getFinalCodeWithOverrides = useCallback(() => {
