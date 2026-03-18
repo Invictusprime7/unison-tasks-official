@@ -140,8 +140,131 @@ class SandpackErrorBoundary extends Component<
 }
 
 // ============================================================================
-// Helpers
+// SandpackSelectionBridge — injects element selection into Sandpack iframe
 // ============================================================================
+
+function SandpackSelectionBridge({
+  enableSelection,
+  onElementSelect,
+}: {
+  enableSelection: boolean;
+  onElementSelect?: (elementData: any) => void;
+}) {
+  const bridgeRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!enableSelection || bridgeRef.current) return;
+
+    const SELECTION_SCRIPT = `
+      (function() {
+        if (window.__selectionBridgeActive) return;
+        window.__selectionBridgeActive = true;
+        var hovered = null;
+        document.addEventListener('mouseover', function(e) {
+          if (hovered) hovered.style.outline = '';
+          hovered = e.target;
+          hovered.style.outline = '2px solid rgba(139,92,246,0.7)';
+          hovered.style.outlineOffset = '2px';
+        });
+        document.addEventListener('mouseout', function(e) {
+          if (hovered) { hovered.style.outline = ''; hovered = null; }
+        });
+        document.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var el = e.target;
+          var data = {
+            tagName: el.tagName,
+            textContent: (el.textContent || '').substring(0, 200),
+            selector: buildSelector(el),
+            html: el.outerHTML.substring(0, 500),
+            attributes: {},
+            styles: {},
+          };
+          var attrs = el.attributes;
+          for (var i = 0; i < attrs.length; i++) {
+            data.attributes[attrs[i].name] = attrs[i].value;
+          }
+          var cs = window.getComputedStyle(el);
+          ['color','backgroundColor','fontSize','fontFamily','padding','margin','display','position'].forEach(function(p) {
+            data.styles[p] = cs.getPropertyValue(p.replace(/([A-Z])/g, '-$1').toLowerCase());
+          });
+          window.parent.postMessage({ type: 'SANDPACK_ELEMENT_SELECT', payload: data }, '*');
+        }, true);
+
+        function buildSelector(el) {
+          if (el.id) return '#' + el.id;
+          var path = [];
+          while (el && el !== document.body) {
+            var tag = el.tagName.toLowerCase();
+            var idx = 1;
+            var sib = el.previousElementSibling;
+            while (sib) { if (sib.tagName === el.tagName) idx++; sib = sib.previousElementSibling; }
+            path.unshift(tag + ':nth-of-type(' + idx + ')');
+            el = el.parentElement;
+          }
+          return 'body > ' + path.join(' > ');
+        }
+      })();
+    `;
+
+    // Listen for element selection from Sandpack iframe
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SANDPACK_ELEMENT_SELECT' && onElementSelect) {
+        onElementSelect(event.data.payload);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    // Inject selection script into Sandpack iframe after it loads
+    const injectInterval = setInterval(() => {
+      const iframes = document.querySelectorAll('iframe[title="Sandpack Preview"]');
+      iframes.forEach((iframe: Element) => {
+        const iframeEl = iframe as HTMLIFrameElement;
+        try {
+          const doc = iframeEl.contentDocument;
+          if (doc && !doc.querySelector('[data-selection-bridge]')) {
+            const script = doc.createElement('script');
+            script.setAttribute('data-selection-bridge', 'true');
+            script.textContent = SELECTION_SCRIPT;
+            doc.body.appendChild(script);
+            bridgeRef.current = true;
+          }
+        } catch {
+          // Cross-origin — ignore
+        }
+      });
+    }, 1500);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      clearInterval(injectInterval);
+      bridgeRef.current = false;
+    };
+  }, [enableSelection, onElementSelect]);
+
+  // Remove selection styles when switching to preview mode
+  useEffect(() => {
+    if (enableSelection) return;
+    const iframes = document.querySelectorAll('iframe[title="Sandpack Preview"]');
+    iframes.forEach((iframe: Element) => {
+      const iframeEl = iframe as HTMLIFrameElement;
+      try {
+        const doc = iframeEl.contentDocument;
+        if (doc) {
+          const script = doc.querySelector('[data-selection-bridge]');
+          if (script) script.remove();
+          // Clear active selection state
+          (doc.defaultView as any).__selectionBridgeActive = false;
+        }
+      } catch { /* cross-origin */ }
+    });
+    bridgeRef.current = false;
+  }, [enableSelection]);
+
+  return null;
+}
+
 
 function nodesToFileMap(nodes: VirtualNode[]): Record<string, string> {
   const files: Record<string, string> = {};
@@ -485,35 +608,57 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
         
         {/* Sandpack In-Browser React Preview — the primary rendering engine */}
         {backend === 'sandpack' && (
-          <SandpackErrorBoundary key={`boundary-${sandpackKey}`}>
-            <SandpackProvider
-              key={`sandpack-${sandpackKey}`}
-              template="react-ts"
-              files={sandpackFiles}
-              theme="light"
-              options={{
-                externalResources: ['https://cdn.tailwindcss.com'],
-                activeFile: sandpackEntryFile,
-                visibleFiles: [sandpackEntryFile],
-                autorun: true,
-                autoReload: true,
-                recompileMode: 'delayed',
-                recompileDelay: 300,
-              }}
-              customSetup={{
-                dependencies: sandpackDeps,
+          <div
+            className="w-full h-full flex justify-center overflow-hidden"
+            style={{
+              padding: device !== 'desktop' ? '16px' : 0,
+              background: device !== 'desktop' ? 'hsl(var(--muted))' : undefined,
+            }}
+          >
+            <div
+              className="h-full transition-all duration-300 overflow-hidden"
+              style={{
+                width: device === 'mobile' ? '375px' : device === 'tablet' ? '768px' : '100%',
+                maxWidth: '100%',
+                boxShadow: device !== 'desktop' ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
+                borderRadius: device !== 'desktop' ? '12px' : '0',
               }}
             >
-              <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
-                <SandpackPreview
-                  showNavigator={false}
-                  showRefreshButton={false}
-                  showOpenInCodeSandbox={false}
-                  style={{ height: '100%', minHeight: 0 }}
-                />
-              </SandpackLayout>
-            </SandpackProvider>
-          </SandpackErrorBoundary>
+              <SandpackErrorBoundary key={`boundary-${sandpackKey}`}>
+                <SandpackProvider
+                  key={`sandpack-${sandpackKey}`}
+                  template="react-ts"
+                  files={sandpackFiles}
+                  theme="light"
+                  options={{
+                    externalResources: ['https://cdn.tailwindcss.com'],
+                    activeFile: sandpackEntryFile,
+                    visibleFiles: [sandpackEntryFile],
+                    autorun: true,
+                    autoReload: true,
+                    recompileMode: 'delayed',
+                    recompileDelay: 300,
+                  }}
+                  customSetup={{
+                    dependencies: sandpackDeps,
+                  }}
+                >
+                  <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
+                    <SandpackSelectionBridge
+                      enableSelection={enableSelection}
+                      onElementSelect={onElementSelect}
+                    />
+                    <SandpackPreview
+                      showNavigator={false}
+                      showRefreshButton={false}
+                      showOpenInCodeSandbox={false}
+                      style={{ height: '100%', minHeight: 0 }}
+                    />
+                  </SandpackLayout>
+                </SandpackProvider>
+              </SandpackErrorBoundary>
+            </div>
+          </div>
         )}
         
         {/* Logs Panel */}
