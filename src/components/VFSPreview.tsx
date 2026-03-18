@@ -80,6 +80,8 @@ export interface VFSPreviewProps {
   device?: 'desktop' | 'tablet' | 'mobile';
   /** Enable element selection (edit mode) */
   enableSelection?: boolean;
+  /** Bump this to explicitly re-arm edit mode in the preview */
+  selectionActivationKey?: number;
   /** Callback when an element is selected */
   onElementSelect?: (elementData: any) => void;
 }

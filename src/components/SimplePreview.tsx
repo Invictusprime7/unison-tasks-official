@@ -48,6 +48,7 @@ export interface SimplePreviewProps {
   showToolbar?: boolean;
   device?: 'desktop' | 'tablet' | 'mobile';
   enableSelection?: boolean;
+  selectionActivationKey?: number;
   onElementSelect?: (elementData: any) => void;
   businessId?: string;
   siteId?: string;
