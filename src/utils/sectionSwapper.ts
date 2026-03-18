@@ -9,7 +9,7 @@
 
 import type { SectionType } from '@/sections/types';
 import type { ExtractedSectionContent } from '@/sections/variants/types';
-import { getVariantById } from '@/sections/variants/registry';
+import { getVariantById, VARIANT_REGISTRY } from '@/sections/variants/registry';
 import type { VariantId } from '@/sections/variants/types';
 
 /** Detected section in current preview code */
