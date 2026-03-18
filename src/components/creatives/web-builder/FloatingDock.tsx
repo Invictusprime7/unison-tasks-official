@@ -40,9 +40,10 @@ interface FloatingDockProps {
     };
   };
   onNavigateToCloud: () => void;
+  onSwapSection?: (sectionId: string, variantId: string) => void;
 }
 
-type DockPanel = "templates" | "projects" | "cloud" | null;
+type DockPanel = "templates" | "layouts" | "projects" | "cloud" | null;
 
 const DEVICE_WIDTHS: Record<PreviewDevice, string> = {
   desktop: '100%',
