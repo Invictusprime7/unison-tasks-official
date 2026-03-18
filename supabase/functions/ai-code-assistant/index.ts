@@ -1542,8 +1542,10 @@ TYPOGRAPHY (USE THESE FONTS):
 - Heading: "${variation.fontPairing.heading}"
 - Body: "${variation.fontPairing.body}"
 
-SECTION ORDER (FOLLOW EXACTLY):
+SECTION ORDER (FOLLOW EXACTLY — ONE OF EACH TYPE, NO DUPLICATES):
 ${variation.sectionOrder.map((s, i) => `${i + 1}. ${s.toUpperCase()}`).join('\n')}
+
+⚠️ CRITICAL: Generate EXACTLY ONE hero section. Do NOT create multiple hero variants, hero alternatives, or hero-like sections. Users can swap layouts later.
 
 HERO LAYOUT: ${variation.heroVariant.name} (${variation.heroVariant.layout})
 
@@ -1691,8 +1693,10 @@ export function Section({ children, className, id }: SectionProps) {
 - Heading: "${variation.fontPairing.heading}"
 - Body: "${variation.fontPairing.body}"
 
-## SECTION ORDER (IMPLEMENT ALL IN THIS ORDER):
+## SECTION ORDER (IMPLEMENT ALL IN THIS ORDER — ONE OF EACH TYPE, NO DUPLICATES):
 ${variation.sectionOrder.map((s, i) => `${i + 1}. ${s.charAt(0).toUpperCase() + s.slice(1)}`).join('\n')}
+
+⚠️ CRITICAL: Generate EXACTLY ONE Hero section component. Do NOT create multiple hero variants, hero alternatives, or hero-like full-viewport sections. Users can swap section layouts later via the Layouts panel.
 
 ## HERO LAYOUT: ${variation.heroVariant.name}
 Layout: ${variation.heroVariant.layout}
@@ -1998,6 +2002,7 @@ Return a single JSON object with this structure (no markdown, no explanations):
 
 ## QUALITY REQUIREMENTS (NON-NEGOTIABLE):
 - **MINIMUM 10 section components** - Header, Hero, Services, About, Team, Testimonials, Gallery, FAQ, CTA, Contact, Footer
+- **EXACTLY ONE Hero section** — never generate multiple hero variants or hero alternatives. Each section type appears once.
 - **MINIMUM 6 service/feature items** with icons, titles, descriptions, pricing  
 - **MINIMUM 3 team members** with photos, names, titles, bios
 - **MINIMUM 3 testimonials** with quotes, names, companies, avatars
