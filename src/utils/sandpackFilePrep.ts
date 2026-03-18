@@ -215,6 +215,9 @@ import './index.css';
 ${PREVIEW_NAV_BRIDGE}
 __initLovablePreviewNavBridge();
 
+${EDIT_MODE_SELECTION_BRIDGE}
+__initLovableEditModeBridge();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

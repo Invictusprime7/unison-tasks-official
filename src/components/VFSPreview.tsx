@@ -285,131 +285,66 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     return () => window.removeEventListener('message', handlePreviewMessage);
   }, [onNavigate, onIntentTrigger, businessId, siteId]);
 
-  // Attach edit-mode selection to the active preview iframe (Docker, local, or Sandpack)
+  // Attach edit-mode selection via postMessage bridge (works cross-origin with Sandpack)
   useEffect(() => {
-    if (!enableSelection || backend === 'loading') {
+    if (!enableSelection) {
+      // Tell iframe to disable edit mode
+      const iframe = backend === 'sandpack'
+        ? resolvePreviewIframe(previewRootRef.current)
+        : iframeRef.current;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'EDIT_MODE_TOGGLE', enabled: false }, '*');
+      }
       clearPreviewHighlights();
       return;
     }
 
-    let cleanup: (() => void) | null = null;
-    let attachInterval: ReturnType<typeof setInterval> | null = null;
+    // Tell iframe to enable edit mode
+    const sendEnable = () => {
+      const iframe = backend === 'sandpack'
+        ? resolvePreviewIframe(previewRootRef.current)
+        : iframeRef.current;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'EDIT_MODE_TOGGLE', enabled: true }, '*');
+      }
+    };
+
+    sendEnable();
+
+    // Re-send on iframe load / Sandpack remount
     let observer: MutationObserver | null = null;
-    let loadListenerCleanup: (() => void) | null = null;
-    let boundIframe: HTMLIFrameElement | null = null;
-
-    const teardownSelection = () => {
-      cleanup?.();
-      cleanup = null;
-      loadListenerCleanup?.();
-      loadListenerCleanup = null;
-      boundIframe = null;
-    };
-
-    const attachSelectionHandlers = () => {
-      const activeIframe =
-        backend === 'docker' || backend === 'local'
-          ? iframeRef.current
-          : resolvePreviewIframe(previewRootRef.current);
-
-      if (!activeIframe) return false;
-      if (boundIframe === activeIframe && cleanup) return true;
-
-      teardownSelection();
-      iframeRef.current = activeIframe;
-      boundIframe = activeIframe;
-
-      const bindToDocument = () => {
-        const iframeDoc = activeIframe.contentDocument || activeIframe.contentWindow?.document;
-        if (!iframeDoc?.body) return false;
-
-        const handleMouseOver = (e: MouseEvent) => {
-          const target = e.target as HTMLElement | null;
-          if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
-          if (target === selectedElementRef.current) return;
-
-          if (hoveredElementRef.current && hoveredElementRef.current !== selectedElementRef.current) {
-            removeHighlight(hoveredElementRef.current);
-          }
-
-          highlightElement(target, '#3b82f6');
-          hoveredElementRef.current = target;
-        };
-
-        const handleMouseOut = (e: MouseEvent) => {
-          const target = e.target as HTMLElement | null;
-          if (!target || target !== hoveredElementRef.current || target === selectedElementRef.current) return;
-
-          removeHighlight(target);
-          hoveredElementRef.current = null;
-        };
-
-        const handleClick = (e: MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const target = e.target as HTMLElement | null;
-          if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
-
-          if (selectedElementRef.current && selectedElementRef.current !== target) {
-            removeHighlight(selectedElementRef.current);
-          }
-
-          if (hoveredElementRef.current && hoveredElementRef.current !== target) {
-            removeHighlight(hoveredElementRef.current);
-            hoveredElementRef.current = null;
-          }
-
-          const elementData = getSelectedElementData(target);
-          onElementSelect?.(elementData);
-          selectedElementRef.current = target;
-          highlightElement(target, '#10b981');
-        };
-
-        iframeDoc.addEventListener('mouseover', handleMouseOver);
-        iframeDoc.addEventListener('mouseout', handleMouseOut);
-        iframeDoc.addEventListener('click', handleClick, true);
-        iframeDoc.body.style.cursor = 'pointer';
-
-        cleanup = () => {
-          iframeDoc.removeEventListener('mouseover', handleMouseOver);
-          iframeDoc.removeEventListener('mouseout', handleMouseOut);
-          iframeDoc.removeEventListener('click', handleClick, true);
-          iframeDoc.body.style.cursor = '';
-          clearPreviewHighlights();
-        };
-
-        return true;
-      };
-
-      if (bindToDocument()) return true;
-
-      const handleLoad = () => {
-        bindToDocument();
-      };
-
-      activeIframe.addEventListener('load', handleLoad, { once: true });
-      loadListenerCleanup = () => activeIframe.removeEventListener('load', handleLoad);
-      return false;
-    };
-
-    attachSelectionHandlers();
-
     if (backend === 'sandpack' && previewRootRef.current) {
       observer = new MutationObserver(() => {
-        attachSelectionHandlers();
+        // Small delay to let new iframe initialize
+        setTimeout(sendEnable, 200);
       });
       observer.observe(previewRootRef.current, { childList: true, subtree: true });
     }
 
-    attachInterval = setInterval(() => {
-      attachSelectionHandlers();
-    }, 500);
+    // Also re-send periodically until confirmed (handles race with Sandpack boot)
+    const interval = setInterval(sendEnable, 800);
+    const stopInterval = setTimeout(() => clearInterval(interval), 8000);
+
+    // Listen for element selection messages from the iframe bridge
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'ELEMENT_SELECTED' && event.data.elementData) {
+        onElementSelect?.(event.data.elementData);
+      }
+    };
+    window.addEventListener('message', handleMessage);
 
     return () => {
-      if (attachInterval) clearInterval(attachInterval);
       observer?.disconnect();
-      teardownSelection();
+      clearInterval(interval);
+      clearTimeout(stopInterval);
+      window.removeEventListener('message', handleMessage);
+      // Disable edit mode in iframe on cleanup
+      const iframe = backend === 'sandpack'
+        ? resolvePreviewIframe(previewRootRef.current)
+        : iframeRef.current;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'EDIT_MODE_TOGGLE', enabled: false }, '*');
+      }
     };
   }, [enableSelection, backend, sandpackKey, onElementSelect, clearPreviewHighlights]);
   
