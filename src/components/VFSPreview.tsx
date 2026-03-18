@@ -485,35 +485,57 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
         
         {/* Sandpack In-Browser React Preview — the primary rendering engine */}
         {backend === 'sandpack' && (
-          <SandpackErrorBoundary key={`boundary-${sandpackKey}`}>
-            <SandpackProvider
-              key={`sandpack-${sandpackKey}`}
-              template="react-ts"
-              files={sandpackFiles}
-              theme="light"
-              options={{
-                externalResources: ['https://cdn.tailwindcss.com'],
-                activeFile: sandpackEntryFile,
-                visibleFiles: [sandpackEntryFile],
-                autorun: true,
-                autoReload: true,
-                recompileMode: 'delayed',
-                recompileDelay: 300,
-              }}
-              customSetup={{
-                dependencies: sandpackDeps,
+          <div
+            className="w-full h-full flex justify-center overflow-hidden"
+            style={{
+              padding: device !== 'desktop' ? '16px' : 0,
+              background: device !== 'desktop' ? 'hsl(var(--muted))' : undefined,
+            }}
+          >
+            <div
+              className="h-full transition-all duration-300 overflow-hidden"
+              style={{
+                width: device === 'mobile' ? '375px' : device === 'tablet' ? '768px' : '100%',
+                maxWidth: '100%',
+                boxShadow: device !== 'desktop' ? '0 4px 20px rgba(0,0,0,0.15)' : 'none',
+                borderRadius: device !== 'desktop' ? '12px' : '0',
               }}
             >
-              <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
-                <SandpackPreview
-                  showNavigator={false}
-                  showRefreshButton={false}
-                  showOpenInCodeSandbox={false}
-                  style={{ height: '100%', minHeight: 0 }}
-                />
-              </SandpackLayout>
-            </SandpackProvider>
-          </SandpackErrorBoundary>
+              <SandpackErrorBoundary key={`boundary-${sandpackKey}`}>
+                <SandpackProvider
+                  key={`sandpack-${sandpackKey}`}
+                  template="react-ts"
+                  files={sandpackFiles}
+                  theme="light"
+                  options={{
+                    externalResources: ['https://cdn.tailwindcss.com'],
+                    activeFile: sandpackEntryFile,
+                    visibleFiles: [sandpackEntryFile],
+                    autorun: true,
+                    autoReload: true,
+                    recompileMode: 'delayed',
+                    recompileDelay: 300,
+                  }}
+                  customSetup={{
+                    dependencies: sandpackDeps,
+                  }}
+                >
+                  <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
+                    <SandpackSelectionBridge
+                      enableSelection={enableSelection}
+                      onElementSelect={onElementSelect}
+                    />
+                    <SandpackPreview
+                      showNavigator={false}
+                      showRefreshButton={false}
+                      showOpenInCodeSandbox={false}
+                      style={{ height: '100%', minHeight: 0 }}
+                    />
+                  </SandpackLayout>
+                </SandpackProvider>
+              </SandpackErrorBoundary>
+            </div>
+          </div>
         )}
         
         {/* Logs Panel */}
