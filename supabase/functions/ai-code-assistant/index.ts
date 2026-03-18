@@ -1542,8 +1542,10 @@ TYPOGRAPHY (USE THESE FONTS):
 - Heading: "${variation.fontPairing.heading}"
 - Body: "${variation.fontPairing.body}"
 
-SECTION ORDER (FOLLOW EXACTLY):
+SECTION ORDER (FOLLOW EXACTLY — ONE OF EACH TYPE, NO DUPLICATES):
 ${variation.sectionOrder.map((s, i) => `${i + 1}. ${s.toUpperCase()}`).join('\n')}
+
+⚠️ CRITICAL: Generate EXACTLY ONE hero section. Do NOT create multiple hero variants, hero alternatives, or hero-like sections. Users can swap layouts later.
 
 HERO LAYOUT: ${variation.heroVariant.name} (${variation.heroVariant.layout})
 
