@@ -1,205 +1,216 @@
 /**
- * SectionLayoutPicker — Section-level variant browser
+ * SectionLayoutPicker — Section-level variant browser for the Floating Dock
  * 
- * Shows available layout variants grouped by section type (hero, navbar, cta).
- * When a variant is clicked, it swaps only that section in the current preview code
- * while preserving the theme and all other sections.
+ * Shows available layout variants grouped by section type.
+ * Styled for the dark arcade dock UI. Scrollable.
  */
 
 import React, { useMemo } from 'react';
-import { Layout, Layers, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Layout, Layers, ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { VARIANT_REGISTRY, getVariantsForSection, getSectionTypesWithVariants } from '@/sections/variants/registry';
+import { getVariantsForSection, getSectionTypesWithVariants } from '@/sections/variants/registry';
 import { detectSections, type DetectedSection } from '@/utils/sectionSwapper';
 import type { SectionVariant } from '@/sections/variants/types';
 import type { SectionType } from '@/sections/types';
 
 interface SectionLayoutPickerProps {
-  /** Current preview/editor code to detect sections from */
   currentCode: string;
-  /** Called when user selects a variant to swap */
   onSwapSection: (sectionId: string, variantId: string) => void;
 }
 
-const sectionTypeLabels: Partial<Record<SectionType, string>> = {
-  navbar: '🧭 Navigation',
-  hero: '🦸 Hero',
-  cta: '📢 Call to Action',
-  services: '🛠️ Services',
-  testimonials: '⭐ Testimonials',
-  footer: '🔻 Footer',
-  pricing: '💰 Pricing',
-  contact: '✉️ Contact',
-  faq: '❓ FAQ',
-  team: '👥 Team',
-  gallery: '🖼️ Gallery',
-  stats: '📊 Stats',
-  about: 'ℹ️ About',
-  features: '✨ Features',
+const sectionTypeLabels: Partial<Record<SectionType, { emoji: string; label: string }>> = {
+  navbar: { emoji: '🧭', label: 'Navigation' },
+  hero: { emoji: '🦸', label: 'Hero' },
+  cta: { emoji: '📢', label: 'Call to Action' },
+  services: { emoji: '🛠️', label: 'Services' },
+  testimonials: { emoji: '⭐', label: 'Testimonials' },
+  footer: { emoji: '🔻', label: 'Footer' },
+  pricing: { emoji: '💰', label: 'Pricing' },
+  contact: { emoji: '✉️', label: 'Contact' },
+  faq: { emoji: '❓', label: 'FAQ' },
+  team: { emoji: '👥', label: 'Team' },
+  gallery: { emoji: '🖼️', label: 'Gallery' },
+  stats: { emoji: '📊', label: 'Stats' },
+  about: { emoji: 'ℹ️', label: 'About' },
+  features: { emoji: '✨', label: 'Features' },
 };
 
 export const SectionLayoutPicker: React.FC<SectionLayoutPickerProps> = ({
   currentCode,
   onSwapSection,
 }) => {
-  // Detect sections from current code
   const detectedSections = useMemo(() => detectSections(currentCode), [currentCode]);
 
-  // Get section types that have variants AND exist in the current code
   const swappableSections = useMemo(() => {
     const typesWithVariants = getSectionTypesWithVariants();
     return detectedSections.filter(s => typesWithVariants.includes(s.type));
   }, [detectedSections]);
 
-  // All section types with variants (even if not in current code)
-  const allVariantTypes = useMemo(() => getSectionTypesWithVariants(), []);
-
+  // Empty state
   if (detectedSections.length === 0) {
     return (
-      <div className="p-6 text-center">
-        <Layout className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">
-          Load a template first to swap section layouts
+      <div className="p-8 text-center">
+        <Layout className="h-10 w-10 mx-auto mb-3 text-yellow-400/30" />
+        <p className="text-sm text-yellow-400/60 font-medium">
+          Load a template first
         </p>
-        <p className="text-xs text-muted-foreground/60 mt-1">
-          Use the Templates tab to load a page, then come back here to customize individual sections.
+        <p className="text-[10px] text-white/30 mt-1.5 max-w-[240px] mx-auto">
+          Use the Templates tab to load a page, then come back here to swap section layouts.
         </p>
       </div>
     );
   }
 
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center gap-2 mb-1">
-          <Layers className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">Section Layouts</h3>
-        </div>
-        <p className="text-[10px] text-muted-foreground">
-          Click a variant to swap that section. Content & theme are preserved.
+  // No swappable sections
+  if (swappableSections.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <Sparkles className="h-10 w-10 mx-auto mb-3 text-fuchsia-400/30" />
+        <p className="text-sm text-fuchsia-400/60 font-medium">
+          {detectedSections.length} sections detected
         </p>
-      </div>
-
-      {/* Detected sections info */}
-      <div className="px-3 py-2 border-b border-border bg-muted/30">
-        <p className="text-[10px] text-muted-foreground">
-          {detectedSections.length} sections detected · {swappableSections.length} swappable
+        <p className="text-[10px] text-white/30 mt-1.5 max-w-[240px] mx-auto">
+          No alternative layouts available yet for these section types. More variants coming soon!
         </p>
-        <div className="flex flex-wrap gap-1 mt-1">
+        <div className="flex flex-wrap gap-1 justify-center mt-3">
           {detectedSections.map(s => (
-            <Badge
+            <span key={s.id} className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">
+              {s.type}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 space-y-3">
+      {/* Summary bar */}
+      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10">
+        <Layers className="h-3.5 w-3.5 text-cyan-400" />
+        <span className="text-[10px] text-white/50">
+          {detectedSections.length} sections · {swappableSections.length} swappable
+        </span>
+        <div className="flex gap-1 ml-auto">
+          {detectedSections.map(s => (
+            <span
               key={s.id}
-              variant={swappableSections.includes(s) ? 'default' : 'secondary'}
-              className="text-[9px] px-1.5 py-0"
+              className={cn(
+                "text-[8px] px-1.5 py-0.5 rounded-full border",
+                swappableSections.includes(s)
+                  ? "bg-cyan-500/15 text-cyan-400/80 border-cyan-500/30"
+                  : "bg-white/5 text-white/25 border-white/10"
+              )}
             >
               {s.type}
-            </Badge>
+            </span>
           ))}
         </div>
       </div>
 
       {/* Variant groups */}
-      <ScrollArea className="flex-1">
-        <div className="p-3 space-y-4">
-          {swappableSections.map(section => {
-            const variants = getVariantsForSection(section.type);
-            if (variants.length < 2) return null;
+      {swappableSections.map(section => {
+        const variants = getVariantsForSection(section.type);
+        if (variants.length < 2) return null;
+        const meta = sectionTypeLabels[section.type];
 
-            return (
-              <div key={section.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-foreground">
-                    {sectionTypeLabels[section.type] || section.type}
-                  </h4>
-                  <Badge variant="outline" className="text-[9px] px-1.5">
-                    {variants.length} layouts
-                  </Badge>
-                </div>
-
-                <div className="grid gap-1.5">
-                  {variants.map(variant => (
-                    <VariantCard
-                      key={variant.id}
-                      variant={variant}
-                      section={section}
-                      onSelect={() => onSwapSection(section.id, variant.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Show section types without variants */}
-          {detectedSections.filter(s => !swappableSections.includes(s)).length > 0 && (
-            <div className="pt-2 border-t border-border">
-              <p className="text-[10px] text-muted-foreground mb-2">
-                More section variants coming soon:
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {detectedSections
-                  .filter(s => !swappableSections.includes(s))
-                  .map(s => (
-                    <Badge key={s.id} variant="secondary" className="text-[9px] px-1.5 py-0 opacity-50">
-                      {s.type}
-                    </Badge>
-                  ))}
-              </div>
+        return (
+          <div key={section.id} className="space-y-1.5">
+            <div className="flex items-center justify-between px-1">
+              <h4 className="text-xs font-bold text-white/80">
+                {meta ? `${meta.emoji} ${meta.label}` : section.type}
+              </h4>
+              <span className="text-[9px] text-fuchsia-400/60 font-medium">
+                {variants.length} layouts
+              </span>
             </div>
-          )}
+
+            <div className="grid gap-1.5">
+              {variants.map(variant => (
+                <VariantCard
+                  key={variant.id}
+                  variant={variant}
+                  onSelect={() => onSwapSection(section.id, variant.id)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Non-swappable sections note */}
+      {detectedSections.filter(s => !swappableSections.includes(s)).length > 0 && (
+        <div className="pt-2 border-t border-white/10">
+          <p className="text-[10px] text-white/25 mb-1.5">More variants coming soon:</p>
+          <div className="flex flex-wrap gap-1">
+            {detectedSections
+              .filter(s => !swappableSections.includes(s))
+              .map(s => (
+                <span key={s.id} className="text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 border border-white/5">
+                  {s.type}
+                </span>
+              ))}
+          </div>
         </div>
-      </ScrollArea>
+      )}
     </div>
   );
 };
 
-/** Individual variant card */
+/** Variant card styled for dark dock */
 const VariantCard: React.FC<{
   variant: SectionVariant;
-  section: DetectedSection;
   onSelect: () => void;
-}> = ({ variant, section, onSelect }) => {
-  // Detect if this variant is currently active (by checking data-variant attribute in code)
-  // This is a heuristic; could be improved with explicit state tracking
-  
+}> = ({ variant, onSelect }) => {
   return (
     <button
       onClick={onSelect}
       className={cn(
         "w-full flex items-center gap-3 p-2.5 rounded-lg border transition-all duration-200",
-        "border-border/60 hover:border-primary/40 hover:bg-primary/5",
         "text-left group cursor-pointer",
-        variant.isDefault && "border-primary/20 bg-primary/5"
+        variant.isDefault
+          ? "bg-cyan-500/10 border-cyan-500/30 hover:border-cyan-400/50 hover:bg-cyan-500/15"
+          : "bg-white/[0.03] border-white/10 hover:border-yellow-400/40 hover:bg-yellow-500/10"
       )}
     >
-      {/* Thumbnail placeholder */}
-      <div className="w-12 h-10 rounded-md bg-muted border border-border/50 flex items-center justify-center shrink-0 overflow-hidden">
-        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
-          {variant.slug.slice(0, 6)}
-        </span>
+      {/* Thumbnail */}
+      <div className="w-14 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+        {variant.thumbnail ? (
+          <img
+            src={variant.thumbnail}
+            alt={variant.name}
+            className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-[8px] font-bold text-white/30 uppercase tracking-wider">${variant.slug.slice(0, 6)}</span>`;
+            }}
+          />
+        ) : (
+          <span className="text-[8px] font-bold text-white/30 uppercase tracking-wider">
+            {variant.slug.slice(0, 6)}
+          </span>
+        )}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-foreground truncate">{variant.name}</span>
+          <span className="text-[11px] font-semibold text-white/80 truncate">{variant.name}</span>
           {variant.isDefault && (
-            <Badge variant="secondary" className="text-[8px] px-1 py-0 shrink-0">
-              default
-            </Badge>
+            <span className="text-[7px] px-1 py-0 rounded-full bg-cyan-500/20 text-cyan-400 font-bold uppercase shrink-0">
+              active
+            </span>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
-          {variant.description}
-        </p>
+        {variant.description && (
+          <p className="text-[9px] text-white/35 line-clamp-1 mt-0.5">
+            {variant.description}
+          </p>
+        )}
         {variant.tags && (
           <div className="flex gap-1 mt-1">
             {variant.tags.slice(0, 3).map(tag => (
-              <span key={tag} className="text-[8px] text-muted-foreground/60 bg-muted rounded px-1">
+              <span key={tag} className="text-[7px] text-white/20 bg-white/5 rounded px-1 py-0">
                 {tag}
               </span>
             ))}
@@ -207,8 +218,7 @@ const VariantCard: React.FC<{
         )}
       </div>
 
-      {/* Arrow */}
-      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+      <ArrowRight className="h-3.5 w-3.5 text-white/15 group-hover:text-yellow-400 transition-colors shrink-0" />
     </button>
   );
 };
