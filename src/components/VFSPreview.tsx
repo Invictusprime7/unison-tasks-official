@@ -294,6 +294,17 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
 
     let cleanup: (() => void) | null = null;
     let attachInterval: ReturnType<typeof setInterval> | null = null;
+    let observer: MutationObserver | null = null;
+    let loadListenerCleanup: (() => void) | null = null;
+    let boundIframe: HTMLIFrameElement | null = null;
+
+    const teardownSelection = () => {
+      cleanup?.();
+      cleanup = null;
+      loadListenerCleanup?.();
+      loadListenerCleanup = null;
+      boundIframe = null;
+    };
 
     const attachSelectionHandlers = () => {
       const activeIframe =
@@ -302,82 +313,103 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
           : resolvePreviewIframe(previewRootRef.current);
 
       if (!activeIframe) return false;
+      if (boundIframe === activeIframe && cleanup) return true;
 
+      teardownSelection();
       iframeRef.current = activeIframe;
-      const iframeDoc = activeIframe.contentDocument || activeIframe.contentWindow?.document;
-      if (!iframeDoc?.body) return false;
+      boundIframe = activeIframe;
 
-      const handleMouseOver = (e: MouseEvent) => {
-        const target = e.target as HTMLElement | null;
-        if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
-        if (target === selectedElementRef.current) return;
+      const bindToDocument = () => {
+        const iframeDoc = activeIframe.contentDocument || activeIframe.contentWindow?.document;
+        if (!iframeDoc?.body) return false;
 
-        if (hoveredElementRef.current && hoveredElementRef.current !== selectedElementRef.current) {
-          removeHighlight(hoveredElementRef.current);
-        }
+        const handleMouseOver = (e: MouseEvent) => {
+          const target = e.target as HTMLElement | null;
+          if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
+          if (target === selectedElementRef.current) return;
 
-        highlightElement(target, '#3b82f6');
-        hoveredElementRef.current = target;
-      };
+          if (hoveredElementRef.current && hoveredElementRef.current !== selectedElementRef.current) {
+            removeHighlight(hoveredElementRef.current);
+          }
 
-      const handleMouseOut = (e: MouseEvent) => {
-        const target = e.target as HTMLElement | null;
-        if (!target || target !== hoveredElementRef.current || target === selectedElementRef.current) return;
+          highlightElement(target, '#3b82f6');
+          hoveredElementRef.current = target;
+        };
 
-        removeHighlight(target);
-        hoveredElementRef.current = null;
-      };
+        const handleMouseOut = (e: MouseEvent) => {
+          const target = e.target as HTMLElement | null;
+          if (!target || target !== hoveredElementRef.current || target === selectedElementRef.current) return;
 
-      const handleClick = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const target = e.target as HTMLElement | null;
-        if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
-
-        if (selectedElementRef.current && selectedElementRef.current !== target) {
-          removeHighlight(selectedElementRef.current);
-        }
-
-        if (hoveredElementRef.current && hoveredElementRef.current !== target) {
-          removeHighlight(hoveredElementRef.current);
+          removeHighlight(target);
           hoveredElementRef.current = null;
-        }
+        };
 
-        const elementData = getSelectedElementData(target);
-        onElementSelect?.(elementData);
-        selectedElementRef.current = target;
-        highlightElement(target, '#10b981');
+        const handleClick = (e: MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const target = e.target as HTMLElement | null;
+          if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
+
+          if (selectedElementRef.current && selectedElementRef.current !== target) {
+            removeHighlight(selectedElementRef.current);
+          }
+
+          if (hoveredElementRef.current && hoveredElementRef.current !== target) {
+            removeHighlight(hoveredElementRef.current);
+            hoveredElementRef.current = null;
+          }
+
+          const elementData = getSelectedElementData(target);
+          onElementSelect?.(elementData);
+          selectedElementRef.current = target;
+          highlightElement(target, '#10b981');
+        };
+
+        iframeDoc.addEventListener('mouseover', handleMouseOver);
+        iframeDoc.addEventListener('mouseout', handleMouseOut);
+        iframeDoc.addEventListener('click', handleClick, true);
+        iframeDoc.body.style.cursor = 'pointer';
+
+        cleanup = () => {
+          iframeDoc.removeEventListener('mouseover', handleMouseOver);
+          iframeDoc.removeEventListener('mouseout', handleMouseOut);
+          iframeDoc.removeEventListener('click', handleClick, true);
+          iframeDoc.body.style.cursor = '';
+          clearPreviewHighlights();
+        };
+
+        return true;
       };
 
-      iframeDoc.addEventListener('mouseover', handleMouseOver);
-      iframeDoc.addEventListener('mouseout', handleMouseOut);
-      iframeDoc.addEventListener('click', handleClick, true);
-      iframeDoc.body.style.cursor = 'pointer';
+      if (bindToDocument()) return true;
 
-      cleanup = () => {
-        iframeDoc.removeEventListener('mouseover', handleMouseOver);
-        iframeDoc.removeEventListener('mouseout', handleMouseOut);
-        iframeDoc.removeEventListener('click', handleClick, true);
-        iframeDoc.body.style.cursor = '';
-        clearPreviewHighlights();
+      const handleLoad = () => {
+        bindToDocument();
       };
 
-      return true;
+      activeIframe.addEventListener('load', handleLoad, { once: true });
+      loadListenerCleanup = () => activeIframe.removeEventListener('load', handleLoad);
+      return false;
     };
 
-    if (!attachSelectionHandlers()) {
-      attachInterval = setInterval(() => {
-        if (attachSelectionHandlers() && attachInterval) {
-          clearInterval(attachInterval);
-          attachInterval = null;
-        }
-      }, 300);
+    attachSelectionHandlers();
+
+    if (backend === 'sandpack' && previewRootRef.current) {
+      observer = new MutationObserver(() => {
+        attachSelectionHandlers();
+      });
+      observer.observe(previewRootRef.current, { childList: true, subtree: true });
     }
+
+    attachInterval = setInterval(() => {
+      attachSelectionHandlers();
+    }, 500);
 
     return () => {
       if (attachInterval) clearInterval(attachInterval);
-      cleanup?.();
+      observer?.disconnect();
+      teardownSelection();
     };
   }, [enableSelection, backend, sandpackKey, onElementSelect, clearPreviewHighlights]);
   
