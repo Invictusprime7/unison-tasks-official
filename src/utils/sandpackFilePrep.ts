@@ -375,14 +375,32 @@ function isRawCss(content: string): boolean {
 
 function injectPreviewNavBridge(code: string, filePath: string): string {
   if (!/^\/(?:main|index)\.(?:tsx?|jsx?)$/.test(filePath)) return code;
-  if (code.includes('__initLovablePreviewNavBridge')) return code;
 
-  const importBlock = code.match(/^(?:import[^\n]*\n)+/);
-  if (importBlock) {
-    return `${importBlock[0]}\n${PREVIEW_NAV_BRIDGE}\n__initLovablePreviewNavBridge();\n\n${code.slice(importBlock[0].length)}`;
+  let result = code;
+
+  // Inject nav bridge
+  if (!result.includes('__initLovablePreviewNavBridge')) {
+    const importBlock = result.match(/^(?:import[^\n]*\n)+/);
+    if (importBlock) {
+      result = `${importBlock[0]}\n${PREVIEW_NAV_BRIDGE}\n__initLovablePreviewNavBridge();\n\n${result.slice(importBlock[0].length)}`;
+    } else {
+      result = `${PREVIEW_NAV_BRIDGE}\n__initLovablePreviewNavBridge();\n\n${result}`;
+    }
   }
 
-  return `${PREVIEW_NAV_BRIDGE}\n__initLovablePreviewNavBridge();\n\n${code}`;
+  // Inject edit mode bridge
+  if (!result.includes('__initLovableEditModeBridge')) {
+    // Find a safe injection point after imports
+    const importBlock = result.match(/^(?:import[^\n]*\n)+/);
+    if (importBlock) {
+      const afterImports = result.slice(importBlock[0].length);
+      result = `${importBlock[0]}\n${EDIT_MODE_SELECTION_BRIDGE}\n__initLovableEditModeBridge();\n\n${afterImports}`;
+    } else {
+      result = `${EDIT_MODE_SELECTION_BRIDGE}\n__initLovableEditModeBridge();\n\n${result}`;
+    }
+  }
+
+  return result;
 }
 
 /**
