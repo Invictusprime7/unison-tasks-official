@@ -359,7 +359,6 @@ function swapJsxSection(
   // If composition props are available, merge them in
   if (Object.keys(targetSection.props).length > 0) {
     const propsContent = propsToExtractedContent(targetSection.type, targetSection.props);
-    // Merge: prefer extracted JSX content, fill gaps from props
     if (!content.heading && propsContent.heading) content.heading = propsContent.heading;
     if (!content.subheading && propsContent.subheading) content.subheading = propsContent.subheading;
     if (!content.brandName && propsContent.brandName) content.brandName = propsContent.brandName;
@@ -373,9 +372,115 @@ function swapJsxSection(
   const variantJSX = variant.renderJSX(content);
 
   // Replace the old section with the new variant JSX
-  const modifiedCode = code.slice(0, bounds.start) + variantJSX + code.slice(bounds.end);
+  let modifiedCode = code.slice(0, bounds.start) + variantJSX + code.slice(bounds.end);
+
+  // Ensure THEME helpers exist — if the code doesn't have a THEME constant,
+  // inject a fallback theme + helpers so the variant JSX renders correctly
+  if (!code.includes('const THEME') && !code.includes('const THEME =')) {
+    modifiedCode = injectThemeHelpers(modifiedCode);
+  }
 
   return modifiedCode;
+}
+
+/**
+ * Inject a fallback THEME object and style helpers into AI-generated code
+ * that doesn't already have them. Extracts colors from existing Tailwind
+ * classes where possible, otherwise uses a neutral palette.
+ */
+function injectThemeHelpers(code: string): string {
+  // Extract primary color from existing Tailwind classes if possible
+  const primaryColorMatch = code.match(/(?:bg|text|border)-(?:blue|indigo|violet|purple|pink|rose|emerald|teal|cyan|amber|orange|red|green|sky)-(\d{3})/);
+  const colorFamily = primaryColorMatch ? primaryColorMatch[0].split('-')[1] : 'blue';
+  
+  // Map Tailwind color families to HSL
+  const colorToHSL: Record<string, { primary: string; secondary: string }> = {
+    blue: { primary: '217 91% 60%', secondary: '221 83% 53%' },
+    indigo: { primary: '239 84% 67%', secondary: '243 75% 59%' },
+    violet: { primary: '258 90% 66%', secondary: '262 83% 58%' },
+    purple: { primary: '271 91% 65%', secondary: '275 84% 57%' },
+    pink: { primary: '330 81% 60%', secondary: '336 80% 58%' },
+    rose: { primary: '350 89% 60%', secondary: '347 77% 50%' },
+    emerald: { primary: '160 84% 39%', secondary: '162 93% 24%' },
+    teal: { primary: '173 80% 40%', secondary: '175 77% 26%' },
+    cyan: { primary: '189 94% 43%', secondary: '192 91% 36%' },
+    amber: { primary: '38 92% 50%', secondary: '32 95% 44%' },
+    orange: { primary: '25 95% 53%', secondary: '21 90% 48%' },
+    red: { primary: '0 84% 60%', secondary: '0 72% 51%' },
+    green: { primary: '142 71% 45%', secondary: '142 76% 36%' },
+    sky: { primary: '199 89% 48%', secondary: '200 98% 39%' },
+  };
+
+  const colors = colorToHSL[colorFamily] || colorToHSL.blue;
+
+  // Detect if it's a dark theme (look for dark bg classes)
+  const isDark = /bg-(?:gray|slate|zinc|neutral|stone)-(?:8|9)\d{2}|bg-black|bg-\[#[0-2]/.test(code);
+
+  const themeBlock = `
+// ============================================================================
+// Theme (auto-injected for variant compatibility)
+// ============================================================================
+const THEME = {
+  colors: {
+    primary: '${colors.primary}',
+    primaryForeground: '${isDark ? '0 0% 100%' : '0 0% 100%'}',
+    secondary: '${colors.secondary}',
+    secondaryForeground: '0 0% 100%',
+    accent: '${colors.primary}',
+    accentForeground: '0 0% 100%',
+    background: '${isDark ? '222 47% 6%' : '0 0% 100%'}',
+    foreground: '${isDark ? '210 40% 98%' : '222 47% 11%'}',
+    muted: '${isDark ? '217 33% 17%' : '210 40% 96%'}',
+    mutedForeground: '${isDark ? '215 20% 65%' : '215 16% 47%'}',
+    card: '${isDark ? '222 47% 8%' : '0 0% 100%'}',
+    cardForeground: '${isDark ? '210 40% 98%' : '222 47% 11%'}',
+    border: '${isDark ? '217 33% 17%' : '214 32% 91%'}',
+  },
+  typography: {
+    headingFont: "'Inter', system-ui, sans-serif",
+    bodyFont: "'Inter', system-ui, sans-serif",
+    headingWeight: '700',
+    bodyWeight: '400',
+  },
+  radius: '0.5rem',
+  sectionPadding: '5rem 1rem',
+  containerWidth: '1200px',
+};
+
+const hsl = (t) => \`hsl(\${t})\`;
+const hsla = (t, a) => \`hsla(\${t}, \${a})\`;
+const headingStyle = { fontFamily: THEME.typography.headingFont, fontWeight: THEME.typography.headingWeight, color: hsl(THEME.colors.foreground) };
+const bodyStyle = { fontFamily: THEME.typography.bodyFont, fontWeight: THEME.typography.bodyWeight, color: hsl(THEME.colors.mutedForeground) };
+const containerStyle = { maxWidth: THEME.containerWidth, margin: '0 auto', padding: '0 1rem' };
+const sectionPad = { padding: THEME.sectionPadding };
+const primaryBtnStyle = {
+  background: \`linear-gradient(135deg, hsl(\${THEME.colors.primary}), hsl(\${THEME.colors.secondary}))\`,
+  color: hsl(THEME.colors.primaryForeground), padding: '0.75rem 2rem',
+  borderRadius: THEME.radius, fontWeight: '600', border: 'none', cursor: 'pointer',
+  fontFamily: THEME.typography.bodyFont, transition: 'all 0.2s ease', textDecoration: 'none', display: 'inline-block',
+};
+const outlineBtnStyle = {
+  background: 'transparent', color: hsl(THEME.colors.foreground),
+  padding: '0.75rem 2rem', borderRadius: THEME.radius, fontWeight: '600',
+  border: \`1px solid \${hsla(THEME.colors.border, 1)}\`, cursor: 'pointer',
+  fontFamily: THEME.typography.bodyFont, transition: 'all 0.2s ease', textDecoration: 'none', display: 'inline-block',
+};
+
+`;
+
+  // Inject after imports (find the last import statement)
+  const lastImportIdx = code.lastIndexOf('import ');
+  if (lastImportIdx !== -1) {
+    const lineEnd = code.indexOf('\n', lastImportIdx);
+    if (lineEnd !== -1) {
+      return code.slice(0, lineEnd + 1) + themeBlock + code.slice(lineEnd + 1);
+    }
+  }
+
+  // Fallback: inject at top after any initial comments
+  const firstCodeLine = code.match(/^(?:\/\*[\s\S]*?\*\/|\/\/[^\n]*\n)*/);
+  const insertAt = firstCodeLine ? firstCodeLine[0].length : 0;
+  return code.slice(0, insertAt) + themeBlock + code.slice(insertAt);
 }
 
 /**
