@@ -65,6 +65,7 @@ export const SimplePreview = React.memo(forwardRef<SimplePreviewHandle, SimplePr
   showToolbar = true,
   device = 'desktop',
   enableSelection = false,
+  selectionActivationKey = 0,
   onElementSelect,
   businessId,
   siteId,
