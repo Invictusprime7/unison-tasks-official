@@ -166,6 +166,12 @@ export const FloatingDock = ({
                 previewWidth={DEVICE_WIDTHS[previewDevice]}
               />
             )}
+            {activePanel === "layouts" && (
+              <SectionLayoutPicker
+                currentCode={currentCode}
+                onSwapSection={onSwapSection || (() => {})}
+              />
+            )}
             {activePanel === "projects" && (
               <ProjectsPanel
                 onLoadTemplate={onLoadTemplate}
