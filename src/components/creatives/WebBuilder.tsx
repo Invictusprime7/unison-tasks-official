@@ -80,6 +80,8 @@ import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
 import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { getVariantById, extractSectionContentFromJSX, findSectionBounds } from '@/sections/variants';
+import { swapSectionVariant } from '@/utils/sectionSwapper';
+import type { VariantId } from '@/sections/variants/types';
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
 import { usePageSEO } from "@/hooks/usePageSEO";
