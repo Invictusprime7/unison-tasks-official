@@ -59,6 +59,7 @@ export const FloatingDock = ({
   currentCode,
   cloudState,
   onNavigateToCloud,
+  onSwapSection,
 }: FloatingDockProps) => {
   const [activePanel, setActivePanel] = useState<DockPanel>(null);
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('desktop');
