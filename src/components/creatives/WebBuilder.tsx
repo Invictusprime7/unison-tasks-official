@@ -4936,6 +4936,7 @@ ${html}
                         showToolbar={false}
                         device={device}
                         enableSelection={builderMode === 'select'}
+                        selectionActivationKey={editActivationKey}
                         onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                       />
                     )}
