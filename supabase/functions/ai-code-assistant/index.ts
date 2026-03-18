@@ -2002,6 +2002,7 @@ Return a single JSON object with this structure (no markdown, no explanations):
 
 ## QUALITY REQUIREMENTS (NON-NEGOTIABLE):
 - **MINIMUM 10 section components** - Header, Hero, Services, About, Team, Testimonials, Gallery, FAQ, CTA, Contact, Footer
+- **EXACTLY ONE Hero section** — never generate multiple hero variants or hero alternatives. Each section type appears once.
 - **MINIMUM 6 service/feature items** with icons, titles, descriptions, pricing  
 - **MINIMUM 3 team members** with photos, names, titles, bios
 - **MINIMUM 3 testimonials** with quotes, names, companies, avatars
