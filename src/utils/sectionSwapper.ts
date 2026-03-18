@@ -2,14 +2,15 @@
  * Section Swapper Utility
  * 
  * Parses a compositionToReactCode-generated VFS file to:
- * 1. Identify which sections exist (from SECTIONS array)
- * 2. Extract content from a target section's props
+ * 1. Identify which sections exist (from SECTIONS array or JSX tags)
+ * 2. Extract content from a target section's props/JSX
  * 3. Swap the rendering for that section with a variant's JSX
  */
 
 import type { SectionType } from '@/sections/types';
 import type { ExtractedSectionContent } from '@/sections/variants/types';
 import { getVariantById, VARIANT_REGISTRY } from '@/sections/variants/registry';
+import { extractSectionContentFromJSX, findSectionBounds } from '@/sections/variants/contentExtractor';
 import type { VariantId } from '@/sections/variants/types';
 
 /** Detected section in current preview code */
@@ -18,6 +19,10 @@ export interface DetectedSection {
   type: SectionType;
   index: number; // position in SECTIONS array
   props: Record<string, any>;
+  /** The HTML tag name used (section, header, nav, footer, main) — for JSX replacement */
+  tagName?: string;
+  /** Index of this tag among all tags of the same name — for findSectionBounds */
+  tagIndex?: number;
 }
 
 /**
@@ -81,9 +86,17 @@ function parseJsxSectionTags(code: string): DetectedSection[] {
   let match: RegExpExecArray | null;
   let idx = 0;
 
+  // Track per-tagName index for findSectionBounds
+  const tagCounts: Record<string, number> = {};
+
   while ((match = tagRegex.exec(code)) !== null) {
     const tagName = match[1].toLowerCase();
     const attrs = match[2];
+
+    // Track tag index
+    tagCounts[tagName] = (tagCounts[tagName] || 0);
+    const tagIndex = tagCounts[tagName];
+    tagCounts[tagName]++;
 
     // Extract id
     const idMatch = attrs.match(/\bid=["'{]([^"'}]+)["'}]/);
@@ -94,47 +107,80 @@ function parseJsxSectionTags(code: string): DetectedSection[] {
     const className = (classMatch?.[1] || '').toLowerCase();
     const lowerId = id.toLowerCase();
 
-    // Infer SectionType from tag/id/class
-    let type: SectionType = 'hero'; // fallback
-    if (tagName === 'nav' || lowerId.includes('nav') || className.includes('nav')) type = 'navbar';
-    else if (tagName === 'footer' || lowerId.includes('footer') || className.includes('footer')) type = 'footer';
-    else if (tagName === 'header' && !lowerId.includes('hero')) type = 'navbar';
-    else if (lowerId.includes('hero') || className.includes('hero')) type = 'hero';
-    else if (lowerId.includes('cta') || className.includes('cta')) type = 'cta';
-    else if (lowerId.includes('service') || className.includes('service')) type = 'services';
-    else if (lowerId.includes('feature') || className.includes('feature')) type = 'features';
-    else if (lowerId.includes('pricing') || className.includes('pricing')) type = 'pricing';
-    else if (lowerId.includes('testimonial') || className.includes('testimonial')) type = 'testimonials';
-    else if (lowerId.includes('team') || className.includes('team')) type = 'team';
-    else if (lowerId.includes('gallery') || className.includes('gallery')) type = 'gallery';
-    else if (lowerId.includes('faq') || className.includes('faq')) type = 'faq';
-    else if (lowerId.includes('contact') || className.includes('contact')) type = 'contact';
-    else if (lowerId.includes('stat') || className.includes('stat')) type = 'stats';
-    else if (lowerId.includes('about') || className.includes('about')) type = 'about';
+    // Also check data-variant attribute
+    const dataVariantMatch = attrs.match(/data-variant=["']([^"']+)["']/);
+    const dataVariant = dataVariantMatch?.[1] || '';
 
-    // Also check the function name wrapping this tag (look backwards for `function X(`)
+    // Infer SectionType from tag/id/class/data-variant
+    let type: SectionType = inferSectionType(tagName, lowerId, className, dataVariant);
+
+    // Also check the function name wrapping this tag
     const beforeTag = code.slice(Math.max(0, match.index - 500), match.index);
     const fnMatch = beforeTag.match(/function\s+(\w+)\s*\([^)]*\)\s*\{[^}]*$/);
     if (fnMatch) {
-      const fnName = fnMatch[1].toLowerCase();
-      if (fnName === 'navbar' || fnName === 'nav') type = 'navbar';
-      else if (fnName === 'hero') type = 'hero';
-      else if (fnName === 'cta') type = 'cta';
-      else if (fnName === 'footer') type = 'footer';
-      else if (fnName === 'services' || fnName === 'features') type = fnName as SectionType;
-      else if (fnName === 'testimonials') type = 'testimonials';
-      else if (fnName === 'pricing') type = 'pricing';
-      else if (fnName === 'contact') type = 'contact';
-      else if (fnName === 'faq') type = 'faq';
-      else if (fnName === 'team') type = 'team';
-      else if (fnName === 'stats') type = 'stats';
-      else if (fnName === 'about') type = 'about';
+      const fnType = fnNameToSectionType(fnMatch[1]);
+      if (fnType) type = fnType;
     }
 
-    results.push({ id, type, index: idx++, props: {} });
+    // Also check for const Component = () => pattern
+    const arrowMatch = beforeTag.match(/(?:const|let)\s+(\w+)\s*=\s*(?:\([^)]*\)|)\s*=>\s*(?:\{[^}]*)?$/);
+    if (arrowMatch) {
+      const fnType = fnNameToSectionType(arrowMatch[1]);
+      if (fnType) type = fnType;
+    }
+
+    results.push({ id, type, index: idx++, props: {}, tagName, tagIndex });
   }
 
   return results;
+}
+
+/** Infer SectionType from tag name, id, className, and data-variant */
+function inferSectionType(tagName: string, lowerId: string, className: string, dataVariant: string): SectionType {
+  // data-variant is most reliable: "hero:centered" -> "hero"
+  if (dataVariant) {
+    const dvType = dataVariant.split(':')[0] as SectionType;
+    if (dvType) return dvType;
+  }
+
+  if (tagName === 'nav' || lowerId.includes('nav') || className.includes('nav')) return 'navbar';
+  if (tagName === 'footer' || lowerId.includes('footer') || className.includes('footer')) return 'footer';
+  if (tagName === 'header' && !lowerId.includes('hero')) return 'navbar';
+  if (lowerId.includes('hero') || className.includes('hero')) return 'hero';
+  if (lowerId.includes('cta') || className.includes('cta')) return 'cta';
+  if (lowerId.includes('service') || className.includes('service')) return 'services';
+  if (lowerId.includes('feature') || className.includes('feature')) return 'features';
+  if (lowerId.includes('pricing') || className.includes('pricing')) return 'pricing';
+  if (lowerId.includes('testimonial') || className.includes('testimonial')) return 'testimonials';
+  if (lowerId.includes('team') || className.includes('team')) return 'team';
+  if (lowerId.includes('gallery') || className.includes('gallery')) return 'gallery';
+  if (lowerId.includes('faq') || className.includes('faq')) return 'faq';
+  if (lowerId.includes('contact') || className.includes('contact')) return 'contact';
+  if (lowerId.includes('stat') || className.includes('stat')) return 'stats';
+  if (lowerId.includes('about') || className.includes('about')) return 'about';
+  return 'hero'; // fallback
+}
+
+/** Map function/component names to section types */
+function fnNameToSectionType(name: string): SectionType | null {
+  const n = name.toLowerCase();
+  const map: Record<string, SectionType> = {
+    navbar: 'navbar', nav: 'navbar', navigation: 'navbar',
+    hero: 'hero', herosection: 'hero', herobanner: 'hero',
+    cta: 'cta', calltoaction: 'cta',
+    footer: 'footer', footersection: 'footer',
+    services: 'services', servicesection: 'services',
+    features: 'features', featuresection: 'features',
+    testimonials: 'testimonials', testimonialsection: 'testimonials',
+    pricing: 'pricing', pricingsection: 'pricing',
+    contact: 'contact', contactsection: 'contact',
+    faq: 'faq', faqsection: 'faq',
+    team: 'team', teamsection: 'team',
+    stats: 'stats', statssection: 'stats',
+    about: 'about', aboutsection: 'about',
+    gallery: 'gallery', gallerysection: 'gallery',
+  };
+  return map[n] || null;
 }
 
 /**
@@ -192,7 +238,6 @@ export function propsToExtractedContent(
       break;
 
     default:
-      // Generic extraction
       content.heading = props.headline || props.title;
       content.subheading = props.subheadline || props.description;
       break;
@@ -204,8 +249,9 @@ export function propsToExtractedContent(
 /**
  * Apply a section variant swap to the current code.
  * 
- * Strategy: Find the function for the target section type in SECTION_MAP,
- * and inject a variant-specific rendering override.
+ * Two strategies:
+ *   1. Composition templates: inject override function + modify SECTION_MAP render
+ *   2. AI-generated templates: find section JSX boundaries + replace with variant JSX
  * 
  * Returns the modified code string.
  */
@@ -228,30 +274,38 @@ export function swapSectionVariant(
     return code;
   }
 
-  // Extract content from the section props
-  const content = propsToExtractedContent(targetSection.type, targetSection.props);
+  // Strategy 1: Composition-based templates (has SECTION_MAP)
+  const hasSectionMap = code.includes('SECTION_MAP') || code.includes('// Section Map');
+  if (hasSectionMap) {
+    return swapCompositionSection(code, sectionId, targetSection, variant);
+  }
 
-  // Generate variant JSX
+  // Strategy 2: Direct JSX replacement for AI-generated templates
+  return swapJsxSection(code, targetSection, variant);
+}
+
+/** Strategy 1: Composition template swap (inject override function) */
+function swapCompositionSection(
+  code: string,
+  sectionId: string,
+  targetSection: DetectedSection,
+  variant: import('@/sections/variants/types').SectionVariant,
+): string {
+  const content = propsToExtractedContent(targetSection.type, targetSection.props);
   const variantJSX = variant.renderJSX(content);
 
-  // Strategy: Add a variant override function and modify the render map
   const overrideFnName = `__Variant_${sectionId.replace(/[^a-zA-Z0-9]/g, '_')}`;
   
-  // Insert the override function before the SECTION_MAP
   const sectionMapMarker = '// Section Map';
   const altMarker = 'const SECTION_MAP';
   const insertPoint = code.indexOf(sectionMapMarker) !== -1 
     ? code.indexOf(sectionMapMarker)
     : code.indexOf(altMarker);
   
-  if (insertPoint === -1) {
-    // Fallback: can't find injection point, try to replace the entire section function
-    console.warn('[SectionSwapper] Cannot find SECTION_MAP marker');
-    return code;
-  }
+  if (insertPoint === -1) return code;
 
   const overrideFn = `
-// Variant override: ${variantId} for section "${sectionId}"
+// Variant override: ${variant.id} for section "${sectionId}"
 function ${overrideFnName}() {
   return (
 ${variantJSX}
@@ -260,12 +314,8 @@ ${variantJSX}
 
 `;
 
-  // Inject the override function
   let modifiedCode = code.slice(0, insertPoint) + overrideFn + code.slice(insertPoint);
 
-  // Modify the render to use the override for this specific section
-  // Replace the generic render: <C key={s.id} props={s.props} />
-  // With a conditional that checks for the overridden section ID
   const renderPattern = /\{SECTIONS\.filter\(s => !s\.hidden\)\.map\(s => \{[\s\S]*?return <C key=\{s\.id\} props=\{s\.props\} \/>;[\s\S]*?\}\)\}/;
   
   modifiedCode = modifiedCode.replace(renderPattern, (match) => {
@@ -275,6 +325,55 @@ ${variantJSX}
         return <C key={s.id} props={s.props} />;`
     );
   });
+
+  return modifiedCode;
+}
+
+/** Strategy 2: Direct JSX replacement for AI-generated templates */
+function swapJsxSection(
+  code: string,
+  targetSection: DetectedSection,
+  variant: import('@/sections/variants/types').SectionVariant,
+): string {
+  const tagName = targetSection.tagName;
+  const tagIndex = targetSection.tagIndex;
+
+  if (!tagName || tagIndex === undefined) {
+    console.warn('[SectionSwapper] No tagName/tagIndex for JSX swap');
+    return code;
+  }
+
+  // Find the JSX boundaries of this section
+  const bounds = findSectionBounds(code, tagName, tagIndex);
+  if (!bounds) {
+    console.warn(`[SectionSwapper] Could not find bounds for <${tagName}> index=${tagIndex}`);
+    return code;
+  }
+
+  // Extract the old section's source code
+  const oldSectionSource = code.slice(bounds.start, bounds.end);
+
+  // Extract content from the old section for content preservation
+  const content = extractSectionContentFromJSX(oldSectionSource);
+
+  // If composition props are available, merge them in
+  if (Object.keys(targetSection.props).length > 0) {
+    const propsContent = propsToExtractedContent(targetSection.type, targetSection.props);
+    // Merge: prefer extracted JSX content, fill gaps from props
+    if (!content.heading && propsContent.heading) content.heading = propsContent.heading;
+    if (!content.subheading && propsContent.subheading) content.subheading = propsContent.subheading;
+    if (!content.brandName && propsContent.brandName) content.brandName = propsContent.brandName;
+    if (!content.ctaButtons?.length && propsContent.ctaButtons?.length) content.ctaButtons = propsContent.ctaButtons;
+    if (!content.navLinks?.length && propsContent.navLinks?.length) content.navLinks = propsContent.navLinks;
+    if (!content.imageSrc && propsContent.imageSrc) content.imageSrc = propsContent.imageSrc;
+    if (!content.badge && propsContent.badge) content.badge = propsContent.badge;
+  }
+
+  // Generate the new variant JSX
+  const variantJSX = variant.renderJSX(content);
+
+  // Replace the old section with the new variant JSX
+  const modifiedCode = code.slice(0, bounds.start) + variantJSX + code.slice(bounds.end);
 
   return modifiedCode;
 }
