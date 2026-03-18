@@ -1693,8 +1693,10 @@ export function Section({ children, className, id }: SectionProps) {
 - Heading: "${variation.fontPairing.heading}"
 - Body: "${variation.fontPairing.body}"
 
-## SECTION ORDER (IMPLEMENT ALL IN THIS ORDER):
+## SECTION ORDER (IMPLEMENT ALL IN THIS ORDER — ONE OF EACH TYPE, NO DUPLICATES):
 ${variation.sectionOrder.map((s, i) => `${i + 1}. ${s.charAt(0).toUpperCase() + s.slice(1)}`).join('\n')}
+
+⚠️ CRITICAL: Generate EXACTLY ONE Hero section component. Do NOT create multiple hero variants, hero alternatives, or hero-like full-viewport sections. Users can swap section layouts later via the Layouts panel.
 
 ## HERO LAYOUT: ${variation.heroVariant.name}
 Layout: ${variation.heroVariant.layout}
