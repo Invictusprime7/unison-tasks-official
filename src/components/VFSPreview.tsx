@@ -140,131 +140,13 @@ class SandpackErrorBoundary extends Component<
 }
 
 // ============================================================================
-// SandpackSelectionBridge — injects element selection into Sandpack iframe
+// Helpers
 // ============================================================================
 
-function SandpackSelectionBridge({
-  enableSelection,
-  onElementSelect,
-}: {
-  enableSelection: boolean;
-  onElementSelect?: (elementData: any) => void;
-}) {
-  const bridgeRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    if (!enableSelection || bridgeRef.current) return;
-
-    const SELECTION_SCRIPT = `
-      (function() {
-        if (window.__selectionBridgeActive) return;
-        window.__selectionBridgeActive = true;
-        var hovered = null;
-        document.addEventListener('mouseover', function(e) {
-          if (hovered) hovered.style.outline = '';
-          hovered = e.target;
-          hovered.style.outline = '2px solid rgba(139,92,246,0.7)';
-          hovered.style.outlineOffset = '2px';
-        });
-        document.addEventListener('mouseout', function(e) {
-          if (hovered) { hovered.style.outline = ''; hovered = null; }
-        });
-        document.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var el = e.target;
-          var data = {
-            tagName: el.tagName,
-            textContent: (el.textContent || '').substring(0, 200),
-            selector: buildSelector(el),
-            html: el.outerHTML.substring(0, 500),
-            attributes: {},
-            styles: {},
-          };
-          var attrs = el.attributes;
-          for (var i = 0; i < attrs.length; i++) {
-            data.attributes[attrs[i].name] = attrs[i].value;
-          }
-          var cs = window.getComputedStyle(el);
-          ['color','backgroundColor','fontSize','fontFamily','padding','margin','display','position'].forEach(function(p) {
-            data.styles[p] = cs.getPropertyValue(p.replace(/([A-Z])/g, '-$1').toLowerCase());
-          });
-          window.parent.postMessage({ type: 'SANDPACK_ELEMENT_SELECT', payload: data }, '*');
-        }, true);
-
-        function buildSelector(el) {
-          if (el.id) return '#' + el.id;
-          var path = [];
-          while (el && el !== document.body) {
-            var tag = el.tagName.toLowerCase();
-            var idx = 1;
-            var sib = el.previousElementSibling;
-            while (sib) { if (sib.tagName === el.tagName) idx++; sib = sib.previousElementSibling; }
-            path.unshift(tag + ':nth-of-type(' + idx + ')');
-            el = el.parentElement;
-          }
-          return 'body > ' + path.join(' > ');
-        }
-      })();
-    `;
-
-    // Listen for element selection from Sandpack iframe
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SANDPACK_ELEMENT_SELECT' && onElementSelect) {
-        onElementSelect(event.data.payload);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-
-    // Inject selection script into Sandpack iframe after it loads
-    const injectInterval = setInterval(() => {
-      const iframes = document.querySelectorAll('iframe[title="Sandpack Preview"]');
-      iframes.forEach((iframe: Element) => {
-        const iframeEl = iframe as HTMLIFrameElement;
-        try {
-          const doc = iframeEl.contentDocument;
-          if (doc && !doc.querySelector('[data-selection-bridge]')) {
-            const script = doc.createElement('script');
-            script.setAttribute('data-selection-bridge', 'true');
-            script.textContent = SELECTION_SCRIPT;
-            doc.body.appendChild(script);
-            bridgeRef.current = true;
-          }
-        } catch {
-          // Cross-origin — ignore
-        }
-      });
-    }, 1500);
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      clearInterval(injectInterval);
-      bridgeRef.current = false;
-    };
-  }, [enableSelection, onElementSelect]);
-
-  // Remove selection styles when switching to preview mode
-  useEffect(() => {
-    if (enableSelection) return;
-    const iframes = document.querySelectorAll('iframe[title="Sandpack Preview"]');
-    iframes.forEach((iframe: Element) => {
-      const iframeEl = iframe as HTMLIFrameElement;
-      try {
-        const doc = iframeEl.contentDocument;
-        if (doc) {
-          const script = doc.querySelector('[data-selection-bridge]');
-          if (script) script.remove();
-          // Clear active selection state
-          (doc.defaultView as any).__selectionBridgeActive = false;
-        }
-      } catch { /* cross-origin */ }
-    });
-    bridgeRef.current = false;
-  }, [enableSelection]);
-
-  return null;
+function resolvePreviewIframe(root: HTMLDivElement | null): HTMLIFrameElement | null {
+  if (!root) return null;
+  return root.querySelector('iframe');
 }
-
 
 function nodesToFileMap(nodes: VirtualNode[]): Record<string, string> {
   const files: Record<string, string> = {};
@@ -282,7 +164,7 @@ function nodesToFileMap(nodes: VirtualNode[]): Record<string, string> {
 // Main Component
 // ============================================================================
 
-export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
+export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({ 
   nodes,
   files: propFiles,
   activeFile,
@@ -308,7 +190,10 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const [logs, setLogs] = useState<string[]>([]);
   const [sandpackKey, setSandpackKey] = useState(0);
   const startAttemptedRef = useRef(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const previewRootRef = useRef<HTMLDivElement | null>(null);
+  const hoveredElementRef = useRef<HTMLElement | null>(null);
+  const selectedElementRef = useRef<HTMLElement | null>(null);
   
   // Docker preview service
   const dockerService = usePreviewService();
@@ -318,6 +203,18 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   
   // Check if local Vite server is configured
   const localViteConfigured = !!LOCAL_PREVIEW_URL;
+  
+  const clearPreviewHighlights = useCallback(() => {
+    if (hoveredElementRef.current) {
+      removeHighlight(hoveredElementRef.current);
+      hoveredElementRef.current = null;
+    }
+
+    if (selectedElementRef.current) {
+      removeHighlight(selectedElementRef.current);
+      selectedElementRef.current = null;
+    }
+  }, []);
   
   // Convert nodes to files - ALWAYS recompute to ensure we have latest
   const files = useMemo(() => {
@@ -387,6 +284,102 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     window.addEventListener('message', handlePreviewMessage);
     return () => window.removeEventListener('message', handlePreviewMessage);
   }, [onNavigate, onIntentTrigger, businessId, siteId]);
+
+  // Attach edit-mode selection to the active preview iframe (Docker, local, or Sandpack)
+  useEffect(() => {
+    if (!enableSelection || backend === 'loading') {
+      clearPreviewHighlights();
+      return;
+    }
+
+    let cleanup: (() => void) | null = null;
+    let attachInterval: ReturnType<typeof setInterval> | null = null;
+
+    const attachSelectionHandlers = () => {
+      const activeIframe =
+        backend === 'docker' || backend === 'local'
+          ? iframeRef.current
+          : resolvePreviewIframe(previewRootRef.current);
+
+      if (!activeIframe) return false;
+
+      iframeRef.current = activeIframe;
+      const iframeDoc = activeIframe.contentDocument || activeIframe.contentWindow?.document;
+      if (!iframeDoc?.body) return false;
+
+      const handleMouseOver = (e: MouseEvent) => {
+        const target = e.target as HTMLElement | null;
+        if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
+        if (target === selectedElementRef.current) return;
+
+        if (hoveredElementRef.current && hoveredElementRef.current !== selectedElementRef.current) {
+          removeHighlight(hoveredElementRef.current);
+        }
+
+        highlightElement(target, '#3b82f6');
+        hoveredElementRef.current = target;
+      };
+
+      const handleMouseOut = (e: MouseEvent) => {
+        const target = e.target as HTMLElement | null;
+        if (!target || target !== hoveredElementRef.current || target === selectedElementRef.current) return;
+
+        removeHighlight(target);
+        hoveredElementRef.current = null;
+      };
+
+      const handleClick = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const target = e.target as HTMLElement | null;
+        if (!target || target === iframeDoc.body || target === iframeDoc.documentElement) return;
+
+        if (selectedElementRef.current && selectedElementRef.current !== target) {
+          removeHighlight(selectedElementRef.current);
+        }
+
+        if (hoveredElementRef.current && hoveredElementRef.current !== target) {
+          removeHighlight(hoveredElementRef.current);
+          hoveredElementRef.current = null;
+        }
+
+        const elementData = getSelectedElementData(target);
+        onElementSelect?.(elementData);
+        selectedElementRef.current = target;
+        highlightElement(target, '#10b981');
+      };
+
+      iframeDoc.addEventListener('mouseover', handleMouseOver);
+      iframeDoc.addEventListener('mouseout', handleMouseOut);
+      iframeDoc.addEventListener('click', handleClick, true);
+      iframeDoc.body.style.cursor = 'pointer';
+
+      cleanup = () => {
+        iframeDoc.removeEventListener('mouseover', handleMouseOver);
+        iframeDoc.removeEventListener('mouseout', handleMouseOut);
+        iframeDoc.removeEventListener('click', handleClick, true);
+        iframeDoc.body.style.cursor = '';
+        clearPreviewHighlights();
+      };
+
+      return true;
+    };
+
+    if (!attachSelectionHandlers()) {
+      attachInterval = setInterval(() => {
+        if (attachSelectionHandlers() && attachInterval) {
+          clearInterval(attachInterval);
+          attachInterval = null;
+        }
+      }, 300);
+    }
+
+    return () => {
+      if (attachInterval) clearInterval(attachInterval);
+      cleanup?.();
+    };
+  }, [enableSelection, backend, sandpackKey, onElementSelect, clearPreviewHighlights]);
   
   // Initialize backend — Docker for local dev, Sandpack for production
   useEffect(() => {
@@ -572,7 +565,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       )}
       
       {/* Preview Content */}
-      <div className="flex-1 relative min-h-0">
+      <div ref={previewRootRef} className="flex-1 relative min-h-0">
         {/* Loading State */}
         {backend === 'loading' && (
           <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
@@ -644,10 +637,6 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
                   }}
                 >
                   <SandpackLayout className="!flex-1 !min-h-0 !border-0 !rounded-none !bg-transparent" style={{ height: '100%' }}>
-                    <SandpackSelectionBridge
-                      enableSelection={enableSelection}
-                      onElementSelect={onElementSelect}
-                    />
                     <SandpackPreview
                       showNavigator={false}
                       showRefreshButton={false}
