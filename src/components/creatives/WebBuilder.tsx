@@ -4109,6 +4109,7 @@ ${html}
             currentCode={previewCode}
             cloudState={cloudState}
             onNavigateToCloud={() => navigate('/cloud')}
+            onSwapSection={handleSwapSection}
           />
         </div>
 
