@@ -25,15 +25,27 @@ export interface DetectedSection {
  * Returns the detected sections with their types and props.
  */
 export function detectSections(code: string): DetectedSection[] {
-  // Find the SECTIONS = [...] block
-  const sectionsMatch = code.match(/const\s+SECTIONS\s*=\s*(\[[\s\S]*?\n\]);/);
-  if (!sectionsMatch) return [];
+  // Find the SECTIONS = [...] block using bracket balancing
+  const startMatch = code.match(/const\s+SECTIONS\s*=\s*\[/);
+  if (!startMatch || startMatch.index === undefined) return [];
+
+  const startIdx = startMatch.index + startMatch[0].length - 1; // position of '['
+  let depth = 0;
+  let endIdx = -1;
+  for (let i = startIdx; i < code.length; i++) {
+    if (code[i] === '[') depth++;
+    else if (code[i] === ']') {
+      depth--;
+      if (depth === 0) { endIdx = i; break; }
+    }
+  }
+  if (endIdx === -1) return [];
+
+  const sectionsStr = code.slice(startIdx, endIdx + 1);
 
   try {
-    // Use Function constructor to safely evaluate the JSON-like array
-    const sectionsStr = sectionsMatch[1];
-    const sections = new Function(`return ${sectionsStr}`)();
-    
+    // JSON.parse works since compositionToReactCode uses JSON.stringify
+    const sections = JSON.parse(sectionsStr);
     if (!Array.isArray(sections)) return [];
     
     return sections.map((s: any, i: number) => ({
@@ -43,18 +55,30 @@ export function detectSections(code: string): DetectedSection[] {
       props: s.props || {},
     }));
   } catch {
-    // Fallback: regex-based detection
+    // Fallback: regex-based detection for non-JSON code
     const results: DetectedSection[] = [];
-    const typePattern = /\{\s*id:\s*['"]([^'"]+)['"]\s*,\s*type:\s*['"]([^'"]+)['"]/g;
+    const typePattern = /"id"\s*:\s*"([^"]+)"\s*,\s*"type"\s*:\s*"([^"]+)"/g;
     let match: RegExpExecArray | null;
     let idx = 0;
-    while ((match = typePattern.exec(code)) !== null) {
+    while ((match = typePattern.exec(sectionsStr)) !== null) {
       results.push({
         id: match[1],
         type: match[2] as SectionType,
         index: idx++,
         props: {},
       });
+    }
+    // Also try single-quoted variant
+    if (results.length === 0) {
+      const altPattern = /['"]id['"]\s*:\s*['"]([^'"]+)['"]\s*,\s*['"]type['"]\s*:\s*['"]([^'"]+)['"]/g;
+      while ((match = altPattern.exec(code)) !== null) {
+        results.push({
+          id: match[1],
+          type: match[2] as SectionType,
+          index: idx++,
+          props: {},
+        });
+      }
     }
     return results;
   }
