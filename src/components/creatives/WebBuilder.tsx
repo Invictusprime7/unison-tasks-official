@@ -5062,7 +5062,7 @@ ${html}
               </Button>
             </div>
             <div className="flex-1 overflow-hidden">
-              {previewCode && !selectedObject ? (
+              {previewCode && !selectedObject && !selectedHTMLElement ? (
                 <TemplateCustomizerPanel
                   customizer={templateCustomizer}
                   onApply={applyCustomizerOverrides}
