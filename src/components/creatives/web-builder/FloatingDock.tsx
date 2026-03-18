@@ -70,6 +70,7 @@ export const FloatingDock = ({
 
   const dockItems = [
     { id: "templates" as const, label: "Templates", icon: Layout },
+    { id: "layouts" as const, label: "Layouts", icon: Layers },
     { id: "projects" as const, label: "Projects", icon: FolderOpen },
     { id: "cloud" as const, label: "Cloud", icon: Cloud },
   ];
