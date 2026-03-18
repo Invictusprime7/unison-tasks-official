@@ -39,11 +39,18 @@ export const SectionLayoutPicker: React.FC<SectionLayoutPickerProps> = ({
   currentCode,
   onSwapSection,
 }) => {
-  const detectedSections = useMemo(() => detectSections(currentCode), [currentCode]);
+  const detectedSections = useMemo(() => {
+    const sections = detectSections(currentCode);
+    console.log('[SectionLayoutPicker] Detected sections:', sections.map(s => `${s.type}(${s.id})`));
+    return sections;
+  }, [currentCode]);
 
   const swappableSections = useMemo(() => {
     const typesWithVariants = getSectionTypesWithVariants();
-    return detectedSections.filter(s => typesWithVariants.includes(s.type));
+    console.log('[SectionLayoutPicker] Types with variants:', typesWithVariants);
+    const filtered = detectedSections.filter(s => typesWithVariants.includes(s.type));
+    console.log('[SectionLayoutPicker] Swappable:', filtered.map(s => s.type));
+    return filtered;
   }, [detectedSections]);
 
   // Empty state
