@@ -4903,6 +4903,7 @@ ${html}
                         showBackendIndicator={false}
                         device={device}
                         enableSelection={builderMode === 'select'}
+                        selectionActivationKey={editActivationKey}
                         onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                         onNavigate={(path) => {
                           const pageName = path.replace(/^\//, '').replace(/\.html$/, '') || 'index';
