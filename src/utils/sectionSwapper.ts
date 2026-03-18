@@ -207,7 +207,8 @@ ${variantJSX}
  */
 export function getSwappableOptions(code: string) {
   const sections = detectSections(code);
-  const { VARIANT_REGISTRY } = require('@/sections/variants/registry');
+  // Import VARIANT_REGISTRY statically at the top of this file
+  const { VARIANT_REGISTRY } = await import('@/sections/variants/registry');
   
   return sections
     .filter(s => VARIANT_REGISTRY[s.type]?.length > 1)
