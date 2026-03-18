@@ -25,11 +25,20 @@ export interface DetectedSection {
  * Returns the detected sections with their types and props.
  */
 export function detectSections(code: string): DetectedSection[] {
-  // Find the SECTIONS = [...] block using bracket balancing
+  // Strategy 1: Parse the JSON SECTIONS array (compositionToReactCode output)
+  const jsonSections = parseJsonSectionsArray(code);
+  if (jsonSections.length > 0) return jsonSections;
+
+  // Strategy 2: Parse JSX tags (<section>, <header>, <nav>, <footer>)
+  return parseJsxSectionTags(code);
+}
+
+/** Strategy 1: Find `const SECTIONS = [...]` and JSON.parse it */
+function parseJsonSectionsArray(code: string): DetectedSection[] {
   const startMatch = code.match(/const\s+SECTIONS\s*=\s*\[/);
   if (!startMatch || startMatch.index === undefined) return [];
 
-  const startIdx = startMatch.index + startMatch[0].length - 1; // position of '['
+  const startIdx = startMatch.index + startMatch[0].length - 1;
   let depth = 0;
   let endIdx = -1;
   for (let i = startIdx; i < code.length; i++) {
@@ -44,10 +53,8 @@ export function detectSections(code: string): DetectedSection[] {
   const sectionsStr = code.slice(startIdx, endIdx + 1);
 
   try {
-    // JSON.parse works since compositionToReactCode uses JSON.stringify
     const sections = JSON.parse(sectionsStr);
     if (!Array.isArray(sections)) return [];
-    
     return sections.map((s: any, i: number) => ({
       id: s.id || `section-${i}`,
       type: s.type as SectionType,
@@ -55,33 +62,79 @@ export function detectSections(code: string): DetectedSection[] {
       props: s.props || {},
     }));
   } catch {
-    // Fallback: regex-based detection for non-JSON code
+    // Fallback: regex extraction from the JSON-like string
     const results: DetectedSection[] = [];
-    const typePattern = /"id"\s*:\s*"([^"]+)"\s*,\s*"type"\s*:\s*"([^"]+)"/g;
+    const pattern = /"id"\s*:\s*"([^"]+)"\s*,\s*"type"\s*:\s*"([^"]+)"/g;
     let match: RegExpExecArray | null;
     let idx = 0;
-    while ((match = typePattern.exec(sectionsStr)) !== null) {
-      results.push({
-        id: match[1],
-        type: match[2] as SectionType,
-        index: idx++,
-        props: {},
-      });
-    }
-    // Also try single-quoted variant
-    if (results.length === 0) {
-      const altPattern = /['"]id['"]\s*:\s*['"]([^'"]+)['"]\s*,\s*['"]type['"]\s*:\s*['"]([^'"]+)['"]/g;
-      while ((match = altPattern.exec(code)) !== null) {
-        results.push({
-          id: match[1],
-          type: match[2] as SectionType,
-          index: idx++,
-          props: {},
-        });
-      }
+    while ((match = pattern.exec(sectionsStr)) !== null) {
+      results.push({ id: match[1], type: match[2] as SectionType, index: idx++, props: {} });
     }
     return results;
   }
+}
+
+/** Strategy 2: Parse JSX semantic tags and infer section type from id/class/tag */
+function parseJsxSectionTags(code: string): DetectedSection[] {
+  const results: DetectedSection[] = [];
+  const tagRegex = /<(section|header|nav|footer|main)\b([^>]*?)>/gi;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((match = tagRegex.exec(code)) !== null) {
+    const tagName = match[1].toLowerCase();
+    const attrs = match[2];
+
+    // Extract id
+    const idMatch = attrs.match(/\bid=["'{]([^"'}]+)["'}]/);
+    const id = idMatch?.[1] || `${tagName}-${idx}`;
+
+    // Extract className for type inference
+    const classMatch = attrs.match(/className=["'{]([^"'}]+)["'}]/);
+    const className = (classMatch?.[1] || '').toLowerCase();
+    const lowerId = id.toLowerCase();
+
+    // Infer SectionType from tag/id/class
+    let type: SectionType = 'hero'; // fallback
+    if (tagName === 'nav' || lowerId.includes('nav') || className.includes('nav')) type = 'navbar';
+    else if (tagName === 'footer' || lowerId.includes('footer') || className.includes('footer')) type = 'footer';
+    else if (tagName === 'header' && !lowerId.includes('hero')) type = 'navbar';
+    else if (lowerId.includes('hero') || className.includes('hero')) type = 'hero';
+    else if (lowerId.includes('cta') || className.includes('cta')) type = 'cta';
+    else if (lowerId.includes('service') || className.includes('service')) type = 'services';
+    else if (lowerId.includes('feature') || className.includes('feature')) type = 'features';
+    else if (lowerId.includes('pricing') || className.includes('pricing')) type = 'pricing';
+    else if (lowerId.includes('testimonial') || className.includes('testimonial')) type = 'testimonials';
+    else if (lowerId.includes('team') || className.includes('team')) type = 'team';
+    else if (lowerId.includes('gallery') || className.includes('gallery')) type = 'gallery';
+    else if (lowerId.includes('faq') || className.includes('faq')) type = 'faq';
+    else if (lowerId.includes('contact') || className.includes('contact')) type = 'contact';
+    else if (lowerId.includes('stat') || className.includes('stat')) type = 'stats';
+    else if (lowerId.includes('about') || className.includes('about')) type = 'about';
+
+    // Also check the function name wrapping this tag (look backwards for `function X(`)
+    const beforeTag = code.slice(Math.max(0, match.index - 500), match.index);
+    const fnMatch = beforeTag.match(/function\s+(\w+)\s*\([^)]*\)\s*\{[^}]*$/);
+    if (fnMatch) {
+      const fnName = fnMatch[1].toLowerCase();
+      if (fnName === 'navbar' || fnName === 'nav') type = 'navbar';
+      else if (fnName === 'hero') type = 'hero';
+      else if (fnName === 'cta') type = 'cta';
+      else if (fnName === 'footer') type = 'footer';
+      else if (fnName === 'services' || fnName === 'features') type = fnName as SectionType;
+      else if (fnName === 'testimonials') type = 'testimonials';
+      else if (fnName === 'pricing') type = 'pricing';
+      else if (fnName === 'contact') type = 'contact';
+      else if (fnName === 'faq') type = 'faq';
+      else if (fnName === 'team') type = 'team';
+      else if (fnName === 'stats') type = 'stats';
+      else if (fnName === 'about') type = 'about';
+    }
+
+    results.push({ id, type, index: idx++, props: {} });
+  }
+
+  return results;
 }
 
 /**
