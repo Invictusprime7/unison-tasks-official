@@ -64,6 +64,100 @@ body {
 }
 `;
 
+const EDIT_MODE_SELECTION_BRIDGE = `function __initLovableEditModeBridge() {
+  const bridgeWindow = window as Window & { __lovableEditModeBridgeInstalled?: boolean; __lovableEditModeEnabled?: boolean };
+  if (bridgeWindow.__lovableEditModeBridgeInstalled) return;
+  bridgeWindow.__lovableEditModeBridgeInstalled = true;
+
+  let hoveredEl: HTMLElement | null = null;
+  let selectedEl: HTMLElement | null = null;
+
+  const getSelector = (el: HTMLElement): string => {
+    if (el.id) return '#' + el.id;
+    const path: string[] = [];
+    let cur: HTMLElement | null = el;
+    while (cur && cur !== document.body) {
+      let sel = cur.tagName.toLowerCase();
+      let cls = typeof cur.className === 'string' ? cur.className : (cur.className as any)?.baseVal || '';
+      if (cls) { const first = cls.split(' ').filter(Boolean)[0]; if (first) sel += '.' + first; }
+      const parent = cur.parentElement;
+      if (parent) { const sibs = Array.from(parent.children); if (sibs.length > 1) sel += ':nth-child(' + (sibs.indexOf(cur) + 1) + ')'; }
+      path.unshift(sel);
+      cur = cur.parentElement;
+    }
+    return path.join(' > ');
+  };
+
+  const getElementData = (el: HTMLElement) => {
+    const cs = window.getComputedStyle(el);
+    const attrs: Record<string,string> = {};
+    for (let i = 0; i < el.attributes.length; i++) { const a = el.attributes[i]; attrs[a.name] = a.value; }
+    const sec = el.closest('section');
+    const sectionLabel = sec ? (sec.getAttribute('data-ut-section') || sec.getAttribute('aria-label') || sec.id || sec.querySelector('h1,h2,h3')?.textContent?.trim()?.slice(0,80)) : undefined;
+    return {
+      tagName: el.tagName,
+      textContent: (el.textContent || '').slice(0, 500),
+      styles: {
+        color: cs.color, backgroundColor: cs.backgroundColor, fontSize: cs.fontSize,
+        fontFamily: cs.fontFamily, fontWeight: cs.fontWeight, fontStyle: cs.fontStyle,
+        textAlign: cs.textAlign, padding: cs.padding, margin: cs.margin,
+        border: cs.border, borderRadius: cs.borderRadius, width: cs.width, height: cs.height,
+        display: cs.display, opacity: cs.opacity, textDecoration: cs.textDecoration,
+      },
+      attributes: attrs,
+      selector: getSelector(el),
+      xpath: '',
+      html: el.outerHTML.slice(0, 2000),
+      section: sectionLabel || undefined,
+    };
+  };
+
+  const setHighlight = (el: HTMLElement, color: string) => { el.style.outline = '2px solid ' + color; el.style.outlineOffset = '2px'; };
+  const clearHighlight = (el: HTMLElement) => { el.style.outline = ''; el.style.outlineOffset = ''; };
+
+  document.addEventListener('mouseover', (e) => {
+    if (!bridgeWindow.__lovableEditModeEnabled) return;
+    const t = e.target as HTMLElement;
+    if (!t || t === document.body || t === document.documentElement) return;
+    if (t === selectedEl) return;
+    if (hoveredEl && hoveredEl !== selectedEl) clearHighlight(hoveredEl);
+    setHighlight(t, '#3b82f6');
+    hoveredEl = t;
+  });
+
+  document.addEventListener('mouseout', (e) => {
+    if (!bridgeWindow.__lovableEditModeEnabled) return;
+    const t = e.target as HTMLElement;
+    if (t && t === hoveredEl && t !== selectedEl) { clearHighlight(t); hoveredEl = null; }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!bridgeWindow.__lovableEditModeEnabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const t = e.target as HTMLElement;
+    if (!t || t === document.body || t === document.documentElement) return;
+    if (selectedEl && selectedEl !== t) clearHighlight(selectedEl);
+    if (hoveredEl && hoveredEl !== t) { clearHighlight(hoveredEl); hoveredEl = null; }
+    selectedEl = t;
+    setHighlight(t, '#10b981');
+    window.parent.postMessage({ type: 'ELEMENT_SELECTED', elementData: getElementData(t) }, '*');
+  }, true);
+
+  // Listen for enable/disable from parent
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'EDIT_MODE_TOGGLE') {
+      bridgeWindow.__lovableEditModeEnabled = !!e.data.enabled;
+      document.body.style.cursor = e.data.enabled ? 'pointer' : '';
+      if (!e.data.enabled) {
+        if (hoveredEl) { clearHighlight(hoveredEl); hoveredEl = null; }
+        if (selectedEl) { clearHighlight(selectedEl); selectedEl = null; }
+      }
+    }
+  });
+}
+`;
+
 const PREVIEW_NAV_BRIDGE = `function __initLovablePreviewNavBridge() {
   const bridgeWindow = window as Window & { __lovablePreviewNavBridgeInstalled?: boolean };
   if (bridgeWindow.__lovablePreviewNavBridgeInstalled) return;
@@ -72,6 +166,9 @@ const PREVIEW_NAV_BRIDGE = `function __initLovablePreviewNavBridge() {
   const normalizePath = (rawPath: string) => rawPath.replace(/^\//, '').replace(/\.html(?:[?#].*)?$/, '').replace(/[?#].*$/, '') || 'index';
 
   document.addEventListener('click', function (event) {
+    const bridgeWin = window as Window & { __lovableEditModeEnabled?: boolean };
+    if (bridgeWin.__lovableEditModeEnabled) return; // Edit mode handles clicks
+
     const target = event.target as HTMLElement | null;
     const el = target?.closest?.('a[href], [data-ut-intent="nav.goto"], [data-ut-path]') as HTMLElement | null;
     if (!el) return;
