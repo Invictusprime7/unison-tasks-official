@@ -4085,6 +4085,9 @@ ${html}
           <SimpleModeToggle
             currentMode={builderMode}
             onModeChange={(mode) => {
+              if (mode === 'select') {
+                setEditActivationKey(prev => prev + 1);
+              }
               setBuilderMode(mode);
               setIsInteractiveMode(mode === 'preview');
               if (mode === 'preview') {
