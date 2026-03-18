@@ -184,6 +184,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   siteId,
   device = 'desktop',
   enableSelection = false,
+  selectionActivationKey = 0,
   onElementSelect,
 }, ref) => {
   // State - default to 'sandpack' — no HTML fallback
