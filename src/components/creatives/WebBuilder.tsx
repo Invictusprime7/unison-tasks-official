@@ -80,6 +80,8 @@ import { useAIActivityMonitor } from "@/hooks/useAIActivityMonitor";
 import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { getVariantById, extractSectionContentFromJSX, findSectionBounds } from '@/sections/variants';
+import { swapSectionVariant } from '@/utils/sectionSwapper';
+import type { VariantId } from '@/sections/variants/types';
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
 import { usePageSEO } from "@/hooks/usePageSEO";
@@ -3146,6 +3148,34 @@ ${html}
     });
   }, [systemType, manifestIdFromState, vfsImportFiles]);
 
+  // Handle section layout swap from SectionLayoutPicker
+  const handleSwapSection = useCallback((sectionId: string, variantId: string) => {
+    console.log('[WebBuilder] Section swap:', sectionId, '→', variantId);
+    const currentCode = previewCode;
+    if (!currentCode) {
+      toast.error('No template loaded to swap sections');
+      return;
+    }
+
+    const swappedCode = swapSectionVariant(currentCode, sectionId, variantId as VariantId);
+    if (swappedCode === currentCode) {
+      toast.error('Could not swap section — variant or section not found');
+      return;
+    }
+
+    setEditorCode(swappedCode);
+    setPreviewCode(swappedCode);
+
+    // Sync to VFS
+    const files = templateToVFSFiles(swappedCode, currentTemplateName || 'Untitled');
+    vfsImportFiles(files);
+
+    const variant = getVariantById(variantId as VariantId);
+    toast.success(`Swapped ${sectionId} → ${variant?.name || variantId}`, {
+      description: 'Section layout updated, theme preserved',
+    });
+  }, [previewCode, currentTemplateName, vfsImportFiles]);
+
   // Handle saving current template
   // Helper to get final TSX with customizer overrides baked in
   const getFinalCodeWithOverrides = useCallback(() => {
@@ -4109,6 +4139,7 @@ ${html}
             currentCode={previewCode}
             cloudState={cloudState}
             onNavigateToCloud={() => navigate('/cloud')}
+            onSwapSection={handleSwapSection}
           />
         </div>
 

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Cloud, FolderOpen, Layout, X, Monitor, Tablet, Smartphone } from "lucide-react";
+import { Cloud, FolderOpen, Layout, Layers, X, Monitor, Tablet, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LayoutTemplatesPanel } from "./LayoutTemplatesPanel";
+import { SectionLayoutPicker } from "./SectionLayoutPicker";
 import { ProjectsPanel } from "./ProjectsPanel";
 import { CloudPanel } from "./CloudPanel";
 import type { BusinessSystemType } from "@/data/templates/types";
@@ -39,9 +40,10 @@ interface FloatingDockProps {
     };
   };
   onNavigateToCloud: () => void;
+  onSwapSection?: (sectionId: string, variantId: string) => void;
 }
 
-type DockPanel = "templates" | "projects" | "cloud" | null;
+type DockPanel = "templates" | "layouts" | "projects" | "cloud" | null;
 
 const DEVICE_WIDTHS: Record<PreviewDevice, string> = {
   desktop: '100%',
@@ -57,6 +59,7 @@ export const FloatingDock = ({
   currentCode,
   cloudState,
   onNavigateToCloud,
+  onSwapSection,
 }: FloatingDockProps) => {
   const [activePanel, setActivePanel] = useState<DockPanel>(null);
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('desktop');
@@ -67,6 +70,7 @@ export const FloatingDock = ({
 
   const dockItems = [
     { id: "templates" as const, label: "Templates", icon: Layout },
+    { id: "layouts" as const, label: "Layouts", icon: Layers },
     { id: "projects" as const, label: "Projects", icon: FolderOpen },
     { id: "cloud" as const, label: "Cloud", icon: Cloud },
   ];
@@ -160,6 +164,12 @@ export const FloatingDock = ({
                 onDemoTemplate={onDemoTemplate}
                 previewDevice={previewDevice}
                 previewWidth={DEVICE_WIDTHS[previewDevice]}
+              />
+            )}
+            {activePanel === "layouts" && (
+              <SectionLayoutPicker
+                currentCode={currentCode}
+                onSwapSection={onSwapSection || (() => {})}
               />
             )}
             {activePanel === "projects" && (
