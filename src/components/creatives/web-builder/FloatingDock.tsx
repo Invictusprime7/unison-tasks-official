@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Cloud, FolderOpen, Layout, X, Monitor, Tablet, Smartphone } from "lucide-react";
+import { Cloud, FolderOpen, Layout, Layers, X, Monitor, Tablet, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LayoutTemplatesPanel } from "./LayoutTemplatesPanel";
+import { SectionLayoutPicker } from "./SectionLayoutPicker";
 import { ProjectsPanel } from "./ProjectsPanel";
 import { CloudPanel } from "./CloudPanel";
 import type { BusinessSystemType } from "@/data/templates/types";
