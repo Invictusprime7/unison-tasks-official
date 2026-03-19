@@ -35,7 +35,11 @@ export type {
 export { getSection, getSectionComponent, getAllSections, getSectionsByCategory } from './registry';
 
 // Themes
-export { THEME_REGISTRY, getTheme } from './themes';
+export {
+  THEME_REGISTRY, getTheme,
+  THEME_MINIMAL_LIGHT, THEME_MODERN, THEME_EDITORIAL,
+  THEME_FUTURISTIC, THEME_MINIMALIST, THEME_BOLD, THEME_ORGANIC,
+} from './themes';
 
 // PageRenderer
 export { PageRenderer, compositionToReactCode } from './PageRenderer';

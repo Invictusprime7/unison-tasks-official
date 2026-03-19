@@ -238,7 +238,7 @@ export const SystemLauncher = ({
         getDefaultManifestForSystem(selectedSystem);
       let effectiveResult = editedTemplateCode 
         ? { code: editedTemplateCode, css: '' }
-        : getTemplateReactCodeWithCSS(selectedTemplate);
+        : getTemplateReactCodeWithCSS(selectedTemplate, selectedTheme?.id);
 
       if (selectedTheme && !editedTemplateFiles) {
         try {
@@ -392,7 +392,8 @@ export const SystemLauncher = ({
       const userPrompt = `Create a unique, premium ${industry} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.${industryContextBlock}${themeInstruction}${customInstruction}`;
 
       // Prefer composition-based React code over legacy HTML
-      const compositionCode = getCompositionReactCode(selectedTemplate.category);
+      // Pass themeId so the composition is serialised with the selected theme tokens
+      const compositionCode = getCompositionReactCode(selectedTemplate.category, selectedTheme?.id);
       const compositionMetaData = getCompositionMeta(selectedTemplate.category);
       const referenceCode = compositionCode || selectedTemplate.code;
       const referenceId = compositionMetaData?.compositionId || selectedTemplate.id;
@@ -438,6 +439,7 @@ export const SystemLauncher = ({
             vfsFiles: generatedFiles,
             templateName: `AI ${selectedTemplate.name}`,
             aesthetic: selectedTheme?.id,
+            designPreset: selectedTheme?.id,
             templateCategory: selectedTemplate.category,
             systemType: selectedSystem,
             systemName: system.name,
@@ -469,6 +471,7 @@ export const SystemLauncher = ({
             vfsFiles: fallbackVfsFiles,
             templateName: `AI ${selectedTemplate.name}`,
             aesthetic: selectedTheme?.id,
+            designPreset: selectedTheme?.id,
             templateCategory: selectedTemplate.category,
             systemType: selectedSystem,
             systemName: system.name,

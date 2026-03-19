@@ -8,6 +8,7 @@
 
 import { getCompositionById } from '@/sections/templates';
 import { compositionToReactCode } from '@/sections/PageRenderer';
+import { getTheme } from '@/sections/themes';
 import { ensureReactImports } from '@/utils/aiCodeCleaner';
 import { htmlToJsx, htmlDocToReactComponentWithCSS, isHtmlDocument } from '@/utils/htmlToJsx';
 
@@ -260,12 +261,13 @@ export const wrapInHtmlDoc = wrapInReactComponent;
  * Gets VFS-ready React code + extracted CSS for a template.
  * Returns { code, css } where css should go into /src/template.css.
  */
-export const getTemplateReactCodeWithCSS = (template: { code: string; id?: string; title?: string; name?: string }): { code: string; css: string } => {
+export const getTemplateReactCodeWithCSS = (template: { code: string; id?: string; title?: string; name?: string }, themeId?: string): { code: string; css: string } => {
   // Check for section-registry composition first
   if (template.id) {
     const composition = getCompositionById(template.id);
     if (composition) {
-      return { code: compositionToReactCode(composition), css: '' };
+      const themeOverride = themeId ? getTheme(themeId) : undefined;
+      return { code: compositionToReactCode(composition, themeOverride, themeId), css: '' };
     }
   }
 
