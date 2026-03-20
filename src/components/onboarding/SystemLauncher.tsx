@@ -412,6 +412,9 @@ export const SystemLauncher = ({
       const referenceCode = compositionCode || selectedTemplate.code;
       const referenceId = compositionMetaData?.compositionId || selectedTemplate.id;
 
+      // Get theme-specific CSS design system directive
+      const themeCSSDirective = selectedTheme ? getThemeCSSDirective(selectedTheme.id) : '';
+
       const { data, error } = await supabase.functions.invoke(
         "systems-build",
         {
@@ -426,6 +429,11 @@ export const SystemLauncher = ({
               .toString(36)
               .slice(2, 8)}`,
             outputFormat: "react",
+            // Theme-aware generation context
+            aestheticId: selectedTheme?.id || null,
+            aestheticLabel: selectedTheme?.label || null,
+            aestheticStyleDirective: selectedTheme?.styleDirective || null,
+            aestheticCSSDirective: themeCSSDirective || null,
           },
         }
       );
