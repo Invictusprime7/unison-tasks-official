@@ -25,6 +25,23 @@ export interface ExtractedSectionContent {
   imageAlt?: string;
   badge?: string;
   listItems?: string[];
+  // Pricing
+  tiers?: Array<{ name: string; price: string; period?: string; description?: string; features: string[]; cta: { text: string; href: string }; highlighted?: boolean; badge?: string }>;
+  // Testimonials
+  testimonials?: Array<{ quote: string; author: string; role?: string; avatar?: string; rating?: number }>;
+  // Team
+  teamMembers?: Array<{ name: string; role: string; bio?: string; image?: string }>;
+  // FAQ
+  faqItems?: Array<{ question: string; answer: string }>;
+  // Gallery
+  galleryItems?: Array<{ src: string; alt: string; caption?: string; category?: string }>;
+  // Stats
+  statItems?: Array<{ value: string; label: string; icon?: string }>;
+  // Logo Cloud
+  logos?: Array<{ name: string; src?: string }>;
+  // About
+  description?: string;
+  layout?: string;
 }
 
 /** Metadata for a single section layout variant */

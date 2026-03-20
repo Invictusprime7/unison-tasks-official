@@ -237,6 +237,109 @@ export function propsToExtractedContent(
       }
       break;
 
+    case 'pricing':
+      content.heading = props.headline;
+      content.subheading = props.subheadline;
+      if (props.tiers?.length) {
+        content.tiers = props.tiers.map((t: any) => ({
+          name: t.name,
+          price: t.price,
+          period: t.period,
+          description: t.description,
+          features: t.features || [],
+          cta: { text: t.cta?.label || 'Get Started', href: t.cta?.href || '#' },
+          highlighted: t.highlighted,
+          badge: t.badge,
+        }));
+      }
+      break;
+
+    case 'testimonials':
+      content.heading = props.headline;
+      content.subheading = props.subheadline;
+      if (props.items?.length) {
+        content.testimonials = props.items.map((t: any) => ({
+          quote: t.quote,
+          author: t.author,
+          role: t.role,
+          avatar: t.avatar,
+          rating: t.rating,
+        }));
+      }
+      break;
+
+    case 'team':
+      content.heading = props.headline;
+      content.subheading = props.subheadline;
+      if (props.members?.length) {
+        content.teamMembers = props.members.map((m: any) => ({
+          name: m.name,
+          role: m.role,
+          bio: m.bio,
+          image: m.image,
+        }));
+      }
+      break;
+
+    case 'gallery':
+      content.heading = props.headline;
+      content.subheading = props.subheadline;
+      if (props.items?.length) {
+        content.galleryItems = props.items.map((g: any) => ({
+          src: g.src,
+          alt: g.alt,
+          caption: g.caption,
+          category: g.category,
+        }));
+      }
+      break;
+
+    case 'faq':
+      content.heading = props.headline;
+      content.subheading = props.subheadline;
+      if (props.items?.length) {
+        content.faqItems = props.items.map((f: any) => ({
+          question: f.question,
+          answer: f.answer,
+        }));
+      }
+      break;
+
+    case 'stats':
+      content.heading = props.headline;
+      if (props.items?.length) {
+        content.statItems = props.items.map((s: any) => ({
+          value: s.value,
+          label: s.label,
+          icon: s.icon,
+        }));
+      }
+      break;
+
+    case 'about':
+      content.heading = props.headline;
+      content.description = props.description;
+      content.imageSrc = props.image;
+      content.layout = props.layout;
+      if (props.cta) {
+        content.ctaButtons = [{
+          text: props.cta.label || 'Learn More',
+          href: props.cta.href || '#',
+          isPrimary: true,
+        }];
+      }
+      break;
+
+    case 'logo-cloud':
+      content.heading = props.headline;
+      if (props.logos?.length) {
+        content.logos = props.logos.map((l: any) => ({
+          name: l.name,
+          src: l.src,
+        }));
+      }
+      break;
+
     default:
       content.heading = props.headline || props.title;
       content.subheading = props.subheadline || props.description;

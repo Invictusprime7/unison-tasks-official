@@ -18,6 +18,22 @@ import {
   servicesCardGridJSX, servicesAlternatingJSX, servicesCompactListJSX,
   contactCenteredJSX, contactSplitCardJSX, contactMinimalInlineJSX,
   footerColumnsJSX, footerCenteredMinimalJSX, footerDarkBandJSX,
+  // Pricing
+  pricingColumnsJSX, pricingTableJSX, pricingMinimalJSX,
+  // Testimonials
+  testimonialsGridJSX, testimonialsSpotlightJSX, testimonialsMinimalJSX,
+  // Team
+  teamGridJSX, teamCompactJSX, teamShowcaseJSX,
+  // Gallery
+  galleryMasonryJSX, galleryGridJSX, galleryMinimalJSX,
+  // FAQ
+  faqAccordionJSX, faqGridJSX, faqMinimalJSX,
+  // Stats
+  statsRowJSX, statsCardsJSX, statsMinimalJSX,
+  // About
+  aboutSplitJSX, aboutCenteredJSX, aboutTimelineJSX,
+  // Logo Cloud
+  logoCloudGridJSX, logoCloudScrollJSX, logoCloudMinimalJSX,
 } from './jsxTemplates';
 
 // Hero variants
@@ -54,6 +70,46 @@ import { ContactMinimalInline } from './contact/ContactMinimalInline';
 import { FooterColumns } from './footer/FooterColumns';
 import { FooterCenteredMinimal } from './footer/FooterCenteredMinimal';
 import { FooterDarkBand } from './footer/FooterDarkBand';
+
+// Pricing variants
+import { PricingColumns } from './pricing/PricingColumns';
+import { PricingTable } from './pricing/PricingTable';
+import { PricingMinimal } from './pricing/PricingMinimal';
+
+// Testimonials variants
+import { TestimonialsGrid } from './testimonials/TestimonialsGrid';
+import { TestimonialsSpotlight } from './testimonials/TestimonialsSpotlight';
+import { TestimonialsMinimal } from './testimonials/TestimonialsMinimal';
+
+// Team variants
+import { TeamGrid } from './team/TeamGrid';
+import { TeamCompact } from './team/TeamCompact';
+import { TeamShowcase } from './team/TeamShowcase';
+
+// Gallery variants
+import { GalleryMasonry } from './gallery/GalleryMasonry';
+import { GalleryGrid } from './gallery/GalleryGrid';
+import { GalleryMinimal } from './gallery/GalleryMinimal';
+
+// FAQ variants
+import { FAQAccordion } from './faq/FAQAccordion';
+import { FAQGrid } from './faq/FAQGrid';
+import { FAQMinimal } from './faq/FAQMinimal';
+
+// Stats variants
+import { StatsRow } from './stats/StatsRow';
+import { StatsCards } from './stats/StatsCards';
+import { StatsMinimal } from './stats/StatsMinimal';
+
+// About variants
+import { AboutSplit } from './about/AboutSplit';
+import { AboutCentered } from './about/AboutCentered';
+import { AboutTimeline } from './about/AboutTimeline';
+
+// Logo Cloud variants
+import { LogoCloudGrid } from './logo-cloud/LogoCloudGrid';
+import { LogoCloudScroll } from './logo-cloud/LogoCloudScroll';
+import { LogoCloudMinimal } from './logo-cloud/LogoCloudMinimal';
 
 // ============================================================================
 // Registry Definition
@@ -316,6 +372,302 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/footer-dark-band.svg',
       tags: ['dark', 'bold', 'newsletter'],
       renderJSX: footerDarkBandJSX,
+    },
+  ],
+
+  pricing: [
+    {
+      id: 'pricing:columns',
+      sectionType: 'pricing',
+      slug: 'columns',
+      name: 'Columns',
+      description: 'Side-by-side pricing cards with highlighted tier',
+      component: PricingColumns as any,
+      thumbnail: '/variants/pricing-columns.svg',
+      tags: ['classic', 'cards', 'popular'],
+      isDefault: true,
+      renderJSX: pricingColumnsJSX,
+    },
+    {
+      id: 'pricing:table',
+      sectionType: 'pricing',
+      slug: 'table',
+      name: 'Comparison Table',
+      description: 'Feature comparison table across tiers',
+      component: PricingTable as any,
+      thumbnail: '/variants/pricing-table.svg',
+      tags: ['table', 'comparison', 'detailed'],
+      renderJSX: pricingTableJSX,
+    },
+    {
+      id: 'pricing:minimal',
+      sectionType: 'pricing',
+      slug: 'minimal',
+      name: 'Minimal',
+      description: 'Clean inline pricing rows',
+      component: PricingMinimal as any,
+      thumbnail: '/variants/pricing-minimal.svg',
+      tags: ['minimal', 'clean', 'compact'],
+      renderJSX: pricingMinimalJSX,
+    },
+  ],
+
+  testimonials: [
+    {
+      id: 'testimonials:grid',
+      sectionType: 'testimonials',
+      slug: 'grid',
+      name: 'Grid',
+      description: 'Card grid with avatars and star ratings',
+      component: TestimonialsGrid as any,
+      thumbnail: '/variants/testimonials-grid.svg',
+      tags: ['cards', 'ratings', 'popular'],
+      isDefault: true,
+      renderJSX: testimonialsGridJSX,
+    },
+    {
+      id: 'testimonials:spotlight',
+      sectionType: 'testimonials',
+      slug: 'spotlight',
+      name: 'Spotlight',
+      description: 'Large single featured testimonial',
+      component: TestimonialsSpotlight as any,
+      thumbnail: '/variants/testimonials-spotlight.svg',
+      tags: ['featured', 'single', 'dramatic'],
+      renderJSX: testimonialsSpotlightJSX,
+    },
+    {
+      id: 'testimonials:minimal',
+      sectionType: 'testimonials',
+      slug: 'minimal',
+      name: 'Minimal',
+      description: 'Simple quote list with left border',
+      component: TestimonialsMinimal as any,
+      thumbnail: '/variants/testimonials-minimal.svg',
+      tags: ['minimal', 'editorial', 'clean'],
+      renderJSX: testimonialsMinimalJSX,
+    },
+  ],
+
+  team: [
+    {
+      id: 'team:grid',
+      sectionType: 'team',
+      slug: 'grid',
+      name: 'Grid',
+      description: 'Photo card grid with roles and bios',
+      component: TeamGrid as any,
+      thumbnail: '/variants/team-grid.svg',
+      tags: ['cards', 'photos', 'popular'],
+      isDefault: true,
+      renderJSX: teamGridJSX,
+    },
+    {
+      id: 'team:compact',
+      sectionType: 'team',
+      slug: 'compact',
+      name: 'Compact',
+      description: 'Avatar list layout for larger teams',
+      component: TeamCompact as any,
+      thumbnail: '/variants/team-compact.svg',
+      tags: ['list', 'compact', 'minimal'],
+      renderJSX: teamCompactJSX,
+    },
+    {
+      id: 'team:showcase',
+      sectionType: 'team',
+      slug: 'showcase',
+      name: 'Showcase',
+      description: 'Featured member spotlight with supporting grid',
+      component: TeamShowcase as any,
+      thumbnail: '/variants/team-showcase.svg',
+      tags: ['featured', 'showcase', 'split'],
+      renderJSX: teamShowcaseJSX,
+    },
+  ],
+
+  gallery: [
+    {
+      id: 'gallery:masonry',
+      sectionType: 'gallery',
+      slug: 'masonry',
+      name: 'Masonry',
+      description: 'Pinterest-style masonry grid with varying heights',
+      component: GalleryMasonry as any,
+      thumbnail: '/variants/gallery-masonry.svg',
+      tags: ['masonry', 'creative', 'popular'],
+      isDefault: true,
+      renderJSX: galleryMasonryJSX,
+    },
+    {
+      id: 'gallery:grid',
+      sectionType: 'gallery',
+      slug: 'grid',
+      name: 'Grid',
+      description: 'Uniform image grid with hover overlays',
+      component: GalleryGrid as any,
+      thumbnail: '/variants/gallery-grid.svg',
+      tags: ['grid', 'uniform', 'overlay'],
+      renderJSX: galleryGridJSX,
+    },
+    {
+      id: 'gallery:minimal',
+      sectionType: 'gallery',
+      slug: 'minimal',
+      name: 'Minimal',
+      description: 'Clean stacked images with captions',
+      component: GalleryMinimal as any,
+      thumbnail: '/variants/gallery-minimal.svg',
+      tags: ['minimal', 'clean', 'stacked'],
+      renderJSX: galleryMinimalJSX,
+    },
+  ],
+
+  faq: [
+    {
+      id: 'faq:accordion',
+      sectionType: 'faq',
+      slug: 'accordion',
+      name: 'Accordion',
+      description: 'Expandable accordion with details/summary',
+      component: FAQAccordion as any,
+      thumbnail: '/variants/faq-accordion.svg',
+      tags: ['accordion', 'expandable', 'popular'],
+      isDefault: true,
+      renderJSX: faqAccordionJSX,
+    },
+    {
+      id: 'faq:grid',
+      sectionType: 'faq',
+      slug: 'grid',
+      name: 'Grid',
+      description: 'Two-column Q&A card grid',
+      component: FAQGrid as any,
+      thumbnail: '/variants/faq-grid.svg',
+      tags: ['grid', 'cards', 'two-column'],
+      renderJSX: faqGridJSX,
+    },
+    {
+      id: 'faq:minimal',
+      sectionType: 'faq',
+      slug: 'minimal',
+      name: 'Minimal',
+      description: 'Simple list with dividers',
+      component: FAQMinimal as any,
+      thumbnail: '/variants/faq-minimal.svg',
+      tags: ['minimal', 'simple', 'clean'],
+      renderJSX: faqMinimalJSX,
+    },
+  ],
+
+  stats: [
+    {
+      id: 'stats:row',
+      sectionType: 'stats',
+      slug: 'row',
+      name: 'Row',
+      description: 'Horizontal row of stat counters',
+      component: StatsRow as any,
+      thumbnail: '/variants/stats-row.svg',
+      tags: ['horizontal', 'counters', 'popular'],
+      isDefault: true,
+      renderJSX: statsRowJSX,
+    },
+    {
+      id: 'stats:cards',
+      sectionType: 'stats',
+      slug: 'cards',
+      name: 'Cards',
+      description: 'Stat items in individual cards',
+      component: StatsCards as any,
+      thumbnail: '/variants/stats-cards.svg',
+      tags: ['cards', 'grid', 'bold'],
+      renderJSX: statsCardsJSX,
+    },
+    {
+      id: 'stats:minimal',
+      sectionType: 'stats',
+      slug: 'minimal',
+      name: 'Minimal',
+      description: 'Compact inline stats with dividers',
+      component: StatsMinimal as any,
+      thumbnail: '/variants/stats-minimal.svg',
+      tags: ['minimal', 'inline', 'compact'],
+      renderJSX: statsMinimalJSX,
+    },
+  ],
+
+  about: [
+    {
+      id: 'about:split',
+      sectionType: 'about',
+      slug: 'split',
+      name: 'Split',
+      description: 'Image and text side by side',
+      component: AboutSplit as any,
+      thumbnail: '/variants/about-split.svg',
+      tags: ['split', 'image', 'popular'],
+      isDefault: true,
+      renderJSX: aboutSplitJSX,
+    },
+    {
+      id: 'about:centered',
+      sectionType: 'about',
+      slug: 'centered',
+      name: 'Centered',
+      description: 'Centered text with optional image above',
+      component: AboutCentered as any,
+      thumbnail: '/variants/about-centered.svg',
+      tags: ['centered', 'clean', 'simple'],
+      renderJSX: aboutCenteredJSX,
+    },
+    {
+      id: 'about:timeline',
+      sectionType: 'about',
+      slug: 'timeline',
+      name: 'Timeline',
+      description: 'Company milestones as vertical timeline',
+      component: AboutTimeline as any,
+      thumbnail: '/variants/about-timeline.svg',
+      tags: ['timeline', 'history', 'milestones'],
+      renderJSX: aboutTimelineJSX,
+    },
+  ],
+
+  'logo-cloud': [
+    {
+      id: 'logo-cloud:grid',
+      sectionType: 'logo-cloud',
+      slug: 'grid',
+      name: 'Grid',
+      description: 'Grid of partner/brand logos',
+      component: LogoCloudGrid as any,
+      thumbnail: '/variants/logo-cloud-grid.svg',
+      tags: ['grid', 'partners', 'popular'],
+      isDefault: true,
+      renderJSX: logoCloudGridJSX,
+    },
+    {
+      id: 'logo-cloud:scroll',
+      sectionType: 'logo-cloud',
+      slug: 'scroll',
+      name: 'Scroll',
+      description: 'Infinite scrolling marquee of logos',
+      component: LogoCloudScroll as any,
+      thumbnail: '/variants/logo-cloud-scroll.svg',
+      tags: ['marquee', 'animation', 'modern'],
+      renderJSX: logoCloudScrollJSX,
+    },
+    {
+      id: 'logo-cloud:minimal',
+      sectionType: 'logo-cloud',
+      slug: 'minimal',
+      name: 'Minimal',
+      description: 'Single horizontal row of logos',
+      component: LogoCloudMinimal as any,
+      thumbnail: '/variants/logo-cloud-minimal.svg',
+      tags: ['minimal', 'clean', 'simple'],
+      renderJSX: logoCloudMinimalJSX,
     },
   ],
 };

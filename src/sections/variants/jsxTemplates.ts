@@ -458,3 +458,523 @@ ${navLinks.map(link => `                <a href="${link.href}" style={{ fontFami
         </div>
       </footer>`;
 }
+
+// ============================================================================
+// Pricing Variants
+// ============================================================================
+
+export function pricingColumnsJSX(c: ExtractedSectionContent): string {
+  const tiers = c.tiers || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="pricing:columns">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(${Math.min(tiers.length, 3)}, 1fr)', gap: '1.5rem' }}>
+${tiers.map((tier, i) => `            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', background: ${tier.highlighted ? `hsl(THEME.colors.primary)` : `hsl(THEME.colors.card)`}, color: ${tier.highlighted ? `hsl(THEME.colors.primaryForeground)` : `hsl(THEME.colors.cardForeground)`}, border: \`1px solid \${hsla(THEME.colors.border, 0.6)}\`, borderRadius: THEME.radius, position: 'relative' }}>
+${tier.badge ? `              <span style={{ position: 'absolute', top: '-0.75rem', left: '50%', transform: 'translateX(-50%)', fontSize: '0.75rem', fontWeight: '700', padding: '0.25rem 0.75rem', borderRadius: '9999px', background: hsl(THEME.colors.accent), color: hsl(THEME.colors.accentForeground) }}>${esc(tier.badge)}</span>\n` : ''}\
+              <h3 style={{ ...headingStyle, fontSize: '1.25rem', marginBottom: '0.25rem' }}>${esc(tier.name)}</h3>
+              <div style={{ fontSize: '2.5rem', fontWeight: '700', fontFamily: THEME.typography.headingFont, marginBottom: '0.25rem' }}>${esc(tier.price)}<span style={{ fontSize: '0.875rem', fontWeight: '400', opacity: 0.6 }}>${tier.period ? `/${esc(tier.period)}` : ''}</span></div>
+              <ul style={{ margin: '1.5rem 0', flex: 1, listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+${tier.features.map(f => `                <li style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span>✓</span>${esc(f)}</li>`).join('\n')}
+              </ul>
+              <a href="${tier.cta.href}" style={{ display: 'block', textAlign: 'center', padding: '0.625rem 1rem', borderRadius: THEME.radius, fontWeight: '500', fontSize: '0.875rem', textDecoration: 'none', background: ${tier.highlighted ? `hsl(THEME.colors.background)` : `hsl(THEME.colors.primary)`}, color: ${tier.highlighted ? `hsl(THEME.colors.foreground)` : `hsl(THEME.colors.primaryForeground)`} }}>${esc(tier.cta.text)}</a>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function pricingTableJSX(c: ExtractedSectionContent): string {
+  const tiers = c.tiers || [];
+  const allFeatures = [...new Set(tiers.flatMap(t => t.features))];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="pricing:table">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: hsl(THEME.colors.card), borderRadius: THEME.radius, overflow: 'hidden' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', borderBottom: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, ...headingStyle, fontSize: '0.875rem' }}>Feature</th>
+${tiers.map(tier => `                  <th style={{ padding: '1rem 1.5rem', textAlign: 'center', borderBottom: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`${tier.highlighted ? `, background: hsla(THEME.colors.primary, 0.05)` : ''} }}>
+                    <div style={{ ...headingStyle, fontSize: '1.125rem' }}>${esc(tier.name)}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: hsl(THEME.colors.primary), marginTop: '0.25rem' }}>${esc(tier.price)}</div>
+                  </th>`).join('\n')}
+                </tr>
+              </thead>
+              <tbody>
+${allFeatures.map(feature => `                <tr style={{ borderBottom: \`1px solid \${hsla(THEME.colors.border, 0.3)}\` }}>
+                  <td style={{ padding: '0.75rem 1.5rem', fontSize: '0.875rem', color: hsl(THEME.colors.cardForeground) }}>${esc(feature)}</td>
+${tiers.map(tier => `                  <td style={{ padding: '0.75rem 1.5rem', textAlign: 'center'${tier.highlighted ? `, background: hsla(THEME.colors.primary, 0.03)` : ''} }}><span style={{ color: ${tier.features.includes(feature) ? `hsl(THEME.colors.primary)` : `hsl(THEME.colors.mutedForeground)`} }}>${tier.features.includes(feature) ? '✓' : '—'}</span></td>`).join('\n')}
+                </tr>`).join('\n')}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td style={{ padding: '1rem 1.5rem' }}></td>
+${tiers.map(tier => `                  <td style={{ padding: '1rem 1.5rem', textAlign: 'center'${tier.highlighted ? `, background: hsla(THEME.colors.primary, 0.05)` : ''} }}>
+                    <a href="${tier.cta.href}" style={{ ...primaryBtnStyle, fontSize: '0.875rem', padding: '0.5rem 1.5rem' }}>${esc(tier.cta.text)}</a>
+                  </td>`).join('\n')}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>`;
+}
+
+export function pricingMinimalJSX(c: ExtractedSectionContent): string {
+  const tiers = c.tiers || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="pricing:minimal">
+        <div style={{ ...containerStyle, maxWidth: '52rem' }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+${tiers.map(tier => `            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', border: \`1px solid \${${tier.highlighted ? `hsl(THEME.colors.primary)` : `hsla(THEME.colors.border, 0.5)`}}\`, borderRadius: THEME.radius${tier.highlighted ? `, background: hsla(THEME.colors.primary, 0.03)` : ''} }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                  <h3 style={{ ...headingStyle, fontSize: '1.125rem' }}>${esc(tier.name)}</h3>
+${tier.badge ? `                  <span style={{ fontSize: '0.75rem', fontWeight: '500', padding: '0.125rem 0.5rem', borderRadius: '9999px', background: hsla(THEME.colors.primary, 0.1), color: hsl(THEME.colors.primary) }}>${esc(tier.badge)}</span>\n` : ''}\
+                </div>
+                <p style={{ ...bodyStyle, fontSize: '0.875rem' }}>${tier.features.slice(0, 3).map(f => esc(f)).join(' · ')}</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                <span style={{ fontSize: '1.5rem', fontWeight: '700', fontFamily: THEME.typography.headingFont }}>${esc(tier.price)}</span>
+                <a href="${tier.cta.href}" style={{ display: 'inline-block', padding: '0.5rem 1.25rem', borderRadius: THEME.radius, fontSize: '0.875rem', fontWeight: '500', textDecoration: 'none', background: ${tier.highlighted ? `hsl(THEME.colors.primary)` : 'transparent'}, color: ${tier.highlighted ? `hsl(THEME.colors.primaryForeground)` : `hsl(THEME.colors.primary)`}, border: \`1px solid \${hsl(THEME.colors.primary)}\` }}>${esc(tier.cta.text)}</a>
+              </div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+// ============================================================================
+// Testimonials Variants
+// ============================================================================
+
+export function testimonialsGridJSX(c: ExtractedSectionContent): string {
+  const items = c.testimonials || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="testimonials:grid">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(${Math.min(items.length, 3)}, 1fr)', gap: '1.5rem' }}>
+${items.map(item => `            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', background: hsl(THEME.colors.card), border: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, borderRadius: THEME.radius }}>
+${item.rating ? `              <div style={{ color: hsl(THEME.colors.primary), marginBottom: '0.75rem' }}>${'★'.repeat(item.rating)}${'☆'.repeat(5 - item.rating)}</div>\n` : ''}\
+              <p style={{ fontStyle: 'italic', fontSize: '0.875rem', lineHeight: 1.6, flex: 1, marginBottom: '1rem', color: hsl(THEME.colors.cardForeground) }}>"${esc(item.quote)}"</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingTop: '0.75rem', borderTop: \`1px solid \${hsla(THEME.colors.border, 0.3)}\` }}>
+${item.avatar ? `                <img src="${item.avatar}" alt="${esc(item.author)}" style={{ width: '2.5rem', height: '2.5rem', borderRadius: '9999px', objectFit: 'cover' }} />\n` : `                <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: '700', background: hsla(THEME.colors.primary, 0.1), color: hsl(THEME.colors.primary) }}>${esc(item.author?.[0] || '')}</div>\n`}\
+                <div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: '500', color: hsl(THEME.colors.cardForeground) }}>${esc(item.author)}</div>
+${item.role ? `                  <div style={{ fontSize: '0.75rem', color: hsl(THEME.colors.mutedForeground) }}>${esc(item.role)}</div>\n` : ''}\
+                </div>
+              </div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function testimonialsSpotlightJSX(c: ExtractedSectionContent): string {
+  const items = c.testimonials || [];
+  const featured = items[0];
+  if (!featured) return '';
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="testimonials:spotlight">
+        <div style={{ ...containerStyle, maxWidth: '48rem', textAlign: 'center' }}>
+${c.heading ? `          <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '2.5rem' }}>${esc(c.heading)}</h2>\n` : ''}\
+          <div style={{ padding: '2.5rem', background: hsl(THEME.colors.card), border: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, borderRadius: \`calc(\${THEME.radius} * 2)\` }}>
+            <span style={{ fontSize: '3rem', lineHeight: 1, display: 'block', marginBottom: '1rem', color: hsla(THEME.colors.primary, 0.2), fontFamily: 'serif' }}>"</span>
+            <p style={{ fontSize: '1.25rem', lineHeight: 1.6, marginBottom: '1.5rem', color: hsl(THEME.colors.cardForeground) }}>${esc(featured.quote)}</p>
+${featured.rating ? `            <div style={{ color: hsl(THEME.colors.primary), fontSize: '1.25rem', marginBottom: '1rem' }}>${'★'.repeat(featured.rating)}${'☆'.repeat(5 - featured.rating)}</div>\n` : ''}\
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
+${featured.avatar ? `              <img src="${featured.avatar}" alt="${esc(featured.author)}" style={{ width: '3rem', height: '3rem', borderRadius: '9999px', objectFit: 'cover' }} />\n` : `              <div style={{ width: '3rem', height: '3rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: '700', background: hsla(THEME.colors.primary, 0.1), color: hsl(THEME.colors.primary) }}>${esc(featured.author?.[0] || '')}</div>\n`}\
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontWeight: '600', color: hsl(THEME.colors.cardForeground) }}>${esc(featured.author)}</div>
+${featured.role ? `                <div style={{ fontSize: '0.875rem', color: hsl(THEME.colors.mutedForeground) }}>${esc(featured.role)}</div>\n` : ''}\
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>`;
+}
+
+export function testimonialsMinimalJSX(c: ExtractedSectionContent): string {
+  const items = c.testimonials || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="testimonials:minimal">
+        <div style={{ ...containerStyle, maxWidth: '48rem' }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '28rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+${items.map(item => `            <div style={{ paddingLeft: '1.5rem', borderLeft: \`3px solid \${hsla(THEME.colors.primary, 0.3)}\` }}>
+              <p style={{ fontStyle: 'italic', fontSize: '1rem', lineHeight: 1.6, marginBottom: '0.75rem', color: hsl(THEME.colors.foreground) }}>"${esc(item.quote)}"</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: '500', color: hsl(THEME.colors.foreground) }}>${esc(item.author)}</span>
+${item.role ? `                <span style={{ fontSize: '0.875rem', color: hsl(THEME.colors.mutedForeground) }}>— ${esc(item.role)}</span>\n` : ''}\
+              </div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+// ============================================================================
+// Team Variants
+// ============================================================================
+
+export function teamGridJSX(c: ExtractedSectionContent): string {
+  const members = c.teamMembers || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="team:grid">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(${Math.min(members.length, 3)}, 1fr)', gap: '1.5rem' }}>
+${members.map(m => `            <div style={{ textAlign: 'center', padding: '1.5rem', background: hsl(THEME.colors.card), border: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, borderRadius: THEME.radius }}>
+${m.image ? `              <img src="${m.image}" alt="${esc(m.name)}" style={{ width: '6rem', height: '6rem', borderRadius: '9999px', objectFit: 'cover', margin: '0 auto 1rem' }} />\n` : `              <div style={{ width: '6rem', height: '6rem', borderRadius: '9999px', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: '700', background: hsla(THEME.colors.primary, 0.1), color: hsl(THEME.colors.primary) }}>${esc(m.name?.[0] || '')}</div>\n`}\
+              <h3 style={{ ...headingStyle, fontSize: '1.125rem', marginBottom: '0.25rem' }}>${esc(m.name)}</h3>
+              <p style={{ fontSize: '0.875rem', color: hsl(THEME.colors.primary), marginBottom: '0.5rem' }}>${esc(m.role)}</p>
+${m.bio ? `              <p style={{ fontSize: '0.875rem', lineHeight: 1.5, color: hsl(THEME.colors.mutedForeground) }}>${esc(m.bio)}</p>\n` : ''}\
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function teamCompactJSX(c: ExtractedSectionContent): string {
+  const members = c.teamMembers || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="team:compact">
+        <div style={{ ...containerStyle, maxWidth: '52rem' }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+${members.map(m => `            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: hsl(THEME.colors.card), border: \`1px solid \${hsla(THEME.colors.border, 0.4)}\`, borderRadius: THEME.radius }}>
+${m.image ? `              <img src="${m.image}" alt="${esc(m.name)}" style={{ width: '3rem', height: '3rem', borderRadius: '9999px', objectFit: 'cover', flexShrink: 0 }} />\n` : `              <div style={{ width: '3rem', height: '3rem', borderRadius: '9999px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: '700', background: hsla(THEME.colors.primary, 0.1), color: hsl(THEME.colors.primary) }}>${esc(m.name?.[0] || '')}</div>\n`}\
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: '600', color: hsl(THEME.colors.cardForeground) }}>${esc(m.name)}</div>
+                <div style={{ fontSize: '0.875rem', color: hsl(THEME.colors.mutedForeground) }}>${esc(m.role)}</div>
+              </div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function teamShowcaseJSX(c: ExtractedSectionContent): string {
+  const members = c.teamMembers || [];
+  const featured = members[0];
+  const rest = members.slice(1);
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="team:showcase">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+${featured ? `          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'center', marginBottom: '2.5rem' }}>
+${featured.image ? `            <img src="${featured.image}" alt="${esc(featured.name)}" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: THEME.radius }} />\n` : `            <div style={{ width: '100%', aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '4rem', fontWeight: '700', borderRadius: THEME.radius, background: hsla(THEME.colors.primary, 0.08), color: hsl(THEME.colors.primary) }}>${esc(featured.name?.[0] || '')}</div>\n`}\
+            <div>
+              <h3 style={{ ...headingStyle, fontSize: '1.5rem', marginBottom: '0.25rem' }}>${esc(featured.name)}</h3>
+              <p style={{ color: hsl(THEME.colors.primary), marginBottom: '0.75rem' }}>${esc(featured.role)}</p>
+${featured.bio ? `              <p style={{ ...bodyStyle, lineHeight: 1.6 }}>${esc(featured.bio)}</p>\n` : ''}\
+            </div>
+          </div>\n` : ''}\
+${rest.length ? `          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(${Math.min(rest.length, 4)}, 1fr)', gap: '1.5rem' }}>
+${rest.map(m => `            <div style={{ textAlign: 'center' }}>
+${m.image ? `              <img src="${m.image}" alt="${esc(m.name)}" style={{ width: '4rem', height: '4rem', borderRadius: '9999px', objectFit: 'cover', margin: '0 auto 0.75rem' }} />\n` : `              <div style={{ width: '4rem', height: '4rem', borderRadius: '9999px', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.125rem', fontWeight: '700', background: hsla(THEME.colors.primary, 0.1), color: hsl(THEME.colors.primary) }}>${esc(m.name?.[0] || '')}</div>\n`}\
+              <div style={{ fontSize: '0.875rem', fontWeight: '600', color: hsl(THEME.colors.foreground) }}>${esc(m.name)}</div>
+              <div style={{ fontSize: '0.75rem', color: hsl(THEME.colors.mutedForeground) }}>${esc(m.role)}</div>
+            </div>`).join('\n')}
+          </div>\n` : ''}\
+        </div>
+      </section>`;
+}
+
+// ============================================================================
+// Gallery Variants
+// ============================================================================
+
+export function galleryMasonryJSX(c: ExtractedSectionContent): string {
+  const items = c.galleryItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="gallery:masonry">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ columnCount: 3, columnGap: '1rem' }}>
+${items.map(item => `            <div style={{ breakInside: 'avoid', marginBottom: '1rem', borderRadius: THEME.radius, overflow: 'hidden', position: 'relative' }}>
+              <img src="${item.src}" alt="${esc(item.alt)}" style={{ width: '100%', display: 'block', borderRadius: THEME.radius }} />
+${item.caption ? `              <div style={{ position: 'absolute', insetInline: 0, bottom: 0, padding: '0.75rem', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}><p style={{ color: '#fff', fontSize: '0.875rem' }}>${esc(item.caption)}</p></div>\n` : ''}\
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function galleryGridJSX(c: ExtractedSectionContent): string {
+  const items = c.galleryItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="gallery:grid">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+${items.map(item => `            <div style={{ position: 'relative', aspectRatio: '4/3', borderRadius: THEME.radius, overflow: 'hidden' }}>
+              <img src="${item.src}" alt="${esc(item.alt)}" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '1rem', background: 'linear-gradient(transparent 40%, rgba(0,0,0,0.6))' }}>
+${item.caption ? `                <p style={{ color: '#fff', fontSize: '0.875rem', fontWeight: '500' }}>${esc(item.caption)}</p>\n` : ''}\
+${item.category ? `                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem' }}>${esc(item.category)}</span>\n` : ''}\
+              </div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function galleryMinimalJSX(c: ExtractedSectionContent): string {
+  const items = c.galleryItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="gallery:minimal">
+        <div style={{ ...containerStyle, maxWidth: '52rem' }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+${items.map(item => `            <div style={{ borderRadius: THEME.radius, overflow: 'hidden', border: \`1px solid \${hsla(THEME.colors.border, 0.4)}\` }}>
+              <img src="${item.src}" alt="${esc(item.alt)}" style={{ width: '100%', display: 'block', maxHeight: '24rem', objectFit: 'cover' }} />
+${(item.caption || item.category) ? `              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: hsl(THEME.colors.card) }}>
+${item.caption ? `                <p style={{ fontSize: '0.875rem', color: hsl(THEME.colors.cardForeground) }}>${esc(item.caption)}</p>\n` : ''}\
+${item.category ? `                <span style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem', borderRadius: '9999px', background: hsla(THEME.colors.primary, 0.08), color: hsl(THEME.colors.primary) }}>${esc(item.category)}</span>\n` : ''}\
+              </div>\n` : ''}\
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+// ============================================================================
+// FAQ Variants
+// ============================================================================
+
+export function faqAccordionJSX(c: ExtractedSectionContent): string {
+  const items = c.faqItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="faq:accordion">
+        <div style={{ ...containerStyle, maxWidth: '48rem' }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+${items.map(item => `            <details style={{ borderRadius: THEME.radius, border: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, overflow: 'hidden' }}>
+              <summary style={{ cursor: 'pointer', padding: '1rem', fontFamily: THEME.typography.headingFont, fontWeight: '600', color: hsl(THEME.colors.foreground), background: hsl(THEME.colors.card), display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>${esc(item.question)}<span style={{ color: hsl(THEME.colors.mutedForeground), fontSize: '0.875rem' }}>+</span></summary>
+              <div style={{ padding: '1rem', paddingTop: 0, background: hsl(THEME.colors.card) }}>
+                <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: hsl(THEME.colors.mutedForeground) }}>${esc(item.answer)}</p>
+              </div>
+            </details>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function faqGridJSX(c: ExtractedSectionContent): string {
+  const items = c.faqItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="faq:grid">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle, fontSize: '1rem', maxWidth: '32rem', margin: '0 auto' }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+${items.map(item => `            <div style={{ padding: '1.25rem', background: hsl(THEME.colors.card), border: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, borderRadius: THEME.radius }}>
+              <h3 style={{ ...headingStyle, fontSize: '1rem', marginBottom: '0.5rem' }}>${esc(item.question)}</h3>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: hsl(THEME.colors.mutedForeground) }}>${esc(item.answer)}</p>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function faqMinimalJSX(c: ExtractedSectionContent): string {
+  const items = c.faqItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="faq:minimal">
+        <div style={{ ...containerStyle, maxWidth: '40rem' }}>
+${c.heading ? `          <div style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '0.75rem' }}>${esc(c.heading)}</h2>
+${c.subheading ? `            <p style={{ ...bodyStyle }}>${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n` : ''}\
+          <div>
+${items.map((item, i) => `            <div style={{ paddingBlock: '1.25rem'${i < items.length - 1 ? `, borderBottom: \`1px solid \${hsla(THEME.colors.border, 0.3)}\`` : ''} }}>
+              <h3 style={{ ...headingStyle, fontSize: '1rem', marginBottom: '0.5rem' }}>${esc(item.question)}</h3>
+              <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: hsl(THEME.colors.mutedForeground) }}>${esc(item.answer)}</p>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+// ============================================================================
+// Stats Variants
+// ============================================================================
+
+export function statsRowJSX(c: ExtractedSectionContent): string {
+  const items = c.statItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="stats:row">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', textAlign: 'center', marginBottom: '2.5rem' }}>${esc(c.heading)}</h2>\n` : ''}\
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '3rem' }}>
+${items.map(stat => `            <div style={{ textAlign: 'center', padding: '0 1rem' }}>
+${stat.icon ? `              <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem' }}>${esc(stat.icon)}</span>\n` : ''}\
+              <div style={{ fontSize: '2.5rem', fontWeight: '700', fontFamily: THEME.typography.headingFont, color: hsl(THEME.colors.primary), marginBottom: '0.25rem' }}>${esc(stat.value)}</div>
+              <div style={{ fontSize: '0.875rem', color: hsl(THEME.colors.mutedForeground) }}>${esc(stat.label)}</div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function statsCardsJSX(c: ExtractedSectionContent): string {
+  const items = c.statItems || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="stats:cards">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', textAlign: 'center', marginBottom: '2.5rem' }}>${esc(c.heading)}</h2>\n` : ''}\
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(${Math.min(items.length, 4)}, 1fr)', gap: '1.25rem' }}>
+${items.map(stat => `            <div style={{ padding: '1.5rem', textAlign: 'center', background: hsl(THEME.colors.card), border: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, borderRadius: THEME.radius }}>
+${stat.icon ? `              <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.75rem' }}>${esc(stat.icon)}</span>\n` : ''}\
+              <div style={{ fontSize: '2rem', fontWeight: '700', fontFamily: THEME.typography.headingFont, color: hsl(THEME.colors.primary), marginBottom: '0.25rem' }}>${esc(stat.value)}</div>
+              <div style={{ fontSize: '0.875rem', color: hsl(THEME.colors.mutedForeground) }}>${esc(stat.label)}</div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function statsMinimalJSX(c: ExtractedSectionContent): string {
+  const items = c.statItems || [];
+  return `      <section style={{ ...sectionPad, background: \`linear-gradient(135deg, \${hsla(THEME.colors.primary, 0.04)}, \${hsla(THEME.colors.secondary, 0.04)})\` }} data-variant="stats:minimal">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <h2 style={{ ...headingStyle, fontSize: '1.25rem', textAlign: 'center', marginBottom: '2rem' }}>${esc(c.heading)}</h2>\n` : ''}\
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+${items.map((stat, i) => `${i > 0 ? `            <div style={{ width: '1px', height: '3rem', background: hsla(THEME.colors.border, 0.4), margin: '0 1.5rem' }} />\n` : ''}            <div style={{ textAlign: 'center', padding: '0.5rem' }}>
+              <div style={{ fontSize: '2rem', fontWeight: '700', fontFamily: THEME.typography.headingFont, color: hsl(THEME.colors.foreground) }}>${esc(stat.value)}</div>
+              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.25rem', color: hsl(THEME.colors.mutedForeground) }}>${esc(stat.label)}</div>
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+// ============================================================================
+// About Variants
+// ============================================================================
+
+export function aboutSplitJSX(c: ExtractedSectionContent): string {
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="about:split">
+        <div style={{ ...containerStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', alignItems: 'center' }}>
+          <div>
+${c.heading ? `            <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '1rem' }}>${esc(c.heading)}</h2>\n` : ''}\
+${c.description ? `            <p style={{ ...bodyStyle, lineHeight: 1.7, marginBottom: '1.5rem' }}>${esc(c.description)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `            <div style={{ display: 'flex', gap: '0.75rem' }}>
+${renderThemedButtons(c.ctaButtons)}
+            </div>\n` : ''}\
+          </div>
+          <div>
+${c.imageSrc
+    ? `            <img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: THEME.radius }} />`
+    : `            <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: THEME.radius, background: \`linear-gradient(135deg, \${hsla(THEME.colors.primary, 0.08)}, \${hsla(THEME.colors.secondary, 0.08)})\`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>🏢</div>`}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function aboutCenteredJSX(c: ExtractedSectionContent): string {
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="about:centered">
+        <div style={{ ...containerStyle, maxWidth: '48rem', textAlign: 'center' }}>
+${c.imageSrc ? `          <img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" style={{ width: '100%', maxHeight: '20rem', objectFit: 'cover', borderRadius: THEME.radius, marginBottom: '2rem' }} />\n` : ''}\
+${c.heading ? `          <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginBottom: '1rem' }}>${esc(c.heading)}</h2>\n` : ''}\
+${c.description ? `          <p style={{ ...bodyStyle, lineHeight: 1.7, marginBottom: '1.5rem', maxWidth: '40rem', marginInline: 'auto' }}>${esc(c.description)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+${renderThemedButtons(c.ctaButtons)}
+          </div>\n` : ''}\
+        </div>
+      </section>`;
+}
+
+export function aboutTimelineJSX(c: ExtractedSectionContent): string {
+  const sentences = (c.description || '').split(/\.\s+/).filter(s => s.trim()).map(s => s.endsWith('.') ? s : s + '.');
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }} data-variant="about:timeline">
+        <div style={{ ...containerStyle, maxWidth: '48rem' }}>
+${c.heading ? `          <h2 style={{ ...headingStyle, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', textAlign: 'center', marginBottom: '2.5rem' }}>${esc(c.heading)}</h2>\n` : ''}\
+          <div style={{ position: 'relative', paddingLeft: '2rem' }}>
+            <div style={{ position: 'absolute', left: '0.75rem', top: 0, bottom: 0, width: '1px', background: hsla(THEME.colors.primary, 0.2) }} />
+${sentences.map(s => `            <div style={{ position: 'relative', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+              <div style={{ position: 'absolute', left: '-0.75rem', top: '0.375rem', width: '0.75rem', height: '0.75rem', borderRadius: '9999px', background: hsl(THEME.colors.primary), border: \`2px solid \${hsl(THEME.colors.background)}\` }} />
+              <p style={{ ...bodyStyle, lineHeight: 1.6 }}>${esc(s)}</p>
+            </div>`).join('\n')}
+          </div>
+${c.ctaButtons?.length ? `          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+${renderThemedButtons(c.ctaButtons)}
+          </div>\n` : ''}\
+        </div>
+      </section>`;
+}
+
+// ============================================================================
+// Logo Cloud Variants
+// ============================================================================
+
+export function logoCloudGridJSX(c: ExtractedSectionContent): string {
+  const logos = c.logos || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }} data-variant="logo-cloud:grid">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <h2 style={{ fontSize: '1.25rem', textAlign: 'center', marginBottom: '2rem', fontFamily: THEME.typography.headingFont, fontWeight: THEME.typography.headingWeight, color: hsl(THEME.colors.mutedForeground) }}>${esc(c.heading)}</h2>\n` : ''}\
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(${Math.min(logos.length, 5)}, 1fr)', gap: '1.5rem', alignItems: 'center', justifyItems: 'center' }}>
+${logos.map(logo => `            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', width: '100%', minHeight: '5rem', background: hsl(THEME.colors.card), border: \`1px solid \${hsla(THEME.colors.border, 0.4)}\`, borderRadius: THEME.radius }}>
+${logo.src ? `              <img src="${logo.src}" alt="${esc(logo.name)}" style={{ maxHeight: '2.5rem', maxWidth: '100%', objectFit: 'contain', filter: 'grayscale(100%)', opacity: 0.7 }} />\n` : `              <span style={{ fontSize: '0.875rem', fontWeight: '600', color: hsl(THEME.colors.mutedForeground) }}>${esc(logo.name)}</span>\n`}\
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
+
+export function logoCloudScrollJSX(c: ExtractedSectionContent): string {
+  const logos = c.logos || [];
+  return `      <section style={{ ...sectionPad, background: hsl(THEME.colors.background), overflow: 'hidden' }} data-variant="logo-cloud:scroll">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <h2 style={{ fontSize: '1.25rem', textAlign: 'center', marginBottom: '2rem', fontFamily: THEME.typography.headingFont, fontWeight: THEME.typography.headingWeight, color: hsl(THEME.colors.mutedForeground) }}>${esc(c.heading)}</h2>\n` : ''}\
+          <div style={{ position: 'relative', overflow: 'hidden', maskImage: 'linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)' }}>
+            <div style={{ display: 'flex', gap: '3rem', alignItems: 'center', animation: 'scroll 20s linear infinite', width: 'max-content' }}>
+${[...logos, ...logos].map(logo => `              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '0 1rem', minWidth: '8rem' }}>
+${logo.src ? `                <img src="${logo.src}" alt="${esc(logo.name)}" style={{ maxHeight: '2rem', maxWidth: '100%', objectFit: 'contain', filter: 'grayscale(100%)', opacity: 0.6 }} />\n` : `                <span style={{ fontSize: '0.875rem', fontWeight: '600', whiteSpace: 'nowrap', color: hsl(THEME.colors.mutedForeground) }}>${esc(logo.name)}</span>\n`}\
+              </div>`).join('\n')}
+            </div>
+          </div>
+          <style>{\`@keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }\`}</style>
+        </div>
+      </section>`;
+}
+
+export function logoCloudMinimalJSX(c: ExtractedSectionContent): string {
+  const logos = c.logos || [];
+  return `      <section style={{ padding: '2.5rem 1rem', background: hsl(THEME.colors.background), borderTop: \`1px solid \${hsla(THEME.colors.border, 0.3)}\`, borderBottom: \`1px solid \${hsla(THEME.colors.border, 0.3)}\` }} data-variant="logo-cloud:minimal">
+        <div style={{ ...containerStyle }}>
+${c.heading ? `          <p style={{ fontSize: '0.75rem', textAlign: 'center', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: hsl(THEME.colors.mutedForeground) }}>${esc(c.heading)}</p>\n` : ''}\
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '2rem' }}>
+${logos.map(logo => `            <div style={{ display: 'flex', alignItems: 'center' }}>
+${logo.src ? `              <img src="${logo.src}" alt="${esc(logo.name)}" style={{ maxHeight: '1.75rem', maxWidth: '100%', objectFit: 'contain', filter: 'grayscale(100%)', opacity: 0.5 }} />\n` : `              <span style={{ fontSize: '0.875rem', fontWeight: '500', color: hsla(THEME.colors.mutedForeground, 0.5) }}>${esc(logo.name)}</span>\n`}\
+            </div>`).join('\n')}
+          </div>
+        </div>
+      </section>`;
+}
