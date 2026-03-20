@@ -138,7 +138,8 @@ export const useWebBuilderState = (fabricCanvas: FabricCanvas | null) => {
     
     if (fabricCanvas) {
       const width = DEVICE_WIDTHS[device];
-      fabricCanvas.setWidth(width);
+      fabricCanvas.set({ width });
+      fabricCanvas.setDimensions({ width });
       fabricCanvas.renderAll();
     }
   }, [fabricCanvas]);
