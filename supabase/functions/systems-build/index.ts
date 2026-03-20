@@ -789,18 +789,18 @@ ${designProfileContext}
 ${userPrompt ? `\nUser Requirements: ${userPrompt}` : ""}`;
 
       // Call ai-code-assistant with template-react mode AND template reference
-      const aiCodeAssistantUrl = \`\${Deno.env.get("SUPABASE_URL")}/functions/v1/ai-code-assistant\`;
+      const aiCodeAssistantUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ai-code-assistant`;
       
       const reactResponse = await fetch(aiCodeAssistantUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": \`Bearer \${Deno.env.get("SUPABASE_ANON_KEY")}\`,
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: reactPrompt }],
           mode: "template-react",
-          variationSeed: variationSeed || \`react-\${Date.now().toString(36)}\`,
+          variationSeed: variationSeed || `react-${Date.now().toString(36)}`,
           templateName: blueprint.brand.business_name,
           aesthetic: aestheticId || blueprint.brand.tone || "modern professional",
           source: blueprint.identity.industry,
