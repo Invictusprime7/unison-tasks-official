@@ -124,9 +124,14 @@ const BodySchema = z.object({
   templateId: z.string().optional(),
   templateHtml: z.string().max(200_000).optional(),
   variantMode: z.boolean().optional().default(false),
-  variationSeed: z.string().optional(), // Random seed for visual diversity
-  outputFormat: z.enum(["react"]).optional().default("react"), // Output format: react = React fullstack
-  // User Design Profile - extracted patterns from user's saved projects for style-matching
+  variationSeed: z.string().optional(),
+  outputFormat: z.enum(["react"]).optional().default("react"),
+  // Theme-aware aesthetic directives from SystemLauncher
+  aestheticId: z.string().optional(),
+  aestheticLabel: z.string().optional(),
+  aestheticStyleDirective: z.string().max(2000).optional(),
+  aestheticCSSDirective: z.string().max(5000).optional(),
+  // User Design Profile
   userDesignProfile: z.object({
     projectCount: z.number().optional(),
     dominantStyle: z.enum(["dark", "light", "colorful", "minimal", "mixed"]).optional(),
