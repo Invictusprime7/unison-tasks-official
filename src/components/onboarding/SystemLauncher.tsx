@@ -349,7 +349,11 @@ export const SystemLauncher = ({
     setIsAIGenerating(true);
     try {
       const industry = selectedTemplate.category;
-      const fonts = randomFontPairing();
+
+      // Use selected theme's typography/palette when available; fall back to random
+      const fonts = selectedTheme
+        ? { heading: selectedTheme.typography.headingFont, body: selectedTheme.typography.bodyFont }
+        : randomFontPairing();
       const design = generateDesignVariation();
 
       // Use contracts system for canonical intent resolution
@@ -358,7 +362,7 @@ export const SystemLauncher = ({
         ? getAllowedIntents(industryProfile.defaultCapabilities)
         : system.intents;
 
-      const blueprint = {
+      const blueprint: Record<string, unknown> = {
         version: "1.0",
         identity: {
           industry,
@@ -371,9 +375,18 @@ export const SystemLauncher = ({
           tagline: `Professional ${system.name.toLowerCase()} services you can trust`,
           tone: "professional and friendly",
           typography: fonts,
+          ...(selectedTheme ? {
+            palette: {
+              primary: selectedTheme.palette.accent,
+              secondary: selectedTheme.palette.accent2 || selectedTheme.palette.accent,
+              background: selectedTheme.palette.bg,
+              foreground: selectedTheme.palette.fg,
+              accent: selectedTheme.palette.accent,
+            },
+          } : {}),
         },
         design,
-        intents: canonicalIntents.map((i) => ({ intent: i })),
+        intents: canonicalIntents.map((i: string) => ({ intent: i })),
       };
 
       const themeInstruction = selectedTheme
