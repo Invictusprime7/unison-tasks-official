@@ -45,6 +45,7 @@ import { buildPageStructureContext } from "@/utils/pageStructureContext";
 import {
   generateDesignVariation,
   randomFontPairing,
+  getThemeCSSDirective,
 } from "@/utils/designVariation";
 import { THEME_PRESETS, type ThemePreset } from "./themePresets";
 import {
@@ -354,7 +355,7 @@ export const SystemLauncher = ({
       const fonts = selectedTheme
         ? { heading: selectedTheme.typography.headingFont, body: selectedTheme.typography.bodyFont }
         : randomFontPairing();
-      const design = generateDesignVariation();
+      const design = generateDesignVariation(selectedTheme?.id);
 
       // Use contracts system for canonical intent resolution
       const industryProfile = getIndustryForCategory(industry as LayoutCategory);
@@ -411,6 +412,9 @@ export const SystemLauncher = ({
       const referenceCode = compositionCode || selectedTemplate.code;
       const referenceId = compositionMetaData?.compositionId || selectedTemplate.id;
 
+      // Get theme-specific CSS design system directive
+      const themeCSSDirective = selectedTheme ? getThemeCSSDirective(selectedTheme.id) : '';
+
       const { data, error } = await supabase.functions.invoke(
         "systems-build",
         {
@@ -425,6 +429,11 @@ export const SystemLauncher = ({
               .toString(36)
               .slice(2, 8)}`,
             outputFormat: "react",
+            // Theme-aware generation context
+            aestheticId: selectedTheme?.id || null,
+            aestheticLabel: selectedTheme?.label || null,
+            aestheticStyleDirective: selectedTheme?.styleDirective || null,
+            aestheticCSSDirective: themeCSSDirective || null,
           },
         }
       );

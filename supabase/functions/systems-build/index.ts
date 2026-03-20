@@ -124,9 +124,14 @@ const BodySchema = z.object({
   templateId: z.string().optional(),
   templateHtml: z.string().max(200_000).optional(),
   variantMode: z.boolean().optional().default(false),
-  variationSeed: z.string().optional(), // Random seed for visual diversity
-  outputFormat: z.enum(["react"]).optional().default("react"), // Output format: react = React fullstack
-  // User Design Profile - extracted patterns from user's saved projects for style-matching
+  variationSeed: z.string().optional(),
+  outputFormat: z.enum(["react"]).optional().default("react"),
+  // Theme-aware aesthetic directives from SystemLauncher
+  aestheticId: z.string().optional(),
+  aestheticLabel: z.string().optional(),
+  aestheticStyleDirective: z.string().max(2000).optional(),
+  aestheticCSSDirective: z.string().max(5000).optional(),
+  // User Design Profile
   userDesignProfile: z.object({
     projectCount: z.number().optional(),
     dominantStyle: z.enum(["dark", "light", "colorful", "minimal", "mixed"]).optional(),
@@ -660,7 +665,7 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed, outputFormat, userDesignProfile } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed, outputFormat, aestheticId, aestheticLabel, aestheticStyleDirective, aestheticCSSDirective, userDesignProfile } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     // Build design profile context string for AI prompts
@@ -717,6 +722,42 @@ Generate a site that matches the user's established design preferences while bei
       const sectionStructure = templateHtml ? extractSectionStructure(templateHtml) : '';
       const intentWiring = templateHtml ? extractIntents(templateHtml) : '';
       
+      // Build aesthetic context block for deep theme integration
+      const aestheticBlock = aestheticId ? `
+
+## 🎨 AESTHETIC IDENTITY: "${aestheticLabel || aestheticId}" (MANDATORY)
+
+This site MUST embody the "${aestheticLabel || aestheticId}" aesthetic throughout every component.
+This is NOT optional — the entire visual language must be consistent with this identity.
+
+### Style Directive:
+${aestheticStyleDirective || ''}
+
+### Design System CSS (INJECT INTO index.css ALONGSIDE THE CSS VARIABLES):
+\`\`\`css
+${aestheticCSSDirective || ''}
+\`\`\`
+
+### Design Parameters (from blueprint.design):
+- Hero Layout: ${blueprint.design?.layout?.hero_style || 'centered'}
+- Section Spacing: ${blueprint.design?.layout?.section_spacing || 'normal'}
+- Max Width: ${blueprint.design?.layout?.max_width || 'normal'}
+- Navigation: ${blueprint.design?.layout?.navigation_style || 'sticky'}
+- Shadows: ${blueprint.design?.effects?.shadows || 'normal'}
+- Glassmorphism: ${blueprint.design?.effects?.glassmorphism ? 'YES — use glass-card pattern' : 'NO'}
+- Gradient Backgrounds: ${blueprint.design?.effects?.gradient_backgrounds ? 'YES' : 'NO'}
+- Scroll Animations: ${blueprint.design?.effects?.scroll_animations ? 'YES' : 'NO'}
+- Button Style: ${blueprint.design?.buttons?.style || 'rounded'} / Size: ${blueprint.design?.buttons?.size || 'medium'}
+- Button Hover: ${blueprint.design?.buttons?.hover_effect || 'lift'}
+- Image Style: ${blueprint.design?.images?.style || 'rounded'}
+- Content Density: ${blueprint.design?.content?.density || 'balanced'}
+- Writing Style: ${blueprint.design?.content?.writing_style || 'professional'}
+
+CRITICAL: The CSS design system directive above MUST be included in your index.css output.
+Components must use the utility classes defined there (.card, .glass-card, .btn-*, etc.).
+Do NOT fall back to generic styling — every visual decision must align with "${aestheticLabel || aestheticId}".
+` : '';
+
       // Build enhanced prompt from blueprint WITH template reference
       const reactPrompt = `Create a ${blueprint.brand.business_name} website for ${blueprint.identity.industry.replace(/_/g, " ")} industry.
 
@@ -724,22 +765,28 @@ ${blueprint.brand.tagline ? `Tagline: "${blueprint.brand.tagline}"` : ""}
 ${blueprint.identity.primary_goal ? `Goal: ${blueprint.identity.primary_goal}` : ""}
 ${blueprint.brand.tone ? `Tone: ${blueprint.brand.tone}` : ""}
 
-Brand Colors:
+Brand Colors (USE THESE EXACT COLORS IN :root CSS VARIABLES):
 - Primary: ${blueprint.brand.palette?.primary || "#0EA5E9"}
 - Secondary: ${blueprint.brand.palette?.secondary || "#22D3EE"}
 - Accent: ${blueprint.brand.palette?.accent || "#F59E0B"}
 - Background: ${blueprint.brand.palette?.background || "#FFFFFF"}
 - Foreground: ${blueprint.brand.palette?.foreground || "#1E293B"}
 
-Typography:
-- Headings: ${blueprint.brand.typography?.heading || "Inter"}
-- Body: ${blueprint.brand.typography?.body || "Inter"}
+Typography (LOAD VIA GOOGLE FONTS):
+- Headings: ${blueprint.brand.typography?.heading || "Inter"} (weight: bold)
+- Body: ${blueprint.brand.typography?.body || "Inter"} (weight: normal)
+
+${aestheticBlock}
 
 ${sectionStructure ? `\n${sectionStructure}` : ''}
 ${intentWiring ? `\n${intentWiring}` : ''}
+
+## APPROVED CTA BUTTON LABELS:
+${getIndustryLabels(blueprint.identity.industry)}
+
 ${researchContext}
 ${designProfileContext}
-${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
+${userPrompt ? `\nUser Requirements: ${userPrompt}` : ""}`;
 
       // Call ai-code-assistant with template-react mode AND template reference
       const aiCodeAssistantUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ai-code-assistant`;
@@ -755,10 +802,10 @@ ${userPrompt ? `Additional requirements: ${userPrompt}` : ""}`;
           mode: "template-react",
           variationSeed: variationSeed || `react-${Date.now().toString(36)}`,
           templateName: blueprint.brand.business_name,
-          aesthetic: blueprint.brand.tone || "modern professional",
+          aesthetic: aestheticId || blueprint.brand.tone || "modern professional",
           source: blueprint.identity.industry,
           savePattern: true,
-          // Pass template reference (React composition or HTML) for quality baseline
+          // Pass template reference for quality baseline
           currentCode: templateHtml ? templateHtml.substring(0, 80000) : undefined,
           templateAction: templateHtml ? "use-as-schema" : undefined,
         }),
