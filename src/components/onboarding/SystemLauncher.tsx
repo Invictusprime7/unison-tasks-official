@@ -45,6 +45,7 @@ import { buildPageStructureContext } from "@/utils/pageStructureContext";
 import {
   generateDesignVariation,
   randomFontPairing,
+  getThemeCSSDirective,
 } from "@/utils/designVariation";
 import { THEME_PRESETS, type ThemePreset } from "./themePresets";
 import {
@@ -354,7 +355,7 @@ export const SystemLauncher = ({
       const fonts = selectedTheme
         ? { heading: selectedTheme.typography.headingFont, body: selectedTheme.typography.bodyFont }
         : randomFontPairing();
-      const design = generateDesignVariation();
+      const design = generateDesignVariation(selectedTheme?.id);
 
       // Use contracts system for canonical intent resolution
       const industryProfile = getIndustryForCategory(industry as LayoutCategory);
