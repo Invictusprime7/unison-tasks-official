@@ -14,7 +14,7 @@ import { getSectionComponent } from './registry';
 import { themeToCSS, hsl } from './themeUtils';
 import { resolveVariantComponent } from './variants';
 import type { ActiveVariantMap } from './variants';
-import { randomizeThemeColors } from './themes';
+
 import { getThemeLayoutProfile, genCardStyleCode, genNavbarCode, genHeroCode, genCTACode } from './themeVariantGen';
 
 interface PageRendererProps {
@@ -86,7 +86,7 @@ export const PageRenderer: React.FC<PageRendererProps> = ({ template, themeOverr
  */
 export const compositionToReactCode = (template: TemplateComposition, themeOverride?: ThemeTokens, themeId?: string): string => {
   const baseTheme = themeOverride || template.theme;
-  const effectiveTheme = themeId ? randomizeThemeColors(baseTheme) : baseTheme;
+  const effectiveTheme = baseTheme;
   const profile = themeId ? getThemeLayoutProfile(themeId) : undefined;
   const sectionsJson = JSON.stringify(template.sections, null, 2);
   const themeJson = JSON.stringify(effectiveTheme, null, 2);
