@@ -39,3 +39,5 @@ export {
 } from './canonical';
 
 export { themeToCSS, hsl, hsla, containerStyle, sectionStyle, headingStyle, bodyStyle, primaryButtonStyle, outlineButtonStyle, cardStyle } from './utils';
+
+export { generateThemeVariation, type VariationResult } from './variationEngine';

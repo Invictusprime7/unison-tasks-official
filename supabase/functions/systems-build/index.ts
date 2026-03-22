@@ -756,11 +756,15 @@ ${aestheticCSSDirective || ''}
 - Image Style: ${blueprint.design?.images?.style || 'rounded'}
 - Content Density: ${blueprint.design?.content?.density || 'balanced'}
 - Writing Style: ${blueprint.design?.content?.writing_style || 'professional'}
+- Sections to include: ${Object.entries(blueprint.design?.sections || {}).filter(([, v]) => v === true).map(([k]) => k.replace('include_', '')).join(', ') || 'testimonials, cta_banner, faq'}
 
 CRITICAL: The CSS design system directive above MUST be included in your index.css output.
 Components must use the utility classes defined there (.card, .glass-card, .btn-*, etc.).
 Do NOT fall back to generic styling — every visual decision must align with "${aestheticLabel || aestheticId}".
 The MANDATORY DESIGN RULES section above is your primary style reference — follow every rule exactly.
+IMPORTANT: The Design Parameters above represent a UNIQUE layout variation for this generation.
+Use the EXACT hero layout, button style, section spacing, and structural choices specified — do NOT default to a standard layout.
+Each generation must look structurally different while maintaining the "${aestheticLabel || aestheticId}" visual identity.
 ` : '';
 
       // Build enhanced prompt from blueprint WITH template reference
