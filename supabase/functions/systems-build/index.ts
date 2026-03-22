@@ -2188,7 +2188,7 @@ function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, use
   }
 
   if (variationSeed) {
-    message += `\n\n🎲 **UNIQUENESS SEED: ${variationSeed}**\nThis seed MUST result in a visually distinct design — different from any previous generation.`;
+    message += `\n\n🎲 **UNIQUENESS SEED: ${variationSeed}**\nUse this seed for structural variation ONLY (section order, content arrangement). Do NOT let it override the aesthetic's mandatory colors, fonts, radii, or animation patterns.`;
   }
 
   message += `\n\n⚡ Generate a visually distinct variant that looks like a completely different website but functions IDENTICALLY to the source.`;
