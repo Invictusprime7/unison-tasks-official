@@ -43,11 +43,11 @@ import { cn } from "@/lib/utils";
 import { AICodeAssistant } from "@/components/creatives/AICodeAssistant";
 import { buildPageStructureContext } from "@/utils/pageStructureContext";
 import {
-  generateDesignVariation,
   randomFontPairing,
   getThemeCSSDirective,
   getThemeGenerationDirective,
 } from "@/utils/designVariation";
+import { generateThemeVariation } from "@/themes/variationEngine";
 import { THEME_PRESETS, type ThemePreset } from "./themePresets";
 import {
   createBlueprintFromIndustry,
@@ -356,7 +356,10 @@ export const SystemLauncher = ({
       const fonts = selectedTheme
         ? { heading: selectedTheme.typography.headingFont, body: selectedTheme.typography.bodyFont }
         : randomFontPairing();
-      const design = generateDesignVariation(selectedTheme?.id);
+
+      // Generate a UNIQUE variation for this generation — never the same layout twice
+      const variationSeed = `v${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      const variation = generateThemeVariation(selectedTheme?.id || 'modern', variationSeed);
 
       // Use contracts system for canonical intent resolution
       const industryProfile = getIndustryForCategory(industry as LayoutCategory);
@@ -387,7 +390,7 @@ export const SystemLauncher = ({
             },
           } : {}),
         },
-        design,
+        design: variation.profile,
         intents: canonicalIntents.map((i: string) => ({ intent: i })),
       };
 
