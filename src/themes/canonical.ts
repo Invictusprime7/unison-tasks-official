@@ -182,6 +182,12 @@ export interface CanonicalTheme {
   animations: AnimationProfile;
   imageTreatment: ImageTreatment;
   cssDirective: string;
+  /**
+   * Detailed, prescriptive generation rules the AI MUST follow.
+   * Covers exact CSS patterns, typography scale, spacing, components,
+   * effects, and image treatment that define the theme's visual identity.
+   */
+  generationDirective: string;
   wizard: WizardMeta;
 }
 
