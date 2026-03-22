@@ -731,7 +731,10 @@ Generate a site that matches the user's established design preferences while bei
 This site MUST embody the "${aestheticLabel || aestheticId}" aesthetic throughout every component.
 This is NOT optional — the entire visual language must be consistent with this identity.
 
-### Style Directive:
+${aestheticGenerationDirective ? `### MANDATORY DESIGN RULES (FOLLOW EXACTLY):
+${aestheticGenerationDirective}
+
+` : ''}### Style Directive:
 ${aestheticStyleDirective || ''}
 
 ### Design System CSS (INJECT INTO index.css ALONGSIDE THE CSS VARIABLES):
@@ -757,6 +760,7 @@ ${aestheticCSSDirective || ''}
 CRITICAL: The CSS design system directive above MUST be included in your index.css output.
 Components must use the utility classes defined there (.card, .glass-card, .btn-*, etc.).
 Do NOT fall back to generic styling — every visual decision must align with "${aestheticLabel || aestheticId}".
+The MANDATORY DESIGN RULES section above is your primary style reference — follow every rule exactly.
 ` : '';
 
       // Build enhanced prompt from blueprint WITH template reference
