@@ -407,7 +407,9 @@ export const SystemLauncher = ({
         ? `\n\n📋 INDUSTRY CONTENT CONTEXT (USE THIS AS YOUR CONTENT BASELINE — do NOT invent services/items from other industries):\n${contentContext}\n`
         : '';
 
-      const userPrompt = `Create a unique, premium ${industry} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.${industryContextBlock}${themeInstruction}${customInstruction}`;
+      const userPrompt = `Create a unique, premium ${industry} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.${industryContextBlock}${themeInstruction}${customInstruction}
+
+${variation.variationSummary}`;
 
       // Prefer composition-based React code over legacy HTML
       // Pass themeId so the composition is serialised with the selected theme tokens
@@ -430,9 +432,7 @@ export const SystemLauncher = ({
             templateId: referenceId,
             templateHtml: referenceCode,
             variantMode: true,
-            variationSeed: `v${Date.now().toString(36)}_${Math.random()
-              .toString(36)
-              .slice(2, 8)}`,
+            variationSeed: variation.seed,
             outputFormat: "react",
             // Theme-aware generation context
             aestheticId: selectedTheme?.id || null,
