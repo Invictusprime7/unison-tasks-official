@@ -423,6 +423,10 @@ ${variation.variationSummary}`;
       const themeCSSDirective = selectedTheme ? getThemeCSSDirective(selectedTheme.id) : '';
       const themeGenerationDirective = selectedTheme ? getThemeGenerationDirective(selectedTheme.id) : '';
 
+      // Get the full canonical HSL color tokens for precise CSS variable injection
+      const canonicalTheme = selectedTheme ? getCanonicalTheme(selectedTheme.id) : null;
+      const hslTokens = canonicalTheme ? canonicalTheme.tokens.colors : null;
+
       const { data, error } = await supabase.functions.invoke(
         "systems-build",
         {
@@ -441,6 +445,7 @@ ${variation.variationSummary}`;
             aestheticStyleDirective: selectedTheme?.styleDirective || null,
             aestheticCSSDirective: themeCSSDirective || null,
             aestheticGenerationDirective: themeGenerationDirective || null,
+            aestheticColorTokens: hslTokens || null,
           },
         }
       );
