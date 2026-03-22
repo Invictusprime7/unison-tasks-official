@@ -906,6 +906,13 @@ export function getFullCSSDirective(id: string): string {
 }
 
 /**
+ * Get the generation directive for a theme — detailed, prescriptive AI rules.
+ */
+export function getGenerationDirective(id: string): string {
+  return getCanonicalTheme(id).generationDirective;
+}
+
+/**
  * Build Unsplash image URL with theme-appropriate keywords.
  */
 export function getThemeImageUrl(id: string, width = 800, height = 600, keyword?: string): string {
