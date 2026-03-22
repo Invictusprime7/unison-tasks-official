@@ -46,6 +46,7 @@ import {
   generateDesignVariation,
   randomFontPairing,
   getThemeCSSDirective,
+  getThemeGenerationDirective,
 } from "@/utils/designVariation";
 import { THEME_PRESETS, type ThemePreset } from "./themePresets";
 import {
@@ -412,8 +413,9 @@ export const SystemLauncher = ({
       const referenceCode = compositionCode || selectedTemplate.code;
       const referenceId = compositionMetaData?.compositionId || selectedTemplate.id;
 
-      // Get theme-specific CSS design system directive
+      // Get theme-specific CSS design system directive and generation directive
       const themeCSSDirective = selectedTheme ? getThemeCSSDirective(selectedTheme.id) : '';
+      const themeGenerationDirective = selectedTheme ? getThemeGenerationDirective(selectedTheme.id) : '';
 
       const { data, error } = await supabase.functions.invoke(
         "systems-build",
@@ -434,6 +436,7 @@ export const SystemLauncher = ({
             aestheticLabel: selectedTheme?.label || null,
             aestheticStyleDirective: selectedTheme?.styleDirective || null,
             aestheticCSSDirective: themeCSSDirective || null,
+            aestheticGenerationDirective: themeGenerationDirective || null,
           },
         }
       );

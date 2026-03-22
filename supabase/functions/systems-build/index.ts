@@ -131,6 +131,7 @@ const BodySchema = z.object({
   aestheticLabel: z.string().optional(),
   aestheticStyleDirective: z.string().max(2000).optional(),
   aestheticCSSDirective: z.string().max(5000).optional(),
+  aestheticGenerationDirective: z.string().max(8000).optional(),
   // User Design Profile
   userDesignProfile: z.object({
     projectCount: z.number().optional(),
@@ -665,7 +666,7 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed, outputFormat, aestheticId, aestheticLabel, aestheticStyleDirective, aestheticCSSDirective, userDesignProfile } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed, outputFormat, aestheticId, aestheticLabel, aestheticStyleDirective, aestheticCSSDirective, aestheticGenerationDirective, userDesignProfile } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     // Build design profile context string for AI prompts
@@ -730,7 +731,10 @@ Generate a site that matches the user's established design preferences while bei
 This site MUST embody the "${aestheticLabel || aestheticId}" aesthetic throughout every component.
 This is NOT optional — the entire visual language must be consistent with this identity.
 
-### Style Directive:
+${aestheticGenerationDirective ? `### MANDATORY DESIGN RULES (FOLLOW EXACTLY):
+${aestheticGenerationDirective}
+
+` : ''}### Style Directive:
 ${aestheticStyleDirective || ''}
 
 ### Design System CSS (INJECT INTO index.css ALONGSIDE THE CSS VARIABLES):
@@ -756,6 +760,7 @@ ${aestheticCSSDirective || ''}
 CRITICAL: The CSS design system directive above MUST be included in your index.css output.
 Components must use the utility classes defined there (.card, .glass-card, .btn-*, etc.).
 Do NOT fall back to generic styling — every visual decision must align with "${aestheticLabel || aestheticId}".
+The MANDATORY DESIGN RULES section above is your primary style reference — follow every rule exactly.
 ` : '';
 
       // Build enhanced prompt from blueprint WITH template reference
