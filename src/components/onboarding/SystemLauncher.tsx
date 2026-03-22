@@ -46,6 +46,7 @@ import {
   generateDesignVariation,
   randomFontPairing,
   getThemeCSSDirective,
+  getThemeGenerationDirective,
 } from "@/utils/designVariation";
 import { THEME_PRESETS, type ThemePreset } from "./themePresets";
 import {

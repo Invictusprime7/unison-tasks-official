@@ -29,6 +29,14 @@ export function getThemeCSSDirective(themeId: string): string {
 }
 
 /**
+ * Get the detailed generation directive for a theme.
+ * Returns prescriptive rules the AI must follow for faithful theme output.
+ */
+export function getThemeGenerationDirective(themeId: string): string {
+  return getCanonicalTheme(themeId).generationDirective;
+}
+
+/**
  * Pick a font pairing from the theme's canonical typography.
  */
 export function randomFontPairing(currentHeading?: string): { heading: string; body: string } {
