@@ -921,6 +921,73 @@ export const SystemLauncher = ({
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {THEME_PRESETS.map((theme) => {
                     const isSelected = selectedTheme?.id === theme.id;
+
+                    // Per-theme visual identity for the card itself
+                    const themeCardStyles: Record<string, { bg: string; border: string; hoverBorder: string; fontClass: string; labelClass: string; descClass: string; swatchShape: string; cardExtra: string }> = {
+                      modern: {
+                        bg: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(139,92,246,0.06) 100%)',
+                        border: '1px solid rgba(59,130,246,0.20)',
+                        hoverBorder: '1px solid rgba(59,130,246,0.40)',
+                        fontClass: 'font-sans',
+                        labelClass: 'font-bold tracking-tight',
+                        descClass: 'text-blue-300/40',
+                        swatchShape: 'rounded-lg',
+                        cardExtra: 'backdrop-blur-sm',
+                      },
+                      editorial: {
+                        bg: 'linear-gradient(180deg, rgba(139,115,85,0.06) 0%, rgba(196,168,130,0.04) 100%)',
+                        border: '1px solid rgba(139,115,85,0.18)',
+                        hoverBorder: '1px solid rgba(139,115,85,0.40)',
+                        fontClass: 'font-serif',
+                        labelClass: 'font-bold italic tracking-normal',
+                        descClass: 'text-amber-200/30',
+                        swatchShape: 'rounded-none',
+                        cardExtra: '',
+                      },
+                      futuristic: {
+                        bg: 'linear-gradient(135deg, rgba(0,240,255,0.06) 0%, rgba(255,0,255,0.04) 100%)',
+                        border: '1px solid rgba(0,240,255,0.18)',
+                        hoverBorder: '1px solid rgba(0,240,255,0.50)',
+                        fontClass: 'font-mono',
+                        labelClass: 'font-bold uppercase tracking-widest text-[13px]',
+                        descClass: 'text-cyan-300/30',
+                        swatchShape: 'rounded-sm',
+                        cardExtra: 'backdrop-blur-sm',
+                      },
+                      minimalist: {
+                        bg: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        hoverBorder: '1px solid rgba(255,255,255,0.20)',
+                        fontClass: 'font-sans',
+                        labelClass: 'font-light tracking-wide uppercase text-[13px]',
+                        descClass: 'text-white/20',
+                        swatchShape: 'rounded-full',
+                        cardExtra: '',
+                      },
+                      bold: {
+                        bg: 'linear-gradient(180deg, rgba(255,51,51,0.08) 0%, rgba(0,0,0,0.3) 100%)',
+                        border: '2px solid rgba(255,51,51,0.25)',
+                        hoverBorder: '2px solid rgba(255,51,51,0.60)',
+                        fontClass: 'font-sans',
+                        labelClass: 'font-black uppercase tracking-wider',
+                        descClass: 'text-red-300/30',
+                        swatchShape: 'rounded-none',
+                        cardExtra: '',
+                      },
+                      organic: {
+                        bg: 'linear-gradient(135deg, rgba(196,112,63,0.07) 0%, rgba(124,154,94,0.05) 100%)',
+                        border: '1px solid rgba(196,112,63,0.18)',
+                        hoverBorder: '1px solid rgba(196,112,63,0.40)',
+                        fontClass: 'font-serif',
+                        labelClass: 'font-semibold tracking-normal',
+                        descClass: 'text-orange-200/30',
+                        swatchShape: 'rounded-full',
+                        cardExtra: '',
+                      },
+                    };
+
+                    const s = themeCardStyles[theme.id] || themeCardStyles.modern;
+
                     return (
                       <motion.button
                         key={theme.id}
@@ -928,27 +995,57 @@ export const SystemLauncher = ({
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         className={cn(
-                          "relative p-4 rounded-2xl text-left transition-all duration-200",
-                          "border focus:outline-none",
-                          isSelected
-                            ? "bg-cyan-500/[0.08] border-cyan-500/40 shadow-[0_0_24px_rgba(0,200,255,0.08)]"
-                            : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]"
+                          "relative p-4 rounded-2xl text-left transition-all duration-300 group",
+                          s.fontClass, s.cardExtra,
+                          "focus:outline-none",
+                          theme.id === 'minimalist' && 'rounded-none',
+                          theme.id === 'bold' && 'rounded-none',
+                          theme.id === 'editorial' && 'rounded-sm',
                         )}
+                        style={{
+                          background: isSelected
+                            ? s.bg.replace(/0\.\d+\)/g, (m) => {
+                                const val = parseFloat(m);
+                                return `${Math.min(val * 2, 0.25).toFixed(2)})`;
+                              })
+                            : s.bg,
+                          border: isSelected ? s.hoverBorder : s.border,
+                          boxShadow: isSelected
+                            ? `0 0 24px ${theme.palette.accent}20, inset 0 1px 0 rgba(255,255,255,0.05)`
+                            : 'none',
+                        }}
                       >
+                        {/* Color swatches */}
                         <div className="flex gap-1.5 mb-3">
                           {[theme.palette.bg, theme.palette.accent, theme.palette.accent2 || theme.palette.fg].map(
                             (color, ci) => (
                               <div
                                 key={ci}
-                                className={cn("w-7 h-7 rounded-lg transition-transform duration-200", isSelected && "scale-110")}
-                                style={{ backgroundColor: color, boxShadow: isSelected ? `0 0 8px ${color}40` : "none" }}
+                                className={cn(
+                                  "w-7 h-7 transition-all duration-200",
+                                  s.swatchShape,
+                                  isSelected && "scale-110",
+                                  theme.id === 'futuristic' && ci > 0 && 'shadow-[0_0_8px_currentColor]',
+                                )}
+                                style={{
+                                  backgroundColor: color,
+                                  boxShadow: isSelected
+                                    ? `0 0 10px ${color}50`
+                                    : theme.id === 'futuristic' && ci > 0
+                                      ? `0 0 6px ${color}40`
+                                      : 'none',
+                                }}
                               />
                             )
                           )}
                         </div>
+
+                        {/* Label */}
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-base opacity-70">{theme.icon}</span>
-                          <h3 className="font-semibold text-sm text-white/90">{theme.label}</h3>
+                          <h3 className={cn("text-sm text-white/90", s.labelClass)}>
+                            {theme.label}
+                          </h3>
                           {isSelected && (
                             <motion.div
                               initial={{ scale: 0 }}
@@ -959,7 +1056,24 @@ export const SystemLauncher = ({
                             </motion.div>
                           )}
                         </div>
-                        <p className="text-xs text-white/30 leading-relaxed">{theme.description}</p>
+
+                        {/* Description */}
+                        <p className={cn("text-xs leading-relaxed", s.descClass)}>
+                          {theme.description}
+                        </p>
+
+                        {/* Theme-specific decorative accent */}
+                        {theme.id === 'futuristic' && (
+                          <div className="absolute top-0 right-0 w-16 h-16 opacity-[0.04] pointer-events-none overflow-hidden rounded-tr-2xl">
+                            <div className="w-full h-full" style={{ backgroundImage: 'linear-gradient(rgba(0,240,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,0.4) 1px, transparent 1px)', backgroundSize: '8px 8px' }} />
+                          </div>
+                        )}
+                        {theme.id === 'bold' && (
+                          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-500/0 via-red-500/30 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                        {theme.id === 'organic' && (
+                          <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-full opacity-[0.04] pointer-events-none" style={{ background: `radial-gradient(circle, ${theme.palette.accent} 0%, transparent 70%)` }} />
+                        )}
                       </motion.button>
                     );
                   })}
