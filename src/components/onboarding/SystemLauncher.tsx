@@ -404,7 +404,7 @@ export const SystemLauncher = ({
         ? `\n\n📋 INDUSTRY CONTENT CONTEXT (USE THIS AS YOUR CONTENT BASELINE — do NOT invent services/items from other industries):\n${contentContext}\n`
         : '';
 
-      const userPrompt = `Create a unique, premium ${industry} website inspired by but NOT identical to the reference template. Use original copy and varied section arrangements while strictly following the selected aesthetic's mandatory design rules (colors, typography, border radii, button styles, animations). Do NOT deviate from the aesthetic identity.${industryContextBlock}${themeInstruction}${customInstruction}`;
+      const userPrompt = `Create a unique, premium ${industry} website inspired by but NOT identical to the reference template. Use different color schemes, layout variations, and original copy while maintaining the same quality level.${industryContextBlock}${themeInstruction}${customInstruction}`;
 
       // Prefer composition-based React code over legacy HTML
       // Pass themeId so the composition is serialised with the selected theme tokens

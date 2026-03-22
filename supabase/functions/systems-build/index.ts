@@ -1220,13 +1220,16 @@ function buildSystemPrompt(blueprint: z.infer<typeof BlueprintSchema>, patternCo
   const sections = design?.sections || {};
   const content = design?.content || {};
   
-  // Variation seed — ONLY for structural uniqueness, NEVER overrides aesthetic constraints
+  // Variation seed block for visual diversity
   const variationSeedBlock = variationSeed ? `
 
 🎲 **VARIATION SEED: ${variationSeed}**
-Use this seed ONLY for structural variation (section ordering, content arrangement, decorative element placement).
-⚠️ DO NOT let this seed override the MANDATORY AESTHETIC IDENTITY or generation directive above.
-The aesthetic's color palette, typography, border radii, button styles, and animation patterns are NON-NEGOTIABLE.
+Use this seed to inform creative decisions — choose a UNIQUE combination of:
+- Color temperature: ${parseInt(variationSeed, 36) % 3 === 0 ? 'warm (amber, orange, red)' : parseInt(variationSeed, 36) % 3 === 1 ? 'cool (blue, teal, purple)' : 'neutral (slate, gray, emerald)'}
+- Layout style: ${parseInt(variationSeed, 36) % 4 === 0 ? 'asymmetric, bold' : parseInt(variationSeed, 36) % 4 === 1 ? 'centered, elegant' : parseInt(variationSeed, 36) % 4 === 2 ? 'grid-heavy, structured' : 'flowing, organic'}
+- Typography mood: ${parseInt(variationSeed, 36) % 3 === 0 ? 'modern sans-serif' : parseInt(variationSeed, 36) % 3 === 1 ? 'geometric display' : 'humanist friendly'}
+- Card style: ${parseInt(variationSeed, 36) % 2 === 0 ? 'rounded with shadows' : 'sharp with borders'}
+DO NOT generate the same design twice — this seed ensures visual uniqueness.
 ` : '';
 
   // Build template reference context — variant mode uses stricter rules
@@ -1312,49 +1315,47 @@ IMPORTANT PLATFORM CAPABILITY (DO NOT CONTRADICT THIS):
 - Headings: ${brand.typography?.heading || "Inter"}
 - Body: ${brand.typography?.body || "Inter"}
 
-🎨 **WEBSITE DESIGN SCHEMA (SUBORDINATE TO AESTHETIC IDENTITY):**
-⚠️ If an AESTHETIC IDENTITY section exists above, its MANDATORY DESIGN RULES take precedence over ALL values below.
-These are fallback defaults ONLY when no aesthetic is selected.
+🎨 **WEBSITE DESIGN SCHEMA (FOLLOW THESE PREFERENCES):**
 
 📐 **LAYOUT:**
-- Hero Style: ${layout.hero_style || "split"}
-- Section Spacing: ${layout.section_spacing || "normal"}
-- Max Width: ${layout.max_width || "normal"}
-- Navigation: ${layout.navigation_style || "fixed"}
+- Hero Style: ${layout.hero_style || "split"} (centered = text centered, split = text left + image right, fullscreen = full viewport hero)
+- Section Spacing: ${layout.section_spacing || "normal"} (compact = py-12, normal = py-20, spacious = py-32)
+- Max Width: ${layout.max_width || "normal"} (narrow = max-w-4xl, normal = max-w-6xl, wide = max-w-7xl, full = w-full)
+- Navigation: ${layout.navigation_style || "fixed"} (fixed = always visible, sticky = appears on scroll, static = normal flow)
 
 ✨ **VISUAL EFFECTS:**
-- Animations: ${effects.animations !== false ? "ENABLED" : "DISABLED"}
-- Scroll Animations: ${effects.scroll_animations !== false ? "ENABLED" : "DISABLED"}
-- Hover Effects: ${effects.hover_effects !== false ? "ENABLED" : "DISABLED"}
-- Gradient Backgrounds: ${effects.gradient_backgrounds !== false ? "ENABLED" : "DISABLED"}
-- Glassmorphism: ${effects.glassmorphism === true ? "ENABLED" : "DISABLED"}
-- Shadows: ${effects.shadows || "normal"}
+- Animations: ${effects.animations !== false ? "ENABLED - Use fadeIn, float, pulse animations" : "DISABLED - No animations"}
+- Scroll Animations: ${effects.scroll_animations !== false ? "ENABLED - Use Intersection Observer for scroll-triggered animations" : "DISABLED"}
+- Hover Effects: ${effects.hover_effects !== false ? "ENABLED - Add hover:scale-105, hover:shadow-lg transitions" : "DISABLED"}
+- Gradient Backgrounds: ${effects.gradient_backgrounds !== false ? "ENABLED - Use gradient backgrounds on hero and CTA sections" : "DISABLED"}
+- Glassmorphism: ${effects.glassmorphism === true ? "ENABLED - Use backdrop-blur-sm, bg-white/80 for glass effect" : "DISABLED"}
+- Shadows: ${effects.shadows || "normal"} (none = no shadows, subtle = shadow-sm, normal = shadow-lg, dramatic = shadow-2xl)
 
 🖼️ **IMAGE STYLING:**
-- Image Style: ${images.style || "rounded"}
-- Aspect Ratio: ${images.aspect_ratio || "auto"}
-- Placeholder Service: ${images.placeholder_service || "unsplash"}
-- Image Overlay: ${images.overlay_style || "gradient"}
+- Image Style: ${images.style || "rounded"} (rounded = rounded-xl, sharp = rounded-none, circular = rounded-full, organic = custom border-radius)
+- Aspect Ratio: ${images.aspect_ratio || "auto"} (square = aspect-square, portrait = aspect-[3/4], landscape = aspect-video)
+- Placeholder Service: ${images.placeholder_service || "unsplash"} (use https://images.unsplash.com/photo-... for ${images.placeholder_service || "unsplash"})
+- Image Overlay: ${images.overlay_style || "gradient"} (none = no overlay, gradient = gradient overlay, color = solid color overlay)
 
-🔘 **BUTTON STYLING (OVERRIDE BY AESTHETIC IF SET):**
-- Button Style: ${buttons.style || "pill"}
-- Button Size: ${buttons.size || "medium"}
-- Hover Effect: ${buttons.hover_effect || "scale"}
+🔘 **BUTTON STYLING:**
+- Button Style: ${buttons.style || "pill"} (rounded = rounded-lg, pill = rounded-full, sharp = rounded-none, outline = border-2 + transparent bg)
+- Button Size: ${buttons.size || "medium"} (small = px-4 py-2 text-sm, medium = px-6 py-3, large = px-8 py-4 text-lg)
+- Hover Effect: ${buttons.hover_effect || "scale"} (scale = hover:scale-105, glow = hover:shadow-lg shadow-primary/25, lift = hover:-translate-y-1)
 
 📋 **SECTIONS TO INCLUDE:**
-- Stats: ${sections.include_stats !== false ? "YES" : "NO"}
-- Testimonials: ${sections.include_testimonials !== false ? "YES" : "NO"}
-- FAQ: ${sections.include_faq !== false ? "YES" : "NO"}
-- CTA Banner: ${sections.include_cta_banner !== false ? "YES" : "NO"}
-- Newsletter: ${sections.include_newsletter !== false ? "YES" : "NO"}
-- Social Proof: ${sections.include_social_proof !== false ? "YES" : "NO"}
-- Counter Animations: ${sections.use_counter_animations !== false ? "YES" : "NO"}
+- Stats Section: ${sections.include_stats !== false ? "YES - Include animated statistics counters" : "NO"}
+- Testimonials: ${sections.include_testimonials !== false ? "YES - Include customer testimonials with cards" : "NO"}
+- FAQ Section: ${sections.include_faq !== false ? "YES - Include collapsible FAQ accordion" : "NO"}
+- CTA Banner: ${sections.include_cta_banner !== false ? "YES - Include prominent call-to-action banner" : "NO"}
+- Newsletter: ${sections.include_newsletter !== false ? "YES - Include newsletter signup form" : "NO"}
+- Social Proof: ${sections.include_social_proof !== false ? "YES - Include trust badges, client logos, ratings" : "NO"}
+- Counter Animations: ${sections.use_counter_animations !== false ? "YES - Animate numbers counting up on scroll" : "NO"}
 
 📝 **CONTENT PREFERENCES:**
-- Content Density: ${content.density || "balanced"}
-- Use Icons: ${content.use_icons !== false ? "YES" : "NO"}
-- Use Emojis: ${content.use_emojis === true ? "YES" : "NO"}
-- Writing Style: ${content.writing_style || "conversational"}
+- Content Density: ${content.density || "balanced"} (minimal = essential content only, balanced = standard, rich = detailed content)
+- Use Icons: ${content.use_icons !== false ? "YES - Use emoji or SVG icons for visual interest" : "NO"}
+- Use Emojis: ${content.use_emojis === true ? "YES - Use emojis in headings and text" : "NO - Keep professional without emojis"}
+- Writing Style: ${content.writing_style || "conversational"} (professional = formal language, conversational = friendly, bold = punchy, minimal = brief)
 
 📄 **PAGES TO INCLUDE:**
 ${pages.map((p, i) => `${i + 1}. ${p.title} (${p.path || "/"})`).join("\n")}
@@ -2156,13 +2157,15 @@ function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, use
    - Every form structure, field name, and form action must stay the same
    - Every nav link text and data-ut-path must be unchanged
 
-2. **TRANSFORM THE VISUAL DESIGN (WITHIN AESTHETIC CONSTRAINTS):**
-   - Use the MANDATORY AESTHETIC color palette and typography from the generation directive — do NOT pick your own
-   - Different layout arrangements within the aesthetic's permitted styles
+2. **TRANSFORM THE VISUAL DESIGN:**
+   - Use completely different color scheme and gradients
+   - Different typography pairing (choose from: Plus Jakarta Sans, Space Grotesk, Manrope, Outfit, Sora, Clash Display + body: Inter, DM Sans, Nunito)
+   - Different layout arrangements (if hero was split, try centered or fullscreen)
    - Different section ordering where it makes sense
+   - Different card styles (if rounded, try sharp; if dark, try light)
    - Different image treatment (different Unsplash photos, different overlays)
-   - Different decorative elements that align with the aesthetic identity
-   - ⚠️ ALL visual changes MUST stay within the aesthetic's mandatory design rules (border radii, button styles, shadows, animation patterns)
+   - Different animation timing and styles
+    - Different decorative elements (blob shapes, gradients, patterns)
 
 3. **INDUSTRY-FAITHFUL CONTENT (CRITICAL):**
     - ALL services, descriptions, testimonials, and FAQ content MUST reflect the "${identity.industry}" industry
@@ -2188,7 +2191,7 @@ function buildVariantUserMessage(blueprint: z.infer<typeof BlueprintSchema>, use
   }
 
   if (variationSeed) {
-    message += `\n\n🎲 **UNIQUENESS SEED: ${variationSeed}**\nUse this seed for structural variation ONLY (section order, content arrangement). Do NOT let it override the aesthetic's mandatory colors, fonts, radii, or animation patterns.`;
+    message += `\n\n🎲 **UNIQUENESS SEED: ${variationSeed}**\nThis seed MUST result in a visually distinct design — different from any previous generation.`;
   }
 
   message += `\n\n⚡ Generate a visually distinct variant that looks like a completely different website but functions IDENTICALLY to the source.`;
