@@ -666,7 +666,7 @@ serve(async (req) => {
       );
     }
 
-    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed, outputFormat, aestheticId, aestheticLabel, aestheticStyleDirective, aestheticCSSDirective, userDesignProfile } = parsed.data;
+    const { blueprint, userPrompt, enhanceWithAI: _enhanceWithAI, templateId, templateHtml, variantMode, variationSeed, outputFormat, aestheticId, aestheticLabel, aestheticStyleDirective, aestheticCSSDirective, aestheticGenerationDirective, userDesignProfile } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     // Build design profile context string for AI prompts
