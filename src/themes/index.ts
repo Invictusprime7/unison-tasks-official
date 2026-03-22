@@ -34,6 +34,7 @@ export {
   getCanonicalTheme,
   getThemeTokens,
   getFullCSSDirective,
+  getGenerationDirective,
   getThemeImageUrl,
 } from './canonical';
 
