@@ -308,7 +308,8 @@ export interface TemplateComposition {
   category: string;
   industry: string;
   description: string;
-  theme: ThemeTokens;
+  /** When omitted, the user's selected aesthetic theme is used instead */
+  theme?: ThemeTokens;
   sections: SectionEntry[];
   /** Optional global CSS for advanced effects (keyframes, scroll-reveal) */
   globalStyles?: string;
