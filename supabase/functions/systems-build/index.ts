@@ -789,12 +789,31 @@ ${blueprint.brand.tagline ? `Tagline: "${blueprint.brand.tagline}"` : ""}
 ${blueprint.identity.primary_goal ? `Goal: ${blueprint.identity.primary_goal}` : ""}
 ${blueprint.brand.tone ? `Tone: ${blueprint.brand.tone}` : ""}
 
-Brand Colors (USE THESE EXACT COLORS IN :root CSS VARIABLES):
+${aestheticColorTokens ? `## EXACT CSS COLOR VARIABLES (COPY THESE INTO :root — DO NOT MODIFY):
+\`\`\`css
+:root {
+  --primary: ${aestheticColorTokens.primary};
+  --primary-foreground: ${aestheticColorTokens.primaryForeground};
+  --secondary: ${aestheticColorTokens.secondary};
+  --secondary-foreground: ${aestheticColorTokens.secondaryForeground};
+  --accent: ${aestheticColorTokens.accent};
+  --accent-foreground: ${aestheticColorTokens.accentForeground};
+  --background: ${aestheticColorTokens.background};
+  --foreground: ${aestheticColorTokens.foreground};
+  --muted: ${aestheticColorTokens.muted};
+  --muted-foreground: ${aestheticColorTokens.mutedForeground};
+  --card: ${aestheticColorTokens.card};
+  --card-foreground: ${aestheticColorTokens.cardForeground};
+  --border: ${aestheticColorTokens.border};
+}
+\`\`\`
+CRITICAL: Use these EXACT HSL values. Reference them as hsl(var(--primary)), hsl(var(--background)), etc.
+Do NOT substitute with different colors. These define the "${aestheticLabel || aestheticId}" palette.` : `Brand Colors (USE THESE EXACT COLORS IN :root CSS VARIABLES):
 - Primary: ${blueprint.brand.palette?.primary || "#0EA5E9"}
 - Secondary: ${blueprint.brand.palette?.secondary || "#22D3EE"}
 - Accent: ${blueprint.brand.palette?.accent || "#F59E0B"}
 - Background: ${blueprint.brand.palette?.background || "#FFFFFF"}
-- Foreground: ${blueprint.brand.palette?.foreground || "#1E293B"}
+- Foreground: ${blueprint.brand.palette?.foreground || "#1E293B"}`}
 
 Typography (LOAD VIA GOOGLE FONTS):
 - Headings: ${blueprint.brand.typography?.heading || "Inter"} (weight: bold)
