@@ -132,6 +132,21 @@ const BodySchema = z.object({
   aestheticStyleDirective: z.string().max(2000).optional(),
   aestheticCSSDirective: z.string().max(5000).optional(),
   aestheticGenerationDirective: z.string().max(8000).optional(),
+  aestheticColorTokens: z.object({
+    primary: z.string(),
+    primaryForeground: z.string(),
+    secondary: z.string(),
+    secondaryForeground: z.string(),
+    accent: z.string(),
+    accentForeground: z.string(),
+    background: z.string(),
+    foreground: z.string(),
+    muted: z.string(),
+    mutedForeground: z.string(),
+    card: z.string(),
+    cardForeground: z.string(),
+    border: z.string(),
+  }).optional(),
   // User Design Profile
   userDesignProfile: z.object({
     projectCount: z.number().optional(),
