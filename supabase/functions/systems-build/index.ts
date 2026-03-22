@@ -131,6 +131,7 @@ const BodySchema = z.object({
   aestheticLabel: z.string().optional(),
   aestheticStyleDirective: z.string().max(2000).optional(),
   aestheticCSSDirective: z.string().max(5000).optional(),
+  aestheticGenerationDirective: z.string().max(8000).optional(),
   // User Design Profile
   userDesignProfile: z.object({
     projectCount: z.number().optional(),
