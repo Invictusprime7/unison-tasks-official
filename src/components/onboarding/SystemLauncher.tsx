@@ -48,6 +48,7 @@ import {
   getThemeGenerationDirective,
 } from "@/utils/designVariation";
 import { generateThemeVariation } from "@/themes/variationEngine";
+import { getCanonicalTheme } from "@/themes/canonical";
 import { THEME_PRESETS, type ThemePreset } from "./themePresets";
 import {
   createBlueprintFromIndustry,
