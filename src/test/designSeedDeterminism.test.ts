@@ -78,10 +78,10 @@ describe('Phase 1 — deterministic design seed', () => {
     expect(callSites).toEqual([]);
   });
 
-  it('mints the wizard seed before any design decision in the launcher', () => {
-    const launcher = readFileSync('src/components/onboarding/SystemLauncher.tsx', 'utf8');
+  it('mints the wizard seed before any design decision in the launch orchestrator', () => {
+    const launcher = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
     const seedAt = launcher.indexOf('const wizardSeedId =');
-    const designAt = launcher.indexOf('const canonicalGenerationSeed = deriveGenerationSeed(');
+    const designAt = launcher.indexOf('const seed = deriveGenerationSeed(');
     expect(seedAt).toBeGreaterThan(-1);
     expect(designAt).toBeGreaterThan(seedAt);
     expect(launcher).toContain('launchNonce: wizardSeedId');

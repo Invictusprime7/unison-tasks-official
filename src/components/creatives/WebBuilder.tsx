@@ -318,7 +318,7 @@ import { useWebBuilderState } from "@/hooks/useWebBuilderState";
 import { useLaunch } from "@/contexts/useLaunchHooks";
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose, ArrowLeft, Download } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { SystemLauncher } from "@/components/onboarding/SystemLauncher";
+import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
 import {
   Dialog,
   DialogContent,
@@ -6390,7 +6390,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     <BusinessProfileProvider businessId={businessId || undefined}>
     <div ref={mainContainerRef} className={cn("wb-obsidian flex min-h-[100dvh] h-[100dvh] flex-col overflow-hidden bg-[#09090b]", isMobile && "pb-16")}>
       {/* Launcher is opened only by an explicit user flow. */}
-      <SystemLauncher open={showLauncher} onOpenChange={setShowLauncher} />
+      <LauncherWizard open={showLauncher} onOpenChange={setShowLauncher} />
 
       {/* Interactive Element Highlighting Styles */}
       <InteractiveElementHighlight isInteractiveMode={isInteractiveMode} />

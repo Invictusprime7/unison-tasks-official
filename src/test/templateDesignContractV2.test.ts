@@ -122,10 +122,10 @@ describe('Phase 2 — Design Contract V2', () => {
     expect(prompt).toContain('motion=');
   });
 
-  it('is built from the canonical generation seed inside the launcher', () => {
-    const launcher = readFileSync('src/components/onboarding/SystemLauncher.tsx', 'utf8');
-    expect(launcher).toMatch(/buildTemplateLayoutContract\(composition, \{/);
-    expect(launcher).toContain('seed: canonicalGenerationSeed');
-    expect(launcher).toContain('[TEMPLATE_DESIGN_CONTRACT_PATH]:');
+  it('is built from the canonical generation seed inside the launch orchestrator', () => {
+    const orchestrator = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
+    expect(orchestrator).toMatch(/buildTemplateLayoutContract\(themedComposition, \{/);
+    expect(orchestrator).toContain('seed: plan.seed');
+    expect(orchestrator).toContain('[TEMPLATE_DESIGN_CONTRACT_PATH]:');
   });
 });

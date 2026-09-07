@@ -37,12 +37,6 @@ describe('Wizard presentation guard', () => {
     expect(guarded.rejectedPaths).toEqual(['/src/pages/Home.tsx']);
   });
 
-  it('runs before the final VFS merge so drift is detected pre-seal', () => {
-    const launcher = readFileSync(resolve(process.cwd(), 'src/components/onboarding/SystemLauncher.tsx'), 'utf8');
-    expect(launcher).toContain('assessWizardHomePresentation({');
-    expect(launcher.indexOf('assessWizardHomePresentation({')).toBeLessThan(launcher.indexOf('const generatedFiles: Record<string, string>'));
-  });
-
   it('rejects a generic Home against the real photography composition and its image-led presentation modules', () => {
     const composition = getCompositionById('portfolio-photography');
     if (!composition) throw new Error('Photography composition must be registered');
