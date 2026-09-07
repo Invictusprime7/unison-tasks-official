@@ -133,6 +133,13 @@ async function refreshBuilderSession(
  */
 export const BUILDER_TOKEN_MIN_LIFETIME_MS = 300_000;
 
+/**
+ * Absolute floor: a token with at least this much life left can still carry a
+ * Lane B turn, so a failed proactive rotation must not abort the launch.
+ */
+export const BUILDER_MIN_USABLE_TOKEN_MS = 60_000;
+
+
 
 /**
  * Server-verified token check, memoized per access token so a batched Lane B
