@@ -308,13 +308,14 @@ export async function runLaunchPipeline(
 
   // ── Stage: seed (canonical compile + Stage 4b theme tokens) ───────────────
   status("Compiling your themed site…");
-  const stage4b = await run.stage("seed", async () => {
+  const stage4b = await run.stage("seed", async (signal) => {
     const result = await runWizardStage4b({
       selections: plan.selections,
       existingVfsFiles: {
         "/.unison/wizard-seed.json": JSON.stringify(wizardSeedFile, null, 2),
         [TEMPLATE_DESIGN_CONTRACT_PATH]: JSON.stringify(designContract, null, 2),
       },
+      signal,
       yieldToHost: yieldToBrowser,
     });
     if (!result.pipelineResult.sitePlan) {
