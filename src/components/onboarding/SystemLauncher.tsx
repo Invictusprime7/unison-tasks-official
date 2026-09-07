@@ -5371,7 +5371,7 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
             </motion.div>
           )}
         </AnimatePresence>
-        )}
+
         </DialogContent>
       </Dialog>
 
