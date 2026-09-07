@@ -33,7 +33,6 @@ import { StyleTokenCard } from "./StyleTokenCard";
 
 import { TemplateLivePreview } from "./TemplateLivePreview";
 import { WizardTopAction } from "./WizardTopAction";
-import { LaunchReviewSummary } from "./LaunchReviewSummary";
 import { BusinessSelector } from "@/components/business/BusinessSelector";
 
 import { themePresetToThemeTokens } from "./themePresetToTokens";
@@ -183,16 +182,6 @@ interface SystemLauncherProps {
    * owners don't retype the identity they just entered post-signup.
    */
   prefill?: SystemLauncherPrefill | null;
-}
-
-interface LaunchPreviewConfirmation {
-  businessName: string;
-  siteName: string;
-  fileCount: number;
-  pagePaths: string[];
-  businessId: string;
-  siteId: string;
-  files: Record<string, string>;
 }
 
 type SanitizedGeneratedFiles = ReturnType<typeof sanitizeGeneratedFiles>;
@@ -1514,8 +1503,6 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
   const [launchStatus, setLaunchStatus] = useState("");
   // Inline, recoverable launch failure. The wizard never toasts errors.
   const [launchError, setLaunchError] = useState<string | null>(null);
-  const [launchPreviewConfirmation, setLaunchPreviewConfirmation] = useState<LaunchPreviewConfirmation | null>(null);
-  const launchConfirmationResolverRef = useRef<((confirmed: boolean) => void) | null>(null);
   // Business Profile selected in the wizard header. When set, the project
   // is stamped into this business; when null we fall back to
   // install-system provisioning (creates a fresh business).
@@ -1549,20 +1536,6 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
     linkedin: "",
     youtube: "",
   });
-
-  const requestLaunchConfirmation = useCallback((preview: LaunchPreviewConfirmation) => (
-    new Promise<boolean>((resolve) => {
-      launchConfirmationResolverRef.current = resolve;
-      setLaunchPreviewConfirmation(preview);
-    })
-  ), []);
-
-  const resolveLaunchConfirmation = useCallback((confirmed: boolean) => {
-    const resolve = launchConfirmationResolverRef.current;
-    launchConfirmationResolverRef.current = null;
-    setLaunchPreviewConfirmation(null);
-    resolve?.(confirmed);
-  }, []);
 
   const currentStepIdx = STEP_META.findIndex((s) => s.key === step);
 
@@ -1693,7 +1666,7 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
   };
 
   const handleLaunch = async () => {
-    if (isLaunching || launchPreviewConfirmation) return;
+    if (isLaunching) return;
     if (!selectedSystem) return;
     const system = businessSystems.find((s) => s.id === selectedSystem);
     if (!system) return;
@@ -4570,7 +4543,6 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
       <Dialog
         open={open}
         onOpenChange={(isOpen) => {
-          if (!isOpen) resolveLaunchConfirmation(false);
           onOpenChange(isOpen);
           if (!isOpen) resetState();
         }}
