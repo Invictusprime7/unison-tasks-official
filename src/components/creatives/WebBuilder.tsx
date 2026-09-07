@@ -7118,16 +7118,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     console.log('[WebBuilder] Auto-wired intents in file patch:', normalized.analysis.intents);
                   }
 
-                  const committedFiles = await commitBuilderFiles(normalizedFiles, {
+                  // Canonical commit is async; this handler must stay sync, so
+                  // the draft save is chained onto the accepted revision.
+                  void commitBuilderFiles(normalizedFiles, {
                     source: 'ai-builder',
                     summary: 'Approved AI patch plan',
-                  });
-                  if (!committedFiles) return false;
-                  const imported = { files: committedFiles };
-                  void saveDraft({
-                    force: true,
-                    reason: 'ai_edit',
-                    vfsFiles: imported.files,
+                  }).then((committedFiles) => {
+                    if (!committedFiles) return;
+                    void saveDraft({
+                      force: true,
+                      reason: 'ai_edit',
+                      vfsFiles: committedFiles,
+                    });
                   });
 
                   // Detect new pages so the user gets immediate feedback that a
