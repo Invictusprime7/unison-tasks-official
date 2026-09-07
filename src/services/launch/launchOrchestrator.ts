@@ -355,7 +355,10 @@ export async function runLaunchPipeline(
   const artifacts = await run.stage("preflight", async (signal) => {
     const built = await buildCanonicalLaunchArtifactsAsync(
       {
-        generatedFiles: {},
+        // Stage 4b's snapshot VFS is the authored source for the deterministic
+        // launcher. Pass it explicitly as generated input so merge provenance
+        // never has to reinterpret canonical pages as a fallback.
+        generatedFiles: siteBundleSnapshot.vfsFiles,
         preferredEntryPoint: "/src/App.tsx",
         siteBundleSnapshot,
         compiledPlayground,
@@ -377,9 +380,9 @@ export async function runLaunchPipeline(
         backendRequired: false,
         wizardSelections: plan.selections,
         enabledCapabilities: plan.industryProfile?.defaultCapabilities || [],
-        // Deterministic compile owns every page body; canonical pages ARE the
-        // authored pages now, so the canonical resolution path is the contract.
-        allowCanonicalPageFallback: true,
+        // Every registered body must be present in the Stage 4b output above.
+        // Missing pages are a real closure failure, never a fallback request.
+        allowCanonicalPageFallback: false,
         strictPreflight: false,
       } as Parameters<typeof buildCanonicalLaunchArtifactsAsync>[0],
       { yieldToHost: yieldToBrowser, signal },
