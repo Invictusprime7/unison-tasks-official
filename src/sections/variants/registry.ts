@@ -76,6 +76,26 @@ import { PricingTiers } from './pricing/PricingTiers';
 import { PricingComparison } from './pricing/PricingComparison';
 import { PricingAccordion } from './pricing/PricingAccordion';
 
+// About variants (Phase 4 — premium inventory)
+import { AboutEditorialSplit } from './about/AboutEditorialSplit';
+import { AboutStatement } from './about/AboutStatement';
+import { AboutStoryPanel } from './about/AboutStoryPanel';
+
+// FAQ variants (Phase 4 — premium inventory)
+import { FAQAccordion } from './faq/FAQAccordion';
+import { FAQTwoColumn } from './faq/FAQTwoColumn';
+import { FAQCards } from './faq/FAQCards';
+
+// Stats variants (Phase 4 — premium inventory)
+import { StatsRow } from './stats/StatsRow';
+import { StatsBandedGrid } from './stats/StatsBandedGrid';
+import { StatsHighlight } from './stats/StatsHighlight';
+
+// Team variants (Phase 4 — premium inventory)
+import { TeamPortraitGrid } from './team/TeamPortraitGrid';
+import { TeamRosterRail } from './team/TeamRosterRail';
+import { TeamLeadSpotlight } from './team/TeamLeadSpotlight';
+
 // Footer variants
 import { FooterColumns } from './footer/FooterColumns';
 import { FooterCenteredMinimal } from './footer/FooterCenteredMinimal';
@@ -474,7 +494,156 @@ const VARIANT_REGISTRY: VariantRegistry = {
       renderJSX: footerDarkBandJSX,
     },
   ],
+
+  about: [
+    {
+      id: 'about:editorial-split',
+      sectionType: 'about',
+      slug: 'editorial-split',
+      name: 'Editorial Split',
+      description: 'Narrative column beside a supporting portrait',
+      component: AboutEditorialSplit,
+      thumbnail: '/variants/about-editorial-split.svg',
+      tags: ['editorial', 'default'],
+      isDefault: true,
+      renderJSX: aboutEditorialSplitJSX,
+    },
+    {
+      id: 'about:statement',
+      sectionType: 'about',
+      slug: 'statement',
+      name: 'Statement',
+      description: 'Centered manifesto column, type-led with no media',
+      component: AboutStatement,
+      thumbnail: '/variants/about-statement.svg',
+      tags: ['minimal', 'centered', 'type-led'],
+      renderJSX: aboutStatementJSX,
+    },
+    {
+      id: 'about:story-panel',
+      sectionType: 'about',
+      slug: 'story-panel',
+      name: 'Story Panel',
+      description: 'Overlapping media band with a raised narrative card',
+      component: AboutStoryPanel,
+      thumbnail: '/variants/about-story-panel.svg',
+      tags: ['premium', 'overlap', 'editorial'],
+      renderJSX: aboutStoryPanelJSX,
+    },
+  ],
+
+  faq: [
+    {
+      id: 'faq:accordion',
+      sectionType: 'faq',
+      slug: 'accordion',
+      name: 'Accordion',
+      description: 'Disclosure list revealing one answer at a time',
+      component: FAQAccordion,
+      thumbnail: '/variants/faq-accordion.svg',
+      tags: ['classic', 'default'],
+      isDefault: true,
+      renderJSX: faqAccordionJSX,
+    },
+    {
+      id: 'faq:two-column',
+      sectionType: 'faq',
+      slug: 'two-column',
+      name: 'Two Column',
+      description: 'Open reference sheet with all answers visible',
+      component: FAQTwoColumn,
+      thumbnail: '/variants/faq-two-column.svg',
+      tags: ['editorial', 'open'],
+      renderJSX: faqTwoColumnJSX,
+    },
+    {
+      id: 'faq:cards',
+      sectionType: 'faq',
+      slug: 'cards',
+      name: 'Answer Cards',
+      description: 'Scannable card grid for short, high-volume questions',
+      component: FAQCards,
+      thumbnail: '/variants/faq-cards.svg',
+      tags: ['cards', 'scannable'],
+      renderJSX: faqCardsJSX,
+    },
+  ],
+
+  stats: [
+    {
+      id: 'stats:row',
+      sectionType: 'stats',
+      slug: 'row',
+      name: 'Proof Row',
+      description: 'Single measured row of figures split by hairlines',
+      component: StatsRow,
+      thumbnail: '/variants/stats-row.svg',
+      tags: ['minimal', 'default'],
+      isDefault: true,
+      renderJSX: statsRowJSX,
+    },
+    {
+      id: 'stats:banded-grid',
+      sectionType: 'stats',
+      slug: 'banded-grid',
+      name: 'Banded Grid',
+      description: 'Figures held in tinted cards on a contrasting band',
+      component: StatsBandedGrid,
+      thumbnail: '/variants/stats-banded-grid.svg',
+      tags: ['cards', 'banded'],
+      renderJSX: statsBandedGridJSX,
+    },
+    {
+      id: 'stats:highlight',
+      sectionType: 'stats',
+      slug: 'highlight',
+      name: 'Highlight',
+      description: 'One dominant figure anchored by supporting metrics',
+      component: StatsHighlight,
+      thumbnail: '/variants/stats-highlight.svg',
+      tags: ['editorial', 'featured'],
+      renderJSX: statsHighlightJSX,
+    },
+  ],
+
+  team: [
+    {
+      id: 'team:portrait-grid',
+      sectionType: 'team',
+      slug: 'portrait-grid',
+      name: 'Portrait Grid',
+      description: 'Editorial portrait grid with name and role captions',
+      component: TeamPortraitGrid,
+      thumbnail: '/variants/team-portrait-grid.svg',
+      tags: ['classic', 'default'],
+      isDefault: true,
+      renderJSX: teamPortraitGridJSX,
+    },
+    {
+      id: 'team:roster-rail',
+      sectionType: 'team',
+      slug: 'roster-rail',
+      name: 'Roster Rail',
+      description: 'Horizontal snap rail of circular portraits',
+      component: TeamRosterRail,
+      thumbnail: '/variants/team-roster-rail.svg',
+      tags: ['rail', 'compact'],
+      renderJSX: teamRosterRailJSX,
+    },
+    {
+      id: 'team:lead-spotlight',
+      sectionType: 'team',
+      slug: 'lead-spotlight',
+      name: 'Lead Spotlight',
+      description: 'Founder bio panel with the rest of the roster beneath',
+      component: TeamLeadSpotlight,
+      thumbnail: '/variants/team-lead-spotlight.svg',
+      tags: ['featured', 'premium'],
+      renderJSX: teamLeadSpotlightJSX,
+    },
+  ],
 };
+
 
 // ============================================================================
 // Public API
