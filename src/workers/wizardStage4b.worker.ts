@@ -1,4 +1,3 @@
-import { commitToPipeline } from '@/platform/core';
 import type {
   WizardStage4bWorkerRequest,
   WizardStage4bWorkerResponse,
@@ -11,9 +10,27 @@ interface WizardStage4bWorkerScope {
 
 const workerScope = self as unknown as WizardStage4bWorkerScope;
 
-workerScope.onmessage = (event) => {
+/**
+ * Vite's React SWC transform injects the dev-only React Refresh runtime into
+ * modules reachable from this worker. That runtime expects `window` while a
+ * real Worker only exposes `self`, so static imports can terminate the worker
+ * before `onmessage` is installed. Give module evaluation a temporary alias,
+ * load the narrow compiler entry directly, then restore Worker semantics
+ * before any canonical compilation runs.
+ */
+const workerGlobal = globalThis as typeof globalThis & { window?: unknown };
+const hadWindow = Object.prototype.hasOwnProperty.call(workerGlobal, 'window');
+const previousWindow = workerGlobal.window;
+if (!hadWindow) workerGlobal.window = workerGlobal;
+const pipelineModule = import('@/platform/core/commitToPipeline').finally(() => {
+  if (hadWindow) workerGlobal.window = previousWindow;
+  else delete workerGlobal.window;
+});
+
+workerScope.onmessage = async (event) => {
   const request = event.data;
   try {
+    const { commitToPipeline } = await pipelineModule;
     const result = commitToPipeline(
       {
         selections: request.selections,

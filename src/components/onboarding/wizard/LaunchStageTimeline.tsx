@@ -1,5 +1,5 @@
 /**
- * Launch Stage Timeline — the wizard's AI-awareness surface.
+ * Launch Stage Timeline — the wizard's canonical generation surface.
  *
  * Renders the canonical launch stage model (`launchRun.ts`) live: every stage,
  * its status, how long it took, and every recorded degradation. This is the
@@ -17,7 +17,7 @@ import type {
 const STAGE_HINT: Record<string, string> = {
   plan: "Resolving topology, pages and business capabilities",
   seed: "Compiling the deterministic themed site from your selections",
-  enrich: "AI augments copy, media and SEO inside declared slots",
+  enrich: "Finalizing page copy, media and metadata from your selections",
   preflight: "Type, import, route, intent and presentation gates",
   commit: "Sealing the snapshot and saving a revision",
   handoff: "Opening the builder on the sealed revision",

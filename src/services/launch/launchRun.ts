@@ -2,7 +2,7 @@
  * Launch Run — the single state machine that owns the Wizard → Web Builder
  * journey.
  *
- *   selections → plan → seed → enrich (AI, optional) → preflight → commit → handoff
+ *   selections → plan → seed → finalize → preflight → commit → handoff
  *
  * Two hard rules:
  *
@@ -57,7 +57,7 @@ export interface LaunchRunSnapshot {
 export const LAUNCH_STAGE_LABELS: Record<LaunchStageName, string> = {
   plan: 'Planning your site structure',
   seed: 'Building your themed scaffold',
-  enrich: 'Writing your content with AI',
+  enrich: 'Finalizing your page content',
   preflight: 'Checking every page compiles',
   commit: 'Saving your project',
   handoff: 'Opening the builder',
