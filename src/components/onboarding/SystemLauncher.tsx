@@ -4725,9 +4725,10 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
           </div>
         )}
 
-        {!launchPreviewConfirmation && (
         {/* ─── Content ─── */}
+        {!launchPreviewConfirmation && (
         <AnimatePresence mode="wait">
+
 
           {/* ══ Step 1: Industry ══ */}
           {step === "industry" && (
