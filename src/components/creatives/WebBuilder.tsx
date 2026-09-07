@@ -5379,9 +5379,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Handle AI code generation
   const handleAICodeGenerated = (code: string) => {
     console.log('[WebBuilder] AI code received:', code.substring(0, 100));
-    importBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
-      preferredPath: launchEntryPoint,
-      entryPoint: launchEntryPoint,
+    void commitBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
+      source: 'ai-builder',
+      summary: 'AI generated template',
     });
     setViewMode('canvas'); // Switch to canvas view to show the generated template preview
     toast('AI Template Generated!', {
