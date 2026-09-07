@@ -7039,10 +7039,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   console.log('[WebBuilder] Auto-wired intents:', normalized.analysis.intents);
                   console.log('[WebBuilder] Normalized code length:', normalized.code.length);
                   
-                  const imported = importBuilderFiles(templateToVFSFiles(normalized.code, currentTemplateName || 'AI Generated'), {
-                    preferredPath: activePagePath,
-                    entryPoint: activePagePath,
-                  });
+                  const imported = await commitBuilderFiles(templateToVFSFiles(normalized.code, currentTemplateName || 'AI Generated'), {
+                    source: 'ai-builder',
+                    summary: 'AI code edit',
+                  }).then((f) => (f ? { files: f } : null));
+                  if (!imported) return;
                   console.log('[WebBuilder] VFS updated via importBuilderFiles');
                   const saved = await saveDraft({
                     force: true,
@@ -7117,11 +7118,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     console.log('[WebBuilder] Auto-wired intents in file patch:', normalized.analysis.intents);
                   }
 
-                  const imported = importBuilderFiles(normalizedFiles, {
-                    preferredPath: activePagePath,
-                    entryPoint: activePagePath,
+                  const committedFiles = await commitBuilderFiles(normalizedFiles, {
+                    source: 'ai-builder',
+                    summary: 'Approved AI patch plan',
                   });
-                  if (!imported) return false;
+                  if (!committedFiles) return false;
+                  const imported = { files: committedFiles };
                   void saveDraft({
                     force: true,
                     reason: 'ai_edit',
