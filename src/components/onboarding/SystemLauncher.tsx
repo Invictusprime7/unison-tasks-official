@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,8 +15,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Sparkles,
-  Loader2,
   Eye,
   AlertTriangle,
   ChevronDown,
@@ -43,8 +41,7 @@ import {
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
 
 import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
-import { runBuilderTurn, primeBuilderSession, isProviderTimeoutError, isRateLimitError, isTransportError } from "@/services/builderBrainClient";
+import { runBuilderTurn, primeBuilderSession, isProviderTimeoutError, isTransportError } from "@/services/builderBrainClient";
 import { planLaneBBatches, measurePayloadBytes } from "@/services/laneBBatchPlanner";
 import { launchTelemetry } from "@/services/launch/launchTelemetry";
 import {
@@ -66,11 +63,7 @@ import {
 import { deriveGenerationSeed } from "@/platform/core/generationSeed";
 // (aiCodeCleaner imports removed alongside the wizard fast-path enrichment)
 import { sanitizeGeneratedFiles } from "@/utils/tsxSanitizer";
-import { type LauncherHandoff } from "@/types/runtimeManifest";
-import {
-  getCompositionContentContext,
-  getCompositionMeta,
-} from "@/utils/compositionReference";
+import { getCompositionMeta } from "@/utils/compositionReference";
 import {
   INDUSTRY_CONTEXTS,
   buildIndustryCopyDirective,
@@ -357,14 +350,6 @@ const GOAL_TO_NEEDS: Record<PrimaryGoal, { needsBooking?: boolean; sellsProducts
   grow_email_list: { wantsLeadCapture: true },
 };
 
-const SYSTEM_TO_INDUSTRY: Record<string, IndustryTag[]> = {
-  booking: ["salon", "restaurant", "local-service", "fitness"],
-  saas: ["universal"],
-  agency: ["agency" as IndustryTag, "coaching", "realestate", "legal", "universal"],
-  portfolio: ["photography", "universal"],
-  store: ["ecommerce", "universal"],
-  content: ["nonprofit" as IndustryTag, "universal"],
-};
 
 // Industry display metadata — covers both IndustryTag and composition industry values
 const INDUSTRY_DISPLAY: Record<string, { label: string; icon: string }> = {
@@ -504,8 +489,6 @@ function buildCompositionCards(systemId: BusinessSystemType): TemplateCardData[]
 }
 
 const AI_MESSAGE_CHAR_LIMIT = 8_500;
-const CUSTOM_INSTRUCTION_CHAR_LIMIT = 600;
-const INDUSTRY_CONTEXT_CHAR_LIMIT = 1_200;
 // The overall Wizard lifecycle can span several Edge requests. The edge function
 // and the provider own request deadlines; the client never aborts an in-flight
 // generation (an abort throws away work that still completes and bills). These
@@ -540,7 +523,6 @@ const WIZARD_MAX_PARALLEL_PAGE_COMPLETIONS = 2;
 // second file even when the same model produced valid one-page output. Keep
 // concurrency at the request level, never inside one generated JSON payload.
 const WIZARD_LANE_B_PAGES_PER_RESPONSE = 1;
-const WIZARD_MAX_RECOVERY_PAGE_COUNT = 8;
 // A pure timeout/transport failure never produced content to judge, so it
 // must not consume the 2-attempt content/syntax-repair budget an isolated
 // page gets. One extra same-round retry absorbs transport noise for free.
@@ -641,17 +623,8 @@ function getDefaultTemplateCardFor(systemId: BusinessSystemType | null): Templat
  * same hardened pipeline: preselected goals/needs/pages, full capability
  * scaffold, industry-aware quality gate, and native-publish readiness.
  */
-function isDeterministicPreviewLaunch(opts: {
-  systemId: BusinessSystemType | null;
-}): boolean {
-  return Boolean(opts.systemId && LAUNCHER_PRESELECTS[opts.systemId]);
-}
 
 
-function clampPromptText(value: string, max = AI_MESSAGE_CHAR_LIMIT): string {
-  if (value.length <= max) return value;
-  return `${value.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
-}
 
 function buildWizardAiSeedPrompt(opts: {
   industrySystemName: string;
@@ -749,7 +722,6 @@ function buildTemplateGuidance(card: TemplateCardData | null, industry?: string)
   if (!card) return copyDirective;
 
   const industryContext = INDUSTRY_CONTEXTS.find((entry) => entry.industry === card.industry);
-  const displayLabel = INDUSTRY_DISPLAY[card.industry]?.label || card.industry;
   const sectionFlow = card.sectionTypes.length > 0
     ? card.sectionTypes
     : industryContext?.sectionFlow || [];
@@ -1154,12 +1126,6 @@ const INDUSTRY_VOCABULARY: Record<string, readonly string[]> = {
     'neighborhood', 'sale', 'tour', 'open house'],
 };
 
-/** Backward-compat export retained for any existing imports. */
-const SALON_QUALITY_REQUIREMENTS = {
-  label: 'salon',
-  requiredIntents: ['booking.create'],
-  vocabulary: INDUSTRY_VOCABULARY.salon,
-} as const;
 
 function getIndustryQualityRequirements(industry: string | undefined):
   | { label: string; requiredIntents: readonly string[]; vocabulary: readonly string[] }
@@ -4515,8 +4481,10 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
         state: webBuilderNavigationState,
       });
 
+      // Closing the dialog runs resetState() through the single onOpenChange
+      // handler below — do not reset twice for the same close event.
       onOpenChange(false);
-      resetState();
+
 
     } catch (e) {
       const msg = await getFunctionErrorMessage(e);
