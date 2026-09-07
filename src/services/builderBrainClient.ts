@@ -133,6 +133,13 @@ async function refreshBuilderSession(
  */
 export const BUILDER_TOKEN_MIN_LIFETIME_MS = 300_000;
 
+/**
+ * Absolute floor: a token with at least this much life left can still carry a
+ * Lane B turn, so a failed proactive rotation must not abort the launch.
+ */
+export const BUILDER_MIN_USABLE_TOKEN_MS = 60_000;
+
+
 
 /**
  * Server-verified token check, memoized per access token so a batched Lane B
@@ -175,9 +182,20 @@ export async function primeBuilderSession(): Promise<boolean> {
   }
   builderTokenChecks.delete(session.access_token);
   const refreshed = await refreshBuilderSession(true, session.access_token);
-  if (!refreshed?.access_token) return false;
-  return isTokenAcceptedByAuth(refreshed.access_token);
+  if (refreshed?.access_token) {
+    return isTokenAcceptedByAuth(refreshed.access_token);
+  }
+  // Rotation failed (another tab rotated first, or the refresh round-trip
+  // hiccuped). That is NOT proof the current session is dead: if the live
+  // token is still accepted by auth and has real life left, the run may
+  // proceed instead of dead-ending the whole launch on a sign-in prompt.
+  const live = (await supabase.auth.getSession()).data.session;
+  if (!live?.access_token) return false;
+  const liveExpiresAt = (live.expires_at ?? 0) * 1000;
+  if (liveExpiresAt - Date.now() <= BUILDER_MIN_USABLE_TOKEN_MS) return false;
+  return isTokenAcceptedByAuth(live.access_token);
 }
+
 
 
 const DEFAULT_RATE_LIMIT_RETRY_MS = 750;
