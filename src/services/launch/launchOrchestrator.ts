@@ -159,8 +159,6 @@ export async function runLaunchPipeline(
     }
     const user = sessionData.session.user;
     const ownerEmail = user.email || "";
-    const ids = createConfirmedLaunchIds(input.existingBusinessId || undefined);
-    const plannedBusinessId = input.existingBusinessId || ids.businessId;
 
     const generationCategory = resolveGenerationCategory(system, input.template);
     const industryProfile = getIndustryForCategory(generationCategory);
@@ -171,6 +169,33 @@ export async function runLaunchPipeline(
         : system.intents),
       ...(compositionMeta?.intents || []),
     ]);
+
+    // Real Unison identity is registered BEFORE anything is compiled. Every
+    // artifact below is stamped with the ids that exist in the Unison registry
+    // (businesses/sites/projects/builder_drafts) — never a client-side
+    // placeholder that a later provisioning round could contradict.
+    const requestedIds = createConfirmedLaunchIds(input.existingBusinessId || undefined);
+    const confirmed: ConfirmedLaunchIds = await provisionConfirmedLaunchSite({
+      ids: requestedIds,
+      existingBusinessId: input.existingBusinessId || undefined,
+      businessName: brand,
+      industry: industryProfile?.industry || generationCategory,
+      siteName: `${brand} Site`,
+      siteSlug: `${brand}-${requestedIds.siteId.slice(0, 8)}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""),
+      systemType: input.systemId,
+      templateId: input.template.id,
+      themePresetId: input.theme.id,
+    });
+    try {
+      localStorage.setItem("unison:lastBusinessId", confirmed.businessId);
+    } catch {
+      /* browser storage is best-effort */
+    }
+    const ids = confirmed;
+    const plannedBusinessId = confirmed.businessId;
 
     const preselect = LAUNCHER_PRESELECTS[input.systemId];
     const launchContract = resolveVerticalLaunchContract(input.systemId);
@@ -238,6 +263,7 @@ export async function runLaunchPipeline(
     return {
       user,
       ids,
+      confirmed,
       generationCategory,
       industryProfile,
       canonicalIntents,
@@ -387,34 +413,16 @@ export async function runLaunchPipeline(
   // ── Stage: commit ─────────────────────────────────────────────────────────
   status("Saving your site workspace…");
   const commit = await run.stage("commit", async () => {
-    const confirmed: ConfirmedLaunchIds = await provisionConfirmedLaunchSite({
-      ids: plan.ids,
-      existingBusinessId: input.existingBusinessId || undefined,
-      businessName: brand,
-      industry: plan.industryProfile?.industry || plan.generationCategory,
-      siteName: `${brand} Site`,
-      siteSlug: `${brand}-${plan.ids.siteId.slice(0, 8)}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, ""),
-      systemType: input.systemId,
-      templateId: input.template.id,
-      themePresetId: input.theme.id,
-    });
-
-    try {
-      localStorage.setItem("unison:lastBusinessId", confirmed.businessId);
-    } catch {
-      /* browser storage is best-effort */
-    }
-
+    // Identity was registered in the plan stage; the commit writes the first
+    // revision of that already-real Unison site.
+    const confirmed: ConfirmedLaunchIds = plan.confirmed;
     const identity: BuilderIdentity = {
       userId: plan.user.id,
       businessId: confirmed.businessId,
       projectId: confirmed.projectId,
       draftId: confirmed.draftId,
       revisionId: "",
-      sessionId: newId("sess"),
+      sessionId: `web-builder:${confirmed.draftId}`,
     };
     const result = await commitMutation({
       source: "wizard-launch",

@@ -104,7 +104,7 @@ import {
   resolveProjectActivePagePath,
 } from '@/services/projectRuntimeEnvelope';
 import { dryRunAiCommit, persistAiCommit } from "@/services/aiApplyGate";
-import { emptyPatchPlan, legacyFilesToPatchPlan, type FileOp } from "@/types/patchPlan";
+import { emptyPatchPlan, legacyFilesToPatchPlan, type FileOp, type PatchSource } from "@/types/patchPlan";
 import type { BuilderIdentity } from "@/types/builderIdentity";
 import { normalizeUnisonRuntimeContext } from "@/platform/core/runtimeManifest";
 import type { BusinessRuntimeContract } from '@/platform/core/businessRuntimeContract';
@@ -2888,6 +2888,98 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   ]);
 
   /**
+   * Canonical entry for every file-authoring surface in the builder chrome
+   * (AI code + patch plans, element edits, template loads, generated pages).
+   *
+   * The builder never pushes authored files straight into working VFS: the
+   * patch goes through `commitMutation`, the accepted revision is what the
+   * preview adopts, and the working set is left untouched when the canonical
+   * pipeline refuses the edit. That is what keeps a builder edit a change to
+   * the Unison site rather than a change to the preview only.
+   */
+  const commitBuilderFiles = useCallback(async (
+    files: Record<string, string>,
+    options: {
+      source?: PatchSource;
+      summary?: string;
+      preferredPath?: string | null;
+      entryPoint?: string | null;
+      failureMessage?: string;
+    } = {},
+  ): Promise<Record<string, string> | null> => {
+    if (!files || Object.keys(files).length === 0) return null;
+
+    const beforeFiles = virtualFSRef.current.getSandpackFiles();
+    const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
+      ?? effectiveRouteState?.siteBundleSnapshot
+      ?? null;
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user || !businessId || !currentDraftId) {
+      toast.error('This workspace is not connected to a site yet', {
+        description: 'Launch or open a site before editing so changes can be saved.',
+      });
+      return null;
+    }
+
+    try {
+      const commit = await commitMutation({
+        source: options.source ?? 'ai-builder',
+        identity: {
+          userId: user.id,
+          businessId,
+          projectId: resolvedProjectId || currentDraftId,
+          draftId: currentDraftId,
+          revisionId: currentRevisionIdRef.current,
+          sessionId: `web-builder:${currentDraftId}`,
+        },
+        current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
+        patch: legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit'),
+        options: {
+          requirePreviewPass: false,
+          requireReadinessPass: false,
+          industry: snapshot?.industry,
+          themePresetId: snapshot?.meta?.themePresetId ?? undefined,
+          themeTokens: snapshot?.themeTokens,
+        },
+      });
+      if (commit.status !== 'committed') {
+        throw new CommitRejectedError('builder edit was rejected by the canonical pipeline', commit);
+      }
+      const imported = importBuilderFiles(commit.vfsFiles, {
+        replace: true,
+        preferredPath: options.preferredPath ?? activePagePath,
+        entryPoint: options.entryPoint ?? launchEntryPoint,
+        adoption: {
+          source: commit.source,
+          vfsHash: commit.vfsHash,
+          revisionId: commit.persistedRevisionId,
+        },
+      });
+      if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
+      return imported?.files ?? commit.vfsFiles;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[WebBuilder] canonical builder commit failed:', err);
+      toast.error(options.failureMessage ?? 'Could not save this change to your site', {
+        description: message.slice(0, 180),
+      });
+      return null;
+    }
+  }, [
+    businessId,
+    currentDraftId,
+    resolvedProjectId,
+    activePagePath,
+    launchEntryPoint,
+    effectiveRouteState,
+    buildCanonicalCommitCurrent,
+    importBuilderFiles,
+  ]);
+
+
+
+  /**
    * Canonical entry for setVariant / swap-section UI actions.
    * The snapshot commit is the source of truth; the customizer's local map is
    * only mirrored so the picker highlights the committed variant, and it is
@@ -4503,7 +4595,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           vfsPatch['/src/index.css'] = converted['/src/index.css'];
         }
 
-        importBuilderFiles(vfsPatch, {
+        void commitBuilderFiles(vfsPatch, {
+          source: 'playground-edit',
+          summary: `Page replace · ${targetPath}`,
           preferredPath: targetPath,
           entryPoint: targetPath,
         });
@@ -4912,7 +5006,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         const componentName = pageName.replace(/[-_\s]+(.)/g, (_: string, c: string) => c.toUpperCase()).replace(/^\w/, (c: string) => c.toUpperCase());
         const vfsPath = `/src/pages/${componentName}.tsx`;
 
-        importBuilderFiles(templateToVFSFiles(pageContent, componentName), {
+        void commitBuilderFiles(templateToVFSFiles(pageContent, componentName), {
+          source: 'playground-edit',
+          summary: `Page reload · ${vfsPath}`,
           preferredPath: vfsPath,
           entryPoint: vfsPath,
         });
@@ -5283,9 +5379,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Handle AI code generation
   const handleAICodeGenerated = (code: string) => {
     console.log('[WebBuilder] AI code received:', code.substring(0, 100));
-    importBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
-      preferredPath: launchEntryPoint,
-      entryPoint: launchEntryPoint,
+    void commitBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
+      source: 'ai-builder',
+      summary: 'AI generated template',
     });
     setViewMode('canvas'); // Switch to canvas view to show the generated template preview
     toast('AI Template Generated!', {
@@ -5362,6 +5458,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     importBuilderFiles(templateToVFSFiles(code, template.name), {
       preferredPath: launchEntryPoint,
       entryPoint: launchEntryPoint,
+      adoption: { source: 'hydration', exemptReason: 'load-saved-template-into-workspace' },
     });
     
     // Track the current template ID and name for re-save
@@ -5412,6 +5509,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     importBuilderFiles(templateToVFSFiles(normalized.code, name), {
       preferredPath: launchEntryPoint,
       entryPoint: launchEntryPoint,
+      adoption: { source: 'hydration', exemptReason: 'demo-template-has-no-canonical-draft' },
     });
     
     toast.success(`Loaded template: ${name}`, {
@@ -6941,10 +7039,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   console.log('[WebBuilder] Auto-wired intents:', normalized.analysis.intents);
                   console.log('[WebBuilder] Normalized code length:', normalized.code.length);
                   
-                  const imported = importBuilderFiles(templateToVFSFiles(normalized.code, currentTemplateName || 'AI Generated'), {
-                    preferredPath: activePagePath,
-                    entryPoint: activePagePath,
-                  });
+                  const imported = await commitBuilderFiles(templateToVFSFiles(normalized.code, currentTemplateName || 'AI Generated'), {
+                    source: 'ai-builder',
+                    summary: 'AI code edit',
+                  }).then((f) => (f ? { files: f } : null));
+                  if (!imported) return;
                   console.log('[WebBuilder] VFS updated via importBuilderFiles');
                   const saved = await saveDraft({
                     force: true,
@@ -7019,15 +7118,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     console.log('[WebBuilder] Auto-wired intents in file patch:', normalized.analysis.intents);
                   }
 
-                  const imported = importBuilderFiles(normalizedFiles, {
-                    preferredPath: activePagePath,
-                    entryPoint: activePagePath,
-                  });
-                  if (!imported) return false;
-                  void saveDraft({
-                    force: true,
-                    reason: 'ai_edit',
-                    vfsFiles: imported.files,
+                  // Canonical commit is async; this handler must stay sync, so
+                  // the draft save is chained onto the accepted revision.
+                  void commitBuilderFiles(normalizedFiles, {
+                    source: 'ai-builder',
+                    summary: 'Approved AI patch plan',
+                  }).then((committedFiles) => {
+                    if (!committedFiles) return;
+                    void saveDraft({
+                      force: true,
+                      reason: 'ai_edit',
+                      vfsFiles: committedFiles,
+                    });
                   });
 
                   // Detect new pages so the user gets immediate feedback that a
@@ -7368,10 +7470,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               }}
               onViewEdits={() => { setViewMode('split'); setAiPanelOpen(false); }}
               onCodeGenerated={async (code) => {
-                const imported = importBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
-                  preferredPath: launchEntryPoint,
-                  entryPoint: launchEntryPoint,
+                const committed = await commitBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
+                  source: 'ai-builder',
+                  summary: 'AI generated code',
                 });
+                if (!committed) return;
+                const imported = { files: committed };
                 const saved = await saveDraft({
                   force: true,
                   reason: 'ai_edit',
@@ -7935,11 +8039,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       meta: { origin: 'floating-toolbar-ai', actionType: 'element-edit' },
                     });
                   } catch (err) { console.warn('[onAIEditComplete] snapshot failed:', err); }
-                  const imported = importBuilderFiles(templateToVFSFiles(primary.code, currentTemplateName || 'Element Edit'), {
-                    preferredPath: activePagePath,
-                    entryPoint: activePagePath,
+                  const committed = await commitBuilderFiles(templateToVFSFiles(primary.code, currentTemplateName || 'Element Edit'), {
+                    source: 'preview-toolbar',
+                    summary: `Element edit · ${selector.slice(0, 40)}`,
                   });
-                  if (!imported) return false;
+                  if (!committed) return false;
+                  const imported = { files: committed };
                   const saved = await saveDraft({
                     force: true,
                     reason: 'ai_edit',
