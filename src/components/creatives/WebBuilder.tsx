@@ -5006,7 +5006,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         const componentName = pageName.replace(/[-_\s]+(.)/g, (_: string, c: string) => c.toUpperCase()).replace(/^\w/, (c: string) => c.toUpperCase());
         const vfsPath = `/src/pages/${componentName}.tsx`;
 
-        importBuilderFiles(templateToVFSFiles(pageContent, componentName), {
+        void commitBuilderFiles(templateToVFSFiles(pageContent, componentName), {
+          source: 'playground-edit',
+          summary: `Page reload · ${vfsPath}`,
           preferredPath: vfsPath,
           entryPoint: vfsPath,
         });
