@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { AlertCircle, Zap } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
-import { SystemLauncher } from "@/components/onboarding/SystemLauncher";
+import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
 import { 
   NavigationBar,
   HeroSection, 
@@ -343,7 +343,7 @@ const Index = () => {
       <FooterSection />
 
       {/* System Launcher Wizard — direct entry, no pre-dialog step */}
-      <SystemLauncher open={launcherOpen} onOpenChange={setLauncherOpen} />
+      <LauncherWizard open={launcherOpen} onOpenChange={setLauncherOpen} />
     </div>
   );
 };

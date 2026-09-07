@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { SystemLauncher } from "@/components/onboarding/SystemLauncher";
+import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
 import { BusinessProfileGate } from "@/components/onboarding/BusinessProfileGate";
 import type { BusinessProfileDTO } from "@/types/businessProfile";
 import { Button } from "@/components/ui/button";
@@ -154,7 +154,7 @@ const Onboarding = () => {
           setLauncherOpen(true);
         }}
       />
-      <SystemLauncher open={launcherOpen} onOpenChange={handleLauncherClose} prefill={prefill} />
+      <LauncherWizard open={launcherOpen} onOpenChange={handleLauncherClose} prefill={prefill} />
     </div>
   );
 };

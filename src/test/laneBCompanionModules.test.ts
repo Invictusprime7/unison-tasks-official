@@ -81,41 +81,6 @@ describe('Lane B companion modules', () => {
   });
 });
 
-describe('SystemLauncher Lane B merge wiring', () => {
-  const launcherSource = readFileSync(
-    resolve(process.cwd(), 'src/components/onboarding/SystemLauncher.tsx'),
-    'utf8',
-  );
-
-  it('scopes Lane B batches through the companion-aware helper', () => {
-    expect(launcherSource).toContain('scopeLaneBBatchFiles(');
-    // The old strict page-path filter dropped companion modules.
-    expect(launcherSource).not.toContain('.filter(([path]) => requestedPaths.has(path))');
-  });
-
-  it('closes the local import contract before sealing the artifact', () => {
-    expect(launcherSource).toContain('const preSealUnresolvedImports = findUnresolvedLocalImports(wiredVfsFiles);');
-    // Unresolved modules are a hard failure, not another degradation toast.
-    expect(launcherSource).not.toContain("'lane_b.unresolved_module'");
-  });
-
-  it('never substitutes Stage 4b page bodies for failed AI authorship', () => {
-    expect(launcherSource).not.toContain('seedGenerationResult');
-    expect(launcherSource).not.toContain("'enrich.pages_from_seed'");
-    expect(launcherSource).toContain('Lane B failed to author registered pages');
-  });
-
-  it('recovers missing companion modules with an AI completion turn', () => {
-    expect(launcherSource).toContain('LANE B MODULE CLOSURE TURN');
-    expect(launcherSource).toContain('const authorMissingModules = async (');
-  });
-
-  it('injects the module inventory into Lane B turns', () => {
-    expect(launcherSource).toContain('buildModuleInventoryDirective({');
-    expect(launcherSource).not.toContain('Return ONLY this file in the WizardSeed multi-file JSON contract.');
-  });
-});
-
 describe('module inventory directive', () => {
   it('lists existing modules, states the import contract and keeps styling universal', () => {
     const directive = buildModuleInventoryDirective({

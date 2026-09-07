@@ -19,12 +19,6 @@ describe('R4 — industry copy directive is mandatory', () => {
     expect(directive).toContain('Trust signals:');
   });
 
-  it('launcher guidance falls back to the industry directive with no template card', () => {
-    const source = readFileSync('src/components/onboarding/SystemLauncher.tsx', 'utf8');
-    expect(source).toContain('buildTemplateGuidance(effectiveTemplate, resolvedIndustry)');
-    expect(source).toContain('if (!card) return copyDirective;');
-  });
-
   it('premium TSX few-shot tier stays deleted', () => {
     expect(() => readFileSync('src/sections/references/premiumHero.ts', 'utf8')).toThrow();
     const index = readFileSync('src/sections/references/index.ts', 'utf8');

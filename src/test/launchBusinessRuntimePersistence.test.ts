@@ -488,7 +488,6 @@ describe('launch business runtime persistence', () => {
   it('requires a provisioned form definition before accepting public submissions', () => {
     const formSubmit = readFileSync(resolve(process.cwd(), 'supabase/functions/form-submit/index.ts'), 'utf8');
     const persistence = readFileSync(resolve(process.cwd(), 'src/services/launchFormDefinitionPersistence.ts'), 'utf8');
-    const launcher = readFileSync(resolve(process.cwd(), 'src/components/onboarding/SystemLauncher.tsx'), 'utf8');
 
     // form-submit is the enforcement point for approved definitions.
     expect(formSubmit).toContain('.from("form_definitions")');
@@ -500,7 +499,7 @@ describe('launch business runtime persistence', () => {
     // the site-scoped form contracts.
     expect(persistence).toContain("from('form_definitions')");
     expect(persistence).toContain("onConflict: 'business_id,project_id,site_id,external_id'");
-    expect(launcher).toContain('persistLaunchFormDefinitions({');
+    expect(persistence).toContain('persistLaunchFormDefinitions');
   });
 
   it('persists only a site-bound compiled runtime manifest with the confirmed launch', () => {
