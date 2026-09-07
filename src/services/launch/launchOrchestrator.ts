@@ -159,8 +159,6 @@ export async function runLaunchPipeline(
     }
     const user = sessionData.session.user;
     const ownerEmail = user.email || "";
-    const ids = createConfirmedLaunchIds(input.existingBusinessId || undefined);
-    const plannedBusinessId = input.existingBusinessId || ids.businessId;
 
     const generationCategory = resolveGenerationCategory(system, input.template);
     const industryProfile = getIndustryForCategory(generationCategory);
@@ -171,6 +169,33 @@ export async function runLaunchPipeline(
         : system.intents),
       ...(compositionMeta?.intents || []),
     ]);
+
+    // Real Unison identity is registered BEFORE anything is compiled. Every
+    // artifact below is stamped with the ids that exist in the Unison registry
+    // (businesses/sites/projects/builder_drafts) — never a client-side
+    // placeholder that a later provisioning round could contradict.
+    const requestedIds = createConfirmedLaunchIds(input.existingBusinessId || undefined);
+    const confirmed: ConfirmedLaunchIds = await provisionConfirmedLaunchSite({
+      ids: requestedIds,
+      existingBusinessId: input.existingBusinessId || undefined,
+      businessName: brand,
+      industry: industryProfile?.industry || generationCategory,
+      siteName: `${brand} Site`,
+      siteSlug: `${brand}-${requestedIds.siteId.slice(0, 8)}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""),
+      systemType: input.systemId,
+      templateId: input.template.id,
+      themePresetId: input.theme.id,
+    });
+    try {
+      localStorage.setItem("unison:lastBusinessId", confirmed.businessId);
+    } catch {
+      /* browser storage is best-effort */
+    }
+    const ids = confirmed;
+    const plannedBusinessId = confirmed.businessId;
 
     const preselect = LAUNCHER_PRESELECTS[input.systemId];
     const launchContract = resolveVerticalLaunchContract(input.systemId);
