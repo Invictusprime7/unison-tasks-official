@@ -1,4 +1,3 @@
-import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
 import type {
   StrictImportContractWorkerRequest,
   StrictImportContractWorkerResponse,
@@ -11,9 +10,22 @@ interface StrictImportContractWorkerScope {
 
 const workerScope = self as unknown as StrictImportContractWorkerScope;
 
-workerScope.onmessage = (event) => {
+// See wizardStage4b.worker.ts: React Refresh is browser-only in development,
+// while this compiler runs in a Worker. Delay the compiler import until the
+// refresh runtime has evaluated against a temporary `window` alias.
+const workerGlobal = globalThis as typeof globalThis & { window?: unknown };
+const hadWindow = Object.prototype.hasOwnProperty.call(workerGlobal, 'window');
+const previousWindow = workerGlobal.window;
+if (!hadWindow) workerGlobal.window = workerGlobal;
+const sandpackModule = import('@/utils/sandpackFilePrep').finally(() => {
+  if (hadWindow) workerGlobal.window = previousWindow;
+  else delete workerGlobal.window;
+});
+
+workerScope.onmessage = async (event) => {
   const request = event.data;
   try {
+    const { prepareSandpackFiles } = await sandpackModule;
     // Always computed in strict mode: strict only changes behavior when the
     // VFS has no App.tsx, which canonical wizard sites always have — so the
     // result here is valid for both strict and non-strict callers, letting
