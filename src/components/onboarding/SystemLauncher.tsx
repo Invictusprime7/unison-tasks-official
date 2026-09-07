@@ -8,16 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
+
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -4696,8 +4688,48 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
           </div>
         </div>
 
+        {/* ─── Review & confirm (inline: a nested modal over this modal was
+             being auto-dismissed by the outside-interaction layer, silently
+             cancelling a finished generation) ─── */}
+        {launchPreviewConfirmation && (
+          <div className="px-3 pb-5 pt-4 sm:px-6 sm:pb-8 sm:pt-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold tracking-tight text-white sm:text-2xl">Review Generated Site</h2>
+              <p className="mt-1 text-xs text-white/40 sm:text-sm">
+                {launchPreviewConfirmation.siteName} will create its Unison workspace, live data contracts,
+                and initial revision only after you confirm.
+              </p>
+            </div>
+            <LaunchReviewSummary
+              siteName={launchPreviewConfirmation.siteName}
+              brandName={launchPreviewConfirmation.businessName}
+              fileCount={launchPreviewConfirmation.fileCount}
+              pagePaths={launchPreviewConfirmation.pagePaths}
+              files={launchPreviewConfirmation.files}
+            />
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="ghost"
+                className="border border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                onClick={() => resolveLaunchConfirmation(false)}
+              >
+                Keep Editing
+              </Button>
+              <Button
+                className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                onClick={() => resolveLaunchConfirmation(true)}
+              >
+                Confirm Site Launch
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* ─── Content ─── */}
+        {!launchPreviewConfirmation && (
         <AnimatePresence mode="wait">
+
+
           {/* ══ Step 1: Industry ══ */}
           {step === "industry" && (
             <motion.div
@@ -5357,47 +5389,10 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
             </motion.div>
           )}
         </AnimatePresence>
+        )}
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={Boolean(launchPreviewConfirmation)}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) resolveLaunchConfirmation(false);
-        }}
-      >
-        <AlertDialogContent className="max-w-6xl border-white/10 bg-[#07080F] text-white shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Review Generated Site</AlertDialogTitle>
-            <AlertDialogDescription className="text-white/55">
-              {launchPreviewConfirmation?.siteName} will create its Unison workspace, live data contracts, and initial revision only after confirmation.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {launchPreviewConfirmation && (
-            <LaunchReviewSummary
-              siteName={launchPreviewConfirmation.siteName}
-              brandName={launchPreviewConfirmation.businessName}
-              fileCount={launchPreviewConfirmation.fileCount}
-              pagePaths={launchPreviewConfirmation.pagePaths}
-              files={launchPreviewConfirmation.files}
-            />
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              onClick={() => resolveLaunchConfirmation(false)}
-            >
-              Keep Editing
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-              onClick={() => resolveLaunchConfirmation(true)}
-            >
-              Confirm Site Launch
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };
