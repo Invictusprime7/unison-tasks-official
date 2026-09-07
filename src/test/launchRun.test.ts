@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   createLaunchRun,
   classifyLaunchError,
+  createLaunchFailureReport,
+  isLaunchFatalError,
   publishLaunchDegradations,
   consumeLaunchDegradations,
 } from '@/services/launch/launchRun';
@@ -22,17 +24,44 @@ describe('launchRun', () => {
   });
 
   it('never degrades an authorship stage, even with a fallback', async () => {
-    const run = createLaunchRun();
-    await expect(
-      run.stage('enrich', async () => {
+    const snapshots: ReturnType<typeof createLaunchRun>['snapshot'][] = [];
+    const run = createLaunchRun({ onChange: (snapshot) => snapshots.push(() => snapshot) });
+    let thrown: unknown;
+    try {
+      await run.stage('enrich', async () => {
         throw new Error('429 rate limited');
-      }, { fallback: () => 'seed-files' }),
-    ).rejects.toThrow(/429 rate limited/);
+      }, { fallback: () => 'seed-files' });
+    } catch (error) {
+      thrown = error;
+    }
 
     const snap = run.snapshot();
+    expect(isLaunchFatalError(thrown)).toBe(true);
+    expect(thrown).toMatchObject({ stage: 'enrich', code: 'enrich.failed' });
+    expect((thrown as { originalError: Error }).originalError.stack).toContain('launchRun.test.ts');
     expect(snap.degradations).toHaveLength(0);
     expect(snap.stages.find((s) => s.name === 'enrich')?.status).toBe('failed');
     expect(snap.fatal).toMatch(/429 rate limited/);
+    expect(snapshots.map((read) => read().stages.find((s) => s.name === 'enrich')?.status))
+      .toEqual(expect.arrayContaining(['active', 'failed']));
+
+    const report = createLaunchFailureReport(thrown, snap);
+    expect(report).toMatchObject({ stage: 'enrich', code: 'enrich.failed', errorName: 'Error' });
+    expect(report.stack).toContain('launchRun.test.ts');
+  });
+
+  it('redacts secrets from persisted diagnostic fields', () => {
+    const cause = Object.assign(new Error('Request failed token=top-secret'), {
+      details: { authorization: 'Bearer private-value', blockedFiles: ['/src/App.tsx'] },
+    });
+    const report = createLaunchFailureReport(cause, null);
+
+    expect(report.message).not.toContain('top-secret');
+    expect(report.details).toEqual({
+      authorization: '[REDACTED]',
+      blockedFiles: ['/src/App.tsx'],
+    });
+    expect(report.location).not.toContain('?');
   });
 
   it('degrades a stalled non-authorship stage via its own watchdog', async () => {

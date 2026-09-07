@@ -148,8 +148,29 @@ describe('runtime compatibility preflight', () => {
   it('reports no experience capability for an ordinary DOM page', () => {
     const files = buildFiles("export default function Home() { return <main>Hi</main>; }");
     const { dependencies } = getDependenciesForSandpack(files, SANDPACK_DEPENDENCIES);
-    const report = runRuntimeCompatibilityPreflight({ files, dependencies });
+    const report = runRuntimeCompatibilityPreflight({
+      files,
+      dependencies,
+      approvedCapabilities: ['commerce.catalog'],
+    });
     expect(report.ok).toBe(true);
     expect(report.capabilitiesUsed).not.toContain(THREE_D_CAPABILITY.id);
+  });
+
+  it('blocks an experience facade when the launch did not approve 3D', () => {
+    const files = buildFiles(
+      "import { ProductStage } from '@/unison/ui/experience';\nexport default function Home() { return <ProductStage alt=\"Chair\" />; }",
+    );
+    const { dependencies } = getDependenciesForSandpack(files, SANDPACK_DEPENDENCIES);
+    const report = runRuntimeCompatibilityPreflight({
+      files,
+      dependencies,
+      approvedCapabilities: ['commerce.catalog'],
+    });
+
+    expect(report.ok).toBe(false);
+    expect(report.blockers).toEqual([
+      '/src/pages/Home.tsx reaches capability "experience.three-d", which this launch did not approve.',
+    ]);
   });
 });

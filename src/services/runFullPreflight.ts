@@ -183,8 +183,8 @@ export function runFullPreflight(
     visualQuality = evaluateVisualQuality(files, {
       technicalScore: runtimeCompatibility.ok && experience.violations.length === 0 ? 100 : 70,
     });
-    if (visualQuality.refinementDirective) {
-      console.warn('[runFullPreflight] visual quality findings', visualQuality.findings);
+    if (mode === 'repair' && visualQuality.refinementDirective) {
+      console.info('[runFullPreflight] visual quality findings', visualQuality.findings);
     }
   } catch (e) {
     console.warn('[runFullPreflight] visual quality evaluation failed', e);

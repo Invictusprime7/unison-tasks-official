@@ -34,16 +34,15 @@ describe('R6 — legacy AI page generator surface stays deleted', () => {
     expect(creatives).not.toContain('/ai-generator');
   });
 
-  it('keeps the Wizard launch path in SystemLauncher only', () => {
-    const launcher = readFileSync('src/components/onboarding/SystemLauncher.tsx', 'utf8');
-    expect(launcher).toContain('runWizardLaneA({');
-    expect(launcher).toContain('buildCanonicalLaunchArtifactsAsync(launchArtifactInput,');
+  it('keeps the Wizard launch surface delegated to the canonical launch orchestrator', () => {
+    const launcher = readFileSync('src/components/onboarding/wizard/LauncherWizard.tsx', 'utf8');
+    expect(launcher).toContain('runLaunchPipeline(input,');
     expect(launcher).toContain('navigate("/web-builder"');
 
     const onboardingRoot = resolve(process.cwd(), 'src/components/onboarding');
     const alternateAuthors = readdirSync(onboardingRoot, { recursive: true })
       .map(String)
-      .filter((path) => /\.(?:ts|tsx)$/.test(path) && path !== 'SystemLauncher.tsx')
+      .filter((path) => /\.(?:ts|tsx)$/.test(path))
       .filter((path) => {
         const source = readFileSync(resolve(onboardingRoot, path), 'utf8');
         return /\b(?:commitToPipeline|buildCanonicalLaunchArtifacts(?:Async)?)\s*\(/.test(source);

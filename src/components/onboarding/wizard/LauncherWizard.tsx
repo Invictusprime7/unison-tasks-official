@@ -8,9 +8,10 @@
  * pipeline state.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Loader2, Sparkle } from "lucide-react";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { THEME_PRESETS, type ThemePreset } from "@/components/onboarding/themePresets";
 import { StyleTokenCard } from "@/components/onboarding/StyleTokenCard";
 import { TemplateLivePreview } from "@/components/onboarding/TemplateLivePreview";
+import { ImportProjectZipButton } from "@/components/onboarding/ImportProjectZipButton";
+import { ImportUnisonSiteZipButton } from "@/components/onboarding/ImportUnisonSiteZipButton";
 import type { BusinessSystemType } from "@/data/templates/types";
 import { deriveGenerationSeed } from "@/platform/core/generationSeed";
 import { useLaunch } from "@/contexts/useLaunchHooks";
@@ -25,7 +28,12 @@ import {
   runLaunchPipeline,
   type LaunchOrchestratorInput,
 } from "@/services/launch/launchOrchestrator";
-import type { LaunchRunSnapshot } from "@/services/launch/launchRun";
+import {
+  createLaunchFailureReport,
+  persistLaunchFailureReport,
+  type LaunchFailureReport,
+  type LaunchRunSnapshot,
+} from "@/services/launch/launchRun";
 import { LaunchStageTimeline } from "./LaunchStageTimeline";
 import { DesignContractInspector } from "./DesignContractInspector";
 import {
@@ -70,11 +78,14 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const [selectedPages, setSelectedPages] = useState<PageChoice[]>([]);
   const [template, setTemplate] = useState<TemplateCardData | null>(null);
   const [theme, setTheme] = useState<ThemePreset | null>(THEME_PRESETS[0] ?? null);
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [launchFailure, setLaunchFailure] = useState<LaunchFailureReport | null>(null);
   const [progress, setProgress] = useState<LaunchRunSnapshot | null>(null);
+  const latestProgressRef = useRef<LaunchRunSnapshot | null>(null);
 
   const reset = useCallback(() => {
     setStep("industry");
@@ -85,10 +96,13 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     setSelectedPages([]);
     setTemplate(null);
     setTheme(THEME_PRESETS[0] ?? null);
+    setSocialLinks({});
     setIsLaunching(false);
     setLaunchStatus("");
     setLaunchError(null);
+    setLaunchFailure(null);
     setProgress(null);
+    latestProgressRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -156,6 +170,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     }
     setIsLaunching(true);
     setLaunchError(null);
+    setLaunchFailure(null);
+    latestProgressRef.current = null;
     setLaunchStatus("Preparing your site…");
 
     const input: LaunchOrchestratorInput = {
@@ -166,20 +182,39 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
       primaryGoal,
       customerNeeds,
       selectedPages,
+      socialLinks,
       existingBusinessId: prefill?.businessId ?? null,
     };
 
     try {
       const result = await runLaunchPipeline(input, {
         onStatus: setLaunchStatus,
-        onProgress: setProgress,
+        onProgress: (snapshot) => {
+          latestProgressRef.current = snapshot;
+          setProgress(snapshot);
+        },
       });
       setLaunch(result.launchState);
       navigate("/web-builder", { replace: true, state: result.navigationState });
       onOpenChange(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setLaunchError(`${message} Your selections are preserved — press Generate to try again.`);
+      const report = createLaunchFailureReport(error, latestProgressRef.current);
+      const reportText = JSON.stringify(report, null, 2);
+      persistLaunchFailureReport(report);
+      setLaunchFailure(report);
+      setLaunchError(
+        `[${report.code}] ${report.message} Your selections are preserved — press Generate to try again.`,
+      );
+      console.error('[LauncherWizard] Generate Site failed', report, error);
+      toast.error(`Generate Site failed in ${report.stage}`, {
+        id: 'wizard-generate-site-failed',
+        description: `${report.code}: ${report.message}`,
+        duration: 30_000,
+        action: {
+          label: 'Copy details',
+          onClick: () => void navigator.clipboard?.writeText(reportText),
+        },
+      });
     } finally {
       setIsLaunching(false);
       setLaunchStatus("");
@@ -302,6 +337,15 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                     </button>
                   ))}
                 </div>
+                <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
+                  <ImportProjectZipButton onImported={() => onOpenChange(false)} />
+                  {prefill?.businessId && (
+                    <ImportUnisonSiteZipButton
+                      businessId={prefill.businessId}
+                      onImported={() => onOpenChange(false)}
+                    />
+                  )}
+                </div>
               </>
             )}
 
@@ -409,6 +453,24 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                     className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
                   />
                 </div>
+                <div>
+                  <FieldLabel>Social profiles</FieldLabel>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(["instagram", "facebook", "linkedin", "youtube"] as const).map((platform) => (
+                      <Input
+                        key={platform}
+                        value={socialLinks[platform] || ""}
+                        onChange={(event) => setSocialLinks((current) => ({
+                          ...current,
+                          [platform]: event.target.value,
+                        }))}
+                        placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`}
+                        aria-label={`${platform} profile URL`}
+                        className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
+                      />
+                    ))}
+                  </div>
+                </div>
                 <FieldLabel>Visual style</FieldLabel>
                 <div className="flex flex-wrap gap-2">
                   {THEME_PRESETS.map((preset) => (
@@ -428,7 +490,15 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
 
             {launchError && (
               <div className="rounded-xl border border-rose-400/25 bg-rose-500/[0.07] px-4 py-3 text-[12px] text-rose-200">
-                {launchError}
+                <div>{launchError}</div>
+                {launchFailure && (
+                  <details className="mt-2 text-[11px] text-rose-100/75">
+                    <summary className="cursor-pointer font-semibold">Technical details</summary>
+                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-black/25 p-2 font-mono text-[10px]">
+                      {JSON.stringify(launchFailure, null, 2)}
+                    </pre>
+                  </details>
+                )}
               </div>
             )}
           </div>

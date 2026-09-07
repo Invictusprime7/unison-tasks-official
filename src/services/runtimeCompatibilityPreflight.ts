@@ -8,6 +8,7 @@
  * is a hard technical blocker.
  */
 import {
+  EXPERIENCE_CAPABILITY_ID,
   GENERATED_RUNTIME_PROFILE,
   findCapabilityForImport,
   type GeneratedRuntimeCapability,
@@ -85,31 +86,25 @@ export function runRuntimeCompatibilityPreflight(
       if (capability) {
         // Capability usage is a property of the generated site, not of the
         // foundation modules that always ship the facade.
-        if (!foundation) {
-          capabilitiesUsed.add(capability.id);
-          importsApproved = false;
-          blockers.push(
-            `${path} imports "${specifier}" directly. ${capability.id} is only reachable through ${capability.facadeImports.join(', ')}.`,
-          );
-          continue;
-        }
-        if (approved.size > 0 && !approved.has(capability.id)) {
-          importsApproved = false;
-          blockers.push(`${path} reaches capability "${capability.id}", which this launch did not approve.`);
-          continue;
-        }
-        const packageName = specifier.startsWith('@')
-          ? specifier.split('/').slice(0, 2).join('/')
-          : specifier.split('/')[0];
-        if (!dependencies[packageName]) {
-          dependenciesResolvable = false;
-          blockers.push(`Required dependency "${packageName}" for ${capability.id} is missing from the preview package graph.`);
-        }
+        if (foundation) continue;
+        capabilitiesUsed.add(capability.id);
+        importsApproved = false;
+        blockers.push(
+          `${path} imports "${specifier}" directly. ${capability.id} is only reachable through ${capability.facadeImports.join(', ')}.`,
+        );
         continue;
       }
 
       if (specifier.startsWith('@/unison/')) {
-        if (specifier.startsWith(`${EXPERIENCE_IMPORT_ROOT}`)) capabilitiesUsed.add('experience.three-d');
+        if (specifier.startsWith(`${EXPERIENCE_IMPORT_ROOT}`)) {
+          capabilitiesUsed.add(EXPERIENCE_CAPABILITY_ID);
+          if (approved.size > 0 && !approved.has(EXPERIENCE_CAPABILITY_ID)) {
+            importsApproved = false;
+            blockers.push(
+              `${path} reaches capability "${EXPERIENCE_CAPABILITY_ID}", which this launch did not approve.`,
+            );
+          }
+        }
         const modulePath = specifier.replace('@/', '/src/');
         const resolved = ['', '.ts', '.tsx', '/index.ts', '/index.tsx'].some((suffix) =>
           localModules.has(`${modulePath}${suffix}`),
@@ -159,7 +154,7 @@ export function runRuntimeCompatibilityPreflight(
     blockers.push('The experience canvas no longer ships a non-WebGL fallback; immersive pages would render blank.');
   }
   if (usesExperience) {
-    capabilitiesUsed.add('experience.three-d');
+    capabilitiesUsed.add(EXPERIENCE_CAPABILITY_ID);
     warnings.push('This site renders WebGL scenes; devices without WebGL or with reduced-motion enabled will see the DOM fallback.');
     if (experience.manifest.heavyInstances >= 3) {
       warnings.push(`Heavy scene count is ${experience.manifest.heavyInstances}; expect a higher GPU cost on low-power devices.`);
@@ -172,6 +167,7 @@ export function runRuntimeCompatibilityPreflight(
     }
   }
 
+  const uniqueBlockers = [...new Set(blockers)];
   return {
     runtimeProfile: GENERATED_RUNTIME_PROFILE.id,
     dependenciesResolvable,
@@ -181,7 +177,7 @@ export function runRuntimeCompatibilityPreflight(
     budgetValid,
     capabilitiesUsed: [...capabilitiesUsed],
     warnings,
-    blockers,
-    ok: blockers.length === 0,
+    blockers: uniqueBlockers,
+    ok: uniqueBlockers.length === 0,
   };
 }

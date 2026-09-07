@@ -13,6 +13,7 @@ import { AGENCY_COMPOSITIONS } from './agency';
 import { PORTFOLIO_COMPOSITIONS } from './portfolio';
 import { STORE_COMPOSITIONS } from './store';
 import { COACHING_COMPOSITIONS } from './coaching';
+import { CONTENT_COMPOSITIONS } from './content';
 
 export const ALL_COMPOSITIONS: TemplateComposition[] = [
   ...SALON_COMPOSITIONS,
@@ -22,6 +23,7 @@ export const ALL_COMPOSITIONS: TemplateComposition[] = [
   ...PORTFOLIO_COMPOSITIONS,
   ...STORE_COMPOSITIONS,
   ...COACHING_COMPOSITIONS,
+  ...CONTENT_COMPOSITIONS,
 ];
 
 export const getCompositionById = (id: string): TemplateComposition | undefined =>

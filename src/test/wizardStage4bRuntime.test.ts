@@ -28,15 +28,18 @@ function fakeCommitResult(): CommitResult {
 }
 
 describe('Wizard Stage 4b runtime', () => {
-  it('bootstraps the worker from the narrow worker-safe pipeline module', () => {
+  it('bootstraps the narrow pipeline module without leaking the window alias into compilation', () => {
     const workerSource = readFileSync(
       resolve(process.cwd(), 'src/workers/wizardStage4b.worker.ts'),
       'utf8',
     );
 
-    expect(workerSource).toContain("from '@/platform/core/commitToPipeline'");
+    expect(workerSource).toContain("import('@/platform/core/commitToPipeline')");
     expect(workerSource).not.toContain("from '@/platform/core'");
-    expect(workerSource).not.toMatch(/\b(?:window|document|localStorage)\b/);
+    expect(workerSource).toContain("delete workerGlobal.window");
+    expect(workerSource.indexOf("delete workerGlobal.window"))
+      .toBeLessThan(workerSource.indexOf('workerScope.onmessage'));
+    expect(workerSource).not.toMatch(/\b(?:document|localStorage)\b/);
   });
 
   it('runs compilation in a worker and republishes the canonical commit on the main bus', async () => {

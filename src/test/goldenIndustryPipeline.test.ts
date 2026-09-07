@@ -423,6 +423,10 @@ describe('Salon Premium golden launch transaction', () => {
     };
     const laneA = commitToPipeline({ selections }, 'wizard-launch');
     const registryPages = Object.values(laneA.siteBundleSnapshot.pageRegistry.pages);
+    for (const page of registryPages) {
+      const sectionMapPath = page.filePath!.replace(/\.tsx$/, '.sections.ts');
+      expect(laneA.siteBundleSnapshot.vfsFiles[sectionMapPath], sectionMapPath).toBeTruthy();
+    }
     const laneBFiles = Object.fromEntries(registryPages.map((page) => [
       page.filePath!,
       [

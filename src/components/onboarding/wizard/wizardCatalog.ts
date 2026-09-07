@@ -139,6 +139,7 @@ export const INDUSTRY_DISPLAY: Record<string, { label: string; icon: string }> =
   agency: { label: "Agency & Creative", icon: "🏢" },
   portfolio: { label: "Portfolio & Creative", icon: "🎨" },
   store: { label: "Store & E-Commerce", icon: "🛍️" },
+  nonprofit: { label: "Content & Media", icon: "📝" },
 };
 
 export const TEMPLATE_INDUSTRY_TO_CATEGORY: Partial<Record<string, LayoutCategory>> = {
@@ -155,6 +156,7 @@ export const TEMPLATE_INDUSTRY_TO_CATEGORY: Partial<Record<string, LayoutCategor
   agency: "agency",
   portfolio: "portfolio",
   store: "store",
+  nonprofit: "nonprofit",
 };
 
 export const INDUSTRY_CARDS: {

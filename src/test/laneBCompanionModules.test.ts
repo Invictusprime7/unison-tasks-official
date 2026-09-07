@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   scopeLaneBBatchFiles,
+  findLocalJsxImportContractViolations,
   findUnresolvedLocalImports,
   isLaneAAuthorityPath,
   buildModuleInventoryDirective,
@@ -70,12 +71,45 @@ describe('Lane B companion modules', () => {
         'import "./gallery.css";',
         'import GalleryItem from "./components/GalleryItem";',
         'import { helpers } from "../lib/helpers";',
+        'import { SECTION_MAP } from "./Gallery.sections";',
+        'import data from "../data/gallery.json";',
       ].join('\n'),
       '/src/pages/components/GalleryItem.tsx': 'export default () => null;',
+      '/src/pages/Gallery.sections.ts': 'export const SECTION_MAP = {};',
       '/src/lib/helpers/index.ts': 'export const helpers = {};',
+      '/src/data/gallery.json': '{}',
     });
 
     expect(unresolved).toEqual([]);
+  });
+
+  it('rejects incompatible named and default JSX imports without compiling a preview', () => {
+    const violations = findLocalJsxImportContractViolations({
+      '/src/pages/Home.tsx': [
+        "import { MissingHero } from './Hero';",
+        "import Card from './Card';",
+        'export default function Home() { return <><MissingHero /><Card /></>; }',
+      ].join('\n'),
+      '/src/pages/Hero.tsx': 'export const RealHero = () => null;',
+      '/src/pages/Card.tsx': 'export const Card = () => null;',
+    });
+
+    expect(violations).toMatchObject([
+      { symbol: 'MissingHero', kind: 'missing-named-export' },
+      { symbol: 'Card', kind: 'missing-default-export' },
+    ]);
+  });
+
+  it('accepts compatible local JSX imports', () => {
+    expect(findLocalJsxImportContractViolations({
+      '/src/pages/Home.tsx': [
+        "import { Hero } from './Hero';",
+        "import Card from './Card';",
+        'export default function Home() { return <><Hero /><Card /></>; }',
+      ].join('\n'),
+      '/src/pages/Hero.tsx': 'export const Hero = () => null;',
+      '/src/pages/Card.tsx': 'export default function Card() { return null; }',
+    })).toEqual([]);
   });
 });
 

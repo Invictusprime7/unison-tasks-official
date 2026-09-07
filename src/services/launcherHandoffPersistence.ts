@@ -20,6 +20,9 @@ const COMPACT_UNISON_METADATA_PATHS = new Set([
   '/.unison/setup-snapshot.json',
   '/.unison/intent-bindings.json',
   '/.unison/intent-surfaces.json',
+  '/.unison/gate-verdicts.json',
+  '/.unison/draft-classification.json',
+  '/.unison/integrity-report.json',
   CANONICAL_METADATA_FILE_PATHS.publishedRuntime,
 ]);
 

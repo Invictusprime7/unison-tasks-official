@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildCanonicalLaunchArtifacts,
@@ -69,6 +70,20 @@ function createSnapshot(): SiteBundleSnapshot {
 }
 
 describe("buildCanonicalLaunchArtifacts", () => {
+  it("runs one repair pass followed by one mutation-free acceptance pass", () => {
+    const source = readFileSync("src/services/canonicalLaunchVfs.ts", "utf8");
+    const convergenceStart = source.indexOf("// ── Canonical convergence preflight");
+    const compilerGateStart = source.indexOf("// ── M4 compiler gate", convergenceStart);
+    const convergence = source.slice(convergenceStart, compilerGateStart);
+
+    expect(convergence.match(/mode: 'repair'/g)).toHaveLength(1);
+    expect(convergence.match(/mode: 'acceptance'/g)).toHaveLength(1);
+    expect(convergence).toContain("Object.assign(mergedFiles, refinalized.files)");
+    expect(convergence.match(/Object\.assign\(mergedFiles, convergedPreflight\.files\)/g)).toHaveLength(1);
+    expect(convergence.indexOf("Object.assign(mergedFiles, convergedPreflight.files)"))
+      .toBeLessThan(convergence.indexOf("if (convergedPreflight.mutated)"));
+  });
+
   it("never injects router-level chrome so the page body stays the only chrome authority", () => {
     const snapshot = createSnapshot();
     const aboutPage = createBuilderPage("page_about", "About", "/about", "about", {
@@ -453,6 +468,8 @@ describe("buildCanonicalLaunchArtifacts", () => {
           "import Hero from '../components/Hero';\nexport default function Home(){ return <main className='bg-background text-foreground'><Hero/>Lane B Home</main>; }",
         "/src/pages/About.tsx":
           "export default function About(){ return <main className='bg-background text-foreground'>Lane B About</main>; }",
+        "/src/components/Hero.tsx":
+          "export default function Hero(){ return <section>Rich hero</section>; }",
       },
       preferredEntryPoint: "/src/App.tsx",
       siteBundleSnapshot: snapshot,
@@ -548,7 +565,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
       compiledPlayground: { vfsFiles: snapshot.vfsFiles },
       themePresetId: 'modern',
       strictPreflight: true,
-    })).toThrow(/Wizard runtime preflight failed before persistence:.*Home\.tsx imports JSX component "MissingHero".*HeroTitle, HeroCopy/i);
+    })).toThrow(/Generated pages failed the local import contract:.*Home\.tsx imports MissingHero.*HeroTitle, HeroCopy/i);
   });
 
   it('normalizes the legacy relative RevealGroup import onto the primitive kit', () => {

@@ -20,7 +20,15 @@ import {
 import type { ThemePreset } from "@/components/onboarding/themePresets";
 import { themePresetToThemeTokens } from "@/components/onboarding/themePresetToTokens";
 import { buildThemedIndexCssFromTokens } from "@/components/onboarding/themePresetToIndexCss";
-import { getIndustryForCategory, getAllowedIntents } from "@/platform/core";
+import {
+  compileContract,
+  createBlueprintFromIndustry,
+  evaluateAllGates,
+  getIndustryForCategory,
+  getAllowedIntents,
+  runIntegrityReport,
+} from "@/platform/core";
+import { classifyDraft } from "@/platform/core/canonicalRuntimeContract";
 import { getCompositionMeta } from "@/utils/compositionReference";
 import { getCompositionById } from "@/sections/templates";
 import { deriveGenerationSeed } from "@/platform/core/generationSeed";
@@ -30,8 +38,25 @@ import {
   TEMPLATE_DESIGN_CONTRACT_PATH,
 } from "@/services/templateLayoutContract";
 import { runWizardStage4b } from "@/services/wizardStage4bRuntime";
-import { runStrictImportContractCheck } from "@/services/strictImportContractRuntime";
-import { buildCanonicalLaunchArtifactsAsync } from "@/services/canonicalLaunchVfs";
+import {
+  buildCanonicalLaunchArtifactsAsync,
+  type PublishedRuntimeConfig,
+} from "@/services/canonicalLaunchVfs";
+import { loadBusinessProfile } from "@/services/businessProfileService";
+import { planSectionDataBindings } from "@/services/autoEmitSectionBindings";
+import { buildBusinessRuntimeContract } from "@/platform/core/businessRuntimeContract";
+import {
+  buildNativePublishReadinessManifest,
+  buildNativePublishSetupSnapshot,
+} from "@/services/nativePublishReadiness";
+import {
+  auditWizardIntentGap,
+  buildIntentBindingsFile,
+  buildIntentSurfacesFile,
+} from "@/services/wizardIntentAudit";
+import { planLaunchFormDefinitions } from "@/services/launchFormDefinitions";
+import { persistLaunchFormDefinitions } from "@/services/launchFormDefinitionPersistence";
+import { evaluatePublishedRuntimeReadiness } from "@/services/publishedRuntimeReadiness";
 import {
   createConfirmedLaunchIds,
   provisionConfirmedLaunchSite,
@@ -53,7 +78,15 @@ import {
 } from "@/services/launch/launchRun";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
 import type { BuilderIdentity } from "@/types/builderIdentity";
+import type { BusinessProfileDTO } from "@/types/businessProfile";
 import type { WizardSelections } from "@/types/playground";
+import {
+  getLanguageFromFileName,
+  type VirtualNode,
+} from "@/hooks/useVirtualFileSystem";
+import { livePageTopology } from "@/builder/controllers/PageTopologyController";
+import { livePreviewRuntime } from "@/builder/controllers/PreviewRuntimeController";
+import { livePlaygroundSync } from "@/builder/controllers/PlaygroundSyncController";
 import {
   GOAL_TO_NEEDS,
   LAUNCHER_PRESELECTS,
@@ -122,19 +155,33 @@ function resolveGenerationCategory(
     system.templateCategories[0]) as LayoutCategory;
 }
 
+function vfsFilesToVirtualNodes(vfsFiles: Record<string, string>): VirtualNode[] {
+  return Object.entries(vfsFiles).map(([path, content]) => {
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const name = normalizedPath.split("/").pop() || normalizedPath;
+    return {
+      id: `launch-${normalizedPath}`,
+      name,
+      content,
+      type: "file",
+      language: getLanguageFromFileName(name),
+      parentId: null,
+      path: normalizedPath,
+    };
+  });
+}
+
 /**
  * Runs the full deterministic launch. Throws on fatal failure; the caller
- * renders the message inline in the wizard (never a toast).
+ * renders the message and diagnostic context in the wizard.
  */
 export async function runLaunchPipeline(
   input: LaunchOrchestratorInput,
   callbacks: LaunchOrchestratorCallbacks = {},
 ): Promise<LaunchOrchestratorResult> {
-  const run: LaunchRun = createLaunchRun();
-  const emit = () => callbacks.onProgress?.(run.snapshot());
+  const run: LaunchRun = createLaunchRun({ onChange: callbacks.onProgress });
   const status = (message: string) => {
     callbacks.onStatus?.(message);
-    emit();
   };
 
   const system = businessSystems.find((s) => s.id === input.systemId);
@@ -262,6 +309,7 @@ export async function runLaunchPipeline(
 
     return {
       user,
+      ownerEmail,
       ids,
       confirmed,
       generationCategory,
@@ -277,6 +325,13 @@ export async function runLaunchPipeline(
   }, { timeoutMs: 30_000 });
 
   const design = generateDesignVariation(plan.seed);
+  const blueprint = createBlueprintFromIndustry(
+    plan.industryProfile?.industry || String(plan.generationCategory),
+    brand,
+    { email: plan.ownerEmail || undefined },
+  );
+  const compiledContract = compileContract(blueprint, { backendInstalled: false });
+  const gateVerdicts = evaluateAllGates(compiledContract);
   const themedComposition = { ...composition, theme: plan.themeTokens };
   const designContract = buildTemplateLayoutContract(themedComposition, {
     seed: plan.seed,
@@ -330,6 +385,7 @@ export async function runLaunchPipeline(
     siteBundleSnapshot,
     runtimeManifest: pipelineManifest,
     sitePlan,
+    validations: pipelineValidations,
   } = stage4b.pipelineResult;
 
   // Theme tokens are compiler-owned. Repair rather than ship un-themed CSS.
@@ -345,11 +401,63 @@ export async function runLaunchPipeline(
     siteBundleSnapshot.vfsFiles["/src/index.css"] = expectedCss;
   }
 
+  const loadedBusinessProfile = input.existingBusinessId
+    ? await loadBusinessProfile(input.existingBusinessId)
+    : null;
+  if (input.existingBusinessId && !loadedBusinessProfile) {
+    throw new Error("Unable to load the selected Business Profile for this launch.");
+  }
+  const businessProfile: BusinessProfileDTO = loadedBusinessProfile || {
+    businessId: plan.confirmed.businessId,
+    ownerId: plan.user.id,
+    name: brand,
+    industry: plan.industryProfile?.industry || plan.generationCategory,
+    email: plan.ownerEmail || null,
+    notificationEmail: plan.ownerEmail || null,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    address: {},
+    hours: [],
+    socialLinks: {},
+    settings: {},
+  };
+  const plannedDataBindings = planSectionDataBindings(siteBundleSnapshot);
+  const businessRuntime = buildBusinessRuntimeContract({
+    businessId: plan.confirmed.businessId,
+    profile: businessProfile,
+    snapshotId: siteBundleSnapshot.snapshotId,
+    expectedBindingCount: plannedDataBindings.length,
+    bindingsReady: true,
+  });
+  const nativeSetupSnapshot = buildNativePublishSetupSnapshot({
+    enabled: plan.launchContract.nativePublishCapable,
+    ownerEmail: plan.ownerEmail,
+    businessName: brand,
+    businessId: plan.confirmed.businessId,
+    systemType: input.systemId,
+  });
+  const wizardAudit = auditWizardIntentGap({
+    sitePlan,
+    state: materializedPlayground,
+    industryOverlay: plan.generationCategory,
+  });
+  const nativeReadinessManifest = {
+    ...buildNativePublishReadinessManifest({
+      state: materializedPlayground,
+      validations: pipelineValidations,
+      setupSnapshot: nativeSetupSnapshot,
+      enabled: plan.launchContract.nativePublishCapable,
+      systemType: input.systemId,
+      industryOverlay: plan.generationCategory,
+    }),
+    wizardAudit,
+  };
+  const intentBindingsFile = buildIntentBindingsFile(materializedPlayground);
+  const intentSurfacesFile = buildIntentSurfacesFile(materializedPlayground);
+
   // ── Stage: enrich ─────────────────────────────────────────────────────────
   // AI page authorship is retired by contract. The stage stays in the model so
   // the timeline is honest about what did (and did not) run.
   run.markStage("enrich", "done");
-  emit();
 
   // ── Stage: preflight (merge + seal + strict import contract) ──────────────
   status("Running preview gates…");
@@ -380,6 +488,7 @@ export async function runLaunchPipeline(
         themePresetId: input.theme.id,
         backendRequired: false,
         wizardSelections: plan.selections,
+        businessRuntime,
         enabledCapabilities: plan.industryProfile?.defaultCapabilities || [],
         // Every registered body must be present in the Stage 4b output above.
         // Missing pages are a real closure failure, never a fallback request.
@@ -388,12 +497,6 @@ export async function runLaunchPipeline(
       } as Parameters<typeof buildCanonicalLaunchArtifactsAsync>[0],
       { yieldToHost: yieldToBrowser, signal },
     );
-    await runStrictImportContractCheck({
-      files: built.files,
-      entryPoint: built.entryPoint,
-      themePresetId: input.theme.id,
-      signal,
-    });
     return built;
   }, { timeoutMs: 180_000 });
 
@@ -405,14 +508,56 @@ export async function runLaunchPipeline(
       `${missingPages.length} page(s) reached the sealed revision without a body.`,
       missingPages.join(", "),
     );
-    emit();
   }
+
+  const plannedFormDefinitions = planLaunchFormDefinitions(artifacts.siteBundleSnapshot);
+  const publishedRuntimeReadiness = evaluatePublishedRuntimeReadiness({
+    runtime: JSON.parse(
+      artifacts.files["/.unison/published-runtime.json"],
+    ) as PublishedRuntimeConfig,
+    bindingCount: plannedDataBindings.length,
+    formDefinitionCount: plannedFormDefinitions.length,
+  });
+  if (!publishedRuntimeReadiness.ok) {
+    run.degrade(
+      "preflight",
+      "preflight.publish_not_ready",
+      "Publishing checks are incomplete; you can still edit and preview everything.",
+      publishedRuntimeReadiness.blockers.join(" "),
+    );
+  }
+
+  const integrityReport = runIntegrityReport(
+    artifacts.siteBundleSnapshot,
+    compiledContract,
+    { compositions: [{ label: input.template.id, composition: themedComposition }] },
+  );
 
   const vfsFiles: Record<string, string> = {
     ...artifacts.files,
     "/.unison/wizard-seed.json": JSON.stringify(wizardSeedFile, null, 2),
     [TEMPLATE_DESIGN_CONTRACT_PATH]: JSON.stringify(designContract, null, 2),
+    "/.unison/launch-readiness.json": JSON.stringify({
+      ...nativeReadinessManifest,
+      wizardAudit,
+      launchContract: plan.launchContract,
+      publishedRuntimeReadiness,
+      generatedAt: new Date().toISOString(),
+      previewReady: true,
+    }, null, 2),
+    "/.unison/native-publish-setup.json": JSON.stringify(nativeSetupSnapshot || null, null, 2),
+    "/.unison/setup-snapshot.json": JSON.stringify(nativeSetupSnapshot || null, null, 2),
+    "/.unison/intent-bindings.json": JSON.stringify(intentBindingsFile, null, 2),
+    "/.unison/intent-surfaces.json": JSON.stringify(intentSurfacesFile, null, 2),
+    "/.unison/gate-verdicts.json": JSON.stringify(gateVerdicts, null, 2),
+    "/.unison/integrity-report.json": JSON.stringify(integrityReport, null, 2),
   };
+  const draftClassification = classifyDraft(vfsFiles);
+  vfsFiles["/.unison/draft-classification.json"] = JSON.stringify(
+    draftClassification,
+    null,
+    2,
+  );
 
   // ── Stage: commit ─────────────────────────────────────────────────────────
   status("Saving your site workspace…");
@@ -440,6 +585,7 @@ export async function runLaunchPipeline(
       options: {
         requirePreviewPass: false,
         requireReadinessPass: false,
+        compiledContract,
         businessName: brand,
         industry: String(plan.generationCategory),
         selectedTemplateId: input.template.id,
@@ -461,11 +607,42 @@ export async function runLaunchPipeline(
     return { confirmed, result };
   }, { timeoutMs: 120_000 });
 
+  try {
+    const formDefinitionPersistence = await persistLaunchFormDefinitions({
+      businessId: commit.confirmed.businessId,
+      projectId: commit.confirmed.projectId,
+      siteId: commit.confirmed.siteId,
+      definitions: plannedFormDefinitions,
+    });
+    if (formDefinitionPersistence.error) {
+      run.degrade(
+        "commit",
+        "commit.form_definitions_unavailable",
+        "Your form settings will finish saving in the builder.",
+        formDefinitionPersistence.error,
+      );
+    }
+  } catch (error) {
+    run.degrade(
+      "commit",
+      "commit.form_definitions_unavailable",
+      "Your form settings will finish saving in the builder.",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
   // ── Stage: handoff ────────────────────────────────────────────────────────
   status("Opening the builder…");
   const handoff = await run.stage("handoff", async () => {
     const committed = commit.result;
+    if (!committed.siteBundleSnapshot) {
+      throw new Error("The committed launch is missing its site bundle snapshot.");
+    }
     const committedPlayground = committed.playground ?? materializedPlayground;
+    const committedVfsNodes: VirtualNode[] = vfsFilesToVirtualNodes(committed.vfsFiles);
+    livePageTopology.setRegistry(committed.siteBundleSnapshot.pageRegistry);
+    livePreviewRuntime.hydrateFromRegistry(committed.siteBundleSnapshot.pageRegistry);
+    livePlaygroundSync.hydrateFromVFS(committedVfsNodes, committed.vfsFiles);
     const launchState = createLaunchState({
       systemType: input.systemId,
       systemName: system.name,
@@ -483,7 +660,7 @@ export async function runLaunchPipeline(
       projectId: commit.confirmed.projectId,
       industry: plan.industryProfile?.industry || String(plan.generationCategory),
       runtimeManifest: committed.runtimeManifest,
-      entryPoint: artifacts.entryPoint,
+      entryPoint: committed.runtimeManifest.entryPoint,
       sitePlan,
       siteBundleSnapshot: committed.siteBundleSnapshot,
       materializedPlayground: committedPlayground,
@@ -503,7 +680,7 @@ export async function runLaunchPipeline(
       siteId: commit.confirmed.siteId,
       draftId: commit.confirmed.draftId,
       revisionId: committed.persistedRevisionId,
-      entryPoint: artifacts.entryPoint,
+      entryPoint: committed.runtimeManifest.entryPoint,
       templateId: input.template.id,
       themePresetId: input.theme.id,
       preloadedIntents: plan.canonicalIntents,
@@ -513,6 +690,10 @@ export async function runLaunchPipeline(
       runtimeManifest: committed.runtimeManifest,
       canonicalPlayground: committedPlayground,
       materializedPlayground: committedPlayground,
+      _compiledContract: compiledContract,
+      _previewGateVerdict: gateVerdicts.preview,
+      _publishGateVerdict: gateVerdicts.publish,
+      _draftClassification: draftClassification,
     };
 
     const navigationState = buildLauncherNavigationState(routeState);
@@ -538,7 +719,6 @@ export async function runLaunchPipeline(
   }, { timeoutMs: 30_000 });
 
   publishLaunchDegradations(run.snapshot().degradations);
-  emit();
 
   return {
     launchState: handoff.launchState,

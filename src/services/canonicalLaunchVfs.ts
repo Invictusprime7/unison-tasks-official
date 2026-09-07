@@ -63,6 +63,11 @@ import {
   PUBLISHED_ACTION_RUNTIME_MODULE,
   PUBLISHED_ACTION_RUNTIME_PATH,
 } from '@/sections/publishedActionRuntimeModule';
+import {
+  describeUnresolvedImports,
+  findLocalJsxImportContractViolations,
+  findUnresolvedLocalImports,
+} from '@/services/laneBCompanionModules';
 
 export const CANONICAL_METADATA_FILE_PATHS = {
   appContext: '/.unison/app-context.json',
@@ -987,42 +992,28 @@ function* buildCanonicalLaunchArtifactSteps(
       siteBundleSnapshot: input.siteBundleSnapshot,
       industry: input.industry || input.siteBundleSnapshot?.industry,
       brand: input.businessName || undefined,
-      mode: 'repair',
+      mode: 'acceptance',
     });
-    for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
-    Object.assign(mergedFiles, convergedPreflight.files);
-
-    if (convergedPreflight.mutated) {
-      const refinalized = normalizeWizardThemeTokens(mergedFiles);
-      for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
-      Object.assign(mergedFiles, refinalized.files);
-      const acceptance = runFullPreflight(mergedFiles, {
-        siteBundleSnapshot: input.siteBundleSnapshot,
-        industry: input.industry || input.siteBundleSnapshot?.industry,
-        brand: input.businessName || undefined,
-        mode: 'acceptance',
-      });
-      const unresolvedAcceptance = [
-        ...acceptance.mutatedFiles,
-        ...acceptance.stages.experienceGate.violations,
-      ];
-      if (unresolvedAcceptance.length > 0) {
-        throw new PreviewPipelineError(
-          'vfs',
-          `Generated site still requires mutation after Stage 4b finalization: ${unresolvedAcceptance.join(' | ')}`,
-          { blockedFiles: acceptance.mutatedFiles, recoverableByRelaunch: true },
-        );
-      }
-      convergedPreflight = acceptance;
-    }
-
-    if (convergedPreflight.stages.experienceGate.violations.length > 0) {
+    const unresolvedAcceptance = [
+      ...acceptance.mutatedFiles,
+      ...acceptance.stages.experienceGate.violations,
+    ];
+    if (unresolvedAcceptance.length > 0) {
       throw new PreviewPipelineError(
         'vfs',
-        `Generated experience failed preflight: ${convergedPreflight.stages.experienceGate.violations.join(' | ')}`,
-        { recoverableByRelaunch: true },
+        `Generated site still requires mutation after Stage 4b finalization: ${unresolvedAcceptance.join(' | ')}`,
+        { blockedFiles: acceptance.mutatedFiles, recoverableByRelaunch: true },
       );
     }
+    convergedPreflight = acceptance;
+  }
+
+  if (convergedPreflight.stages.experienceGate.violations.length > 0) {
+    throw new PreviewPipelineError(
+      'vfs',
+      `Generated experience failed preflight: ${convergedPreflight.stages.experienceGate.violations.join(' | ')}`,
+      { recoverableByRelaunch: true },
+    );
   }
 
   // ── M4 compiler gate ───────────────────────────────────────────────────
@@ -1038,6 +1029,30 @@ function* buildCanonicalLaunchArtifactSteps(
         `Registered pages failed the generated-page compiler gate: ${formatPageCompilerViolations(gate.violations)}`,
         {
           blockedFiles: Array.from(new Set(gate.violations.map((violation) => violation.filePath))),
+          recoverableByRelaunch: true,
+        },
+      );
+    }
+
+    const unresolvedImports = findUnresolvedLocalImports(mergedFiles);
+    const incompatibleImports = findLocalJsxImportContractViolations(mergedFiles);
+    if (unresolvedImports.length > 0 || incompatibleImports.length > 0) {
+      const details = [
+        unresolvedImports.length > 0
+          ? `unresolved modules: ${describeUnresolvedImports(unresolvedImports)}`
+          : '',
+        ...incompatibleImports.slice(0, 5).map((violation) =>
+          `${violation.filePath} imports ${violation.symbol} from "${violation.importPath}" (${violation.kind}; available: ${violation.available.join(', ') || 'none'})`,
+        ),
+      ].filter(Boolean);
+      throw new PreviewPipelineError(
+        'vfs',
+        `Generated pages failed the local import contract: ${details.join(' | ')}`,
+        {
+          blockedFiles: Array.from(new Set([
+            ...unresolvedImports.map((item) => item.filePath),
+            ...incompatibleImports.map((item) => item.filePath),
+          ])),
           recoverableByRelaunch: true,
         },
       );

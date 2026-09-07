@@ -53,6 +53,21 @@ describe('Wizard preview dependency runtime', () => {
     expect(result.dependencies['@vitejs/plugin-react-swc']).toBeUndefined();
   });
 
+  it('resolves experience packages from the generated runtime capability registry', () => {
+    const result = extractDependencies({
+      '/src/unison/ui/experience/canvas.tsx': [
+        "import { Canvas } from '@react-three/fiber';",
+        "import { Environment } from '@react-three/drei';",
+        "import * as THREE from 'three';",
+      ].join('\n'),
+    });
+
+    expect(result.dependencies['@react-three/fiber']).toBe('^9.3.0');
+    expect(result.dependencies['@react-three/drei']).toBe('^10.7.0');
+    expect(result.dependencies.three).toBe('^0.180.0');
+    expect(result.unresolved).toEqual([]);
+  });
+
   it('exports the same Babel, Radix, Bootstrap, StyleX, and Tailwind groups used at runtime', () => {
     expect(WIZARD_RUNTIME_DEPENDENCY_GROUPS.react['@swc/helpers']).toBe('0.5.23');
     expect(WIZARD_RUNTIME_DEPENDENCY_GROUPS.babel['@babel/standalone']).toBeTruthy();

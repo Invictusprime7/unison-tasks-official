@@ -10,10 +10,9 @@
  *     a frame budget, and every stage carries its own watchdog so a stall
  *     degrades that stage instead of freezing the shell.
  *
- *  2. NEVER FAIL LOUDLY. Only an unrecoverable auth/session loss is `fatal`.
- *     Everything else is a `degradation`: the run records it and continues with
- *     the deterministic wizard seed, so the user always reaches the builder
- *     with a site that matches their 4-step selections.
+ *  2. NEVER HIDE AUTHORSHIP FAILURES. Recoverable integration failures become
+ *     degradations; failures in authored output retain their exact stage and
+ *     cause so the Wizard can report them without substituting content.
  */
 
 import { startLaunchTelemetry, type LaunchTelemetryEvent } from '@/services/launch/launchTelemetry';
@@ -103,10 +102,39 @@ export function yieldToHost(): Promise<void> {
 
 export class LaunchFatalError extends Error {
   readonly isLaunchFatal = true;
-  constructor(message: string) {
+  readonly stage?: LaunchStageName;
+  readonly code?: string;
+  readonly originalError?: unknown;
+
+  constructor(
+    message: string,
+    options: { stage?: LaunchStageName; code?: string; cause?: unknown } = {},
+  ) {
     super(message);
     this.name = 'LaunchFatalError';
+    this.stage = options.stage;
+    this.code = options.code;
+    this.originalError = options.cause;
   }
+}
+
+function launchStageErrorCode(stage: LaunchStageName, error: unknown): string {
+  const message = launchErrorMessage(error);
+  if (/stalled after \d+s/i.test(message)) return `${stage}.timeout`;
+  if (/auth|session|jwt|token|sign in/i.test(message)) return `${stage}.auth`;
+  const nestedStage = typeof error === 'object' && error !== null
+    ? (error as { stage?: unknown }).stage
+    : null;
+  return `${stage}.${typeof nestedStage === 'string' ? nestedStage : 'failed'}`;
+}
+
+function asLaunchStageError(stage: LaunchStageName, error: unknown): LaunchFatalError {
+  if (isLaunchFatalError(error) && error.stage) return error;
+  return new LaunchFatalError(launchErrorMessage(error), {
+    stage,
+    code: launchStageErrorCode(stage, error),
+    cause: error,
+  });
 }
 
 export function isLaunchFatalError(value: unknown): value is LaunchFatalError {
@@ -247,6 +275,7 @@ export function createLaunchRun(options: LaunchRunOptions = {}): LaunchRun {
 
   const stage: LaunchRun['stage'] = async (name, work, opts = {}) => {
     setStatus(name, 'active');
+    console.info(`[launchRun] started ${name}`);
     const timeoutMs = opts.timeoutMs ?? options.timeouts?.[name] ?? DEFAULT_STAGE_TIMEOUTS[name];
     let timer: ReturnType<typeof setTimeout> | undefined;
     const stageController = new AbortController();
@@ -262,12 +291,22 @@ export function createLaunchRun(options: LaunchRunOptions = {}): LaunchRun {
       });
       const value = await Promise.race([work(stageController.signal), guard]);
       setStatus(name, 'done');
+      console.info(`[launchRun] completed ${name}`, {
+        durationMs: Date.now() - (stages.find((entry) => entry.name === name)?.startedAt ?? Date.now()),
+      });
       return value as Awaited<ReturnType<typeof work>>;
     } catch (error) {
+      const stageError = asLaunchStageError(name, error);
+      const logFailure = () => console.error(`[launchRun] failed ${name}/${stageError.code}`, {
+          name: error instanceof Error ? error.name : typeof error,
+          message: launchErrorMessage(error),
+          error,
+        });
       if (classifyLaunchError(error) === 'fatal') {
         fatal = launchErrorMessage(error);
         setStatus(name, 'failed');
-        throw error;
+        logFailure();
+        throw stageError;
       }
       if (AUTHORSHIP_STAGES.has(name)) {
         // No fallback is honoured for authorship stages, even if a caller
@@ -275,11 +314,13 @@ export function createLaunchRun(options: LaunchRunOptions = {}): LaunchRun {
         const message = launchErrorMessage(error);
         fatal = message;
         setStatus(name, 'failed');
-        throw new LaunchFatalError(message);
+        logFailure();
+        throw stageError;
       }
       if (!opts.fallback) {
         setStatus(name, 'failed');
-        throw error;
+        logFailure();
+        throw stageError;
       }
       degrade(
         name,
@@ -321,6 +362,90 @@ export function createLaunchRun(options: LaunchRunOptions = {}): LaunchRun {
  * render a quiet inline note instead of the wizard firing an error toast.
  */
 export const LAUNCH_DEGRADATION_STORAGE_KEY = 'unison:launch-degradations';
+export const LAUNCH_FAILURE_STORAGE_KEY = 'unison:latest-launch-failure';
+
+export interface LaunchFailureReport {
+  id: string;
+  occurredAt: string;
+  stage: LaunchStageName | 'unknown';
+  code: string;
+  errorName: string;
+  message: string;
+  stack?: string;
+  details?: unknown;
+  snapshot: LaunchRunSnapshot | null;
+  location?: string;
+}
+
+const SENSITIVE_DIAGNOSTIC_KEY = /authorization|cookie|credential|password|secret|token|api.?key/i;
+
+function redactDiagnosticText(value: string): string {
+  return value
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [REDACTED]')
+    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[REDACTED_JWT]')
+    .replace(
+      /((?:api.?key|password|secret|token)\s*[:=]\s*)["']?[^\s,"'}]+/gi,
+      '$1[REDACTED]',
+    );
+}
+
+function redactDiagnosticValue(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (typeof value === 'string') return redactDiagnosticText(value);
+  if (!value || typeof value !== 'object') return value;
+  if (seen.has(value)) return '[Circular]';
+  seen.add(value);
+  if (Array.isArray(value)) return value.map((entry) => redactDiagnosticValue(entry, seen));
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      SENSITIVE_DIAGNOSTIC_KEY.test(key) ? '[REDACTED]' : redactDiagnosticValue(entry, seen),
+    ]),
+  );
+}
+
+function safeErrorDetails(error: unknown): unknown {
+  if (!error || typeof error !== 'object') return undefined;
+  const details = (error as Record<string, unknown>).details;
+  return details === undefined ? undefined : redactDiagnosticValue(details);
+}
+
+export function createLaunchFailureReport(
+  error: unknown,
+  snapshot: LaunchRunSnapshot | null,
+): LaunchFailureReport {
+  const stageError = isLaunchFatalError(error) ? error : null;
+  const original = stageError?.originalError;
+  const sourceError = original instanceof Error ? original : error instanceof Error ? error : null;
+  const failedStage = snapshot?.stages.find((entry) => entry.status === 'failed')?.name;
+  const stage = stageError?.stage ?? failedStage ?? snapshot?.activeStage ?? 'unknown';
+  const details = safeErrorDetails(original ?? error);
+  return {
+    id: `launch_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    occurredAt: new Date().toISOString(),
+    stage,
+    code: stageError?.code ?? `${stage}.failed`,
+    errorName: sourceError?.name ?? typeof error,
+    message: redactDiagnosticText(launchErrorMessage(error)),
+    ...(sourceError?.stack ? { stack: redactDiagnosticText(sourceError.stack) } : {}),
+    ...(details !== undefined
+      ? { details }
+      : {}),
+    snapshot,
+    ...(typeof window !== 'undefined'
+      ? { location: `${window.location.origin}${window.location.pathname}` }
+      : {}),
+  };
+}
+
+export function persistLaunchFailureReport(report: LaunchFailureReport): void {
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(LAUNCH_FAILURE_STORAGE_KEY, JSON.stringify(report));
+    }
+  } catch {
+    /* storage is best-effort */
+  }
+}
 
 export function publishLaunchDegradations(degradations: LaunchDegradation[]): void {
   try {

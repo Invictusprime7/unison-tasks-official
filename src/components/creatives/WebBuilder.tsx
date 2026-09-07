@@ -348,6 +348,10 @@ const TemplateHtmlPreviewDialog = lazy(() =>
 );
 
 interface WebBuilderRouteState {
+  _compiledContract?: import("@/platform/core").CompiledContract;
+  _previewGateVerdict?: import("@/platform/core").GateVerdict;
+  _publishGateVerdict?: import("@/platform/core").GateVerdict;
+  _draftClassification?: import("@/platform/core/canonicalRuntimeContract").DraftClassification;
   vfsFiles?: Record<string, string>;
   generatedCode?: string;
   generatedTemplate?: any;
@@ -1648,6 +1652,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Derive compiled contract from navigation state for SystemHealthPanel & preview gating
   const compiledContract = useCompiledContract(
     effectiveRouteState ? {
+      _compiledContract: effectiveRouteState._compiledContract,
       systemsBuildContext: systemsBuildContextFromState ?? undefined,
       systemType: systemType ?? undefined,
       templateName: effectiveRouteState.templateName,
