@@ -368,36 +368,28 @@ describe('wizard pipeline ownership invariants', () => {
     expect(launcherSource).toContain('isRecoverableWizardCompletionTimeout(completionError)');
   });
 
-  it('requires generated-preview confirmation before provisioning the durable site root', () => {
+  it('provisions the durable site root directly after finalizing preview (no manual confirmation gate)', () => {
     const launcherSource = readFileSync(
       resolve(process.cwd(), 'src/components/onboarding/SystemLauncher.tsx'),
       'utf8',
     );
-    const reviewSummarySource = readFileSync(
-      resolve(process.cwd(), 'src/components/onboarding/LaunchReviewSummary.tsx'),
-      'utf8',
-    );
-    const confirmationIndex = launcherSource.indexOf('const confirmed = await requestLaunchConfirmation');
     const provisionIndex = launcherSource.indexOf('await provisionConfirmedLaunchSite({');
 
-    expect(confirmationIndex).toBeGreaterThan(-1);
-    expect(provisionIndex).toBeGreaterThan(confirmationIndex);
-    // Confirmation must stay compile-free. Sandpack starts after handoff in
-    // the Web Builder; mounting it here can freeze the launch decision modal.
-    // "Open Full Preview" hands off to the existing external-preview route
-    // instead of compiling Sandpack inline.
+    expect(provisionIndex).toBeGreaterThan(-1);
+    // The confirmation gate was removed: a nested modal over the wizard could be
+    // dismissed by an outside interaction and silently cancel the launch, which
+    // stranded the user in the wizard after a successful generation.
+    expect(launcherSource).not.toContain('requestLaunchConfirmation');
+    expect(launcherSource).not.toContain('LaunchReviewSummary');
+    // Launch must stay compile-free until the Web Builder mounts Sandpack.
     expect(launcherSource).not.toContain('<VFSPreview');
-    expect(reviewSummarySource).not.toContain('<VFSPreview');
-    expect(reviewSummarySource).toContain('createExternalPreviewSession');
-    expect(reviewSummarySource).toContain('Open Full Preview');
-    expect(reviewSummarySource).toContain('Live runtime compilation starts once in the Web Builder');
-    expect(launcherSource).toContain('No site data was created.');
     expect(launcherSource).not.toContain('const installPromise =');
-    expect(launcherSource.indexOf('setIsLaunching(false);', confirmationIndex - 250)).toBeGreaterThan(-1);
-    const resumedLaunchIndex = launcherSource.indexOf('setIsLaunching(true);', confirmationIndex);
-    expect(resumedLaunchIndex).toBeGreaterThan(confirmationIndex);
-    expect(resumedLaunchIndex).toBeLessThan(provisionIndex);
+    // The run stays in the launching state straight through commit + handoff.
+    const commitStageIndex = launcherSource.indexOf("run.markStage('commit', 'active')");
+    expect(commitStageIndex).toBeGreaterThan(-1);
+    expect(commitStageIndex).toBeLessThan(provisionIndex);
   });
+
 
   it('reaches the builder only after the reviewed artifact has a durable committed revision', () => {
     const launcherSource = readFileSync(

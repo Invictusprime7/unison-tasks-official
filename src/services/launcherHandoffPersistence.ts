@@ -130,8 +130,17 @@ function buildFallbackRouteState(routeState: Record<string, unknown>) {
     systemName: routeState.systemName,
     businessId: routeState.businessId,
     projectId: routeState.projectId,
+    // Canonical identity of the committed launch. Without these the Builder
+    // cannot run its revision-first hydration and silently falls back to
+    // "find a draft for this project", which can adopt a stale revision.
+    draftId: routeState.draftId,
+    revisionId: routeState.revisionId,
+    siteId: routeState.siteId,
     manifestId: routeState.manifestId,
     entryPoint: routeState.entryPoint,
+    preloadedIntents: routeState.preloadedIntents,
+    launchContract: routeState.launchContract,
+
     runtimeManifest: routeState.runtimeManifest,
     vfsFiles: compactFiles,
     siteBundleSnapshot: snapshot,
