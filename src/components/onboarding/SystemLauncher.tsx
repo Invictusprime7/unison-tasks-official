@@ -4670,45 +4670,8 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
           </div>
         </div>
 
-        {/* ─── Review & confirm (inline: a nested modal over this modal was
-             being auto-dismissed by the outside-interaction layer, silently
-             cancelling a finished generation) ─── */}
-        {launchPreviewConfirmation && (
-          <div className="px-3 pb-5 pt-4 sm:px-6 sm:pb-8 sm:pt-6">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold tracking-tight text-white sm:text-2xl">Review Generated Site</h2>
-              <p className="mt-1 text-xs text-white/40 sm:text-sm">
-                {launchPreviewConfirmation.siteName} will create its Unison workspace, live data contracts,
-                and initial revision only after you confirm.
-              </p>
-            </div>
-            <LaunchReviewSummary
-              siteName={launchPreviewConfirmation.siteName}
-              brandName={launchPreviewConfirmation.businessName}
-              fileCount={launchPreviewConfirmation.fileCount}
-              pagePaths={launchPreviewConfirmation.pagePaths}
-              files={launchPreviewConfirmation.files}
-            />
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button
-                variant="ghost"
-                className="border border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                onClick={() => resolveLaunchConfirmation(false)}
-              >
-                Keep Editing
-              </Button>
-              <Button
-                className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                onClick={() => resolveLaunchConfirmation(true)}
-              >
-                Confirm Site Launch
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* ─── Content ─── */}
-        {!launchPreviewConfirmation && (
+
         <AnimatePresence mode="wait">
 
 
