@@ -413,34 +413,16 @@ export async function runLaunchPipeline(
   // ── Stage: commit ─────────────────────────────────────────────────────────
   status("Saving your site workspace…");
   const commit = await run.stage("commit", async () => {
-    const confirmed: ConfirmedLaunchIds = await provisionConfirmedLaunchSite({
-      ids: plan.ids,
-      existingBusinessId: input.existingBusinessId || undefined,
-      businessName: brand,
-      industry: plan.industryProfile?.industry || plan.generationCategory,
-      siteName: `${brand} Site`,
-      siteSlug: `${brand}-${plan.ids.siteId.slice(0, 8)}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, ""),
-      systemType: input.systemId,
-      templateId: input.template.id,
-      themePresetId: input.theme.id,
-    });
-
-    try {
-      localStorage.setItem("unison:lastBusinessId", confirmed.businessId);
-    } catch {
-      /* browser storage is best-effort */
-    }
-
+    // Identity was registered in the plan stage; the commit writes the first
+    // revision of that already-real Unison site.
+    const confirmed: ConfirmedLaunchIds = plan.confirmed;
     const identity: BuilderIdentity = {
       userId: plan.user.id,
       businessId: confirmed.businessId,
       projectId: confirmed.projectId,
       draftId: confirmed.draftId,
       revisionId: "",
-      sessionId: newId("sess"),
+      sessionId: `web-builder:${confirmed.draftId}`,
     };
     const result = await commitMutation({
       source: "wizard-launch",
