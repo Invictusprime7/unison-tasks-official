@@ -2888,6 +2888,98 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   ]);
 
   /**
+   * Canonical entry for every file-authoring surface in the builder chrome
+   * (AI code + patch plans, element edits, template loads, generated pages).
+   *
+   * The builder never pushes authored files straight into working VFS: the
+   * patch goes through `commitMutation`, the accepted revision is what the
+   * preview adopts, and the working set is left untouched when the canonical
+   * pipeline refuses the edit. That is what keeps a builder edit a change to
+   * the Unison site rather than a change to the preview only.
+   */
+  const commitBuilderFiles = useCallback(async (
+    files: Record<string, string>,
+    options: {
+      source?: PatchSource;
+      summary?: string;
+      preferredPath?: string | null;
+      entryPoint?: string | null;
+      failureMessage?: string;
+    } = {},
+  ): Promise<Record<string, string> | null> => {
+    if (!files || Object.keys(files).length === 0) return null;
+
+    const beforeFiles = virtualFSRef.current.getSandpackFiles();
+    const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
+      ?? effectiveRouteState?.siteBundleSnapshot
+      ?? null;
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user || !businessId || !currentDraftId) {
+      toast.error('This workspace is not connected to a site yet', {
+        description: 'Launch or open a site before editing so changes can be saved.',
+      });
+      return null;
+    }
+
+    try {
+      const commit = await commitMutation({
+        source: options.source ?? 'ai-builder',
+        identity: {
+          userId: user.id,
+          businessId,
+          projectId: resolvedProjectId || currentDraftId,
+          draftId: currentDraftId,
+          revisionId: currentRevisionIdRef.current,
+          sessionId: `web-builder:${currentDraftId}`,
+        },
+        current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
+        patch: legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit'),
+        options: {
+          requirePreviewPass: false,
+          requireReadinessPass: false,
+          industry: snapshot?.industry,
+          themePresetId: snapshot?.meta?.themePresetId ?? undefined,
+          themeTokens: snapshot?.themeTokens,
+        },
+      });
+      if (commit.status !== 'committed') {
+        throw new CommitRejectedError('builder edit was rejected by the canonical pipeline', commit);
+      }
+      const imported = importBuilderFiles(commit.vfsFiles, {
+        replace: true,
+        preferredPath: options.preferredPath ?? activePagePath,
+        entryPoint: options.entryPoint ?? launchEntryPoint,
+        adoption: {
+          source: commit.source,
+          vfsHash: commit.vfsHash,
+          revisionId: commit.persistedRevisionId,
+        },
+      });
+      if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
+      return imported?.files ?? commit.vfsFiles;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[WebBuilder] canonical builder commit failed:', err);
+      toast.error(options.failureMessage ?? 'Could not save this change to your site', {
+        description: message.slice(0, 180),
+      });
+      return null;
+    }
+  }, [
+    businessId,
+    currentDraftId,
+    resolvedProjectId,
+    activePagePath,
+    launchEntryPoint,
+    effectiveRouteState,
+    buildCanonicalCommitCurrent,
+    importBuilderFiles,
+  ]);
+
+
+
+  /**
    * Canonical entry for setVariant / swap-section UI actions.
    * The snapshot commit is the source of truth; the customizer's local map is
    * only mirrored so the picker highlights the committed variant, and it is
