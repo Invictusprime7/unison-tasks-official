@@ -860,6 +860,26 @@ function* buildCanonicalLaunchArtifactSteps(
   mergedFiles[FORM_RUNTIME_PATH] = FORM_RUNTIME_MODULE;
   mergedFiles[PUBLISHED_ACTION_RUNTIME_PATH] = PUBLISHED_ACTION_RUNTIME_MODULE;
 
+  // Runtime companion modules must exist before convergence preflight. The
+  // hydration/action modules above import these canonical facades, so adding
+  // them only after preflight makes an otherwise complete launch look like it
+  // has unresolved imports and aborts the Wizard midway through finalization.
+  // They are rebuilt below with the finalized app context before sealing.
+  const preflightPublishedRuntime = buildPublishedRuntimeConfig(input);
+  mergedFiles[PUBLISHED_RUNTIME_MODULE_PATH] = buildPublishedRuntimeModule(
+    preflightPublishedRuntime,
+  );
+  const preflightRuntimeSnapshot = input.siteBundleSnapshot
+    ? { ...input.siteBundleSnapshot }
+    : undefined;
+  const preflightGeneratedRuntimeManifest = compileGeneratedSiteRuntimeManifest({
+    siteId: input.siteId,
+    snapshot: preflightRuntimeSnapshot,
+    enabledCapabilities: input.enabledCapabilities,
+  });
+  mergedFiles[GENERATED_SITE_RUNTIME_MANIFEST_MODULE_PATH] =
+    buildGeneratedSiteRuntimeManifestModule(preflightGeneratedRuntimeManifest);
+
   // ── Canonical convergence preflight ────────────────────────────────────
   // This is the shared launcher/builder authority. It runs against the exact
   // merged VFS that will be sealed, including companion modules and runtime
