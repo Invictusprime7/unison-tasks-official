@@ -4733,6 +4733,7 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
           </div>
         )}
 
+        {!launchPreviewConfirmation && (
         {/* ─── Content ─── */}
         <AnimatePresence mode="wait">
 
@@ -5395,47 +5396,10 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
             </motion.div>
           )}
         </AnimatePresence>
+        )}
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={Boolean(launchPreviewConfirmation)}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) resolveLaunchConfirmation(false);
-        }}
-      >
-        <AlertDialogContent className="max-w-6xl border-white/10 bg-[#07080F] text-white shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Review Generated Site</AlertDialogTitle>
-            <AlertDialogDescription className="text-white/55">
-              {launchPreviewConfirmation?.siteName} will create its Unison workspace, live data contracts, and initial revision only after confirmation.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {launchPreviewConfirmation && (
-            <LaunchReviewSummary
-              siteName={launchPreviewConfirmation.siteName}
-              brandName={launchPreviewConfirmation.businessName}
-              fileCount={launchPreviewConfirmation.fileCount}
-              pagePaths={launchPreviewConfirmation.pagePaths}
-              files={launchPreviewConfirmation.files}
-            />
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              onClick={() => resolveLaunchConfirmation(false)}
-            >
-              Keep Editing
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-              onClick={() => resolveLaunchConfirmation(true)}
-            >
-              Confirm Site Launch
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };
