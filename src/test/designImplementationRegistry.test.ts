@@ -33,7 +33,7 @@ describe('canonical design implementation registry', () => {
   });
 
   it('gives variant-less families a generic identity', () => {
-    const impl = getDesignImplementation('faq:generic');
+    const impl = getDesignImplementation('logo-cloud:generic');
     expect(impl?.hasVariants).toBe(false);
     expect(impl?.isDefault).toBe(true);
   });
@@ -41,7 +41,8 @@ describe('canonical design implementation registry', () => {
   it('resolves identities only through registered entries', () => {
     expect(resolveImplementationId('hero', 'hero:split-image')).toBe('hero:split-image');
     expect(resolveImplementationId('hero', 'hero:not-real')).toBe('hero:centered');
-    expect(resolveImplementationId('faq', undefined)).toBe('faq:generic');
+    expect(resolveImplementationId('logo-cloud', undefined)).toBe('logo-cloud:generic');
+    expect(resolveImplementationId('faq', undefined)).toBe('faq:accordion');
     expect(isRegisteredImplementation('hero:not-real')).toBe(false);
   });
 

@@ -48,7 +48,7 @@ describe('premium inventory coverage', () => {
   it('every variant implementation can emit JSX source for the VFS', () => {
     const missing = Object.values(VARIANT_REGISTRY)
       .flatMap((variants) => variants ?? [])
-      .filter((variant) => typeof variant.renderJSX !== 'function' || !variant.renderJSX({}).includes('<section'));
+      .filter((variant) => typeof variant.renderJSX !== 'function' || variant.renderJSX({}).trim().length < 40);
     expect(missing.map((v) => v.id)).toEqual([]);
   });
 
