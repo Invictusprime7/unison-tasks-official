@@ -33,7 +33,6 @@ import { StyleTokenCard } from "./StyleTokenCard";
 
 import { TemplateLivePreview } from "./TemplateLivePreview";
 import { WizardTopAction } from "./WizardTopAction";
-import { LaunchReviewSummary } from "./LaunchReviewSummary";
 import { BusinessSelector } from "@/components/business/BusinessSelector";
 
 import { themePresetToThemeTokens } from "./themePresetToTokens";
@@ -183,16 +182,6 @@ interface SystemLauncherProps {
    * owners don't retype the identity they just entered post-signup.
    */
   prefill?: SystemLauncherPrefill | null;
-}
-
-interface LaunchPreviewConfirmation {
-  businessName: string;
-  siteName: string;
-  fileCount: number;
-  pagePaths: string[];
-  businessId: string;
-  siteId: string;
-  files: Record<string, string>;
 }
 
 type SanitizedGeneratedFiles = ReturnType<typeof sanitizeGeneratedFiles>;
@@ -1514,8 +1503,6 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
   const [launchStatus, setLaunchStatus] = useState("");
   // Inline, recoverable launch failure. The wizard never toasts errors.
   const [launchError, setLaunchError] = useState<string | null>(null);
-  const [launchPreviewConfirmation, setLaunchPreviewConfirmation] = useState<LaunchPreviewConfirmation | null>(null);
-  const launchConfirmationResolverRef = useRef<((confirmed: boolean) => void) | null>(null);
   // Business Profile selected in the wizard header. When set, the project
   // is stamped into this business; when null we fall back to
   // install-system provisioning (creates a fresh business).
@@ -1549,20 +1536,6 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
     linkedin: "",
     youtube: "",
   });
-
-  const requestLaunchConfirmation = useCallback((preview: LaunchPreviewConfirmation) => (
-    new Promise<boolean>((resolve) => {
-      launchConfirmationResolverRef.current = resolve;
-      setLaunchPreviewConfirmation(preview);
-    })
-  ), []);
-
-  const resolveLaunchConfirmation = useCallback((confirmed: boolean) => {
-    const resolve = launchConfirmationResolverRef.current;
-    launchConfirmationResolverRef.current = null;
-    setLaunchPreviewConfirmation(null);
-    resolve?.(confirmed);
-  }, []);
 
   const currentStepIdx = STEP_META.findIndex((s) => s.key === step);
 
@@ -1693,7 +1666,7 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
   };
 
   const handleLaunch = async () => {
-    if (isLaunching || launchPreviewConfirmation) return;
+    if (isLaunching) return;
     if (!selectedSystem) return;
     const system = businessSystems.find((s) => s.id === selectedSystem);
     if (!system) return;
@@ -4306,27 +4279,9 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
         );
       }
 
-      setLaunchStatus('Review the generated site before creating its live data workspace.');
-      // Generation is complete. The confirmation dialog is an intentional
-      // user decision, not an active loading state.
-      setIsLaunching(false);
-      setLaunchStatus('');
-      const confirmed = await requestLaunchConfirmation({
-        businessName: brand,
-        siteName: `${brand} Site`,
-        fileCount: Object.keys(wiredVfsFiles).length,
-        pagePaths: Object.keys(wiredVfsFiles)
-          .filter((path) => /^\/?src\/pages\/.+\.tsx$/i.test(path))
-          .sort(),
-        businessId: provisionedBusinessId,
-        siteId: launchIds.siteId,
-        files: wiredVfsFiles,
-      });
-      if (!confirmed) {
-        toast.info('Launch cancelled. No site data was created.');
-        return;
-      }
-
+      // Finalizing preview is the last generation step. There is no manual
+      // confirmation gate: the run continues straight into workspace creation
+      // and the WebBuilder handoff so the generated site renders in preview.
       setIsLaunching(true);
       setLaunchStatus('Creating the site workspace and live data contracts…');
       run.markStage('commit', 'active');
@@ -4588,7 +4543,6 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
       <Dialog
         open={open}
         onOpenChange={(isOpen) => {
-          if (!isOpen) resolveLaunchConfirmation(false);
           onOpenChange(isOpen);
           if (!isOpen) resetState();
         }}
@@ -4688,45 +4642,8 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
           </div>
         </div>
 
-        {/* ─── Review & confirm (inline: a nested modal over this modal was
-             being auto-dismissed by the outside-interaction layer, silently
-             cancelling a finished generation) ─── */}
-        {launchPreviewConfirmation && (
-          <div className="px-3 pb-5 pt-4 sm:px-6 sm:pb-8 sm:pt-6">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold tracking-tight text-white sm:text-2xl">Review Generated Site</h2>
-              <p className="mt-1 text-xs text-white/40 sm:text-sm">
-                {launchPreviewConfirmation.siteName} will create its Unison workspace, live data contracts,
-                and initial revision only after you confirm.
-              </p>
-            </div>
-            <LaunchReviewSummary
-              siteName={launchPreviewConfirmation.siteName}
-              brandName={launchPreviewConfirmation.businessName}
-              fileCount={launchPreviewConfirmation.fileCount}
-              pagePaths={launchPreviewConfirmation.pagePaths}
-              files={launchPreviewConfirmation.files}
-            />
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button
-                variant="ghost"
-                className="border border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                onClick={() => resolveLaunchConfirmation(false)}
-              >
-                Keep Editing
-              </Button>
-              <Button
-                className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                onClick={() => resolveLaunchConfirmation(true)}
-              >
-                Confirm Site Launch
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* ─── Content ─── */}
-        {!launchPreviewConfirmation && (
+
         <AnimatePresence mode="wait">
 
 
@@ -5389,7 +5306,7 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
             </motion.div>
           )}
         </AnimatePresence>
-        )}
+
         </DialogContent>
       </Dialog>
 
