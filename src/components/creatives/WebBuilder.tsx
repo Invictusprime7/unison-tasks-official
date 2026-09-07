@@ -7468,10 +7468,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               }}
               onViewEdits={() => { setViewMode('split'); setAiPanelOpen(false); }}
               onCodeGenerated={async (code) => {
-                const imported = importBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
-                  preferredPath: launchEntryPoint,
-                  entryPoint: launchEntryPoint,
+                const committed = await commitBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
+                  source: 'ai-builder',
+                  summary: 'AI generated code',
                 });
+                if (!committed) return;
+                const imported = { files: committed };
                 const saved = await saveDraft({
                   force: true,
                   reason: 'ai_edit',
@@ -8035,11 +8037,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       meta: { origin: 'floating-toolbar-ai', actionType: 'element-edit' },
                     });
                   } catch (err) { console.warn('[onAIEditComplete] snapshot failed:', err); }
-                  const imported = importBuilderFiles(templateToVFSFiles(primary.code, currentTemplateName || 'Element Edit'), {
-                    preferredPath: activePagePath,
-                    entryPoint: activePagePath,
+                  const committed = await commitBuilderFiles(templateToVFSFiles(primary.code, currentTemplateName || 'Element Edit'), {
+                    source: 'preview-toolbar',
+                    summary: `Element edit · ${selector.slice(0, 40)}`,
                   });
-                  if (!imported) return false;
+                  if (!committed) return false;
+                  const imported = { files: committed };
                   const saved = await saveDraft({
                     force: true,
                     reason: 'ai_edit',
