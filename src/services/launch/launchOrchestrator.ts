@@ -263,6 +263,7 @@ export async function runLaunchPipeline(
     return {
       user,
       ids,
+      confirmed,
       generationCategory,
       industryProfile,
       canonicalIntents,
