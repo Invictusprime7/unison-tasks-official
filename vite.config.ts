@@ -72,6 +72,9 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
   },
+  worker: {
+    format: 'es',
+  },
   build: {
     // Increase chunk size warning limit to 1000kb for large AI/Canvas libraries
     chunkSizeWarningLimit: 1000,

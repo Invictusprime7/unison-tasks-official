@@ -4094,6 +4094,8 @@ export function prepareSandpackFiles(
     `${hashFilesRecord(files)}::${options?.entryPoint || ''}::${options?.themePresetId || ''}::${effectiveAesthetic || ''}`;
   const cachedPrepared = preparedFilesCache.get(preparedCacheKey);
   if (cachedPrepared) return { ...cachedPrepared };
+  const inputSnapshotResolution = resolveSnapshot(files, null);
+  const isWizardRuntime = inputSnapshotResolution.isWizardDraft;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // GUARD: Unwrap JSON-wrapped file maps that leaked through as raw content.
@@ -4171,7 +4173,7 @@ export function prepareSandpackFiles(
     path.startsWith('/src/unison/ui/') || /@\/unison\/ui(?:\/[^'"\s]+)?/.test(content)
   ));
 
-  if (finalFiles['/.unison/ui-manifest.json'] || referencesGeneratedUiFoundation) {
+  if (!isWizardRuntime && (finalFiles['/.unison/ui-manifest.json'] || referencesGeneratedUiFoundation)) {
     syncGeneratedUiFoundationFiles(finalFiles, options?.themePresetId);
   }
 
@@ -4219,7 +4221,7 @@ export function prepareSandpackFiles(
     let processedContent = content;
 
     // Repair legacy/generated payloads that serialized THEME as undefined/null.
-    if (/\.(tsx?|jsx?)$/.test(normalizedPath) && /const\s+THEME\s*=\s*(undefined|null);/.test(processedContent)) {
+    if (!isWizardRuntime && /\.(tsx?|jsx?)$/.test(normalizedPath) && /const\s+THEME\s*=\s*(undefined|null);/.test(processedContent)) {
       processedContent = processedContent.replace(
         /const\s+THEME\s*=\s*(undefined|null);/,
         `const THEME = ${LAUNCHER_THEME_JSON};`
@@ -4322,27 +4324,10 @@ export function prepareSandpackFiles(
       if (cssResolution.isWizardDraft) {
         if (isLiveEditedVfsPath('/src/index.css')) {
           console.info('[prepareSandpackFiles] Preserving live-edited wizard stylesheet without legacy semantic tokens.');
-        // RESILIENCY: if the caller knows the themePresetId (Lane B recompile,
-        // AI patch flow, cloud rehydrate), re-emit the themed stylesheet in
-        // place of the untokenized CSS instead of hard-failing. Only throw
-        // when we truly cannot recover the wizard's preset.
-        } else if (resolvedPresetId) {
-          try {
-            sandpackFiles['/index.css'] = buildBaseCssForPreset(resolvedPresetId);
-            console.warn(
-              `[prepareSandpackFiles] Wizard draft /src/index.css lacked --primary tokens; rebuilt from themePresetId="${resolvedPresetId}".`,
-            );
-          } catch (rebuildErr) {
-            throw new PreviewPipelineError(
-              'prep',
-              `Wizard draft /src/index.css is missing semantic tokens and rebuild from themePresetId "${resolvedPresetId}" failed: ${(rebuildErr as Error).message}`,
-              { recoverableByRelaunch: true },
-            );
-          }
         } else {
           throw new PreviewPipelineError(
             'prep',
-            'Wizard draft /src/index.css is missing semantic tokens (--primary). Re-run the System Launcher.',
+            'Wizard draft /src/index.css is missing semantic tokens (--primary); CSS recovery is not allowed after Stage 4b.',
             { recoverableByRelaunch: true },
           );
         }
@@ -4356,7 +4341,7 @@ export function prepareSandpackFiles(
   }
 
   // Enforce contrast on final CSS
-  if (sandpackFiles['/index.css']) {
+  if (sandpackFiles['/index.css'] && !isWizardRuntime) {
     sandpackFiles['/index.css'] = enforceContrastInCSS(sandpackFiles['/index.css']);
   }
 

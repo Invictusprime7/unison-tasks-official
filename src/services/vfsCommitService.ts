@@ -315,6 +315,13 @@ export async function commitMutation(
     input.source === 'wizard-launch'
       ? mergeWizardLaunchFiles(workingFiles, (snapshot as SiteBundleSnapshot | null) ?? null)
       : ((snapshot as { vfsFiles?: Record<string, string> } | null)?.vfsFiles ?? workingFiles);
+  if (reviewedArtifact) {
+    assertReviewedWizardPageBodiesUnchanged(
+      reviewedArtifact.siteBundleSnapshot,
+      files,
+      'wizard commit input',
+    );
+  }
   let snapshotForPersistence = input.source === 'wizard-launch'
     ? mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files)
     : snapshot;
@@ -341,7 +348,9 @@ export async function commitMutation(
     // Commit may verify it, but must never become a second source-writing stage.
     mode: input.source === 'wizard-launch' ? 'acceptance' : 'repair',
   });
-  files = preflight.files;
+  files = reviewedArtifact
+    ? preserveWizardMetadataFiles(preflight.files, workingFiles)
+    : preflight.files;
   if (input.source === 'wizard-launch') {
     snapshotForPersistence = mergeWizardLaunchSnapshot(
       (snapshotForPersistence as SiteBundleSnapshot | null) ?? null,
@@ -460,7 +469,9 @@ export async function commitMutation(
         brand: input.options?.businessName,
           mode: input.source === 'wizard-launch' ? 'acceptance' : 'repair',
       });
-      files = preflight.files;
+      files = reviewedArtifact
+        ? preserveWizardMetadataFiles(preflight.files, workingFiles)
+        : preflight.files;
     } catch (err) {
       log('repair', 'error', 'auto-repair threw', String(err));
     }
@@ -600,6 +611,13 @@ export async function commitMutation(
     publishBlockers.length === 0 &&
     (!publishVerdict || publishVerdict.ok);
 
+  if (reviewedArtifact) {
+    assertReviewedWizardPageBodiesUnchanged(
+      reviewedArtifact.siteBundleSnapshot,
+      files,
+      'wizard durable revision',
+    );
+  }
   const vfsHash = await hashVfsFiles(files);
 
   // 7. Persist revision + return -------------------------------------------
@@ -731,14 +749,45 @@ function mergeWizardLaunchFiles(
     ...launcherFiles,
   };
 
+  // The launcher patch also carries metadata that is intentionally absent
+  // from the runtime snapshot. It may therefore be broader than the reviewed
+  // artifact, but it must never replace any source path already sealed as
+  // Lane A/Stage 4b authority or as a selected page body.
+  const reviewedPaths = new Set<string>([
+    ...(snapshot?.meta?.seal?.laneAProtectedFiles ?? []),
+    ...Object.values(snapshot?.pageRegistry?.pages ?? {})
+      .map((page) => page.filePath)
+      .filter((path): path is string => Boolean(path)),
+    snapshot?.routerFile?.path || '/src/App.tsx',
+  ]);
+  for (const path of reviewedPaths) {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const reviewedSource = canonicalFiles[normalizedPath] ?? canonicalFiles[path];
+    if (typeof reviewedSource !== 'string') continue;
+    merged[normalizedPath] = reviewedSource;
+    if (path !== normalizedPath) delete merged[path];
+  }
+
   const routerPath = snapshot?.routerFile?.path || '/src/App.tsx';
-  const routerContent = launcherFiles[routerPath] || launcherFiles['/src/App.tsx'] || snapshot?.routerFile?.content;
+  const routerContent = canonicalFiles[routerPath] || snapshot?.routerFile?.content;
   if (routerContent) {
     merged[routerPath] = routerContent;
     merged['/src/App.tsx'] = routerContent;
   }
 
   return merged;
+}
+
+function preserveWizardMetadataFiles(
+  files: Record<string, string>,
+  launcherFiles: Record<string, string>,
+): Record<string, string> {
+  return {
+    ...Object.fromEntries(
+      Object.entries(launcherFiles).filter(([path]) => path.startsWith('/.unison/')),
+    ),
+    ...files,
+  };
 }
 
 function mergeWizardLaunchSnapshot(
@@ -758,6 +807,23 @@ function mergeWizardLaunchSnapshot(
       content: runtimeFiles[routerPath] || runtimeFiles['/src/App.tsx'] || snapshot.routerFile?.content || '',
     },
   };
+}
+
+function assertReviewedWizardPageBodiesUnchanged(
+  snapshot: SiteBundleSnapshot,
+  files: Record<string, string>,
+  boundary: string,
+): void {
+  const changedPages = Object.values(snapshot.pageRegistry?.pages || {})
+    .map((page) => page.filePath)
+    .filter((path): path is string => Boolean(path))
+    .map((path) => (path.startsWith('/') ? path : `/${path}`))
+    .filter((path) => snapshot.vfsFiles[path] !== files[path]);
+  if (changedPages.length > 0) {
+    throw new Error(
+      `[VFSCommitService] ${boundary} amended sealed Wizard page bodies: ${changedPages.join(', ')}.`,
+    );
+  }
 }
 
 function stampBusinessSystemState(

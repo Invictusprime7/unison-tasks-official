@@ -12,7 +12,33 @@ import { buildThemedIndexCss } from "@/components/onboarding/themePresetToIndexC
 import { buildGeneratedUiFoundation } from '@/platform/core/generatedUiFoundation';
 
 describe("launchStateToSandpackFiles", () => {
-  it('blocks a wizard preview when Sandpack disconnects a registered route from its router', () => {
+  it('does not reintroduce raw launcher paths after canonical normalization', () => {
+    const launchState = createLaunchState({
+      systemType: 'store',
+      systemName: 'Store',
+      businessName: 'Vela',
+      templateName: 'Storefront',
+      templateCategory: 'store',
+      vfsFiles: {
+        '/App.tsx': "import Home from './pages/Home'; export default function App() { return <Home />; }",
+        '/pages/Home.tsx': 'export default function Home() { return <main>Normalized</main>; }',
+        '/index.css': ':root { --primary: 221 83% 53%; }',
+      },
+      preloadedIntents: [],
+    });
+
+    const previewFiles = launchStateToSandpackFiles({
+      launchState,
+      vfsFiles: launchState.vfsFiles,
+    });
+
+    expect(previewFiles['/App.tsx']).toContain("from './pages/Home'");
+    expect(previewFiles['/pages/Home.tsx']).toContain('Normalized');
+    expect(previewFiles['/src/App.tsx']).toBeUndefined();
+    expect(previewFiles['/src/pages/Home.tsx']).toBeUndefined();
+  });
+
+  it('rejects a sealed wizard projection whose router disconnects a registered page', () => {
     const snapshot = {
       snapshotId: 'snap_route_reachability',
       businessName: 'Vela',
@@ -34,9 +60,12 @@ describe("launchStateToSandpackFiles", () => {
         source: 'wizard',
         themePresetId: 'modern',
         themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
+        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_route_reachability', fileCount: 4 },
       },
     };
 
+    // Generation decides page quality, while preview must still prove that its
+    // flattened router executes every page from the sealed registry.
     expect(() => buildPreviewArtifacts({
       sourceFiles: {
         '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot),
@@ -59,6 +88,7 @@ describe("launchStateToSandpackFiles", () => {
         source: 'wizard',
         themePresetId: 'modern',
         themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
+        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_file_coverage', fileCount: 5 },
       },
     };
 
@@ -85,6 +115,7 @@ describe("launchStateToSandpackFiles", () => {
         source: 'wizard',
         themePresetId: 'modern',
         themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
+        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_file_collision', fileCount: 4 },
       },
     };
 
@@ -150,6 +181,7 @@ describe("launchStateToSandpackFiles", () => {
             source: 'wizard',
             themePresetId: 'modern',
             themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
+            seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_runtime_foundation', fileCount: 2 },
           },
         }),
       },
@@ -184,6 +216,7 @@ describe("launchStateToSandpackFiles", () => {
             source: 'wizard',
             themePresetId: 'modern',
             themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
+            seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_projection_runtime', fileCount: 2 },
           },
         }),
       },
@@ -225,6 +258,69 @@ describe("launchStateToSandpackFiles", () => {
     expect(result.sandpackFiles['/unison/ui/radix/slot-safe.tsx']).toContain("from '../../../radix-shim'");
     expect(result.dependencies['framer-motion']).toBeUndefined();
     expect(result.dependencies['lucide-react']).toBeUndefined();
+  });
+
+  it('does not regenerate Stage 4b foundation or CSS while preparing a sealed Wizard preview', () => {
+    const css = ':root { --primary: 221 83% 53%; --ut-motion-duration: 475ms; } /* SEALED_STAGE_4B_CSS */';
+    const motion = [
+      '/* SEALED_STAGE_4B_MOTION */',
+      'export const Reveal = ({ children }: any) => children;',
+    ].join('\n');
+    const snapshot = {
+      snapshotId: 'snap_exact_stage4b_preview',
+      pageRegistry: { pages: {} },
+      vfsFiles: {
+        '/src/App.tsx': "import { Reveal } from './unison/ui/motion'; export default function App(){ return <Reveal><main data-ut-variant='hero:full-bleed'>Exact</main></Reveal>; }",
+        '/src/index.css': css,
+        '/src/unison/ui/motion.tsx': motion,
+        '/.unison/ui-manifest.json': JSON.stringify({
+          version: 'legacy-looking-but-sealed',
+          importRoot: '@/unison/ui',
+          primitiveImports: [],
+        }),
+      },
+      meta: {
+        source: 'wizard',
+        themePresetId: 'modern',
+        themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
+        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_exact_stage4b_preview', fileCount: 4 },
+      },
+    };
+
+    const result = buildPreviewArtifacts({
+      sourceFiles: {
+        ...snapshot.vfsFiles,
+        '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot),
+      },
+    });
+
+    expect(result.sandpackFiles['/index.css']).toBe(css);
+    expect(result.sandpackFiles['/unison/ui/motion.tsx']).toContain('SEALED_STAGE_4B_MOTION');
+    expect(result.sandpackFiles['/App.tsx']).toContain("data-ut-variant='hero:full-bleed'");
+  });
+
+  it('rejects untokenized sealed Wizard CSS instead of rebuilding it from themePresetId', () => {
+    const snapshot = {
+      snapshotId: 'snap_no_css_recovery',
+      pageRegistry: { pages: {} },
+      vfsFiles: {
+        '/src/App.tsx': 'export default function App(){ return <main>Exact</main>; }',
+        '/src/index.css': 'body { color: #111; background: #fff; }',
+      },
+      meta: {
+        source: 'wizard',
+        themePresetId: 'modern',
+        themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
+        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_no_css_recovery', fileCount: 2 },
+      },
+    };
+
+    expect(() => buildPreviewArtifacts({
+      sourceFiles: {
+        ...snapshot.vfsFiles,
+        '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot),
+      },
+    })).toThrow(/CSS recovery is not allowed after Stage 4b/);
   });
 
   it('recovers a legacy manifestless animation facade through the local Sandpack shim', () => {

@@ -6,8 +6,7 @@
  *   ┌─ Toolbar (breadcrumbs, undo/redo, graph info, actions) ─────────┐
  *   │ ResizablePanelGroup (horizontal)                                 │
  *   │ ├── Panel 1: File Explorer (collapsible)                         │
- *   │ ├── Panel 2: Tabs + Monaco Editor                                │
- *   │ └── Panel 3: Live Preview (togglable)                            │
+ *   │ └── Panel 2: Tabs + Monaco Editor                                │
  *   ├─ Build Output Panel (collapsible terminal)                       │
  *   └─ Status Bar (file info, cursor, lang, undo stack, graph) ───────┘
  */
@@ -27,10 +26,10 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import {
-  Layout, Plus, Eye, EyeOff, PanelRightClose, PanelRightOpen,
+  Layout, Plus, Eye, PanelRightClose, PanelRightOpen,
   FileCode, Loader2, Play, ChevronRight, Folder, FolderOpen,
   PanelLeftClose, PanelLeftOpen, Copy, Download, Terminal,
-  Sparkles, Save, Monitor, Tablet, Smartphone, Maximize2,
+  Sparkles, Save, Maximize2,
   GitBranch, Circle, Braces, Hash, Type, Code2,
   Undo2, Redo2, Camera, Network, AlertTriangle,
 } from 'lucide-react';
@@ -41,7 +40,6 @@ import { VFSTerminal } from './VFSTerminal';
 import { vfsEventBus } from '@/services/vfsEventBus';
 import { vfsSnapshotManager, type DiffSummary } from '@/services/vfsSnapshotManager';
 import { analyzeImportGraph, getAffectedFiles, type AffectedFiles } from '@/services/importGraphAnalyzer';
-import { VFSPreview } from '@/components/VFSPreview';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 
 // ---------------------------------------------------------------------------
@@ -247,7 +245,6 @@ export interface VFSCodeViewProps {
   getOpenFiles: () => VirtualFile[];
   updateFileContent: (id: string, content: string) => void;
   importFiles: (files: Record<string, string>) => void;
-  replaceFiles: (files: Record<string, string>) => void;
   loadDefaultTemplate: () => void;
   getSandpackFiles: () => Record<string, string>;
 
@@ -294,7 +291,6 @@ export function VFSCodeView({
   getOpenFiles,
   updateFileContent,
   importFiles,
-  replaceFiles,
   loadDefaultTemplate,
   getSandpackFiles,
   modifiedFiles,
@@ -312,9 +308,7 @@ export function VFSCodeView({
   onSave,
   onSwitchToCanvas,
 }: VFSCodeViewProps) {
-  const [showPreview, setShowPreview] = useState(false);
   const [showExplorer, setShowExplorer] = useState(true);
-  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [terminalCollapsed, setTerminalCollapsed] = useState(true);
 
   // Derive active file
@@ -629,57 +623,6 @@ export function VFSCodeView({
 
             <div className="h-4 w-px bg-white/[0.06] mx-0.5" />
 
-            {/* Preview toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowPreview((v) => !v)}
-              className={cn(
-                'h-7 px-2.5 text-[11px] font-medium rounded-md gap-1.5 transition-all duration-200',
-                showPreview
-                  ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/20'
-                  : 'text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
-              )}
-            >
-              {showPreview ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              Preview
-            </Button>
-
-            {/* Preview device selector (only when preview is visible) */}
-            <AnimatePresence>
-              {showPreview && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="flex items-center gap-0.5 overflow-hidden"
-                >
-                  {([
-                    { id: 'desktop' as const, icon: Monitor },
-                    { id: 'tablet' as const, icon: Tablet },
-                    { id: 'mobile' as const, icon: Smartphone },
-                  ] as const).map(({ id, icon: Icon }) => (
-                    <Button
-                      key={id}
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setPreviewDevice(id)}
-                      className={cn(
-                        'h-6 w-6 rounded transition-all',
-                        previewDevice === id
-                          ? 'text-fuchsia-400 bg-fuchsia-500/15'
-                          : 'text-white/25 hover:text-white/50 hover:bg-white/[0.04]',
-                      )}
-                    >
-                      <Icon className="w-3 h-3" />
-                    </Button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="h-4 w-px bg-white/[0.06] mx-0.5" />
-
             {/* Canvas switch */}
             {onSwitchToCanvas && (
               <Button
@@ -728,7 +671,7 @@ export function VFSCodeView({
             )}
 
             {/* Editor Panel */}
-            <ResizablePanel defaultSize={showPreview ? (showExplorer ? 50 : 65) : (showExplorer ? 80 : 100)}>
+            <ResizablePanel defaultSize={showExplorer ? 80 : 100}>
               <div className="h-full flex flex-col bg-[#0d0d18]">
                 {/* Editor Tabs */}
                 <ModernEditorTabs
@@ -773,24 +716,6 @@ export function VFSCodeView({
               </div>
             </ResizablePanel>
 
-            {/* Preview Panel */}
-            {showPreview && (
-              <>
-                <ResizableHandle withHandle className="bg-white/[0.03] hover:bg-fuchsia-500/20 transition-colors data-[resize-handle-active]:bg-fuchsia-500/30" />
-                <ResizablePanel defaultSize={showExplorer ? 30 : 35} minSize={20} maxSize={55}>
-                  <VFSPreview
-                    nodes={nodes}
-                    onImportFiles={importFiles}
-                    onSyncFiles={replaceFiles}
-                    activeFile={activeFile?.path}
-                    className="h-full"
-                    showToolbar={false}
-                    showBackendIndicator={false}
-                    device={previewDevice}
-                  />
-                </ResizablePanel>
-              </>
-            )}
         </ResizablePanelGroup>
         </div>
 

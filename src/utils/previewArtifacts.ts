@@ -191,8 +191,22 @@ function finishPreviewArtifacts(
   }
 
   assertNoMinimalFallbackPreview(sandpackFiles, finalPreviewResolution, 'Preview artifact integrity gate');
-  assertSnapshotPreviewFileCoverage(sourceFiles, sandpackFiles, finalPreviewResolution, 'Preview artifact coverage gate');
-  assertSnapshotPreviewRouteReachability(sandpackFiles, finalPreviewResolution, 'Preview artifact route gate');
+  // Generation owns page acceptance; preview owns faithful projection. These
+  // checks do not repair or re-author the sealed bundle. They prove Sandpack's
+  // flattened overlay retained every runtime file and that /App.tsx still
+  // imports every registered page, so a stale/minimal router cannot win after
+  // the canonical commit.
+  assertSnapshotPreviewFileCoverage(
+    sourceFiles,
+    sandpackFiles,
+    finalPreviewResolution,
+    'Preview artifact coverage gate',
+  );
+  assertSnapshotPreviewRouteReachability(
+    sandpackFiles,
+    finalPreviewResolution,
+    'Preview route reachability gate',
+  );
 
   // Resolve dependencies from Sandpack's actual entry graph. Snapshot-owned
   // VFS facades may expose many optional libraries, but an unreferenced

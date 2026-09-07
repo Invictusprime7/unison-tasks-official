@@ -110,6 +110,13 @@ export function resolveSnapshot(
     hasWizardSeed ||
     hasExplicitWizardMetadata),
   );
+  if (snapshot && isWizardDraft && !isSealedSnapshot(snapshot)) {
+    throw new PreviewPipelineError(
+      'vfs',
+      'Wizard preview hydration requires a committed sealed SiteBundleSnapshot.',
+      { recoverableByRelaunch: true },
+    );
+  }
 
 
   const snapshotThemePresetId = snapshot
@@ -452,7 +459,16 @@ export function projectSnapshotVfsFiles(
   const snapshotFiles = (resolution.snapshot as { vfsFiles?: Record<string, string> }).vfsFiles || {};
   if (Object.keys(snapshotFiles).length === 0) return files;
 
-  const next = { ...files };
+  // A sealed Wizard snapshot is a complete runtime projection, not an overlay.
+  // Retain only non-executable Unison metadata from the incoming VFS, then add
+  // the exact snapshot runtime below. Starting from `files` kept stale root
+  // routers/pages/styles alive beside `/src/*`; Sandpack's flattening could then
+  // make those legacy files compete with the canonical commit.
+  const next: Record<string, string> = Object.fromEntries(
+    Object.entries(files)
+      .map(([rawPath, content]) => [normalizeVfsPath(rawPath), content] as const)
+      .filter(([path]) => path.startsWith('/.unison/')),
+  );
   const preserved: string[] = [];
 
   for (const [rawPath, content] of Object.entries(snapshotFiles)) {
@@ -468,7 +484,22 @@ export function projectSnapshotVfsFiles(
     }
     if (isLiveEdited) liveEditedPaths.delete(path);
 
-    next[rawPath] = content;
+    next[path] = content;
+  }
+
+  // Live builder writes are the sole exception to snapshot ownership while a
+  // newer durable snapshot is still being committed. This also preserves a
+  // newly created file which is not present in the previous snapshot yet.
+  for (const [rawPath, content] of Object.entries(files)) {
+    const path = normalizeVfsPath(rawPath);
+    if (!liveEditedPaths.has(path) || path.startsWith('/.unison/')) continue;
+    const snapshotContent = snapshotFiles[path] ?? snapshotFiles[rawPath];
+    if (snapshotContent === content) {
+      liveEditedPaths.delete(path);
+      continue;
+    }
+    next[path] = content;
+    if (!preserved.includes(path)) preserved.push(path);
   }
 
   if (preserved.length > 0) {

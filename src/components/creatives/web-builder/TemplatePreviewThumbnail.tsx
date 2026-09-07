@@ -1,7 +1,7 @@
 /**
  * TemplatePreviewThumbnail
  * Renders a lightweight painted thumbnail without starting another runtime.
- * The Web Builder's VFSPreview is the only executable preview surface.
+ * The Web Builder's VFSPreview is the only executable authoring preview surface.
  */
 
 import React, { useMemo } from 'react';

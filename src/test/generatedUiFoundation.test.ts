@@ -22,6 +22,11 @@ describe('generated UI foundation', () => {
     needsBooking: true,
   });
 
+  it('does not impose baseline hover motion on free-styled surfaces', () => {
+    expect(foundation.files['/src/unison/ui/surface.tsx']).not.toContain('hover:translate-y-[var(--ut-hover-lift)]');
+    expect(foundation.files['/src/unison/ui/surface.tsx']).not.toContain('transition-all duration-[var(--ut-motion-duration)]');
+  });
+
   it('emits portable, token-driven VFS primitives and a manifest', () => {
     expect(foundation.files['/.unison/ui-manifest.json']).toContain('@/unison/ui/button');
     expect(foundation.files['/src/unison/ui/button.tsx']).toContain('bg-primary');
@@ -52,6 +57,12 @@ describe('generated UI foundation', () => {
     expect(foundation.files['/src/unison/ui/index.ts']).toContain("FormField, FormFields, FormGrid, FormHint, FormError, Form, FormItem, FormControl, FormDescription, FormMessage } from './form-fields';");
     expect(foundation.files['/src/unison/ui/index.ts']).toContain("export { Slot, Slottable } from './radix/slot';");
     expect(foundation.files['/src/unison/ui/index.ts']).toContain("export { cn } from './cn';");
+    expect(foundation.files['/src/unison/ui/index.ts']).toContain("export { Image, ImageLightbox, type ImageProps } from './media';");
+    expect(foundation.files['/src/unison/ui/media.tsx']).toContain('export const Image = React.forwardRef');
+    expect(foundation.files['/src/unison/ui/media.tsx']).toContain("loading={priority ? 'eager' : loading}");
+    expect(foundation.files['/src/unison/ui/media.tsx']).toContain("fetchPriority={priority ? 'high' : undefined}");
+    expect(foundation.files['/src/unison/ui/media.tsx']).not.toContain('<img fill=');
+    expect(foundation.files['/src/unison/ui/media.tsx']).not.toContain('<img priority=');
     // Animation aliases must stay layout-transparent like motion.tsx Stagger.
     expect(foundation.files['/src/unison/ui/animation.ts']).toContain('if (!className) return React.createElement(React.Fragment, null, children);');
     expect(foundation.files['/src/unison/ui/icons.ts']).toContain("export * from 'lucide-react';");

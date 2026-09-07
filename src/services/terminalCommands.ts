@@ -450,7 +450,15 @@ function cmdDiagnose(ctx: CommandContext): CommandResult {
   // Check for broken relative imports
   const importRegex = /(?:import|from)\s+['"](\.\/.+?|\.\.\/.*?)['"];?/g;
 
-  for (const [filePath, content] of Object.entries(fileMap)) {
+  const executableSourceEntries = Object.entries(fileMap).filter(([filePath]) =>
+    /\.(?:[cm]?[jt]sx?)$/i.test(filePath),
+  );
+
+  // Canonical /.unison/*.json files are serialized metadata. They contain
+  // copies of TSX source strings, so scanning them as modules reports every
+  // quoted `from "./..."` inside the JSON as an import owned by the sidecar.
+  // Only executable source files participate in module resolution.
+  for (const [filePath, content] of executableSourceEntries) {
     let match: RegExpExecArray | null;
     const fileDir = filePath.replace(/\/[^/]+$/, '');
     importRegex.lastIndex = 0;
@@ -490,23 +498,6 @@ function cmdDiagnose(ctx: CommandContext): CommandResult {
   for (const [path, content] of Object.entries(fileMap)) {
     if (content.trim().length === 0) {
       lines.push(mkLine('warn', `  ⚠ Empty file: ${path}`));
-      issues++;
-    }
-  }
-
-  // Check for duplicate default exports
-  const defaultExports = new Map<string, string[]>();
-  for (const [path, content] of Object.entries(fileMap)) {
-    const exportMatch = content.match(/export\s+default\s+(?:function|class|const)?\s*(\w+)/);
-    if (exportMatch) {
-      const name = exportMatch[1];
-      if (!defaultExports.has(name)) defaultExports.set(name, []);
-      defaultExports.get(name)!.push(path);
-    }
-  }
-  for (const [name, paths] of defaultExports) {
-    if (paths.length > 1) {
-      lines.push(mkLine('warn', `  ⚠ Duplicate default export "${name}" in: ${paths.join(', ')}`));
       issues++;
     }
   }

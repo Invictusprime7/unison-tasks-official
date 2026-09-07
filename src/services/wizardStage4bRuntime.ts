@@ -51,10 +51,23 @@ export interface WizardStage4bResult {
   pipelineResult: CommitResult;
   execution: 'worker' | 'main-thread-fallback';
   durationMs: number;
+  fallback?: {
+    kind: 'bootstrap' | 'execution';
+    reason: string;
+    filename?: string;
+    line?: number;
+    column?: number;
+  };
 }
 
 class WizardStage4bWorkerBootstrapError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly kind: 'bootstrap' | 'execution' = 'bootstrap',
+    readonly filename?: string,
+    readonly line?: number,
+    readonly column?: number,
+  ) {
     super(message);
     this.name = 'WizardStage4bWorkerBootstrapError';
   }
@@ -78,7 +91,7 @@ function defaultWorkerFactory(): WizardStage4bWorkerLike {
 
 function toAbortError(signal: AbortSignal): Error {
   if (signal.reason instanceof Error) return signal.reason;
-  return new Error('Wizard Stage 4b was cancelled.');
+  return new Error('Wizard Lane A was cancelled.');
 }
 
 function createRequestId(): string {
@@ -128,8 +141,13 @@ function runStage4bWorker(
     };
     worker.onerror = (event) => {
       event.preventDefault?.();
+      const runtimeError = event.error instanceof Error ? event.error : null;
       settle(() => reject(new WizardStage4bWorkerBootstrapError(
-        event.message || 'The Wizard Stage 4b worker could not start.',
+        runtimeError?.message || event.message || 'The Wizard Stage 4b worker failed.',
+        'execution',
+        event.filename || undefined,
+        event.lineno || undefined,
+        event.colno || undefined,
       )));
     };
 
@@ -177,6 +195,7 @@ export async function runWizardStage4b({
     themePresetId: selections.themePresetId ?? null,
   });
 
+  let fallback: WizardStage4bResult['fallback'];
   try {
     const worker = workerFactory();
     const pipelineResult = await runStage4bWorker(worker, {
@@ -190,8 +209,15 @@ export async function runWizardStage4b({
     return { pipelineResult, execution: 'worker', durationMs };
   } catch (error) {
     if (!(error instanceof WizardStage4bWorkerBootstrapError)) throw error;
+    fallback = {
+      kind: error.kind,
+      reason: error.message,
+      filename: error.filename,
+      line: error.line,
+      column: error.column,
+    };
     console.warn('[WizardStage4b] worker unavailable; using compatibility fallback', {
-      error: error.message,
+      ...fallback,
     });
   }
 
@@ -202,6 +228,7 @@ export async function runWizardStage4b({
   console.info('[WizardStage4b] compile completed', {
     execution: 'main-thread-fallback',
     durationMs,
+    fallback,
   });
-  return { pipelineResult, execution: 'main-thread-fallback', durationMs };
+  return { pipelineResult, execution: 'main-thread-fallback', durationMs, fallback };
 }

@@ -149,7 +149,7 @@ describe('composition VFS variants', () => {
     expect(files['/src/pages/Home.tsx']).toContain('data-ut-media-treatment={section.type === \'hero\' ? mediaTreatment : undefined}');
   });
 
-  it('emits selected snapshot-owned motion recipes without changing global CSS', () => {
+  it('keeps snapshot motion recipes as metadata without wrapping Lane A sections', () => {
     const restaurant = getCompositionById('restaurant-premium');
     if (!restaurant) throw new Error('Restaurant composition must be registered');
     const designIntervention = buildWizardDesignIntervention({
@@ -158,9 +158,10 @@ describe('composition VFS variants', () => {
     });
     const page = compositionToReactFileSet(restaurant, '/src/pages/Home.tsx', { designIntervention })['/src/pages/Home.tsx'];
 
-    expect(page).toContain("import { Reveal, type MotionRecipe } from '@/unison/ui/motion';");
-    expect(page).toContain('const DESIGN_MOTION: Partial<Record<string, MotionRecipe>>');
-    expect(page).toContain('<Reveal recipe={motionRecipe}>');
+    expect(designIntervention.motionRecipes.length).toBeGreaterThan(0);
+    expect(page).not.toContain("from '@/unison/ui/motion'");
+    expect(page).not.toContain('const DESIGN_MOTION');
+    expect(page).not.toContain('<Reveal recipe={motionRecipe}>');
   });
 
   it('projects selected section variants into supported renderer layouts', () => {

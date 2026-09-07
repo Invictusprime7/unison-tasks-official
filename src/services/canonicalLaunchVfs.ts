@@ -1,6 +1,12 @@
 import type { LayoutCategory } from '@/data/templates/types';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
-import { sealSnapshot } from '@/platform/core/snapshotSeal';
+import {
+  sealSnapshot,
+  WIZARD_LANE_A_PROTECTED_FILES,
+  WIZARD_LAUNCH_AUTHORITY_PATH,
+  type WizardCompileArtifact,
+  type WizardLaunchAuthorityProof,
+} from '@/platform/core/snapshotSeal';
 
 import { ensureViteRootFiles } from '@/services/previewSession';
 import type { PlaygroundCompileResult, PlaygroundState, WizardSelections } from '@/types/playground';
@@ -111,6 +117,7 @@ export interface BuildCanonicalLaunchArtifactsInput {
   generatedFiles: Record<string, string>;
   preferredEntryPoint?: string;
   siteBundleSnapshot?: SiteBundleSnapshot;
+  compileArtifact?: WizardCompileArtifact;
   compiledPlayground?: Pick<PlaygroundCompileResult, 'vfsFiles'> | null;
   canonicalPlayground?: PlaygroundState | Record<string, unknown> | null;
   mergeWithCanonicalSnapshot?: boolean;
@@ -131,7 +138,7 @@ export interface BuildCanonicalLaunchArtifactsInput {
   aesthetic?: string | null;
   /** Resolved wizard Style-card preset id (drives /src/index.css). */
   themePresetId?: string | null;
-  /** Validated Lane B interaction plan, persisted as canonical runtime data. */
+  /** Validated interaction plan persisted as canonical runtime data. */
   interactionManifest?: WizardInteractionManifest | null;
   backendRequired?: boolean;
   wizardSelections?: WizardSelections | null;
@@ -139,14 +146,73 @@ export interface BuildCanonicalLaunchArtifactsInput {
   /** Capability set that authorizes generated component runtime contracts. */
   enabledCapabilities?: readonly CapabilityId[];
   /**
-   * OPT-IN ONLY (`true`). Registered page modules must come from generatedFiles;
-   * the canonical snapshot may still provide router/root support, but its page
-   * scaffold never silently fills missing Lane B output. No wizard/AI caller
-   * opts in — this exists for non-authoring importers alone.
+    * OPT-IN ONLY (`true`). Allows Stage 4b page bodies to fill unusable or
+    * missing generated pages. Launcher callers must pair this with previewFirst;
+    * strict authoring and import paths keep generated page closure mandatory.
    */
   allowCanonicalPageFallback?: boolean;
+  /**
+   * Launcher-only fast path: seal the generated/canonical merge without
+   * running repair, quality, compiler, experience, or runtime preflight.
+   * Durable identity and snapshot sealing remain mandatory.
+   */
+  previewFirst?: boolean;
   /** Throw if internal preflight has to quarantine generated code. */
   strictPreflight?: boolean;
+}
+
+const GENERATED_MODULE_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'] as const;
+const GENERATED_IMPORT_SPECIFIER = /(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g;
+
+function resolveGeneratedModule(
+  ownerPath: string,
+  specifier: string,
+  files: Record<string, string>,
+): string | null {
+  let basePath: string;
+  if (specifier.startsWith('@/')) {
+    basePath = `/src/${specifier.slice(2)}`;
+  } else if (specifier.startsWith('.')) {
+    const ownerSegments = ownerPath.split('/').filter(Boolean);
+    ownerSegments.pop();
+    for (const segment of specifier.split('/')) {
+      if (!segment || segment === '.') continue;
+      if (segment === '..') ownerSegments.pop();
+      else ownerSegments.push(segment);
+    }
+    basePath = `/${ownerSegments.join('/')}`;
+  } else {
+    return null;
+  }
+
+  const candidates = [
+    basePath,
+    ...GENERATED_MODULE_EXTENSIONS.map((extension) => `${basePath}${extension}`),
+    ...GENERATED_MODULE_EXTENSIONS.map((extension) => `${basePath}/index${extension}`),
+  ];
+  return candidates.find((candidate) => typeof files[candidate] === 'string') ?? null;
+}
+
+function collectGeneratedModuleClosure(
+  entryPath: string,
+  files: Record<string, string>,
+): string[] {
+  const ordered: string[] = [];
+  const visited = new Set<string>();
+  const visit = (path: string) => {
+    if (visited.has(path)) return;
+    visited.add(path);
+    const source = files[path];
+    if (typeof source !== 'string') return;
+    ordered.push(path);
+    GENERATED_IMPORT_SPECIFIER.lastIndex = 0;
+    for (const match of source.matchAll(GENERATED_IMPORT_SPECIFIER)) {
+      const target = resolveGeneratedModule(path, match[1], files);
+      if (target) visit(target);
+    }
+  };
+  visit(entryPath);
+  return ordered;
 }
 
 /**
@@ -222,6 +288,7 @@ function cloneSnapshotWithRuntimeVfs(
   siteBundleSnapshot: SiteBundleSnapshot,
   appContext: RuntimeAppContext,
   files: Record<string, string>,
+  compileArtifact?: WizardCompileArtifact,
   interactionManifest?: WizardInteractionManifest | null,
   missingPageFilePolicy: 'throw' | 'report' = 'throw',
   preflight?: {
@@ -234,7 +301,7 @@ function cloneSnapshotWithRuntimeVfs(
   // become the single authoritative revision here. Nothing downstream may
   // amend page bodies after this returns.
   return sealSnapshot({
-    artifact: siteBundleSnapshot,
+    artifact: compileArtifact ?? siteBundleSnapshot,
     appContext,
     vfsFiles: files,
     interactionManifest,
@@ -370,6 +437,8 @@ export type MergedPageProvenance = 'lane-b' | 'lane-b-app-rebase' | 'canonical-f
 
 export interface CanonicalMergeOptions {
   allowCanonicalPageFallback?: boolean;
+  /** Allow a generated single-file App to replace canonical Home in preview-first launches. */
+  preferGeneratedAppAsHome?: boolean;
   /**
    * M1 authority gate. When `true`, the merge refuses to return a VFS that is
    * missing a body for any registered page instead of deferring the failure to
@@ -386,7 +455,6 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
   snapshot: SiteBundleSnapshot,
   options: CanonicalMergeOptions = {},
 ) {
-
   const registryPages = Object.values(snapshot.pageRegistry.pages);
   const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`);
   const pathVariants = (path: string): string[] => {
@@ -445,9 +513,9 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
   const generatedAppCanSeedHome = Boolean(
     generatedAppModule &&
     !looksLikeCanonicalRouter(generatedAppModule) &&
-    !isMinimalPreviewFallbackSource(generatedAppModule) &&
+    (options.preferGeneratedAppAsHome === true || !isMinimalPreviewFallbackSource(generatedAppModule)) &&
     !readGenerated(homeFilePath) &&
-    !canonicalHomeIsAuthoritative
+    (!canonicalHomeIsAuthoritative || options.preferGeneratedAppAsHome === true)
   );
 
   // Canonical snapshot is the base for router/root support and — Pass 3 — for
@@ -459,9 +527,8 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
   /** Paths whose body in `merged` came from Lane B (or a Lane B App rebase). */
   const laneBAuthoredPaths = new Set<string>();
 
-  // Recovery invariant: Lane B is the only successful-path author of registered
-  // Wizard page bodies. Stage 4b's compositions stay available as sanctioned
-  // vocabulary + preflight expectations, never as a replacement body.
+  // Strict callers require Lane B page bodies. Preview-first callers may use
+  // Stage 4b compositions so incomplete generation cannot block builder entry.
 
   for (const [path, content] of Object.entries(generatedFiles)) {
     const normalizedPath = normalizePath(path);
@@ -487,6 +554,9 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
 
     if (registeredPagePaths.has(path) || registeredPagePaths.has(normalizedPath)) {
       if (isMinimalPreviewFallbackSource(content)) {
+        if (options.allowCanonicalPageFallback === true) {
+          continue;
+        }
         throw new PreviewPipelineError(
           'vfs',
           `Lane B generated minimal/fallback scaffold copy for registered page ${normalizedPath}; refusing to persist it into SiteBundleSnapshot.`,
@@ -536,11 +606,10 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     const generatedPage = readGenerated(page.filePath);
     const canonicalPage = readCanonical(page.filePath);
     const existingMergedPage = merged[normalizedPagePath];
-
     if (
       laneBAuthoredPaths.has(normalizedPagePath) &&
       existingMergedPage &&
-      !isMinimalPreviewFallbackSource(existingMergedPage)
+      (options.preferGeneratedAppAsHome === true || !isMinimalPreviewFallbackSource(existingMergedPage))
     ) {
       removePathVariants(merged, page.filePath);
       merged[normalizedPagePath] = existingMergedPage;
@@ -558,9 +627,9 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
       continue;
     }
 
-    // Canonical page fallback is OPT-IN ONLY (`=== true`). No wizard or AI
-    // path opts in: a missing Lane B page must surface as an incomplete launch
-    // instead of being masked by a Stage 4b scaffold body.
+    // Canonical page fallback is OPT-IN ONLY (`=== true`). Strict callers
+    // surface missing Lane B pages; preview-first launcher calls use the Stage
+    // 4b body to keep every registered route paintable in the builder.
     if (options.allowCanonicalPageFallback === true && canonicalPage && !isMinimalPreviewFallbackSource(canonicalPage)) {
       removePathVariants(merged, page.filePath);
       merged[normalizedPagePath] = canonicalPage;
@@ -618,6 +687,20 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
       { recoverableByRelaunch: true },
     );
   }
+
+  const registeredPageFiles = registryPages
+    .map((page) => page.filePath)
+    .filter((path): path is string => Boolean(path))
+    .map(normalizePath)
+    .sort();
+  const authorityProof: WizardLaunchAuthorityProof = {
+    version: '1.0',
+    laneAArtifactId: snapshot.snapshotId,
+    registeredPageBodyAuthority: 'lane-b',
+    registeredPageFiles,
+    laneAProtectedFiles: [...WIZARD_LANE_A_PROTECTED_FILES],
+  };
+  merged[WIZARD_LAUNCH_AUTHORITY_PATH] = JSON.stringify(authorityProof, null, 2);
 
   return merged;
 }
@@ -904,28 +987,42 @@ function* buildCanonicalLaunchArtifactSteps(
       siteBundleSnapshot: input.siteBundleSnapshot,
       industry: input.industry || input.siteBundleSnapshot?.industry,
       brand: input.businessName || undefined,
-      mode: 'acceptance',
+      mode: 'repair',
     });
-    const unresolvedAcceptance = [
-      ...acceptance.mutatedFiles,
-      ...acceptance.stages.experienceGate.violations,
-    ];
-    if (unresolvedAcceptance.length > 0) {
+    for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
+    Object.assign(mergedFiles, convergedPreflight.files);
+
+    if (convergedPreflight.mutated) {
+      const refinalized = normalizeWizardThemeTokens(mergedFiles);
+      for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
+      Object.assign(mergedFiles, refinalized.files);
+      const acceptance = runFullPreflight(mergedFiles, {
+        siteBundleSnapshot: input.siteBundleSnapshot,
+        industry: input.industry || input.siteBundleSnapshot?.industry,
+        brand: input.businessName || undefined,
+        mode: 'acceptance',
+      });
+      const unresolvedAcceptance = [
+        ...acceptance.mutatedFiles,
+        ...acceptance.stages.experienceGate.violations,
+      ];
+      if (unresolvedAcceptance.length > 0) {
+        throw new PreviewPipelineError(
+          'vfs',
+          `Generated site still requires mutation after Stage 4b finalization: ${unresolvedAcceptance.join(' | ')}`,
+          { blockedFiles: acceptance.mutatedFiles, recoverableByRelaunch: true },
+        );
+      }
+      convergedPreflight = acceptance;
+    }
+
+    if (convergedPreflight.stages.experienceGate.violations.length > 0) {
       throw new PreviewPipelineError(
         'vfs',
-        `Generated site still requires mutation after Stage 4b finalization: ${unresolvedAcceptance.join(' | ')}`,
-        { blockedFiles: acceptance.mutatedFiles, recoverableByRelaunch: true },
+        `Generated experience failed preflight: ${convergedPreflight.stages.experienceGate.violations.join(' | ')}`,
+        { recoverableByRelaunch: true },
       );
     }
-    convergedPreflight = acceptance;
-  }
-
-  if (convergedPreflight.stages.experienceGate.violations.length > 0) {
-    throw new PreviewPipelineError(
-      'vfs',
-      `Generated experience failed preflight: ${convergedPreflight.stages.experienceGate.violations.join(' | ')}`,
-      { recoverableByRelaunch: true },
-    );
   }
 
   // ── M4 compiler gate ───────────────────────────────────────────────────
@@ -951,8 +1048,10 @@ function* buildCanonicalLaunchArtifactSteps(
   // Compositional scoring runs on the sealed page bodies. It never mutates
   // source and never triggers a fallback; the report travels with the
   // artifact so the launcher can record ONE focused refinement directive.
-  const visualQuality = convergedPreflight.visualQuality;
-  mergedFiles['/.unison/visual-quality.json'] = JSON.stringify(visualQuality, null, 2);
+  const visualQuality = convergedPreflight?.visualQuality;
+  if (visualQuality) {
+    mergedFiles['/.unison/visual-quality.json'] = JSON.stringify(visualQuality, null, 2);
+  }
 
 
 
@@ -966,9 +1065,8 @@ function* buildCanonicalLaunchArtifactSteps(
     input.siteBundleSnapshot,
     resolvedThemePresetId || undefined,
   );
-  // Interaction artifacts are snapshot-owned. The launch adapter must not
-  // synthesize or replace them after the canonical projection.
-  appContext.interactionManifest = input.interactionManifest ?? input.siteBundleSnapshot?.meta?.interactionManifest;
+  appContext.interactionManifest = input.interactionManifest
+    ?? input.siteBundleSnapshot?.meta?.interactionManifest;
   appContext.themeInjection = {
     version: '1.0',
     stage: '4b',
@@ -1037,20 +1135,25 @@ function* buildCanonicalLaunchArtifactSteps(
         runtimeSnapshotSeed,
         appContext,
         verifiedViteFiles,
+        input.compileArtifact,
         input.interactionManifest,
         missingPageFilePolicy,
-        {
-          visualQuality,
-          experiencePreflight: convergedPreflight.stages.experienceGate,
-          runtimeCompatibility: finalRuntimeCompatibility,
-        },
+        visualQuality && convergedPreflight && finalRuntimeCompatibility
+          ? {
+              visualQuality,
+              experiencePreflight: convergedPreflight.stages.experienceGate,
+              runtimeCompatibility: finalRuntimeCompatibility,
+            }
+          : undefined,
       )
     : undefined;
 
   if (siteBundleSnapshot && resolvedThemePresetId) {
     assertSnapshotThemeSeed(siteBundleSnapshot, resolvedThemePresetId, 'canonical launch -> SiteBundleSnapshot');
   }
-  const files = upsertCanonicalMetadataFiles(verifiedViteFiles, {
+  const runtimeFilesAfterSeal = { ...verifiedViteFiles };
+  delete runtimeFilesAfterSeal[WIZARD_LAUNCH_AUTHORITY_PATH];
+  const files = upsertCanonicalMetadataFiles(runtimeFilesAfterSeal, {
     appContext,
     runtimeManifest,
     publishedRuntime,
@@ -1115,7 +1218,7 @@ function* buildCanonicalLaunchArtifactSteps(
     canonicalPlayground,
     bindingApplication,
     visualQuality,
-    experiencePreflight: convergedPreflight.stages.experienceGate,
+    experiencePreflight: convergedPreflight?.stages.experienceGate,
     runtimeCompatibility: finalRuntimeCompatibility,
   };
 }

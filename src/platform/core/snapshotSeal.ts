@@ -24,6 +24,22 @@ import type { RuntimeAppContext } from '@/types/runtimeManifest';
 import type { WizardInteractionManifest } from '@/services/wizardInteractionEnrichment';
 
 export const SNAPSHOT_SEAL_VERSION = '1.0' as const;
+export const WIZARD_LAUNCH_AUTHORITY_PATH = '/.unison/wizard-launch-authority.json' as const;
+export const WIZARD_LANE_A_PROTECTED_FILES = [
+  '/src/App.tsx',
+  '/src/index.css',
+  '/src/unison/ui/**',
+  '/.unison/**',
+  '/.unison/compositions/**',
+] as const;
+
+export interface WizardLaunchAuthorityProof {
+  version: '1.0';
+  laneAArtifactId: string;
+  registeredPageBodyAuthority: 'lane-b';
+  registeredPageFiles: string[];
+  laneAProtectedFiles: string[];
+}
 
 /**
  * Stage 4b compile artifact — frozen, deterministic, pre-Lane-B.
@@ -83,6 +99,77 @@ function baselineOf(artifact: SealSnapshotInput['artifact']): SiteBundleSnapshot
     : (artifact as SiteBundleSnapshot);
 }
 
+function normalizeVfsPath(path: string): string {
+  return path.startsWith('/') ? path : `/${path}`;
+}
+
+function sortedUnique(values: readonly string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+function equalStringArrays(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function readWizardLaunchAuthorityProof(
+  files: Record<string, string>,
+  artifact: WizardCompileArtifact,
+): WizardLaunchAuthorityProof {
+  const raw = files[WIZARD_LAUNCH_AUTHORITY_PATH];
+  if (!raw) {
+    throw new SnapshotSealError(`wizard-launch is missing ${WIZARD_LAUNCH_AUTHORITY_PATH}.`);
+  }
+
+  let proof: WizardLaunchAuthorityProof;
+  try {
+    proof = JSON.parse(raw) as WizardLaunchAuthorityProof;
+  } catch {
+    throw new SnapshotSealError('wizard-launch ownership proof is not valid JSON.');
+  }
+
+  const expectedPages = sortedUnique(
+    Object.values(artifact.baseline.pageRegistry?.pages || {})
+      .map((page) => (page as { filePath?: string }).filePath)
+      .filter((path): path is string => Boolean(path))
+      .map(normalizeVfsPath),
+  );
+  const proofPages = Array.isArray(proof.registeredPageFiles)
+    ? sortedUnique(proof.registeredPageFiles.map(normalizeVfsPath))
+    : [];
+  const expectedProtected = sortedUnique(WIZARD_LANE_A_PROTECTED_FILES);
+  const proofProtected = Array.isArray(proof.laneAProtectedFiles)
+    ? sortedUnique(proof.laneAProtectedFiles)
+    : [];
+
+  if (proof.version !== '1.0') {
+    throw new SnapshotSealError('wizard-launch ownership proof version is invalid.');
+  }
+  if (proof.laneAArtifactId !== artifact.baseline.snapshotId) {
+    throw new SnapshotSealError('wizard-launch ownership proof does not match the Lane A artifact.');
+  }
+  if (proof.registeredPageBodyAuthority !== 'lane-b') {
+    throw new SnapshotSealError('wizard-launch registered page body authority must be lane-b.');
+  }
+  if (!equalStringArrays(proofPages, expectedPages)) {
+    throw new SnapshotSealError('wizard-launch ownership proof page files do not match the Lane A registry.');
+  }
+  if (!equalStringArrays(proofProtected, expectedProtected)) {
+    throw new SnapshotSealError('wizard-launch ownership proof does not identify every protected Lane A file group.');
+  }
+  const missingProofPages = expectedPages.filter((path) => !files[path]);
+  if (missingProofPages.length > 0) {
+    throw new SnapshotSealError(
+      `wizard-launch ownership proof references missing registered pages: ${missingProofPages.join(', ')}.`,
+    );
+  }
+
+  return {
+    ...proof,
+    registeredPageFiles: expectedPages,
+    laneAProtectedFiles: expectedProtected,
+  };
+}
+
 /**
  * The single seal point. Converts a Stage 4b artifact plus the converged VFS
  * into the authoritative SiteBundleSnapshot. Every invariant that Preview
@@ -94,6 +181,15 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
   if (!baseline) {
     throw new SnapshotSealError('cannot seal without a Stage 4b compile artifact.');
   }
+
+  const wizardCompileArtifact =
+    'kind' in input.artifact && input.artifact.kind === 'wizard-compile-artifact'
+      ? input.artifact
+      : null;
+  const isWizardLaunch = (input.sealedBy || 'wizard-launch') === 'wizard-launch';
+  const authorityProof = wizardCompileArtifact && isWizardLaunch
+    ? readWizardLaunchAuthorityProof(input.vfsFiles, wizardCompileArtifact)
+    : null;
 
   // Runtime VFS excludes platform metadata sidecars (`/.unison/*`); those are
   // re-emitted from the sealed revision, never read back into it.
@@ -156,6 +252,14 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
       sealedBy: input.sealedBy || 'wizard-launch',
       compileArtifactId: baseline.snapshotId,
       fileCount: Object.keys(runtimeVfsFiles).length,
+      ...(authorityProof
+        ? {
+            pipeline: 'lane-a+lane-b+stage-4b' as const,
+            registeredPageBodyAuthority: 'lane-b' as const,
+            registeredPageFiles: authorityProof.registeredPageFiles,
+            laneAProtectedFiles: authorityProof.laneAProtectedFiles,
+          }
+        : {}),
       ...(missingPageFiles.length > 0 ? { missingPageFiles } : {}),
     },
 

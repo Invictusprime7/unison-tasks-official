@@ -39,6 +39,75 @@ const SEAL_ALLOWLIST = new Set([
   'src/services/canonicalLaunchVfs.ts',
 ]);
 
+const DEPRECATED_PAGE_PRUNING_SYMBOLS = ['dropUnacceptablePages'];
+
+export function findDeprecatedPagePruningUsages(text, fileName = 'source.ts') {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const usages = [];
+  function visit(node) {
+    if (
+      ts.isCallExpression(node)
+      && ts.isIdentifier(node.expression)
+      && DEPRECATED_PAGE_PRUNING_SYMBOLS.includes(node.expression.text)
+    ) {
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      usages.push({ line: position.line + 1, symbol: node.expression.text, text: node.getText(sourceFile) });
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return usages;
+}
+
+export function findWizardRegistryMutationViolations(text, fileName = 'source.ts') {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const usages = [];
+  const recordsRegistryMutation = (node, target) => {
+    const targetText = target.getText(sourceFile);
+    if (!/\b(?:siteBundleSnapshot|generatedSiteBundleSnapshot)\.pageRegistry\.pages\b/.test(targetText)) return;
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    usages.push({ line: position.line + 1, symbol: 'Wizard pageRegistry mutation', text: node.getText(sourceFile) });
+  };
+  function visit(node) {
+    if (ts.isBinaryExpression(node) && ts.isAssignmentOperator(node.operatorToken.kind)) {
+      recordsRegistryMutation(node, node.left);
+    } else if (ts.isDeleteExpression(node)) {
+      recordsRegistryMutation(node, node.expression);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return usages;
+}
+
+export function findWizardHandoffSealViolations(text) {
+  if (!text.includes('navigate("/web-builder"') && !text.includes("navigate('/web-builder'")) return [];
+  if (
+    (
+      text.includes('isSealedSnapshot(artifacts.siteBundleSnapshot)')
+      || text.includes('isSealedSnapshot(launchArtifacts.siteBundleSnapshot)')
+    )
+    && text.includes('isSealedSnapshot(canonicalSiteBundleSnapshot)')
+  ) return [];
+  return [{
+    line: 1,
+    symbol: 'unsealed Wizard handoff',
+    text: 'Wizard navigation must verify both the launch artifact and committed snapshots are sealed.',
+  }];
+}
+
 export function findSealViolations(text, fileName = 'source.ts') {
   const sourceFile = ts.createSourceFile(
     fileName,
@@ -150,7 +219,16 @@ export function findBodySubstitutionViolations(text, fileName = 'source.ts') {
             : node.initializer.kind === ts.SyntaxKind.FalseKeyword
               ? false
               : null;
-        if (literal === rule.forbiddenValue) {
+        const isPreviewFirstFallback =
+          rule.property === 'allowCanonicalPageFallback'
+          && ts.isObjectLiteralExpression(node.parent)
+          && node.parent.properties.some((property) =>
+            ts.isPropertyAssignment(property)
+            && ts.isIdentifier(property.name)
+            && property.name.text === 'previewFirst'
+            && property.initializer.kind === ts.SyntaxKind.TrueKeyword
+          );
+        if (literal === rule.forbiddenValue && !isPreviewFirstFallback) {
           const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
           usages.push({
             line: position.line + 1,
@@ -276,6 +354,17 @@ function collectViolations(dir) {
       const rel = relative(ROOT, full).split(sep).join('/');
 
       const text = readFileSync(full, 'utf8');
+      for (const usage of findDeprecatedPagePruningUsages(text, full)) {
+        violations.push({ file: rel, ...usage });
+      }
+      if (rel === 'src/components/onboarding/SystemLauncher.tsx') {
+        for (const usage of findWizardRegistryMutationViolations(text, full)) {
+          violations.push({ file: rel, ...usage });
+        }
+        for (const usage of findWizardHandoffSealViolations(text)) {
+          violations.push({ file: rel, ...usage });
+        }
+      }
       if (!SEAL_ALLOWLIST.has(rel) && text.includes('sealSnapshot')) {
         for (const usage of findSealViolations(text, full)) {
           violations.push({ file: rel, ...usage });

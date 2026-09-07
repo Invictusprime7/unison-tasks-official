@@ -54,6 +54,8 @@ export type IndustryOverlay =
   | 'ecommerce'
   | 'creator'
   | 'agency'
+  | 'saas'
+  | 'portfolio'
   | 'nonprofit'
   | 'general';
 

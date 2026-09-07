@@ -138,7 +138,7 @@ export function buildGeneratedUiFoundationDirective(
     '  - "@/unison/ui/icon" (singular) exports only the <Icon icon={...} /> wrapper component, not raw icon glyphs.',
     '  - "@/unison/ui/motion" exports ONLY Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, and the MotionRecipe type — nothing else.',
     '  - "@/unison/ui/animation" is the full framer-motion re-export (motion, AnimatePresence, useReducedMotion, useScroll, useInView, etc.) — use this facade for any raw framer-motion export not in the @/unison/ui/motion list above.',
-    'Do not import "@/unison/ui/tailwind.css" from a page; it is already applied globally. Use <Image src alt /> or a plain <img alt="...">; there is no framework-specific next/image component.',
+  'Do not import "@/unison/ui/tailwind.css" from a page; it is already applied globally. Use the root Image facade or a plain <img alt="...">; there is no framework-specific next/image component.',
     COMPOSITION_VOCABULARY_DIRECTIVE,
     EXPERIENCE_VOCABULARY_DIRECTIVE,
     requirementsList ? 'Manifest requirements for this snapshot:' : '',
@@ -519,7 +519,7 @@ export { Panel, MediaFrame, FeaturePanel, type PanelProps, type PanelTone, type 
 export { FieldLabel, Label, FormLabel, Input, TextInput, Textarea, TextArea, Select, Checkbox, FormField, FormFields, FormGrid, FormHint, FormError, Form, FormItem, FormControl, FormDescription, FormMessage } from './form-fields';
 export { useForm, useFormContext, useFieldArray, Controller, zodResolver, z } from './forms';
 export { Icon } from './icon';
-export { Image, ImageLightbox } from './media';
+export { Image, ImageLightbox, type ImageProps } from './media';
 export { Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, type MotionRecipe } from './motion';
 export { FloatingNavbar, type NavigationLink } from './navigation';
 export { BentoFeatureGrid, FeatureCard } from './recipes';
@@ -903,7 +903,7 @@ export type PanelTone = 'surface' | 'gradient' | 'outline' | 'plain';
 
 export interface PanelProps extends Div {
   tone?: PanelTone;
-  /** Adds the pack's hover elevation and lift. */
+  /** Marks a surface as interactive without prescribing motion or geometry. */
   interactive?: boolean;
   padded?: boolean;
 }
@@ -922,7 +922,7 @@ export function Panel({ tone = 'surface', interactive = false, padded = true, cl
         'border border-[length:var(--ut-border-weight)] rounded-[var(--ut-radius-lg)]',
         panelTone[tone],
         padded && 'p-[var(--ut-card-padding)]',
-        interactive && 'transition-all duration-[var(--ut-motion-duration)] ease-[var(--ut-motion-ease)] hover:shadow-[var(--ut-surface-elevation-hover)] hover:translate-y-[var(--ut-hover-lift)]',
+        interactive && 'cursor-pointer',
         className,
       )}
       {...props}
@@ -1071,16 +1071,34 @@ export function Icon({ icon: Glyph, className, label }: { icon: LucideIcon; clas
 `,
     '/src/unison/ui/media.tsx': `${marker}
 import * as React from 'react';
-  import * as Dialog from './radix/dialog';
-  import { Expand } from './icons';
+import * as Dialog from './radix/dialog';
+import { Expand } from './icons';
 import { cn } from './cn';
+
+export interface ImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'children'> {
+  ratio?: string;
+  fill?: boolean;
+  priority?: boolean;
+}
+
+export const Image = React.forwardRef<HTMLImageElement, ImageProps>(
+  ({ ratio = '4/3', fill = false, priority = false, alt = '', className, loading, style, ...props }, ref) => (
+    <img
+      ref={ref}
+      {...props}
+      alt={alt}
+      loading={priority ? 'eager' : loading}
+      fetchPriority={priority ? 'high' : undefined}
+      decoding="async"
+      style={{ ...style, aspectRatio: fill ? undefined : ratio }}
+      className={cn('w-full rounded-[var(--radius)] object-cover', fill && 'absolute inset-0 h-full', className)}
+    />
+  ),
+);
+Image.displayName = 'Image';
 
 export function ImageLightbox({ src, alt, className }: { src: string; alt: string; className?: string }) {
   return <Dialog.Root><Dialog.Trigger asChild><button type="button" className={cn('group relative block overflow-hidden rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}><img src={src} alt={alt} className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-105" /><span className="absolute inset-0 grid place-items-center bg-foreground/0 text-background transition-colors group-hover:bg-foreground/45"><Expand className="size-6 opacity-0 transition-opacity group-hover:opacity-100" /></span></button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/70 backdrop-blur-sm" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[var(--ut-overlay-block)] w-[min(92vw,var(--ut-content-width))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[var(--radius)] bg-card shadow-2xl"><Dialog.Title className="sr-only">{alt}</Dialog.Title><img src={src} alt={alt} className="max-h-[var(--ut-overlay-block)] w-full object-contain" /></Dialog.Content></Dialog.Portal></Dialog.Root>;
-}
-
-export function Image({ src, alt, ratio = '4/3', className, ...rest }: React.ImgHTMLAttributes<HTMLImageElement> & { ratio?: string }) {
-  return <img src={src} alt={alt ?? ''} loading="lazy" decoding="async" style={{ aspectRatio: ratio }} className={cn('w-full rounded-[var(--radius)] object-cover', className)} {...rest} />;
 }
 `,
 

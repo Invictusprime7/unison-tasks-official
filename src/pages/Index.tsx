@@ -88,7 +88,11 @@ const Index = () => {
       try {
         const { data, error } = await supabase
           .from('builder_drafts')
-          .select('id, code, editor_code, vfs_files, metadata, updated_at, created_at')
+          // The home screen only needs project summaries. Pulling code,
+          // editor_code, and the complete VFS TOAST payload made this four-row
+          // query read megabytes of canonical runtime state and could exceed
+          // PostgREST's statement timeout.
+          .select('id, metadata, updated_at, created_at')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
           .limit(4);
@@ -98,7 +102,7 @@ const Index = () => {
         } else {
           const projects: RecentProject[] = (data || []).map((row: any) => {
             const meta = (row.metadata || {}) as Record<string, any>;
-            const previewCode = row.editor_code || row.code || '';
+            const previewCode = typeof meta.previewCode === 'string' ? meta.previewCode : '';
             return {
               id: row.id,
               name: meta.name || 'Untitled Project',

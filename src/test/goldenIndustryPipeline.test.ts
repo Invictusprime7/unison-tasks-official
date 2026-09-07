@@ -34,6 +34,13 @@ import type { PlaygroundBinding, WizardSelections } from '@/platform/core/playgr
 import type { BuilderPage } from '@/types/pageRegistry';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { buildThemedIndexCss } from '@/components/onboarding/themePresetToIndexCss';
+import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
+import { commitToPipeline } from '@/platform/core/commitToPipeline';
+import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
+import { buildPreviewArtifacts } from '@/utils/previewArtifacts';
+import { createLaunchState } from '@/types/launchState';
+import { getCompositionsBySystemType } from '@/sections/templates';
+import { findUnresolvedLocalImports } from '@/services/laneBCompanionModules';
 
 interface IndustryFixture {
   label: string;
@@ -388,5 +395,121 @@ describe('Golden industry pipeline — canonical round-trip', () => {
         compileA.previewManifest.routes.sort(),
       );
     });
+  });
+});
+
+describe('Salon Premium golden launch transaction', () => {
+  it('seals all seven Lane B page bodies with editorial Stage 4b authority', () => {
+    const editorial = THEME_PRESETS.find((preset) => preset.id === 'editorial');
+    const composition = getCompositionsBySystemType('booking')
+      .find((candidate) => candidate.id === 'salon-premium');
+    if (!editorial || !composition) throw new Error('Salon Premium editorial fixture is not registered.');
+
+    const selections: WizardSelections = {
+      businessName: 'STELLAR BEAUTY',
+      businessModel: 'appointment_service',
+      industryOverlay: 'salon',
+      systemType: 'booking',
+      primaryGoal: 'book',
+      secondaryGoals: ['contact'],
+      needsBooking: true,
+      wantsLeadCapture: true,
+      requestedPages: ['home', 'about', 'services', 'gallery', 'booking', 'contact', 'faq'],
+      scaffoldMode: 'selected-pages',
+      templateId: 'salon-premium',
+      themePresetId: 'editorial',
+      themeTokens: themePresetToThemeTokens(editorial),
+      primaryIntent: 'booking.create',
+    };
+    const laneA = commitToPipeline({ selections }, 'wizard-launch');
+    const registryPages = Object.values(laneA.siteBundleSnapshot.pageRegistry.pages);
+    const laneBFiles = Object.fromEntries(registryPages.map((page) => [
+      page.filePath!,
+      [
+        'export default function Page(){ return <main>',
+        `<h1>STELLAR BEAUTY ${page.title}</h1>`,
+        `<p>Personalized ${page.title.toLowerCase()} guidance for salon clients.</p>`,
+        '<button data-ut-intent="booking.create">Book with STELLAR BEAUTY</button>',
+        '</main>; }',
+      ].join(''),
+    ]));
+
+    const artifacts = buildCanonicalLaunchArtifacts({
+      generatedFiles: laneBFiles,
+      preferredEntryPoint: '/src/App.tsx',
+      siteBundleSnapshot: laneA.siteBundleSnapshot,
+      compileArtifact: laneA.compileArtifact,
+      compiledPlayground: laneA.compileResult,
+      canonicalPlayground: laneA.playground,
+      mergeWithCanonicalSnapshot: true,
+      systemType: 'booking',
+      systemName: 'Booking',
+      businessName: 'STELLAR BEAUTY',
+      industry: 'salon',
+      templateId: 'salon-premium',
+      themePresetId: 'editorial',
+      wizardSelections: selections,
+      backendRequired: false,
+    });
+
+    expect(registryPages).toHaveLength(7);
+    expect(artifacts.siteBundleSnapshot?.meta.templateId).toBe('salon-premium');
+    expect(artifacts.siteBundleSnapshot?.meta.themePresetId).toBe('editorial');
+    expect(artifacts.siteBundleSnapshot?.meta.seal).toMatchObject({
+      pipeline: 'lane-a+lane-b+stage-4b',
+      registeredPageBodyAuthority: 'lane-b',
+      registeredPageFiles: registryPages.map((page) => page.filePath).sort(),
+    });
+    expect(artifacts.files['/src/index.css']).toContain("--font-heading: 'Playfair Display'");
+    const sealedPageBodies = new Set<string>();
+    for (const page of registryPages) {
+      expect(artifacts.files[page.filePath!], page.filePath).toContain(`STELLAR BEAUTY ${page.title}`);
+      expect(artifacts.files[page.filePath!], `${page.filePath} must match the sealed snapshot`).toBe(
+        artifacts.siteBundleSnapshot?.vfsFiles[page.filePath!],
+      );
+      sealedPageBodies.add(artifacts.files[page.filePath!]);
+    }
+    expect(sealedPageBodies.size).toBe(registryPages.length);
+    expect(findUnresolvedLocalImports(artifacts.files)).toEqual([]);
+    expect(artifacts.siteBundleSnapshot?.vfsFiles['/.unison/wizard-launch-authority.json']).toBeUndefined();
+
+    const launchState = createLaunchState({
+      systemType: 'booking',
+      systemName: 'Booking',
+      businessName: 'STELLAR BEAUTY',
+      templateName: 'Salon Premium',
+      templateCategory: 'salon',
+      vfsFiles: artifacts.files,
+      preloadedIntents: ['booking.create', 'contact.submit'],
+      entryPoint: artifacts.entryPoint,
+      industry: 'salon',
+      templateId: 'salon-premium',
+      themePresetId: 'editorial',
+      siteBundleSnapshot: artifacts.siteBundleSnapshot,
+      materializedPlayground: laneA.playground,
+      compiledPlayground: laneA.compileResult,
+      wizardSelections: selections,
+    });
+    const previewFiles = buildPreviewArtifacts({
+      sourceFiles: {
+        ...artifacts.files,
+        '/App.tsx': 'export default function App(){ return <main>LEGACY MINIMAL FALLBACK</main>; }',
+        '/pages/Home.tsx': 'export default function Home(){ return <main>LEGACY HOME</main>; }',
+        '/template.css': ':root { --primary: 320 80% 55%; }',
+      },
+      launchState,
+    }).sandpackFiles;
+    const previewRouter = previewFiles['/App.tsx'];
+
+    expect(previewRouter).not.toContain('LEGACY MINIMAL FALLBACK');
+    expect(Object.values(previewFiles).join('\n')).not.toContain('LEGACY HOME');
+    for (const page of registryPages) {
+      const flattenedPath = page.filePath!.replace(/^\/src/, '');
+      const importPath = page.filePath!.replace(/^\/src\//, './').replace(/\.tsx$/, '');
+      expect(previewFiles[flattenedPath], `${page.filePath} must survive Sandpack flattening`)
+        .toContain(`STELLAR BEAUTY ${page.title}`);
+      expect(previewRouter, `${page.filePath} must remain connected to the preview router`)
+        .toMatch(new RegExp(`from ["']${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\.tsx)?["']`));
+    }
   });
 });

@@ -132,7 +132,10 @@ export async function runProviderLoop(opts: {
     if (!/429|rate limit|402|payment required/i.test(detail)) {
       hadNonRateLimitError = true;
     }
-    if (!/gateway/i.test(label) && isQuotaExhausted(detail)) {
+    if (
+      !/gateway/i.test(label) &&
+      (isQuotaExhausted(detail) || /402|payment required/i.test(detail))
+    ) {
       directQuotaExhausted = true;
     }
   };
@@ -467,10 +470,12 @@ export async function runProviderLoop(opts: {
         if (resp.status === 429 || resp.status === 402) {
           const errText = await resp.text().catch(() => '');
           const detail = `${resp.status}${errText ? ` ${errText.substring(0, 200)}` : ''}`;
-          const exhausted = isQuotaExhausted(errText);
+          const exhausted = isQuotaExhausted(errText) || resp.status === 402;
           const earlyError: ProviderEarlyError = resp.status === 429 && !exhausted
             ? { status: 429, error: 'Rate limit exceeded. Please try again later.' }
-            : { status: 402, error: 'Payment required. Please add credits to your workspace.' };
+            : isGeminiModelId(model.id)
+              ? { status: 402, error: 'Payment required. Please add credits to your Google AI account.' }
+              : { status: 402, error: 'Payment required. Please add credits to your OpenAI account.' };
           recordProviderError(model.label, detail);
           if (exhausted && isGeminiModelId(model.id)) {
             geminiQuotaExhausted = true;
@@ -479,8 +484,7 @@ export async function runProviderLoop(opts: {
             deferredEarlyError ??= earlyError;
           }
           console.warn(`[AI-Hybrid] ${model.label} returned ${resp.status}; trying next provider...`);
-          if (resp.status === 429) continue;
-          break;
+          continue;
         }
 
 

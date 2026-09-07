@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { onPipelineCommit, type CommitResult } from '@/platform/core';
 import { runWizardStage4b } from '@/services/wizardStage4bRuntime';
 import type { WizardSelections } from '@/types/playground';
@@ -26,6 +28,17 @@ function fakeCommitResult(): CommitResult {
 }
 
 describe('Wizard Stage 4b runtime', () => {
+  it('bootstraps the worker from the narrow worker-safe pipeline module', () => {
+    const workerSource = readFileSync(
+      resolve(process.cwd(), 'src/workers/wizardStage4b.worker.ts'),
+      'utf8',
+    );
+
+    expect(workerSource).toContain("from '@/platform/core/commitToPipeline'");
+    expect(workerSource).not.toContain("from '@/platform/core'");
+    expect(workerSource).not.toMatch(/\b(?:window|document|localStorage)\b/);
+  });
+
   it('runs compilation in a worker and republishes the canonical commit on the main bus', async () => {
     const result = fakeCommitResult();
     const terminate = vi.fn();
@@ -109,7 +122,47 @@ describe('Wizard Stage 4b runtime', () => {
 
     expect(stage4b.execution).toBe('main-thread-fallback');
     expect(stage4b.pipelineResult).toBe(result);
+    expect(stage4b.fallback).toEqual({
+      kind: 'execution',
+      reason: 'worker-src blocked by policy',
+      filename: undefined,
+      line: undefined,
+      column: undefined,
+    });
     expect(fallbackCommit).toHaveBeenCalledOnce();
+  });
+
+  it('preserves worker execution location when compatibility fallback is required', async () => {
+    const result = fakeCommitResult();
+    const worker = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn(() => {
+        queueMicrotask(() => worker.onerror?.({
+          message: 'Uncaught ReferenceError: document is not defined',
+          filename: 'wizardStage4b.worker.js',
+          lineno: 42,
+          colno: 17,
+          error: new ReferenceError('document is not defined'),
+          preventDefault: vi.fn(),
+        } as unknown as ErrorEvent));
+      }),
+      terminate: vi.fn(),
+    };
+
+    const stage4b = await runWizardStage4b({
+      selections,
+      workerFactory: () => worker,
+      fallbackCommit: () => result,
+    });
+
+    expect(stage4b.fallback).toMatchObject({
+      kind: 'execution',
+      reason: 'document is not defined',
+      filename: 'wizardStage4b.worker.js',
+      line: 42,
+      column: 17,
+    });
   });
 
   it('terminates pending compilation when the shared launch deadline aborts', async () => {

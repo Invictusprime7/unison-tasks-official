@@ -116,6 +116,13 @@ describe('applyAIBuilderFiles', () => {
         source: 'wizard', systemId: 'booking', industry: 'restaurant', verticalContractId: 'booking',
         themePresetId: 'restaurant-warm', templateId: 'restaurant-premium',
         themeInjection: { version: '1.0', stage: '4b', presetId: 'restaurant-warm', cssPath: '/src/index.css' },
+        seal: {
+          version: '1.0',
+          sealedAt: '2026-08-30T00:00:00.000Z',
+          sealedBy: 'wizard-launch',
+          compileArtifactId: 'ai-apply-snapshot',
+          fileCount: 3,
+        },
       },
     };
     let files = {

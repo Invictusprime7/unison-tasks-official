@@ -2,14 +2,13 @@
  * WizardTopAction — top-right action button for the SystemLauncher wizard.
  *
  * Renders the primary Continue / Generate button in the header (top-right)
- * and, while generating, expands into a live pipeline stepper that walks
- * through the wizard → Lane B → snapshot → intent-wiring → preview stages.
+ * and, while generating, expands into a live horizontal process rail driven
+ * by the statuses emitted from the launcher runtime.
  *
  * The button is fully driven by props; all pipeline state derivation lives
  * here so the launcher shell stays lean.
  */
 
-import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,14 +27,23 @@ interface WizardTopActionProps {
   onLaunch: () => void;
 }
 
-// Canonical pipeline stages surfaced to the user during generation.
-const PIPELINE_STAGES: { id: string; label: string; keywords: string[] }[] = [
-  { id: "plan", label: "Planning topology", keywords: ["plan", "topology"] },
-  { id: "generate", label: "Generating pages", keywords: ["generat"] },
-  { id: "repair", label: "Backfilling missing pages", keywords: ["remaining", "repair", "missing"] },
-  { id: "snapshot", label: "Merging snapshot & theme", keywords: ["snapshot", "theme", "merge"] },
-  { id: "intents", label: "Wiring intents & routes", keywords: ["intent", "wiring", "route"] },
-  { id: "preview", label: "Finalizing preview", keywords: ["preview", "finaliz", "commit"] },
+// These phases mirror the statuses emitted by SystemLauncher.handleLaunch.
+const PIPELINE_STAGES: { id: string; label: string; activeLabel: string; keywords: string[] }[] = [
+  { id: "prepare", label: "Prepare", activeLabel: "Preparing site", keywords: ["prepar"] },
+  { id: "generate", label: "Generate", activeLabel: "Generating pages", keywords: ["generating site"] },
+  {
+    id: "complete",
+    label: "Complete",
+    activeLabel: "Completing pages",
+    keywords: ["remaining", "completing", "authoring", "applying generated ui", "repair", "missing"],
+  },
+  { id: "validate", label: "Validate", activeLabel: "Validating site", keywords: ["finalizing preview", "review the generated"] },
+  {
+    id: "commit",
+    label: "Commit",
+    activeLabel: "Creating workspace",
+    keywords: ["creating the site workspace", "live data contracts", "commit", "handoff"],
+  },
 ];
 
 function deriveStageFromStatus(status: string): number {
@@ -59,27 +67,7 @@ export function WizardTopAction(props: WizardTopActionProps) {
     onLaunch,
   } = props;
 
-  // Auto-advance a soft "expected stage" so users see motion even when the
-  // backend doesn't emit granular status updates. Real status keywords still
-  // win — see mergedStage below.
-  const [tickStage, setTickStage] = useState(0);
-  useEffect(() => {
-    if (!isLaunching) {
-      setTickStage(0);
-      return;
-    }
-    setTickStage(0);
-    const interval = window.setInterval(() => {
-      setTickStage((prev) => Math.min(prev + 1, PIPELINE_STAGES.length - 2));
-    }, 2200);
-    return () => window.clearInterval(interval);
-  }, [isLaunching]);
-
-  const mergedStage = useMemo(() => {
-    if (!isLaunching) return -1;
-    const derived = deriveStageFromStatus(launchStatus);
-    return Math.max(derived, tickStage);
-  }, [isLaunching, launchStatus, tickStage]);
+  const activeStage = isLaunching ? deriveStageFromStatus(launchStatus) : -1;
 
   // Which button variant to render based on wizard step.
   const buttonNode = (() => {
@@ -137,7 +125,7 @@ export function WizardTopAction(props: WizardTopActionProps) {
         {isLaunching ? (
           <>
             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            {PIPELINE_STAGES[Math.min(mergedStage, PIPELINE_STAGES.length - 1)]?.label ?? "Generating…"}
+            {PIPELINE_STAGES[activeStage]?.activeLabel ?? "Generating…"}
           </>
         ) : (
           <>
@@ -151,39 +139,59 @@ export function WizardTopAction(props: WizardTopActionProps) {
   })();
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="relative flex flex-col items-end gap-2">
       {buttonNode}
 
-      {/* Pipeline stepper — only while generating */}
+      {/* Runtime process rail — only while generating */}
       <AnimatePresence>
         {isLaunching && (
           <motion.div
-            initial={{ opacity: 0, y: -4, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: -4, height: 0 }}
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="w-[280px] rounded-xl border border-cyan-500/15 bg-[#0b0d18]/95 shadow-[0_10px_30px_rgba(0,0,0,0.4)] backdrop-blur-md overflow-hidden"
+            role="status"
+            aria-live="polite"
+            className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(720px,calc(100vw-3rem))] overflow-hidden rounded-lg border border-cyan-500/15 bg-[#0b0d18]/95 shadow-[0_10px_30px_rgba(0,0,0,0.4)] backdrop-blur-md"
           >
-            <div className="px-3 py-2 border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-cyan-400/70 font-semibold">
-              Pipeline
+            <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] px-3 py-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400/70">
+                Generate site
+              </span>
+              <span className="truncate font-mono text-[10px] text-white/40">
+                {launchStatus || PIPELINE_STAGES[activeStage]?.activeLabel}
+              </span>
             </div>
-            <ul className="p-2 space-y-1">
+            <ol
+              aria-label="Site generation progress"
+              className="flex min-w-[540px] items-start overflow-x-auto px-3 py-3"
+            >
               {PIPELINE_STAGES.map((stage, idx) => {
-                const done = idx < mergedStage;
-                const active = idx === mergedStage;
+                const done = idx < activeStage;
+                const active = idx === activeStage;
                 return (
                   <li
                     key={stage.id}
+                    aria-current={active ? "step" : undefined}
                     className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] transition-colors",
-                      active && "bg-cyan-500/[0.08] text-cyan-300",
+                      "relative flex min-w-0 flex-1 flex-col items-center gap-1.5 text-[10px] transition-colors",
+                      active && "text-cyan-300",
                       done && "text-cyan-500/60",
                       !active && !done && "text-white/25"
                     )}
                   >
+                    {idx > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "absolute right-1/2 top-2 h-px w-full -translate-y-1/2 transition-colors",
+                          idx <= activeStage ? "bg-cyan-500/45" : "bg-white/[0.08]"
+                        )}
+                      />
+                    )}
                     <span
                       className={cn(
-                        "w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0",
+                        "relative z-10 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full ring-4 ring-[#0b0d18]",
                         done && "bg-cyan-500/25 text-cyan-300",
                         active && "bg-cyan-500 text-[#07080F]",
                         !active && !done && "bg-white/[0.05] text-white/30"
@@ -197,16 +205,11 @@ export function WizardTopAction(props: WizardTopActionProps) {
                         <span className="text-[9px]">{idx + 1}</span>
                       )}
                     </span>
-                    <span className="truncate">{stage.label}</span>
+                    <span className="w-full truncate px-1 text-center font-medium">{stage.label}</span>
                   </li>
                 );
               })}
-            </ul>
-            {launchStatus && (
-              <div className="px-3 py-2 border-t border-white/[0.06] text-[10px] text-white/40 font-mono truncate">
-                {launchStatus}
-              </div>
-            )}
+            </ol>
           </motion.div>
         )}
       </AnimatePresence>

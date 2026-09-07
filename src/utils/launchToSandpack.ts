@@ -45,12 +45,18 @@ function prepareLaunchFiles(config: LaunchToSandpackConfig) {
     launchState.runtimeManifest?.entryPoint || launchState.entryPoint,
   );
 
-  const normalizedFiles = normalizeLauncherFiles(sourceVfsFiles, {
-    entryPoint,
-    themePresetId: resolution.themePresetId,
-    injectCssIfMissing: false,
-  });
-
+  // A sealed Wizard snapshot has already passed normalization, generation
+  // acceptance, Stage 4b, preflight, and commit. Running the legacy/template
+  // normalizer again here creates a second authoring runtime (generic UI
+  // foundation + fallback CSS) immediately before Sandpack. Only non-Wizard
+  // drafts may use that migration path.
+  const normalizedFiles = resolution.isWizardDraft
+    ? sourceVfsFiles
+    : normalizeLauncherFiles(sourceVfsFiles, {
+        entryPoint,
+        themePresetId: resolution.themePresetId,
+        injectCssIfMissing: true,
+      });
   const files: SandpackFiles = { ...normalizedFiles };
 
   for (const [path, content] of Object.entries(sourceVfsFiles)) {
@@ -72,7 +78,7 @@ function prepareLaunchFiles(config: LaunchToSandpackConfig) {
   assertNoMinimalFallbackPreview(files, resolution, 'Launch preview files');
 
   // Intent comment marker (unchanged behavior; not a fallback).
-  if (launchState.intentRuntime && launchState.preloadedIntents.length > 0) {
+  if (!resolution.isWizardDraft && launchState.intentRuntime && launchState.preloadedIntents.length > 0) {
     const entryKey =
       '/src/main.tsx' in files
         ? '/src/main.tsx'

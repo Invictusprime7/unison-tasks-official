@@ -455,19 +455,24 @@ export async function runLaunchPipeline(
     if (!result.persistedRevisionId) {
       throw new Error("The generated site could not be saved to its project.");
     }
-    return { confirmed, revisionId: result.persistedRevisionId };
+    if (!result.siteBundleSnapshot || !result.runtimeManifest) {
+      throw new Error("The canonical commit returned an incomplete launch artifact.");
+    }
+    return { confirmed, result };
   }, { timeoutMs: 120_000 });
 
   // ── Stage: handoff ────────────────────────────────────────────────────────
   status("Opening the builder…");
   const handoff = await run.stage("handoff", async () => {
+    const committed = commit.result;
+    const committedPlayground = committed.playground ?? materializedPlayground;
     const launchState = createLaunchState({
       systemType: input.systemId,
       systemName: system.name,
       businessName: brand,
       templateName: `${brand} Site`,
       templateCategory: plan.generationCategory as never,
-      vfsFiles,
+      vfsFiles: committed.vfsFiles,
       aesthetic: input.theme.id,
       themePresetId: input.theme.id,
       templateId: input.template.id,
@@ -477,30 +482,37 @@ export async function runLaunchPipeline(
       businessId: commit.confirmed.businessId,
       projectId: commit.confirmed.projectId,
       industry: plan.industryProfile?.industry || String(plan.generationCategory),
-      runtimeManifest: artifacts.runtimeManifest,
+      runtimeManifest: committed.runtimeManifest,
       entryPoint: artifacts.entryPoint,
       sitePlan,
-      siteBundleSnapshot: artifacts.siteBundleSnapshot ?? siteBundleSnapshot,
-      materializedPlayground,
+      siteBundleSnapshot: committed.siteBundleSnapshot,
+      materializedPlayground: committedPlayground,
       compiledPlayground,
-      pipelineManifest,
+      pipelineManifest: committed.runtimeManifest,
       wizardSelections: plan.selections,
       wizardSeed: wizardSeedFile,
-      revisionId: commit.revisionId,
+      draftId: commit.confirmed.draftId,
+      revisionId: committed.persistedRevisionId,
     } as Parameters<typeof createLaunchState>[0]);
 
     const routeState: Record<string, unknown> = {
+      ...launchState,
       fromLauncher: true,
       businessId: commit.confirmed.businessId,
       projectId: commit.confirmed.projectId,
       siteId: commit.confirmed.siteId,
       draftId: commit.confirmed.draftId,
-      revisionId: commit.revisionId,
+      revisionId: committed.persistedRevisionId,
       entryPoint: artifacts.entryPoint,
       templateId: input.template.id,
       themePresetId: input.theme.id,
       preloadedIntents: plan.canonicalIntents,
       launchContract: plan.launchContract,
+      vfsFiles: committed.vfsFiles,
+      siteBundleSnapshot: committed.siteBundleSnapshot,
+      runtimeManifest: committed.runtimeManifest,
+      canonicalPlayground: committedPlayground,
+      materializedPlayground: committedPlayground,
     };
 
     const navigationState = buildLauncherNavigationState(routeState);
@@ -534,7 +546,7 @@ export async function runLaunchPipeline(
     navigationState: handoff.navigationState,
     projectId: commit.confirmed.projectId,
     draftId: commit.confirmed.draftId,
-    revisionId: commit.revisionId,
+    revisionId: commit.result.persistedRevisionId!,
     snapshot: run.snapshot(),
   };
 }

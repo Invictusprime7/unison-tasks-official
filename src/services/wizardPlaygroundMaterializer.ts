@@ -57,6 +57,19 @@ interface FormTemplate {
   successMessage: string;
 }
 
+export const WIZARD_FORM_TARGET_ALIASES = {
+  booking_form: 'booking_intake',
+  booking: 'booking_intake',
+  contact_form: 'contact',
+  newsletter_form: 'newsletter',
+  newsletter_signup: 'newsletter',
+  quote_form: 'quote_request',
+} as const;
+
+function normalizeWizardFormTarget(targetRef: string): string {
+  return WIZARD_FORM_TARGET_ALIASES[targetRef as keyof typeof WIZARD_FORM_TARGET_ALIASES] ?? targetRef;
+}
+
 const FORM_TEMPLATES: Record<string, FormTemplate> = {
   contact: {
     name: 'Contact Form',
@@ -80,6 +93,14 @@ const FORM_TEMPLATES: Record<string, FormTemplate> = {
     ],
     submitLabel: 'Book Now',
     successMessage: 'Your booking has been submitted! We\'ll confirm shortly.',
+  },
+  newsletter: {
+    name: 'Newsletter Subscription',
+    fields: [
+      { label: 'Email', type: 'email', required: true, sortOrder: 0 },
+    ],
+    submitLabel: 'Subscribe',
+    successMessage: 'Thank you for subscribing!',
   },
   quote_request: {
     name: 'Quote Request',
@@ -481,7 +502,14 @@ export function materializePlayground(
 
   // 5. Materialize forms
   const formIdMap: Record<string, string> = {};
-  for (const formKey of capabilities.requiredForms) {
+  const requiredFormKeys = new Set(capabilities.requiredForms);
+  if (capabilities.recommendedBindingsV2.some(
+    (binding) => binding.coreIntent === 'newsletter.subscribe'
+      || normalizeWizardFormTarget(binding.targetRef) === 'newsletter',
+  )) {
+    requiredFormKeys.add('newsletter');
+  }
+  for (const formKey of requiredFormKeys) {
     const template = FORM_TEMPLATES[formKey];
     if (!template) {
       warnings.push(`No form template for "${formKey}"`);
@@ -944,7 +972,7 @@ function resolveBindingTarget(
       return { targetId: pageId || '', targetType: 'page' };
     }
     case 'form.open': {
-      const formId = formIdMap[targetRef];
+      const formId = formIdMap[normalizeWizardFormTarget(targetRef)];
       return { targetId: formId || '', targetType: 'form' };
     }
     case 'calendar.open': {

@@ -1,18 +1,3 @@
-/**
- * NOTE (2026-07-17 rebase):
- * The interaction-enrichment layer was removed. Last week's working pipeline
- * did not ship a baseline motion runtime; auto-injecting <UnisonInteractionRuntime />
- * and a canonical hover/reveal/stagger manifest was flattening free-styled
- * compositions produced by Lane A/B.
- *
- * This module now exports API-compatible **no-op stubs** so downstream code
- * (canonicalLaunchVfs, canonicalPipeline, commitToPipeline, playground types,
- * SystemLauncher, runtimeManifest) continues to compile without churn.
- *
- * If Framer Motion or other interactions are desired, the AI is free to author
- * them directly into page bodies during Lane A/B.
- */
-
 import type { TemplateLayoutContract } from './templateLayoutContract';
 
 export type WizardInteractionEffect =
@@ -38,7 +23,6 @@ export interface WizardInteractionManifest {
   interactions: WizardInteractionRule[];
 }
 
-/** No-op: returns an empty baseline manifest tagged to the current contract. */
 export function createBaselineInteractionManifest(
   _files: Record<string, string>,
   contract: TemplateLayoutContract,
@@ -53,7 +37,6 @@ export function createBaselineInteractionManifest(
   };
 }
 
-/** No-op: ignores planner payload, returns the fallback unchanged. */
 export function parseWizardInteractionManifest(
   _payload: unknown,
   fallback: WizardInteractionManifest,
@@ -61,7 +44,6 @@ export function parseWizardInteractionManifest(
   return fallback;
 }
 
-/** No-op: enrichment layer removed. Kept for callers that still request a prompt string. */
 export function buildWizardInteractionPlannerPrompt(_args: {
   contract: TemplateLayoutContract;
   industry: string;
@@ -70,11 +52,6 @@ export function buildWizardInteractionPlannerPrompt(_args: {
   return '';
 }
 
-/**
- * No-op passthrough. Does NOT write /src/components/UnisonInteractionRuntime.tsx,
- * does NOT inject <UnisonInteractionRuntime /> into page bodies, and does NOT
- * emit /.unison/interaction-manifest.json.
- */
 export function compileWizardInteractionManifest(
   files: Record<string, string>,
   _manifest: WizardInteractionManifest,
@@ -82,14 +59,12 @@ export function compileWizardInteractionManifest(
   return { files: { ...files }, mountedPages: [] };
 }
 
-/** No-op: no durable manifest to read. */
 export function readWizardInteractionManifest(
   _files: Record<string, string>,
 ): WizardInteractionManifest | null {
   return null;
 }
 
-/** Canonical finalization hook — now a passthrough. */
 export function applyCanonicalInteractionEnrichment(
   files: Record<string, string>,
   _manifest?: WizardInteractionManifest | null,

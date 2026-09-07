@@ -72,8 +72,36 @@ describe('snapshot projector', () => {
     expect(projected['/src/App.tsx']).not.toContain('Exhale Salon');
     expect(projected['/src/index.css']).toContain('--primary: 24 90% 45%');
     expect(projected['/src/pages/Home.tsx']).toContain('Manifest home');
-    expect(projected['/src/template-only.tsx']).toContain('PresetOnly');
+    expect(projected['/src/template-only.tsx']).toBeUndefined();
     expect(projected['/.unison/site-bundle-snapshot.json']).toContain('snapshot-authority-test');
+  });
+
+  it('removes stale root runtime files instead of letting them compete after Sandpack flattening', () => {
+    const snapshot = snapshotWith({
+      '/src/App.tsx': "import Home from './pages/Home'; export default function App() { return <Home />; }",
+      '/src/index.css': ':root { --primary: 24 90% 45%; }',
+      '/src/pages/Home.tsx': 'export default function Home() { return <section>Canonical home</section>; }',
+    });
+    const resolution: SnapshotResolution = {
+      snapshot,
+      isWizardDraft: true,
+      themePresetId: 'restaurant-warm',
+    };
+
+    const projected = projectSnapshotVfsFiles({
+      ...snapshot.vfsFiles,
+      '/App.tsx': 'export default function App() { return <main>Legacy fallback</main>; }',
+      '/pages/Home.tsx': 'export default function Home() { return <main>Minimal home</main>; }',
+      '/template.css': ':root { --primary: 320 80% 55%; }',
+      '/.unison/app-context.json': '{"themePresetId":"restaurant-warm"}',
+    }, resolution);
+
+    expect(projected['/App.tsx']).toBeUndefined();
+    expect(projected['/pages/Home.tsx']).toBeUndefined();
+    expect(projected['/template.css']).toBeUndefined();
+    expect(projected['/src/App.tsx']).toContain("from './pages/Home'");
+    expect(projected['/src/pages/Home.tsx']).toContain('Canonical home');
+    expect(projected['/.unison/app-context.json']).toContain('restaurant-warm');
   });
 
   it('rehydrates an explicitly compacted snapshot from the route VFS', () => {
@@ -103,5 +131,16 @@ describe('snapshot projector', () => {
 
     expect(resolution.snapshot).toBeNull();
     expect(resolution.isWizardDraft).toBe(true);
+  });
+
+  it('rejects preview hydration from an unsealed Wizard snapshot', () => {
+    const unsealed = snapshotWith({
+      '/src/App.tsx': 'export default function App() { return null; }',
+      '/src/index.css': ':root { --primary: 24 90% 45%; }',
+    });
+    delete unsealed.meta.seal;
+
+    expect(() => resolveSnapshot(unsealed.vfsFiles, { siteBundleSnapshot: unsealed } as never))
+      .toThrow('requires a committed sealed SiteBundleSnapshot');
   });
 });

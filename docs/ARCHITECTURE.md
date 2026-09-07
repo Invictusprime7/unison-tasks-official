@@ -367,7 +367,7 @@ src/
 │   ├── onboarding/
 │   │   ├── SystemLauncher.tsx          # 4-step wizard launcher
 │   │   ├── BusinessLauncher.tsx        # Quick-start industry launcher
-│   │   └── SystemsAIPanel.tsx          # AI-powered system setup
+│   │   └── SystemLauncher.tsx          # Canonical Wizard generation and handoff
 │   ├── creatives/
 │   │   ├── WebBuilder.tsx              # Main playground (1000+ lines)
 │   │   └── web-builder/

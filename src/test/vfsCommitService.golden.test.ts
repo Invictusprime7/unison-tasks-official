@@ -272,10 +272,20 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       '/src/App.tsx': 'export default function Reviewed(){return <main>Reviewed</main>}',
       '/src/pages/Home.tsx': 'export default function Home(){return <h1>Exact AI output</h1>}',
     };
+    const launcherFiles = {
+      ...reviewedFiles,
+      '/src/pages/Home.tsx': 'export default function Home(){return <h1>Auxiliary launcher copy</h1>}',
+      '/.unison/wizard-seed.json': '{"version":1}',
+    };
     const snapshot = {
       vfsFiles: reviewedFiles,
       routerFile: { path: '/src/App.tsx', content: reviewedFiles['/src/App.tsx'] },
-      meta: {},
+      pageRegistry: {
+        pages: {
+          home: { pageId: 'home', filePath: '/src/pages/Home.tsx', path: '/', isHome: true },
+        },
+      },
+      meta: { seal: { laneAProtectedFiles: ['/src/App.tsx'] } },
     } as never;
     mockPreflight(reviewedFiles);
     mockIntents(0, 0);
@@ -284,7 +294,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       source: 'wizard-launch',
       identity: IDENTITY,
       current: { vfsFiles: {} },
-      patch: legacyFilesToPatchPlan(reviewedFiles, 'reviewed launch'),
+      patch: legacyFilesToPatchPlan(launcherFiles, 'reviewed launch'),
       options: {
         selections: { industry: 'salon' } as never,
         reviewedArtifact: {
@@ -295,7 +305,13 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     });
 
     expect(commitToPipeline).not.toHaveBeenCalled();
-    expect(launch.vfsFiles['/src/pages/Home.tsx']).toContain('Exact AI output');
+    expect(launch.vfsFiles['/src/pages/Home.tsx']).toBe(reviewedFiles['/src/pages/Home.tsx']);
+    expect(launch.vfsFiles['/.unison/wizard-seed.json']).toBe('{"version":1}');
+    expect(revisionStore[0]?.vfs_files['/.unison/wizard-seed.json']).toBe('{"version":1}');
+    expect((revisionStore[0]?.site_bundle_snapshot as { vfsFiles?: Record<string, string> }).vfsFiles)
+      .toEqual(reviewedFiles);
+    expect((revisionStore[0]?.site_bundle_snapshot as { vfsFiles?: Record<string, string> }).vfsFiles)
+      .not.toHaveProperty('/.unison/wizard-seed.json');
     expect(launch.diagnostics).toContainEqual(expect.objectContaining({
       stage: 'canonical',
       message: expect.stringContaining('regeneration skipped'),

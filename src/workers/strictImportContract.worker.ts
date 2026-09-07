@@ -13,7 +13,7 @@ const workerScope = self as unknown as StrictImportContractWorkerScope;
 // See wizardStage4b.worker.ts: React Refresh is browser-only in development,
 // while this compiler runs in a Worker. Delay the compiler import until the
 // refresh runtime has evaluated against a temporary `window` alias.
-const workerGlobal = globalThis as typeof globalThis & { window?: unknown };
+const workerGlobal = globalThis as unknown as { window?: unknown };
 const hadWindow = Object.prototype.hasOwnProperty.call(workerGlobal, 'window');
 const previousWindow = workerGlobal.window;
 if (!hadWindow) workerGlobal.window = workerGlobal;

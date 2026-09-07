@@ -35,7 +35,7 @@ import {
   serializeResolvedComposition,
   type ResolvedPageComposition,
 } from '@/platform/core/resolvedComposition';
-import type { WizardDesignIntervention, WizardMotionRecipe } from '@/services/wizardDesignIntervention';
+import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { getLayoutForVariantId, getVariantById } from '@/sections/variants';
 import type { VariantId } from '@/sections/variants';
 import { clampVariantToPack, resolveArtDirectionPack, resolveHeroPresentation } from '@/sections/variants';
@@ -1427,56 +1427,17 @@ function applyDesignVariants(
   };
 }
 
-function motionRecipesBySection(
-  designIntervention?: DesignInterventionSlice,
-): Partial<Record<string, WizardMotionRecipe>> {
-  const recipes = designIntervention?.motionRecipes;
-  if (!recipes?.length) return {};
-  const fallback = recipes[0];
-  const conversion = recipes.find((recipe) => recipe === 'conversion-feedback') || recipes[recipes.length - 1];
-  return {
-    hero: fallback,
-    about: fallback,
-    services: recipes[1] || fallback,
-    features: recipes[1] || fallback,
-    pricing: recipes[1] || fallback,
-    gallery: recipes[1] || fallback,
-    'blog-preview': recipes[1] || fallback,
-    'before-after': recipes[1] || fallback,
-    testimonials: recipes[2] || fallback,
-    stats: recipes[2] || fallback,
-    'logo-cloud': recipes[2] || fallback,
-    team: recipes[2] || fallback,
-    cta: conversion,
-    contact: conversion,
-  };
-}
-
 function pageModule(
   template: TemplateComposition,
   sectionMapImport: string,
-  designIntervention?: DesignInterventionSlice,
 ): string {
   const sectionsJson = JSON.stringify(resolveSnapshotSectionLayouts(template), null, 2);
   const title = JSON.stringify(template.name);
   const hydratableJson = JSON.stringify(HYDRATABLE_SECTION_TYPES);
-  const designMotion = motionRecipesBySection(designIntervention);
-  const hasDesignMotion = Object.keys(designMotion).length > 0;
-  const motionImport = hasDesignMotion
-    ? "import { Reveal, type MotionRecipe } from '@/unison/ui/motion';\n"
-    : '';
-  const designMotionType = hasDesignMotion
-    ? 'Partial<Record<string, MotionRecipe>>'
-    : 'Record<string, never>';
-  const sectionContent = hasDesignMotion
-    ? '{motionRecipe ? <Reveal recipe={motionRecipe}><C props={props} /></Reveal> : <C props={props} />}'
-    : '<C props={props} />';
-  const designMotionJson = JSON.stringify(designMotion, null, 2);
   return `import React, { useEffect } from 'react';
 import SiteLayout from '@/components/SiteLayout';
 import { SECTION_MAP } from '${sectionMapImport}';
 import { useSectionData, mergeHydratedItems } from '@/components/catalogHydration';
-${motionImport}
 
 // ============================================================================
 // Page Content (data only)
@@ -1487,7 +1448,6 @@ ${motionImport}
 // ============================================================================
 const SECTIONS = ${sectionsJson};
 const HYDRATABLE = new Set(${hydratableJson});
-const DESIGN_MOTION: ${designMotionType} = ${designMotionJson};
 
 /**
  * Renders a single section. Live-catalog section types subscribe to
@@ -1517,7 +1477,6 @@ function RenderedSection({ section, occurrence }: { section: any; occurrence: nu
       : props && (props.image || props.backgroundImage)
         ? 'centered-frame'
         : 'text-only';
-  const motionRecipe = DESIGN_MOTION[section.type];
   return (
     <div
       data-ut-section-id={section.id}
@@ -1527,7 +1486,7 @@ function RenderedSection({ section, occurrence }: { section: any; occurrence: nu
       data-ut-media-treatment={section.type === 'hero' ? mediaTreatment : undefined}
       data-ut-hydration={isHydratable ? (hydration.loading ? 'loading' : (hydration.rows ? 'live' : 'seed')) : undefined}
     >
-      ${sectionContent}
+      <C props={props} />
     </div>
   );
 }
@@ -1565,8 +1524,6 @@ export function resolvePageComposition(
 ): ResolvedPageComposition {
   const projected = applyDesignVariants(template, options?.designIntervention);
   const sections = resolveSnapshotSectionLayouts(projected);
-  const motion = motionRecipesBySection(options?.designIntervention);
-
   return {
     version: RESOLVED_COMPOSITION_VERSION,
     compiledBy: 'stage-4b',
@@ -1591,7 +1548,6 @@ export function resolvePageComposition(
         primitiveId: SECTION_COMPONENT_BY_TYPE[section.type] ?? null,
         variantId: section.variantId,
         layoutRecipe: layout,
-        motionRecipe: motion[section.type],
         mediaRecipe,
       };
     }),
@@ -1620,7 +1576,7 @@ export function compositionToReactFileSet(
     [CATALOG_HYDRATION_PATH]: CATALOG_HYDRATION_MODULE,
     [FORM_RUNTIME_PATH]: FORM_RUNTIME_MODULE,
     [PUBLISHED_ACTION_RUNTIME_PATH]: PUBLISHED_ACTION_RUNTIME_MODULE,
-    [pageFilePath]: pageModule(projectedTemplate, sectionMapImport, options?.designIntervention),
+    [pageFilePath]: pageModule(projectedTemplate, sectionMapImport),
     [resolvedCompositionPathFor(pageFilePath)]: serializeResolvedComposition(
       resolvePageComposition(template, pageFilePath, options),
     ),

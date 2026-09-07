@@ -18,7 +18,7 @@ const workerScope = self as unknown as WizardStage4bWorkerScope;
  * load the narrow compiler entry directly, then restore Worker semantics
  * before any canonical compilation runs.
  */
-const workerGlobal = globalThis as typeof globalThis & { window?: unknown };
+const workerGlobal = globalThis as unknown as { window?: unknown };
 const hadWindow = Object.prototype.hasOwnProperty.call(workerGlobal, 'window');
 const previousWindow = workerGlobal.window;
 if (!hadWindow) workerGlobal.window = workerGlobal;

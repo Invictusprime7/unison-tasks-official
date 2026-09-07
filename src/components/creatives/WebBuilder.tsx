@@ -178,6 +178,7 @@ import { inferCanonicalComponentSlug } from '@/services/canonicalComponentRegist
 import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
 import { clearLauncherHandoff, readLauncherHandoff } from '@/services/launcherHandoffPersistence';
 import { assertNoMinimalFallbackPreview, projectSnapshotVfsFiles, resolveSnapshot, markLiveEditedVfsPaths, clearLiveEditedVfsPaths } from '@/services/snapshotProjector';
+import { projectCommittedWizardRuntime } from '@/services/committedWizardRuntime';
 import { createVfsHandoffSignature } from '@/services/vfsHandoffSignature';
 import { isPreviewPipelineError } from '@/services/previewPipelineError';
 import { ThemeSeedError } from '@/platform/core/themeSeedAssert';
@@ -393,6 +394,9 @@ interface WebBuilderRouteState {
    *  WebBuilder hydrates files/snapshot from `site_revisions` rather than relying
    *  solely on sessionStorage/launch context. */
   revisionId?: string;
+  handoffRecoveryMode?: 'compact-vfs' | 'durable-revision';
+  handoffWarning?: string;
+  snapshotVfsCompacted?: boolean;
 }
 
 // hasNonEmptyVfsFiles + mergeRouteStatePreservingFiles are imported from
@@ -461,6 +465,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       systemType: launch.systemType,
       systemName: launch.systemName,
       businessId: launch.businessId,
+      siteId: launch.siteId,
       projectId: launch.projectId,
       manifestId: launch.manifestId,
       entryPoint: launch.entryPoint,
@@ -654,7 +659,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     effectiveRouteState?.siteBundleSnapshot?.vfsFiles ||
     effectiveRouteState?.generatedCode ||
     effectiveRouteState?.generatedTemplate ||
-    effectiveRouteState?.siteBundle
+    effectiveRouteState?.siteBundle ||
+    effectiveRouteState?.revisionId
   );
 
   // Collapse all panels when on mobile to ensure full-width canvas
@@ -1633,7 +1639,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       cancelled = true;
     };
   }, [projectId, hydrateCanonicalPlayground]);
-  // Business blueprint context forwarded from SystemsAIPanel for context-aware in-builder AI
+  // Business blueprint context forwarded from SystemLauncher for context-aware in-builder AI
   const systemsBuildContextFromState = effectiveRouteState?.systemsBuildContext ?? null;
   // Durable WizardSeed forwarded into AIBuilderPanel so every Lane B turn shares
   // the same seed / memory / intent contract that drove the original launch.
@@ -1881,6 +1887,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       sitePlan = recoverTopology();
     }
 
+    if (!sitePlan && navState?.fromLauncher && navState.revisionId && !navState.siteBundleSnapshot) {
+      // Revision-only recovery deliberately carries no duplicate snapshot/VFS.
+      // The revision hydration effect owns topology and files atomically.
+      return;
+    }
+
     if (!sitePlan && navState?.fromLauncher) {
       console.error('[WebBuilder] Launcher handoff missing 4-step wizard sitePlan; refusing stale topology fallback.');
       toast.error('Launcher handoff is missing the wizard site plan. Minimal fallback is blocked.');
@@ -2037,6 +2049,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // draft A's router persisted under draft B).
   const lastSyncedRouterKeyRef = useRef<string>('');
   useEffect(() => {
+    if (routeStateHasStructuredProject && !importedRouteStateRef.current) {
+      return;
+    }
     const registry = creatorPlayground.pageRegistry;
     if (!registry || Object.keys(registry.pages).length === 0) return;
     const draftKey = templateFiles.currentDraftId || '__no-draft__';
@@ -2045,6 +2060,39 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     try {
       const currentFiles = virtualFS.getSandpackFiles();
       const filesToImport: Record<string, string> = {};
+
+      // A committed Wizard router may carry Stage 4b route chrome and is part
+      // of the sealed runtime. During first hydration the PageRegistry effect
+      // must acknowledge that exact router, not immediately replace it with
+      // the generic builder router. Once the user changes topology, the keys
+      // differ and normal router regeneration resumes.
+      const committedSnapshot = resolveSnapshot(currentFiles, effectiveRouteState as any).snapshot;
+      if (committedSnapshot) {
+        const topologyKey = (candidate: typeof registry) => JSON.stringify(
+          Object.values(candidate.pages || {})
+            .map((page) => [
+              page.pageId,
+              page.path,
+              page.filePath,
+              page.title,
+              page.isHome,
+              page.showInNav,
+              page.navOrder,
+            ])
+            .sort((left, right) => String(left[0]).localeCompare(String(right[0]))),
+        );
+        const committedRouterPath = committedSnapshot.routerFile?.path || launchEntryPoint;
+        const committedRouterSource = committedSnapshot.vfsFiles?.[committedRouterPath]
+          || committedSnapshot.routerFile?.content;
+        if (
+          committedRouterSource
+          && currentFiles[committedRouterPath] === committedRouterSource
+          && topologyKey(registry) === topologyKey(committedSnapshot.pageRegistry)
+        ) {
+          lastSyncedRouterKeyRef.current = syncKey;
+          return;
+        }
+      }
 
       // Never synthesize Web Builder placeholder pages during launcher/Unison
       // hydration. The router must only target files that actually exist in the
@@ -2068,7 +2116,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     } catch (err) {
       console.error('[WebBuilder] Canonical router sync failed:', err);
     }
-  }, [creatorPlayground.pageRegistry, launchEntryPoint, virtualFS, templateFiles.currentDraftId]);
+  }, [creatorPlayground.pageRegistry, effectiveRouteState, launchEntryPoint, routeStateHasStructuredProject, virtualFS, templateFiles.currentDraftId]);
 
   // Page manifest for async multi-page navigation (all HTML pages from VFS)
   const pageManifest = useMemo(() => {
@@ -2432,6 +2480,35 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     };
   }, [openBuilderFile, selectEditableEntryPath]);
 
+  const replaceCommittedWizardFiles = useCallback((
+    files: Record<string, string>,
+    options: {
+      siteBundleSnapshot?: SiteBundleSnapshot | null;
+      launchState?: import('@/types/launchState').LaunchState | null;
+      snapshotVfsCompacted?: boolean;
+      preferredPath?: string | null;
+      context?: string;
+    } = {},
+  ) => {
+    const committed = projectCommittedWizardRuntime({
+      files,
+      siteBundleSnapshot: options.siteBundleSnapshot,
+      launchState: options.launchState,
+      snapshotVfsCompacted: options.snapshotVfsCompacted,
+      context: options.context,
+    });
+    // Atomic replacement is the only first-mount writer for a committed
+    // Wizard revision. No generic foundation, legacy template.css, preflight
+    // repair, or CSS preset recovery is allowed between the seal and Sandpack.
+    importedRouteStateRef.current = options.context || 'committed-wizard-runtime';
+    vfsReplaceFiles(committed.files);
+    const syncedEntry = syncBuilderFromFiles(
+      committed.files,
+      options.preferredPath || launchEntryPoint,
+    );
+    return { ...committed, syncedEntry };
+  }, [launchEntryPoint, syncBuilderFromFiles, vfsReplaceFiles]);
+
   const importBuilderFiles = useCallback((
     incomingFiles: Record<string, string>,
     options?: {
@@ -2593,11 +2670,43 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         }
         console.log('[WebBuilder] hydrated from site_revisions:', revision.id, Object.keys(files).length, 'files');
         const currentFiles = virtualFSRef.current.getSandpackFiles();
-        if (computeBuilderVfsSignature(currentFiles) !== computeBuilderVfsSignature(files)) {
-          importBuilderFiles(files, {
-            entryPoint: launchEntryPoint,
-            adoption: { source: 'revision-hydration', revisionId: revision.id, exemptReason: 'hydration-only' },
-          });
+        const routeFiles = effectiveRouteState?.vfsFiles || {};
+        const routeCarriesHydratedRevision = Boolean(
+          effectiveRouteState?.revisionId === revision.id
+          && Object.keys(routeFiles).length > 0,
+        );
+        // Wizard handoff already carries commitMutation's exact persisted VFS.
+        // Its synchronous route-state importer owns first paint; replaying the
+        // same revision through this async effect creates a last-writer-wins
+        // race with snapshot projection/router hydration and can replace the
+        // generated pages just as Sandpack starts compiling. Keep loading the
+        // revision for identity/runtime metadata, but do not write its files a
+        // second time when navigation state names that exact revision.
+        if (
+          !routeCarriesHydratedRevision
+          && computeBuilderVfsSignature(currentFiles) !== computeBuilderVfsSignature(files)
+        ) {
+          // Replace, never merge: a committed revision is a complete file set.
+          // Merging leaks the previously opened project's modules into this one
+          // and leaves the router importing pages this revision never authored.
+          const revisionSnapshot = revision.siteBundleSnapshot as SiteBundleSnapshot | null;
+          if (revisionSnapshot?.meta?.seal?.version) {
+            replaceCommittedWizardFiles(files, {
+              siteBundleSnapshot: revisionSnapshot,
+              preferredPath: launchEntryPoint,
+              context: 'Committed revision hydration',
+            });
+          } else {
+            importBuilderFiles(files, {
+              entryPoint: launchEntryPoint,
+              replace: true,
+              adoption: {
+                source: 'revision-hydration',
+                revisionId: revision.id,
+                exemptReason: 'hydration-only',
+              },
+            });
+          }
         }
         setHydratedRevision(revision);
         setCurrentRevisionId(revision.id);
@@ -2625,7 +2734,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         hydratedRevisionRef.current = null;
       }
     };
-  }, [currentDraftId, currentRevisionId, effectiveRouteState?.revisionId, effectiveRouteState?.vfsFiles, hydrationNonce, importBuilderFiles, launchEntryPoint, projectId, resolvedProjectId]);
+  }, [currentDraftId, currentRevisionId, effectiveRouteState?.revisionId, effectiveRouteState?.vfsFiles, hydrationNonce, importBuilderFiles, launchEntryPoint, projectId, replaceCommittedWizardFiles, resolvedProjectId]);
 
   // ── Automatic owning-business repair ──────────────────────────────────────
   // When canonical hydration fails because the draft lost its business link (or
@@ -2677,6 +2786,15 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   useEffect(() => {
     if (!hydratedRevision) return;
     const revisionSnapshot = hydratedRevision.siteBundleSnapshot as SiteBundleSnapshot;
+    if (revisionSnapshot?.pageRegistry) {
+      hydrateCanonicalPlayground({
+        pageRegistry: revisionSnapshot.pageRegistry,
+        creatorData: revisionSnapshot.creatorData,
+      });
+      if (revisionSnapshot.bindings) setPlaygroundBindings(revisionSnapshot.bindings);
+      if (revisionSnapshot.calendars) setPlaygroundCalendars(revisionSnapshot.calendars);
+      if (revisionSnapshot.popups) setPlaygroundPopups(revisionSnapshot.popups);
+    }
     setActivePublishedRevisionId(null);
     setRuntimeProjectionRevisionId(null);
     let cancelled = false;
@@ -2697,7 +2815,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         }
       });
     return () => { cancelled = true; };
-  }, [hydratedRevision]);
+  }, [hydrateCanonicalPlayground, hydratedRevision]);
 
   // ── Phase 0A: complete CanonicalProjectState for every editor mutation ───
   // Guidebook §2.5 / Phase 0A: editor bridges must not commit with partial
@@ -4149,6 +4267,34 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
 
     setAutoSaveStatus('saving');
+    const snapshotFromLiveVfs = (() => {
+      try {
+        return resolveSnapshot(currentVfsFiles, effectiveRouteState as any).snapshot;
+      } catch {
+        return null;
+      }
+    })();
+    const autosaveSnapshot = (
+      snapshotFromLiveVfs
+      ?? hydratedRevision?.siteBundleSnapshot
+      ?? effectiveRouteState?.siteBundleSnapshot
+      ?? null
+    ) as SiteBundleSnapshot | null;
+    const livePageRegistry = creatorPlaygroundStateRef.current.pageRegistry;
+    const hasLivePages = Object.keys(livePageRegistry?.pages ?? {}).length > 0;
+    const autosavePlayground = hasLivePages
+      ? {
+          pageRegistry: livePageRegistry,
+          creatorData: creatorPlaygroundStateRef.current.creatorData,
+          bindings: playgroundBindings,
+          calendars: playgroundCalendars,
+          popups: playgroundPopups,
+        }
+      : (hydratedRevision?.playground ?? null);
+    const autosaveBusinessName =
+      creatorPlaygroundStateRef.current.creatorData.businessInfo.businessName
+      || currentTemplateName
+      || 'Untitled Site';
     const persist = async (): Promise<boolean> => {
       try {
         const existingDraftId = currentDraftIdRef.current;
@@ -4169,15 +4315,27 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             revisionId: currentRevisionIdRef.current,
             sessionId: `web-builder:${existingDraftId}`,
           },
-          current: buildCanonicalCommitCurrent(
-            currentVfsFiles,
-            (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | undefined) ?? null,
-          ),
-
+          current: {
+            ...buildCanonicalCommitCurrent(
+              currentVfsFiles,
+              (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | undefined) ?? null,
+            ),
+            siteBundleSnapshot: autosaveSnapshot ?? undefined,
+            playground: autosavePlayground ?? undefined,
+            activePagePath,
+          },
           patch: legacyFilesToPatchPlan(currentVfsFiles, `Autosave: ${reason}`),
           options: {
             requirePreviewPass: true,
             requireReadinessPass: false,
+            businessName: autosaveBusinessName,
+            industry: autosaveSnapshot?.industry,
+            selectedTemplateId: autosaveSnapshot?.meta?.templateId,
+            selectedThemeId: autosaveSnapshot?.meta?.themePresetId,
+            themePresetId: autosaveSnapshot?.meta?.themePresetId,
+            themeTokens:
+              autosaveSnapshot?.themeTokens
+              ?? effectiveRouteState?.wizardSelections?.themeTokens,
           },
         });
         if (!commit.persistedRevisionId) {
@@ -4225,6 +4383,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     projectId,
     resolvedProjectId,
     hydratedRevision,
+    effectiveRouteState,
+    playgroundBindings,
+    playgroundCalendars,
+    playgroundPopups,
+    currentTemplateName,
   ]);
 
   // Keep latest saveDraft in a ref so unload/visibility handlers always call the freshest version.
@@ -5098,6 +5261,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       return siteBundleFiles;
     })();
 
+    if (navState?.startInPreview && !launcherSourceFiles && navState.revisionId) {
+      console.info('[WebBuilder] awaiting committed revision hydration', {
+        projectId: navState.projectId,
+        revisionId: navState.revisionId,
+      });
+      return;
+    }
+
     if (navState?.startInPreview && !launcherSourceFiles) {
       toast.error('Launcher preview requires structured VFS files from the industry pipeline.');
       importedRouteStateRef.current = navStateSignature;
@@ -5122,15 +5293,31 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       const normalizedEntryPoint = launcherEntryPoint
         ? (launcherEntryPoint.startsWith('/') ? launcherEntryPoint : `/${launcherEntryPoint}`)
         : null;
-      let vfsFiles = normalizeLauncherFiles(launcherSourceFiles, {
-        entryPoint: normalizedEntryPoint || launcherEntryPoint,
-        themePresetId: resolvedThemePresetId,
-        injectCssIfMissing: !(navState.siteBundleSnapshot || navState.fromLauncher),
-      });
-
-      let wizardResolution = resolveSnapshot(vfsFiles, navState as any);
-      vfsFiles = projectSnapshotVfsFiles(vfsFiles, wizardResolution);
-      wizardResolution = resolveSnapshot(vfsFiles, navState as any);
+      const initialWizardResolution = resolveSnapshot(launcherSourceFiles, navState as any);
+      let vfsFiles: Record<string, string>;
+      let wizardResolution;
+      if (initialWizardResolution.isWizardDraft) {
+        const committed = projectCommittedWizardRuntime({
+          files: launcherSourceFiles,
+          launchState: navState as any,
+          snapshotVfsCompacted: navState.snapshotVfsCompacted,
+          context: 'Launcher handoff import',
+        });
+        vfsFiles = committed.files;
+        wizardResolution = resolveSnapshot(vfsFiles, {
+          ...navState,
+          siteBundleSnapshot: committed.snapshot,
+        } as any);
+      } else {
+        // Blank and legacy drafts still use normalization/migration. A sealed
+        // Wizard snapshot never enters this branch.
+        vfsFiles = normalizeLauncherFiles(launcherSourceFiles, {
+          entryPoint: normalizedEntryPoint || launcherEntryPoint,
+          themePresetId: resolvedThemePresetId,
+          injectCssIfMissing: true,
+        });
+        wizardResolution = resolveSnapshot(vfsFiles, navState as any);
+      }
       assertNoMinimalFallbackPreview(vfsFiles, wizardResolution, 'Launcher handoff import');
       if (wizardResolution.isWizardDraft && !vfsFiles['/src/index.css']) {
         throw new Error('[WebBuilder] Launcher handoff is missing injected /src/index.css from SiteBundleSnapshot; refusing preview CSS fallback.');
@@ -5142,15 +5329,25 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           normalizedEntryPoint || launchEntryPoint,
         ) || activePagePath;
         const entry = editableEntryPath ? vfsFiles[editableEntryPath] : undefined;
-        const safeEntry = entry ? ensureReactImports(entry) : undefined;
+        const safeEntry = entry
+          ? (wizardResolution.isWizardDraft ? entry : ensureReactImports(entry))
+          : undefined;
         const importedFiles = editableEntryPath && safeEntry && entry !== safeEntry
           ? { ...vfsFiles, [editableEntryPath]: safeEntry }
           : vfsFiles;
 
-        replaceProjectFiles(importedFiles, {
-          activePath: editableEntryPath || launchEntryPoint,
-          entryContent: safeEntry,
-        });
+        if (wizardResolution.isWizardDraft) {
+          replaceCommittedWizardFiles(importedFiles, {
+            siteBundleSnapshot: wizardResolution.snapshot,
+            preferredPath: editableEntryPath || launchEntryPoint,
+            context: 'Launcher handoff mount',
+          });
+        } else {
+          replaceProjectFiles(importedFiles, {
+            activePath: editableEntryPath || launchEntryPoint,
+            entryContent: safeEntry,
+          });
+        }
 
         if (safeEntry) {
           setEditorCode(safeEntry);
@@ -5320,7 +5517,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       importedRouteStateRef.current = navStateSignature;
       window.history.replaceState({}, document.title);
     }
-  }, [effectiveRouteState, activePagePath, activeSystemType, creatorPlayground, launchEntryPoint, replaceProjectFiles, virtualFS]);
+  }, [effectiveRouteState, activePagePath, activeSystemType, creatorPlayground, launchEntryPoint, replaceCommittedWizardFiles, replaceProjectFiles, virtualFS]);
 
 
   const launcherDraftBootstrapKey = useMemo(() => {
@@ -7546,119 +7743,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               </div>
             )}
             
-            {/* Canvas Mode - AI Live Preview Only */}
-            {viewMode === 'canvas' && (
-              <div className="w-full h-full flex flex-col overflow-hidden relative">
-                {/* Page tabs — synced with PageRegistry (Creator Playground + AI-generated pages) */}
-                <PageNavigationBar
-                  pages={pageTabs}
-                  activePage={activePageTabId}
-                  onSelectPage={handlePageTabSelect}
-                  onAddPage={handlePageTabAdd}
-                  onRemovePage={handlePageTabRemove}
-                  onUndo={handleUndo}
-                  onRedo={handleRedo}
-                  onRefresh={handleRefreshPreview}
-                  onOpenPreview={() => livePreviewRef.current?.openInNewTab()}
-                  canUndo={codeHistory.canUndo}
-                  canRedo={codeHistory.canRedo}
-                  isRefreshing={isRefreshing}
-                />
-                <div 
-                  ref={scrollContainerRef}
-                  data-drop-zone="true"
-                  className="flex-1 flex flex-col min-h-0 overflow-hidden"
-                >
-                  {/* Unified VFSPreview — single Sandpack-based preview engine */}
-                    <VFSPreview
-                      ref={livePreviewRef}
-                      nodes={virtualFS.nodes}
-                      files={!virtualFS.hasFiles ? effectiveRouteState?.vfsFiles : undefined}
-                      onImportFiles={virtualFS.importFiles}
-                      onSyncFiles={virtualFS.replaceFiles}
-                      activeFile={activePagePath}
-                      className="w-full h-full min-h-0 flex-1"
-                      showToolbar={false}
-                      autoStart={false}
-                      forceBackend="sandpack"
-                      showBackendIndicator={false}
-                      device={device}
-                      enableSelection={builderMode === 'select'}
-                      onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
-                      onNavigate={(path) => {
-                        const pageName = path.replace(/^\//, '').replace(/\.html$/, '') || 'index';
-                        if (pageName !== 'index') {
-                          // Registry-first: check if page already exists before generating
-                          const registryPages = Object.values(creatorPlayground.pageRegistry.pages);
-                          const existingPage = registryPages.find(p => 
-                            p.path.replace(/^\//, '').toLowerCase() === pageName.toLowerCase()
-                          );
-                          const vfsFiles = virtualFS.getSandpackFiles();
-                          const sanitized = pageName.replace(/[^a-z0-9-]/gi, '-');
-                          const componentName = sanitized
-                            .replace(/[-_\s]+(.)/g, (_: string, c: string) => c.toUpperCase())
-                            .replace(/^(.)/, (_: string, c: string) => c.toUpperCase());
-                          const vfsPath = `/src/pages/${componentName}.tsx`;
-                          
-                          if (existingPage && vfsFiles[vfsPath]) {
-                            // Page exists — navigate preview to route and open in editor
-                            handleSelectPage(vfsPath);
-                            livePreviewRef.current?.navigateToRoute(existingPage.path);
-                          } else {
-                            // Page doesn't exist — fall back to generation
-                            triggerPageGenRef.current(pageName, pageName, null);
-                          }
-                        }
-                      }}
-                      onIntentTrigger={(intent, payload) => {
-                        if ((intent === 'nav.goto' || intent === 'nav.goto_page') && (payload.path || payload['target-page-id'])) {
-                          const targetPageId = payload['target-page-id'] as string;
-                          const targetPath = payload.path as string;
-                          
-                          // Resolve by page ID first (deterministic), then by path
-                          if (targetPageId) {
-                            const page = creatorPlayground.pageRegistry.pages[targetPageId];
-                            if (page) {
-                              livePreviewRef.current?.navigateToRoute(page.path);
-                              return;
-                            }
-                          }
-                          
-                          const pageName = String(targetPath || '').replace(/^\//, '').replace(/\.html$/, '');
-                          if (pageName) {
-                            const registryPages = Object.values(creatorPlayground.pageRegistry.pages);
-                            const existingPage = registryPages.find(p => 
-                              p.path.replace(/^\//, '').toLowerCase() === pageName.toLowerCase()
-                            );
-                            if (existingPage) {
-                              livePreviewRef.current?.navigateToRoute(existingPage.path);
-                            } else {
-                              triggerPageGenRef.current(pageName, String(payload.text || pageName), null);
-                            }
-                          }
-                        }
-                      }}
-                      businessId={businessId || undefined}
-                      onReady={() => console.log('[WebBuilder] VFSPreview ready')}
-                      onError={(err) => {
-                        setIframeErrors(prev => {
-                          // Deduplicate: skip if same message already exists in last 5 errors
-                          const isDuplicate = prev.slice(-5).some(e => e.message === err);
-                          if (isDuplicate) return prev;
-                          // Cap at 20 errors to prevent memory bloat
-                          const next = prev.length >= 20 ? prev.slice(-19) : prev;
-                          const errorType = err.includes('SyntaxError') || err.includes('Unexpected token') ? 'syntax' as const
-                            : err.includes('fetch') || err.includes('network') || err.includes('CORS') ? 'network' as const
-                            : 'runtime' as const;
-                          return [...next, { type: errorType, message: err, timestamp: new Date() }];
-                        });
-                      }}
-                    />
-                  {/* Auto AI page generation overlay removed. */}
-                </div>
-              </div>
-            )}
-
             {/* Code Mode - VFS Code Editor */}
             {viewMode === 'code' && (
               <CodeViewErrorBoundary onFallbackClick={() => setViewMode('canvas')}>
@@ -7680,7 +7764,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   getOpenFiles={virtualFS.getOpenFiles}
                   updateFileContent={virtualFS.updateFileContent}
                   importFiles={virtualFS.importFiles}
-                  replaceFiles={virtualFS.replaceFiles}
                   loadDefaultTemplate={virtualFS.loadDefaultTemplate}
                   getSandpackFiles={virtualFS.getSandpackFiles}
                   modifiedFiles={modifiedFiles}
@@ -7717,11 +7800,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               </CodeViewErrorBoundary>
             )}
 
-            {/* Split Mode - Live Preview + Code Editor */}
-            {viewMode === 'split' && (
-              <div className="w-full h-full flex gap-4">
-                {/* Live Preview - Main viewing area */}
-                <div className="flex-1 bg-white rounded-xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-black/30 relative flex flex-col">
+            {/* Canonical preview owner — retained while switching canvas/split layout. */}
+            {(viewMode === 'canvas' || viewMode === 'split') && (
+              <div className={cn('w-full h-full flex', viewMode === 'split' && 'gap-4')}>
+                <div className={cn(
+                  'flex-1 overflow-hidden relative flex flex-col',
+                  viewMode === 'split' && 'bg-white rounded-xl border border-white/[0.08] shadow-2xl shadow-black/30',
+                )}>
                   {/* Page tabs — synced with PageRegistry (Creator Playground + AI-generated pages) */}
                   <PageNavigationBar
                     pages={pageTabs}
@@ -7738,7 +7823,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     isRefreshing={isRefreshing}
                   />
                   <div 
-                    ref={splitViewDropZoneRef}
+                    ref={viewMode === 'split' ? splitViewDropZoneRef : scrollContainerRef}
                     data-drop-zone="true"
                     className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   >
@@ -7746,7 +7831,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       <VFSPreview
                         ref={livePreviewRef}
                         nodes={virtualFS.nodes}
-                        files={!virtualFS.hasFiles ? effectiveRouteState?.vfsFiles : undefined}
                         onImportFiles={virtualFS.importFiles}
                         onSyncFiles={virtualFS.replaceFiles}
                         activeFile={activePagePath}
@@ -7824,8 +7908,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   </div>
                 </div>
 
-                {/* Code Editor Panel */}
-                <div className="flex-1 flex flex-col gap-4">
+                {/* Split mode adds an editor beside the retained preview runtime. */}
+                {viewMode === 'split' && (
+                  <div className="flex-1 flex flex-col gap-4">
                   {/* Code Editor */}
                   <div className="flex-1 bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10 flex flex-col">
                     <div className="h-10 bg-[#2d2d2d] border-b border-white/10 flex items-center justify-between px-4">
@@ -7908,7 +7993,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       </Button>
                     </div>
                   </div>
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

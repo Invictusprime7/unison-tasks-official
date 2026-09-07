@@ -305,6 +305,11 @@ export interface SiteBundleSnapshotMeta {
     sealedBy: 'wizard-launch' | 'recompile' | 'builder-commit' | 'import';
     compileArtifactId: string;
     fileCount: number;
+    /** Canonical Wizard ownership chain consumed from the merge proof. */
+    pipeline?: 'lane-a+lane-b+stage-4b';
+    registeredPageBodyAuthority?: 'lane-b';
+    registeredPageFiles?: string[];
+    laneAProtectedFiles?: string[];
     /** Registered pages with no VFS file at seal time (report policy only). */
     missingPageFiles?: string[];
   };

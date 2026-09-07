@@ -5,14 +5,18 @@ import { describe, expect, it } from 'vitest';
 const readSource = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 
 describe('Web Builder preview ownership', () => {
-  it('keeps SandpackProvider in VFSPreview only', () => {
+  it('keeps SandpackProvider and the builder preview mount in one owner', () => {
     const sharedPreview = readSource('src/components/VFSPreview.tsx');
     const codeView = readSource('src/components/creatives/code-editor/VFSCodeView.tsx');
+    const builder = readSource('src/components/creatives/WebBuilder.tsx');
 
     expect(sharedPreview).toContain('<SandpackProvider');
-    expect(codeView).toContain('<VFSPreview');
+    expect(builder.match(/<VFSPreview(?:\s|>)/g)).toHaveLength(1);
+    expect(codeView).not.toContain('<VFSPreview');
     expect(codeView).not.toContain('<SandpackProvider');
     expect(codeView).not.toContain('function InlinePreview');
+    expect(builder).toContain("(viewMode === 'canvas' || viewMode === 'split')");
+    expect(builder).toContain("ref={viewMode === 'split' ? splitViewDropZoneRef : scrollContainerRef}");
   });
 
   it('threads VFS imports and remounts only when the dependency signature changes', () => {
@@ -25,8 +29,8 @@ describe('Web Builder preview ownership', () => {
     expect(sharedPreview).toContain('dependencySignatureRef.current = null;');
     expect(sharedPreview).toContain('syncIntoOwner(snapshot)');
     expect(sharedPreview).toContain('importIntoOwner(changedFiles)');
-    expect(builder.match(/onImportFiles=\{virtualFS\.importFiles\}/g)).toHaveLength(2);
-    expect(builder.match(/onSyncFiles=\{virtualFS\.replaceFiles\}/g)).toHaveLength(2);
+    expect(builder.match(/onImportFiles=\{virtualFS\.importFiles\}/g)).toHaveLength(1);
+    expect(builder.match(/onSyncFiles=\{virtualFS\.replaceFiles\}/g)).toHaveLength(1);
   });
 
   it('keeps the connected Sandpack provider mounted during background recompiles', () => {
