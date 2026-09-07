@@ -5458,6 +5458,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     importBuilderFiles(templateToVFSFiles(code, template.name), {
       preferredPath: launchEntryPoint,
       entryPoint: launchEntryPoint,
+      adoption: { source: 'hydration', exemptReason: 'load-saved-template-into-workspace' },
     });
     
     // Track the current template ID and name for re-save
@@ -5508,6 +5509,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     importBuilderFiles(templateToVFSFiles(normalized.code, name), {
       preferredPath: launchEntryPoint,
       entryPoint: launchEntryPoint,
+      adoption: { source: 'hydration', exemptReason: 'demo-template-has-no-canonical-draft' },
     });
     
     toast.success(`Loaded template: ${name}`, {
