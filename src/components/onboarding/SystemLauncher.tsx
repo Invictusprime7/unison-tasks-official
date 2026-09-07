@@ -4306,27 +4306,9 @@ export const SystemLauncher = ({ open, onOpenChange, prefill }: SystemLauncherPr
         );
       }
 
-      setLaunchStatus('Review the generated site before creating its live data workspace.');
-      // Generation is complete. The confirmation dialog is an intentional
-      // user decision, not an active loading state.
-      setIsLaunching(false);
-      setLaunchStatus('');
-      const confirmed = await requestLaunchConfirmation({
-        businessName: brand,
-        siteName: `${brand} Site`,
-        fileCount: Object.keys(wiredVfsFiles).length,
-        pagePaths: Object.keys(wiredVfsFiles)
-          .filter((path) => /^\/?src\/pages\/.+\.tsx$/i.test(path))
-          .sort(),
-        businessId: provisionedBusinessId,
-        siteId: launchIds.siteId,
-        files: wiredVfsFiles,
-      });
-      if (!confirmed) {
-        toast.info('Launch cancelled. No site data was created.');
-        return;
-      }
-
+      // Finalizing preview is the last generation step. There is no manual
+      // confirmation gate: the run continues straight into workspace creation
+      // and the WebBuilder handoff so the generated site renders in preview.
       setIsLaunching(true);
       setLaunchStatus('Creating the site workspace and live data contracts…');
       run.markStage('commit', 'active');
