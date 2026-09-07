@@ -22,7 +22,12 @@ import {
   galleryLightboxGridJSX, galleryFeatureSplitJSX,
   testimonialsGridJSX, testimonialsRailJSX, testimonialsSpotlightJSX,
   pricingTiersJSX, pricingComparisonJSX, pricingAccordionJSX,
+  aboutEditorialSplitJSX, aboutStatementJSX, aboutStoryPanelJSX,
+  faqAccordionJSX, faqTwoColumnJSX, faqCardsJSX,
+  statsRowJSX, statsBandedGridJSX, statsHighlightJSX,
+  teamPortraitGridJSX, teamRosterRailJSX, teamLeadSpotlightJSX,
 } from './jsxTemplates';
+
 
 // Hero variants
 import { HeroCentered } from './hero/HeroCentered';
