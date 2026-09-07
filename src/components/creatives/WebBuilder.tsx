@@ -4595,7 +4595,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           vfsPatch['/src/index.css'] = converted['/src/index.css'];
         }
 
-        importBuilderFiles(vfsPatch, {
+        void commitBuilderFiles(vfsPatch, {
+          source: 'playground-edit',
+          summary: `Page replace · ${targetPath}`,
           preferredPath: targetPath,
           entryPoint: targetPath,
         });
