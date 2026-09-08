@@ -97,8 +97,8 @@ describe("buildCanonicalLaunchArtifacts", () => {
 
     const merged = mergeGeneratedVfsWithCanonicalSnapshot(
       {
-        "/src/pages/Home.tsx": "export default function Home(){ return <main>Lane B Home</main>; }",
-        "/src/pages/About.tsx": "export default function About(){ return <main>Lane B About</main>; }",
+        "/src/pages/Home.tsx": "export default function Home(){ return <main>Rich Home</main>; }",
+        "/src/pages/About.tsx": "export default function About(){ return <main>Rich About</main>; }",
         "/src/sections/SiteNavbar.tsx": "export default function SiteNavbar(){ return <nav>Stale menu</nav>; }",
       },
       snapshot.vfsFiles,
@@ -165,7 +165,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(merged["/src/App.tsx"]).toContain("react-router-dom");
   });
 
-  it("preserves snapshot-owned UI foundation files when merging Lane B output", () => {
+  it("preserves snapshot-owned UI foundation files when merging generated output", () => {
     const snapshot = createSnapshot();
     snapshot.vfsFiles["/src/unison/ui/button.tsx"] =
       "// canonical UI foundation\nexport const Button = () => null;";
@@ -176,31 +176,31 @@ describe("buildCanonicalLaunchArtifacts", () => {
 
     const merged = mergeGeneratedVfsWithCanonicalSnapshot(
       {
-        "/src/pages/Home.tsx": "export default function Home(){ return <main>Lane B page</main>; }",
+        "/src/pages/Home.tsx": "export default function Home(){ return <main>Production page</main>; }",
         "/src/unison/ui/button.tsx": "export const Button = () => <button>unsafe override</button>;",
         "/.unison/ui-manifest.json": '{"importRoot":"@/other-ui"}',
         '/.unison/design-intervention.json': '{"layoutRecipe":"conversion-form"}',
-        '/.unison/forged-lane-b.json': '{"owner":"lane-b"}',
+        '/.unison/forged-generated.json': '{"owner":"generated"}',
       },
       snapshot.vfsFiles,
       snapshot,
     );
 
-    expect(merged["/src/pages/Home.tsx"]).toContain("Lane B page");
+    expect(merged["/src/pages/Home.tsx"]).toContain("Production page");
     expect(merged["/src/unison/ui/button.tsx"]).toContain("canonical UI foundation");
     expect(merged["/.unison/ui-manifest.json"]).toContain("@/unison/ui");
     expect(merged['/.unison/design-intervention.json']).toContain('collage-hero');
-    expect(merged['/.unison/forged-lane-b.json']).toBeUndefined();
+    expect(merged['/.unison/forged-generated.json']).toBeUndefined();
     expect(JSON.parse(merged[WIZARD_LAUNCH_AUTHORITY_PATH])).toEqual({
-      version: '1.0',
-      laneAArtifactId: snapshot.snapshotId,
-      registeredPageBodyAuthority: 'lane-b',
+      version: '2.0',
+      compileArtifactId: snapshot.snapshotId,
+      registeredPageBodyAuthority: 'canonical-compiler',
       registeredPageFiles: ['/src/pages/Home.tsx'],
-      laneAProtectedFiles: [...WIZARD_LANE_A_PROTECTED_FILES],
+      protectedFilePatterns: [...WIZARD_LANE_A_PROTECTED_FILES],
     });
   });
 
-  it("keeps Lane B as the page-body author even when Stage 4b declared a composition", () => {
+  it("uses complete generated page input even when Stage 4b declared a composition", () => {
     const snapshot = createSnapshot();
     snapshot.vfsFiles["/src/pages/Home.tsx"] = [
       'const SECTIONS = [{"id":"home-hero","type":"hero","props":{"headline":"Canonical headline"}}];',
@@ -216,7 +216,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     const laneBHome = [
       "import Hero from '../components/LaneBHero';",
       'export default function Home(){',
-      '  return <main><section data-ut-intent="contact.submit">Lane B authored home</section></main>;',
+      '  return <main><section data-ut-intent="contact.submit">Curated home</section></main>;',
       '}',
     ].join("\n");
 
@@ -225,7 +225,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
         "/src/pages/Home.tsx": laneBHome,
         "/src/components/LaneBHero.tsx": [
           'export default function Hero(){',
-          '  return <section><h1>Lane B business headline</h1><p>Lane B business description.</p><button data-ut-intent="contact.submit">Book a strategy call</button></section>;',
+          '  return <section><h1>Distinct business headline</h1><p>Detailed business description.</p><button data-ut-intent="contact.submit">Book a strategy call</button></section>;',
           '}',
         ].join('\n'),
         "/src/components/UnusedLegacy.tsx": "import Missing from './Missing'; export default function Unused(){ return <Missing />; }",
@@ -335,7 +335,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     const snapshot = createSnapshot();
     const input = {
       generatedFiles: {
-        '/src/pages/Home.tsx': 'export default function Home(){ return <main>Lane B Home</main>; }',
+        '/src/pages/Home.tsx': 'export default function Home(){ return <main>Rich Home</main>; }',
       },
       preferredEntryPoint: '/src/App.tsx',
       siteBundleSnapshot: snapshot,
@@ -363,7 +363,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     const snapshot = createSnapshot();
     const input = {
       generatedFiles: {
-        '/src/pages/Home.tsx': 'export default function Home(){ return <main>Lane B Home</main>; }',
+        '/src/pages/Home.tsx': 'export default function Home(){ return <main>Rich Home</main>; }',
       },
       preferredEntryPoint: '/src/App.tsx',
       siteBundleSnapshot: snapshot,
@@ -396,7 +396,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
 
     const artifacts = buildCanonicalLaunchArtifacts({
       generatedFiles: {
-        '/src/pages/Home.tsx': 'export default function Home(){ return <main>Lane B Home</main>; }',
+        '/src/pages/Home.tsx': 'export default function Home(){ return <main>Rich Home</main>; }',
       },
       preferredEntryPoint: '/src/App.tsx',
       siteBundleSnapshot: snapshot,
@@ -442,7 +442,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(artifacts.files[CANONICAL_METADATA_FILE_PATHS.runtimeManifest]).toContain("\"sessionKey\"");
   });
 
-  it("keeps Lane B AI page output authoritative at wizard launch (no canonical lock)", () => {
+  it("uses complete generated page output while retaining canonical router authority", () => {
     const snapshot = createSnapshot();
     // Wizard-themed bundle with a registered About route.
     snapshot.meta = { ...snapshot.meta, themePresetId: "modern" };
@@ -463,11 +463,11 @@ describe("buildCanonicalLaunchArtifacts", () => {
 
     const artifacts = buildCanonicalLaunchArtifacts({
       generatedFiles: {
-        // Lane B authors rich pages for both routes — these MUST win.
+        // Complete generated pages for both routes must survive the merge.
         "/src/pages/Home.tsx":
-          "import Hero from '../components/Hero';\nexport default function Home(){ return <main className='bg-background text-foreground'><Hero/>Lane B Home</main>; }",
+          "import Hero from '../components/Hero';\nexport default function Home(){ return <main className='bg-background text-foreground'><Hero/>Rich Home</main>; }",
         "/src/pages/About.tsx":
-          "export default function About(){ return <main className='bg-background text-foreground'>Lane B About</main>; }",
+          "export default function About(){ return <main className='bg-background text-foreground'>Rich About</main>; }",
         "/src/components/Hero.tsx":
           "export default function Hero(){ return <section>Rich hero</section>; }",
       },
@@ -487,18 +487,15 @@ describe("buildCanonicalLaunchArtifacts", () => {
       backendRequired: false,
     });
 
-    // Lane B authority: rich AI pages win over canonical stubs even with
-    // a wizard themePresetId present. Themed token classes are preserved
-    // because Lane B authored them; canonical stubs do not preempt.
-    expect(artifacts.files["/src/pages/Home.tsx"]).toContain("Lane B Home");
-    expect(artifacts.files["/src/pages/About.tsx"]).toContain("Lane B About");
+    expect(artifacts.files["/src/pages/Home.tsx"]).toContain("Rich Home");
+    expect(artifacts.files["/src/pages/About.tsx"]).toContain("Rich About");
     expect(artifacts.files["/src/pages/Home.tsx"]).not.toContain("Canonical Home Stub");
     expect(artifacts.files["/src/pages/About.tsx"]).not.toContain("Canonical About Stub");
     // Canonical router still owns /src/App.tsx.
     expect(artifacts.files["/src/App.tsx"]).toContain("Routes");
   });
 
-  it("fails the launch when Lane B omits a registered page instead of masking it with a canonical body", () => {
+  it("fails the launch when generated output omits a registered page instead of masking it", () => {
     const snapshot = createSnapshot();
     const aboutPage = {
       ...snapshot.pageRegistry.pages[snapshot.pageRegistry.homePageId!],
@@ -530,7 +527,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
       industry: "agency",
       aesthetic: "modern",
       backendRequired: false,
-    })).toThrow(/did not author 1 registered page/);
+    })).toThrow(/Canonical compiler output is missing 1 registered page/);
   });
 
 

@@ -397,6 +397,16 @@ export interface WizardSeedShape {
     primaryGoal?: string;
     tagline?: string;
     tone?: string;
+    description?: string | null;
+    logoUrl?: string | null;
+    brandColor?: string | null;
+    website?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    timezone?: string;
+    address?: Record<string, unknown>;
+    hours?: Array<Record<string, unknown>>;
+    socialLinks?: Record<string, string | undefined>;
     [k: string]: unknown;
   };
   template?: {
@@ -523,6 +533,16 @@ export function buildWizardSeedContext(seed: WizardSeedShape | undefined): strin
     if (b.primaryGoal) lines.push(`Primary Goal: ${b.primaryGoal}`);
     if (b.tagline)     lines.push(`Tagline: "${b.tagline}"`);
     if (b.tone)        lines.push(`Tone: ${b.tone}`);
+    if (b.description) lines.push(`Public description: ${b.description}`);
+    if (b.website)     lines.push(`Public website: ${b.website}`);
+    if (b.phone)       lines.push(`Public phone: ${b.phone}`);
+    if (b.email)       lines.push(`Public email: ${b.email}`);
+    if (b.timezone)    lines.push(`Timezone: ${b.timezone}`);
+    if (b.address && Object.values(b.address).some(Boolean)) lines.push(`Public address: ${JSON.stringify(b.address)}`);
+    if (b.hours?.length) lines.push(`Public hours: ${JSON.stringify(b.hours)}`);
+    if (b.socialLinks && Object.values(b.socialLinks).some(Boolean)) lines.push(`Public socials: ${JSON.stringify(b.socialLinks)}`);
+    if (b.logoUrl)     lines.push(`Logo URL: ${b.logoUrl}`);
+    if (b.brandColor)  lines.push(`Brand color: ${b.brandColor}`);
     lines.push('');
   }
 

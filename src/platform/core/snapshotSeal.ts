@@ -2,7 +2,7 @@
  * Pass 1 — Name the stages.
  *
  * The pipeline used to build "a SiteBundleSnapshot" in one place and then keep
- * amending it (Lane B merge, preflight, runtime VFS injection). That made
+ * amending it during merge, preflight, and runtime VFS injection. That made
  * "which revision is Preview showing?" genuinely ambiguous.
  *
  * Two explicitly named revisions now exist:
@@ -12,7 +12,7 @@
  *   WizardSelections alone. Frozen.
  *
  *   SiteBundleSnapshot — the final SEALED revision, produced by `sealSnapshot()`
- *   from artifact + Lane B result + preflight output. The only revision that
+ *   from the compile artifact + canonical preflight output. The only revision that
  *   Preview / Playground / Publish may read.
  *
  * INVARIANT: If it isn't in the current sealed SiteBundleSnapshot, it isn't
@@ -33,7 +33,7 @@ export const WIZARD_LANE_A_PROTECTED_FILES = [
   '/.unison/compositions/**',
 ] as const;
 
-export interface WizardLaunchAuthorityProof {
+export interface LegacyWizardLaunchAuthorityProof {
   version: '1.0';
   laneAArtifactId: string;
   registeredPageBodyAuthority: 'lane-b';
@@ -41,8 +41,29 @@ export interface WizardLaunchAuthorityProof {
   laneAProtectedFiles: string[];
 }
 
+export interface WizardLaunchAuthorityProof {
+  version: '2.0';
+  compileArtifactId: string;
+  registeredPageBodyAuthority: 'canonical-compiler';
+  registeredPageFiles: string[];
+  protectedFilePatterns: string[];
+}
+
+type ReadableWizardLaunchAuthorityProof =
+  | LegacyWizardLaunchAuthorityProof
+  | WizardLaunchAuthorityProof;
+
+interface NormalizedWizardLaunchAuthorityProof {
+  version: '1.0' | '2.0';
+  compileArtifactId: string;
+  pipeline: 'lane-a+lane-b+stage-4b' | 'canonical-compiler+stage-4b';
+  registeredPageBodyAuthority: 'lane-b' | 'canonical-compiler';
+  registeredPageFiles: string[];
+  protectedFilePatterns: string[];
+}
+
 /**
- * Stage 4b compile artifact — frozen, deterministic, pre-Lane-B.
+ * Stage 4b compile artifact — frozen and deterministic.
  * Never rendered directly; it is an input to `sealSnapshot()`.
  */
 export interface WizardCompileArtifact {
@@ -72,7 +93,7 @@ export class SnapshotSealError extends Error {
 export interface SealSnapshotInput {
   /** Stage 4b artifact, or the baseline snapshot it wraps. */
   artifact: WizardCompileArtifact | SiteBundleSnapshot;
-  /** Final VFS after Lane B convergence + preflight + runtime injection. */
+  /** Final VFS after deterministic compilation, preflight, and runtime injection. */
   vfsFiles: Record<string, string>;
   /** Runtime context stamped onto the sealed revision. */
   appContext: RuntimeAppContext;
@@ -114,15 +135,15 @@ function equalStringArrays(left: readonly string[], right: readonly string[]): b
 function readWizardLaunchAuthorityProof(
   files: Record<string, string>,
   artifact: WizardCompileArtifact,
-): WizardLaunchAuthorityProof {
+): NormalizedWizardLaunchAuthorityProof {
   const raw = files[WIZARD_LAUNCH_AUTHORITY_PATH];
   if (!raw) {
     throw new SnapshotSealError(`wizard-launch is missing ${WIZARD_LAUNCH_AUTHORITY_PATH}.`);
   }
 
-  let proof: WizardLaunchAuthorityProof;
+  let proof: ReadableWizardLaunchAuthorityProof;
   try {
-    proof = JSON.parse(raw) as WizardLaunchAuthorityProof;
+    proof = JSON.parse(raw) as ReadableWizardLaunchAuthorityProof;
   } catch {
     throw new SnapshotSealError('wizard-launch ownership proof is not valid JSON.');
   }
@@ -137,18 +158,27 @@ function readWizardLaunchAuthorityProof(
     ? sortedUnique(proof.registeredPageFiles.map(normalizeVfsPath))
     : [];
   const expectedProtected = sortedUnique(WIZARD_LANE_A_PROTECTED_FILES);
-  const proofProtected = Array.isArray(proof.laneAProtectedFiles)
-    ? sortedUnique(proof.laneAProtectedFiles)
+  const proofArtifactId = proof.version === '2.0'
+    ? proof.compileArtifactId
+    : proof.laneAArtifactId;
+  const proofProtectedSource = proof.version === '2.0'
+    ? proof.protectedFilePatterns
+    : proof.laneAProtectedFiles;
+  const proofProtected = Array.isArray(proofProtectedSource)
+    ? sortedUnique(proofProtectedSource)
     : [];
 
-  if (proof.version !== '1.0') {
+  if (proof.version !== '1.0' && proof.version !== '2.0') {
     throw new SnapshotSealError('wizard-launch ownership proof version is invalid.');
   }
-  if (proof.laneAArtifactId !== artifact.baseline.snapshotId) {
-    throw new SnapshotSealError('wizard-launch ownership proof does not match the Lane A artifact.');
+  if (proofArtifactId !== artifact.baseline.snapshotId) {
+    throw new SnapshotSealError('wizard-launch ownership proof does not match the compile artifact.');
   }
-  if (proof.registeredPageBodyAuthority !== 'lane-b') {
-    throw new SnapshotSealError('wizard-launch registered page body authority must be lane-b.');
+  const expectedAuthority = proof.version === '2.0' ? 'canonical-compiler' : 'lane-b';
+  if (proof.registeredPageBodyAuthority !== expectedAuthority) {
+    throw new SnapshotSealError(
+      `wizard-launch registered page body authority must be ${expectedAuthority}.`,
+    );
   }
   if (!equalStringArrays(proofPages, expectedPages)) {
     throw new SnapshotSealError('wizard-launch ownership proof page files do not match the Lane A registry.');
@@ -164,9 +194,14 @@ function readWizardLaunchAuthorityProof(
   }
 
   return {
-    ...proof,
+    version: proof.version,
+    compileArtifactId: proofArtifactId,
+    pipeline: proof.version === '2.0'
+      ? 'canonical-compiler+stage-4b'
+      : 'lane-a+lane-b+stage-4b',
+    registeredPageBodyAuthority: proof.registeredPageBodyAuthority,
     registeredPageFiles: expectedPages,
-    laneAProtectedFiles: expectedProtected,
+    protectedFilePatterns: expectedProtected,
   };
 }
 
@@ -254,10 +289,14 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
       fileCount: Object.keys(runtimeVfsFiles).length,
       ...(authorityProof
         ? {
-            pipeline: 'lane-a+lane-b+stage-4b' as const,
-            registeredPageBodyAuthority: 'lane-b' as const,
+            pipeline: authorityProof.pipeline,
+            authorityProofVersion: authorityProof.version,
+            registeredPageBodyAuthority: authorityProof.registeredPageBodyAuthority,
             registeredPageFiles: authorityProof.registeredPageFiles,
-            laneAProtectedFiles: authorityProof.laneAProtectedFiles,
+            protectedFilePatterns: authorityProof.protectedFilePatterns,
+            ...(authorityProof.version === '1.0'
+              ? { laneAProtectedFiles: authorityProof.protectedFilePatterns }
+              : {}),
           }
         : {}),
       ...(missingPageFiles.length > 0 ? { missingPageFiles } : {}),

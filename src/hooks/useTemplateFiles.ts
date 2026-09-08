@@ -16,6 +16,7 @@ import { findBuilderDraftIdForProject } from "@/services/builderDraftBridge";
 import { migrateFrameworkVfs } from "@/services/frameworkVfsMigration";
 import { commitMutation } from "@/services/vfsCommitService";
 import { legacyFilesToPatchPlan } from "@/types/patchPlan";
+import type { PlaygroundState } from "@/platform/core/playground";
 
 interface TemplateData {
   html: string;
@@ -152,6 +153,7 @@ async function commitProjectContent(input: {
     },
     current: {
       vfsFiles,
+      playground: input.payload.canonicalPlayground as unknown as PlaygroundState | undefined,
       siteBundleSnapshot: input.payload.siteBundleSnapshot ?? undefined,
       activePagePath: input.payload.activePagePath,
     },

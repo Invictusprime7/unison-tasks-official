@@ -8,6 +8,10 @@
 
 import type { SectionType } from '../types';
 import type { SectionVariant, VariantId, VariantRegistry, ActiveVariantMap } from './types';
+import {
+  RADIX_VFS_PRIMITIVES,
+  type RadixPrimitiveId,
+} from '@/platform/core/generatedUiFoundation';
 
 // JSX layout templates for live preview swapping via VFS
 import {
@@ -33,6 +37,8 @@ import {
 import { HeroCentered } from './hero/HeroCentered';
 import { HeroSplitImage } from './hero/HeroSplitImage';
 import { HeroFullBleed } from './hero/HeroFullBleed';
+import { HeroPageTitle, HeroEditorialBanner } from './hero/HeroPageIntro';
+import { heroPageTitleJSX, heroEditorialBannerJSX } from './hero/heroPageIntroJSX';
 
 // CTA variants
 import { CTACentered } from './cta/CTACentered';
@@ -251,6 +257,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'hero:split-image',
+      pageRoles: ['services', 'about'],
       sectionType: 'hero',
       slug: 'split-image',
       name: 'Split Image',
@@ -262,6 +269,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'hero:full-bleed',
+      pageRoles: ['gallery', 'shop'],
       sectionType: 'hero',
       slug: 'full-bleed',
       name: 'Full Bleed',
@@ -270,6 +278,20 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/hero-full-bleed.svg',
       tags: ['bold', 'immersive', 'dramatic'],
       renderJSX: heroFullBleedJSX,
+    },
+    {
+      id: 'hero:page-title', sectionType: 'hero', slug: 'page-title',
+      name: 'Page Title', description: 'Compact left-aligned introduction for task-focused pages',
+      component: HeroPageTitle, thumbnail: '/variants/hero-centered.svg',
+      tags: ['compact', 'subpage'], pageRoles: ['pricing', 'faq', 'checkout', 'thank_you'],
+      renderJSX: heroPageTitleJSX,
+    },
+    {
+      id: 'hero:editorial-banner', sectionType: 'hero', slug: 'editorial-banner',
+      name: 'Editorial Banner', description: 'Wide image band above a restrained page introduction',
+      component: HeroEditorialBanner, thumbnail: '/variants/hero-full-bleed.svg',
+      tags: ['editorial', 'subpage', 'image'], pageRoles: ['booking', 'contact', 'blog', 'custom'],
+      renderJSX: heroEditorialBannerJSX,
     },
   ],
 
@@ -313,6 +335,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   navbar: [
     {
       id: 'navbar:standard',
+      radixPrimitives: ['dialog'],
       sectionType: 'navbar',
       slug: 'standard',
       name: 'Standard',
@@ -325,6 +348,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'navbar:centered-logo',
+      radixPrimitives: ['dialog'],
       sectionType: 'navbar',
       slug: 'centered-logo',
       name: 'Centered Logo',
@@ -336,6 +360,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'navbar:minimal-dark',
+      radixPrimitives: ['dialog'],
       sectionType: 'navbar',
       slug: 'minimal-dark',
       name: 'Minimal Dark',
@@ -541,6 +566,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       description: 'Disclosure list revealing one answer at a time',
       component: FAQAccordion,
       thumbnail: '/variants/faq-accordion.svg',
+      radixPrimitives: ['accordion'],
       tags: ['classic', 'default'],
       isDefault: true,
       renderJSX: faqAccordionJSX,
@@ -661,6 +687,19 @@ export const getVariantById = (variantId: VariantId): SectionVariant | undefined
   return variants?.find(v => v.id === variantId);
 };
 
+/** Resolve the canonical, deduplicated Radix dependency order for variants. */
+export const getRequiredRadixPrimitives = (
+  variantIds: Iterable<VariantId>,
+): RadixPrimitiveId[] => {
+  const required = new Set<RadixPrimitiveId>();
+  for (const variantId of variantIds) {
+    for (const primitive of getVariantById(variantId)?.radixPrimitives || []) {
+      required.add(primitive);
+    }
+  }
+  return RADIX_VFS_PRIMITIVES.filter((primitive) => required.has(primitive));
+};
+
 const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'navbar:standard': ['standard'],
   'navbar:centered-logo': ['centered-logo'],
@@ -668,6 +707,8 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'hero:centered': ['centered'],
   'hero:split-image': ['split', 'split-image'],
   'hero:full-bleed': ['full-bleed'],
+  'hero:page-title': ['page-title'],
+  'hero:editorial-banner': ['editorial-banner'],
   'services:card-grid': ['grid', 'card-grid'],
   'services:alternating': ['alternating'],
   'services:compact-list': ['list', 'compact-list'],

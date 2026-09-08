@@ -9,6 +9,7 @@
  */
 
 import type { ComponentType } from 'react';
+import type { RadixPrimitiveId } from '@/platform/core/generatedUiFoundation';
 import type { SectionType, BaseSectionProps } from '../types';
 
 /** Unique identifier for a variant: "hero:split-image", "cta:gradient-banner", etc. */
@@ -45,8 +46,11 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   thumbnail: string;
   /** Tags for filtering (e.g., "modern", "minimal", "bold") */
   tags?: string[];
+  pageRoles?: readonly import('../types').TemplatePageRole[];
   /** Whether this is the default variant for the section type */
   isDefault?: boolean;
+  /** Radix behavior facades required by this variant's generated JSX */
+  radixPrimitives?: readonly RadixPrimitiveId[];
   /** Generates JSX source string for this variant layout using extracted content */
   renderJSX: (content: ExtractedSectionContent) => string;
 }

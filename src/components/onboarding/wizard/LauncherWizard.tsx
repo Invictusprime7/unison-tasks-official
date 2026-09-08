@@ -3,9 +3,9 @@
  *
  * Selection surface only. Four steps (industry → goals → template → launch)
  * gather answers; `runLaunchPipeline` owns every deterministic stage. This
- * component never touches the VFS, never calls a model, and never authors a
- * page — it renders selections, the resolved design contract, and live
- * pipeline state.
+ * component never touches the VFS or authors a page. The orchestrator owns
+ * deterministic generation and any guarded AI enrichment while this surface
+ * renders selections, the resolved design contract, and live pipeline state.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

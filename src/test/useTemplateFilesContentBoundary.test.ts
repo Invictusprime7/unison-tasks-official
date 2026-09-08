@@ -87,6 +87,13 @@ describe('useTemplateFiles content boundary', () => {
 
     const { result } = renderHook(() => useTemplateFiles());
 
+    const canonicalPlayground = {
+      creatorData: { componentInstances: {} },
+      pageRegistry: { homePageId: 'home', pages: {} },
+      bindings: {},
+      calendars: {},
+      popups: {},
+    };
     let ok = false;
     await act(async () => {
       ok = await result.current.updateTemplate('draft-1', 'code', {
@@ -94,6 +101,7 @@ describe('useTemplateFiles content boundary', () => {
         activePagePath: '/src/App.tsx',
         businessId: 'business-1',
         projectId: 'project-1',
+        canonicalPlayground,
       });
     });
 
@@ -110,6 +118,7 @@ describe('useTemplateFiles content boundary', () => {
     expect(commitInput.source).toBe('playground-edit');
     expect(commitInput.identity.revisionId).toBe('rev-parent-1');
     expect(commitInput.identity.draftId).toBe('draft-1');
+    expect(commitMutation.mock.calls[0][0]).toHaveProperty('current.playground', canonicalPlayground);
   });
 
   it('saveTemplate (save as new) inserts an identity-only shell then commits content with an empty parent revision', async () => {
@@ -120,6 +129,13 @@ describe('useTemplateFiles content boundary', () => {
 
     const { result } = renderHook(() => useTemplateFiles());
 
+    const canonicalPlayground = {
+      creatorData: { componentInstances: {} },
+      pageRegistry: { homePageId: 'home', pages: {} },
+      bindings: {},
+      calendars: {},
+      popups: {},
+    };
     let newId: string | null = null;
     await act(async () => {
       newId = await result.current.saveTemplate('Cloned Project', 'desc', false, 'code', {
@@ -127,6 +143,7 @@ describe('useTemplateFiles content boundary', () => {
         activePagePath: '/src/App.tsx',
         businessId: 'business-1',
         forceNew: true,
+        canonicalPlayground,
       });
     });
 
@@ -140,5 +157,6 @@ describe('useTemplateFiles content boundary', () => {
     expect(commitInput.identity.revisionId).toBe('');
     expect(commitInput.identity.draftId).toBe('draft-2');
     expect(commitInput.identity.businessId).toBe('business-1');
+    expect(commitMutation.mock.calls[0][0]).toHaveProperty('current.playground', canonicalPlayground);
   });
 });

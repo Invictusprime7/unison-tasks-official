@@ -6,7 +6,7 @@ function assertEquals(actual: unknown, expected: unknown): void {
   }
 }
 
-Deno.test("keeps seeded wizard launches on the low-latency path", () => {
+Deno.test("keeps the legacy wizard-seed route isolated from research and memory", () => {
   const task = classifyTask({
     mode: "wizard-seed",
     editMode: false,
@@ -19,6 +19,7 @@ Deno.test("keeps seeded wizard launches on the low-latency path", () => {
   assertEquals(task.type, "wizard_seed_generation");
   assertEquals(task.fastPath, true);
   assertEquals(task.shouldUseMemory, false);
+  assertEquals(task.shouldUseCompactContext, true);
   assertEquals(task.skipResearch, true);
   assertEquals(task.skipThinking, true);
 });

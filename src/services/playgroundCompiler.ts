@@ -33,7 +33,7 @@ export interface CompilePlaygroundOptions {
   /** Industry overlay used by template/page scaffolding. */
   industry?: LayoutCategory | string | null;
   /** Versioned visual recipes chosen by the canonical wizard pipeline. */
-  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes'>>;
+  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed'>>;
 }
 
 type WizardSeedLike = Record<string, unknown> & {

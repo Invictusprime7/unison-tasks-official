@@ -9,10 +9,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { planSiteTopology } from '@/platform/core/siteTopologyPlanner';
+import { planSiteTopology, resolvePageSpecsForRoles } from '@/platform/core/siteTopologyPlanner';
 import { generateCanonicalRouterFromPlan } from '@/utils/topologyRouterGenerator';
 import { getAllIndustries } from '@/platform/core/industryMatrix';
 import { resolveVerticalLaunchContract } from '@/services/verticalLaunchContract';
+import { LAUNCHER_PRESELECTS, PAGE_CHOICES } from '@/components/onboarding/wizard/wizardCatalog';
 
 import type { PageSpec } from '@/platform/core/industryMatrix';
 
@@ -78,6 +79,27 @@ describe('selected-pages wizard mode — no blank routes', () => {
     });
     const routes = plan.pages.map(p => p.route).sort();
     expect(routes).toEqual(['/', '/about', '/contact', '/services']);
+  });
+
+  it('exposes Shop and resolves it through the canonical topology registry', () => {
+    expect(PAGE_CHOICES.some((choice) => choice.id === 'shop')).toBe(true);
+    expect(LAUNCHER_PRESELECTS.store.pages).toContain('shop');
+    const plan = planSiteTopology('ecommerce', 'Acme Store', {
+      additionalPages: resolvePageSpecsForRoles(['shop', 'checkout']),
+      restrictToAdditionalPages: true,
+    });
+
+    expect(plan.pages.map((page) => [page.role, page.route])).toEqual([
+      ['home', '/'],
+      ['shop', '/shop'],
+      ['checkout', '/checkout'],
+    ]);
+  });
+
+  it('resolves every page role exposed by the Wizard catalog', () => {
+    const resolvedPaths = resolvePageSpecsForRoles(PAGE_CHOICES.map((choice) => choice.id));
+    expect(resolvedPaths).toHaveLength(PAGE_CHOICES.length);
+    expect(new Set(resolvedPaths.map((page) => page.path)).size).toBe(PAGE_CHOICES.length);
   });
 
   it('capability-full mode (restrictToAdditionalPages=false) preserves industry defaults', () => {

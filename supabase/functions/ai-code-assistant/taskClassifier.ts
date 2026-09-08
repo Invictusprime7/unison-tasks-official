@@ -19,7 +19,7 @@ export type AssistantTaskType =
 
 export interface ClassifiedTask {
   type: AssistantTaskType;
-  /** True for wizard launches and nav-page gen — skips research, thinking, memory */
+  /** True for low-context tasks that skip learned patterns and user history. */
   fastPath: boolean;
   /** Whether to inject session memory context */
   shouldUseMemory: boolean;
@@ -66,12 +66,9 @@ export function classifyTask(opts: {
     wizardSeed,
   } = opts;
 
-  // ── Wizard seed — sole launch lane. The seed already supplies the selected
-  //    template, industry, theme, route registry, and intent contract. Avoid
-  //    delaying a first launch on historical drafts or generic web research;
-  //    an interpreter envelope can still explicitly request research.
-  //    Wizard launches MUST send `mode: "wizard-seed"` with a structured
-  //    `wizardSeed`; no alternate launcher generation route is supported.
+  // ── Legacy wizard-seed compatibility route. The deterministic Launcher no
+  //    longer calls this mode; Stage 4b owns launch page authorship. Keep this
+  //    bounded while external-client usage is audited before removal.
   if (mode === "wizard-seed") {
     return {
       type: "wizard_seed_generation",

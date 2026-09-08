@@ -578,12 +578,11 @@ describe("launchStateToSandpackFiles", () => {
     }
     expect(pipeline.compileResult.vfsFiles['/src/App.tsx']).toContain('<Routes>');
 
-    // Routes come from the registry; page BODIES are Lane B's alone. An
-    // unauthored registered page is a fatal launch failure (M1 closure) —
-    // never scaffold-substituted and never silently dropped.
+    // Routes and page bodies must close over the same canonical registry. A
+    // missing registered page is fatal, never scaffold-substituted or dropped.
     expect(() => buildCanonicalLaunchArtifacts({
       generatedFiles: {
-        "/src/App.tsx": "export default function App(){ return <main>Generated Home</main>; }",
+        "/src/App.tsx": "export default function App(){ return <main>Rich Home</main>; }",
       },
       preferredEntryPoint: "/src/App.tsx",
       siteBundleSnapshot: pipeline.siteBundleSnapshot,
@@ -598,7 +597,7 @@ describe("launchStateToSandpackFiles", () => {
       aesthetic: "modern",
       backendRequired: false,
       wizardSelections,
-    })).toThrow(/did not author \d+ registered page/);
+    })).toThrow(/Canonical compiler output is missing \d+ registered page/);
   });
 
 

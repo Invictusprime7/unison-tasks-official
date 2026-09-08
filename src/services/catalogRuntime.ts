@@ -38,7 +38,7 @@ export async function resolveSectionData(
 ): Promise<CatalogRenderResult> {
   const binding = await getBinding(projectId, pagePath, sectionId, slotKey);
   if (!binding) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'hide_section' };
+    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
   }
   return hydrateBinding(binding);
 }
@@ -129,7 +129,7 @@ export async function resolveHydrationRequest(params: {
 }): Promise<CatalogRenderResult> {
   const { projectId, pagePath } = params;
   if (!projectId || !pagePath) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'hide_section' };
+    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
   }
 
   if (params.sectionId) {
@@ -139,7 +139,7 @@ export async function resolveHydrationRequest(params: {
 
   const surface = getCatalogSurface(params.sectionType ?? '');
   if (!surface) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'hide_section' };
+    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
   }
   const { data, error } = await supabase
     .from('site_data_bindings' as never)
@@ -149,7 +149,7 @@ export async function resolveHydrationRequest(params: {
     .like('section_id', `${surface.bindingPrefix}-%`)
     .order('section_id', { ascending: true });
   if (error || !data || (data as unknown[]).length === 0) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'hide_section' };
+    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
   }
   const rows = data as unknown as Array<{
     id: string; business_id: string; project_id: string; snapshot_id: string | null;

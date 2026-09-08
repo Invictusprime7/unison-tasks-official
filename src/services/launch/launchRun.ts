@@ -201,10 +201,8 @@ export interface LaunchRun {
 }
 
 /**
- * Authorship stages own the page bodies (Lane B generation + the canonical
- * merge/preflight that seals them). A failure here can never be degraded away:
- * degradation would mean sealing content nobody authored. Non-authorship
- * stages (plan, commit, handoff) may still degrade with an explicit fallback.
+ * Authorship stages establish and seal canonical page bodies. A failure there
+ * can never be degraded away: degradation must not substitute content.
  */
 const AUTHORSHIP_STAGES: ReadonlySet<LaunchStageName> = new Set<LaunchStageName>([
   'seed',
@@ -218,7 +216,6 @@ const AUTHORSHIP_STAGES: ReadonlySet<LaunchStageName> = new Set<LaunchStageName>
  */
 const STAGE_TELEMETRY_EVENT: Partial<Record<LaunchStageName, LaunchTelemetryEvent>> = {
   seed: 'wizard.lane_a.compiled',
-  enrich: 'wizard.lane_b.completed',
   preflight: 'wizard.preflight.accepted',
   commit: 'wizard.revision.committed',
   handoff: 'wizard.web_builder.ready',

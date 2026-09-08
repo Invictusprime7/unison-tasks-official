@@ -17,6 +17,52 @@ export const SALON_COMPOSITIONS: TemplateComposition[] = [
     systemType: 'booking',
     description: 'Warm luxury layout for high-end salons & spas with booking-first CTAs.',
     tags: ['salon', 'spa', 'booking', 'luxury', 'beauty'],
+    pageCompositions: {
+      pricing: {
+        sections: [
+          {
+            id: 'salon-premium-pricing', type: 'pricing', variantId: 'pricing:tiers',
+            props: {
+              headline: 'Service Pricing',
+              subheadline: 'Starting prices for our signature services. Your stylist confirms the final quote during consultation.',
+              tiers: [
+                { name: 'Precision Haircut', price: 'From $75', features: ['Consultation', 'Tailored cut', 'Finishing style'], cta: { label: 'Book Appointment', href: '#booking', intent: 'booking.create' } },
+                { name: 'Color & Highlights', price: 'From $120', features: ['Color consultation', 'Professional color', 'Finishing style'], cta: { label: 'Book Appointment', href: '#booking', intent: 'booking.create' } },
+                { name: 'Balayage', price: 'From $185', features: ['Color consultation', 'Hand-painted highlights', 'Finishing style'], cta: { label: 'Book Appointment', href: '#booking', intent: 'booking.create' } },
+              ],
+            },
+          },
+          {
+            id: 'salon-premium-pricing-questions', type: 'faq', variantId: 'faq:accordion',
+            props: { headline: 'About Your Quote', items: [
+              { question: 'Why are prices listed as starting prices?', answer: 'Length, density and the service requested can affect the appointment. Confirm your quote with the studio before treatment begins.' },
+              { question: 'Can I discuss my options first?', answer: 'Contact the studio with your goals and recent color history so the team can recommend a suitable consultation.' },
+            ] },
+          },
+        ],
+        alternatives: [
+          { id: 'salon-pricing-concise', heroVariantId: 'hero:page-title', sectionIds: ['salon-premium-nav', 'salon-premium-hero', 'salon-premium-pricing', 'salon-premium-cta', 'salon-premium-footer'] },
+          { id: 'salon-pricing-consultation', heroVariantId: 'hero:editorial-banner', sectionIds: ['salon-premium-nav', 'salon-premium-hero', 'salon-premium-pricing', 'salon-premium-services', 'salon-premium-pricing-questions', 'salon-premium-cta', 'salon-premium-footer'] },
+        ],
+      },
+      faq: {
+        sections: [
+          {
+            id: 'salon-premium-faq', type: 'faq', variantId: 'faq:accordion',
+            props: { headline: 'Planning Your Visit', items: [
+              { question: 'How do I book an appointment?', answer: 'Use Book Appointment to choose a service and an available time, or contact the studio for help.' },
+              { question: 'What should I bring to a consultation?', answer: 'Bring reference photos and details of recent color or treatments so your stylist can discuss suitable options.' },
+              { question: 'How do I change my appointment?', answer: 'Contact the studio with your appointment details. The team will confirm availability and any applicable cancellation policy.' },
+              { question: 'Can you advise on hair care between visits?', answer: 'Ask your stylist for a routine suited to your hair and the service you receive.' },
+            ] },
+          },
+        ],
+        alternatives: [
+          { id: 'salon-faq-essential', heroVariantId: 'hero:page-title', sectionIds: ['salon-premium-nav', 'salon-premium-hero', 'salon-premium-faq', 'salon-premium-cta', 'salon-premium-footer'] },
+          { id: 'salon-faq-contact', heroVariantId: 'hero:editorial-banner', sectionIds: ['salon-premium-nav', 'salon-premium-hero', 'salon-premium-faq', 'salon-premium-contact', 'salon-premium-cta', 'salon-premium-footer'] },
+        ],
+      },
+    },
     theme: {
       colors: {
         primary: '335 70% 55%',

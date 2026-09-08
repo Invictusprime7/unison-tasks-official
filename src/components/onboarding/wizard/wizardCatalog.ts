@@ -56,7 +56,8 @@ export type PageChoice =
   | "contact"
   | "booking"
   | "checkout"
-  | "blog";
+  | "blog"
+  | "shop";
 
 export const PRIMARY_GOALS: {
   id: PrimaryGoal;
@@ -88,6 +89,7 @@ export const PAGE_CHOICES: { id: PageChoice; label: string; icon: string }[] = [
   { id: "faq", label: "FAQ", icon: "❓" },
   { id: "contact", label: "Contact", icon: "✉️" },
   { id: "booking", label: "Booking", icon: "📅" },
+  { id: "shop", label: "Shop", icon: "🛒" },
   { id: "checkout", label: "Checkout", icon: "🛍️" },
   { id: "blog", label: "Blog", icon: "📰" },
 ];
@@ -296,7 +298,7 @@ export const LAUNCHER_PRESELECTS: Record<
   store: {
     primaryGoal: "sell_offers",
     customerNeeds: ["buy_offer", "browse_services"],
-    pages: ["about", "services", "pricing", "gallery", "checkout", "contact", "faq"],
+    pages: ["about", "services", "pricing", "gallery", "shop", "checkout", "contact", "faq"],
     preferredIndustry: "ecommerce",
   },
   content: {

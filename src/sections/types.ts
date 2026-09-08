@@ -182,7 +182,7 @@ export interface SectionPropsMap {
     ctas?: CTAButton[];
     image?: string;
     backgroundImage?: string;
-    layout?: 'centered' | 'split' | 'full-bleed';
+    layout?: 'centered' | 'split' | 'full-bleed' | 'page-title' | 'editorial-banner';
     badge?: string;
     stats?: StatItem[];
   };
@@ -329,6 +329,18 @@ export type TemplatePageRole =
   | 'custom';
 
 /** A complete template definition — just data, no JSX */
+export interface TemplatePageAlternative {
+  id: string;
+  sectionIds: string[];
+  heroVariantId?: import('./variants/types').VariantId;
+  themePresetIds?: string[];
+}
+
+export interface TemplatePageComposition {
+  sections: SectionEntry[];
+  alternatives: TemplatePageAlternative[];
+}
+
 export interface TemplateComposition {
   id: string;
   name: string;
@@ -338,6 +350,8 @@ export interface TemplateComposition {
   theme?: ThemeTokens | null;
   /** Sections rendered on the home page (canonical full composition). */
   sections: SectionEntry[];
+  pageCompositions?: Partial<Record<TemplatePageRole, TemplatePageComposition>>;
+  compositionAlternativeId?: string;
   /** Optional global CSS for advanced effects (keyframes, scroll-reveal) */
   globalStyles?: string;
   tags?: string[];

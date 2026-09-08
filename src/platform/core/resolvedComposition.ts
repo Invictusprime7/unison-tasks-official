@@ -52,6 +52,7 @@ export interface ResolvedPageComposition {
   pageFilePath: string;
   /** Template composition name Stage 4b resolved for this page. */
   templateName?: string;
+  compositionAlternativeId?: string;
   /** Page-wide layout recipe from the wizard design brief. */
   layoutRecipe?: string;
   sections: ResolvedSection[];

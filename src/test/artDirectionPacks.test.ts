@@ -63,8 +63,7 @@ describe('Recovery Phase 6 — ArtDirectionPack', () => {
     expect(clampVariantToPack(pack, 'gallery', 'gallery:lightbox-grid')).toBe('gallery:lightbox-grid');
     expect(preferredVariantForSection(pack, 'hero')).toBe('hero:full-bleed');
     expect(isVariantInFamily(pack, 'hero', 'hero:centered')).toBe(false);
-    // Section types the pack does not describe are left untouched.
-    expect(clampVariantToPack(pack, 'stats', undefined)).toBeUndefined();
+    expect(clampVariantToPack(pack, 'stats', undefined)).toBe('stats:row');
     expect(familyForSection(pack, 'navbar')).toContain('navbar:minimal-dark');
   });
 

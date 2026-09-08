@@ -83,6 +83,7 @@ import {
 } from '@/services/wizardGenerationBrief';
 import { createWizardCompileArtifact, type WizardCompileArtifact } from './snapshotSeal';
 import { isArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
+import { getRequiredRadixPrimitives } from '@/sections/variants';
 
 
 // ============================================================================
@@ -100,8 +101,8 @@ export interface CanonicalPipelineResult {
   compileResult: PlaygroundCompileResult;
   siteBundleSnapshot: SiteBundleSnapshot;
   /**
-   * Stage 4b compile artifact (frozen baseline, pre-Lane-B). `sealSnapshot()`
-   * converts this + Lane B + preflight into the final sealed revision.
+    * Frozen Stage 4b compile artifact. `sealSnapshot()` combines it with
+    * canonical preflight output to produce the final sealed revision.
    */
   compileArtifact?: WizardCompileArtifact;
   runtimeManifest: RuntimeManifest;
@@ -209,7 +210,7 @@ export interface SiteBundleSnapshotMeta {
   templateId?: string | null;
   /**
    * Sealed ArtDirectionPack id resolved at Stage 4b. Every downstream design
-   * consumer (themed CSS, composition compiler, Lane B brief) reads this id
+    * consumer (themed CSS, composition compiler, Preview, and export) reads this id
    * instead of re-deriving a pack, so the aesthetic cannot drift.
    */
   artDirectionPackId?: string | null;
@@ -222,7 +223,7 @@ export interface SiteBundleSnapshotMeta {
     presetId: string | null;
     cssPath: '/src/index.css';
   };
-  /** Snapshot-owned VFS primitive library available to Lane B-generated pages. */
+  /** Snapshot-owned VFS primitive library available to generated pages. */
   uiFoundation?: {
     version: typeof GENERATED_UI_FOUNDATION_VERSION;
     manifestPath: '/.unison/ui-manifest.json';
@@ -306,9 +307,13 @@ export interface SiteBundleSnapshotMeta {
     compileArtifactId: string;
     fileCount: number;
     /** Canonical Wizard ownership chain consumed from the merge proof. */
-    pipeline?: 'lane-a+lane-b+stage-4b';
-    registeredPageBodyAuthority?: 'lane-b';
+    pipeline?: 'lane-a+lane-b+stage-4b' | 'canonical-compiler+stage-4b';
+    authorityProofVersion?: '1.0' | '2.0';
+    registeredPageBodyAuthority?: 'lane-b' | 'canonical-compiler';
     registeredPageFiles?: string[];
+    /** Canonical source and metadata paths protected from launcher overrides. */
+    protectedFilePatterns?: string[];
+    /** Legacy v1 ownership-proof field, retained while old snapshots restore. */
     laneAProtectedFiles?: string[];
     /** Registered pages with no VFS file at seal time (report policy only). */
     missingPageFiles?: string[];
@@ -461,6 +466,9 @@ export function executeCanonicalPipeline(
     needsBooking: selections.needsBooking,
     wantsLeadCapture: selections.wantsLeadCapture,
     sellsProducts: selections.sellsProducts,
+    requiredRadixPrimitives: getRequiredRadixPrimitives(
+      Object.values(designIntervention.activeVariants),
+    ),
   });
   Object.assign(compileResult.vfsFiles, uiFoundation.files);
   compileResult.vfsFiles = ensureGeneratedUiFoundation(compileResult.vfsFiles, {
@@ -470,6 +478,9 @@ export function executeCanonicalPipeline(
     needsBooking: selections.needsBooking,
     wantsLeadCapture: selections.wantsLeadCapture,
     sellsProducts: selections.sellsProducts,
+    requiredRadixPrimitives: getRequiredRadixPrimitives(
+      Object.values(designIntervention.activeVariants),
+    ),
   }).files;
   compileResult.vfsFiles['/.unison/design-intervention.json'] = JSON.stringify(designIntervention, null, 2);
   // Typed, machine-readable projection of the sealed art-direction pack. This
@@ -623,6 +634,9 @@ export function recompileFromPlayground(
     industry,
     templateId: options?.selectedTemplateId,
     themePresetId,
+    requiredRadixPrimitives: getRequiredRadixPrimitives(
+      Object.values(designIntervention.activeVariants),
+    ),
   });
   Object.assign(compileResult.vfsFiles, uiFoundation.files);
   compileResult.vfsFiles['/.unison/design-intervention.json'] = JSON.stringify(designIntervention, null, 2);

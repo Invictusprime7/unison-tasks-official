@@ -1,19 +1,51 @@
 /**
- * WizardMergeContext — the single typed carrier threaded through the canonical
- * three-stage generation contract:
+ * WizardMergeContext — the single typed carrier threaded through deterministic
+ * Launcher generation:
  *
- *   Lane A (fast composer)  → free-styled JSX per selected page
- *   Lane B (stateful enricher) → intents, catalog wiring, contract CTAs
- *   Stage 4b (theme + identity stamp) → /src/index.css + template identity
+ *   selections → canonical compiler → Stage 4b → commitMutation
  *
- * Every stage and every post-edit recompile receives the SAME object so no
- * stage has to re-look-up the template contract, the theme seed or the
- * industry. Scattered lookups were the drift source; this is the fix.
+ * Post-launch tools may consume the same context, but they do not participate
+ * in Launcher page authorship.
  */
 
 import type { TemplateLayoutContract } from './templateLayoutContract';
 import type { ThemeTokens } from '@/sections/types';
 import type { IndustryOverlay } from '@/types/playground';
+import type { BusinessProfileDTO } from '@/types/businessProfile';
+
+export interface PublicBusinessContext {
+  name: string;
+  industry?: string | null;
+  tagline?: string | null;
+  description?: string | null;
+  logoUrl?: string | null;
+  brandColor?: string | null;
+  website?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  timezone: string;
+  address: BusinessProfileDTO['address'];
+  hours: BusinessProfileDTO['hours'];
+  socialLinks: BusinessProfileDTO['socialLinks'];
+}
+
+export function buildPublicBusinessContext(profile: BusinessProfileDTO): PublicBusinessContext {
+  return {
+    name: profile.name,
+    industry: profile.industry,
+    tagline: profile.tagline,
+    description: profile.description,
+    logoUrl: profile.logoUrl,
+    brandColor: profile.brandColor,
+    website: profile.website,
+    phone: profile.phone,
+    email: profile.email,
+    timezone: profile.timezone,
+    address: { ...profile.address },
+    hours: profile.hours.map((entry) => ({ ...entry })),
+    socialLinks: { ...profile.socialLinks },
+  };
+}
 
 const INDUSTRY_OVERLAY_ALIASES: Record<string, IndustryOverlay> = {
   'local-service': 'contractor',

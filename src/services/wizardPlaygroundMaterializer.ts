@@ -24,7 +24,12 @@ import type { PageRegistry } from '@/types/pageRegistry';
 import { inferPageRoleFromType } from '@/types/pageRegistry';
 import type { CreatorFormField, CreatorService } from '@/types/creatorData';
 import { createEmptyCreatorData } from '@/types/creatorData';
-import { planSiteTopology, populateRegistryFromTopology, type GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
+import {
+  planSiteTopology,
+  populateRegistryFromTopology,
+  resolvePageSpecsForRoles,
+  type GeneratedSitePlan,
+} from '@/platform/core/siteTopologyPlanner';
 import { normalizePlaygroundIntent, inferUIAction } from '@/platform/core/intentNormalizer';
 import {
   createCanonicalComponentInstance,
@@ -454,24 +459,8 @@ export function materializePlayground(
   // payloads normalize to selected-pages instead of expanding routes.
   const scaffoldMode = 'selected-pages';
 
-  // Map visitor-selected page roles → PageSpec entries for the topology planner.
-  const PAGE_ROLE_TO_SPEC: Record<string, { title: string; path: string; purpose: 'landing' | 'services' | 'portfolio' | 'contact' | 'about' | 'blog' | 'shop' | 'checkout' | 'booking' | 'pricing' | 'faq' }> = {
-    about:    { title: 'About',    path: '/about',    purpose: 'about' },
-    services: { title: 'Services', path: '/services', purpose: 'services' },
-    pricing:  { title: 'Pricing',  path: '/pricing',  purpose: 'pricing' },
-    gallery:  { title: 'Gallery',  path: '/gallery',  purpose: 'portfolio' },
-    faq:      { title: 'FAQ',      path: '/faq',      purpose: 'faq' },
-    contact:  { title: 'Contact',  path: '/contact',  purpose: 'contact' },
-    booking:  { title: 'Book',     path: '/booking',  purpose: 'booking' },
-    checkout: { title: 'Checkout', path: '/checkout', purpose: 'checkout' },
-    blog:     { title: 'Blog',     path: '/blog',     purpose: 'blog' },
-    shop:     { title: 'Shop',     path: '/shop',     purpose: 'shop' },
-  };
   const selectedPageRoles = new Set<string>(selections.requestedPages ?? []);
-  const additionalPages = (selections.requestedPages ?? [])
-    .map((role) => PAGE_ROLE_TO_SPEC[role])
-    .filter((spec): spec is NonNullable<typeof spec> => Boolean(spec))
-    .map((spec) => ({ ...spec, expectedSections: [] }));
+  const additionalPages = resolvePageSpecsForRoles(selections.requestedPages ?? []);
 
   // 1. Generate site topology plan → PageRegistry
   const sitePlan = planSiteTopology(industryKey, selections.businessName, {

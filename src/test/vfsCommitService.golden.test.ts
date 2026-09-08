@@ -241,6 +241,33 @@ beforeEach(() => {
 });
 
 describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
+  it('rejects runtime incompatibility even when both repair stages report success', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){return null}' };
+    mockPipeline(files);
+    mockIntents();
+    vi.mocked(runFullPreflight).mockReturnValue({
+      files,
+      stages: {
+        earlyRepair: 'ok',
+        finalRepair: 'ok',
+        runtimeCompatibility: { ok: false, blockers: ['Missing canonical runtime module'] },
+      },
+    } as unknown as ReturnType<typeof runFullPreflight>);
+
+    await expect(commitMutation({
+      source: 'playground-edit',
+      identity: IDENTITY,
+      current: { vfsFiles: files },
+      patch: emptyPatchPlan(),
+      options: { dryRun: true, requirePreviewPass: true, requireReadinessPass: false },
+    })).rejects.toMatchObject({ result: { status: 'rejected' } });
+
+    expect(runFullPreflight).toHaveBeenCalledTimes(2);
+    expect(executeBackendOps).not.toHaveBeenCalled();
+    expect(runtimeReconcileInvoke).not.toHaveBeenCalled();
+    expect(revisionStore).toEqual([]);
+  });
+
   it('records Wizard capabilities without provisioning before revision persistence', async () => {
     const files = {
       '/src/App.tsx': 'export default function App(){return null}',

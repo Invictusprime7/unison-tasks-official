@@ -38,6 +38,8 @@ import {
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { getLayoutForVariantId, getVariantById } from '@/sections/variants';
 import type { VariantId } from '@/sections/variants';
+import heroPageIntroSource from '@/sections/variants/hero/HeroPageIntro.tsx?raw';
+import stylexRecipes from './recipes/stylexRecipes.generated.json';
 import { clampVariantToPack, resolveArtDirectionPack, resolveHeroPresentation } from '@/sections/variants';
 import type { HeroLayoutId } from '@/sections/variants';
 
@@ -211,6 +213,7 @@ export default function SocialIcon({ platform, size = 16 }: SocialIconProps) {
 `;
 
 const NAVBAR_MODULE = `import React from 'react';
+import MobileNavigation from './MobileNavigation';
 
 const shellClass = 'mx-auto w-full max-w-7xl px-5 sm:px-8';
 const linkClass = 'font-body text-sm text-muted-foreground no-underline transition-colors hover:text-foreground';
@@ -225,7 +228,8 @@ export default function Navbar({ props }: { props: any }) {
     const midpoint = Math.ceil(links.length / 2);
     return (
       <header data-ut-variant="navbar:centered-logo" className={positionClass + ' border-b border-border/50 bg-background/90 backdrop-blur-md'}>
-        <div className={shellClass + ' grid min-h-20 grid-cols-[1fr_auto_1fr] items-center gap-5'}>
+        <MobileNavigation brand={brand} links={links} cta={cta} />
+        <div className={shellClass + ' hidden lg:grid min-h-20 grid-cols-[1fr_auto_1fr] items-center gap-5'}>
           <nav className="ut-nav-links flex items-center gap-5">{links.slice(0, midpoint).map((link: any, index: number) => <a key={index} href={link.href} className={linkClass}>{link.label}</a>)}</nav>
           <a href="#" className="text-center font-heading text-2xl font-semibold text-foreground no-underline">{brand}</a>
           <nav className="ut-nav-links flex items-center justify-end gap-5">{links.slice(midpoint).map((link: any, index: number) => <a key={index} href={link.href} className={linkClass}>{link.label}</a>)}{cta && <a href={cta.href || '#'} data-ut-intent={cta.intent} className={ctaClass}>{cta.label}</a>}</nav>
@@ -237,7 +241,8 @@ export default function Navbar({ props }: { props: any }) {
   if (resolvedLayout === 'minimal-dark') {
     return (
       <header data-ut-variant="navbar:minimal-dark" className={positionClass + ' border-b border-border bg-foreground text-background'}>
-        <div className={shellClass + ' flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
+        <MobileNavigation brand={brand} links={links} cta={cta} />
+        <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
           <a href="#" className="font-heading text-xl font-semibold text-background no-underline">{brand}</a>
           <nav className="ut-nav-links flex items-center gap-6">{links.map((link: any, index: number) => <a key={index} href={link.href} className="font-body text-sm text-background/75 no-underline hover:text-background">{link.label}</a>)}{cta && <a href={cta.href || '#'} data-ut-intent={cta.intent} className="rounded-[var(--radius)] bg-background px-4 py-2 font-body text-sm font-semibold text-foreground no-underline">{cta.label}</a>}</nav>
         </div>
@@ -247,7 +252,8 @@ export default function Navbar({ props }: { props: any }) {
 
   return (
     <header data-ut-variant="navbar:standard" className={positionClass + ' border-b border-border/50 bg-background/85 backdrop-blur-md'}>
-      <div className={shellClass + ' flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
+      <MobileNavigation brand={brand} links={links} cta={cta} />
+      <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
         <a href="#" className="font-heading text-2xl font-semibold text-primary no-underline">{brand}</a>
         <nav className="ut-nav-links flex items-center gap-8">
           {links.map((link: any, index: number) => <a key={index} href={link.href} className={linkClass}>{link.label}</a>)}
@@ -261,6 +267,11 @@ export default function Navbar({ props }: { props: any }) {
 
 const HERO_MODULE = `import React from 'react';
 
+${heroPageIntroSource
+  .replace("import type { BaseSectionProps, SectionPropsMap } from '../../types';", '')
+  .split('export function HeroPageTitle')[0]
+  .replace("SectionPropsMap['hero']", 'any')}
+
 const HERO_TOP_PADDING = 'var(--ut-hero-space-top)';
 const shellClass = 'mx-auto w-full max-w-7xl px-5 sm:px-8';
 const primaryButtonClass = 'inline-flex items-center justify-center rounded-[var(--radius)] bg-primary px-6 py-3 font-body font-semibold text-primary-foreground no-underline transition-opacity hover:opacity-90';
@@ -268,6 +279,7 @@ const outlineButtonClass = 'inline-flex items-center justify-center rounded-[var
 
 export default function Hero({ props }: { props: any }) {
   const { headline, subheadline, description, ctas = [], badge, stats, layout = 'centered', image, backgroundImage } = props;
+  if (layout === 'page-title' || layout === 'editorial-banner') return <HeroPageIntro props={props} />;
   const split = layout === 'split';
   const fullBleed = layout === 'full-bleed';
   const media = image || backgroundImage;
@@ -627,28 +639,7 @@ export default function Team({ props }: { props: any }) {
 }
 `;
 
-const FAQ_MODULE = `import React, { useState } from 'react';
-
-export default function FAQ({ props }: { props: any }) {
-  const { headline, subheadline, items = [] } = props;
-  const [openIdx, setOpenIdx] = useState<number | null>(null);
-  return (
-    <section className="bg-background py-24">
-      <div className="mx-auto w-full max-w-4xl px-5 sm:px-8">
-        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
-        <div className="flex flex-col gap-3">
-          {items.map((item: any, i: number) => (
-            <div key={i} className="rounded-[var(--radius)] border border-border bg-card text-card-foreground">
-              <button onClick={() => setOpenIdx(openIdx === i ? null : i)} className="flex w-full cursor-pointer items-center justify-between border-0 bg-transparent px-6 py-5 text-left font-heading font-semibold text-card-foreground">{item.question}<span className={(openIdx === i ? 'rotate-45 ' : '') + 'text-xl text-muted-foreground transition-transform'}>+</span></button>
-              {openIdx === i && <div className="px-6 pb-5 font-body text-sm leading-relaxed text-muted-foreground">{item.answer}</div>}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-`;
+const FAQ_MODULE = stylexRecipes.faqModule;
 
 const GALLERY_MODULE = `import React, { useEffect, useMemo, useState } from 'react';
 
@@ -1379,15 +1370,20 @@ function applyDesignVariants(
   const hasVocabulary = Boolean(
     designIntervention?.layoutRecipe || designIntervention?.interactionRecipes?.length,
   );
-  if (!variants?.length && !Object.keys(activeVariants || {}).length && !pack && !hasVocabulary) return template;
+  if (!variants?.length && !Object.keys(activeVariants || {}).length && !pack && !hasVocabulary
+    && !template.sections.some(section => section.type === 'hero' && section.sourceSectionId && section.variantId)) return template;
 
   return {
     ...template,
     sections: template.sections.map((section) => {
       const activeVariantId = activeVariants?.[section.id] || (
-        section.sourceSectionId ? activeVariants?.[section.sourceSectionId] : undefined
+        section.sourceSectionId && section.type !== 'hero' ? activeVariants?.[section.sourceSectionId] : undefined
       );
       const activeVariant = activeVariantId ? getVariantById(activeVariantId) : undefined;
+      if (!activeVariant && section.type === 'hero' && section.sourceSectionId && section.variantId) {
+        const layout = getLayoutForVariantId(section.variantId);
+        return { ...section, props: { ...section.props, ...(layout ? { layout } : {}) } as typeof section.props };
+      }
       if (activeVariant?.sectionType === section.type) {
         const layout = getLayoutForVariantId(activeVariant.id);
         return {
@@ -1480,13 +1476,14 @@ function RenderedSection({ section, occurrence }: { section: any; occurrence: nu
   return (
     <div
       data-ut-section-id={section.id}
+      data-ut-composition-id={${JSON.stringify(template.compositionAlternativeId || null)}}
       data-ut-section-type={section.type}
       data-ut-variant={section.variantId || undefined}
       data-ut-layout={layoutToken || undefined}
       data-ut-media-treatment={section.type === 'hero' ? mediaTreatment : undefined}
       data-ut-hydration={isHydratable ? (hydration.loading ? 'loading' : (hydration.rows ? 'live' : 'seed')) : undefined}
     >
-      <C props={props} />
+      <C props={props} variantId={section.variantId} />
     </div>
   );
 }
@@ -1529,6 +1526,7 @@ export function resolvePageComposition(
     compiledBy: 'stage-4b',
     pageFilePath,
     templateName: template.name,
+    compositionAlternativeId: template.compositionAlternativeId,
     layoutRecipe: options?.designIntervention?.layoutRecipe,
     sections: sections.map((section) => {
       const props = (section.props || {}) as Record<string, unknown>;
@@ -1583,6 +1581,9 @@ export function compositionToReactFileSet(
   };
   for (const component of sectionMap.components) {
     files[SECTION_FILES[component]] = SECTION_MODULE_SOURCE[component];
+  }
+  if (sectionMap.components.has('Navbar')) {
+    files['/src/components/MobileNavigation.tsx'] = stylexRecipes.mobileNavigationModule;
   }
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;

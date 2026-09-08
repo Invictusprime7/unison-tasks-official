@@ -57,14 +57,14 @@ function appContext() {
 
 function mergedFiles(snapshot: SiteBundleSnapshot) {
   return mergeGeneratedVfsWithCanonicalSnapshot(
-    { '/src/pages/Home.tsx': 'export default function Home(){ return <main>Lane B body</main>; }' },
+    { '/src/pages/Home.tsx': 'export default function Home(){ return <main>Canonical body</main>; }' },
     snapshot.vfsFiles,
     snapshot,
   );
 }
 
 describe('snapshot seal Wizard ownership proof', () => {
-  it('consumes canonical merge proof and persists the three-stage authority metadata', () => {
+  it('consumes the v2 proof and persists canonical compiler authority metadata', () => {
     const snapshot = createSnapshot();
     const sealed = sealSnapshot({
       artifact: createWizardCompileArtifact(snapshot),
@@ -74,13 +74,40 @@ describe('snapshot seal Wizard ownership proof', () => {
     });
 
     expect(sealed.meta.seal).toMatchObject({
-      pipeline: 'lane-a+lane-b+stage-4b',
-      registeredPageBodyAuthority: 'lane-b',
+      pipeline: 'canonical-compiler+stage-4b',
+      authorityProofVersion: '2.0',
+      registeredPageBodyAuthority: 'canonical-compiler',
       registeredPageFiles: ['/src/pages/Home.tsx'],
-      laneAProtectedFiles: [...WIZARD_LANE_A_PROTECTED_FILES].sort(),
+      protectedFilePatterns: [...WIZARD_LANE_A_PROTECTED_FILES].sort(),
     });
     expect(sealed.vfsFiles[WIZARD_LAUNCH_AUTHORITY_PATH]).toBeUndefined();
-    expect(sealed.vfsFiles['/src/pages/Home.tsx']).toContain('Lane B body');
+    expect(sealed.vfsFiles['/src/pages/Home.tsx']).toContain('Canonical body');
+  });
+
+  it('reads legacy v1 Lane B proofs without rewriting their provenance', () => {
+    const snapshot = createSnapshot();
+    const files = mergedFiles(snapshot);
+    files[WIZARD_LAUNCH_AUTHORITY_PATH] = JSON.stringify({
+      version: '1.0',
+      laneAArtifactId: snapshot.snapshotId,
+      registeredPageBodyAuthority: 'lane-b',
+      registeredPageFiles: ['/src/pages/Home.tsx'],
+      laneAProtectedFiles: [...WIZARD_LANE_A_PROTECTED_FILES],
+    });
+
+    const sealed = sealSnapshot({
+      artifact: createWizardCompileArtifact(snapshot),
+      vfsFiles: files,
+      appContext: appContext(),
+      sealedBy: 'wizard-launch',
+    });
+
+    expect(sealed.meta.seal).toMatchObject({
+      pipeline: 'lane-a+lane-b+stage-4b',
+      authorityProofVersion: '1.0',
+      registeredPageBodyAuthority: 'lane-b',
+      laneAProtectedFiles: [...WIZARD_LANE_A_PROTECTED_FILES].sort(),
+    });
   });
 
   it('rejects missing, forged, and incomplete ownership proofs', () => {
@@ -96,10 +123,10 @@ describe('snapshot seal Wizard ownership proof', () => {
     const forged = { ...valid };
     forged[WIZARD_LAUNCH_AUTHORITY_PATH] = JSON.stringify({
       ...JSON.parse(valid[WIZARD_LAUNCH_AUTHORITY_PATH]),
-      laneAArtifactId: 'forged',
+      compileArtifactId: 'forged',
     });
     expect(() => sealSnapshot({ artifact, vfsFiles: forged, appContext: appContext(), sealedBy: 'wizard-launch' }))
-      .toThrow('does not match the Lane A artifact');
+      .toThrow('does not match the compile artifact');
 
     const incomplete = { ...valid };
     incomplete[WIZARD_LAUNCH_AUTHORITY_PATH] = JSON.stringify({

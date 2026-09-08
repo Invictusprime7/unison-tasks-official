@@ -302,9 +302,9 @@ function cloneSnapshotWithRuntimeVfs(
     runtimeCompatibility: RuntimeCompatibilityReport;
   },
 ): SiteBundleSnapshot {
-  // Pass 1 seal point: Stage 4b artifact + Lane B convergence + preflight
-  // become the single authoritative revision here. Nothing downstream may
-  // amend page bodies after this returns.
+  // Seal point: Stage 4b artifact and canonical preflight output become the
+  // single authoritative revision here. Nothing downstream may amend page
+  // bodies after this returns.
   return sealSnapshot({
     artifact: compileArtifact ?? siteBundleSnapshot,
     appContext,
@@ -438,7 +438,11 @@ function serializeSiteBundleSnapshot(siteBundleSnapshot?: SiteBundleSnapshot) {
   };
 }
 
-export type MergedPageProvenance = 'lane-b' | 'lane-b-app-rebase' | 'canonical-fallback' | 'missing';
+export type MergedPageProvenance =
+  | 'generated-page'
+  | 'generated-app-rebase'
+  | 'canonical-fallback'
+  | 'missing';
 
 export interface CanonicalMergeOptions {
   allowCanonicalPageFallback?: boolean;
@@ -502,11 +506,11 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
   const homeFilePath = homePage?.filePath || '/src/pages/Home.tsx';
   const generatedAppModule = readGenerated('/src/App.tsx');
 
-  // SNAPSHOT-FIRST HOME AUTHORITY (Pass 2 — theme parity guarantee).
+  // SNAPSHOT-FIRST HOME AUTHORITY (theme parity guarantee).
   // The canonical SiteBundleSnapshot composes Home.tsx with semantic Tailwind
   // tokens (bg-background, text-foreground, …) so the wizard's themed
-  // /src/index.css applies uniformly across every industry. If an AI-authored
-  // /src/App.tsx silently rebases into Home.tsx (which historically ships
+  // /src/index.css applies uniformly across every industry. If a generated
+  // /src/App.tsx silently rebases into Home.tsx with hard-coded colors, the
   // hardcoded hex colors), the home route loses the theme override while every
   // other registered page keeps it — the exact regression where Home renders
   // un-themed across industries. Refuse to seed home from generated App.tsx
@@ -523,22 +527,20 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     (!canonicalHomeIsAuthoritative || options.preferGeneratedAppAsHome === true)
   );
 
-  // Canonical snapshot is the base for router/root support and — Pass 3 — for
-  // every page whose design Stage 4b has *declared* via a ResolvedPageComposition.
-  // Lane B is a CONTENT author on those pages and the body author only on pages
-  // Stage 4b never composed. After the merge we persist the enriched VFS back
-  // into the SiteBundleSnapshot.
+  // The canonical snapshot is the base for router, support modules, and every
+  // page Stage 4b declared through a ResolvedPageComposition. The generated
+  // input may update allowed page bodies; protected compiler output remains
+  // canonical. The converged VFS is sealed back into SiteBundleSnapshot.
   const merged = { ...canonicalFiles };
-  /** Paths whose body in `merged` came from Lane B (or a Lane B App rebase). */
-  const laneBAuthoredPaths = new Set<string>();
+  const generatedPagePaths = new Set<string>();
 
-  // Strict callers require Lane B page bodies. Preview-first callers may use
-  // Stage 4b compositions so incomplete generation cannot block builder entry.
+  // Strict callers require complete generated page coverage. Preview-first
+  // callers may explicitly retain canonical Stage 4b compositions.
 
   for (const [path, content] of Object.entries(generatedFiles)) {
     const normalizedPath = normalizePath(path);
     // Stage 4b owns the UI foundation, the theme contract and ALL canonical
-    // `/.unison/**` metadata. Lane B may read these, never replace them.
+    // `/.unison/**` metadata. Generated input may read these, never replace them.
     if (
       normalizedPath.startsWith('/src/unison/ui/') ||
       normalizedPath.startsWith(`${RESOLVED_COMPOSITION_ROOT}/`) ||
@@ -553,7 +555,7 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
 
     if (shouldMoveLegacyAppIntoHome) {
       merged[normalizePath(homeFilePath)] = rebaseAppModuleForHomePage(content);
-      laneBAuthoredPaths.add(normalizePath(homeFilePath));
+      generatedPagePaths.add(normalizePath(homeFilePath));
       continue;
     }
 
@@ -564,15 +566,15 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
         }
         throw new PreviewPipelineError(
           'vfs',
-          `Lane B generated minimal/fallback scaffold copy for registered page ${normalizedPath}; refusing to persist it into SiteBundleSnapshot.`,
+          `Generated compiler output contains minimal/fallback scaffold copy for registered page ${normalizedPath}; refusing to persist it into SiteBundleSnapshot.`,
           { blockedFiles: [normalizedPath], recoverableByRelaunch: true },
         );
       }
-      // A valid Lane B page body is persisted byte-for-byte. Sanitization and
+      // A valid generated page body is persisted byte-for-byte. Sanitization and
       // import healing run later in the shared prep pass; no design authority
       // reinterprets this source.
       merged[normalizedPath] = content;
-      laneBAuthoredPaths.add(normalizedPath);
+      generatedPagePaths.add(normalizedPath);
       continue;
     }
 
@@ -588,7 +590,7 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     }
 
     if (normalizedPath === '/src/index.css') {
-      // Preserve canonical themed CSS. Never let Lane B output clobber the
+      // Preserve canonical themed CSS. Never let generated output clobber the
       // wizard-locked theme tokens from Stage 4b.
       continue;
     }
@@ -612,7 +614,7 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     const canonicalPage = readCanonical(page.filePath);
     const existingMergedPage = merged[normalizedPagePath];
     if (
-      laneBAuthoredPaths.has(normalizedPagePath) &&
+      generatedPagePaths.has(normalizedPagePath) &&
       existingMergedPage &&
       (options.preferGeneratedAppAsHome === true || !isMinimalPreviewFallbackSource(existingMergedPage))
     ) {
@@ -620,7 +622,7 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
       merged[normalizedPagePath] = existingMergedPage;
       recordProvenance(
         normalizedPagePath,
-        readGenerated(page.filePath) ? 'lane-b' : 'lane-b-app-rebase',
+        readGenerated(page.filePath) ? 'generated-page' : 'generated-app-rebase',
       );
       continue;
     }
@@ -628,12 +630,12 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     if (generatedPage && !isMinimalPreviewFallbackSource(generatedPage)) {
       removePathVariants(merged, page.filePath);
       merged[normalizedPagePath] = generatedPage;
-      recordProvenance(normalizedPagePath, 'lane-b');
+      recordProvenance(normalizedPagePath, 'generated-page');
       continue;
     }
 
     // Canonical page fallback is OPT-IN ONLY (`=== true`). Strict callers
-    // surface missing Lane B pages; preview-first launcher calls use the Stage
+    // surface missing generated pages; preview-first calls may use the Stage
     // 4b body to keep every registered route paintable in the builder.
     if (options.allowCanonicalPageFallback === true && canonicalPage && !isMinimalPreviewFallbackSource(canonicalPage)) {
       removePathVariants(merged, page.filePath);
@@ -647,13 +649,13 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     missingRegisteredPages.push(normalizedPagePath);
   }
 
-  // M1 — exact registry-to-Lane-B page closure. A launch may never silently
+  // Exact registry-to-generated-page closure. A launch may never silently
   // omit a selected page; callers that enforce closure fail here with the
   // exact page list instead of surfacing a blank route downstream.
   if (options.requireRegisteredPageClosure === true && missingRegisteredPages.length > 0) {
     throw new PreviewPipelineError(
       'vfs',
-      `Lane B did not author ${missingRegisteredPages.length} registered page(s): ${missingRegisteredPages.join(', ')}. Refusing to seal an incomplete site.`,
+      `Canonical compiler output is missing ${missingRegisteredPages.length} registered page(s): ${missingRegisteredPages.join(', ')}. Refusing to seal an incomplete site.`,
       { blockedFiles: missingRegisteredPages, recoverableByRelaunch: true },
     );
   }
@@ -699,11 +701,11 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     .map(normalizePath)
     .sort();
   const authorityProof: WizardLaunchAuthorityProof = {
-    version: '1.0',
-    laneAArtifactId: snapshot.snapshotId,
-    registeredPageBodyAuthority: 'lane-b',
+    version: '2.0',
+    compileArtifactId: snapshot.snapshotId,
+    registeredPageBodyAuthority: 'canonical-compiler',
     registeredPageFiles,
-    laneAProtectedFiles: [...WIZARD_LANE_A_PROTECTED_FILES],
+    protectedFilePatterns: [...WIZARD_LANE_A_PROTECTED_FILES],
   };
   merged[WIZARD_LAUNCH_AUTHORITY_PATH] = JSON.stringify(authorityProof, null, 2);
 
@@ -801,7 +803,7 @@ function* buildCanonicalLaunchArtifactSteps(
     : null;
 
   // The snapshot is the only canonical VFS source once it exists. A compile
-  // result is an intermediate stage and may be stale when Lane B is merged.
+  // result is an intermediate stage and may be stale by finalization time.
   yield;
   const canonicalFiles = input.siteBundleSnapshot
     ? ensureGeneratedUiFoundation(input.siteBundleSnapshot.vfsFiles, {
@@ -912,8 +914,8 @@ function* buildCanonicalLaunchArtifactSteps(
         // M1: a wizard launch may never seal without every registered page.
         requireRegisteredPageClosure: input.allowCanonicalPageFallback !== true,
         provenanceSink: mergeProvenance,
-        // Lane B owns registered page bodies. Snapshot topology owns the
-        // registry/router/bindings and Stage 4b owns /src/index.css.
+        // Snapshot topology owns registry/router/bindings and Stage 4b owns
+        // /src/index.css. The supplied page set must close the registry.
       })
     : { ...safeFiles };
   if (Object.keys(mergeProvenance).length > 0) {

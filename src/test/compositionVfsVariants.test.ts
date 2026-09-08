@@ -5,6 +5,7 @@ import { buildWizardDesignIntervention } from '@/services/wizardDesignInterventi
 import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
 import type { GeneratedSitePlan, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
 import type { SectionEntry } from '@/sections/types';
+import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 
 function readSections(source: string): SectionEntry[] {
   const match = source.match(/const SECTIONS = ([\s\S]*?);\nconst HYDRATABLE/);
@@ -34,6 +35,125 @@ function compileHome(templateId: string) {
 }
 
 describe('composition VFS variants', () => {
+  it('emits distinct registered page-role heroes despite an inherited Home override', () => {
+    const template = getCompositionById('salon-premium')!;
+    const hero = template.sections.find((section): section is SectionEntry<'hero'> => section.type === 'hero')!;
+    const expected = {
+      about: 'hero:split-image', services: 'hero:split-image', pricing: 'hero:page-title',
+      gallery: 'hero:full-bleed', booking: 'hero:editorial-banner', contact: 'hero:editorial-banner', faq: 'hero:page-title',
+    } as const;
+    for (const [role, variantId] of Object.entries(expected)) {
+      const page: PageRouteNode = {
+        id: `${role}-page`, name: role, title: role, route: `/${role}`, role: role as PageRouteNode['role'],
+        filePath: `/src/pages/${role}.tsx`, visibleInNav: true, isHome: false, generatedBy: 'wizard',
+      };
+      const files = generateTopologyPlaceholderFiles(page, routePlan(template.id, template.industry, page), template, {
+        designIntervention: { motionRecipes: [], sectionVariants: [], activeVariants: { [hero.id]: 'hero:centered' } },
+      });
+      const routeHero = readSections(files[page.filePath]).find((section): section is SectionEntry<'hero'> => section.type === 'hero')!;
+      const pageDefinition = template.pageCompositions?.[page.role];
+      if (pageDefinition) {
+        expect(pageDefinition.alternatives.map(alternative => alternative.heroVariantId), role).toContain(routeHero.variantId);
+      } else {
+        expect(routeHero.variantId, role).toBe(variantId);
+      }
+      expect(routeHero.sourceSectionId).toBe(hero.id);
+      expect(routeHero.props.ctas).toEqual(hero.props.ctas);
+      expect(files['/src/components/Hero.tsx']).toContain('function HeroPageIntro');
+      expect(files['/src/components/Hero.tsx']).not.toContain("from '../../types'");
+    }
+  });
+
+  it('preserves every selected template home section across theme presets', () => {
+    for (const template of ALL_COMPOSITIONS) {
+      for (const preset of THEME_PRESETS) {
+        const page: PageRouteNode = {
+          id: 'home-page', name: 'Home', title: 'Home', route: '/', role: 'home',
+          filePath: '/src/pages/Home.tsx', visibleInNav: true, isHome: true, generatedBy: 'wizard',
+        };
+        const files = generateTopologyPlaceholderFiles(page, {
+          ...routePlan(template.id, template.industry, page),
+          selectedThemePresetId: preset.id,
+        });
+        const sections = readSections(files[page.filePath]);
+
+        expect(sections.map((section) => section.sourceSectionId || section.id), `${template.id}/${preset.id}`)
+          .toEqual(template.sections.map((section) => section.sourceSectionId || section.id));
+        expect(sections.map((section) => section.type)).toEqual(template.sections.map((section) => section.type));
+      }
+    }
+  });
+
+  it('preserves explicit subpage pools and repeated sections across themes', () => {
+    const baseline = getCompositionById('salon-premium')!;
+    const gallery = baseline.sections.find((section) => section.type === 'gallery')!;
+    const template = {
+      ...baseline,
+      sections: [...baseline.sections, { ...gallery, id: `${gallery.id}-second` }],
+      sectionPool: { gallery: ['navbar', 'hero', 'gallery', 'footer'] as SectionEntry['type'][] },
+    };
+    const expected = template.sections.filter((section) => template.sectionPool.gallery.includes(section.type));
+    const page: PageRouteNode = {
+      id: 'gallery-page', name: 'Gallery', title: 'Gallery', route: '/gallery', role: 'gallery',
+      filePath: '/src/pages/Gallery.tsx', visibleInNav: true, isHome: false, generatedBy: 'wizard',
+    };
+    for (const preset of THEME_PRESETS) {
+      const files = generateTopologyPlaceholderFiles(page, {
+        ...routePlan(template.id, template.industry, page), selectedThemePresetId: preset.id,
+      }, template);
+      const sections = readSections(files[page.filePath]);
+      expect(sections.map((section) => section.sourceSectionId), preset.id).toEqual(expected.map((section) => section.id));
+      expect(new Set(sections.map((section) => section.id)).size).toBe(sections.length);
+    }
+  });
+
+  it('makes LauncherWizard business identity override template sample content', () => {
+    const template = getCompositionById('salon-premium');
+    if (!template) throw new Error('Missing salon composition');
+    const page: PageRouteNode = {
+      id: 'home-page', name: 'Home', title: 'Home', route: '/', role: 'home',
+      filePath: '/src/pages/Home.tsx', visibleInNav: true, isHome: true, generatedBy: 'wizard',
+    };
+    const plan: GeneratedSitePlan = {
+      ...routePlan(template.id, template.industry, page),
+      businessName: 'Northstar Dental',
+      wizardSeed: {
+        business: { name: 'Northstar Dental', industry: 'dental' },
+        socials: [{ platform: 'instagram', href: 'https://instagram.com/northstar' }],
+      },
+    };
+
+    const files = generateTopologyPlaceholderFiles(page, plan, template);
+    const source = files[page.filePath];
+    const sections = readSections(source);
+    const navbar = sections.find((section) => section.type === 'navbar');
+    const footer = sections.find((section) => section.type === 'footer');
+    const navbarProps = navbar?.props as Record<string, unknown> | undefined;
+    const footerProps = footer?.props as Record<string, unknown> | undefined;
+
+    expect(source).toContain('Northstar Dental');
+    expect(source).not.toContain('Lumière Studio');
+    expect(navbarProps?.brand).toBe('Northstar Dental');
+    expect(footerProps?.brand).toBe('Northstar Dental');
+    expect(footerProps?.copyright).toContain('Northstar Dental');
+    expect(footerProps?.socials).toEqual([
+      { platform: 'instagram', url: 'https://instagram.com/northstar' },
+    ]);
+
+    const contactPage: PageRouteNode = {
+      id: 'contact-page', name: 'Contact', title: 'Contact', route: '/contact', role: 'contact',
+      filePath: '/src/pages/Contact.tsx', visibleInNav: true, isHome: false, generatedBy: 'wizard',
+    };
+    const contactFiles = generateTopologyPlaceholderFiles(contactPage, {
+      ...plan,
+      pages: [contactPage],
+      navItems: [contactPage.id],
+    }, template);
+
+    expect(contactFiles[contactPage.filePath]).toContain('Explore contact from Northstar Dental.');
+    expect(contactFiles[contactPage.filePath]).not.toContain('Salon Premium');
+  });
+
   it('derives a route-specific hero instead of serializing the home hero on subpages', () => {
     const template = getCompositionById('restaurant-premium');
     if (!template) throw new Error('Missing restaurant composition');
@@ -64,11 +184,11 @@ describe('composition VFS variants', () => {
     expect(source).toContain('"badge": "Services"');
     expect(source).not.toContain(`"headline": ${JSON.stringify(homeHero?.props.headline)}`);
     expect(source).not.toContain(JSON.stringify(homeHero?.props.backgroundImage));
-    expect(routeHero.props.layout).toBe(homeHero.props.layout);
-    expect(routeHero.variantId).toBe(homeHero.variantId);
+    expect(routeHero.variantId).toBe('hero:split-image');
+    expect(routeHero.props.layout).toBe('split');
   });
 
-  it('keeps the selected hero variant module when the hero is cloned for a route', () => {
+  it('keeps an explicit page hero override when the hero is cloned for a route', () => {
     const template = getCompositionById('salon-premium');
     if (!template) throw new Error('Missing salon composition');
     const hero = template.sections.find((section): section is SectionEntry<'hero'> => section.type === 'hero');
@@ -81,7 +201,7 @@ describe('composition VFS variants', () => {
       designIntervention: {
         motionRecipes: [],
         sectionVariants: [],
-        activeVariants: { [hero.id]: 'hero:full-bleed' },
+        activeVariants: { [`${page.id}-hero-0`]: 'hero:full-bleed' },
       },
     });
     const routeHero = readSections(files[page.filePath]).find(

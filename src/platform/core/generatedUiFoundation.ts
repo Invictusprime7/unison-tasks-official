@@ -1,5 +1,8 @@
 import { isSandpackAllowedImport } from '@/utils/sandpackDependencies';
-import { UNISON_VFS_STYLE_BRIDGE } from '@/utils/unisonVfsStyleBridge';
+import {
+  RADIX_STYLE_RECIPE_VERSION,
+  UNISON_VFS_STYLE_BRIDGE,
+} from '@/utils/unisonVfsStyleBridge';
 import {
   EXPERIENCE_BARREL_EXPORTS,
   EXPERIENCE_FOUNDATION_PATHS,
@@ -25,8 +28,8 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.5' as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4']);
+export const GENERATED_UI_FOUNDATION_VERSION = '1.6' as const;
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5']);
 
 export type GeneratedUiLayoutRecipe =
   | 'floating-navbar'
@@ -57,7 +60,11 @@ export interface GeneratedUiManifest {
     forms: '@/unison/ui/forms';
     styles: '@/unison/ui/styles';
     radix: '@/unison/ui/radix';
-    radixPrimitives: readonly string[];
+    radixPrimitives: readonly RadixPrimitiveId[];
+  };
+  radixStyles: {
+    recipeVersion: typeof RADIX_STYLE_RECIPE_VERSION;
+    requiredPrimitives: readonly RadixPrimitiveId[];
   };
   iconLibrary: 'lucide-react';
   /** Experience (3D/WebGL) layer — composed by Lane B, budgeted by preflight. */
@@ -97,6 +104,7 @@ export interface GeneratedUiFoundationOptions {
   needsBooking?: boolean;
   wantsLeadCapture?: boolean;
   sellsProducts?: boolean;
+  requiredRadixPrimitives?: readonly RadixPrimitiveId[];
 }
 
 export interface GeneratedUiFoundation {
@@ -190,7 +198,7 @@ const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
 
 const FOUNDATION_MARKER = 'UNISON GENERATED UI FOUNDATION';
 
-const RADIX_VFS_PRIMITIVES = [
+export const RADIX_VFS_PRIMITIVES = [
   'accordion',
   'alert-dialog',
   'aspect-ratio',
@@ -220,6 +228,12 @@ const RADIX_VFS_PRIMITIVES = [
   'tooltip',
 ] as const;
 
+export type RadixPrimitiveId = (typeof RADIX_VFS_PRIMITIVES)[number];
+
+function isRadixPrimitiveId(value: unknown): value is RadixPrimitiveId {
+  return typeof value === 'string' && RADIX_VFS_PRIMITIVES.includes(value as RadixPrimitiveId);
+}
+
 function toPascalCase(value: string): string {
   return value.replace(/(^|-)\w/g, (segment) => segment.replace('-', '').toUpperCase());
 }
@@ -237,6 +251,7 @@ function buildRuntimeFacades(): GeneratedUiManifest['runtimeFacades'] {
 }
 
 function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManifest {
+  const requiredRadixPrimitives = [...new Set(options.requiredRadixPrimitives || [])];
   const requirements = [
     'Prefer manifest-backed @/unison/ui imports; supported Sandpack UI packages are also available.',
     'Use semantic Stage 4b Tailwind tokens; do not overwrite /src/index.css.',
@@ -249,6 +264,7 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
     'For @/unison/ui/motion, use only Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, and MotionRecipe.',
     'Import `cn` only from `@/unison/ui` — never from `@/unison/lib/utils` or any other path.',
     'Never import `@/unison/ui/tailwind.css` from a page; it is already applied globally in /src/index.css.',
+    'When composing raw Radix facade parts, opt into canonical state styling with data-ut-radix="overlay", "content", "control", "item", "accordion-content", or "toast" on the matching primitive part. Never author global [data-state] or [data-side] CSS.',
     'COMPOSE FROM THE VOCABULARY. Build every section from the composition primitives — Section, Container, Stack, Grid, Split, Eyebrow, Heading, Body, Lead, Stat, Quote, Badge, Panel, MediaFrame, CTAGroup — instead of raw <div> + arbitrary utility soup. They already encode this theme\'s rhythm, measure, surface treatment and responsive behaviour, so a page built from them stays correct under any style card.',
   ];
 
@@ -283,6 +299,10 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
       ...EXPERIENCE_IMPORT_PATHS,
     ],
     runtimeFacades: buildRuntimeFacades(),
+    radixStyles: {
+      recipeVersion: RADIX_STYLE_RECIPE_VERSION,
+      requiredPrimitives: requiredRadixPrimitives,
+    },
     iconLibrary: 'lucide-react',
     experience: buildExperienceManifestSection(),
     runtimeProfile: GENERATED_RUNTIME_PROFILE.id,
@@ -1292,6 +1312,9 @@ export function readGeneratedUiManifest(
       Array.isArray(manifest.runtimeFacades.radixPrimitives)
       ? manifest.runtimeFacades
       : buildRuntimeFacades();
+    const requiredRadixPrimitives = Array.isArray(manifest.radixStyles?.requiredPrimitives)
+      ? manifest.radixStyles.requiredPrimitives.filter(isRadixPrimitiveId)
+      : [];
     const currentExperience = buildExperienceManifestSection();
     const experience = manifest.experience
       ? { ...currentExperience, ...manifest.experience, budget: { ...currentExperience.budget, ...(manifest.experience.budget || {}) } }
@@ -1302,6 +1325,10 @@ export function readGeneratedUiManifest(
       experience,
       runtimeProfile: manifest.runtimeProfile || GENERATED_RUNTIME_PROFILE.id,
       runtimeFacades,
+      radixStyles: {
+        recipeVersion: RADIX_STYLE_RECIPE_VERSION,
+        requiredPrimitives: requiredRadixPrimitives,
+      },
       formFormats: manifest.formFormats || ['inline-capture', 'contact', 'appointment', 'quote-request', 'checkout'],
       buttonFormats: manifest.buttonFormats || ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link', 'icon'],
       iconFormats: manifest.iconFormats || ['inline', 'icon-button', 'social'],
@@ -1543,6 +1570,12 @@ export function validateGeneratedUiContract(
 
     for (const match of source.matchAll(importPattern)) {
       const specifier = match[1];
+      if (specifier.startsWith('@radix-ui/')) {
+        violations.push(
+          `${path} imports "${specifier}" directly. Use the matching "${manifest.importRoot}/radix/<primitive>" facade.`,
+        );
+        continue;
+      }
       const experiencePackage = EXPERIENCE_RUNTIME_PACKAGES.find(
         (name) => specifier === name || specifier.startsWith(`${name}/`),
       );

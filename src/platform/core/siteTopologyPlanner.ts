@@ -48,6 +48,26 @@ export type PageRole =
   | 'shop'
   | 'custom';
 
+const PAGE_ROLE_SPECS: Partial<Record<PageRole, PageSpec>> = {
+  about:    { title: 'About',    path: '/about',    purpose: 'about', expectedSections: [] },
+  services: { title: 'Services', path: '/services', purpose: 'services', expectedSections: [] },
+  pricing:  { title: 'Pricing',  path: '/pricing',  purpose: 'pricing', expectedSections: [] },
+  gallery:  { title: 'Gallery',  path: '/gallery',  purpose: 'portfolio', expectedSections: [] },
+  faq:      { title: 'FAQ',      path: '/faq',      purpose: 'faq', expectedSections: [] },
+  contact:  { title: 'Contact',  path: '/contact',  purpose: 'contact', expectedSections: [] },
+  booking:  { title: 'Book',     path: '/booking',  purpose: 'booking', expectedSections: [] },
+  checkout: { title: 'Checkout', path: '/checkout', purpose: 'checkout', expectedSections: [] },
+  blog:     { title: 'Blog',     path: '/blog',     purpose: 'blog', expectedSections: [] },
+  shop:     { title: 'Shop',     path: '/shop',     purpose: 'shop', expectedSections: [] },
+};
+
+export function resolvePageSpecsForRoles(roles: readonly string[]): PageSpec[] {
+  return roles.flatMap((role) => {
+    const spec = PAGE_ROLE_SPECS[role as PageRole];
+    return spec ? [{ ...spec, expectedSections: [...spec.expectedSections] }] : [];
+  });
+}
+
 export interface PageRouteNode {
   id: string;
   name: string;

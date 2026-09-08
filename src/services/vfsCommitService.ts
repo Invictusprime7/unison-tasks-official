@@ -361,6 +361,7 @@ export async function commitMutation(
   const previewOk =
     preflight.stages.earlyRepair !== 'failed' &&
     preflight.stages.finalRepair !== 'failed' &&
+    preflight.stages.runtimeCompatibility?.ok !== false &&
     (preflight.violations?.length ?? 0) === 0;
   log('preflight', previewOk ? 'info' : 'warn', 'preflight stages', preflight.stages);
 
@@ -478,6 +479,7 @@ export async function commitMutation(
     const previewOk2 =
       preflight.stages.earlyRepair !== 'failed' &&
       preflight.stages.finalRepair !== 'failed' &&
+      preflight.stages.runtimeCompatibility?.ok !== false &&
       (preflight.violations?.length ?? 0) === 0;
     const readinessOk2 =
       (!gate || gate.previewReady) &&
@@ -732,12 +734,9 @@ function toCanonicalSource(s: PatchSource): CanonicalCommitSource {
 }
 
 /**
- * Wizard launches already arrive with the full Lane B/SiteBundle handoff VFS
- * in the patch file map. The canonical wizard recompile is still required for
- * registry/snapshot/runtime derivation, but its compile output is scaffold-only
- * and intentionally drops AI-authored support modules plus metadata files. If a
- * revision persists that scaffold output, WebBuilder's revision-first hydration
- * replaces the rich launch with the minimal template site.
+ * Wizard launches arrive with the reviewed canonical handoff VFS in the patch
+ * file map. Preserve the sealed compiler output while retaining metadata
+ * sidecars that are intentionally absent from the runtime snapshot.
  */
 function mergeWizardLaunchFiles(
   launcherFiles: Record<string, string>,
@@ -750,10 +749,10 @@ function mergeWizardLaunchFiles(
   };
 
   // The launcher patch also carries metadata that is intentionally absent
-  // from the runtime snapshot. It may therefore be broader than the reviewed
-  // artifact, but it must never replace any source path already sealed as
-  // Lane A/Stage 4b authority or as a selected page body.
+  // from the runtime snapshot. It must never replace a protected canonical
+  // source path or selected page body.
   const reviewedPaths = new Set<string>([
+    ...(snapshot?.meta?.seal?.protectedFilePatterns ?? []),
     ...(snapshot?.meta?.seal?.laneAProtectedFiles ?? []),
     ...Object.values(snapshot?.pageRegistry?.pages ?? {})
       .map((page) => page.filePath)

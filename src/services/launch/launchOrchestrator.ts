@@ -99,6 +99,11 @@ import {
   type PrimaryGoal,
   type TemplateCardData,
 } from "@/components/onboarding/wizard/wizardCatalog";
+import {
+  buildPublicBusinessContext,
+  resolveWizardIndustryOverlay,
+} from '@/services/wizardMergeContext';
+import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
 
 export interface LaunchOrchestratorInput {
   systemId: BusinessSystemType;
@@ -209,6 +214,11 @@ export async function runLaunchPipeline(
 
     const generationCategory = resolveGenerationCategory(system, input.template);
     const industryProfile = getIndustryForCategory(generationCategory);
+    const industryOverlay = resolveWizardIndustryOverlay({
+      templateIndustry: input.template.industry,
+      generationIndustry: industryProfile?.industry || generationCategory,
+      systemIndustry: SYSTEM_TO_INDUSTRY_OVERLAY[input.systemId],
+    });
     const compositionMeta = getCompositionMeta(generationCategory);
     const canonicalIntents = uniqueValues<string>([
       ...(industryProfile
@@ -226,7 +236,7 @@ export async function runLaunchPipeline(
       ids: requestedIds,
       existingBusinessId: input.existingBusinessId || undefined,
       businessName: brand,
-      industry: industryProfile?.industry || generationCategory,
+      industry: industryOverlay,
       siteName: `${brand} Site`,
       siteSlug: `${brand}-${requestedIds.siteId.slice(0, 8)}`
         .toLowerCase()
@@ -248,10 +258,7 @@ export async function runLaunchPipeline(
     const launchContract = resolveVerticalLaunchContract(input.systemId);
     const primaryGoal: PrimaryGoal =
       input.primaryGoal || preselect?.primaryGoal || "collect_leads";
-    const customerNeeds = uniqueValues<CustomerNeed>([
-      ...(preselect?.customerNeeds || []),
-      ...input.customerNeeds,
-    ]);
+    const customerNeeds = uniqueValues<CustomerNeed>(input.customerNeeds);
     const requestedPages = uniqueValues<string>(["home", ...input.selectedPages]);
     const goalNeeds = GOAL_TO_NEEDS[primaryGoal] || {};
 
@@ -259,7 +266,7 @@ export async function runLaunchPipeline(
     const seed = deriveGenerationSeed({
       businessName: brand,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
-      industry: industryProfile?.industry || generationCategory,
+      industry: industryOverlay,
       templateId: input.template.id,
       themePresetId: input.theme.id,
       primaryGoal,
@@ -273,7 +280,7 @@ export async function runLaunchPipeline(
     const selections: WizardSelections = {
       businessName: brand,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
-      industryOverlay: SYSTEM_TO_INDUSTRY_OVERLAY[input.systemId] || "general",
+      industryOverlay,
       systemType: input.systemId,
       primaryGoal,
       secondaryGoals: customerNeeds as string[],
@@ -313,6 +320,7 @@ export async function runLaunchPipeline(
       ids,
       confirmed,
       generationCategory,
+      industryOverlay,
       industryProfile,
       canonicalIntents,
       launchContract,
@@ -326,7 +334,7 @@ export async function runLaunchPipeline(
 
   const design = generateDesignVariation(plan.seed);
   const blueprint = createBlueprintFromIndustry(
-    plan.industryProfile?.industry || String(plan.generationCategory),
+    plan.industryOverlay,
     brand,
     { email: plan.ownerEmail || undefined },
   );
@@ -345,11 +353,20 @@ export async function runLaunchPipeline(
     source: "launch-orchestrator",
     business: {
       name: brand,
-      industry: plan.industryProfile?.industry || plan.generationCategory,
+      industry: plan.industryOverlay,
       primaryGoal: plan.selections.primaryGoal,
       systemType: input.systemId,
     },
-    template: { id: input.template.id, label: input.template.label },
+    generation: {
+      primaryGoal: plan.selections.primaryGoal,
+      secondaryGoals: plan.selections.secondaryGoals,
+      requestedPages: plan.requestedPages,
+    },
+    template: {
+      id: input.template.id,
+      label: input.template.label,
+      sections: composition.sections.filter((section) => !section.hidden).map((section) => section.type),
+    },
     theme: { presetId: input.theme.id, label: input.theme.label, tokens: plan.themeTokens },
     design: { seed: plan.seed, contractSignature: designContract.contractSignature },
     socials: Object.entries(input.socialLinks || {})
@@ -411,7 +428,7 @@ export async function runLaunchPipeline(
     businessId: plan.confirmed.businessId,
     ownerId: plan.user.id,
     name: brand,
-    industry: plan.industryProfile?.industry || plan.generationCategory,
+    industry: plan.industryOverlay,
     email: plan.ownerEmail || null,
     notificationEmail: plan.ownerEmail || null,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -419,6 +436,51 @@ export async function runLaunchPipeline(
     hours: [],
     socialLinks: {},
     settings: {},
+  };
+  const canonicalPages = Object.values(siteBundleSnapshot.pageRegistry.pages)
+    .filter((page): page is typeof page & { filePath: string } => Boolean(page.filePath))
+    .map((page) => ({
+      slug: page.path === '/' ? 'home' : page.path.replace(/^\//, ''),
+      path: page.filePath,
+      route: page.path,
+      title: page.title,
+      role: page.pageRole || page.pageType,
+    }));
+  const uiFoundation = JSON.parse(
+    siteBundleSnapshot.vfsFiles['/.unison/ui-manifest.json'] || 'null',
+  ) as Record<string, unknown> | null;
+  const publicBusinessContext = buildPublicBusinessContext(businessProfile);
+  const socialLinks = new Map<string, string>();
+  for (const [platform, url] of Object.entries(publicBusinessContext.socialLinks)) {
+    if (url) socialLinks.set(platform, url);
+  }
+  for (const { platform, href } of wizardSeedFile.socials) {
+    socialLinks.set(platform, href);
+  }
+  const contextualWizardSeedFile = {
+    ...wizardSeedFile,
+    business: {
+      ...publicBusinessContext,
+      name: brand,
+      industry: plan.industryOverlay,
+      primaryGoal: plan.selections.primaryGoal,
+      systemType: input.systemId,
+    },
+    canonical: {
+      pages: canonicalPages,
+      capabilities: plan.industryProfile?.defaultCapabilities || [],
+      intents: plan.canonicalIntents,
+    },
+    generation: {
+      ...wizardSeedFile.generation,
+      socials: [...socialLinks].map(([platform, url]) => ({ platform, url })),
+    },
+    uiFoundation,
+    generationBrief: siteBundleSnapshot.meta.generationBrief,
+    designIntervention: siteBundleSnapshot.meta.designIntervention,
+    bindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
+      industry: plan.industryOverlay,
+    }),
   };
   const plannedDataBindings = planSectionDataBindings(siteBundleSnapshot);
   const businessRuntime = buildBusinessRuntimeContract({
@@ -438,7 +500,7 @@ export async function runLaunchPipeline(
   const wizardAudit = auditWizardIntentGap({
     sitePlan,
     state: materializedPlayground,
-    industryOverlay: plan.generationCategory,
+    industryOverlay: plan.industryOverlay,
   });
   const nativeReadinessManifest = {
     ...buildNativePublishReadinessManifest({
@@ -447,7 +509,7 @@ export async function runLaunchPipeline(
       setupSnapshot: nativeSetupSnapshot,
       enabled: plan.launchContract.nativePublishCapable,
       systemType: input.systemId,
-      industryOverlay: plan.generationCategory,
+      industryOverlay: plan.industryOverlay,
     }),
     wizardAudit,
   };
@@ -455,8 +517,9 @@ export async function runLaunchPipeline(
   const intentSurfacesFile = buildIntentSurfacesFile(materializedPlayground);
 
   // ── Stage: enrich ─────────────────────────────────────────────────────────
-  // AI page authorship is retired by contract. The stage stays in the model so
-  // the timeline is honest about what did (and did not) run.
+  // Launcher enrichment is deterministic compiler work. AI may consume this
+  // context after launch, but it never authors or replaces Launcher page files.
+  status("Finalizing your deterministic design…");
   run.markStage("enrich", "done");
 
   // ── Stage: preflight (merge + seal + strict import contract) ──────────────
@@ -465,8 +528,7 @@ export async function runLaunchPipeline(
     const built = await buildCanonicalLaunchArtifactsAsync(
       {
         // Stage 4b's snapshot VFS is the authored source for the deterministic
-        // launcher. Pass it explicitly as generated input so merge provenance
-        // never has to reinterpret canonical pages as a fallback.
+        // launcher. Pass it explicitly so merge never treats pages as fallback.
         generatedFiles: siteBundleSnapshot.vfsFiles,
         preferredEntryPoint: "/src/App.tsx",
         siteBundleSnapshot,
@@ -483,7 +545,7 @@ export async function runLaunchPipeline(
         templateCategory: plan.generationCategory,
         templateId: input.template.id,
         businessName: brand,
-        industry: plan.generationCategory,
+        industry: plan.industryOverlay,
         aesthetic: input.theme.id,
         themePresetId: input.theme.id,
         backendRequired: false,
@@ -535,7 +597,7 @@ export async function runLaunchPipeline(
 
   const vfsFiles: Record<string, string> = {
     ...artifacts.files,
-    "/.unison/wizard-seed.json": JSON.stringify(wizardSeedFile, null, 2),
+    "/.unison/wizard-seed.json": JSON.stringify(contextualWizardSeedFile, null, 2),
     [TEMPLATE_DESIGN_CONTRACT_PATH]: JSON.stringify(designContract, null, 2),
     "/.unison/launch-readiness.json": JSON.stringify({
       ...nativeReadinessManifest,
@@ -587,7 +649,7 @@ export async function runLaunchPipeline(
         requireReadinessPass: false,
         compiledContract,
         businessName: brand,
-        industry: String(plan.generationCategory),
+        industry: plan.industryOverlay,
         selectedTemplateId: input.template.id,
         themePresetId: input.theme.id,
         selections: plan.selections,
@@ -658,7 +720,7 @@ export async function runLaunchPipeline(
       intentRuntime: true,
       businessId: commit.confirmed.businessId,
       projectId: commit.confirmed.projectId,
-      industry: plan.industryProfile?.industry || String(plan.generationCategory),
+      industry: plan.industryOverlay,
       runtimeManifest: committed.runtimeManifest,
       entryPoint: committed.runtimeManifest.entryPoint,
       sitePlan,
@@ -667,7 +729,7 @@ export async function runLaunchPipeline(
       compiledPlayground,
       pipelineManifest: committed.runtimeManifest,
       wizardSelections: plan.selections,
-      wizardSeed: wizardSeedFile,
+      wizardSeed: contextualWizardSeedFile,
       draftId: commit.confirmed.draftId,
       revisionId: committed.persistedRevisionId,
     } as Parameters<typeof createLaunchState>[0]);

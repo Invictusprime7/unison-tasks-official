@@ -33,6 +33,22 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).not.toContain('prepareSandpackFiles');
   });
 
+  it('keeps submitted Wizard context authoritative over launcher defaults', () => {
+    expect(source).toContain('const customerNeeds = uniqueValues<CustomerNeed>(input.customerNeeds);');
+    expect(source).not.toContain('...(preselect?.customerNeeds || [])');
+    expect(source).toContain('secondaryGoals: plan.selections.secondaryGoals,');
+    expect(source).toContain('requestedPages: plan.requestedPages,');
+  });
+
+  it('uses the selected template as the canonical industry authority', () => {
+    expect(source).toContain('const industryOverlay = resolveWizardIndustryOverlay({');
+    expect(source).toContain('templateIndustry: input.template.industry,');
+    expect(source).toContain('generationIndustry: industryProfile?.industry || generationCategory,');
+    expect(source).toContain('industryOverlay,');
+    expect(source).not.toContain('industryOverlay: SYSTEM_TO_INDUSTRY_OVERLAY[input.systemId] || "general"');
+    expect(source).not.toContain('industryOverlay: plan.generationCategory');
+  });
+
   it('builds post-Stage4b business and intent runtime contracts before sealing', () => {
     const stage4bResult = position('} = stage4b.pipelineResult;');
     const profileLoad = position('await loadBusinessProfile(input.existingBusinessId)');
@@ -57,6 +73,27 @@ describe('launch orchestrator canonical handoff', () => {
     expect(nativeReadiness).toBeLessThan(intentBindings);
     expect(intentBindings).toBeLessThan(intentSurfaces);
     expect(intentSurfaces).toBeLessThan(canonicalBuild);
+  });
+
+  it('keeps Launcher authorship deterministic while preserving public context', () => {
+    const stage4bResult = position('} = stage4b.pipelineResult;');
+    const publicProfile = position('buildPublicBusinessContext(businessProfile)');
+    const canonicalPages = position('const canonicalPages = Object.values(siteBundleSnapshot.pageRegistry.pages)');
+    const bindingGuide = position('buildWizardBindingGuide(siteBundleSnapshot');
+    const deterministicEnrichment = position('run.markStage("enrich", "done")');
+    const preflight = position('await buildCanonicalLaunchArtifactsAsync(');
+
+    expect(source).toContain('generationBrief: siteBundleSnapshot.meta.generationBrief');
+    expect(source).toContain('designIntervention: siteBundleSnapshot.meta.designIntervention');
+    expect(source).toContain('generatedFiles: siteBundleSnapshot.vfsFiles');
+    expect(source).not.toContain('enrichWizardPagesWithAI');
+    expect(source).not.toContain('runBuilderTurn');
+    expect(source).not.toContain('enrich.ai_rejected');
+    expect(stage4bResult).toBeLessThan(canonicalPages);
+    expect(canonicalPages).toBeLessThan(publicProfile);
+    expect(publicProfile).toBeLessThan(bindingGuide);
+    expect(bindingGuide).toBeLessThan(deterministicEnrichment);
+    expect(deterministicEnrichment).toBeLessThan(preflight);
   });
 
   it('plans forms and degrades embedded published-runtime readiness without blocking launch', () => {

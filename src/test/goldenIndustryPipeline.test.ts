@@ -41,6 +41,14 @@ import { buildPreviewArtifacts } from '@/utils/previewArtifacts';
 import { createLaunchState } from '@/types/launchState';
 import { getCompositionsBySystemType } from '@/sections/templates';
 import { findUnresolvedLocalImports } from '@/services/laneBCompanionModules';
+import type { SectionEntry } from '@/sections/types';
+import { collectResolvedCompositions } from '@/platform/core/resolvedComposition';
+
+function readPageSections(source: string): SectionEntry[] {
+  const match = source.match(/const SECTIONS = ([\s\S]*?);\nconst HYDRATABLE/);
+  if (!match) throw new Error('Compiled page did not serialize sections');
+  return JSON.parse(match[1]) as SectionEntry[];
+}
 
 interface IndustryFixture {
   label: string;
@@ -399,7 +407,7 @@ describe('Golden industry pipeline — canonical round-trip', () => {
 });
 
 describe('Salon Premium golden launch transaction', () => {
-  it('seals all seven Lane B page bodies with editorial Stage 4b authority', () => {
+  it('seals all eight deterministic page bodies with dedicated Pricing and FAQ content', () => {
     const editorial = THEME_PRESETS.find((preset) => preset.id === 'editorial');
     const composition = getCompositionsBySystemType('booking')
       .find((candidate) => candidate.id === 'salon-premium');
@@ -414,7 +422,7 @@ describe('Salon Premium golden launch transaction', () => {
       secondaryGoals: ['contact'],
       needsBooking: true,
       wantsLeadCapture: true,
-      requestedPages: ['home', 'about', 'services', 'gallery', 'booking', 'contact', 'faq'],
+      requestedPages: ['home', 'about', 'services', 'pricing', 'gallery', 'booking', 'contact', 'faq'],
       scaffoldMode: 'selected-pages',
       templateId: 'salon-premium',
       themePresetId: 'editorial',
@@ -423,23 +431,17 @@ describe('Salon Premium golden launch transaction', () => {
     };
     const laneA = commitToPipeline({ selections }, 'wizard-launch');
     const registryPages = Object.values(laneA.siteBundleSnapshot.pageRegistry.pages);
+    const homePage = registryPages.find((page) => page.isHome);
+    expect(homePage).toBeDefined();
+    expect(readPageSections(laneA.siteBundleSnapshot.vfsFiles[homePage!.filePath!]).map((section) => section.id))
+      .toEqual(composition.sections.map((section) => section.id));
     for (const page of registryPages) {
       const sectionMapPath = page.filePath!.replace(/\.tsx$/, '.sections.ts');
       expect(laneA.siteBundleSnapshot.vfsFiles[sectionMapPath], sectionMapPath).toBeTruthy();
     }
-    const laneBFiles = Object.fromEntries(registryPages.map((page) => [
-      page.filePath!,
-      [
-        'export default function Page(){ return <main>',
-        `<h1>STELLAR BEAUTY ${page.title}</h1>`,
-        `<p>Personalized ${page.title.toLowerCase()} guidance for salon clients.</p>`,
-        '<button data-ut-intent="booking.create">Book with STELLAR BEAUTY</button>',
-        '</main>; }',
-      ].join(''),
-    ]));
 
     const artifacts = buildCanonicalLaunchArtifacts({
-      generatedFiles: laneBFiles,
+      generatedFiles: laneA.siteBundleSnapshot.vfsFiles,
       preferredEntryPoint: '/src/App.tsx',
       siteBundleSnapshot: laneA.siteBundleSnapshot,
       compileArtifact: laneA.compileArtifact,
@@ -456,25 +458,44 @@ describe('Salon Premium golden launch transaction', () => {
       backendRequired: false,
     });
 
-    expect(registryPages).toHaveLength(7);
+    expect(registryPages).toHaveLength(8);
+    for (const role of ['pricing', 'faq']) {
+      const page = registryPages.find(page => page.path === `/${role}`)!;
+      expect(readPageSections(artifacts.files[page.filePath!]).some(section => section.type === role), role).toBe(true);
+    }
     expect(artifacts.siteBundleSnapshot?.meta.templateId).toBe('salon-premium');
     expect(artifacts.siteBundleSnapshot?.meta.themePresetId).toBe('editorial');
     expect(artifacts.siteBundleSnapshot?.meta.seal).toMatchObject({
-      pipeline: 'lane-a+lane-b+stage-4b',
-      registeredPageBodyAuthority: 'lane-b',
+      pipeline: 'canonical-compiler+stage-4b',
+      authorityProofVersion: '2.0',
+      registeredPageBodyAuthority: 'canonical-compiler',
       registeredPageFiles: registryPages.map((page) => page.filePath).sort(),
     });
     expect(artifacts.files['/src/index.css']).toContain("--font-heading: 'Playfair Display'");
     const sealedPageBodies = new Set<string>();
     for (const page of registryPages) {
-      expect(artifacts.files[page.filePath!], page.filePath).toContain(`STELLAR BEAUTY ${page.title}`);
+      expect(artifacts.files[page.filePath!], page.filePath).toContain('const SECTIONS');
       expect(artifacts.files[page.filePath!], `${page.filePath} must match the sealed snapshot`).toBe(
         artifacts.siteBundleSnapshot?.vfsFiles[page.filePath!],
       );
       sealedPageBodies.add(artifacts.files[page.filePath!]);
+      expect(readPageSections(artifacts.files[page.filePath!]), `${page.filePath} must preserve compiled section counts and order`)
+        .toEqual(readPageSections(laneA.siteBundleSnapshot.vfsFiles[page.filePath!]));
     }
     expect(sealedPageBodies.size).toBe(registryPages.length);
     expect(findUnresolvedLocalImports(artifacts.files)).toEqual([]);
+    const recompiled = commitToPipeline({
+      playground: laneA.playground, existingVfsFiles: artifacts.files,
+      businessName: selections.businessName, industry: 'salon',
+      selectedTemplateId: 'salon-premium', themePresetId: 'editorial', themeTokens: selections.themeTokens!,
+    }, 'playground-edit');
+    const originalCompositions = collectResolvedCompositions(artifacts.files);
+    const recompiledCompositions = collectResolvedCompositions(recompiled.compileResult!.vfsFiles);
+    for (const role of ['pricing', 'faq']) {
+      const page = registryPages.find(page => page.path === `/${role}`)!;
+      expect(originalCompositions[page.filePath!].compositionAlternativeId).toEqual(expect.any(String));
+      expect(recompiledCompositions[page.filePath!]).toEqual(originalCompositions[page.filePath!]);
+    }
     expect(artifacts.siteBundleSnapshot?.vfsFiles['/.unison/wizard-launch-authority.json']).toBeUndefined();
 
     const launchState = createLaunchState({
@@ -511,9 +532,12 @@ describe('Salon Premium golden launch transaction', () => {
       const flattenedPath = page.filePath!.replace(/^\/src/, '');
       const importPath = page.filePath!.replace(/^\/src\//, './').replace(/\.tsx$/, '');
       expect(previewFiles[flattenedPath], `${page.filePath} must survive Sandpack flattening`)
-        .toContain(`STELLAR BEAUTY ${page.title}`);
+        .toContain('const SECTIONS');
+      expect(previewFiles[flattenedPath]).not.toContain('LEGACY HOME');
+      expect(readPageSections(previewFiles[flattenedPath]), `${page.filePath} must preserve sealed sections in Preview`)
+        .toEqual(readPageSections(artifacts.files[page.filePath!]));
       expect(previewRouter, `${page.filePath} must remain connected to the preview router`)
         .toMatch(new RegExp(`from ["']${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\.tsx)?["']`));
     }
-  });
+  }, 15_000);
 });

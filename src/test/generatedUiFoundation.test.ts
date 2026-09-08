@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import {
   buildGeneratedUiFoundation,
   GENERATED_UI_FOUNDATION_VERSION,
+  RADIX_VFS_PRIMITIVES,
 
   buildGeneratedUiFoundationDirective,
   ensureGeneratedUiFoundation,
@@ -82,9 +83,41 @@ describe('generated UI foundation', () => {
     expect(foundation.manifest.runtimeFacades.icons).toBe('@/unison/ui/icons');
     expect(foundation.manifest.runtimeFacades.animation).toBe('@/unison/ui/animation');
     expect(foundation.manifest.runtimeFacades.radixPrimitives).toContain('dialog');
+    expect(foundation.manifest.runtimeFacades.radixPrimitives).toEqual(RADIX_VFS_PRIMITIVES);
+    expect(foundation.manifest.radixStyles).toEqual({
+      recipeVersion: '1.0',
+      requiredPrimitives: [],
+    });
     expect(foundation.manifest.formFormats).toContain('appointment');
     expect(foundation.manifest.buttonFormats).toContain('icon');
     expect(foundation.manifest.iconFormats).toContain('social');
+  });
+
+  it('emits scoped, token-driven Radix recipes without global state collisions', () => {
+    const css = foundation.files['/src/unison/ui/tailwind.css'];
+
+    expect(css).toContain('UNISON RADIX STYLE RECIPES v1.0');
+    expect(css).toContain('[data-ut-radix][data-state="open"]');
+    expect(css).toContain('[data-ut-radix="overlay"]');
+    expect(css).toContain('[data-ut-radix="accordion-content"][data-state="open"]');
+    expect(css).toContain('[data-ut-radix="toast"][data-swipe="move"]');
+    expect(css).toContain('hsl(var(--primary))');
+    expect(css).not.toMatch(/^\s*\[data-state=/m);
+    expect(css).not.toContain('@radix-ui/themes');
+  });
+
+  it('persists selected Radix primitive requirements in the UI manifest', () => {
+    const withRequirements = buildGeneratedUiFoundation({
+      themePresetId: 'organic',
+      requiredRadixPrimitives: ['dialog', 'tooltip', 'dialog'],
+    });
+
+    expect(withRequirements.manifest.radixStyles).toEqual({
+      recipeVersion: '1.0',
+      requiredPrimitives: ['dialog', 'tooltip'],
+    });
+    expect(readGeneratedUiManifest(withRequirements.files)?.radixStyles)
+      .toEqual(withRequirements.manifest.radixStyles);
   });
 
   it('builds one canonical prompt directive enumerating every manifest import path', () => {
@@ -103,6 +136,8 @@ describe('generated UI foundation', () => {
     expect(directive).toContain('"@/unison/ui/animation" is the full framer-motion re-export');
     expect(directive).toContain('Never import from "next", any "next/*" module, "gatsby", or "remix"');
     expect(directive).toContain('never from a flat "@/unison/ui/input"');
+    expect(directive).toContain('data-ut-radix="overlay", "content", "control", "item", "accordion-content", or "toast"');
+    expect(directive).toContain('Never author global [data-state] or [data-side] CSS');
     // tailwind.css is never a valid page import — it's mentioned only in the
     // explicit "don't import this" sentence, not the enumerated path list.
     expect(directive).not.toContain('- "@/unison/ui/tailwind.css"');
@@ -115,9 +150,13 @@ describe('generated UI foundation', () => {
     expect(readGeneratedUiManifest(foundation.files)).toEqual(foundation.manifest);
     const legacyManifest = { ...foundation.manifest } as Record<string, unknown>;
     delete legacyManifest.runtimeFacades;
+    delete legacyManifest.radixStyles;
     expect(readGeneratedUiManifest({
       '/.unison/ui-manifest.json': JSON.stringify(legacyManifest),
     })?.runtimeFacades.radixPrimitives).toContain('dialog');
+    expect(readGeneratedUiManifest({
+      '/.unison/ui-manifest.json': JSON.stringify(legacyManifest),
+    })?.radixStyles).toEqual({ recipeVersion: '1.0', requiredPrimitives: [] });
     expect(readGeneratedUiManifest({
       '/.unison/ui-manifest.json': JSON.stringify({ importRoot: '@/unison/ui' }),
     })).toBeNull();
@@ -280,6 +319,12 @@ describe('generated UI foundation', () => {
       '/src/pages/Experience.tsx': `import * as Dialog from '@/unison/ui/radix/dialog'; import { motion } from '@/unison/ui/animation'; import { useForm, z, zodResolver } from '@/unison/ui/forms'; import { Calendar } from '@/unison/ui/icons'; import { Card, componentStyles, typography } from '@/unison/ui'; export default function Experience(){ const { register } = useForm({ resolver: zodResolver(z.object({ email: z.string().email() })) }); return <Dialog.Root><motion.div className={componentStyles.card}><Card><Calendar aria-hidden /><h1 className={typography.heading}>Join</h1><input {...register('email')} /></Card></motion.div></Dialog.Root>; }`,
     }, foundation.manifest);
     expect(powerfulUiImports).toEqual({ valid: true, violations: [] });
+
+    const directRadixImport = validateGeneratedUiContract({
+      '/src/pages/Dialog.tsx': `import * as Dialog from '@radix-ui/react-dialog'; export default function Page(){ return <Dialog.Root />; }`,
+    }, foundation.manifest);
+    expect(directRadixImport.valid).toBe(false);
+    expect(directRadixImport.violations.join(' ')).toContain('Use the matching "@/unison/ui/radix/<primitive>" facade');
 
     const tailwindOnly = validateGeneratedUiContract({
       '/src/pages/About.tsx': `export default function About(){ return <main className="bg-background text-foreground"><h1>About us</h1></main>; }`,

@@ -138,7 +138,7 @@ export function runAssistantOrchestrator(
   if (task.type === "launch_desk") {
     return runLaunchDeskLane(parsed, task, corsHeaders, signal);
   }
-  // All wizard launches now route through Lane B as `wizard_seed_generation`.
+  // The Launcher is deterministic and never calls this builder lane.
   return runBuilderLane(parsed, task, corsHeaders, userId, signal);
 }
 
@@ -146,8 +146,7 @@ export function runAssistantOrchestrator(
 // LANE B — Builder Orchestration (memory, compaction, research, rich response)
 // ============================================================================
 //
-// Wizard launches send `mode: "wizard-seed"` with a structured WizardSeed and
-// share the same Lane B builder brain as in-Builder AIBuilderPanel edits.
+// In-Builder AI edits may carry the durable WizardSeed for project context.
 
 
 // ============================================================================
