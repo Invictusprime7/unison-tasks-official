@@ -1472,9 +1472,8 @@ export function Calendar({ ...props }) { return React.createElement('div', { cla
 export default {};
 `;
 
-// Sandpack's remote compiler transforms Radix CJS modules and then attempts to
-// collect injected @swc/helpers imports. Generated previews only need the
-// component API shape, so keep the existing VFS facade imports local.
+// Legacy compatibility for packages not yet verified in Sandpack. Accordion,
+// Dialog and Slot retain their real runtime behavior below.
 const RADIX_PREVIEW_SHIM = `
 import React from 'react';
 
@@ -1588,9 +1587,8 @@ export const useReducedMotion = () => false;
 `;
 
 /**
- * Keep external Radix packages out of Sandpack's dependency graph. This must
- * also run after canonical overlays, which are written after the main file
- * preparation pass.
+ * Preserve verified interaction packages and adapt the remaining legacy imports.
+ * Also runs after canonical overlays written after the main preparation pass.
  */
 export function applyRadixPreviewShim(files: Record<string, string>): Record<string, string> {
   const previewFiles = { ...files };
@@ -1601,7 +1599,7 @@ export function applyRadixPreviewShim(files: Record<string, string>): Record<str
     const sandpackPath = filePath.replace(/^\/src\//, '/');
     const radixShimImport = toRelativeSandpackImport(sandpackPath, '/radix-shim');
     previewFiles[filePath] = content.replace(
-      /(['"])@radix-ui\/react-[^'"]+\1/g,
+      /(['"])@radix-ui\/react-(?!(?:accordion|dialog|slot)\1)[^'"]+\1/g,
       (_match, quote: string) => `${quote}${radixShimImport}${quote}`,
     );
   }
@@ -3556,7 +3554,7 @@ export function processCode(code: string, filePath: string): string {
   // cannot collect its CommonJS transform helpers reliably, so preserve the
   // facade API while resolving it against the local preview shim.
   processed = processed.replace(
-    /export\s+\*\s+from\s+['"]@radix-ui\/react-[^'"]+['"];?/g,
+    /export\s+\*\s+from\s+['"]@radix-ui\/react-(?!(?:accordion|dialog|slot)['"])[^'"]+['"];?/g,
     `export * from '${radixShimImport}';`,
   );
   processed = processed.replace(

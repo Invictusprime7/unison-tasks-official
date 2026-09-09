@@ -32,6 +32,10 @@ vi.mock('@/services/runFullPreflight', () => ({
   runFullPreflight: vi.fn(),
 }));
 
+vi.mock('@/services/canonicalLaunchVfs', () => ({
+  buildCanonicalLaunchArtifacts: vi.fn(),
+}));
+
 vi.mock('@/services/playgroundControlPlaneResolver', () => ({
   resolvePlaygroundControlPlane: vi.fn(),
 }));
@@ -191,6 +195,7 @@ import {
 } from '@/services/vfsCommitService';
 import { commitToPipeline } from '@/platform/core/commitToPipeline';
 import { runFullPreflight } from '@/services/runFullPreflight';
+import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
 import { executeBackendOps } from '@/services/backendOpExecutor';
 import type { BuilderIdentity } from '@/types/builderIdentity';
@@ -237,10 +242,47 @@ beforeEach(() => {
   draftProjectionUpdates.length = 0;
   canonicalCommitRpcError = null;
   vi.clearAllMocks();
+  vi.mocked(buildCanonicalLaunchArtifacts).mockImplementation((input) => ({
+    files: input.generatedFiles,
+    siteBundleSnapshot: input.siteBundleSnapshot,
+    runtimeManifest: { version: 1 },
+    generatedSiteRuntimeManifest: { siteId: '55555555-5555-4555-8555-555555555555', agents: [] },
+  } as unknown as ReturnType<typeof buildCanonicalLaunchArtifacts>));
   runtimeReconcileInvoke.mockResolvedValue({ data: { success: true }, error: null });
 });
 
 describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
+  it('persists repaired Playground files in the same snapshot projection', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){return null}' };
+    const repairedFiles = { '/src/App.tsx': 'export default function App(){return <main>Repaired</main>}' };
+    mockPipeline(files);
+    mockPreflight(repairedFiles);
+    mockIntents();
+    vi.mocked(buildCanonicalLaunchArtifacts).mockImplementationOnce((input) => ({
+      files: repairedFiles,
+      siteBundleSnapshot: {
+        ...input.siteBundleSnapshot,
+        vfsFiles: repairedFiles,
+        routerFile: { path: '/src/App.tsx', content: repairedFiles['/src/App.tsx'] },
+      },
+      runtimeManifest: { version: 1 },
+      generatedSiteRuntimeManifest: { siteId: '55555555-5555-4555-8555-555555555555', agents: [] },
+    } as unknown as ReturnType<typeof buildCanonicalLaunchArtifacts>));
+
+    const result = await commitMutation({
+      source: 'playground-edit',
+      identity: IDENTITY,
+      current: { vfsFiles: files },
+      patch: emptyPatchPlan(),
+      options: { requireReadinessPass: false },
+    });
+
+    expect(result.siteBundleSnapshot?.vfsFiles).toEqual(result.vfsFiles);
+    expect(result.siteBundleSnapshot?.routerFile.content).toBe(repairedFiles['/src/App.tsx']);
+    expect(revisionStore[0].site_bundle_snapshot.vfsFiles).toEqual(revisionStore[0].vfs_files);
+    expect(runFullPreflight).toHaveBeenCalledWith(repairedFiles, expect.objectContaining({ mode: 'acceptance' }));
+  });
+
   it('rejects runtime incompatibility even when both repair stages report success', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return null}' };
     mockPipeline(files);
@@ -757,9 +799,9 @@ describe('Move D — publish-ready ledger', () => {
         }),
       }),
     });
-    expect(result.vfsFiles['/src/unison/generatedSiteRuntimeManifest.ts']).toContain(
-      'GENERATED_SITE_RUNTIME_MANIFEST',
-    );
+    expect(buildCanonicalLaunchArtifacts).toHaveBeenCalledOnce();
+    expect(result.vfsFiles).toEqual(files);
+    expect(result.siteBundleSnapshot?.vfsFiles).toEqual(files);
 
     const ready = await loadLatestPublishReadyRevisionForProject(IDENTITY.projectId);
     expect(ready?.id).toBe(result.persistedRevisionId);

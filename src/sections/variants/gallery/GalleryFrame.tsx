@@ -10,6 +10,7 @@ import type { ThemeTokens } from '../../types';
 import { hsl, hsla } from '../../themeUtils';
 import { GalleryLightbox, type LightboxItem } from './GalleryLightbox';
 import { galleryCategories, normalizeGalleryItems } from './galleryUtils';
+import { GalleryImage } from './GalleryImage';
 
 interface GalleryFrameProps {
   variantId: string;
@@ -126,9 +127,10 @@ export const GalleryFigure: React.FC<{
       aria-label={item.alt || item.caption || 'Open image'}
       className="block h-full w-full cursor-zoom-in border-0 bg-transparent p-0"
     >
-      <img
+      <GalleryImage
         src={item.src}
         alt={item.alt || ''}
+        theme={theme}
         loading="lazy"
         className="h-full w-full object-cover transition-transform duration-500 motion-reduce:transition-none group-hover:scale-105"
       />

@@ -36,34 +36,48 @@ LauncherWizard
 	Make registered variant emitters the actual source of generated VFS, starting
 	with Gallery and Testimonials. Retire duplicate compiler visual branches only
 	after convergence tests prove equivalent canonical output.
-- [ ] **Phase 2 - Close all 17 section families.**
+- [ ] **Phase 1B - Collapse dual compiler authority.**
+	Make the single-file compiler a projection of canonical multi-file output.
+- [ ] **Phase 1C - Canonicalize the installed 21st foundation.**
+	Classify every installed component as generated-primitive, generated-recipe,
+	or builder-only; require zero unclassified entries without adding a registry.
+- [ ] **Phase 1D - Primitive-recipe contract.**
+	Resolve seeded primitive and interaction recipes into contracts and runtime.
+- [ ] **Phase 2 - Renderer parity certification.**
+	Prove shared structure, semantic tokens, interactions and responsive behavior.
+- [ ] **Phase 3 - Close all 17 section families.**
 	Replace logo-cloud, blog-preview, and before-after placeholders with dedicated
 	components, variants, artifacts, emitters, identities, and round-trip tests.
-- [ ] **Phase 3 - Expand premium inventory and primitives.**
+- [ ] **Phase 3B - Certified external 21st section ingestion.**
+	After foundation closure, certify one authorized Hero through export/import
+	and canonical editing before scaling. Enforce dependency/distribution policy.
+- [ ] **Phase 4 - Expand premium inventory and primitives.**
 	Grow in tested family-sized batches toward 100+ implementations. Every item
 	must declare semantic tokens, primitive dependencies, runtime cost, and
 	editor identity before it counts.
-- [ ] **Phase 4 - Make design vocabulary executable.**
+- [ ] **Phase 5 - Make design vocabulary executable.**
 	Resolve Launcher-used vocabulary into registered implementation and primitive
 	recipes. The seeded compiler makes final choices; descriptive AI-only
 	candidate semantics are retired.
-- [ ] **Phase 5 - Expand industry families and page archetypes.**
+- [ ] **Phase 6 - Expand industry families and page archetypes.**
 	Add booking, contractor, SaaS, agency, portfolio, store, and content depth
 	without changing topology ownership or adding a generator.
-- [ ] **Phase 6 - Complete artifact and editor closure.**
+- [ ] **Phase 7 - Complete artifact and editor closure.**
 	Cover every runtime surface with stable artifacts, editable slots, intents,
 	bindings, data sources, capabilities, and toolbar contracts.
-- [ ] **Phase 7 - Prove Playground design round trips.**
+- [ ] **Phase 8 - Prove Playground design round trips.**
 	Hydrate artifact and implementation identity, apply structured design
 	operations through canonical commit, reload, and recover the same identity.
-- [ ] **Phase 8 - Certify rendered visual quality.**
+- [ ] **Phase 9 - Certify import/export symmetry.**
+	Test actual round-trip ZIP export/import separately from portable source export.
+- [ ] **Phase 10 - Certify rendered visual quality.**
 	Run a multi-seed, multi-industry browser matrix across responsive routes,
 	interactions, Preview, refresh/reopen, and export-relevant runtime behavior.
-- [ ] **Phase 9 - Add optional structured AI augmentation.**
+- [ ] **Phase 11 - Add optional structured AI augmentation.**
 	Introduce `AIEnrichmentEnvelope` and `AIEnrichmentPlan` only after deterministic
 	output is premium and round-trippable. AI failure must discard enrichment and
 	launch the deterministic base site.
-- [ ] **Phase 10 - Scale business runtime verticals.**
+- [ ] **Phase 12 - Scale business runtime verticals.**
 	Prove booking first, then commerce, restaurant, and contractor behavior using
 	the same artifacts, compiler, commit service, Preview, and Playground.
 
@@ -103,6 +117,110 @@ LauncherWizard
 	revision write. The earlier full-suite result predates these fixes.
 
 ## Current Blockers
+
+- Canonical recovery guard: saved snapshot hydration no longer adopts a pending
+	local journal, and canonical hydration defers autosave/forced flushes until a
+	revision loads. Legacy recovery remains supported; journals are preserved.
+	Seven new regressions and 81 focused tests pass, along with types, targeted
+	lint and three architecture guards. Hidden-browser Preview and remote pointer
+	stability remain unverified; this does not close Phase 0/1 or Gallery.
+
+- Sequencing update: expand and verify shared primitives and component registries
+	across industries before new live 3D and advanced animation. Phase 6A now owns
+	that implementation after Phases 1-6 acceptance; existing animations and
+	persisted sites remain supported. Compatibility hardening does not authorize
+	early immersive rollout. The derived registry now exposes variant-owned emitter
+	and Radix requirements, with Gallery compiler checks across all five existing
+	Gallery-bearing templates. This does not close Gallery's runtime/visual gates
+	or permit skipping to another family. See the execution plan for acceptance.
+
+- Experience capability foundations are integrated into the existing guidebook
+	phases, without restoring AI page-source authorship. Explicit empty visual
+	approval now denies 3D; Launcher approval is separate from business capabilities
+	and survives canonical sealing/recompile/reload. Legacy manifest reads no longer
+	grant undeclared 3D or invent a React 19 profile. Legacy execution/migrations,
+	recompile profile preservation, exact renderer pins, versioned budgets and
+	registered 3D visual/editor closure remain open. See the execution plan's
+	Experience Capability Integration section. Phase 0 and Phase 1 remain open.
+
+- Gallery failed-media behavior now survives UI save and cold reopen in revision
+	`a8e603cd-c81d-4f9a-8e0a-e36cf750b1cc`, retaining v2 authority and exact runtime
+	bytes (excluding revision-only sidecars). Thumbnail/lightbox fallbacks and
+	ArrowRight recovery were observed in the persisted DOM. Stale browser captures
+	and an unexpected route change leave desktop/mobile visual verification open.
+	Dirty-state/Back checks now use saved VFS; successful manual Save requests
+	durable rehydration so recompiled recipes reach Preview without reload.
+	Tests, types and targeted lint pass; that refresh still needs browser proof.
+	Final validation: 1,222 tests/153 files, production build, recipe freshness
+	and all three architecture guards pass; existing full-lint blockers remain.
+	Unrequested revision `92d85144-e46c-4552-862d-42885b962a35` is preserved and
+	startup/autosave closure remains open. See the execution plan for the ledger
+	and browser-targeting caveats. Phase 0 and Phase 1 remain open.
+
+- V2 authority launch/save/reopen is now verified. Production Launcher and
+	canonical recompile forward their compiler artifact into proof validation.
+	Fresh verification draft `a3f494e1-7e07-4287-854e-058ad124c675` recovered
+	revision `2adbfb40-6cbe-4d86-865b-f62f6d8e6d85` without route state, retaining
+	v2 authority for eight pages and exact runtime/snapshot equality. Home and
+	Gallery rendered; `gallery:feature-split` wrapper/implementation IDs agree.
+	Reopen/page switching did not advance the pointer. Full suite: 1,210 tests;
+	types, targeted lint, build and writer/pipeline guards pass. Startup handoff
+	still triggers an unsolicited save; full lint, legacy migration, Gallery
+	media/export/performance and Testimonials convergence remain blockers.
+
+- Authenticated continuation (2026-09-08): persisted Playground visibility edits,
+	UI save and cold reload now work for the eight-page verification draft.
+	Restore-driven variant commits, duplicate hydration, autosave byte baselines,
+	runtime identity loss and business-context inheritance were corrected.
+	Unintended autosave history was preserved; canonical restoration recovered
+	eight pages/one funnel. Two later automatic ledger restores were also preserved;
+	ledger drift observation is now read-only by default, with explicit Restore
+	covered by mounted tests. Latest checked revision
+	`2ebd0381-90d7-4880-9464-3541504568b0` preserves Playground, bindings, exact
+	Gallery recipe bytes and runtime/snapshot equality. See the execution plan
+	for the remote write ledger. No schema or deployment changed in this batch.
+	Real Dialog/Slot/Accordion now execute in Preview; all eight routes render,
+	FAQ toggles, and Gallery dialog pointer/keyboard/focus checks pass at 375px.
+	Sandpack device sizing is wired and a mobile screenshot was captured.
+	Full suite passed 1,207 tests before the final two passing ledger tests;
+	types, focused lint, production build and three architecture guards pass.
+	Full lint still fails with ten existing errors. Fresh v2 authority proof,
+	Gallery media/performance/export closure, toolbar pointer reliability and
+	Testimonials convergence remain open. Runtime reconciliation and five intent
+	bindings still block publish. Phase 0 and Phase 1 are not closed.
+
+- Gallery responsive continuation: Masonry, Cinematic Grid and Lightbox Grid
+	now scale from one mobile column to two tablet columns and the selected
+	desktop count. All 169 focused tests pass. Browser checks verified 27 settled
+	layout cases at 390/768/1440px without horizontal overflow; the emitted
+	Lightbox Grid also passed real click, focus wrapping, arrow navigation,
+	Escape and focus restoration at desktop/mobile widths. This supersedes the
+	earlier fixed-column and hidden-browser findings for those checks only.
+	Screenshots are isolated generated-runtime evidence, not persisted Preview
+	or Playground edit/reload closure. Existing image/content and performance
+	gaps remain; Phase 1 is not complete.
+
+- Gallery accessibility continuation: all five registered variants now share
+	a Radix Dialog lightbox with scoped arrow navigation, trapped/restored focus,
+	background isolation and canonical Dialog/icon facade imports. The 166
+	focused tests, type-check, targeted lint, recipe freshness and writer/pipeline
+	guards pass. The 21st review is clean. Real browser pointer/keyboard checks
+	are blocked by the shared tab's hidden visibility; persisted editing and
+	full visual/accessibility certification remain open. No new variant or
+	authority was introduced.
+
+- Phase 1 Gallery batch (2026-09-08): all five existing registered components
+	now compile from their shared React sources into a generated portable family
+	module. Four duplicate visual branches are removed; layout-only aliases and
+	legacy reel/default compatibility remain. Stage 4b now preserves semantic
+	JavaScript color helper calls instead of rewriting them into invalid source.
+	159 focused tests pass, including exact recipe bytes through sealing and
+	Playground recompilation, Preview preparation, DOM parity and interactions.
+	Isolated browser fixtures rendered all five variants at 1440px and 390px
+	without horizontal overflow. One template image failed to load; some imagery
+	does not match its labels. Persisted Preview/Playground editing, focus-trap
+	accessibility, full responsive quality and export/import remain uncertified.
+	No assets were added and no phase is declared complete.
 
 - All generated-site recipe expansion now uses the eight-dimension acceptance
 	matrix in `docs/DETERMINISTIC_AI_DESIGN_EXECUTION_PLAN.md`: composition,
@@ -155,18 +273,32 @@ LauncherWizard
 	This was not a persisted Preview session. A long business name overlaps the
 	existing centered navbar on mobile. Capability eligibility, all-alternative
 	browser coverage and structured edit/recommit/reload closure remain open.
-- Non-Wizard recompilation omits the runtime modules emitted by canonical
-	launch finalization. Preflight also changes Contact and Booking page bytes
-	without updating the candidate snapshot, causing the database's runtime
-	VFS/snapshot equality guard to reject persistence. Finalization must precede
-	sealing; do not weaken the guard or copy stale runtime bindings.
-- Reloaded Builder autosave skips because canonical project identity is not
-	hydrated. Save-to-Projects can report success and dismiss the dialog after
-	the content commit fails; one verification-copy identity shell was created.
-- The browser verification revision's seal lacks v2 authority fields; new
-	launch authority propagation is not yet certified end to end.
-- Version 1.0 compatibility is fixture-tested; persisted legacy snapshot
-	restoration has not yet been certified.
-- No browser journey yet proves every selected route renders, refreshes, and
-	reopens from the committed revision without fallback output, including
-	Playground hydration, edit, recommit, and reload.
+- Save finalization now precedes sealing for non-Wizard commits through the
+	existing canonical finalizer. Runtime modules are emitted before preflight;
+	reconciliation no longer rewrites sealed files. Router projection is aligned
+	with final VFS, and duplicate post-seal foundation injection was removed.
+	A real compiler/commit/reload test enforces database-style runtime equality
+	and preserves Gallery identity/bindings through a structured title edit.
+	All 1,182 tests passed; the final manifest-fallback removal passed 24 focused
+	tests. At that earlier checkpoint the browser returned 401 before project
+	access and no remote revision changed. Authenticated evidence above supersedes
+	that checkpoint; no schema changed. See the
+	execution plan for evidence boundaries; Phase 0 and Phase 1 remain open.
+- Reloaded Builder autosave identity adoption is locally fixed: revision
+	hydration now adopts its persisted draft/project identity
+	into Builder and hook state before autosave. Save-to-Projects guards failed create/update outcomes before
+	success, dialog dismissal or recovery-draft deletion; panel-save failures
+	also reject correctly. Executable React effect tests exposed and fixed a
+	draft hydration cache key that ignored revision changes. Same-draft commits
+	now refresh the durable projection; stale project responses are ignored.
+	All 27 focused save/finalization/hydration tests, type-check and targeted lint
+	pass. Effects are tested in isolation, not through a mounted Builder journey.
+	The earlier 401 blocker is superseded by the authenticated continuation above.
+	The earlier verification-copy identity shell remains unchanged.
+- The original browser verification revision lacks v2 authority fields; the
+	new draft above proves v2 launch/save/reopen without relabeling old history.
+- Version 1.0 compatibility is fixture-tested and the original persisted page
+	structure was restored; complete legacy authority migration remains uncertified.
+- The authenticated journey proves eight rendered routes and a visibility edit,
+	save/reload and clean hydration. Every-route reopen, all-variant identity,
+	full responsive/visual quality and export/import closure remain uncertified.

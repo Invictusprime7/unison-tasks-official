@@ -6,9 +6,12 @@
  * Honors prefers-reduced-motion by skipping transitions.
  */
 
-import React, { useEffect } from 'react';
+import React, { useRef } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { ThemeTokens } from '../../types';
 import { hsl, hsla } from '../../themeUtils';
+import { GalleryImage } from './GalleryImage';
 
 export interface LightboxItem {
   src: string;
@@ -26,72 +29,74 @@ interface GalleryLightboxProps {
 }
 
 export const GalleryLightbox: React.FC<GalleryLightboxProps> = ({ items, index, theme, onClose, onNavigate }) => {
+  const returnFocus = useRef<HTMLElement | null>(null);
   const reducedMotion =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
       : false;
 
-  useEffect(() => {
-    if (index === null) return;
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-      if (event.key === 'ArrowRight') onNavigate((index + 1) % items.length);
-      if (event.key === 'ArrowLeft') onNavigate((index - 1 + items.length) % items.length);
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [index, items.length, onClose, onNavigate]);
-
-  if (index === null || !items[index]) return null;
-  const item = items[index];
+  const item = index === null ? undefined : items[index];
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={item.alt || item.caption || 'Gallery image'}
-      onClick={onClose}
+    <Dialog.Root open={Boolean(item)} onOpenChange={open => { if (!open) onClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50" />
+        {item && <Dialog.Content
+      aria-describedby={undefined}
+      onOpenAutoFocus={() => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+      onCloseAutoFocus={event => {
+        event.preventDefault();
+        if (returnFocus.current?.isConnected) returnFocus.current.focus();
+      }}
+      onKeyDown={event => {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        event.preventDefault();
+        event.stopPropagation();
+        onNavigate(((index ?? 0) + (event.key === 'ArrowRight' ? 1 : items.length - 1)) % items.length);
+      }}
+      onClick={event => { if (event.target === event.currentTarget) onClose(); }}
       className="fixed inset-0 z-50 flex items-center justify-center p-6"
       style={{
         background: hsla(theme.colors.foreground, 0.92),
         transition: reducedMotion ? 'none' : 'opacity 200ms ease',
       }}
     >
-      <button
+      <Dialog.Title className="sr-only">{item.alt || item.caption || 'Gallery image'}</Dialog.Title>
+      <Dialog.Close asChild><button
         type="button"
         aria-label="Close gallery"
-        onClick={onClose}
-        className="absolute right-5 top-5 h-10 w-10 rounded-full text-lg leading-none"
+        className="absolute right-5 top-5 inline-flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         style={{ background: hsla(theme.colors.background, 0.14), color: hsl(theme.colors.background) }}
       >
-        ×
-      </button>
+        <X aria-hidden="true" size={20} />
+      </button></Dialog.Close>
       {items.length > 1 && (
         <>
           <button
             type="button"
             aria-label="Previous image"
-            onClick={(e) => { e.stopPropagation(); onNavigate((index - 1 + items.length) % items.length); }}
-            className="absolute left-4 h-11 w-11 rounded-full text-lg leading-none"
+            onClick={() => onNavigate(((index ?? 0) - 1 + items.length) % items.length)}
+            className="absolute left-4 inline-flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{ background: hsla(theme.colors.background, 0.14), color: hsl(theme.colors.background) }}
           >
-            ‹
+            <ChevronLeft aria-hidden="true" size={20} />
           </button>
           <button
             type="button"
             aria-label="Next image"
-            onClick={(e) => { e.stopPropagation(); onNavigate((index + 1) % items.length); }}
-            className="absolute right-4 h-11 w-11 rounded-full text-lg leading-none"
+            onClick={() => onNavigate(((index ?? 0) + 1) % items.length)}
+            className="absolute right-4 inline-flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{ background: hsla(theme.colors.background, 0.14), color: hsl(theme.colors.background) }}
           >
-            ›
+            <ChevronRight aria-hidden="true" size={20} />
           </button>
         </>
       )}
       <figure className="m-0 max-h-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
-        <img
+        <GalleryImage
           src={item.src}
           alt={item.alt || item.caption || ''}
+          theme={theme}
           className="max-h-[var(--ut-overlay-block)] w-auto object-contain"
           style={{ borderRadius: theme.radius }}
         />
@@ -104,6 +109,8 @@ export const GalleryLightbox: React.FC<GalleryLightboxProps> = ({ items, index, 
           </figcaption>
         )}
       </figure>
-    </div>
+        </Dialog.Content>}
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

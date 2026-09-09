@@ -63,11 +63,32 @@ describe('generated UI manifest migration', () => {
       interactions: [],
       requirements: [],
     };
-    const migrated = readGeneratedUiManifest({ '/.unison/ui-manifest.json': JSON.stringify(legacy) });
+    const files = { '/.unison/ui-manifest.json': JSON.stringify(legacy) };
+    const original = JSON.stringify(files);
+    const migrated = readGeneratedUiManifest(files);
     expect(migrated).not.toBeNull();
     expect(migrated!.version).toBe(GENERATED_UI_FOUNDATION_VERSION);
-    expect(migrated!.runtimeProfile).toBe(GENERATED_RUNTIME_PROFILE.id);
-    expect(migrated!.experience.capabilities).toContain(THREE_D_CAPABILITY.id);
+    expect(migrated!.runtimeProfile).toBe('legacy-unspecified');
+    expect(migrated!.experience.capabilities).toEqual([]);
+    expect(migrated!.experience.runtimeDependencies).toEqual({});
+    expect(migrated!.primitiveImports).toEqual(legacy.primitiveImports);
+    expect(JSON.stringify(files)).toBe(original);
+  });
+
+  it('preserves declared historical runtime and experience metadata without mutating stored bytes', () => {
+    const { manifest } = foundation();
+    const legacy = {
+      ...manifest, version: '1.2', runtimeProfile: 'react18-historical',
+      experience: { ...manifest.experience, capabilities: [], runtimeDependencies: {}, budget: { ...manifest.experience.budget, maxCanvasRoots: 1 } },
+    };
+    const files = { '/.unison/ui-manifest.json': JSON.stringify(legacy) };
+    const original = JSON.stringify(files);
+    const migrated = readGeneratedUiManifest(files)!;
+    expect(migrated.runtimeProfile).toBe('react18-historical');
+    expect(migrated.experience.capabilities).toEqual([]);
+    expect(migrated.experience.runtimeDependencies).toEqual({});
+    expect(migrated.experience.budget.maxCanvasRoots).toBe(1);
+    expect(JSON.stringify(files)).toBe(original);
   });
 });
 
@@ -117,7 +138,7 @@ describe('runtime compatibility preflight', () => {
       "import { ProductStage } from '@/unison/ui/experience';\nexport default function Home() { return <ProductStage alt=\"Chair\" />; }",
     );
     const { dependencies } = getDependenciesForSandpack(files, SANDPACK_DEPENDENCIES);
-    const report = runRuntimeCompatibilityPreflight({ files, dependencies });
+    const report = runRuntimeCompatibilityPreflight({ files, dependencies, approvedCapabilities: [THREE_D_CAPABILITY.id] });
     expect(report.blockers).toEqual([]);
     expect(report.ok).toBe(true);
     expect(report.capabilitiesUsed).toContain(THREE_D_CAPABILITY.id);
@@ -137,6 +158,28 @@ describe('runtime compatibility preflight', () => {
     expect(report.ok).toBe(false);
   });
 
+  it('rejects unapproved experience instances reached through the root UI facade', () => {
+    const files = buildFiles(
+      "import { ProductStage } from '@/unison/ui';\nexport default function Home() { return <ProductStage alt=\"Chair\" />; }",
+    );
+    const { dependencies } = getDependenciesForSandpack(files, SANDPACK_DEPENDENCIES);
+    const report = runRuntimeCompatibilityPreflight({ files, dependencies, approvedCapabilities: [] });
+    expect(report.importsApproved).toBe(false);
+    expect(report.blockers.join(' ')).toContain('which this launch did not approve');
+  });
+
+  it('retains compatibility for existing facade sites without an approval declaration', () => {
+    const files = buildFiles(
+      "import { ProductStage } from '@/unison/ui/experience';\nexport default function Home() { return <ProductStage alt=\"Chair\" />; }",
+    );
+    const { dependencies } = getDependenciesForSandpack(files, SANDPACK_DEPENDENCIES);
+    const report = runRuntimeCompatibilityPreflight({
+      files,
+      dependencies,
+    });
+    expect(report.ok).toBe(true);
+  });
+
   it('blocks an unknown package import', () => {
     const files = buildFiles("import x from 'totally-unknown-pkg';\nexport default function Home() { return null; }");
     const { dependencies } = getDependenciesForSandpack(files, SANDPACK_DEPENDENCIES);
@@ -145,19 +188,19 @@ describe('runtime compatibility preflight', () => {
     expect(report.ok).toBe(false);
   });
 
-  it('reports no experience capability for an ordinary DOM page', () => {
+  it.each([{ approved: [] }, { approved: ['commerce.catalog'] }])('reports no experience capability for an ordinary DOM page with approvals $approved', ({ approved }) => {
     const files = buildFiles("export default function Home() { return <main>Hi</main>; }");
     const { dependencies } = getDependenciesForSandpack(files, SANDPACK_DEPENDENCIES);
     const report = runRuntimeCompatibilityPreflight({
       files,
       dependencies,
-      approvedCapabilities: ['commerce.catalog'],
+      approvedCapabilities: approved,
     });
     expect(report.ok).toBe(true);
     expect(report.capabilitiesUsed).not.toContain(THREE_D_CAPABILITY.id);
   });
 
-  it('blocks an experience facade when the launch did not approve 3D', () => {
+  it.each([{ approved: [] }, { approved: ['commerce.catalog'] }])('blocks an experience facade for approvals $approved', ({ approved }) => {
     const files = buildFiles(
       "import { ProductStage } from '@/unison/ui/experience';\nexport default function Home() { return <ProductStage alt=\"Chair\" />; }",
     );
@@ -165,7 +208,7 @@ describe('runtime compatibility preflight', () => {
     const report = runRuntimeCompatibilityPreflight({
       files,
       dependencies,
-      approvedCapabilities: ['commerce.catalog'],
+      approvedCapabilities: approved,
     });
 
     expect(report.ok).toBe(false);

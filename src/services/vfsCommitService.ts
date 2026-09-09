@@ -39,13 +39,10 @@ import { runFullPreflight } from '@/services/runFullPreflight';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
 import { evaluateElementReadiness, type ElementReadinessReport } from '@/services/elementReadinessEvaluator';
 import { executeBackendOps, type BackendOpExecutionReport } from '@/services/backendOpExecutor';
+import type { GeneratedSiteRuntimeManifest } from '@/services/generatedSiteRuntimeManifest';
 import {
-  compileGeneratedSiteRuntimeManifest,
-  type GeneratedSiteRuntimeManifest,
-} from '@/services/generatedSiteRuntimeManifest';
-import {
-  buildGeneratedSiteRuntimeManifestModule,
-  GENERATED_SITE_RUNTIME_MANIFEST_MODULE_PATH,
+  buildCanonicalLaunchArtifacts,
+  type CanonicalLaunchArtifacts,
 } from '@/services/canonicalLaunchVfs';
 import type { PlaygroundControlPlaneModel } from '@/types/playground';
 import {
@@ -276,6 +273,7 @@ export async function commitMutation(
     throw new Error('[VFSCommitService] reviewedArtifact is only valid for wizard-launch commits.');
   }
   let canonicalResult: CanonicalCommitResult | null = null;
+  let finalizedArtifact: CanonicalLaunchArtifacts | null = null;
   if (reviewedArtifact) {
     log('canonical', 'info', 'accepted exact user-reviewed wizard artifact; regeneration skipped');
   } else {
@@ -284,6 +282,37 @@ export async function commitMutation(
         buildCanonicalInput(input, workingFiles, presentationSnapshot),
         toCanonicalSource(input.source),
       );
+      if (input.source !== 'wizard-launch') {
+        const candidate = stampBusinessSystemState(
+          canonicalResult.siteBundleSnapshot,
+          presentationSnapshot,
+          input.patch.businessSystem,
+        )!;
+        const context = presentationSnapshot?.appContext;
+        finalizedArtifact = buildCanonicalLaunchArtifacts({
+          generatedFiles: candidate.vfsFiles,
+          siteBundleSnapshot: candidate,
+          compileArtifact: { ...canonicalResult.compileArtifact, baseline: candidate },
+          canonicalPlayground: canonicalResult.playground,
+          preferredEntryPoint: candidate.routerFile.path,
+          businessId: input.identity.businessId,
+          projectId: input.identity.projectId,
+          siteId: context?.runtimeContext?.websiteId ?? context?.runtimeContext?.siteId,
+          organizationId: context?.runtimeContext?.workspaceId ?? context?.runtimeContext?.organizationId,
+          environment: context?.runtimeContext?.environment,
+          businessRuntime: context?.businessRuntime,
+          systemType: context?.systemType,
+          systemName: context?.systemName,
+          templateId: candidate.meta.templateId,
+          templateName: context?.templateName,
+          industry: candidate.industry,
+          businessName: candidate.businessName,
+          themePresetId: candidate.meta.themePresetId,
+          interactionManifest: candidate.meta.interactionManifest,
+          enabledCapabilities: readWizardEnabledCapabilities(workingFiles),
+          approvedExperienceCapabilities: presentationSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities,
+        });
+      }
     } catch (err) {
       log('canonical', 'error', 'canonical pipeline threw', String(err));
       return finalize({
@@ -310,9 +339,9 @@ export async function commitMutation(
   }
 
   // 6. Full preflight --------------------------------------------------------
-  const snapshot = reviewedArtifact?.siteBundleSnapshot ?? canonicalResult?.siteBundleSnapshot ?? null;
+  const snapshot = finalizedArtifact?.siteBundleSnapshot ?? reviewedArtifact?.siteBundleSnapshot ?? canonicalResult?.siteBundleSnapshot ?? null;
   let files: Record<string, string> =
-    input.source === 'wizard-launch'
+    finalizedArtifact ? preserveWizardMetadataFiles(finalizedArtifact.files, workingFiles) : input.source === 'wizard-launch'
       ? mergeWizardLaunchFiles(workingFiles, (snapshot as SiteBundleSnapshot | null) ?? null)
       : ((snapshot as { vfsFiles?: Record<string, string> } | null)?.vfsFiles ?? workingFiles);
   if (reviewedArtifact) {
@@ -346,7 +375,7 @@ export async function commitMutation(
     brand: input.options?.businessName,
     // The launcher hands this service an already converged and sealed artifact.
     // Commit may verify it, but must never become a second source-writing stage.
-    mode: input.source === 'wizard-launch' ? 'acceptance' : 'repair',
+    mode: 'acceptance',
   });
   files = reviewedArtifact
     ? preserveWizardMetadataFiles(preflight.files, workingFiles)
@@ -361,6 +390,7 @@ export async function commitMutation(
   const previewOk =
     preflight.stages.earlyRepair !== 'failed' &&
     preflight.stages.finalRepair !== 'failed' &&
+    preflight.mutated !== true &&
     preflight.stages.runtimeCompatibility?.ok !== false &&
     (preflight.violations?.length ?? 0) === 0;
   log('preflight', previewOk ? 'info' : 'warn', 'preflight stages', preflight.stages);
@@ -468,7 +498,7 @@ export async function commitMutation(
           | null,
         industry: input.options?.industry,
         brand: input.options?.businessName,
-          mode: input.source === 'wizard-launch' ? 'acceptance' : 'repair',
+          mode: 'acceptance',
       });
       files = reviewedArtifact
         ? preserveWizardMetadataFiles(preflight.files, workingFiles)
@@ -479,6 +509,7 @@ export async function commitMutation(
     const previewOk2 =
       preflight.stages.earlyRepair !== 'failed' &&
       preflight.stages.finalRepair !== 'failed' &&
+      preflight.mutated !== true &&
       preflight.stages.runtimeCompatibility?.ok !== false &&
       (preflight.violations?.length ?? 0) === 0;
     const readinessOk2 =
@@ -543,8 +574,7 @@ export async function commitMutation(
     try {
       const generatedRuntime = await reconcileGeneratedRuntime({
         identity: input.identity,
-        files,
-        snapshot: snapshotForPersistence as SiteBundleSnapshot,
+        manifest: finalizedArtifact?.generatedSiteRuntimeManifest,
       });
       log(
         'generatedRuntime',
@@ -628,7 +658,7 @@ export async function commitMutation(
     status,
     vfsFiles: files,
     siteBundleSnapshot: snapshotForPersistence,
-    runtimeManifest: reviewedArtifact?.runtimeManifest ?? canonicalResult?.runtimeManifest ?? null,
+    runtimeManifest: finalizedArtifact?.runtimeManifest ?? reviewedArtifact?.runtimeManifest ?? canonicalResult?.runtimeManifest ?? null,
     playground: reviewedArtifact?.playground ?? canonicalResult?.playground ?? input.current.playground ?? null,
     readinessReport: {
       ...(gate ? { gate } : {}),
@@ -673,8 +703,8 @@ function buildCanonicalInput(
     selections: input.options?.selections,
     playground: input.current.playground,
     existingVfsFiles: workingFiles,
-    businessName: input.options?.businessName,
-    industry: input.options?.industry,
+    businessName: input.options?.businessName ?? snapshot?.businessName,
+    industry: input.options?.industry ?? snapshot?.industry,
     selectedTemplateId: input.options?.selectedTemplateId ?? snapshot?.meta?.templateId ?? undefined,
     selectedThemeId: input.options?.selectedThemeId ?? snapshot?.meta?.themePresetId ?? undefined,
     themePresetId: input.options?.themePresetId ?? snapshot?.meta?.themePresetId ?? undefined,
@@ -887,9 +917,11 @@ function buildWizardBusinessSystemState(files: Record<string, string>): Business
 
 async function reconcileGeneratedRuntime(input: {
   identity: BuilderIdentity;
-  files: Record<string, string>;
-  snapshot: SiteBundleSnapshot;
+  manifest?: GeneratedSiteRuntimeManifest;
 }): Promise<GeneratedSiteRuntimeManifest> {
+  if (!input.manifest) {
+    throw new Error('Canonical finalization did not provide a generated runtime manifest.');
+  }
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .select('site_id')
@@ -900,14 +932,10 @@ async function reconcileGeneratedRuntime(input: {
     throw new Error('Canonical project site identity is unavailable.');
   }
 
-  const manifest = compileGeneratedSiteRuntimeManifest({
-    siteId: project.site_id,
-    snapshot: input.snapshot,
-    enabledCapabilities: readWizardEnabledCapabilities(input.files),
-  });
-  input.files[GENERATED_SITE_RUNTIME_MANIFEST_MODULE_PATH] =
-    buildGeneratedSiteRuntimeManifestModule(manifest);
-  input.snapshot.vfsFiles = { ...input.files };
+  const manifest = input.manifest;
+  if (manifest.siteId !== project.site_id) {
+    throw new Error('Sealed runtime site identity does not match the canonical project.');
+  }
 
   const { data, error } = await supabase.functions.invoke('reconcile-generated-runtime', {
     body: {

@@ -70,6 +70,34 @@ beforeEach(() => {
 });
 
 describe('useTemplateFiles content boundary', () => {
+  it.each(['create', 'update'] as const)('returns failure without announcing a saved revision after %s commit rejection', async (mode) => {
+    if (mode === 'update') {
+      responseQueue.push({ data: { metadata: {}, last_revision_id: 'parent' }, error: null });
+    }
+    responseQueue.push({ data: { id: 'draft-1', project_id: 'project-1', business_id: 'business-1' }, error: null });
+    commitMutation.mockRejectedValueOnce(new Error('Canonical content commit rejected'));
+    const saved = vi.fn();
+    window.addEventListener('unison:project-draft-saved', saved);
+    const { result } = renderHook(() => useTemplateFiles());
+    const payload = {
+      vfsFiles: { '/src/App.tsx': 'export default function App(){return null}' },
+      businessId: 'business-1', projectId: 'project-1', forceNew: true,
+    };
+    try {
+      await act(async () => {
+        const outcome = mode === 'create'
+          ? await result.current.saveTemplate('Studio', '', false, 'code', payload)
+          : await result.current.updateTemplate('draft-1', 'code', payload);
+        expect(outcome).toBe(mode === 'create' ? null : false);
+      });
+      expect(commitMutation).toHaveBeenCalledOnce();
+      expect(saved).not.toHaveBeenCalled();
+      expect(result.current.loading).toBe(false);
+    } finally {
+      window.removeEventListener('unison:project-draft-saved', saved);
+    }
+  });
+
   it('updateTemplate never writes vfs_files/siteBundleSnapshot directly and chains from the draft\'s last revision', async () => {
     responseQueue.push({
       data: {

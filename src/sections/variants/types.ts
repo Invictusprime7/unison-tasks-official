@@ -42,6 +42,7 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   description: string;
   /** The React component that renders this variant (used by PageRenderer) */
   component: ComponentType<BaseSectionProps<T>>;
+  vfs?: { mode: 'portable-recipe' | 'legacy-jsx' };
   /** Static thumbnail path for the variant picker grid */
   thumbnail: string;
   /** Tags for filtering (e.g., "modern", "minimal", "bold") */

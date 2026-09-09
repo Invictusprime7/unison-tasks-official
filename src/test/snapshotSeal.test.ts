@@ -64,13 +64,24 @@ function mergedFiles(snapshot: SiteBundleSnapshot) {
 }
 
 describe('snapshot seal Wizard ownership proof', () => {
-  it('consumes the v2 proof and persists canonical compiler authority metadata', () => {
+  it('projects the finalized router without mutating the compile candidate', () => {
+    const snapshot = createSnapshot();
+    const originalRouter = snapshot.routerFile.content;
+    const files = { ...snapshot.vfsFiles, '/src/App.tsx': 'export default function App(){return <main>Final</main>}' };
+    const sealed = sealSnapshot({ artifact: snapshot, vfsFiles: files, appContext: appContext(), sealedBy: 'recompile' });
+
+    expect(sealed.routerFile.content).toBe(sealed.vfsFiles['/src/App.tsx']);
+    expect(snapshot.routerFile.content).toBe(originalRouter);
+    expect(snapshot.vfsFiles['/src/App.tsx']).toBe(originalRouter);
+  });
+
+  it.each(['wizard-launch', 'recompile'] as const)('consumes the v2 proof for %s and persists canonical compiler authority metadata', (sealedBy) => {
     const snapshot = createSnapshot();
     const sealed = sealSnapshot({
       artifact: createWizardCompileArtifact(snapshot),
       vfsFiles: mergedFiles(snapshot),
       appContext: appContext(),
-      sealedBy: 'wizard-launch',
+      sealedBy,
     });
 
     expect(sealed.meta.seal).toMatchObject({

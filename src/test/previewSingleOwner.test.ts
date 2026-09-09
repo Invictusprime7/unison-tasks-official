@@ -1,10 +1,31 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import ts from 'typescript';
 
 const readSource = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 
 describe('Web Builder preview ownership', () => {
+  it('applies device widths to the actual Sandpack layout', () => {
+    const source = ts.createSourceFile('VFSPreview.tsx', readSource('src/components/VFSPreview.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let styleExpression: ts.Expression | undefined;
+    const visit = (node: ts.Node) => {
+      if (ts.isJsxOpeningElement(node) && node.tagName.getText(source) === 'SandpackLayout') {
+        const style = node.attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === 'style');
+        if (style && ts.isJsxAttribute(style) && style.initializer && ts.isJsxExpression(style.initializer)) {
+          styleExpression = style.initializer.expression;
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    expect(styleExpression).toBeDefined();
+    const resolveStyle = new Function('device', `return (${styleExpression!.getText(source)});`);
+    for (const [device, width] of [['desktop', '100%'], ['tablet', '768px'], ['mobile', '375px']]) {
+      expect(resolveStyle(device)).toMatchObject({ width, maxWidth: '100%', height: '100%', marginInline: 'auto' });
+    }
+  });
+
   it('keeps SandpackProvider and the builder preview mount in one owner', () => {
     const sharedPreview = readSource('src/components/VFSPreview.tsx');
     const codeView = readSource('src/components/creatives/code-editor/VFSCodeView.tsx');

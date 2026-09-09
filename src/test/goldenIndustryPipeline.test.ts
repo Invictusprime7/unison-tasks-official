@@ -43,6 +43,7 @@ import { getCompositionsBySystemType } from '@/sections/templates';
 import { findUnresolvedLocalImports } from '@/services/laneBCompanionModules';
 import type { SectionEntry } from '@/sections/types';
 import { collectResolvedCompositions } from '@/platform/core/resolvedComposition';
+import portableRecipes from '@/sections/recipes/stylexRecipes.generated.json';
 
 function readPageSections(source: string): SectionEntry[] {
   const match = source.match(/const SECTIONS = ([\s\S]*?);\nconst HYDRATABLE/);
@@ -472,6 +473,9 @@ describe('Salon Premium golden launch transaction', () => {
       registeredPageFiles: registryPages.map((page) => page.filePath).sort(),
     });
     expect(artifacts.files['/src/index.css']).toContain("--font-heading: 'Playfair Display'");
+    const galleryRecipePath = '/src/components/recipes/Gallery.ts';
+    expect(artifacts.files[galleryRecipePath]).toBe(portableRecipes.families.gallery);
+    expect(artifacts.siteBundleSnapshot?.vfsFiles[galleryRecipePath]).toBe(artifacts.files[galleryRecipePath]);
     const sealedPageBodies = new Set<string>();
     for (const page of registryPages) {
       expect(artifacts.files[page.filePath!], page.filePath).toContain('const SECTIONS');
@@ -491,6 +495,7 @@ describe('Salon Premium golden launch transaction', () => {
     }, 'playground-edit');
     const originalCompositions = collectResolvedCompositions(artifacts.files);
     const recompiledCompositions = collectResolvedCompositions(recompiled.compileResult!.vfsFiles);
+    expect(recompiled.compileResult!.vfsFiles[galleryRecipePath]).toBe(portableRecipes.families.gallery);
     for (const role of ['pricing', 'faq']) {
       const page = registryPages.find(page => page.path === `/${role}`)!;
       expect(originalCompositions[page.filePath!].compositionAlternativeId).toEqual(expect.any(String));
@@ -525,6 +530,8 @@ describe('Salon Premium golden launch transaction', () => {
       launchState,
     }).sandpackFiles;
     const previewRouter = previewFiles['/App.tsx'];
+    expect(previewFiles['/components/recipes/Gallery.ts']).toContain('GalleryFrame');
+    expect(previewFiles['/components/recipes/Gallery.ts']).toContain('REGISTERED_VARIANTS');
 
     expect(previewRouter).not.toContain('LEGACY MINIMAL FALLBACK');
     expect(Object.values(previewFiles).join('\n')).not.toContain('LEGACY HOME');

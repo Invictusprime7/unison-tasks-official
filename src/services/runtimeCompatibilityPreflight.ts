@@ -67,6 +67,7 @@ export function runRuntimeCompatibilityPreflight(
 
   let importsApproved = true;
   let dependenciesResolvable = true;
+  let experienceApprovalRejected = false;
 
   const localModules = new Set(Object.keys(files).map((path) => (path.startsWith('/') ? path : `/${path}`)));
 
@@ -96,10 +97,11 @@ export function runRuntimeCompatibilityPreflight(
       }
 
       if (specifier.startsWith('@/unison/')) {
-        if (specifier.startsWith(`${EXPERIENCE_IMPORT_ROOT}`)) {
+        if (!foundation && (specifier === EXPERIENCE_IMPORT_ROOT || specifier.startsWith(`${EXPERIENCE_IMPORT_ROOT}/`))) {
           capabilitiesUsed.add(EXPERIENCE_CAPABILITY_ID);
-          if (approved.size > 0 && !approved.has(EXPERIENCE_CAPABILITY_ID)) {
+          if (input.approvedCapabilities !== undefined && !approved.has(EXPERIENCE_CAPABILITY_ID)) {
             importsApproved = false;
+            experienceApprovalRejected = true;
             blockers.push(
               `${path} reaches capability "${EXPERIENCE_CAPABILITY_ID}", which this launch did not approve.`,
             );
@@ -148,6 +150,11 @@ export function runRuntimeCompatibilityPreflight(
   const budgetValid = experience.violations.length === 0;
 
   const usesExperience = experience.manifest.totalInstances > 0;
+  if (usesExperience && input.approvedCapabilities !== undefined
+    && !approved.has(EXPERIENCE_CAPABILITY_ID) && !experienceApprovalRejected) {
+    importsApproved = false;
+    blockers.push(`Generated experience instances require capability "${EXPERIENCE_CAPABILITY_ID}", which this launch did not approve.`);
+  }
   const canvasSource = files['/src/unison/ui/experience/canvas.tsx'] || '';
   const fallbackPresent = !usesExperience || /fallback/.test(canvasSource);
   if (usesExperience && !fallbackPresent) {

@@ -14,6 +14,7 @@
 import { getAllSections } from '@/sections/registry';
 import { VARIANT_REGISTRY } from '@/sections/variants';
 import type { VariantId } from '@/sections/variants';
+import type { SectionVariant } from '@/sections/variants/types';
 import type { SectionType, SectionRegistryEntry } from '@/sections/types';
 import { hashSeed } from '@/platform/core/generationSeed';
 
@@ -39,6 +40,8 @@ export interface DesignImplementation {
   thumbnail?: string;
   /** True when the family exposes variant-level implementations. */
   hasVariants: boolean;
+  vfs?: SectionVariant['vfs'];
+  radixPrimitives?: SectionVariant['radixPrimitives'];
 }
 
 let cachedIndex: Map<string, DesignImplementation> | null = null;
@@ -80,6 +83,8 @@ function buildIndex(): Map<string, DesignImplementation> {
         isDefault: Boolean(variant.isDefault),
         thumbnail: variant.thumbnail,
         hasVariants: true,
+        vfs: variant.vfs ? { ...variant.vfs } : undefined,
+        radixPrimitives: variant.radixPrimitives ? [...variant.radixPrimitives] : undefined,
       });
     }
   }

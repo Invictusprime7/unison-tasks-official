@@ -36,7 +36,7 @@ import {
   type ResolvedPageComposition,
 } from '@/platform/core/resolvedComposition';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
-import { getLayoutForVariantId, getVariantById } from '@/sections/variants';
+import { getLayoutForVariantId, getVariantById, getVariantsForSection } from '@/sections/variants';
 import type { VariantId } from '@/sections/variants';
 import heroPageIntroSource from '@/sections/variants/hero/HeroPageIntro.tsx?raw';
 import stylexRecipes from './recipes/stylexRecipes.generated.json';
@@ -132,6 +132,7 @@ function themeModule(template: TemplateComposition): string {
       bodyWeight: 'var(--ut-body-weight, 400)',
     },
     radius: 'var(--radius)',
+    sectionPadding: 'var(--ut-section-padding, 6rem 0)',
     containerWidth: '72rem',
   }, null, 2);
   return `// Snapshot style adapter.
@@ -641,7 +642,7 @@ export default function Team({ props }: { props: any }) {
 
 const FAQ_MODULE = stylexRecipes.faqModule;
 
-const GALLERY_MODULE = `import React, { useEffect, useMemo, useState } from 'react';
+const LEGACY_GALLERY_MODULE = `import React, { useEffect, useMemo, useState } from 'react';
 
 const shellClass = 'mx-auto w-full max-w-7xl px-5 sm:px-8';
 
@@ -704,67 +705,6 @@ export default function Gallery({ props }: { props: any }) {
       </figure>
     </div>
   ) : null;
-
-  if (layout === 'mosaic' || layout === 'editorial-mosaic') {
-    return (
-      <section data-ut-variant="gallery:editorial-mosaic" className="bg-background py-24">
-        <div className={shellClass}>
-          {intro}{filters}
-          <div className="grid auto-rows-[var(--ut-tile-block)] grid-cols-2 gap-4 lg:grid-cols-4">
-            {visible.map((item, index) => figure(item, index, index % 5 === 0 ? 'col-span-2 row-span-2' : index % 7 === 3 ? 'col-span-2' : ''))}
-          </div>
-        </div>
-        {overlay}
-      </section>
-    );
-  }
-
-  if (layout === 'masonry') {
-    return (
-      <section data-ut-variant="gallery:masonry" className="bg-background py-24">
-        <div className={shellClass}>
-          {intro}{filters}
-          <div style={{ columnCount: Math.min(columns, 4), columnGap: '1rem' }}>
-            {visible.map((item, index) => (
-              <div key={index} className="mb-4 break-inside-avoid">{figure(item, index, index % 3 === 0 ? 'aspect-[3/4]' : index % 3 === 1 ? 'aspect-square' : 'aspect-[4/5]')}</div>
-            ))}
-          </div>
-        </div>
-        {overlay}
-      </section>
-    );
-  }
-
-  if (layout === 'lightbox' || layout === 'lightbox-grid') {
-    return (
-      <section data-ut-variant="gallery:lightbox-grid" className="bg-background py-24">
-        <div className={shellClass}>
-          {intro}{filters}
-          <div className={'grid gap-3 ' + colClass}>
-            {visible.map((item, index) => figure(item, index, 'aspect-square'))}
-          </div>
-        </div>
-        {overlay}
-      </section>
-    );
-  }
-
-  if (layout === 'feature-split') {
-    return (
-      <section data-ut-variant="gallery:feature-split" className="bg-background py-24">
-        <div className={shellClass}>
-          {intro}{filters}
-          <div className="grid gap-4 lg:grid-cols-2">
-            {visible[0] && figure(visible[0], 0, 'aspect-[4/5]')}
-            <div className="grid grid-cols-2 gap-4 self-start">
-              {visible.slice(1).map((item, index) => figure(item, index + 1, 'aspect-square'))}
-            </div>
-          </div>
-        </div>
-        {overlay}
-      </section>
-    );
-  }
 
   if (layout === 'reel' || layout === 'horizontal-reel') {
     return (
@@ -1117,7 +1057,17 @@ const SECTION_MODULE_SOURCE: Record<keyof typeof SECTION_FILES, string> = {
   About: ABOUT_MODULE,
   Services: SERVICES_MODULE,
   Features: FEATURES_MODULE,
-  Gallery: GALLERY_MODULE,
+  Gallery: `import { REGISTERED_VARIANTS } from './recipes/Gallery';
+${LEGACY_GALLERY_MODULE.replace('export default function Gallery', 'function LegacyGallery')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('gallery').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Gallery({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'grid'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyGallery props={props} />;
+  return <Component section={{ type: 'gallery', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Pricing: PRICING_MODULE,
   LogoCloud: LOGO_CLOUD_MODULE,
   BlogPreview: BLOG_PREVIEW_MODULE,
@@ -1584,6 +1534,9 @@ export function compositionToReactFileSet(
   }
   if (sectionMap.components.has('Navbar')) {
     files['/src/components/MobileNavigation.tsx'] = stylexRecipes.mobileNavigationModule;
+  }
+  if (sectionMap.components.has('Gallery')) {
+    files['/src/components/recipes/Gallery.ts'] = stylexRecipes.families.gallery;
   }
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;

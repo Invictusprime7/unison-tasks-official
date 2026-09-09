@@ -232,6 +232,7 @@ export interface SiteBundleSnapshotMeta {
     runtimeProfile: string;
     /** Advanced runtime capabilities (e.g. experience.three-d) sealed with the site. */
     experienceCapabilities: readonly string[];
+    approvedExperienceCapabilities?: readonly string[];
   };
   /**
    * Chain-of-custody for the typed theme contract sidecar. The contract itself

@@ -101,6 +101,7 @@ import { repairDraftBusinessLink } from "@/services/draftBusinessLinkRepair";
 import {
   buildProjectRuntimeEnvelope,
   loadProjectRuntimeProjection,
+  resolvePersistedEditorIdentity,
   resolveProjectActivePagePath,
 } from '@/services/projectRuntimeEnvelope';
 import { dryRunAiCommit, persistAiCommit } from "@/services/aiApplyGate";
@@ -1246,6 +1247,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (canvasData?.vfsFiles && Object.keys(canvasData.vfsFiles).length > 0) {
       const recovery = readBuilderRecoverySnapshot(template.id);
       const shouldReplayRecovery = Boolean(
+        !canvasData.siteBundleSnapshot &&
         recovery?.pendingRemote &&
         recovery.templateId === template.id &&
         Object.keys(recovery.vfsFiles).length > 0,
@@ -2507,10 +2509,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     // repair, or CSS preset recovery is allowed between the seal and Sandpack.
     importedRouteStateRef.current = options.context || 'committed-wizard-runtime';
     vfsReplaceFiles(committed.files);
+    lastSavedVfsSignatureRef.current = computeBuilderVfsSignature(committed.files);
     const syncedEntry = syncBuilderFromFiles(
       committed.files,
       options.preferredPath || launchEntryPoint,
     );
+    lastSavedCodeRef.current = syncedEntry.entrySource;
     return { ...committed, syncedEntry };
   }, [launchEntryPoint, syncBuilderFromFiles, vfsReplaceFiles]);
 
@@ -2635,7 +2639,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const durableProjectId = resolvedProjectId || projectId;
     const hasCanonicalDraft = Boolean(durableProjectId && currentDraftId);
     const baseKey = hasCanonicalDraft
-      ? `draft:${durableProjectId}:${currentDraftId}`
+      ? `draft:${durableProjectId}:${currentDraftId}:${revId || 'current'}`
       : revId || (durableProjectId ? `latest:${durableProjectId}` : '');
     const hydrationKey = baseKey ? `${baseKey}#${hydrationNonce}` : '';
     if (!hydrationKey || hydratedRevisionRef.current === hydrationKey) return;
@@ -2790,6 +2794,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   useEffect(() => {
     if (!hydratedRevision) return;
+    const identity = resolvePersistedEditorIdentity(hydratedRevision);
+    currentDraftIdRef.current = identity.draftId;
+    templateFiles.setCurrentDraftId(identity.draftId);
+    templateFiles.setCurrentProjectId(identity.projectId);
+    setCurrentDraftId(identity.draftId);
     const revisionSnapshot = hydratedRevision.siteBundleSnapshot as SiteBundleSnapshot;
     if (revisionSnapshot?.pageRegistry) {
       hydrateCanonicalPlayground({
@@ -2820,7 +2829,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         }
       });
     return () => { cancelled = true; };
-  }, [hydrateCanonicalPlayground, hydratedRevision]);
+  }, [
+    hydrateCanonicalPlayground,
+    hydratedRevision,
+    templateFiles.setCurrentDraftId,
+    templateFiles.setCurrentProjectId,
+  ]);
 
   // ── Phase 0A: complete CanonicalProjectState for every editor mutation ───
   // Guidebook §2.5 / Phase 0A: editor bridges must not commit with partial
@@ -3118,21 +3132,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
   }, [templateCustomizer, commitPresentationOps, businessId, currentDraftId]);
 
-  // Reconciler: any variant state that entered the customizer outside the
-  // canonical actions above (template parse, restore) is pushed into the
-  // snapshot as well, so local state can never diverge from the ledger.
-  useEffect(() => {
-    const desiredVariants = templateCustomizer.activeVariants;
-    if (Object.keys(desiredVariants).length === 0) return;
-    void commitPresentationOps(
-      Object.entries(desiredVariants).map(([sectionId, variantId]) => ({
-        type: 'setVariant' as const,
-        sectionId,
-        variantId,
-      })),
-    );
-  }, [templateCustomizer.activeVariants, commitPresentationOps]);
-
   /**
    * Theme-token overrides. The editor only produces FileOps for
    * `/src/index.css` + `/.unison/theme-overrides.json`; they enter the ledger
@@ -3374,7 +3373,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Track unsaved changes for back button warning
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const initialCodeRef = useRef<string>(previewCode);
   
   // Cloud state: project settings, entitlements, installed packs
   const [cloudState, setCloudState] = useState<{
@@ -3950,9 +3948,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Track changes to code OR VFS file map (multi-file AI edits update VFS, not previewCode).
   useEffect(() => {
-    const codeChanged = previewCode !== initialCodeRef.current &&
-                      !previewCode.includes('AI-generated code will appear here');
     const currentFiles = virtualFSRef.current.getSandpackFiles();
+    const codeChanged = Object.keys(currentFiles).length === 0 &&
+                      previewCode !== lastSavedCodeRef.current &&
+                      !previewCode.includes('AI-generated code will appear here');
     const vfsChanged = computeVfsSignature(currentFiles) !== lastSavedVfsSignatureRef.current
       && Object.keys(currentFiles).length > 0;
     setHasUnsavedChanges(codeChanged || vfsChanged);
@@ -3977,6 +3976,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       popups: playgroundPopups,
     };
     const currentFiles = virtualFS.getSandpackFiles();
+    const durableSnapshot = hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | undefined;
+    const persistedRuntimeContext = durableSnapshot?.appContext?.runtimeContext
+      ?? resolveSnapshot(currentFiles, effectiveRouteState as any).snapshot?.appContext?.runtimeContext;
     const effectiveBusinessName =
       creatorPlayground.creatorData.businessInfo.businessName ||
       currentTemplateName ||
@@ -4037,7 +4039,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       compiledPlayground: recompilation.compileResult,
       canonicalPlayground,
       businessId: businessId ?? undefined,
-      projectId: projectId ?? undefined,
+      projectId: resolvedProjectId || projectId || undefined,
+      siteId: persistedRuntimeContext?.websiteId ?? persistedRuntimeContext?.siteId,
+      organizationId: persistedRuntimeContext?.workspaceId ?? persistedRuntimeContext?.organizationId,
+      environment: persistedRuntimeContext?.environment,
+      businessRuntime: durableSnapshot?.appContext?.businessRuntime,
       manifestId: currentManifestId || manifestIdFromState || undefined,
       systemType: activeSystemType || systemType || undefined,
       systemName: systemName || effectiveBusinessName,
@@ -4060,7 +4066,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       entryPoint: launchArtifacts.entryPoint,
       activePagePath,
       businessId: businessId ?? null,
-      projectId: projectId ?? null,
+      projectId: resolvedProjectId || projectId || null,
       canonicalPlayground: launchArtifacts.canonicalPlayground,
       siteBundleSnapshot: launchArtifacts.siteBundleSnapshot,
       metadata: {
@@ -4121,6 +4127,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     currentDraftId,
     resolvedThemePresetId,
     routeStateHasStructuredProject,
+    hydratedRevision,
+    resolvedProjectId,
   ]);
 
   /**
@@ -4240,11 +4248,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     reason?: BuilderSaveReason;
     vfsFiles?: Record<string, string>;
   }): Promise<boolean> => {
+    if (hydratedRevisionRef.current && !hydratedRevision) return Promise.resolve(false);
     const currentVfsFiles = options?.vfsFiles || virtualFSRef.current.getSandpackFiles();
     const vfsSignature = computeVfsSignature(currentVfsFiles);
     const codeForSave = currentVfsFiles[activePagePath] || previewCode || '';
     const editorCodeForSave = editorCode || codeForSave;
-    const previewCodeChanged = !!codeForSave && codeForSave !== lastSavedCodeRef.current;
+    const previewCodeChanged = Object.keys(currentVfsFiles).length === 0
+      && !!codeForSave && codeForSave !== lastSavedCodeRef.current;
     const vfsChanged = vfsSignature !== '' && vfsSignature !== lastSavedVfsSignatureRef.current;
 
     if (!options?.force && !previewCodeChanged && !vfsChanged) return Promise.resolve(true);
@@ -4401,9 +4411,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   // Handle back navigation with source-aware routing.
   const handleBackNavigation = useCallback(() => {
-    const codeChanged = previewCode !== initialCodeRef.current;
     const currentVfsFiles = virtualFSRef.current.getSandpackFiles();
-    const vfsDirty = computeVfsSignature(currentVfsFiles) !== lastSavedVfsSignatureRef.current;
+    const codeChanged = Object.keys(currentVfsFiles).length === 0
+      && !!previewCode && previewCode !== lastSavedCodeRef.current;
+    const vfsSignature = computeVfsSignature(currentVfsFiles);
+    const vfsDirty = vfsSignature !== '' && vfsSignature !== lastSavedVfsSignatureRef.current;
     const shouldReturnToCloudWorkspace =
       effectiveRouteState?.returnToCloudTab === 'projects' || effectiveRouteState?.from === 'Workspace Settings';
 
@@ -4443,16 +4455,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // debounce a save so changes survive Preview refresh + builder navigation.
   useEffect(() => {
     const t = window.setTimeout(() => {
+      if (hydratedRevisionRef.current && !hydratedRevision) return;
       // First-ever VFS observation after mount/load: seed the baseline signature
-      // instead of saving — unless a pending recovery journal proves a remote
-      // write was interrupted and still needs to be replayed.
+      // instead of saving. Only legacy drafts replay pending local journals;
+      // a hydrated canonical revision remains the authority for saved projects.
       if (lastSavedVfsSignatureRef.current === '') {
         const files = virtualFSRef.current.getSandpackFiles();
         if (Object.keys(files).length > 0) {
           const recovery = currentDraftIdRef.current
             ? readBuilderRecoverySnapshot(currentDraftIdRef.current)
             : readBuilderRecoverySnapshot(null);
-          if (recovery?.pendingRemote && Object.keys(recovery.vfsFiles).length > 0) {
+          if (!hydratedRevision && recovery?.pendingRemote && Object.keys(recovery.vfsFiles).length > 0) {
             void saveDraftRef.current({
               force: true,
               reason: 'ai_recovery',
@@ -4468,7 +4481,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }, 1500);
     return () => window.clearTimeout(t);
     // virtualFS.nodes is the canonical change signal exposed by useVFS.
-  }, [virtualFS.nodes, computeVfsSignature]);
+  }, [virtualFS.nodes, computeVfsSignature, hydratedRevision]);
 
   // Flush on tab close, refresh, or visibility change so AI edits aren't lost.
   useEffect(() => {
@@ -4476,7 +4489,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       try {
         const currentVfsFiles = virtualFSRef.current.getSandpackFiles();
         const sig = computeVfsSignature(currentVfsFiles);
-        const previewDirty = !!previewCode && previewCode !== lastSavedCodeRef.current;
+        const previewDirty = Object.keys(currentVfsFiles).length === 0
+          && !!previewCode && previewCode !== lastSavedCodeRef.current;
         const vfsDirty = sig !== '' && sig !== lastSavedVfsSignatureRef.current;
         if (!previewDirty && !vfsDirty) return;
 
@@ -4495,7 +4509,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       const currentVfsFiles = virtualFSRef.current.getSandpackFiles();
       const sig = computeVfsSignature(currentVfsFiles);
-      const previewDirty = !!previewCode && previewCode !== lastSavedCodeRef.current;
+      const previewDirty = Object.keys(currentVfsFiles).length === 0
+        && !!previewCode && previewCode !== lastSavedCodeRef.current;
       const vfsDirty = sig !== '' && sig !== lastSavedVfsSignatureRef.current;
       if (previewDirty || vfsDirty) {
         flush();
@@ -5735,13 +5750,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     isPublic: boolean
   ) => {
     const finalCode = getFinalCodeWithOverrides();
-    await templateFiles.saveTemplate(
+    const savedDraftId = await templateFiles.saveTemplate(
       name,
       description,
       isPublic,
       finalCode,
       buildSavePayloadOrFallback(virtualFSRef.current.getSandpackFiles()),
     );
+    if (!savedDraftId) throw new Error('Project save did not complete.');
   }, [templateFiles, getFinalCodeWithOverrides, buildSavePayloadOrFallback]);
 
   // Handle quick save (update existing template)
@@ -5773,7 +5789,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       
       if (isUpdating) {
         // Update existing project
-        await templateFiles.updateTemplate(templateFiles.currentDraftId, finalCode, basePayload);
+        const updated = await templateFiles.updateTemplate(templateFiles.currentDraftId, finalCode, basePayload);
+        if (!updated) throw new Error('Project update did not complete.');
         toast.success(`Updated "${saveProjectName}"`);
       } else {
         // Save as new project — strip source projectId + flag forceNew so a
@@ -5797,6 +5814,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           finalCode,
           newPayload,
         );
+        if (!newDraftId) throw new Error('Project save did not complete.');
         if (newDraftId) {
           // Point the shell at the newly-created draft so subsequent autosaves
           // and history entries target the copy, not the original.
@@ -5807,6 +5825,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         toast.success(saveAsNew ? `Saved "${saveProjectName}" as a new project` : `Saved "${saveProjectName}" to Projects`);
       }
       
+      setHydrationNonce(current => current + 1);
       setSaveProjectDialogOpen(false);
       clearDraft(); // Clear auto-save draft after successful save
     } catch (error) {
@@ -5815,7 +5834,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     } finally {
       setIsSavingProject(false);
     }
-  }, [saveProjectName, saveProjectDescription, templateFiles, getFinalCodeWithOverrides, clearDraft, buildSavePayload]);
+  }, [saveProjectName, saveProjectDescription, templateFiles, getFinalCodeWithOverrides, clearDraft, buildSavePayloadOrFallback]);
 
   // Render code from Code Editor to Fabric.js canvas
   const handleRenderToCanvas = async () => {

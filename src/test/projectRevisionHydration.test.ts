@@ -85,6 +85,7 @@ import {
   loadLatestRevisionForProject,
   loadProjectedRevisionForDraft,
 } from '@/services/vfsCommitService';
+import { resolvePersistedEditorIdentity } from '@/services/projectRuntimeEnvelope';
 
 describe('project revision hydration', () => {
   beforeEach(() => {
@@ -112,4 +113,15 @@ describe('project revision hydration', () => {
 
     expect(revision?.draftId).toBe(otherDraftId);
   });
+
+  it('recovers exact durable identity for route-state-free editor autosave', async () => {
+    const revision = await loadProjectedRevisionForDraft(projectId, requestedDraftId);
+
+    expect(resolvePersistedEditorIdentity(revision!)).toEqual({
+      businessId: revision!.businessId,
+      projectId,
+      draftId: requestedDraftId,
+    });
+  });
+
 });

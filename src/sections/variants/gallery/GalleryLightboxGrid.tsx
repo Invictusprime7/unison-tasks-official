@@ -9,6 +9,7 @@ import { GalleryFrame, GalleryFigure } from './GalleryFrame';
 
 export const GalleryLightboxGrid: React.FC<BaseSectionProps<'gallery'>> = ({ section, theme }) => {
   const { headline, subheadline, items, filterable, columns = 3 } = section.props;
+  const desktopColumns = columns === 2 ? 'lg:grid-cols-2' : columns === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3';
 
   return (
     <GalleryFrame
@@ -20,7 +21,7 @@ export const GalleryLightboxGrid: React.FC<BaseSectionProps<'gallery'>> = ({ sec
       filterable={filterable}
     >
       {({ items: media, open }) => (
-        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(columns, 4)}, minmax(0, 1fr))` }}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${desktopColumns} gap-3`}>
           {media.map((item, i) => (
             <GalleryFigure key={i} item={item} theme={theme} aspect="1 / 1" onOpen={() => open(i)} />
           ))}

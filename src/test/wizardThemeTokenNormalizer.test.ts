@@ -5,6 +5,24 @@ import { runPreflightRepair } from '@/services/aiSitePreflightRepair';
 import { normalizeWizardThemeTokens } from '@/utils/wizardThemeTokenNormalizer';
 
 describe('normalizeWizardThemeTokens', () => {
+  it('preserves semantic JavaScript color helpers while replacing numeric CSS colors', () => {
+    const source = [
+      'const surface = hsla(theme.colors.foreground, 0.92);',
+      'const ink = hsl(theme.colors.background);',
+      'const token = (value) => `hsl(${value})`;',
+      'const palette = "hsl(210deg 50% 40% / .5)";',
+      'const semantic = "hsl( var(--foreground) / .8)";',
+    ].join('\n');
+    const result = normalizeWizardThemeTokens({ '/src/components/recipe.ts': source });
+    const normalized = result.files['/src/components/recipe.ts'];
+    expect(normalized).toContain('hsla(theme.colors.foreground, 0.92)');
+    expect(normalized).toContain('hsl(theme.colors.background)');
+    expect(normalized).toContain('`hsl(${value})`');
+    expect(normalized).toContain('const palette = "hsl(var(--primary))"');
+    expect(normalized).toContain('hsl( var(--foreground) / .8)');
+    expect(runPreflightRepair(result.files).quarantinedCount).toBe(0);
+  });
+
   it('repairs Lane B visual literals without touching the authoritative Stage 4b stylesheet', () => {
     const result = normalizeWizardThemeTokens({
       '/src/pages/Home.tsx': [

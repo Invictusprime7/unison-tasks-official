@@ -1318,12 +1318,20 @@ export function readGeneratedUiManifest(
     const currentExperience = buildExperienceManifestSection();
     const experience = manifest.experience
       ? { ...currentExperience, ...manifest.experience, budget: { ...currentExperience.budget, ...(manifest.experience.budget || {}) } }
-      : currentExperience;
+      : {
+          ...currentExperience,
+          imports: [],
+          primitives: [],
+          runtimePackages: [],
+          capabilities: [],
+          runtimeDependencies: {},
+          budget: { ...currentExperience.budget, maxCanvasRoots: 0, maxHeavyScenes: 0, maxHeavyScenesPerSite: 0 },
+        };
     return {
       ...manifest,
       version: GENERATED_UI_FOUNDATION_VERSION,
       experience,
-      runtimeProfile: manifest.runtimeProfile || GENERATED_RUNTIME_PROFILE.id,
+      runtimeProfile: manifest.runtimeProfile || 'legacy-unspecified',
       runtimeFacades,
       radixStyles: {
         recipeVersion: RADIX_STYLE_RECIPE_VERSION,

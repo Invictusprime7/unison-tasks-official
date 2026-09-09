@@ -532,6 +532,7 @@ export async function runLaunchPipeline(
         generatedFiles: siteBundleSnapshot.vfsFiles,
         preferredEntryPoint: "/src/App.tsx",
         siteBundleSnapshot,
+        compileArtifact: stage4b.pipelineResult.compileArtifact,
         compiledPlayground,
         canonicalPlayground: materializedPlayground,
         mergeWithCanonicalSnapshot: true,
@@ -552,6 +553,10 @@ export async function runLaunchPipeline(
         wizardSelections: plan.selections,
         businessRuntime,
         enabledCapabilities: plan.industryProfile?.defaultCapabilities || [],
+        approvedExperienceCapabilities: siteBundleSnapshot.meta.designIntervention?.envelope
+          && siteBundleSnapshot.meta.designIntervention.envelope.webgl !== 'ineligible'
+          ? siteBundleSnapshot.meta.uiFoundation?.experienceCapabilities || []
+          : [],
         // Every registered body must be present in the Stage 4b output above.
         // Missing pages are a real closure failure, never a fallback request.
         allowCanonicalPageFallback: false,

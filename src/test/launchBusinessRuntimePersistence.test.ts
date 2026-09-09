@@ -301,7 +301,8 @@ describe('launch business runtime persistence', () => {
 
     expect(commitService).toContain("files['/.unison/wizard-seed.json']");
     expect(commitService).toContain('seed.canonical?.capabilities');
-    expect(commitService).toContain('compileGeneratedSiteRuntimeManifest({');
+    expect(commitService).toContain('buildCanonicalLaunchArtifacts({');
+    expect(commitService).not.toContain('compileGeneratedSiteRuntimeManifest({');
     expect(commitService).toContain("supabase.functions.invoke('reconcile-generated-runtime'");
     expect(commitService).toContain("status = 'rejected'");
     expect(commitService).toContain("code: 'generated-runtime-reconciliation-failed'");
@@ -516,11 +517,10 @@ describe('launch business runtime persistence', () => {
     expect(reconciler).toContain('compiledIntents.includes(intent)');
     expect(reconciler).toContain('enabledCapabilities.includes(capability)');
 
-    // The commit pipeline is the only caller, and it compiles the manifest
-    // from the canonical snapshot before reconciling.
     expect(commitService).toContain("supabase.functions.invoke('reconcile-generated-runtime'");
-    expect(commitService).toContain('compileGeneratedSiteRuntimeManifest({');
-    expect(commitService).toContain('siteId: project.site_id');
+    expect(commitService).toContain('Canonical finalization did not provide a generated runtime manifest.');
+    expect(commitService).toContain('const manifest = input.manifest;');
+    expect(commitService).toContain('manifest.siteId !== project.site_id');
 
     // Provisioning still validates the runtime controller contract shape.
     expect(provisioner).toContain("PUBLIC_RUNTIME_FUNCTIONS = new Set(['site-runtime', 'intent-exec', 'create-order-checkout'])");

@@ -1,8 +1,8 @@
 /**
  * Stage 4b semantic theme finalization (role-aware).
  *
- * Lane B owns the page body. Stage 4b owns the final visual language. This
- * module maps residual visual literals emitted by Lane B onto the semantic
+ * The canonical compiler owns page bodies. Stage 4b owns the visual language.
+ * This module maps residual visual literals onto the semantic
  * token vocabulary sealed by the wizard Style card, WITHOUT flattening the
  * contrast relationship the page was authored with.
  *
@@ -13,7 +13,7 @@
  * foreground role are resolved together.
  */
 
-const HARD_CODED_COLOR_VALUE = /\b(?:rgb|rgba|hsl|hsla)\(\s*(?!var\()[^)]*\)|#[0-9a-f]{3,8}\b/gi;
+const HARD_CODED_COLOR_VALUE = /\b(?:rgb|rgba|hsl|hsla)\(\s*(?=[+-]?(?:\d|\.\d))(?:[-+\d.eE%/,\s]|deg|grad|rad|turn)+\)|#[0-9a-f]{3,8}\b/gi;
 
 const COLOR_UTILITY =
   /\b(bg|text|border|ring|fill|stroke|from|via|to)-(\[(?:#[0-9a-f]{3,8}|(?:rgb|rgba|hsl|hsla)\([^\]]+\))\]|(?:white|black|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)(?:-\d{2,3})?)(\/\d+)?(?![\w-])/gi;

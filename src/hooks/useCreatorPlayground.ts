@@ -12,6 +12,7 @@ import { createEmptyCreatorData } from "@/types/creatorData";
 import type { PageRegistry, BuilderPage, FunnelGraph, FunnelStep, BuilderPageType, FunnelRole } from "@/types/pageRegistry";
 import { createEmptyPageRegistry, createBuilderPage, createFunnelGraph, getNavPages, getFunnelPages, resolveNextFunnelPage } from "@/types/pageRegistry";
 import { hydratePlaygroundFromVFS, mergeHydrationResult, type HydrationResult } from "@/services/playgroundHydrator";
+import { resolveSnapshot } from "@/services/snapshotProjector";
 import type { VirtualNode } from "@/hooks/useVirtualFileSystem";
 
 // ============================================================================
@@ -543,6 +544,29 @@ export function useCreatorPlayground(
   // --------------------------------------------------------------------------
 
   const hydrateFromVFS = useCallback((nodes: VirtualNode[], sandpackFiles: Record<string, string>): HydrationResult => {
+    const snapshot = resolveSnapshot(sandpackFiles).snapshot;
+    if (snapshot?.pageRegistry && snapshot.creatorData) {
+      const canonicalData = snapshot.creatorData;
+      const result: HydrationResult = {
+        pageRegistry: snapshot.pageRegistry,
+        creatorData: canonicalData,
+        funnelAutoWired: false,
+        stats: {
+          pagesDetected: Object.keys(snapshot.pageRegistry.pages).length,
+          productsExtracted: Object.keys(canonicalData.products).length,
+          servicesExtracted: Object.keys(canonicalData.services).length,
+          testimonialsExtracted: Object.keys(canonicalData.testimonials).length,
+          faqsExtracted: Object.keys(canonicalData.faqs).length,
+          componentsExtracted: Object.keys(canonicalData.componentInstances ?? {}).length,
+          funnelSteps: Object.values(snapshot.pageRegistry.funnels).reduce((total, funnel) => total + funnel.steps.length, 0),
+        },
+      };
+      setPageRegistry(result.pageRegistry);
+      setCreatorData(result.creatorData);
+      setLastHydration(result);
+      setIsDirty(false);
+      return result;
+    }
     const result = hydratePlaygroundFromVFS(nodes, sandpackFiles);
     
     // Merge with existing state (idempotent)

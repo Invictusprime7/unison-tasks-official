@@ -141,7 +141,7 @@ describe("launchStateToSandpackFiles", () => {
     });
 
     expect(result.dependencies).toMatchObject(SANDPACK_PREVIEW_CORE_DEPENDENCIES);
-    expect(result.dependencies["@radix-ui/react-dialog"]).toBeUndefined();
+    expect(result.dependencies["@radix-ui/react-dialog"]).toBe('1.1.15');
     expect(result.dependencies["@swc/helpers"]).toBeDefined();
     expect(result.dependencies["lodash-es"]).toBe("latest");
     expect(result.dependencies.recharts).toBeUndefined();
@@ -161,7 +161,7 @@ describe("launchStateToSandpackFiles", () => {
       },
     });
 
-    expect(result.dependencies["@radix-ui/react-dialog"]).toBeUndefined();
+    expect(result.dependencies["@radix-ui/react-dialog"]).toBe('1.1.15');
     expect(result.dependencies.recharts).toBeUndefined();
   });
 
@@ -251,11 +251,11 @@ describe("launchStateToSandpackFiles", () => {
       },
     });
 
-    expect(result.dependencies['@radix-ui/react-slot']).toBeUndefined();
+    expect(result.dependencies['@radix-ui/react-slot']).toBe('1.2.4');
     expect(result.dependencies['class-variance-authority']).toBeDefined();
     expect(result.dependencies['@radix-ui/react-dialog']).toBeUndefined();
     expect(result.dependencies['@swc/helpers']).toBeDefined();
-    expect(result.sandpackFiles['/unison/ui/radix/slot-safe.tsx']).toContain("from '../../../radix-shim'");
+    expect(result.sandpackFiles['/unison/ui/radix/slot-safe.tsx']).toContain("from '@radix-ui/react-slot'");
     expect(result.dependencies['framer-motion']).toBeUndefined();
     expect(result.dependencies['lucide-react']).toBeUndefined();
   });

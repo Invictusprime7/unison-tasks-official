@@ -23,6 +23,17 @@ export interface ProjectRuntimeProjection {
   activePagePath: string | null;
 }
 
+/** The only draft/project identity valid for a hydrated persisted revision. */
+export function resolvePersistedEditorIdentity(
+  revision: Pick<LoadedRevision, 'businessId' | 'projectId' | 'draftId'>,
+) {
+  return {
+    businessId: revision.businessId,
+    projectId: revision.projectId,
+    draftId: revision.draftId,
+  };
+}
+
 export function projectRuntimeProjectionFromRows(
   project: { active_published_revision_id?: string | null } | null,
   draft: { metadata?: unknown } | null,
@@ -87,13 +98,14 @@ export function buildProjectRuntimeEnvelope(
   input: BuildProjectRuntimeEnvelopeInput,
 ): ProjectRuntimeEnvelope {
   const snapshot = input.revision.siteBundleSnapshot as SiteBundleSnapshot;
+  const identity = resolvePersistedEditorIdentity(input.revision);
   const envelope: ProjectRuntimeEnvelope = {
     version: '1.0',
     identity: {
       workspaceId: input.workspaceId,
-      businessId: input.revision.businessId,
-      projectId: input.revision.projectId,
-      draftId: input.revision.draftId,
+      businessId: identity.businessId,
+      projectId: identity.projectId,
+      draftId: identity.draftId,
     },
     snapshot,
     snapshotVersion: snapshot?.snapshotId ?? '',

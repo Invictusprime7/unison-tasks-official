@@ -150,6 +150,7 @@ export interface BuildCanonicalLaunchArtifactsInput {
   businessRuntime?: BusinessRuntimeContract | null;
   /** Capability set that authorizes generated component runtime contracts. */
   enabledCapabilities?: readonly CapabilityId[];
+  approvedExperienceCapabilities?: readonly string[];
   /**
     * OPT-IN ONLY (`true`). Allows Stage 4b page bodies to fill unusable or
     * missing generated pages. Launcher callers must pair this with previewFirst;
@@ -306,7 +307,7 @@ function cloneSnapshotWithRuntimeVfs(
   // single authoritative revision here. Nothing downstream may amend page
   // bodies after this returns.
   return sealSnapshot({
-    artifact: compileArtifact ?? siteBundleSnapshot,
+    artifact: compileArtifact ? { ...compileArtifact, baseline: siteBundleSnapshot } : siteBundleSnapshot,
     appContext,
     vfsFiles: files,
     interactionManifest,
@@ -1092,8 +1093,19 @@ function* buildCanonicalLaunchArtifactSteps(
   };
   const publishedRuntime = buildPublishedRuntimeConfig(input);
   mergedFiles[PUBLISHED_RUNTIME_MODULE_PATH] = buildPublishedRuntimeModule(publishedRuntime);
+  const approvedExperienceCapabilities = input.approvedExperienceCapabilities
+    ?? input.siteBundleSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities;
   const runtimeSnapshotSeed = input.siteBundleSnapshot
-    ? { ...input.siteBundleSnapshot, appContext }
+    ? {
+        ...input.siteBundleSnapshot,
+        appContext,
+        meta: {
+          ...input.siteBundleSnapshot.meta,
+          ...(input.siteBundleSnapshot.meta.uiFoundation && approvedExperienceCapabilities !== undefined
+            ? { uiFoundation: { ...input.siteBundleSnapshot.meta.uiFoundation, approvedExperienceCapabilities: [...approvedExperienceCapabilities] } }
+            : {}),
+        },
+      }
     : undefined;
   const generatedSiteRuntimeManifest = compileGeneratedSiteRuntimeManifest({
     siteId: input.siteId,
@@ -1126,7 +1138,7 @@ function* buildCanonicalLaunchArtifactSteps(
       viteReadyFiles,
       SANDPACK_PREVIEW_CORE_DEPENDENCIES,
     ).dependencies,
-    approvedCapabilities: input.enabledCapabilities,
+    approvedCapabilities: approvedExperienceCapabilities,
   });
   if (!finalRuntimeCompatibility.ok) {
     throw new PreviewPipelineError(
@@ -1178,16 +1190,6 @@ function* buildCanonicalLaunchArtifactSteps(
     siteBundleSnapshot,
     canonicalPlayground,
   });
-  const hydratedFiles = input.siteBundleSnapshot
-    ? ensureGeneratedUiFoundation(files, {
-        industry: input.industry || input.siteBundleSnapshot.industry,
-        templateId: input.templateId || input.siteBundleSnapshot.meta.templateId,
-        themePresetId: resolvedThemePresetId,
-        needsBooking: input.wizardSelections?.needsBooking,
-        wantsLeadCapture: input.wizardSelections?.wantsLeadCapture,
-        sellsProducts: input.wizardSelections?.sellsProducts,
-      }).files
-    : files;
 
   // Run the exact strict VFS compiler that Preview uses before this Wizard
   // artifact is persisted or opened in Playground. Syntax repair protects
@@ -1198,7 +1200,7 @@ function* buildCanonicalLaunchArtifactSteps(
   if (input.strictPreflight) {
     yield;
     try {
-      prepareSandpackFiles(hydratedFiles, {
+      prepareSandpackFiles(files, {
         entryPoint,
         themePresetId: appContext.themePresetId || resolvedThemePresetId,
         strict: true,
@@ -1226,7 +1228,7 @@ function* buildCanonicalLaunchArtifactSteps(
   }
 
   return {
-    files: hydratedFiles,
+    files,
     entryPoint,
     runtimeManifest,
     generatedSiteRuntimeManifest,

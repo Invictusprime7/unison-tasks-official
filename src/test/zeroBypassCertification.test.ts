@@ -13,6 +13,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/platform/core/commitToPipeline', () => ({ commitToPipeline: vi.fn() }));
+vi.mock('@/services/canonicalLaunchVfs', () => ({
+  buildCanonicalLaunchArtifacts: vi.fn((input) => ({
+    files: input.generatedFiles,
+    siteBundleSnapshot: input.siteBundleSnapshot,
+    runtimeManifest: { version: 1 },
+    generatedSiteRuntimeManifest: { siteId: 'site-1', agents: [] },
+  })),
+}));
 vi.mock('@/services/runFullPreflight', () => ({ runFullPreflight: vi.fn() }));
 vi.mock('@/services/playgroundControlPlaneResolver', () => ({ resolvePlaygroundControlPlane: vi.fn() }));
 vi.mock('@/services/backendOpExecutor', () => ({ executeBackendOps: vi.fn(async () => []) }));

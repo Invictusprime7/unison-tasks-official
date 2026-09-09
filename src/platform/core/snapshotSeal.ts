@@ -221,8 +221,8 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
     'kind' in input.artifact && input.artifact.kind === 'wizard-compile-artifact'
       ? input.artifact
       : null;
-  const isWizardLaunch = (input.sealedBy || 'wizard-launch') === 'wizard-launch';
-  const authorityProof = wizardCompileArtifact && isWizardLaunch
+  const requiresCompilerProof = !input.sealedBy || input.sealedBy === 'wizard-launch' || input.sealedBy === 'recompile';
+  const authorityProof = wizardCompileArtifact && requiresCompilerProof
     ? readWizardLaunchAuthorityProof(input.vfsFiles, wizardCompileArtifact)
     : null;
 
@@ -308,6 +308,10 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
     ...baseline,
     appContext: input.appContext,
     vfsFiles: runtimeVfsFiles,
+    routerFile: {
+      path: baseline.routerFile.path,
+      content: runtimeVfsFiles[baseline.routerFile.path] ?? runtimeVfsFiles['/src/App.tsx'],
+    },
     meta,
   };
 }

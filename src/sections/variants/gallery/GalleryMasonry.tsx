@@ -9,6 +9,7 @@ import { GalleryFrame, GalleryFigure } from './GalleryFrame';
 
 export const GalleryMasonry: React.FC<BaseSectionProps<'gallery'>> = ({ section, theme }) => {
   const { headline, subheadline, items, filterable, columns = 3 } = section.props;
+  const desktopColumns = columns === 2 ? 'lg:columns-2' : columns === 4 ? 'lg:columns-4' : 'lg:columns-3';
 
   return (
     <GalleryFrame
@@ -21,8 +22,7 @@ export const GalleryMasonry: React.FC<BaseSectionProps<'gallery'>> = ({ section,
     >
       {({ items: media, open }) => (
         <div
-          className="[column-fill:_balance] gap-4"
-          style={{ columnCount: Math.min(columns, 4), columnGap: '1rem' }}
+          className={`columns-1 sm:columns-2 ${desktopColumns} [column-fill:_balance] gap-4`}
         >
           {media.map((item, i) => (
             <div key={i} className="mb-4 break-inside-avoid">

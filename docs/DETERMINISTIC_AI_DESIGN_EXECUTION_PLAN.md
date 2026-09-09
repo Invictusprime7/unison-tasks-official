@@ -142,6 +142,112 @@ applicable with a reason. An unverified requirement is not a passing gate.
 
 ## 4. Phase Plan
 
+**Canonical recovery continuation (2026-09-08):** Saved canonical snapshot
+hydration no longer substitutes pending local recovery-journal files for the
+committed VFS. Initial VFS observation cannot force-save that journal after a
+revision is loaded; while canonical hydration is unresolved, reactive autosave,
+interval saves and forced navigation flushes defer without writing a journal.
+The existing hydration-attempt marker supplies this guard. Legacy noncanonical
+draft replay remains supported and existing journals are not deleted or marked
+persisted by reopening a canonical project.
+
+Seven executable callback regressions cover committed-file authority, legacy
+replay, pending hydration, loaded-revision baselines and forced flushes. The
+focused recovery/save/revision/Gallery suites pass 81 tests; app typecheck,
+targeted lint and all three architecture guards pass. The shared browser reached
+the editor but remained hidden without a Preview frame, so cold-reopen visual
+proof and remote revision-pointer stability are not certified. This fixes a
+reproduced journal replay path, not every possible unsolicited-save cause;
+Phase 0/1 and Gallery closure remain open.
+
+### Experience Capability Integration
+
+The Canonical Experience Capability Implementation Plan is adopted as an
+extension of these phases, not a replacement pipeline. Its Lane B page-authoring
+instructions are superseded by this guidebook: registered implementations and
+the canonical compiler author pages; optional AI proposes structured edits only.
+Stage 4b owns theme/material tokens, and the existing snapshot-owned
+`/src/unison/ui/experience/*` foundation remains the implementation root.
+
+The repository already has a generated React 19 profile, runtime capability
+registry, experience primitives, technical preflight and UI manifest v1.6.
+Extend those owners; do not introduce a parallel registry or downgrade to v1.2.
+Platform-supported packages, launch-approved capabilities and actually reached
+dependencies are separate concepts. Business provisioning capabilities must not
+be passed as visual-runtime approval.
+
+| Existing phase | Compatible experience work |
+| --- | --- |
+| 0 | Explicit approval enforcement; truthful legacy reads; compatible exact renderer pins; explicit runtime migrations and preservation. |
+| 1-2 | Declared primitive dependencies and implementation identity survive compiler, seal, Preview and recommit. Gallery/Testimonials ordering remains unchanged. |
+| 4 | Expand shared primitives and registered component implementations first; declare future experience dependencies without enabling new live 3D or advanced animation recipes. |
+| 5 | Resolve seeded eligible vocabulary into executable registered recipes, not AI page-authoring prompts. |
+| 6 | Expand and verify industry families and page archetypes using the registered primitive/component foundation. |
+| 6A | After primitive/component and cross-industry expansion acceptance, implement live 3D and advanced animation through registered recipes, with real assets and usable fallbacks. |
+| 7-10 | Semantic editor targets, structured edits, save/reload, export/import, performance budgets, reduced motion, no-WebGL and desktop/mobile visual proof. |
+| 11 | Optional AI may propose approved recipe/content/property edits through the canonical transaction boundary. |
+
+Initial hardening implemented: an explicit empty visual approval list denies
+experience usage, including detected instances imported through the root UI
+facade. Unused foundation modules do not count as site capability usage. New
+Launcher finalization derives a separate approval list from the resolved WebGL
+eligibility and supported foundation capability set. The list is sealed in
+`meta.uiFoundation.approvedExperienceCapabilities` and retained on structured
+recompile. Business capabilities remain in their existing contract.
+
+Legacy callers with no explicit approval declaration retain the existing
+compatibility path; omission is not equivalent to explicit `[]`. Manifest reads
+without experience metadata grant no capabilities or dependencies. Missing
+runtime profiles are marked `legacy-unspecified`, not relabeled React 19;
+declared historical profiles and budgets remain unchanged and stored bytes are
+not rewritten. This is read compatibility, not certification that arbitrary old
+renderer profiles execute in today's Preview. Explicit profile migration,
+recompile profile preservation, exact renderer dependency pinning, and versioned
+budget changes remain required. No legacy runtime or budget is silently upgraded
+by this batch.
+
+The default one-canvas/one-heavy-scene policy from the attached plan is intended
+for a future versioned new-launch policy, not retroactive mutation of the current
+two-per-page/six-per-site budget. WebGL absence with a fallback remains a runtime
+degradation, never a business-provisioning requirement. No new 3D UI is certified
+until its registered implementation passes the existing closure harness.
+
+Hardening validation (2026-09-08): 1,227 tests across 153 files pass, including
+representative golden Wizard fixtures and a real compiler/finalizer round trip
+with mocked persistence that retains explicit `[]` through reload. Application
+types, targeted lint, production build, recipe freshness and all three
+architecture guards pass. Existing full-lint failures and build warnings remain.
+No browser 3D rendering or remote persistence was exercised in this batch; no
+schema, deployment, git commit or remote state changed. Phase 0/1 remain open.
+
+The revised guidebook's Section 16 and Chapters 22-23 supersede the older phase
+numbering. Protect established ownership rather than reopening orchestration.
+Existing save/reload defects remain release blockers, not a reason to introduce
+another compiler or writer. Initial portable expansion precedes installed-UI
+classification and primitive contracts; external ingestion waits for that
+foundation. Runtime, editing and import/export closure must precede scaling.
+
+| Phase | Objective |
+| --- | --- |
+| 0 | Protect the canonical milestone and preserve existing regression gates |
+| 1 | Compiler/registry convergence |
+| 1B | Single-file compiler becomes a multi-file projection |
+| 1C | Explicit installed-component classification; unclassified = 0 |
+| 1D | Deterministic primitive/interaction recipes in contracts and runtime |
+| 2 | Registry/editor and emitted renderer parity |
+| 3 | Close all 17 semantic section families |
+| 3B | One authorized external 21st section through full closure |
+| 4 | Scale premium inventory only after closure |
+| 5 | Executable design vocabulary |
+| 6 | Industry families and page archetypes |
+| 6A | Live 3D and advanced animation after registered primitive/component and cross-industry expansion acceptance |
+| 7 | Artifact/editor closure |
+| 8 | Persisted Playground identity round trip |
+| 9 | Actual export/import symmetry with explicit export modes |
+| 10 | Multi-seed visual-quality certification |
+| 11 | Optional structured AI enrichment after prerequisite gates |
+| 12 | Business-runtime scale |
+
 ### Phase 0 - Protect and truthfully version the canonical spine
 
 **Objective:** Close the current deterministic Launcher correction before
@@ -181,21 +287,207 @@ against the committed revision now rejects after one repair attempt without
 persisting a revision. The 1,119-test full-suite result above predates these
 save/gate fixes. No registry assets or alternate VFS writers were added.
 
-**Remaining save blockers:** Recompilation emits components importing
-`/src/unison/publishedRuntime.ts` and
-`/src/unison/generatedSiteRuntimeManifest.ts` without emitting those modules;
-the canonical launch finalizer owns their generation. Preflight repairs also
-change Contact and Booking page bytes after candidate snapshot projection.
-The live save failed the database runtime-VFS/snapshot equality check.
-Integrate canonical finalization before sealing; do not weaken equality or
-preserve stale runtime bindings as a substitute. Reloaded Builder identity is
-not hydrated for autosave, and Save-to-Projects displays success/dismisses the
-dialog despite a failed content commit. That attempt created a verification
-copy identity shell, not a verified saved revision. Booking remains preview-only
-with production readiness blockers. Persisted legacy restoration and Playground
-round-trip closure are still required. **Phase 0 DoD is not satisfied.**
+**Save finalization continuation (2026-09-08):** Non-Wizard `commitMutation`
+now sends the recompiled candidate through `buildCanonicalLaunchArtifacts`
+before acceptance-only preflight. The existing finalizer emits the published
+runtime and generated manifest, repairs source and applies Stage 4b before
+sealing. Runtime reconciliation consumes the finalized manifest, checks its
+site identity against the canonical project and never rewrites sealed files.
+`sealSnapshot` projects the router from final runtime bytes. A redundant UI
+foundation pass after sealing was removed: the real regression test caught it
+reintroducing literal material colors and breaking runtime-VFS equality.
+
+`playgroundCommitFinalization.test.ts` exercises the real compiler, finalizer,
+preflight, commit service and revision loader with mocked database/readiness
+services. Its in-memory persistence boundary enforces runtime-VFS/snapshot
+equality. A structured Gallery title edit survives JSON serialization/reload
+with page identity, route, bindings, resolved implementation IDs and portable
+recipe bytes intact; runtime imports resolve and the prior snapshot is unchanged.
+This is local recovery proof, not a remote database or rendered Preview proof.
+
+All 1,182 tests across 147 files passed; the final removal of reconciliation's
+manifest-generation fallback then passed all 24 focused commit/ledger tests.
+Type-check, targeted lint and three architecture guards passed. Production
+build passed before that final fallback removal, with existing chunk/Tailwind
+warnings. A browser verification attempt stopped at `/auth/v1/user` returning
+401 for the expired session; no saved project was read or modified and no
+revision was created.
+
+**Save blockers at that checkpoint (superseded by the authenticated continuation below):**
+Authenticated persisted save/reload had not verified the live equality guard.
+Reloaded Builder identity adoption was locally tested, but remote autosave was unverified.
+The earlier failed Save-to-Projects attempt created a
+verification-copy identity shell, not a verified saved revision. Booking remains
+preview-only with production readiness blockers. Persisted legacy restoration
+and browser Playground round-trip closure are still required.
+**Phase 0 DoD is not satisfied.**
+
+**Save outcome continuation (2026-09-08):** `WebBuilder` now checks both
+`saveTemplate` and `updateTemplate` outcomes before reporting Save-to-Projects
+success, dismissing its dialog or clearing the recovery draft. Its panel-save
+callback rejects when the hook returns no saved draft, allowing existing panel
+error handling to retain the form. The save callback also tracks the correct
+payload-builder dependency. Actual callback execution tests cover failed create,
+failed update, confirmed success and retry; hook tests verify a rejected
+canonical commit emits no saved event. All 11 focused save/finalization tests,
+type-check and targeted lint pass. This fixes the documented false-success path
+locally; it is not mounted UI or live persistence proof. Browser authentication
+still returned 401, so authenticated save/reload remains blocked. Identity shells
+created before failed content commits are not deleted by this change.
+
+**Autosave identity continuation (2026-09-08):** Revision hydration now adopts
+the persisted revision's exact `draftId` and real `projectId` into the Builder's
+local and `useTemplateFiles` identity state before autosave can run. The shared
+`resolvePersistedEditorIdentity` helper is also used when building the durable
+`ProjectRuntimeEnvelope`, keeping reload, editor and autosave identity aligned.
+Focused tests cover draft-projected recovery, route-state-free editor identity,
+isolated production Builder effect execution, canonical commit/reload and save
+failure/retry; 27 tests across six files, type-check and targeted lint pass. This is local identity recovery proof. It
+does not demonstrate an authenticated browser reload or durable remote autosave,
+which remains blocked by the expired browser session.
+
+**Revision lifecycle continuation:** Executable React tests replace the source-only
+setter assertion. Six effect cases cover identity adoption, stable hook-wrapper
+rerenders, stale projection resolution/rejection after a project switch, revision
+advancement and absent hydration. The upstream loader test exposed a draft cache
+key that ignored revision changes; the key now includes the revision ID while
+retaining the durable draft-projection loader. A same-draft commit therefore
+refreshes hydration. These are isolated production-effect tests, not a mounted
+Builder or authenticated persistence journey. Phase 0 and Phase 1 remain open.
+
+**Authenticated restoration and Preview continuation (2026-09-08 UTC):**
+Authentication recovered. The same verification project/draft was reopened,
+edited through Playground navigation visibility, saved through the UI and
+cold-reloaded. This supersedes the earlier current-session authentication blocker;
+the preceding no-write statements describe only those earlier attempts.
+
+Mounted verification exposed restore-triggered presentation commits, autosave
+churn, inferred duplicate pages/funnels and lost runtime context. Builder now
+adopts committed byte baselines, compares multi-file VFS rather than selected-page
+code for dirty state, and preserves persisted project/workspace/site context
+through preliminary finalization. Canonical Playground hydration adopts the exact
+snapshot state without inference or dirtying. Business name and industry inherit
+from the snapshot when canonical commit options omit them. Explicit variant
+actions remain transactional; restore no longer replays parsed variant choices.
+
+Unintended autosave revisions reached `9aefde9d-b6a4-40a0-aa6d-77a79688d0af`
+with 16 pages/59 funnels. Canonical restoration
+`aed1839a-9a8c-43c7-b656-62a7e286f9c1` recovered the original eight pages/one
+funnel. UI visibility saves and runtime-identity recovery followed; UI revision
+`df4767b4-537b-4aa8-875a-232551aa6dd5` retained the business name and workspace.
+Opening the ledger later exposed another write-on-observation path, producing
+system restores `1610617b-afe6-4c19-b6ad-17f5f8ba73b6` and
+`2ebd0381-90d7-4880-9464-3541504568b0`. Automatic ledger restore now defaults
+off; mounted tests prove drift observation/refresh does not write and explicit
+Restore still works. No revisions were deleted, no schema changed and no function
+was deployed in this continuation. The latest restore preserves the saved
+Playground/bindings and exact Gallery recipe bytes from the restoration baseline;
+runtime files equal the persisted snapshot. It remains publish-blocked.
+
+Real persisted Preview exposed behavior-breaking Radix shims: Dialog lacked
+modal behavior and Accordion lacked Header. Preview now retains actual Accordion,
+Dialog and Slot packages; their pinned dependencies compile and execute. All eight
+routes rendered with their expected heading and no horizontal overflow at the
+tested Canvas width. FAQ pointer opening and keyboard closing pass. Gallery
+Masonry's outer/inner variant IDs agree; pointer opening, arrow navigation, Tab
+wrapping, Escape and settled focus restoration pass, including at 375px. Sandpack
+now honors device widths (375px/768px/available desktop width); previously only
+Docker honored them. A persisted mobile screenshot was captured. This does not
+certify every variant or every route at every breakpoint.
+
+Validation: full suite 1,207 tests/150 files passed before the final ledger
+default change; its two mounted tests and focused lint then passed. Application
+type-check, focused continuation lint, recipe freshness, production build and
+canonical-writer/pipeline/single-source guards passed. Build retains existing
+chunk/circularity/Tailwind warnings. Full lint fails with 10 existing errors and
+46 warnings; it is not a passing Phase 0 gate. The Gallery 21st review has no
+errors and one existing hover-scale warning.
+
+Remaining: fresh v2 authority propagation; full legacy authority migration proof;
+host toolbar pointer reliability; Gallery failed-image/content resilience,
+performance budgets and export/import proof; all-variant persisted identity and
+visual closure; then Testimonials convergence (runtime still shows selected
+`testimonials:rail` versus inner `testimonials:carousel`). Reconciliation returns
+non-2xx and five intent bindings block publish. None of those gaps is waived by
+the successful save/reload or route checks. Phase 0 and Phase 1 remain open.
 
 **Work:**
+
+**Gallery media and saved-state continuation (2026-09-08 UTC):** The shared
+Gallery image renderer now replaces failed or empty sources with a themed,
+accessible unavailable state and resets on source changes. The portable recipe
+was rebuilt; all five emitted variants cover thumbnail errors, lightbox errors,
+navigation recovery and close behavior. Direct and emitted media suites pass
+33 tests; compiler/commit parity passed 32 tests before the added media cases.
+
+Normal UI Update persisted revision `a8e603cd-c81d-4f9a-8e0a-e36cf750b1cc`
+at 23:52:42 UTC for the fresh verification draft above. Read-only database checks
+confirm Gallery fallback bytes and v2 canonical-compiler authority. Runtime files
+match the snapshot; the raw revision map additionally contains `/.unison/*`
+sidecars, which are intentionally absent from the snapshot runtime map. A fresh
+tab reopened this revision and rendered Gallery. The known Unsplash failure
+produced `Brow sculpting: image unavailable` in the lightbox and the thumbnail;
+ArrowRight reached Keratin treatment. The durable pointer remained unchanged.
+
+The dirty indicator and Back action now ignore page-source changes when the
+committed multi-file VFS is unchanged, using saved source only for code-only
+drafts. Regression tests exercise clean navigation without prompts/writes and
+retain the confirmation for actual VFS edits. Manual Save also now requests the
+existing durable revision hydration after success; previously Preview retained
+the old recipe until cold reload. Failed saves do not request hydration. The
+save/adoption suites pass 20 tests, with application types and targeted lint clean.
+The post-save refresh change still needs a fresh browser save verification.
+
+Final local validation for this continuation: 1,222 tests across 153 files,
+application type-check, targeted lint, production build, recipe freshness and
+all three architecture guards pass. Existing Tailwind/chunk build warnings and
+the previously recorded full-lint failures are not resolved by this batch.
+
+Remote history also contains unrequested `playground-edit` revision
+`92d85144-e46c-4552-862d-42885b962a35` at 23:48:05 UTC during this continuation;
+its initiating path is not yet proven. It is preserved. An unrelated "Add smooth
+scroll animations" chat entry appeared amid unreliable browser targeting; no
+revision newer than the intentional 23:52 save was present at the final pointer
+check. Do not count this session as a clean no-write startup proof.
+
+Browser DOM actions work, but screenshots remain stale (an old Update dialog or
+loading screen), and the Mobile action ended on About instead of Gallery.
+Desktop/mobile visual sizing, focus restoration for the fallback, and the fresh
+post-save refresh remain unverified. Foreground, stable browser execution is
+required before visual closure. Startup autosave, content quality, performance,
+export/import, all-variant persistence, Testimonials and the existing full-lint
+and publish-readiness blockers remain open. No schema, deployment, commit or
+history deletion occurred. Phase 0 and Phase 1 remain open.
+
+**V2 authority propagation continuation (2026-09-08 UTC):** The production
+orchestrator omitted `stage4b.pipelineResult.compileArtifact` even though the
+golden fixture supplied it. Forwarding that artifact makes the existing sealer
+validate the v2 proof on real launch. Canonical recompiles now also forward their
+compiler artifact (with the stamped candidate baseline) and validate its proof;
+previously the first save dropped authority fields. Legacy v1 read behavior is
+unchanged; old revisions are not relabeled in place.
+
+Fresh Salon Premium / Editorial launch created project
+`68dc9b3b-75c0-4725-a2f4-aa7a1c4d27c3`, draft
+`a3f494e1-7e07-4287-854e-058ad124c675`, launch revision
+`554d818f-4f25-4aad-8748-3ea88b283e35` with v2 canonical-compiler authority.
+Startup autosave produced `090f85a5-7432-4b32-ad25-1237579b0a63` before the
+recompile fix, exposing the authority loss. After the fix, normal UI Update
+persisted `2adbfb40-6cbe-4d86-865b-f62f6d8e6d85` with v2 authority, all eight
+registered paths, Salon industry and the business name preserved; runtime files
+exactly match the snapshot. Opening the draft URL in a new tab with no route
+state recovered that same revision. Home and Gallery rendered; Gallery's outer
+and inner IDs both equal `gallery:feature-split`. Passive reopen and page switching
+left the revision pointer unchanged. This verifies fresh v2 launch/save/reopen
+propagation, not complete all-variant or legacy migration closure.
+
+Validation: 153 focused tests, full suite 1,210 tests/151 files, application
+type-check, targeted lint, pipeline and canonical-writer guards, recipe freshness
+and production build pass. Existing build warnings and full-lint failures remain.
+No schema, deployment, commit or history deletion occurred. Startup handoff still
+causes an unsolicited save and its dirty-state guard needs separate follow-up;
+the failed Gallery image, content quality, export/performance and Testimonials
+gates remain open. Phase 0 and Phase 1 are not closed.
 
 - Corrected section loss before further AI work: `buildRoleComposition` now
   preserves the complete Home template composition, rather than filtering it
@@ -271,6 +563,120 @@ only after repository caller audit and persisted-snapshot restore tests pass.
 **Objective:** Make the registered visual implementation the source of the VFS
 module that Preview executes.
 
+**Gallery batch (2026-09-08):** The five existing Gallery entries declare
+`vfs.mode = portable-recipe`. The recipe build discovers those entries and their
+component imports from the existing registry AST, bundles the actual React
+sources and rejects undeclared external dependencies. The generated artifact is
+build output, not another registry. The compiler emits
+`/src/components/recipes/Gallery.ts`, consumed by the existing Gallery adapter;
+explicit VariantId wins over a legacy layout. Four generic visual branches are
+retired, with reel/default compatibility retained. No new variants or artifacts
+are added. `renderJSX` remains a legacy swap adapter, not certified round-trip
+authority.
+
+Stage 4b's color normalizer was incorrectly rewriting `hsl`/`hsla` JavaScript
+theme helpers as raw CSS, causing recipe quarantine. It now matches numeric CSS
+colors and preserves semantic helper calls. Theme values still come from the
+emitted semantic THEME adapter and Stage 4b stylesheet; no palette owner changed.
+
+Validation: 159 tests across convergence, renderer parity, composition,
+normalization, golden launch, canonical handoff, zero-bypass and existing
+StyleX recipes pass. Type-check, recipe freshness, production build and the
+canonical-writer/pipeline/single-source guards pass. The build reports chunk
+size/circularity and Tailwind warnings. Targeted lint is clean except two
+pre-existing unnecessary escapes in the normalizer's class-string regex,
+confirmed by linting HEAD; no unrelated cleanup was applied.
+Exact recipe bytes survive the sealed
+snapshot and in-memory Playground recompilation; Sandpack preparation preserves
+the component map. All five emitted variants execute with registry-identical DOM,
+filtering, lightbox navigation/Escape, empty content and legacy layout behavior.
+
+Changed implementation files: `scripts/build-stylex-recipes.mjs`,
+`src/sections/recipes/stylexRecipes.generated.json`,
+`src/sections/variants/types.ts`, `src/sections/variants/registry.ts`,
+`src/sections/compositionToFileSet.ts`, and
+`src/utils/wizardThemeTokenNormalizer.ts`. Tests added:
+`src/test/variantCompilerConvergence.test.ts` and
+`src/test/variantRendererParity.test.tsx`. Tests extended:
+`src/test/goldenIndustryPipeline.test.ts` and
+`src/test/wizardThemeTokenNormalizer.test.ts`. This execution plan and
+`roadmap.md` record the revised ordering and batch evidence.
+
+Browser evidence is an isolated compiler-output fixture, not a persisted Launcher
+Preview: all five variants rendered at 1440px and 390px without horizontal
+overflow. A mobile screenshot captured a blocked template image and mismatched
+sample imagery. A later browser pointer check could not run after a reload
+cleared the isolated fixture; DOM event tests are not pointer proof.
+Fixed column counts at mobile, lightbox focus trapping, media
+fallbacks, performance, actual persisted edit/recommit/reload and export/import
+remain unverified or need improvement. Playground's canonical identity hydration
+is unchanged; an in-memory recompilation is not durable round-trip proof.
+**Phase 1 DoD remains unsatisfied.**
+
+**Gallery accessibility continuation (2026-09-08):** The shared
+`GalleryLightbox.tsx` now uses Radix Dialog rather than a role-only overlay and
+a global keyboard listener. It provides initial focus, trapped Tab navigation,
+background isolation, Escape dismissal and restoration to the image trigger.
+Arrow navigation is scoped to the active dialog. Close/previous/next use Lucide
+icons with accessible names, visible focus styles and 44px control classes.
+Stage 4b still supplies the colors; no new visual variants or artifacts exist.
+
+All five Gallery entries declare `radixPrimitives: ['dialog']`. The existing
+recipe build derives those declarations and normalizes package imports to the
+canonical `/src/unison/ui/radix/dialog` and icon facades, keeping undeclared
+external dependencies rejected. The generated artifact, registry metadata,
+shared lightbox, recipe build and `variantRendererParity.test.tsx` changed.
+No VFS writer, snapshot owner, Preview owner or Playground hydrator changed.
+
+The focused suites pass 166 tests: 23 renderer/accessibility checks plus 143
+compiler, theme, golden-launch, handoff and zero-bypass checks. Coverage includes
+all five variants' focus wrapping/restoration, background isolation, release
+when live items disappear, and canonical dependency facade resolution. Sealed
+recipe preservation and in-memory Playground recompilation remain green.
+Type-check, targeted lint, recipe freshness, canonical writer/pipeline guards
+and the deterministic 21st review pass.
+
+Browser evidence remains limited: the emitted module mounted in an isolated
+fixture at localhost:8080, but the shared browser reports hidden visibility even
+after bringing it forward. Playwright's pointer stability check timed out before
+keyboard testing. A desktop screenshot is not pointer/focus proof; the existing
+blocked template image remains. Do not mark real-browser accessibility or
+persisted Preview/Playground edit/reload complete. Legacy reel/default and
+`renderJSX` swap compatibility remain uncertified. This continuation does not
+close Phase 1 or authorize the next family.
+
+**Gallery responsive continuation (2026-09-08):** `GalleryMasonry.tsx`,
+`GalleryCinematicGrid.tsx` and `GalleryLightboxGrid.tsx` now use one mobile
+column, two columns from the existing `sm` breakpoint, and the selected 2/3/4
+columns from `lg`. Static Tailwind classes replace inline column counts in
+the shared registered components; the existing recipe build regenerates
+`stylexRecipes.generated.json`. `variantRendererParity.test.tsx` adds coverage
+for every supported desktop count. No registry identities, artifacts, bindings,
+compiler ownership, theme authority or canonical mutation paths changed.
+
+All 169 focused tests pass, including DOM parity, modal accessibility, exact
+sealed recipe preservation, Playground recompilation and Preview preparation.
+Type-check, targeted lint, recipe freshness and canonical writer/pipeline guards
+pass. The 21st review has no errors and retains its pre-existing GalleryFrame
+hover-scale warning; that motion recommendation was not changed in this batch.
+
+Browser verification used actual emitted modules with Salon content and the
+Stage 4b Editorial stylesheet. All 27 settled layout cases (three variants,
+three desktop column choices, widths 390/768/1440) matched expected columns
+without horizontal overflow. Immediate Masonry readings captured an active
+column-count transition; the measurement fixture explicitly finished layout
+transitions before asserting final counts. This is not animation-quality proof.
+Desktop and mobile screenshots were captured. The previously blocked keyboard
+check now passes in the visible browser: real click, initial focus, Shift+Tab/Tab
+wrapping, ArrowRight navigation, Escape and trigger-focus restoration at 1440px
+and 390px on the emitted Lightbox Grid implementation.
+
+These are isolated generated-runtime checks, not a persisted Launcher Preview
+or a saved Playground edit. The blocked template image, mismatched sample
+imagery, performance, broader accessibility review and durable edit/reload
+remain open. This supersedes the earlier fixed-mobile-columns finding and
+hidden-browser limitation for the checks above, but **Phase 1 remains open**.
+
 **Work:**
 
 - Extend `SectionVariant` with a VFS-compatible emitter contract that returns a
@@ -309,7 +715,7 @@ composition, sealed snapshot, and Preview runtime output all agree.
 **Removal gate:** Delete each corresponding hard-coded compiler visual branch
 only after its registry emitter passes closure and fallback tests.
 
-### Phase 2 - Close all 17 section families
+### Phase 3 - Close all 17 section families
 
 **Objective:** Eliminate semantic placeholder substitution.
 
@@ -335,7 +741,7 @@ harness.
 **Removal gate:** Remove placeholder mappings only after all three dedicated
 families compile, render, hydrate, and round-trip.
 
-### Phase 3 - Expand premium inventory and primitives
+### Phase 4 - Expand premium inventory and primitives
 
 **Objective:** Grow toward 100+ production-quality implementations without
 creating a second rendering system.
@@ -356,7 +762,7 @@ and semantic token usage.
 snapshots on mobile and desktop before the next batch starts. Registry count
 alone is never acceptance evidence.
 
-### Phase 4 - Make design vocabulary executable
+### Phase 5 - Make design vocabulary executable
 
 **Objective:** Convert descriptive design intelligence into deterministic legal
 recipes consumed by the compiler.
@@ -382,7 +788,7 @@ recipes consumed by the compiler.
 implementation or primitive recipe, and the same seed reproduces the same
 ordered legal candidates and final compiler choice.
 
-### Phase 5 - Expand industry families and page archetypes
+### Phase 6 - Expand industry families and page archetypes
 
 **Objective:** Add depth through compositions and compatibility envelopes rather
 than new generators.
@@ -401,7 +807,37 @@ than new generators.
 visually distinct compositions without page drift, missing bindings, or theme
 source replacement.
 
-### Phase 6 - Complete artifact and editor closure
+### Phase 6A - Implement Live 3D And Advanced Animation
+
+**Entry gate:** Complete the preceding primitive/component registry expansion
+and cross-industry acceptance in Phases 1-6. Existing Gallery-first closure and
+family sequencing still apply. Runtime compatibility hardening may proceed
+earlier, but it does not authorize new live immersive or advanced-motion recipes.
+Existing working animations and persisted experience sites remain supported;
+this sequencing decision is not a retroactive feature removal.
+
+**Work:**
+
+- Implement live Three.js/R3F/Drei product stages, model viewers, immersive heroes
+  and depth galleries through existing registered implementations and the
+  snapshot-owned experience foundation, starting with one complete recipe.
+- Implement advanced animation as declared registered motion recipes with
+  reduced-motion behavior, deterministic configuration and bounded runtime cost.
+- Use industry/page-role eligibility and real media or models. Operational pages
+  need not receive immersive visuals; ordinary sites must not install unused 3D.
+- Keep renderer profiles, approved dependencies and versioned performance budgets
+  compatible. Do not replace snapshot runtime declarations implicitly.
+- Preserve Stage 4b theme/material ownership, canonical intent bindings and
+  semantic editor targets; never add an alternate scene/page authoring pipeline.
+
+**Acceptance:** Each recipe requires desktop/mobile screenshots and nonblank
+canvas-pixel checks, real pointer/keyboard interaction, reduced-motion and
+no-WebGL fallbacks, asset-failure recovery, measured performance, and persisted
+edit/recommit/reopen proof. Validate generated Preview and export behavior, not
+only host React rendering. Phases 7-10 complete broader editor and release
+certification; no new live recipe is rollout-ready on registry counts alone.
+
+### Phase 7 - Complete artifact and editor closure
 
 **Objective:** Make every generated surface understandable and safely editable.
 
@@ -423,7 +859,7 @@ source replacement.
 **Acceptance:** Every implementation resolves one coherent artifact/editor
 contract without duplicate hand-maintained maps.
 
-### Phase 7 - Prove Playground design round trips
+### Phase 8 - Prove Playground design round trips
 
 **Objective:** Make design edits canonical and reload-safe.
 
@@ -444,7 +880,15 @@ contract without duplicate hand-maintained maps.
 **Acceptance:** A registered swap survives reload with the same new identity and
 cannot be lost by canonical recompilation.
 
-### Phase 8 - Certify rendered visual quality
+### Phase 9 - Certify import/export symmetry
+
+Test actual export API -> ZIP bytes -> importer -> canonical restoration.
+Portable source export intentionally omits private metadata; Unison round-trip
+export includes the snapshot, runtime manifest, contracts, resolved composition
+and required provenance. Do not substitute a manually assembled import fixture.
+This gate remains open, and AI enrichment cannot bypass it.
+
+### Phase 10 - Certify rendered visual quality
 
 **Objective:** Replace source-only quality claims with real runtime evidence.
 
@@ -470,7 +914,7 @@ cannot be lost by canonical recompilation.
 Preview and after reload with no blank canvas, scaffold, placeholder, missing
 import, fallback authoring, or incoherent mobile layout.
 
-### Phase 9 - Add optional structured AI augmentation
+### Phase 11 - Add optional structured AI augmentation
 
 **Entry condition:** Phases 1-8 are complete. Deterministic output is already
 premium, executable, committed, previewed, and editable without AI.
@@ -538,7 +982,7 @@ Preview, Playground hydration, and selected export constraints.
 the full enrichment validator chain exists. E5 component generation remains a
 developer-approved non-default workflow.
 
-### Phase 10 - Scale business runtime verticals
+### Phase 12 - Scale business runtime verticals
 
 **Objective:** Prove operational completeness using the same canonical model.
 

@@ -95,17 +95,17 @@ describe('Wizard preview dependency runtime', () => {
     expect(result.dependencies['@radix-ui/react-dialog']).toBeUndefined();
   });
 
-  it('keeps Radix facade packages out of the Sandpack install graph after preview preparation', async () => {
+  it.each([['accordion', '1.2.12'], ['dialog', '1.1.15']])('keeps the real %s dependency in the Sandpack install graph', async (primitive, version) => {
     const { prepareSandpackFiles } = await import('@/utils/sandpackFilePrep');
     const prepared = prepareSandpackFiles({
-      '/src/App.tsx': "import * as Dialog from './unison/ui/radix/dialog'; export default function App(){ return <Dialog.Root><Dialog.Trigger>Open</Dialog.Trigger><Dialog.Content>Ready</Dialog.Content></Dialog.Root>; }",
-      '/src/unison/ui/radix/dialog.ts': "export * from '@radix-ui/react-dialog';",
+      '/src/App.tsx': `import * as Primitive from './unison/ui/radix/${primitive}'; export default function App(){ return <main>{Object.keys(Primitive).join(',')}</main>; }`,
+      [`/src/unison/ui/radix/${primitive}.ts`]: `export * from '@radix-ui/react-${primitive}';`,
       '/src/index.css': ':root { --primary: 0 0% 10%; }',
     }, { strict: true, entryPoint: '/src/App.tsx' });
     const result = getDependenciesForSandpack(prepared, {}, { entryPoints: ['/index.tsx'] });
 
-    expect(prepared['/unison/ui/radix/dialog.ts']).toContain("export * from '../../../radix-shim';");
-    expect(result.dependencies['@radix-ui/react-dialog']).toBeUndefined();
+    expect(prepared[`/unison/ui/radix/${primitive}.ts`]).toContain(`export * from '@radix-ui/react-${primitive}';`);
+    expect(result.dependencies[`@radix-ui/react-${primitive}`]).toBe(version);
     expect(result.dependencies['@swc/helpers']).toBeUndefined();
   }, 20000);
 
