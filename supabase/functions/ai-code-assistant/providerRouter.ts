@@ -138,8 +138,28 @@ const MODELS = {
   gpt4o: { id: "openai/gpt-5", label: "GPT-5" },
 } as const;
 
+/**
+ * Hard per-model completion-token ceilings enforced by the providers.
+ * Exceeding these returns a 400 (`max_tokens is too large`) before any tokens
+ * are generated, so every ModelSpec is clamped at construction time.
+ */
+const MODEL_COMPLETION_TOKEN_CAP: Record<string, number> = {
+  "openai/gpt-4.1": 32768,
+  "openai/gpt-5": 128000,
+  "openai/gpt-5-mini": 128000,
+  "google/gemini-2.5-flash-lite": 8192,
+  "google/gemini-2.5-flash": 65536,
+  "google/gemini-3.6-flash": 65536,
+  "google/gemini-2.5-pro": 65536,
+};
+
+export function clampModelMaxTokens(modelId: string, maxTokens: number): number {
+  const cap = MODEL_COMPLETION_TOKEN_CAP[modelId] ?? 32768;
+  return Math.max(1000, Math.min(maxTokens, cap));
+}
+
 function m(spec: typeof MODELS[keyof typeof MODELS], maxTokens: number): ModelSpec {
-  return { id: spec.id, maxTokens, label: spec.label };
+  return { id: spec.id, maxTokens: clampModelMaxTokens(spec.id, maxTokens), label: spec.label };
 }
 
 /**
@@ -354,7 +374,7 @@ export function buildProviderPlan(
       const tokens = overrides.maxTokens ?? plan.gatewayModels[0]?.maxTokens ?? 32000;
       const modelId = overrides.selectedModelId;
       const label = modelId.split("/").pop() ?? modelId;
-      const userModel: ModelSpec = { id: modelId, maxTokens: tokens, label };
+      const userModel: ModelSpec = { id: modelId, maxTokens: clampModelMaxTokens(modelId, tokens), label };
       // A focused isolated-page completion gets ONE model with its FULL
       // per-model timeout — appending fallbacks here means the provider loop
       // divides the already-short browser budget across two model attempts
