@@ -26,7 +26,7 @@ import { normalizeLauncherFiles, prepareSandpackFiles } from '@/utils/sandpackFi
 import { generateCanonicalRouter } from '@/utils/topologyRouterGenerator';
 import { applyWizardBindingsToVfs, type WizardBindingApplicationResult } from './wizardBindingBridge';
 import { preflightNavWiring } from './preflightNavWiring';
-import { runPreflightRepair, runPreflightRepairSteps } from './aiSitePreflightRepair';
+import { validateSiteSyntax, validateSiteSyntaxSteps } from './siteSyntaxValidation';
 import { getIndustryIntentProfile } from '@/platform/core/industryIntentProfiles';
 import { PreviewPipelineError } from './previewPipelineError';
 import type { WizardInteractionManifest } from './wizardInteractionEnrichment';
@@ -868,9 +868,9 @@ function* buildCanonicalLaunchArtifactSteps(
   // Catch any syntax damage introduced by binding/nav-wiring attribute
   // injection before files reach the preview iframe.
   yield;
-  let finalRepair: ReturnType<typeof runPreflightRepair> | null = null;
+  let finalRepair: ReturnType<typeof validateSiteSyntax> | null = null;
   try {
-    finalRepair = yield* runPreflightRepairSteps(filesAfterStrip, {
+    finalRepair = yield* validateSiteSyntaxSteps(filesAfterStrip, {
       context: { industry: input.industry, brand: input.businessName },
       // Strict launch paths never accept an industry template section in place
       // of an unparseable AI file — the launch fails and a repair turn runs.

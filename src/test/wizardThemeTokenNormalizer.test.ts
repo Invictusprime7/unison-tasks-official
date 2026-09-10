@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { ALL_COMPOSITIONS } from '@/sections/templates';
-import { runPreflightRepair } from '@/services/aiSitePreflightRepair';
+import { validateSiteSyntax } from '@/services/siteSyntaxValidation';
 import { normalizeWizardThemeTokens } from '@/utils/wizardThemeTokenNormalizer';
 
 describe('normalizeWizardThemeTokens', () => {
@@ -20,7 +20,7 @@ describe('normalizeWizardThemeTokens', () => {
     expect(normalized).toContain('`hsl(${value})`');
     expect(normalized).toContain('const palette = "hsl(var(--primary))"');
     expect(normalized).toContain('hsl( var(--foreground) / .8)');
-    expect(runPreflightRepair(result.files).quarantinedCount).toBe(0);
+    expect(validateSiteSyntax(result.files).quarantinedCount).toBe(0);
   });
 
   it('repairs Lane B visual literals without touching the authoritative Stage 4b stylesheet', () => {
@@ -63,6 +63,6 @@ describe('normalizeWizardThemeTokens', () => {
 
     expect(normalized.changedFiles).not.toContain('/src/components/theme.ts');
     expect(normalized.changedFiles).not.toContain('/src/components/Navbar.tsx');
-    expect(runPreflightRepair(sharedThemeFiles).quarantinedCount).toBe(0);
+    expect(validateSiteSyntax(sharedThemeFiles).quarantinedCount).toBe(0);
   });
 });

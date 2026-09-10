@@ -3,17 +3,17 @@
  * Web Builder's AI/template apply paths.
  *
  * Order of operations (canonicalLaunchVfs delegates its converged VFS here):
- *   1. Early syntax repair  (runPreflightRepair)
+ *   1. Early syntax repair  (validateSiteSyntax)
  *   2. Nav-intent stamping  (preflightNavWiring)
  *   3. Industry forbidden-intent stripping
- *   4. Final syntax repair  (runPreflightRepair) — catches damage from steps 2-3
+ *   4. Final syntax repair  (validateSiteSyntax) — catches damage from steps 2-3
  *
  * Repair transforms are best-effort; safety and runtime violations are returned
  * to the caller so the launcher/commit boundary can enforce them before seal.
  */
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import { getIndustryIntentProfile } from '@/platform/core/industryIntentProfiles';
-import { runPreflightRepair } from './aiSitePreflightRepair';
+import { validateSiteSyntax } from './siteSyntaxValidation';
 import { preflightNavWiring } from './preflightNavWiring';
 import { closeRequiredIndustryIntents } from './requiredIntentClosure';
 import { runExperiencePreflight, stampExperienceManifest } from './experiencePreflightGate';
@@ -74,7 +74,7 @@ export function runFullPreflight(
   let files = inputFiles;
   let earlyRepair: 'ok' | 'skipped' | 'failed' = 'skipped';
   try {
-    const r = runPreflightRepair(files, { context: ctx });
+    const r = validateSiteSyntax(files, { context: ctx });
     files = r.files;
     earlyRepair = 'ok';
   } catch (e) {
@@ -167,7 +167,7 @@ export function runFullPreflight(
   // 7) Final syntax repair (catches damage from steps 2-4)
   let finalRepair: 'ok' | 'skipped' | 'failed' = 'skipped';
   try {
-    const r = runPreflightRepair(files, { context: ctx });
+    const r = validateSiteSyntax(files, { context: ctx });
     files = r.files;
     finalRepair = 'ok';
   } catch (e) {

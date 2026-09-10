@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runPreflightRepair } from '@/services/aiSitePreflightRepair';
+import { validateSiteSyntax } from '@/services/siteSyntaxValidation';
 
 describe('AI site preflight repair', () => {
   it('keeps a complete default-exported page when Lane B appends a trailing token', () => {
@@ -13,7 +13,7 @@ export default function Home() {
 }
 )
 `;
-    const repaired = runPreflightRepair({ '/src/pages/Home.tsx': source });
+    const repaired = validateSiteSyntax({ '/src/pages/Home.tsx': source });
 
     expect(repaired.reports[0]).toMatchObject({ status: 'repaired' });
     expect(repaired.reports[0].passes).toContain('trim-parseable-trailing-suffix');
@@ -32,7 +32,7 @@ export default function Faq() {
   );
 }
 `;
-    const repaired = runPreflightRepair({ '/src/pages/Faq.tsx': source });
+    const repaired = validateSiteSyntax({ '/src/pages/Faq.tsx': source });
 
     expect(repaired.reports[0]).toMatchObject({ status: 'repaired' });
     expect(repaired.reports[0].passes).toContain('close-unterminated-block-comment');
@@ -41,7 +41,7 @@ export default function Faq() {
   });
 
   it('does not truncate a malformed page when no safe parseable prefix exists', () => {
-    const repaired = runPreflightRepair({
+    const repaired = validateSiteSyntax({
       '/src/pages/Home.tsx': 'export default function Home() { return <main><h1>Portfolio</h1>',
     });
 

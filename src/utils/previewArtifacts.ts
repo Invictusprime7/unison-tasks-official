@@ -5,7 +5,7 @@ import { applySandpackRuntimeShims, prepareSandpackFiles } from '@/utils/sandpac
 import { runPrepareSandpackFilesOffThread } from '@/services/strictImportContractRuntime';
 import { SANDPACK_PREVIEW_CORE_DEPENDENCIES } from '@/utils/sandpackDependencies';
 import { applyUnisonCanonicals } from '@/services/unisonCanonicalRegistry';
-import { runPreflightRepair } from '@/services/aiSitePreflightRepair';
+import { validateSiteSyntax } from '@/services/siteSyntaxValidation';
 import {
   assertNoMinimalFallbackPreview,
   assertSnapshotPreviewFileCoverage,
@@ -169,7 +169,7 @@ function finishPreviewArtifacts(
     sandpackFiles = stampedFiles;
     assertNoMinimalFallbackPreview(sandpackFiles, wizardResolution, 'Preview artifact integrity gate');
   } else {
-    const gate = runPreflightRepair(stampedFiles, { context: { industry, brand } });
+    const gate = validateSiteSyntax(stampedFiles, { context: { industry, brand } });
     sandpackFiles = gate.files;
     if (gate.repairedCount > 0 || gate.quarantinedCount > 0) {
       console.warn('[buildPreviewArtifacts] Preview parse gate:', {
