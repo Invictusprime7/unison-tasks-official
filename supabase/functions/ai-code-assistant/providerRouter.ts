@@ -374,7 +374,7 @@ export function buildProviderPlan(
       const tokens = overrides.maxTokens ?? plan.gatewayModels[0]?.maxTokens ?? 32000;
       const modelId = overrides.selectedModelId;
       const label = modelId.split("/").pop() ?? modelId;
-      const userModel: ModelSpec = { id: modelId, maxTokens: tokens, label };
+      const userModel: ModelSpec = { id: modelId, maxTokens: clampModelMaxTokens(modelId, tokens), label };
       // A focused isolated-page completion gets ONE model with its FULL
       // per-model timeout — appending fallbacks here means the provider loop
       // divides the already-short browser budget across two model attempts
