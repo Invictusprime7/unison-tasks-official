@@ -264,16 +264,6 @@ export function buildGeneratedSiteRuntimeManifestModule(manifest: GeneratedSiteR
   return `export const GENERATED_SITE_RUNTIME_MANIFEST = ${JSON.stringify(manifest, null, 2)} as const;\n`;
 }
 
-function rebaseAppModuleForHomePage(content: string): string {
-  return content.replace(
-    /(from\s+['"])\.\/([^'"]+['"])/g,
-    (_match, prefix, target) => `${prefix}../${target}`,
-  ).replace(
-    /(import\s+['"])\.\/([^'"]+['"])/g,
-    (_match, prefix, target) => `${prefix}../${target}`,
-  );
-}
-
 function looksLikeCanonicalRouter(content: string): boolean {
   return /react-router-dom|<Routes\b|<Route\b|BrowserRouter|HashRouter|createBrowserRouter/.test(content);
 }
@@ -876,32 +866,28 @@ function* buildCanonicalLaunchArtifactSteps(
   for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
   Object.assign(mergedFiles, convergedPreflight.files);
 
-  // Preflight repair is the final source-writing stage. Re-apply Stage 4b's
-  // token contract if it touched source, then prove a validation-only pass
-  // would make no further edits before the snapshot can be sealed.
+  // Canonical projections are the final source-writing stage. Re-apply Stage
+  // 4b's token contract if they touched source, then always prove an immutable
+  // acceptance pass before the snapshot can be sealed.
   if (convergedPreflight.mutated) {
     const refinalized = normalizeWizardThemeTokens(mergedFiles);
     for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
     Object.assign(mergedFiles, refinalized.files);
-    const acceptance = runFullPreflight(mergedFiles, {
-      siteBundleSnapshot: input.siteBundleSnapshot,
-      industry: input.industry || input.siteBundleSnapshot?.industry,
-      brand: input.businessName || undefined,
-      mode: 'acceptance',
-    });
-    const unresolvedAcceptance = [
-      ...acceptance.mutatedFiles,
-      ...acceptance.stages.experienceGate.violations,
-    ];
-    if (unresolvedAcceptance.length > 0) {
-      throw new PreviewPipelineError(
-        'vfs',
-        `Generated site still requires mutation after Stage 4b finalization: ${unresolvedAcceptance.join(' | ')}`,
-        { blockedFiles: acceptance.mutatedFiles, recoverableByRelaunch: true },
-      );
-    }
-    convergedPreflight = acceptance;
   }
+  const acceptance = runFullPreflight(mergedFiles, {
+    siteBundleSnapshot: input.siteBundleSnapshot,
+    industry: input.industry || input.siteBundleSnapshot?.industry,
+    brand: input.businessName || undefined,
+    mode: 'acceptance',
+  });
+  if (acceptance.violations.length > 0) {
+    throw new PreviewPipelineError(
+      'vfs',
+      `Generated site failed immutable acceptance after Stage 4b finalization: ${acceptance.violations.join(' | ')}`,
+      { blockedFiles: acceptance.mutatedFiles, recoverableByRelaunch: true },
+    );
+  }
+  convergedPreflight = acceptance;
 
   if (convergedPreflight.stages.experienceGate.violations.length > 0) {
     throw new PreviewPipelineError(
