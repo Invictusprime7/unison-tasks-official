@@ -25,6 +25,8 @@ import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToT
 import { PreviewPipelineError } from '@/services/previewPipelineError';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { getVariantsForSection } from '@/sections/variants/registry';
+import type { SiteConfiguration } from '@/platform/core/resolvedComposition';
+import type { WizardGenerationBrief, WizardHeroContract } from '@/services/wizardGenerationBrief';
 
 /**
  * Options shared by the scaffolding entry points.
@@ -44,6 +46,8 @@ export interface ScaffoldOptions {
   strictWizardComposition?: boolean;
   /** Canonical, opt-in visual recipes projected into generated page modules. */
   designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed'>>;
+  siteConfiguration?: SiteConfiguration;
+  generationBrief?: WizardGenerationBrief;
 }
 
 
@@ -387,6 +391,9 @@ function buildRoleComposition(
     DEFAULT_ROLE_SECTION_POOL[role] ??
     DEFAULT_ROLE_SECTION_POOL.custom;
   const allowedTypes = new Set<SectionType>(poolList);
+  const configuredOrder = options?.siteConfiguration?.pages.find((configured) => configured.path === page.route)?.sections
+    ?? page.expectedSections;
+  const routeBrief = options?.generationBrief?.routes.find((route) => route.path === page.filePath);
   const alternateMedia = !page.isHome ? collectAlternateHeroMedia(template) : [];
   const alternateHeroMedia = alternateMedia[stableStringHash(page.id) % Math.max(1, alternateMedia.length)];
 
@@ -416,6 +423,9 @@ function buildRoleComposition(
         else props.backgroundImage = alternateHeroMedia;
       }
     }
+    if (source.type === 'hero' && routeBrief) {
+      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan, alternateHeroMedia);
+    }
     filtered.push({
       ...source,
       id: definition ? `${page.id}-${source.id}` : `${page.id}-${source.type}-${idx}`,
@@ -428,6 +438,17 @@ function buildRoleComposition(
   for (const source of template.sections) {
     if (!definition && !allowedTypes.has(source.type)) continue;
     appendSection(source);
+  }
+
+  if (configuredOrder.length > 0) {
+    const order = new Map(configuredOrder.map((type, index) => [type, index]));
+    filtered.sort((left, right) => {
+      const leftChrome = left.type === 'navbar' ? -2 : left.type === 'hero' ? -1 : left.type === 'footer' ? 10_000 : undefined;
+      const rightChrome = right.type === 'navbar' ? -2 : right.type === 'hero' ? -1 : right.type === 'footer' ? 10_000 : undefined;
+      const leftIndex = leftChrome ?? order.get(left.type) ?? 5_000;
+      const rightIndex = rightChrome ?? order.get(right.type) ?? 5_000;
+      return leftIndex - rightIndex;
+    });
   }
 
   if (!definition && !page.isHome && filtered.length < MINIMUM_ROUTE_BODY_SECTIONS) {
@@ -457,6 +478,43 @@ function buildRoleComposition(
     compositionAlternativeId: selectedAlternative?.id,
     sections: filtered,
   };
+}
+
+function applyRouteHeroContract(
+  props: Record<string, unknown>,
+  contract: WizardHeroContract,
+  page: PageRouteNode,
+  plan: GeneratedSitePlan,
+  alternateHeroMedia?: string,
+): void {
+  const executableLayout = contract.layout === 'anchored'
+    ? 'split'
+    : contract.layout === 'intro'
+      ? 'page-title'
+      : contract.layout;
+  props.layout = executableLayout;
+  props.badge = typeof props.badge === 'string' && props.badge.trim() ? props.badge : page.title;
+  props.headline = page.isHome ? props.headline : page.title;
+  props.subheadline = typeof props.subheadline === 'string' && props.subheadline.trim()
+    ? props.subheadline
+    : `Discover ${page.title.toLowerCase()} from ${plan.businessName}.`;
+  const ctas = Array.isArray(props.ctas) ? [...props.ctas] as Array<Record<string, unknown>> : [];
+  if (ctas.length === 0) ctas.push({ label: 'Get started', href: '#contact', intent: 'contact.submit', variant: 'primary' });
+  if (!ctas[0].intent) ctas[0] = { ...ctas[0], intent: 'nav.goto' };
+  if (ctas.length < 2) ctas.push({ label: 'View home', href: '/', intent: 'nav.goto', variant: 'outline' });
+  if (!ctas[1].intent) ctas[1] = { ...ctas[1], intent: 'nav.goto' };
+  props.ctas = ctas.slice(0, 2);
+  if (contract.mediaTreatment !== 'text-only') {
+    const media = (typeof props.image === 'string' && props.image)
+      || (typeof props.backgroundImage === 'string' && props.backgroundImage)
+      || alternateHeroMedia;
+    if (media) {
+      if (executableLayout === 'full-bleed') props.backgroundImage = media;
+      else props.image = media;
+    }
+  }
+  props.mediaFocal = contract.mediaFocal;
+  props.heroArchetype = contract.archetype;
 }
 
 function stableStringHash(value: string): number {
