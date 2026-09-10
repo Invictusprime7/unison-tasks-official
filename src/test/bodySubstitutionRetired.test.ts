@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { runPreflightRepair } from '@/services/aiSitePreflightRepair';
+import { validateSiteSyntax } from '@/services/siteSyntaxValidation';
 import { createLaunchRun, isLaunchFatalError } from '@/services/launch/launchRun';
 import { findBodySubstitutionViolations } from '../../scripts/lint-pipeline-bypass.mjs';
 
@@ -12,23 +12,13 @@ import { findBodySubstitutionViolations } from '../../scripts/lint-pipeline-bypa
 describe('body-substitution authorities are retired', () => {
   it('leaves an unparseable file untouched instead of swapping in a template section', () => {
     const broken = 'export default function Home(){ return <main>Unterminated';
-    const result = runPreflightRepair(
+    const result = validateSiteSyntax(
       { '/src/pages/Home.tsx': broken },
-      { allowQuarantine: false, context: { industry: 'salon', brand: 'Acme' } },
     );
 
-    expect(result.quarantinedCount).toBe(1);
+    expect(result.invalidCount).toBe(1);
     expect(result.files['/src/pages/Home.tsx']).toBe(broken);
     expect(result.files['/src/pages/Home.tsx']).not.toContain('This page could not be compiled');
-  });
-
-  it('still quarantines for non-strict callers that opt in', () => {
-    const result = runPreflightRepair(
-      { '/src/pages/Home.tsx': 'export default function Home(){ return <main>Unterminated' },
-      { context: { industry: 'salon', brand: 'Acme' } },
-    );
-    expect(result.quarantinedCount).toBe(1);
-    expect(result.files['/src/pages/Home.tsx']).toContain('This page could not be compiled');
   });
 
   it('makes authorship stage failures fatal even when a fallback is offered', async () => {
@@ -72,14 +62,12 @@ describe('body-substitution authorities are retired', () => {
   it('fails the pipeline lint when a call site re-enables a substitution path', () => {
     const source = [
       'const artifacts = build({ allowCanonicalPageFallback: true });',
-      'const repaired = runPreflightRepair(files, { allowQuarantine: true });',
       'prepareSandpackFiles(files, { failOnMissingImport: false });',
     ].join('\n');
 
     const violations = findBodySubstitutionViolations(source, 'source.ts');
     expect(violations.map((v) => v.symbol)).toEqual([
       'allowCanonicalPageFallback: true',
-      'allowQuarantine: true',
       'failOnMissingImport: false',
     ]);
   });

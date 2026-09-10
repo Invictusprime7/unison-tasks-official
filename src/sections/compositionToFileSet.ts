@@ -40,7 +40,8 @@ import { getLayoutForVariantId, getVariantById, getVariantsForSection } from '@/
 import type { VariantId } from '@/sections/variants';
 import heroPageIntroSource from '@/sections/variants/hero/HeroPageIntro.tsx?raw';
 import stylexRecipes from './recipes/stylexRecipes.generated.json';
-import { clampVariantToPack, resolveArtDirectionPack, resolveHeroPresentation } from '@/sections/variants';
+import { clampVariantToPack, resolveHeroPresentation } from '@/sections/variants';
+import { resolveIndustryArtDirectionPack } from '@/services/designImplementationRegistry';
 import type { HeroLayoutId } from '@/sections/variants';
 
 /**
@@ -1308,7 +1309,7 @@ function applyDesignVariants(
     || designIntervention?.industry
     || designIntervention?.themePresetId
   )
-    ? resolveArtDirectionPack({
+    ? resolveIndustryArtDirectionPack({
         sealedPackId: designIntervention?.artDirectionPackId,
         industry: designIntervention?.industry,
         themePresetId: designIntervention?.themePresetId,

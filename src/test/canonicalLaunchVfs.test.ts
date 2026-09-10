@@ -70,18 +70,20 @@ function createSnapshot(): SiteBundleSnapshot {
 }
 
 describe("buildCanonicalLaunchArtifacts", () => {
-  it("runs one repair pass followed by one mutation-free acceptance pass", () => {
+  it("runs one canonicalization pass followed by one immutable acceptance pass", () => {
     const source = readFileSync("src/services/canonicalLaunchVfs.ts", "utf8");
     const convergenceStart = source.indexOf("// ── Canonical convergence preflight");
     const compilerGateStart = source.indexOf("// ── M4 compiler gate", convergenceStart);
     const convergence = source.slice(convergenceStart, compilerGateStart);
 
-    expect(convergence.match(/mode: 'repair'/g)).toHaveLength(1);
+    expect(convergence.match(/mode: 'canonicalize'/g)).toHaveLength(1);
     expect(convergence.match(/mode: 'acceptance'/g)).toHaveLength(1);
     expect(convergence).toContain("Object.assign(mergedFiles, refinalized.files)");
     expect(convergence.match(/Object\.assign\(mergedFiles, convergedPreflight\.files\)/g)).toHaveLength(1);
     expect(convergence.indexOf("Object.assign(mergedFiles, convergedPreflight.files)"))
       .toBeLessThan(convergence.indexOf("if (convergedPreflight.mutated)"));
+    expect(convergence.indexOf("const acceptance = runFullPreflight"))
+      .toBeGreaterThan(convergence.indexOf("if (convergedPreflight.mutated)"));
   });
 
   it("never injects router-level chrome so the page body stays the only chrome authority", () => {
@@ -109,7 +111,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(merged["/src/App.tsx"]).not.toContain("<SiteFooter />");
   });
 
-  it("uses the snapshot fallback policy when accepting generated wizard pages", () => {
+  it("rejects minimal generated wizard pages without substituting snapshot content", () => {
     const snapshot = createSnapshot();
     snapshot.vfsFiles["/src/pages/Home.tsx"] =
       "export default function Home(){ return <main>Canonical home</main>; }";
@@ -122,47 +124,6 @@ describe("buildCanonicalLaunchArtifacts", () => {
       snapshot.vfsFiles,
       snapshot,
     )).toThrow("minimal/fallback scaffold");
-  });
-
-  it("seals the canonical page after repairing unusable generated output", () => {
-    const snapshot = createSnapshot();
-    snapshot.vfsFiles["/src/pages/Home.tsx"] =
-      "export default function Home(){ return <main><h1>Canonical generated composition</h1><section>Ready for editing in Web Builder.</section></main>; }";
-
-    const artifacts = buildCanonicalLaunchArtifacts({
-      generatedFiles: {
-        "/src/pages/Home.tsx": "export default function Home(){ return <main>Placeholder</main>; }",
-      },
-      preferredEntryPoint: "/src/App.tsx",
-      siteBundleSnapshot: snapshot,
-      compiledPlayground: { vfsFiles: snapshot.vfsFiles },
-      themePresetId: "modern",
-      allowCanonicalPageFallback: true,
-      previewFirst: true,
-      strictPreflight: true,
-    });
-
-    expect(artifacts.files["/src/pages/Home.tsx"]).toContain("Canonical generated composition");
-    expect(artifacts.siteBundleSnapshot?.meta.seal).toBeDefined();
-    expect(artifacts.visualQuality).toBeDefined();
-    expect(artifacts.runtimeCompatibility).toBeDefined();
-  });
-
-  it("uses a generated single-file App as Home in preview-first mode", () => {
-    const snapshot = createSnapshot();
-    snapshot.vfsFiles["/src/pages/Home.tsx"] =
-      "export default function Home(){ return <main>Canonical home composition</main>; }";
-    const generatedApp = `export default function App(){ return <main><h1>AI generated home</h1><section>${"Generated business content. ".repeat(30)}</section></main>; }`;
-
-    const merged = mergeGeneratedVfsWithCanonicalSnapshot(
-      { "/src/App.tsx": generatedApp },
-      snapshot.vfsFiles,
-      snapshot,
-      { allowCanonicalPageFallback: true, preferGeneratedAppAsHome: true },
-    );
-
-    expect(merged["/src/pages/Home.tsx"]).toContain("AI generated home");
-    expect(merged["/src/App.tsx"]).toContain("react-router-dom");
   });
 
   it("preserves snapshot-owned UI foundation files when merging generated output", () => {
@@ -240,27 +201,6 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(merged["/.unison/compositions/src/pages/Home.json"]).toContain("hero:full-bleed");
   });
 
-  it("never substitutes the canonical page body unless a caller explicitly opts in", () => {
-    const snapshot = createSnapshot();
-    snapshot.vfsFiles["/src/pages/Home.tsx"] =
-      "export default function Home(){ return <main>Canonical composed home</main>; }";
-
-    // Default (flag omitted) is now strict: no body substitution.
-    const defaults = mergeGeneratedVfsWithCanonicalSnapshot({}, snapshot.vfsFiles, snapshot);
-    expect(defaults["/src/pages/Home.tsx"]).toBeUndefined();
-
-    const strict = mergeGeneratedVfsWithCanonicalSnapshot({}, snapshot.vfsFiles, snapshot, {
-      allowCanonicalPageFallback: false,
-    });
-    expect(strict["/src/pages/Home.tsx"]).toBeUndefined();
-
-    // Opt-in remains only for non-authoring importers.
-    const optedIn = mergeGeneratedVfsWithCanonicalSnapshot({}, snapshot.vfsFiles, snapshot, {
-      allowCanonicalPageFallback: true,
-    });
-    expect(optedIn["/src/pages/Home.tsx"]).toContain("Canonical composed home");
-  });
-
   it("uses LaunchState VFS when the builder preview mounts before VFS import", () => {
     const launchState = createLaunchState({
       systemType: "agency",
@@ -289,7 +229,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     const snapshot = createSnapshot();
     const artifacts = buildCanonicalLaunchArtifacts({
       generatedFiles: {
-        "/src/App.tsx": "import { motion } from 'framer-motion';\nexport default function App(){ return <motion.div>Hello</motion.div>; }",
+        "/src/pages/Home.tsx": "import { motion } from 'framer-motion';\nexport default function Home(){ return <motion.div>Hello</motion.div>; }",
       },
       preferredEntryPoint: "/src/App.tsx",
       siteBundleSnapshot: snapshot,
@@ -516,7 +456,6 @@ describe("buildCanonicalLaunchArtifacts", () => {
       preferredEntryPoint: "/src/App.tsx",
       siteBundleSnapshot: snapshot,
       compiledPlayground: { vfsFiles: snapshot.vfsFiles },
-      allowCanonicalPageFallback: false,
       businessId: "biz_strict",
       projectId: "project_strict",
       systemType: "agency",
@@ -531,7 +470,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
   });
 
 
-  it("refuses to persist a quarantined wizard page when strict preflight is enabled", () => {
+  it("refuses to persist a syntactically invalid wizard page", () => {
     const snapshot = createSnapshot();
 
     expect(() => buildCanonicalLaunchArtifacts({
@@ -543,7 +482,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
       compiledPlayground: { vfsFiles: snapshot.vfsFiles },
       themePresetId: "modern",
       strictPreflight: true,
-    })).toThrow(/refusing to persist quarantine scaffolds.*Unterminated JSX contents/);
+    })).toThrow(/failed immutable syntax validation/i);
   });
 
   it('refuses to persist a Wizard VFS with an unresolved JSX import contract', () => {

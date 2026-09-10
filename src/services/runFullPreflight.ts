@@ -3,17 +3,17 @@
  * Web Builder's AI/template apply paths.
  *
  * Order of operations (canonicalLaunchVfs delegates its converged VFS here):
- *   1. Early syntax repair  (runPreflightRepair)
+ *   1. Immutable syntax validation
  *   2. Nav-intent stamping  (preflightNavWiring)
  *   3. Industry forbidden-intent stripping
- *   4. Final syntax repair  (runPreflightRepair) — catches damage from steps 2-3
+ *   4. Immutable final syntax validation — catches damage from steps 2-3
  *
- * Repair transforms are best-effort; safety and runtime violations are returned
- * to the caller so the launcher/commit boundary can enforce them before seal.
+ * Canonical intent/runtime projections may add metadata or attributes. Source
+ * syntax is never repaired here: malformed compiler output is rejected.
  */
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import { getIndustryIntentProfile } from '@/platform/core/industryIntentProfiles';
-import { runPreflightRepair } from './aiSitePreflightRepair';
+import { validateSiteSyntax } from './siteSyntaxValidation';
 import { preflightNavWiring } from './preflightNavWiring';
 import { closeRequiredIndustryIntents } from './requiredIntentClosure';
 import { runExperiencePreflight, stampExperienceManifest } from './experiencePreflightGate';
@@ -34,11 +34,11 @@ export interface RunFullPreflightOptions {
   industry?: string;
   brand?: string;
   /**
-   * `repair` (default) may mutate source. `acceptance` is validation-only:
-   * nothing is written back, and any file the repair pipeline *would* have
+   * `canonicalize` (default) applies deterministic canonical projections.
+   * `acceptance` is validation-only: nothing is written back, and any file the pipeline *would* have
    * changed is reported as a violation instead.
    */
-  mode?: 'repair' | 'acceptance';
+  mode?: 'canonicalize' | 'acceptance';
 }
 
 export interface RunFullPreflightResult {
@@ -48,15 +48,15 @@ export interface RunFullPreflightResult {
   mutatedFiles: string[];
   /** Acceptance mode: files that still require mutation and cannot be sealed. */
   violations: string[];
-  mode: 'repair' | 'acceptance';
+  mode: 'canonicalize' | 'acceptance';
   stages: {
-    earlyRepair: 'ok' | 'skipped' | 'failed';
+    syntaxValidation: 'ok' | 'failed';
     navWiring: 'ok' | 'skipped' | 'failed';
     forbiddenStrip: { stripped: number; forbidden: string[] };
     requiredIntentClosure: { injected: string[]; missing: string[] };
     experienceGate: { instances: number; heavyInstances: number; violations: string[] };
     runtimeCompatibility: RuntimeCompatibilityReport;
-    finalRepair: 'ok' | 'skipped' | 'failed';
+    finalSyntaxValidation: 'ok' | 'failed';
   };
   /** Compositional quality report; canonical launch decides signed-contract acceptance. */
   visualQuality: VisualQualityReport;
@@ -66,21 +66,16 @@ export function runFullPreflight(
   inputFiles: Record<string, string>,
   options: RunFullPreflightOptions = {},
 ): RunFullPreflightResult {
-  const { siteBundleSnapshot = null, industry, brand, mode = 'repair' } = options;
-  const ctx = { industry, brand };
+  const { siteBundleSnapshot = null, industry, mode = 'canonicalize' } = options;
 
 
-  // 1) Early syntax repair
+  // 1) Immutable syntax validation
   let files = inputFiles;
-  let earlyRepair: 'ok' | 'skipped' | 'failed' = 'skipped';
-  try {
-    const r = runPreflightRepair(files, { context: ctx });
-    files = r.files;
-    earlyRepair = 'ok';
-  } catch (e) {
-    console.warn('[runFullPreflight] early repair failed', e);
-    earlyRepair = 'failed';
-  }
+  const initialSyntax = validateSiteSyntax(files);
+  const initialSyntaxViolations = initialSyntax.reports
+    .filter((report) => report.status === 'invalid')
+    .map((report) => `${report.path}: ${report.finalError || 'syntax error'}`);
+  const syntaxValidation: 'ok' | 'failed' = initialSyntaxViolations.length === 0 ? 'ok' : 'failed';
 
   // 2) Nav-intent stamping (requires snapshot)
   let navWiring: 'ok' | 'skipped' | 'failed' = 'skipped';
@@ -164,16 +159,12 @@ export function runFullPreflight(
     console.warn('[runFullPreflight] runtime compatibility blockers', runtimeCompatibility.blockers);
   }
 
-  // 7) Final syntax repair (catches damage from steps 2-4)
-  let finalRepair: 'ok' | 'skipped' | 'failed' = 'skipped';
-  try {
-    const r = runPreflightRepair(files, { context: ctx });
-    files = r.files;
-    finalRepair = 'ok';
-  } catch (e) {
-    console.warn('[runFullPreflight] final repair failed', e);
-    finalRepair = 'failed';
-  }
+  // 7) Immutable final syntax validation (catches projection defects)
+  const finalSyntax = validateSiteSyntax(files);
+  const finalSyntaxViolations = finalSyntax.reports
+    .filter((report) => report.status === 'invalid')
+    .map((report) => `${report.path}: ${report.finalError || 'syntax error'}`);
+  const finalSyntaxValidation: 'ok' | 'failed' = finalSyntaxViolations.length === 0 ? 'ok' : 'failed';
 
   // 8) Visual quality evaluation — COMPOSITIONAL, non-destructive. It never
   // mutates source and never triggers a fallback; it only reports, and may
@@ -186,7 +177,7 @@ export function runFullPreflight(
         (siteBundleSnapshot?.meta?.generationBrief?.routes ?? []).map((route) => [route.path, route.depth.minSections]),
       ),
     });
-    if (mode === 'repair' && visualQuality.refinementDirective) {
+    if (mode === 'canonicalize' && visualQuality.refinementDirective) {
       console.info('[runFullPreflight] visual quality findings', visualQuality.findings);
     }
   } catch (e) {
@@ -212,10 +203,16 @@ export function runFullPreflight(
       files: inputFiles,
       mutated: false,
       mutatedFiles: [],
-      violations: [...mutatedFiles, ...experience.violations, ...runtimeCompatibility.blockers],
+      violations: [
+        ...initialSyntaxViolations,
+        ...finalSyntaxViolations,
+        ...mutatedFiles,
+        ...experience.violations,
+        ...runtimeCompatibility.blockers,
+      ],
       mode,
       stages: {
-        earlyRepair,
+        syntaxValidation,
         navWiring,
         forbiddenStrip: { stripped, forbidden },
         requiredIntentClosure: {
@@ -228,7 +225,7 @@ export function runFullPreflight(
           violations: experience.violations,
         },
         runtimeCompatibility,
-        finalRepair,
+        finalSyntaxValidation,
       },
       visualQuality,
     };
@@ -238,10 +235,10 @@ export function runFullPreflight(
     files,
     mutated,
     mutatedFiles,
-    violations: [],
+    violations: [...initialSyntaxViolations, ...finalSyntaxViolations],
     mode,
     stages: {
-      earlyRepair,
+      syntaxValidation,
       navWiring,
       forbiddenStrip: { stripped, forbidden },
       requiredIntentClosure: {
@@ -254,7 +251,7 @@ export function runFullPreflight(
         violations: experience.violations,
       },
       runtimeCompatibility,
-      finalRepair,
+      finalSyntaxValidation,
     },
     visualQuality,
   };

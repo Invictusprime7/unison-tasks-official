@@ -5,7 +5,7 @@ import {
   parseStructuredWizardFaqContent,
   selectIndustryIntentForIsolatedPage,
 } from '@/services/wizardPageCompletionRecovery';
-import { runPreflightRepair } from '@/services/aiSitePreflightRepair';
+import { validateSiteSyntax } from '@/services/siteSyntaxValidation';
 import { assessWizardPageRoleQuality } from '@/services/wizardPageQuality';
 
 describe('isolated Wizard page completion recovery', () => {
@@ -45,7 +45,7 @@ describe('isolated Wizard page completion recovery', () => {
       role: 'faq',
     });
 
-    const syntax = runPreflightRepair({ [compiled.filePath]: compiled.source });
+    const syntax = validateSiteSyntax({ [compiled.filePath]: compiled.source });
     expect(syntax.reports[0]).toMatchObject({ status: 'clean' });
   });
 
@@ -58,7 +58,7 @@ describe('isolated Wizard page completion recovery', () => {
     });
 
     expect(compiled.source).toContain('A \\"quoted\\" studio\\nwith context');
-    const syntax = runPreflightRepair({ [compiled.filePath]: compiled.source });
+    const syntax = validateSiteSyntax({ [compiled.filePath]: compiled.source });
     expect(syntax.reports[0]).toMatchObject({ status: 'clean' });
   });
 
@@ -104,7 +104,7 @@ describe('isolated Wizard page completion recovery', () => {
     });
     expect(compiled.source).toContain('Bring us the difficult question');
     expect(compiled.source).toContain('data-faq-layout="stacked"');
-    expect(runPreflightRepair({ [compiled.filePath]: compiled.source }).reports[0].status).toBe('clean');
+    expect(validateSiteSyntax({ [compiled.filePath]: compiled.source }).reports[0].status).toBe('clean');
   });
 
   it('rejects malformed, shallow, or industry-disconnected AI FAQ content', () => {
@@ -171,6 +171,6 @@ describe('isolated Wizard page completion recovery', () => {
 
     expect(compiled.source).toMatch(vocabulary);
     expect(assessWizardPageRoleQuality(compiled.source, 'faq').ok).toBe(true);
-    expect(runPreflightRepair({ [compiled.filePath]: compiled.source }).reports[0].status).toBe('clean');
+    expect(validateSiteSyntax({ [compiled.filePath]: compiled.source }).reports[0].status).toBe('clean');
   });
 });

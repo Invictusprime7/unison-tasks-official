@@ -20,6 +20,7 @@ import { DESIGN_VOCABULARY } from '@/platform/core/designVocabulary';
 import { hashSeed } from '@/platform/core/generationSeed';
 import { getIndustryProfile } from '@/platform/core/industryMatrix';
 import {
+  ART_DIRECTION_PACKS,
   ART_DIRECTION_PACK_IDS,
   resolveArtDirectionPackId,
   type ArtDirectionPackId,
@@ -238,12 +239,17 @@ export function resolveIndustryArtDirectionPackId(input: {
   themePresetId?: string | null;
   seed?: string | number | null;
   templateId?: string | null;
+  sealedPackId?: string | null;
 }): ArtDirectionPackId {
   return resolveArtDirectionPackId({
     ...input,
     industry: input.industry ?? undefined,
     allowedPackIds: listAllowedArtDirectionPacks(input.industry),
   } as Parameters<typeof resolveArtDirectionPackId>[0]);
+}
+
+export function resolveIndustryArtDirectionPack(input: Parameters<typeof resolveIndustryArtDirectionPackId>[0]) {
+  return ART_DIRECTION_PACKS[resolveIndustryArtDirectionPackId(input)];
 }
 
 /**

@@ -225,7 +225,7 @@ function mockPipeline(files: Record<string, string>) {
 function mockPreflight(files: Record<string, string>) {
   (runFullPreflight as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
     files,
-    stages: { earlyRepair: 'ok', finalRepair: 'ok' },
+    stages: { syntaxValidation: 'ok', finalSyntaxValidation: 'ok' },
   });
 }
 
@@ -290,8 +290,8 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     vi.mocked(runFullPreflight).mockReturnValue({
       files,
       stages: {
-        earlyRepair: 'ok',
-        finalRepair: 'ok',
+        syntaxValidation: 'ok',
+        finalSyntaxValidation: 'ok',
         runtimeCompatibility: { ok: false, blockers: ['Missing canonical runtime module'] },
       },
     } as unknown as ReturnType<typeof runFullPreflight>);
@@ -304,7 +304,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       options: { dryRun: true, requirePreviewPass: true, requireReadinessPass: false },
     })).rejects.toMatchObject({ result: { status: 'rejected' } });
 
-    expect(runFullPreflight).toHaveBeenCalledTimes(2);
+    expect(runFullPreflight).toHaveBeenCalledTimes(1);
     expect(executeBackendOps).not.toHaveBeenCalled();
     expect(runtimeReconcileInvoke).not.toHaveBeenCalled();
     expect(revisionStore).toEqual([]);

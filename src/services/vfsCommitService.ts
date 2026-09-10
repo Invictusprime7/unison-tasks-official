@@ -388,8 +388,8 @@ export async function commitMutation(
   }
 
   const previewOk =
-    preflight.stages.earlyRepair !== 'failed' &&
-    preflight.stages.finalRepair !== 'failed' &&
+    preflight.stages.syntaxValidation !== 'failed' &&
+    preflight.stages.finalSyntaxValidation !== 'failed' &&
     preflight.mutated !== true &&
     preflight.stages.runtimeCompatibility?.ok !== false &&
     (preflight.violations?.length ?? 0) === 0;
@@ -486,29 +486,13 @@ export async function commitMutation(
   let runtimeReconciliationError: string | null = null;
 
 
-  // 6. Auto-repair-then-hard-reject -----------------------------------------
+  // 6. Immutable acceptance gate --------------------------------------------
   let status: 'committed' | 'rejected' = 'committed';
   let preExecutionReady = previewOk && readinessOk;
   if ((requirePreview && !previewOk) || (requireReadiness && !readinessOk)) {
-    log('repair', 'warn', 'running single auto-repair pass');
-    try {
-      preflight = runFullPreflight(files, {
-          siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as
-          | import('@/platform/core/canonicalPipeline').SiteBundleSnapshot
-          | null,
-        industry: input.options?.industry,
-        brand: input.options?.businessName,
-          mode: 'acceptance',
-      });
-      files = reviewedArtifact
-        ? preserveWizardMetadataFiles(preflight.files, workingFiles)
-        : preflight.files;
-    } catch (err) {
-      log('repair', 'error', 'auto-repair threw', String(err));
-    }
     const previewOk2 =
-      preflight.stages.earlyRepair !== 'failed' &&
-      preflight.stages.finalRepair !== 'failed' &&
+      preflight.stages.syntaxValidation !== 'failed' &&
+      preflight.stages.finalSyntaxValidation !== 'failed' &&
       preflight.mutated !== true &&
       preflight.stages.runtimeCompatibility?.ok !== false &&
       (preflight.violations?.length ?? 0) === 0;
@@ -519,7 +503,7 @@ export async function commitMutation(
       elementPreviewBlocked === 0;
     if ((requirePreview && !previewOk2) || (requireReadiness && !readinessOk2)) {
       status = 'rejected';
-      log('gate', 'error', 'hard reject after auto-repair', {
+      log('gate', 'error', 'hard reject at immutable acceptance gate', {
         previewOk: previewOk2,
         readinessOk: readinessOk2,
         publishBlockers: publishVerdict?.reasons ?? [],
