@@ -1337,9 +1337,19 @@ function applyDesignVariants(
   if (!variants?.length && !Object.keys(activeVariants || {}).length && !pack && !hasVocabulary
     && !template.sections.some(section => section.type === 'hero' && section.sourceSectionId && section.variantId)) return template;
 
+  const pageRotationKey = pageFilePath
+    ? `${designIntervention?.seed ?? ''}:${pageFilePath}`
+    : null;
+  const occurrenceByType: Record<string, number> = {};
+
   return {
     ...template,
     sections: template.sections.map((section) => {
+      const occurrence = occurrenceByType[section.type] ?? 0;
+      occurrenceByType[section.type] = occurrence + 1;
+      const rotation = pageRotationKey
+        ? compositionStableHash(`${pageRotationKey}:${section.type}:${occurrence}`)
+        : undefined;
       const activeVariantId = activeVariants?.[section.id] || (
         section.sourceSectionId && section.type !== 'hero' ? activeVariants?.[section.sourceSectionId] : undefined
       );
