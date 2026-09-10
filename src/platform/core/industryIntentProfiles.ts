@@ -221,6 +221,13 @@ export const INDUSTRY_INTENT_PROFILES: Record<string, IndustryIntentProfile> = {
       { pageRole: 'contact', section: 'contact', slot: 'form-submit', ifPageExists: true,
         label: 'Send Message', intent: 'form.open', targetRef: 'contact_form', uiAction: 'state' },
     ] },
+    'lead.capture': {
+      level: 'primary',
+      synthesize: [
+        { pageRole: 'home', section: 'cta', slot: 'primary-cta', label: 'Request an Estimate',
+          intent: 'form.open', targetRef: 'quote_form', uiAction: 'overlay' },
+      ],
+    },
     'contact.sms':        { level: 'secondary' },
     'location.directions':{ level: 'secondary', synthesize: [FOOTER_DIRECTIONS] },
     'newsletter.subscribe':{ level: 'optional', synthesize: [FOOTER_NEWSLETTER] },

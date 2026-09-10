@@ -163,7 +163,7 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     defaultCapabilities: ['booking', 'contact', 'newsletter'],
     primaryIntent: 'booking.create',
     anchorCapability: 'booking',
-    conversionJourney: ['nav.goto', 'booking.create', 'cart.add'],
+    conversionJourney: ['nav.goto', 'booking.create', 'pay.checkout'],
     allowedArtDirectionPacks: ['warm-craft', 'print-serif', 'editorial-noir', 'organic-studio', 'soft-editorial'],
     profileFields: withBase([
       { key: 'cuisine', label: 'Cuisine', type: 'text', required: true },
@@ -317,7 +317,7 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     defaultCapabilities: ['commerce', 'contact', 'newsletter'],
     primaryIntent: 'cart.add',
     anchorCapability: 'commerce',
-    conversionJourney: ['nav.goto', 'cart.add', 'cart.view', 'pay.checkout'],
+    conversionJourney: ['nav.goto', 'cart.add', 'cart.view', 'cart.checkout'],
     allowedArtDirectionPacks: ['commerce-editorial', 'bold-commercial', 'luxury-minimal', 'swiss-grid', 'editorial-noir'],
     profileFields: withBase([
       { key: 'productCategories', label: 'Product categories', type: 'list', required: true },
