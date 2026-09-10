@@ -26,6 +26,7 @@ import { PreviewPipelineError } from '@/services/previewPipelineError';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { getVariantsForSection } from '@/sections/variants/registry';
 import type { SiteConfiguration } from '@/platform/core/resolvedComposition';
+import { getIndustryRoleSections, getIndustrySectionVocabulary } from '@/platform/core/industryMatrix';
 import type { WizardGenerationBrief, WizardHeroContract } from '@/services/wizardGenerationBrief';
 
 /**
@@ -550,6 +551,32 @@ function buildRoleComposition(
     compositionAlternativeId: selectedAlternative?.id,
     sections: filtered,
   };
+}
+
+/**
+ * Hero provisioning per page (M4).
+ *
+ * Home keeps the template/pack statement hero. Interior pages resolve a hero
+ * variant from the set declared for their page role, seeded by the page id so
+ * two interior pages of the same site don't lead with the same hero. When a
+ * template alternative pins a hero variant, that pin always wins.
+ */
+function resolveRouteHeroVariant(
+  role: PageRole,
+  page: PageRouteNode,
+  pinnedVariantId: string | undefined,
+  seed: string | undefined,
+): string | undefined {
+  const heroVariants = getVariantsForSection('hero');
+  if (pinnedVariantId) {
+    return heroVariants.some((variant) => variant.id === pinnedVariantId) ? pinnedVariantId : undefined;
+  }
+  if (page.isHome || role === 'home') return undefined;
+  const roleVariants = heroVariants.filter((variant) =>
+    variant.pageRoles?.includes(role as TemplatePageRole));
+  const candidates = roleVariants.length > 0 ? roleVariants : heroVariants;
+  if (candidates.length === 0) return undefined;
+  return candidates[stableStringHash(`${seed ?? ''}:${page.id}:hero`) % candidates.length].id;
 }
 
 function sortByConfiguredOrder(sections: SectionEntry[], configuredOrder: readonly string[]): void {
