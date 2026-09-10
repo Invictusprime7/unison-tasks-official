@@ -112,8 +112,8 @@ describe('hero quality findings', () => {
     const plan: GeneratedSitePlan = {
       siteId: 'hero-quality-site', industry: 'salon', businessName: 'Canonical Salon Test',
       homePageId: pageRegistry.homePageId, pages: pages.map((page) => ({
-        id: page.pageId, name: page.name, title: page.name || page.title || page.role, route: page.route,
-        role: page.role, filePath: page.filePath, visibleInNav: page.showInNav,
+        id: page.pageId, name: page.title, title: page.title, route: page.path,
+        role: page.pageRole, filePath: page.filePath, visibleInNav: page.showInNav,
         isHome: page.isHome, generatedBy: 'wizard',
       })),
       navItems: pages.filter((page) => page.showInNav).map((page) => page.pageId),

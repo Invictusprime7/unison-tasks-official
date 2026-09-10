@@ -788,7 +788,15 @@ function* buildCanonicalLaunchArtifactSteps(
     throw new PreviewPipelineError(
       'vfs',
       `Wizard source failed immutable syntax validation: ${blockedReports.map((report) => `${report.path}: ${report.finalError}`).join(' | ')}`,
-      { blockedFiles, diagnostics: blockedReports, recoverableByRelaunch: true },
+      {
+        blockedFiles,
+        diagnostics: blockedReports.map((report) => ({
+          path: report.path,
+          error: report.finalError ?? 'Syntax validation failed',
+          repairPasses: [],
+        })),
+        recoverableByRelaunch: true,
+      },
     );
   }
   const safeFiles = filesAfterStrip;
