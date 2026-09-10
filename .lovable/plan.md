@@ -56,9 +56,9 @@ authority is replaced, and no parallel recipe layer is introduced.
   Any industry failing parity fails CI, so none can silently stay booking-shaped.
 
 - **Extend `IndustryProfile` in place** with the fields the product needs:
-  `designDirections: DesignRecipeId[]`, `conversionJourney: CoreIntent[]`,
-  `profileFields: BusinessProfileFieldSpec[]`. Optional, so existing entries
-  keep compiling.
+  `allowedArtDirectionPacks: ArtDirectionPackId[]`, `conversionJourney: CoreIntent[]`,
+  `profileFields: BusinessProfileFieldSpec[]`, `anchorCapability: CapabilityId`. Optional, so existing entries keep compiling.
+
 - **Design recipes already exist as Art Direction Packs.** `src/sections/variants/artDirectionPacks.ts` already defines the full design system (allowed variant families per section type, surface, rhythm, media, motion, etc.) and `resolveArtDirectionPackId` is the only resolver. **No new `designRecipes.ts` file.** Instead, extend `ArtDirectionPack` with an optional `compatibleIndustries: string[]` and `recommendedForJourney: CoreIntent[]` so the wizard can filter packs by industry and anchor journey. The existing packs are the design vocabulary; we only need to map industries to allowed packs.
 - **Resolver**: extend the existing seed/composition path rather than adding a
   second one — `resolveSiteConfiguration()` added to
