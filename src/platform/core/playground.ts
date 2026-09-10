@@ -150,6 +150,17 @@ export interface WizardSelections {
    * the correct `projects.business_id` on first persist.
    */
   businessId?: string;
+  /**
+   * Industry-specific business profile answers gathered by the launcher
+   * (keys are `IndustryProfile.profileFields[].id`). Copy/content resolution
+   * reads these so a contractor site talks about service areas and a
+   * restaurant site talks about cuisine and seating.
+   */
+  profileAnswers?: Record<string, string>;
+  /** Capability ids the creator explicitly enabled in the capability step. */
+  selectedCapabilities?: string[];
+  /** Social profile URLs captured by the launcher's brand step. */
+  socialLinks?: Record<string, string>;
 }
 
 
