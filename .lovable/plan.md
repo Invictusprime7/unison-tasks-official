@@ -56,20 +56,17 @@ authority is replaced, and no parallel recipe layer is introduced.
   Any industry failing parity fails CI, so none can silently stay booking-shaped.
 
 - **Extend `IndustryProfile` in place** with the fields the product needs:
-  `designDirections: DesignRecipeId[]`, `conversionJourney: CoreIntent[]`,
-  `profileFields: BusinessProfileFieldSpec[]`. Optional, so existing entries
-  keep compiling.
-- **Design recipes** live next to the design vocabulary as
-  `platform/core/designRecipes.ts` — the one genuinely new file, because no
-  current module maps a named art direction to allowed variant ids. Each
-  `DesignRecipe` declares compatible variant ids per section type, drawn from
-  `designImplementationRegistry` (validated against it, no new renderers).
+  `allowedArtDirectionPacks: ArtDirectionPackId[]`, `conversionJourney: CoreIntent[]`,
+  `profileFields: BusinessProfileFieldSpec[]`, `anchorCapability: CapabilityId`. Optional, so existing entries keep compiling.
+
+- **Design recipes already exist as Art Direction Packs.** `src/sections/variants/artDirectionPacks.ts` already defines the full design system (allowed variant families per section type, surface, rhythm, media, motion, etc.) and `resolveArtDirectionPackId` is the only resolver. **No new `designRecipes.ts` file.** Instead, extend `ArtDirectionPack` with an optional `compatibleIndustries: string[]` and `recommendedForJourney: CoreIntent[]` so the wizard can filter packs by industry and anchor journey. The existing packs are the design vocabulary; we only need to map industries to allowed packs.
 - **Resolver**: extend the existing seed/composition path rather than adding a
   second one — `resolveSiteConfiguration()` added to
   `platform/core/resolvedComposition.ts`, consuming `WizardSelections` +
-  `INDUSTRY_MATRIX` + `pageRecipes` + `designRecipes` and emitting the
+  `INDUSTRY_MATRIX` + `pageRecipes` + `artDirectionPacks` and emitting the
   `SiteConfiguration` that already feeds Stage 4b. Curated and deterministic;
   this is the seam the fuller Unison compiler later replaces.
+
 
 ## 2. Data model (additive migrations only)
 
@@ -153,9 +150,12 @@ stays independent of pricing UI.
 ## Sequencing
 
 1. Industry alignment across all nine: add `contractor` to the matrix, extend
-   `IndustryProfile` (design directions, conversion journey, profile fields,
-   anchor capability), add the parity assertion.
-2. `designRecipes.ts` + `resolveSiteConfiguration()` in `resolvedComposition`.
+   `IndustryProfile` (allowed art-direction packs, conversion journey, profile
+   fields, anchor capability), add the parity assertion.
+2. `resolveSiteConfiguration()` in `resolvedComposition`, consuming existing
+   `artDirectionPacks`.
+
+
 3. Migrations for `wizard_selections`, `site_configs`, `integrations`.
 4. Selection persistence and the 8-step launcher.
 5. `SiteConfiguration` persistence wired into `launchOrchestrator.plan`.
