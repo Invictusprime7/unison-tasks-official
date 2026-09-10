@@ -28,12 +28,14 @@ LauncherWizard
 
 ## Active Recovery — Canonical page composition
 
+- [ ] Clear every current preview typecheck/build error reported by observability and confirm a fresh clean build signal.
 - [x] Thread strict `SiteConfiguration` and per-route composition contracts into compilation before VFS emission.
 - [x] Enforce route hero, section order, depth, and visual quality before sealing.
 - [x] Preserve the sealed `SiteConfiguration` across `recompileFromPlayground` so recompiles reuse the launch contract instead of re-deriving one.
 - [x] Make `designImplementationRegistry` the single lookup for industry-allowed art direction (`resolveIndustryArtDirectionPackId`) and industry section coverage; `wizardDesignIntervention` no longer calls the pack resolver directly.
 - [x] Delete zero-importer legacy services (`aiIntegrationService`, `automationToggleService`, `businessSystemSnapshot`, `capabilityProvisioner`, `monacoVFSSync`, `systemsAI`).
-- [ ] Remove residual page-authoring fallback APIs in `canonicalLaunchVfs.ts` / `aiSitePreflightRepair.ts` and certify Wizard → Builder rendering in a browser run.
+- [x] Remove residual page-authoring fallback and source-repair APIs; syntax validation is immutable and canonical commits reject invalid authored output without substitution.
+- [x] Certify Wizard → Builder rendering in a browser run: Salon Premium generated eight pages, sealed the canonical site, and navigated to `/web-builder` with the generated page tabs intact.
 
 ## Active Sequence
 

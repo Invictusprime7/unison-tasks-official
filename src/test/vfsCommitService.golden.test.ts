@@ -497,7 +497,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     expect(intentReadiness?.summary.previewBlocked).toBe(0);
   });
 
-  it('hard-rejects when intent preview blockers remain after auto-repair', async () => {
+  it('hard-rejects when intent preview blockers remain at immutable acceptance', async () => {
     const files = { '/src/App.tsx': 'x' };
     mockPipeline(files);
     mockPreflight(files);

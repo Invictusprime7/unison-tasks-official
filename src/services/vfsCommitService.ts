@@ -12,9 +12,7 @@
  *      SiteBundleSnapshot, runtime manifest, intent bindings, and router
  *      are all regenerated together.
  *   5. Runs full preflight + readiness.
- *   6. On failure: runs auto-repair ONCE, then either re-commits or hard
- *      rejects (per the user-approved failure policy "Auto-repair, then
- *      hard reject").
+ *   6. On failure: hard rejects the candidate without rewriting authored source.
  *   7. Persists a row in `site_revisions` (status = committed | rejected)
  *      so the durable revision chain — not sessionStorage — becomes the
  *      contract that ties launcher → builder → AI panel → publish.
@@ -490,39 +488,23 @@ export async function commitMutation(
   let status: 'committed' | 'rejected' = 'committed';
   let preExecutionReady = previewOk && readinessOk;
   if ((requirePreview && !previewOk) || (requireReadiness && !readinessOk)) {
-    const previewOk2 =
-      preflight.stages.syntaxValidation !== 'failed' &&
-      preflight.stages.finalSyntaxValidation !== 'failed' &&
-      preflight.mutated !== true &&
-      preflight.stages.runtimeCompatibility?.ok !== false &&
-      (preflight.violations?.length ?? 0) === 0;
-    const readinessOk2 =
-      (!gate || gate.previewReady) &&
-      (!previewVerdict || previewVerdict.ok) &&
-      intentPreviewBlocked === 0 &&
-      elementPreviewBlocked === 0;
-    if ((requirePreview && !previewOk2) || (requireReadiness && !readinessOk2)) {
-      status = 'rejected';
-      log('gate', 'error', 'hard reject at immutable acceptance gate', {
-        previewOk: previewOk2,
-        readinessOk: readinessOk2,
-        publishBlockers: publishVerdict?.reasons ?? [],
-        intentPreviewBlocked,
-        intentPublishBlocked,
-        elementPreviewBlocked,
-        elementPublishBlocked,
-        backendOpsFailed: backendOpsReport?.failedCount ?? 0,
-      });
-    } else {
-      preExecutionReady = previewOk2 && readinessOk2;
-      log('repair', 'info', 'auto-repair recovered the commit');
-    }
+    status = 'rejected';
+    preExecutionReady = false;
+    log('gate', 'error', 'hard reject at immutable acceptance gate', {
+      previewOk,
+      readinessOk,
+      publishBlockers: publishVerdict?.reasons ?? [],
+      intentPreviewBlocked,
+      intentPublishBlocked,
+      elementPreviewBlocked,
+      elementPublishBlocked,
+      backendOpsFailed: backendOpsReport?.failedCount ?? 0,
+    });
   }
 
   // Move C: execute transactional backend ops only after the candidate VFS
-  // has survived preview and readiness checks. This is intentionally after
-  // the auto-repair decision: a rejected revision must never provision or
-  // seed backend data.
+  // has survived the immutable preview and readiness checks. A rejected
+  // revision must never provision or seed backend data.
   const backendOps = input.patch.backendOps ?? [];
   if (status === 'committed' && preExecutionReady && backendOps.length > 0) {
     try {

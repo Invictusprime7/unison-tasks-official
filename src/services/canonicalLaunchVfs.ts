@@ -810,8 +810,8 @@ function* buildCanonicalLaunchArtifactSteps(
   Object.assign(mergedFiles, normalizeFoundationLocalImports(mergedFiles));
 
   // ── Stage 4b re-finalization ───────────────────────────────────────────
-  // Any repair performed after Stage 4b (syntax repair, binding/nav wiring,
-  // forbidden-intent stripping) can reintroduce unthemed literals. Re-apply
+  // Deterministic binding/nav and forbidden-intent projections after Stage 4b
+  // can reintroduce unthemed literals. Re-apply
   // the semantic theme finalizer exactly once so the sealed artifact has
   // always passed Stage 4b *after* its last source mutation. Bounded to one
   // pass: the finalizer is idempotent.
@@ -822,7 +822,7 @@ function* buildCanonicalLaunchArtifactSteps(
     const refinalized = normalizeWizardThemeTokens(mergedFiles);
     Object.assign(mergedFiles, refinalized.files);
     if (refinalized.changedFiles.length > 0 || refinalized.residualLiterals.length > 0) {
-      console.info('[canonicalLaunchVfs] Stage 4b re-finalization after post-merge repair', {
+      console.info('[canonicalLaunchVfs] Stage 4b re-finalization after canonical projections', {
         changedFiles: refinalized.changedFiles,
         residualLiterals: refinalized.residualLiterals.slice(0, 10),
       });
@@ -1101,11 +1101,10 @@ function* buildCanonicalLaunchArtifactSteps(
   });
 
   // Run the exact strict VFS compiler that Preview uses before this Wizard
-  // artifact is persisted or opened in Playground. Syntax repair protects
-  // source shape above; this final pass catches unresolved JSX named/default
+  // artifact is persisted or opened in Playground. Immutable syntax validation
+  // protects source shape above; this final pass catches unresolved JSX named/default
   // imports after every canonical merge and generated-runtime transformation.
-  // Callers on the hot launch path (SystemLauncher) already wrap this step in
-  // a timeout + non-strict fallback, so this can never freeze the UI forever.
+  // The canonical launch orchestrator owns the surrounding lifecycle budget.
   if (input.strictPreflight) {
     yield;
     try {

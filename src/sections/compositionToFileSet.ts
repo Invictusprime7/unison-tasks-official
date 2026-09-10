@@ -286,17 +286,17 @@ export default function Hero({ props }: { props: any }) {
   const fullBleed = layout === 'full-bleed';
   const media = image || backgroundImage;
   const content = <>
-    {badge && <span className={fullBleed ? 'mb-6 inline-block rounded-full border border-background/30 bg-background/15 px-4 py-1.5 font-body text-xs font-semibold text-background' : 'mb-6 inline-block rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 font-body text-xs font-semibold text-primary'}>{badge}</span>}
+    {badge && <span className={(fullBleed ? 'mb-6 inline-block rounded-full border border-background/30 bg-background/15 px-4 py-1.5 font-body text-xs font-semibold text-background' : 'mb-6 inline-block rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 font-body text-xs font-semibold text-primary') + ' ut-eyebrow'}>{badge}</span>}
     <h1 className={fullBleed ? 'mb-6 font-heading text-4xl font-semibold leading-tight text-background sm:text-6xl' : 'mb-6 font-heading text-4xl font-semibold leading-tight text-foreground sm:text-6xl'}>{headline}</h1>
-    {subheadline && <p className={(fullBleed ? 'text-background/85 ' : 'text-muted-foreground ') + (split ? '' : 'mx-auto max-w-2xl ') + (description ? 'mb-3 ' : 'mb-8 ') + 'font-body text-xl leading-relaxed'}>{subheadline}</p>}
+    {subheadline && <p className={(fullBleed ? 'text-background/85 ' : 'text-muted-foreground ') + (split ? '' : 'mx-auto max-w-2xl ') + (description ? 'mb-3 ' : 'mb-8 ') + 'ut-lead font-body text-xl leading-relaxed'}>{subheadline}</p>}
     {description && <p className={(fullBleed ? 'text-background/70 ' : 'text-muted-foreground ') + (split ? '' : 'mx-auto max-w-2xl ') + 'mb-8 font-body leading-relaxed'}>{description}</p>}
-    {ctas.length > 0 && <div className={(split ? 'justify-start' : 'justify-center') + ' flex flex-wrap gap-4'}>{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? (fullBleed ? outlineButtonClass + ' border-background/55 text-background hover:bg-background/10' : outlineButtonClass) : primaryButtonClass}>{cta.label}</a>)}</div>}
+    {ctas.length > 0 && <div className={(split ? 'justify-start' : 'justify-center') + ' ut-hero-actions flex flex-wrap gap-4'}>{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? (fullBleed ? outlineButtonClass + ' border-background/55 text-background hover:bg-background/10' : outlineButtonClass) : primaryButtonClass}>{cta.label}</a>)}</div>}
   </>;
 
   if (fullBleed) {
     return (
       <section data-ut-variant="hero:full-bleed" className="relative flex min-h-[var(--ut-hero-block)] items-center overflow-hidden bg-foreground pb-36" style={{ paddingTop: HERO_TOP_PADDING }}>
-        {media && <img src={media} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />}
+        {media && <img src={media} alt="" aria-hidden="true" className="ut-hero-full absolute inset-0 h-full w-full object-cover" />}
         <div className="absolute inset-0 bg-foreground/70" />
         <div className={shellClass + ' relative z-10 text-left'}>{content}</div>
       </section>
@@ -318,7 +318,7 @@ export default function Hero({ props }: { props: any }) {
     <section data-ut-variant="hero:centered" className="bg-background pb-24" style={{ paddingTop: HERO_TOP_PADDING }}>
       <div className={shellClass + ' text-center'}>
         {content}
-        {media && <img src={media} alt="" className="mx-auto mt-12 block max-h-[var(--ut-hero-media-max)] w-full max-w-5xl rounded-[var(--radius)] border border-border object-cover" />}
+        {media && <div className="ut-hero-media mx-auto mt-12 w-full max-w-5xl overflow-hidden rounded-[var(--radius)] border border-border bg-muted"><img src={media} alt="" className="block max-h-[var(--ut-hero-media-max)] w-full object-contain" /></div>}
         {stats && stats.length > 0 && <div className="ut-hero-stats mt-12 flex flex-wrap justify-center gap-10">{stats.map((stat: any, index: number) => <div key={index} className="text-center"><div className="font-heading text-3xl font-semibold text-primary">{stat.value}</div><div className="font-body text-xs uppercase text-muted-foreground">{stat.label}</div></div>)}</div>}
       </div>
     </section>

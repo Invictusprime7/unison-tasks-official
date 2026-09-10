@@ -43,7 +43,7 @@ export interface RunFullPreflightOptions {
 
 export interface RunFullPreflightResult {
   files: Record<string, string>;
-  /** True when this pass changed any source file (repair mode only). */
+  /** True when canonical projection changed a source file. */
   mutated: boolean;
   mutatedFiles: string[];
   /** Acceptance mode: files that still require mutation and cannot be sealed. */

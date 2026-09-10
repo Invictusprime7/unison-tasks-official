@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { buildWizardGenerationBrief } from '@/services/wizardGenerationBrief';
 import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry';
 import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
+import { getCompositionById } from '@/sections/templates';
+import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
+import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
 
 function registry() {
   const reg = createEmptyPageRegistry();
@@ -87,5 +90,43 @@ describe('hero quality findings', () => {
       <a data-ut-intent="contact.submit" href="#">Send</a><a data-ut-intent="nav.goto" href="/">Home</a></section></main>);}`;
     const report = evaluateVisualQuality({ '/src/pages/Contact.tsx': banded });
     expect(report.findings).toContain('CROPPED_HERO_MEDIA');
+  });
+
+  it('accepts a canonical componentized hero using serialized page data', () => {
+    const page = `import Hero from '@/components/Hero'; const SECTIONS = [{ "type": "hero", "props": { "headline": "Studio", "subheadline": "Care designed around you", "badge": "Welcome", "image": "/studio.jpg", "ctas": [{ "label": "Book", "intent": "booking.create" }, { "label": "Explore", "intent": "nav.goto" }] } }]; export default function Page(){ return <Hero props={SECTIONS[0].props} />; }`;
+    const hero = `export default function Hero({ props }) { const { headline, subheadline, description, ctas = [], badge, stats, image } = props; return <section data-ut-variant="hero:centered"><div>{badge && <span className="ut-eyebrow">{badge}</span>}<h1>{headline}</h1>{subheadline && <p className="ut-lead">{subheadline}</p>}{description && <p>{description}</p>}{ctas.length > 0 && <div className="ut-hero-actions">{ctas.map((cta, index) => <a key={index} data-ut-intent={cta.intent}>{cta.label}</a>)}</div>}{image && <div className="ut-hero-media"><img src={image} alt="" className="object-contain" /></div>}{stats && <div className="ut-hero-stats" />}</div></section>; }`;
+    const report = evaluateVisualQuality({
+      '/src/pages/Home.tsx': page,
+      '/src/components/Hero.tsx': hero,
+    });
+    expect(report.findings).not.toContain('INCOMPLETE_HERO');
+    expect(report.findings).not.toContain('CROPPED_HERO_MEDIA');
+  });
+
+  it('accepts the full salon route set compiled from its sealed generation brief', () => {
+    const pageRegistry = registry();
+    const brief = buildWizardGenerationBrief({ ...input, pageRegistry });
+    const template = getCompositionById('salon-premium');
+    if (!template) throw new Error('Missing salon-premium composition');
+    const pages = Object.values(pageRegistry.pages);
+    const plan: GeneratedSitePlan = {
+      siteId: 'hero-quality-site', industry: 'salon', businessName: 'Canonical Salon Test',
+      homePageId: pageRegistry.homePageId, pages: pages.map((page) => ({
+        id: page.pageId, name: page.name, title: page.name || page.title || page.role, route: page.route,
+        role: page.role, filePath: page.filePath, visibleInNav: page.showInNav,
+        isHome: page.isHome, generatedBy: 'wizard',
+      })),
+      navItems: pages.filter((page) => page.showInNav).map((page) => page.pageId),
+      funnels: [], redirects: [], generatedAt: '2026-09-10T00:00:00.000Z',
+      selectedTemplateId: template.id, selectedThemePresetId: input.themePresetId,
+    };
+    const files = Object.assign({}, ...plan.pages.map((page) => generateTopologyPlaceholderFiles(
+      page, plan, template, { generationBrief: brief },
+    )));
+    const report = evaluateVisualQuality(files);
+    const heroFailures = report.pages.filter((page) => page.findings.some((finding) => (
+      finding === 'INCOMPLETE_HERO' || finding === 'CROPPED_HERO_MEDIA'
+    )));
+    expect(heroFailures, JSON.stringify(heroFailures, null, 2)).toEqual([]);
   });
 });
