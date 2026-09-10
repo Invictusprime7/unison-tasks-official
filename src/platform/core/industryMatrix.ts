@@ -436,7 +436,6 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   wellness: 'salon',
   dental: 'local-service',
   healthcare: 'local-service',
-  contractor: 'local-service',
   local_service: 'local-service',
   hvac: 'local-service',
   cleaning: 'local-service',
