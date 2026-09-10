@@ -166,10 +166,9 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     [systemId, effectiveTemplate?.industry],
   );
 
+  // Industry questions are always skippable: anything left blank can be filled in
+  // later inline from the live preview. Only the business name is needed to launch.
   const profileFields = industryProfile?.profileFields ?? [];
-  const requiredProfileFieldsAnswered = profileFields
-    .filter((field) => field.required)
-    .every((field) => (profileAnswers[field.key] || "").trim().length > 0);
 
   const capabilityChoices = useMemo(() => {
     const anchor = industryProfile?.anchorCapability;
@@ -181,7 +180,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     step === "industry"
       ? Boolean(systemId)
       : step === "profile"
-        ? Boolean(businessName.trim()) && requiredProfileFieldsAnswered
+        ? Boolean(businessName.trim())
         : step === "goals"
           ? Boolean(primaryGoal)
           : step === "pages"
@@ -397,7 +396,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
               <>
                 <StepHeading
                   title="Tell us about your business"
-                  subtitle="These answers become the real copy and contracts on your site."
+                  subtitle="Only the business name is needed. Skip anything you don't have yet — you can fill it in later, directly on your live preview."
                 />
                 <div>
                   <FieldLabel>Business name</FieldLabel>
@@ -412,7 +411,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                   <div key={field.key}>
                     <FieldLabel>
                       {field.label}
-                      {field.required ? " *" : ""}
+                      <span className="ml-1 text-white/35">(optional)</span>
                     </FieldLabel>
                     <Input
                       value={profileAnswers[field.key] || ""}
