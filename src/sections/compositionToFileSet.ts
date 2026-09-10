@@ -1289,9 +1289,22 @@ function applyVocabularyRecipes(
 
 
 
+/** Stable, order-independent hash used for deterministic per-page rotation. */
+function compositionStableHash(value: string): number {
+  let hash = 0;
+  for (const character of value) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  return Math.abs(hash);
+}
+
 function applyDesignVariants(
   template: TemplateComposition,
   designIntervention?: DesignInterventionSlice,
+  /**
+   * Page identity. Variant resolution inside the sealed art direction pack is
+   * seeded by (wizardSeed, page, sectionType, occurrence) so two pages of the
+   * same site never lead with an identical section treatment.
+   */
+  pageFilePath?: string,
 ): TemplateComposition {
   const variants = designIntervention?.sectionVariants;
   const activeVariants = designIntervention?.activeVariants;
