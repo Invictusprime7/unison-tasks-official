@@ -27,13 +27,34 @@ authority is replaced, and no parallel recipe layer is introduced.
 
 **No `src/recipes/` folder.** Instead:
 
-- **Industry keys stay canonical**: Beauty → `salon`, Contractor →
-  `contractor`, Professional Services → `coaching` (+ `agency`). The marketing
-  names (Unison Beauty / Contractor / Professional) are display labels mapped
-  in `wizardCatalog.INDUSTRY_DISPLAY`, not new keys.
-- **Close the real gap**: `contractor` exists in `INDUSTRY_INTENT_PROFILES` but
-  is missing from `INDUSTRY_MATRIX`. Add it there, and add a startup assertion
-  that every intent-profile industry has a matrix entry (and vice versa).
+- **Industry keys stay canonical — and all nine are first-class.** The product
+  covers `saas`, `salon`, `contractor`, `restaurant`, `coaching`, `ecommerce`,
+  `portfolio`, `nonprofit`, `agency`. Marketing names (Unison Beauty /
+  Contractor / Professional) are display labels in
+  `wizardCatalog.INDUSTRY_DISPLAY` over `salon` / `contractor` / `coaching`,
+  not new keys — and they are the launch set, not the whole system.
+- **No booking bias.** Each industry gets its own primary journey and its
+  design/capability set is built around that journey, not retrofitted from
+  appointments:
+
+  | Industry | Primary journey | Anchor capability |
+  |---|---|---|
+  | salon | book a service | booking |
+  | contractor | request a quote | quoting |
+  | coaching | book a discovery call / enroll | booking + lead-capture |
+  | agency | qualified lead + case-study proof | lead-capture |
+  | saas | trial / demo signup | auth + lead-capture |
+  | ecommerce | browse → cart → checkout | commerce + payments |
+  | restaurant | menu → reserve / order | booking + commerce |
+  | portfolio | showcase → contact | contact |
+  | nonprofit | donate / volunteer | donation |
+
+- **Close the real gaps**: `contractor` exists in `INDUSTRY_INTENT_PROFILES` but
+  is missing from `INDUSTRY_MATRIX` — add it. Then add a parity assertion that
+  every industry appears in the matrix, the intent profiles, `pageRecipes`, and
+  the design-recipe map, with the anchor capability above actually present.
+  Any industry failing parity fails CI, so none can silently stay booking-shaped.
+
 - **Extend `IndustryProfile` in place** with the fields the product needs:
   `designDirections: DesignRecipeId[]`, `conversionJourney: CoreIntent[]`,
   `profileFields: BusinessProfileFieldSpec[]`. Optional, so existing entries
