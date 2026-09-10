@@ -142,8 +142,12 @@ function heroGeometryFallbackReason(
 function heroCompletenessFallbackReason(generatedPage: string): string | null {
   if (!generatedPage.trim()) return null;
   const hero = assessWizardPageHero(generatedPage);
-  if (hero.ok) return null;
-  return `generated page hero is incomplete — missing ${hero.missing.join(', ')}`;
+  // The guard blocks structurally unfinished heroes only. Softer gaps (media
+  // framing, proof strips) are reported by the visual quality evaluator so a
+  // single missing figure never fails an otherwise complete page.
+  const blocking = hero.missing.filter((part) => !part.startsWith('hero media'));
+  if (!blocking.length) return null;
+  return `generated page hero is incomplete — missing ${blocking.join(', ')}`;
 }
 
 function generatedHeroText(source: string): string {
