@@ -122,7 +122,8 @@ describe('hero quality findings', () => {
       siteId: 'hero-quality-site', industry: 'salon', businessName: 'Canonical Salon Test',
       homePageId: pageRegistry.homePageId, pages: pages.map((page) => ({
         id: page.pageId, name: page.title, title: page.title, route: page.path,
-        role: page.pageRole, filePath: page.filePath, visibleInNav: page.showInNav,
+        role: toTopologyRole(page.pageRole), filePath: page.filePath ?? `/src/pages/${page.pageId}.tsx`,
+        visibleInNav: page.showInNav,
         isHome: page.isHome, generatedBy: 'wizard',
       })),
       navItems: pages.filter((page) => page.showInNav).map((page) => page.pageId),
