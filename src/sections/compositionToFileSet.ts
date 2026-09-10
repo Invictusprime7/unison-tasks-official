@@ -1289,9 +1289,22 @@ function applyVocabularyRecipes(
 
 
 
+/** Stable, order-independent hash used for deterministic per-page rotation. */
+function compositionStableHash(value: string): number {
+  let hash = 0;
+  for (const character of value) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  return Math.abs(hash);
+}
+
 function applyDesignVariants(
   template: TemplateComposition,
   designIntervention?: DesignInterventionSlice,
+  /**
+   * Page identity. Variant resolution inside the sealed art direction pack is
+   * seeded by (wizardSeed, page, sectionType, occurrence) so two pages of the
+   * same site never lead with an identical section treatment.
+   */
+  pageFilePath?: string,
 ): TemplateComposition {
   const variants = designIntervention?.sectionVariants;
   const activeVariants = designIntervention?.activeVariants;
@@ -1324,9 +1337,23 @@ function applyDesignVariants(
   if (!variants?.length && !Object.keys(activeVariants || {}).length && !pack && !hasVocabulary
     && !template.sections.some(section => section.type === 'hero' && section.sourceSectionId && section.variantId)) return template;
 
+  // Home always renders the pack's signature (family-leading) treatment — it is
+  // the style statement for the site. Interior pages rotate within the same
+  // family so they stay cohesive without being carbon copies of Home.
+  const isHomePage = !pageFilePath || /\/(Home|Index)\.(t|j)sx?$/i.test(pageFilePath);
+  const pageRotationKey = pageFilePath && !isHomePage
+    ? `${designIntervention?.seed ?? ''}:${pageFilePath}`
+    : null;
+  const occurrenceByType: Record<string, number> = {};
+
   return {
     ...template,
     sections: template.sections.map((section) => {
+      const occurrence = occurrenceByType[section.type] ?? 0;
+      occurrenceByType[section.type] = occurrence + 1;
+      const rotation = pageRotationKey
+        ? compositionStableHash(`${pageRotationKey}:${section.type}:${occurrence}`)
+        : undefined;
       const activeVariantId = activeVariants?.[section.id] || (
         section.sourceSectionId && section.type !== 'hero' ? activeVariants?.[section.sourceSectionId] : undefined
       );
@@ -1347,7 +1374,7 @@ function applyDesignVariants(
         ?? applyVocabularyRecipes(section, designIntervention);
 
       const packVariantId = pack
-        ? clampVariantToPack(pack, section.type, resolved?.variantId ?? section.variantId)
+        ? clampVariantToPack(pack, section.type, resolved?.variantId ?? section.variantId, rotation)
         : undefined;
 
       const variantId = packVariantId ?? resolved?.variantId;
@@ -1470,7 +1497,7 @@ export function resolvePageComposition(
   pageFilePath: string,
   options?: { designIntervention?: DesignInterventionSlice },
 ): ResolvedPageComposition {
-  const projected = applyDesignVariants(template, options?.designIntervention);
+  const projected = applyDesignVariants(template, options?.designIntervention, pageFilePath);
   const sections = resolveSnapshotSectionLayouts(projected);
   return {
     version: RESOLVED_COMPOSITION_VERSION,
@@ -1515,7 +1542,7 @@ export function compositionToReactFileSet(
     designIntervention?: DesignInterventionSlice;
   },
 ): Record<string, string> {
-  const projectedTemplate = applyDesignVariants(template, options?.designIntervention);
+  const projectedTemplate = applyDesignVariants(template, options?.designIntervention, pageFilePath);
   const sectionMap = sectionMapModule(projectedTemplate, pageFilePath);
   const sectionMapImport = `./${sectionMap.path.split('/').pop()?.replace(/\.ts$/, '')}`;
   const files: Record<string, string> = {

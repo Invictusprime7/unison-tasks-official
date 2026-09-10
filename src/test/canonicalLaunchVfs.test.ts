@@ -79,8 +79,12 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(convergence.match(/mode: 'canonicalize'/g)).toHaveLength(1);
     expect(convergence.match(/mode: 'acceptance'/g)).toHaveLength(1);
     expect(convergence).toContain("Object.assign(mergedFiles, refinalized.files)");
-    expect(convergence.match(/Object\.assign\(mergedFiles, convergedPreflight\.files\)/g)).toHaveLength(1);
-    expect(convergence.indexOf("Object.assign(mergedFiles, convergedPreflight.files)"))
+    // The canonicalize result is copied before `mergedFiles` is cleared: the
+    // pass returns the same object when it mutates nothing, so an in-place
+    // clear would wipe the VFS.
+    expect(convergence).toContain("const convergedFiles = { ...convergedPreflight.files }");
+    expect(convergence.match(/Object\.assign\(mergedFiles, convergedFiles\)/g)).toHaveLength(1);
+    expect(convergence.indexOf("Object.assign(mergedFiles, convergedFiles)"))
       .toBeLessThan(convergence.indexOf("if (convergedPreflight.mutated)"));
     expect(convergence.indexOf("const acceptance = runFullPreflight"))
       .toBeGreaterThan(convergence.indexOf("if (convergedPreflight.mutated)"));
