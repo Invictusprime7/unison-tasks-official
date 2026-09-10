@@ -16,7 +16,15 @@ import type { BusinessModel, IndustryOverlay } from "@/types/playground";
 
 // ── Steps ───────────────────────────────────────────────────────────────────
 
-export type WizardStep = "industry" | "questions" | "templates" | "aesthetic";
+export type WizardStep =
+  | "industry"
+  | "profile"
+  | "goals"
+  | "pages"
+  | "capabilities"
+  | "templates"
+  | "aesthetic"
+  | "review";
 
 export const STEP_META: {
   key: WizardStep;
@@ -25,10 +33,15 @@ export const STEP_META: {
   sublabel: string;
 }[] = [
   { key: "industry", num: 1, label: "Industry", sublabel: "What you do" },
-  { key: "questions", num: 2, label: "Goals", sublabel: "Your needs" },
-  { key: "templates", num: 3, label: "Templates", sublabel: "Pick a base" },
-  { key: "aesthetic", num: 4, label: "Launch", sublabel: "Name & style" },
+  { key: "profile", num: 2, label: "Profile", sublabel: "Your business" },
+  { key: "goals", num: 3, label: "Goals", sublabel: "Your outcome" },
+  { key: "pages", num: 4, label: "Pages", sublabel: "Your structure" },
+  { key: "capabilities", num: 5, label: "Capabilities", sublabel: "What it does" },
+  { key: "templates", num: 6, label: "Template", sublabel: "Pick a base" },
+  { key: "aesthetic", num: 7, label: "Style", sublabel: "Brand direction" },
+  { key: "review", num: 8, label: "Launch", sublabel: "Review & build" },
 ];
+
 
 // ── Answer vocabulary ───────────────────────────────────────────────────────
 
