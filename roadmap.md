@@ -34,7 +34,7 @@ LauncherWizard
 - [x] Make `designImplementationRegistry` the single lookup for industry-allowed art direction (`resolveIndustryArtDirectionPackId`) and industry section coverage; `wizardDesignIntervention` no longer calls the pack resolver directly.
 - [x] Delete zero-importer legacy services (`aiIntegrationService`, `automationToggleService`, `businessSystemSnapshot`, `capabilityProvisioner`, `monacoVFSSync`, `systemsAI`).
 - [x] Remove residual page-authoring fallback and source-repair APIs; syntax validation is immutable and canonical commits reject invalid authored output without substitution.
-- [ ] Certify Wizard → Builder rendering in a browser run.
+- [x] Certify Wizard → Builder rendering in a browser run: Salon Premium generated eight pages, sealed the canonical site, and navigated to `/web-builder` with the generated page tabs intact.
 
 ## Active Sequence
 
