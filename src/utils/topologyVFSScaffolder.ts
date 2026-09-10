@@ -400,18 +400,45 @@ function buildRoleComposition(
     template = applyWizardSeedToComposition({ ...template, sections }, plan);
   }
 
+  // --------------------------------------------------------------------
+  // Section selection authority (industry contract first)
+  //
+  // The page's declared section contract — SiteConfiguration, else the page's
+  // own expectedSections, else the industry matrix's contract for this role —
+  // decides *which* sections appear and *in what order*. The role-generic pool
+  // is only the last resort. Previously the contract was used solely to SORT a
+  // wholesale copy of Home's sections, which is what produced clone pages and
+  // repeated galleries.
+  // --------------------------------------------------------------------
+  const industryKey =
+    options?.siteConfiguration?.industry
+    || options?.designIntervention?.industry
+    || '';
+  const industryRoleSections = industryKey ? getIndustryRoleSections(industryKey, role) : [];
+  const industryVocabulary = industryKey ? getIndustrySectionVocabulary(industryKey) : [];
+  const declaredSections: SectionType[] = (
+    configuredOrder.length > 0 ? configuredOrder : industryRoleSections
+  ) as SectionType[];
+
   const poolList: SectionType[] =
     template.sectionPool?.[role as TemplatePageRole] ??
-    DEFAULT_ROLE_SECTION_POOL[role] ??
-    DEFAULT_ROLE_SECTION_POOL.custom;
+    (declaredSections.length > 0
+      ? declaredSections
+      : (industryVocabulary.length > 0
+        ? industryVocabulary as SectionType[]
+        : DEFAULT_ROLE_SECTION_POOL[role] ?? DEFAULT_ROLE_SECTION_POOL.custom));
   const allowedTypes = new Set<SectionType>(poolList);
   const alternateMedia = !page.isHome ? collectAlternateHeroMedia(template) : [];
   const alternateHeroMedia = alternateMedia[stableStringHash(page.id) % Math.max(1, alternateMedia.length)];
 
-  // Iterate template sections in source order and keep every section whose
-  // type is in the allowed set. Duplicates are preserved with unique ids so
-  // React keys + intent slots stay distinct. All section payload fields
-  // (items, cards, products, gallery, layout, props) are passed through.
+  /** Source sections grouped by type, in template order. */
+  const sourcesByType = new Map<SectionType, SectionEntry[]>();
+  for (const source of template.sections) {
+    const bucket = sourcesByType.get(source.type);
+    if (bucket) bucket.push(source);
+    else sourcesByType.set(source.type, [source]);
+  }
+
   const filtered: SectionEntry[] = [];
   const typeCounters = new Map<SectionType, number>();
   const selectedSourceIds = new Set<string>();
@@ -420,14 +447,12 @@ function buildRoleComposition(
     typeCounters.set(source.type, idx + 1);
     const props = { ...(source.props as Record<string, unknown>) };
     const routeHeroVariant = source.type === 'hero'
-      ? getVariantsForSection('hero').find((variant) => selectedAlternative?.heroVariantId
-        ? variant.id === selectedAlternative.heroVariantId
-        : variant.pageRoles?.includes(role as TemplatePageRole))
+      ? resolveRouteHeroVariant(role, page, selectedAlternative?.heroVariantId, options?.designIntervention?.seed)
       : undefined;
     if (source.type === 'hero' && !page.isHome) {
       const roleLabel = page.title.trim() || page.role.replace(/_/g, ' ');
       props.headline = roleLabel;
-      props.subheadline = `Explore ${roleLabel.toLowerCase()} from ${template.name}.`;
+      props.subheadline = `${roleLabel} at ${plan.businessName || template.name}.`;
       props.badge = roleLabel;
       if (alternateHeroMedia) {
         if (typeof props.image === 'string') props.image = alternateHeroMedia;
@@ -441,14 +466,35 @@ function buildRoleComposition(
       ...source,
       id: definition ? `${page.id}-${source.id}` : `${page.id}-${source.type}-${idx}`,
       sourceSectionId: source.sourceSectionId || source.id,
-      ...(routeHeroVariant ? { variantId: routeHeroVariant.id } : {}),
+      ...(routeHeroVariant ? { variantId: routeHeroVariant } : {}),
       props: props as SectionEntry['props'],
     });
     selectedSourceIds.add(source.id);
   };
-  for (const source of template.sections) {
-    if (!definition && !allowedTypes.has(source.type)) continue;
-    appendSection(source);
+
+  if (definition) {
+    for (const source of template.sections) appendSection(source);
+  } else if (declaredSections.length > 0) {
+    // One emitted section per declared entry, in declared order. Repeated types
+    // rotate through the available source instances (page-seeded) so a page
+    // never renders the same instance twice, and adjacent repeats are dropped.
+    const usedByType = new Map<SectionType, number>();
+    for (const type of declaredSections) {
+      const sources = sourcesByType.get(type);
+      if (!sources || sources.length === 0) continue;
+      const used = usedByType.get(type) ?? 0;
+      if (used > 0 && filtered[filtered.length - 1]?.type === type) continue;
+      if (used >= sources.length) continue;
+      const offset = stableStringHash(`${page.id}:${type}`);
+      appendSection(sources[(offset + used) % sources.length]);
+      usedByType.set(type, used + 1);
+    }
+  } else {
+    for (const source of template.sections) {
+      if (!allowedTypes.has(source.type)) continue;
+      if ((typeCounters.get(source.type) ?? 0) > 0) continue; // never duplicate a type implicitly
+      appendSection(source);
+    }
   }
 
   if (configuredOrder.length > 0) {
@@ -466,11 +512,20 @@ function buildRoleComposition(
     ? bodySectionCount() < requestedBodyFloor
     : filtered.length < MINIMUM_ROUTE_BODY_SECTIONS;
   if (!definition && !page.isHome && needsSupplementation) {
-    const priority = ROLE_SUPPLEMENT_PRIORITY[role] || ROLE_SUPPLEMENT_PRIORITY.custom;
+    // Supplement with section TYPES the page doesn't have yet, drawn from the
+    // industry's own vocabulary first. Never re-add an existing type — that is
+    // exactly what produced gallery + gallery + gallery.
+    const presentTypes = new Set(filtered.map((section) => section.type));
+    const priority: SectionType[] = [
+      ...(industryVocabulary as SectionType[]),
+      ...(ROLE_SUPPLEMENT_PRIORITY[role] || ROLE_SUPPLEMENT_PRIORITY.custom),
+    ];
     const candidates = template.sections
       .map((section, index) => ({ section, index, priority: priority.indexOf(section.type) }))
       .filter(({ section }) => (
-        section.type !== 'navbar' && section.type !== 'footer' && section.type !== 'hero' && !selectedSourceIds.has(section.id)
+        section.type !== 'navbar' && section.type !== 'footer' && section.type !== 'hero'
+        && !selectedSourceIds.has(section.id)
+        && !presentTypes.has(section.type)
       ))
       .sort((left, right) => {
         const leftPriority = left.priority === -1 ? Number.MAX_SAFE_INTEGER : left.priority;
@@ -479,6 +534,7 @@ function buildRoleComposition(
       });
     for (const { section } of candidates) {
       appendSection(section);
+      presentTypes.add(section.type);
       if (routeBrief
         ? bodySectionCount() >= requestedBodyFloor
         : filtered.length >= MINIMUM_ROUTE_BODY_SECTIONS) break;
