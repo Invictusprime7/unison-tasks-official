@@ -28,6 +28,7 @@ LauncherWizard
 
 ## Active Recovery — Canonical page composition
 
+- [ ] Clear every current preview typecheck/build error reported by observability and confirm a fresh clean build signal.
 - [x] Thread strict `SiteConfiguration` and per-route composition contracts into compilation before VFS emission.
 - [x] Enforce route hero, section order, depth, and visual quality before sealing.
 - [x] Preserve the sealed `SiteConfiguration` across `recompileFromPlayground` so recompiles reuse the launch contract instead of re-deriving one.
