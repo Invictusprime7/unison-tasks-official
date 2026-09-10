@@ -693,6 +693,7 @@ export function recompileFromPlayground(
       templateId: options?.selectedTemplateId,
       wizardSeedId: recoveredSeedId,
       themeTokens: options.themeTokens,
+      siteConfiguration: sealedSiteConfiguration,
     },
     'recompile',
     uiFoundation.manifest,
