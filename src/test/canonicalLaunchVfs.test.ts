@@ -229,7 +229,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     const snapshot = createSnapshot();
     const artifacts = buildCanonicalLaunchArtifacts({
       generatedFiles: {
-        "/src/App.tsx": "import { motion } from 'framer-motion';\nexport default function App(){ return <motion.div>Hello</motion.div>; }",
+        "/src/pages/Home.tsx": "import { motion } from 'framer-motion';\nexport default function Home(){ return <motion.div>Hello</motion.div>; }",
       },
       preferredEntryPoint: "/src/App.tsx",
       siteBundleSnapshot: snapshot,

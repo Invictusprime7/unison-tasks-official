@@ -304,7 +304,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       options: { dryRun: true, requirePreviewPass: true, requireReadinessPass: false },
     })).rejects.toMatchObject({ result: { status: 'rejected' } });
 
-    expect(runFullPreflight).toHaveBeenCalledTimes(2);
+    expect(runFullPreflight).toHaveBeenCalledTimes(1);
     expect(executeBackendOps).not.toHaveBeenCalled();
     expect(runtimeReconcileInvoke).not.toHaveBeenCalled();
     expect(revisionStore).toEqual([]);

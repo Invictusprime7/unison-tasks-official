@@ -20,6 +20,7 @@ import { DESIGN_VOCABULARY } from '@/platform/core/designVocabulary';
 import { hashSeed } from '@/platform/core/generationSeed';
 import { getIndustryProfile } from '@/platform/core/industryMatrix';
 import {
+  ART_DIRECTION_PACKS,
   ART_DIRECTION_PACK_IDS,
   resolveArtDirectionPackId,
   type ArtDirectionPackId,
