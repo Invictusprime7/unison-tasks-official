@@ -68,21 +68,30 @@ authority is replaced, and no parallel recipe layer is introduced.
   this is the seam the fuller Unison compiler later replaces.
 
 
-## 2. Data model (additive migrations only)
+## 2. No-duplication audit (what NOT to create)
 
-New tables, RLS via existing `is_business_member` / `is_project_member`:
+Every proposed addition was checked against what exists. Removed as redundant:
 
-- `wizard_selections` — `project_id`, `business_id`, `selections jsonb`,
-  `step`, `version`. One durable row per project, upserted per step so
-  selections survive refresh.
-- `site_configs` — `project_id`, `config jsonb` (resolved
-  `SiteConfiguration`), `industry_key`, `design_recipe_id`, `recipe_version`.
-- `integrations` — `business_id`, `provider`, `capability`, `status`,
-  `config jsonb` (no secrets; those stay in the secret store).
+| Originally proposed | Already exists | Decision |
+|---|---|---|
+| `src/recipes/` folder | `INDUSTRY_MATRIX`, `pageRecipes.ts`, `SiteGraph` recipe schemas | Drop; extend those |
+| `designRecipes.ts` | `sections/variants/artDirectionPacks.ts` (14 packs, variant families, surface/rhythm/media/motion, single resolver) | Drop; extend `ArtDirectionPack` |
+| `wizard_selections` table | `builder_drafts.metadata.wizardSelections` is already the durable store (written via `canonicalLaunchVfs`) | Drop table; persist mid-wizard into the same metadata key |
+| `wizardSelectionStore.ts` | `launcherHandoffPersistence.ts` + draft persistence | Drop; add a save/restore function there |
+| `site_configs` table | Resolved config already lives in `SiteBundleSnapshot.meta`, the canonical record | Drop; stamp into snapshot meta |
+| `industry_recipes` / `design_recipes` tables | Code registries are the source of truth | Drop |
+| `src/integrations/capabilities/` new capability ids | `capabilityRegistry.CapabilityId` (booking, quoting, contact, newsletter, commerce, auth, lead-capture, donation) + `coreIntents` | Drop new ids; reuse existing ones |
+| Entitlement resolver | `useEntitlements.ts` + `user_subscriptions` | Drop; extend existing hook with plan tiers |
 
-No `industry_recipes` / `design_recipes` tables — the code registries above are
-the source of truth, so a DB copy would be a parallel authority. Existing
-`pages` and `site_capabilities` are reused as-is.
+Genuinely new, because nothing equivalent exists:
+
+- `integrations` table — `business_id`, `capability_id`, `provider`, `status`,
+  `config jsonb` (no secrets). Today provider wiring is hardcoded in
+  `ghlIntentBridge.ts` / `ghlSkillPack.ts` with no per-business record.
+- A provider-adapter map beside `capabilityRegistry.ts` that resolves
+  `CapabilityId -> provider adapter` from that table.
+- Public marketing pages and the `/app` shell routes.
+- Missing section variants and journey sections (section 5).
 
 ## 3. Launcher: 4 steps → 8 steps
 
@@ -92,12 +101,13 @@ Existing steps map forward: `industry` stays, `questions` splits into
 profile/goals, `templates`+`aesthetic` become `visual`, `review`/`launch` wrap
 the existing `LaunchStageTimeline`.
 
-- Steps write through a new `wizardSelectionStore.ts` → `wizard_selections`
-  (debounced upsert) and back into `WizardSelections`; reload rehydrates from
-  Supabase, so no launcher state lives only in React.
-- `launchOrchestrator.plan()` gains one call: resolve the `SiteConfiguration`
-  and persist it to `site_configs` alongside existing provisioning. All other
-  launch stages untouched.
+- Each step upserts `WizardSelections` into `builder_drafts.metadata.wizardSelections`
+  through the existing draft persistence, so reload rehydrates and no launcher
+  state lives only in React. (Pre-commit drafts may carry this metadata key; the
+  canonical projection trigger only guards `vfs_files`, `siteBundleSnapshot`,
+  `runtimeManifest`, and `activePagePath`.)
+- `launchOrchestrator.plan()` resolves the `SiteConfiguration` and stamps it
+  into snapshot meta alongside existing provisioning. All other stages untouched.
 
 ## 4. Renderer
 
@@ -109,11 +119,9 @@ section/variant signature.
 
 ## 5. Design system
 
-Fill gaps in the existing variant families so each design recipe has real
-choices: hero (editorial/split/immersive/typographic), services
-(editorial-list/media-grid/spotlight/alternating), testimonials
-(featured/minimal/story), cta (booking/lead/editorial). Register only missing
-variants in the existing registry; all token-driven, no colour literals.
+Fill gaps in the existing variant families so each art-direction pack has real
+choices per section type. Register only missing variants in the existing
+registry; all token-driven, no colour literals.
 
 Journey-specific sections get the same treatment so non-booking industries are
 not second class: quote/estimate blocks (contractor), menu and reservation
@@ -124,13 +132,12 @@ bound to that industry's anchor capability.
 
 ## 6. Integration boundary
 
-`src/integrations/capabilities/` — capability ids covering every anchor
-journey: `lead.capture`, `appointment.create`, `quote.request`,
-`order.create`, `payment.checkout`, `donation.create`, `review.request`,
-`subscription.start` — mapped to provider adapters (GoHighLevel, Stripe,
-calendar, email). These reuse `capabilityRegistry` ids; pages bind to the
-capability only, and the adapter is resolved at runtime from `integrations`.
-
+Reuse the existing `CapabilityId` set (booking, quoting, contact, newsletter,
+commerce, auth, lead-capture, donation) and `coreIntents` — no new capability
+vocabulary. Add the `integrations` table plus a provider-adapter map beside
+`capabilityRegistry.ts` so GoHighLevel, Stripe, calendar, and email fulfil a
+capability per business. Pages keep binding to intents only; `ghlIntentBridge`
+becomes one adapter behind that map instead of the hardcoded path.
 
 ## 7. Public + app surface
 
@@ -143,9 +150,10 @@ direction inside one product family.
 
 ## 8. Subscriptions
 
-Reuse `user_subscriptions`; add a plan/entitlement resolver (`free` /
-`professional` / `managed`) consumed by UI gating only. Project ownership logic
-stays independent of pricing UI.
+Extend the existing `useEntitlements` hook and `user_subscriptions` with the
+`free` / `professional` / `managed` tiers, consumed by UI gating only. Project
+ownership logic stays independent of pricing UI.
+
 
 ## Sequencing
 
