@@ -151,19 +151,7 @@ export interface BuildCanonicalLaunchArtifactsInput {
   /** Capability set that authorizes generated component runtime contracts. */
   enabledCapabilities?: readonly CapabilityId[];
   approvedExperienceCapabilities?: readonly string[];
-  /**
-    * OPT-IN ONLY (`true`). Allows Stage 4b page bodies to fill unusable or
-    * missing generated pages. Launcher callers must pair this with previewFirst;
-    * strict authoring and import paths keep generated page closure mandatory.
-   */
-  allowCanonicalPageFallback?: boolean;
-  /**
-   * Launcher-only fast path: seal the generated/canonical merge without
-   * running repair, quality, compiler, experience, or runtime preflight.
-   * Durable identity and snapshot sealing remain mandatory.
-   */
-  previewFirst?: boolean;
-  /** Throw if internal preflight has to quarantine generated code. */
+  /** Throw when immutable preflight detects invalid generated code. */
   strictPreflight?: boolean;
 }
 
@@ -441,20 +429,9 @@ function serializeSiteBundleSnapshot(siteBundleSnapshot?: SiteBundleSnapshot) {
 
 export type MergedPageProvenance =
   | 'generated-page'
-  | 'generated-app-rebase'
-  | 'canonical-fallback'
   | 'missing';
 
 export interface CanonicalMergeOptions {
-  allowCanonicalPageFallback?: boolean;
-  /** Allow a generated single-file App to replace canonical Home in preview-first launches. */
-  preferGeneratedAppAsHome?: boolean;
-  /**
-   * M1 authority gate. When `true`, the merge refuses to return a VFS that is
-   * missing a body for any registered page instead of deferring the failure to
-   * the snapshot projector.
-   */
-  requireRegisteredPageClosure?: boolean;
   /** Optional sink receiving `pageFilePath -> provenance` for merge auditing. */
   provenanceSink?: Record<string, MergedPageProvenance>;
 }
@@ -503,40 +480,12 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
       .filter((path): path is string => Boolean(path))
       .flatMap((path) => pathVariants(path)),
   );
-  const homePage = registryPages.find((page) => page.isHome) || registryPages[0];
-  const homeFilePath = homePage?.filePath || '/src/pages/Home.tsx';
-  const generatedAppModule = readGenerated('/src/App.tsx');
-
-  // SNAPSHOT-FIRST HOME AUTHORITY (theme parity guarantee).
-  // The canonical SiteBundleSnapshot composes Home.tsx with semantic Tailwind
-  // tokens (bg-background, text-foreground, …) so the wizard's themed
-  // /src/index.css applies uniformly across every industry. If a generated
-  // /src/App.tsx silently rebases into Home.tsx with hard-coded colors, the
-  // hardcoded hex colors), the home route loses the theme override while every
-  // other registered page keeps it — the exact regression where Home renders
-  // un-themed across industries. Refuse to seed home from generated App.tsx
-  // whenever the canonical snapshot already provides a real, non-fallback home.
-  const canonicalHome = readCanonical(homeFilePath);
-  const canonicalHomeIsAuthoritative = Boolean(
-    canonicalHome && canonicalHome.trim() && !isMinimalPreviewFallbackSource(canonicalHome),
-  );
-  const generatedAppCanSeedHome = Boolean(
-    generatedAppModule &&
-    !looksLikeCanonicalRouter(generatedAppModule) &&
-    (options.preferGeneratedAppAsHome === true || !isMinimalPreviewFallbackSource(generatedAppModule)) &&
-    !readGenerated(homeFilePath) &&
-    (!canonicalHomeIsAuthoritative || options.preferGeneratedAppAsHome === true)
-  );
-
   // The canonical snapshot is the base for router, support modules, and every
   // page Stage 4b declared through a ResolvedPageComposition. The generated
   // input may update allowed page bodies; protected compiler output remains
   // canonical. The converged VFS is sealed back into SiteBundleSnapshot.
   const merged = { ...canonicalFiles };
   const generatedPagePaths = new Set<string>();
-
-  // Strict callers require complete generated page coverage. Preview-first
-  // callers may explicitly retain canonical Stage 4b compositions.
 
   for (const [path, content] of Object.entries(generatedFiles)) {
     const normalizedPath = normalizePath(path);
@@ -550,21 +499,8 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
       continue;
     }
 
-    const shouldMoveLegacyAppIntoHome =
-      (normalizedPath === '/src/App.tsx' || normalizedPath === '/App.tsx') &&
-      generatedAppCanSeedHome;
-
-    if (shouldMoveLegacyAppIntoHome) {
-      merged[normalizePath(homeFilePath)] = rebaseAppModuleForHomePage(content);
-      generatedPagePaths.add(normalizePath(homeFilePath));
-      continue;
-    }
-
     if (registeredPagePaths.has(path) || registeredPagePaths.has(normalizedPath)) {
       if (isMinimalPreviewFallbackSource(content)) {
-        if (options.allowCanonicalPageFallback === true) {
-          continue;
-        }
         throw new PreviewPipelineError(
           'vfs',
           `Generated compiler output contains minimal/fallback scaffold copy for registered page ${normalizedPath}; refusing to persist it into SiteBundleSnapshot.`,
@@ -612,18 +548,17 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     if (!page.filePath) continue;
     const normalizedPagePath = normalizePath(page.filePath);
     const generatedPage = readGenerated(page.filePath);
-    const canonicalPage = readCanonical(page.filePath);
     const existingMergedPage = merged[normalizedPagePath];
     if (
       generatedPagePaths.has(normalizedPagePath) &&
       existingMergedPage &&
-      (options.preferGeneratedAppAsHome === true || !isMinimalPreviewFallbackSource(existingMergedPage))
+      !isMinimalPreviewFallbackSource(existingMergedPage)
     ) {
       removePathVariants(merged, page.filePath);
       merged[normalizedPagePath] = existingMergedPage;
       recordProvenance(
         normalizedPagePath,
-        readGenerated(page.filePath) ? 'generated-page' : 'generated-app-rebase',
+        'generated-page',
       );
       continue;
     }
@@ -635,16 +570,6 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
       continue;
     }
 
-    // Canonical page fallback is OPT-IN ONLY (`=== true`). Strict callers
-    // surface missing generated pages; preview-first calls may use the Stage
-    // 4b body to keep every registered route paintable in the builder.
-    if (options.allowCanonicalPageFallback === true && canonicalPage && !isMinimalPreviewFallbackSource(canonicalPage)) {
-      removePathVariants(merged, page.filePath);
-      merged[normalizedPagePath] = canonicalPage;
-      recordProvenance(normalizedPagePath, 'canonical-fallback');
-      continue;
-    }
-
     removePathVariants(merged, page.filePath);
     recordProvenance(normalizedPagePath, 'missing');
     missingRegisteredPages.push(normalizedPagePath);
@@ -653,7 +578,7 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
   // Exact registry-to-generated-page closure. A launch may never silently
   // omit a selected page; callers that enforce closure fail here with the
   // exact page list instead of surfacing a blank route downstream.
-  if (options.requireRegisteredPageClosure === true && missingRegisteredPages.length > 0) {
+  if (missingRegisteredPages.length > 0) {
     throw new PreviewPipelineError(
       'vfs',
       `Canonical compiler output is missing ${missingRegisteredPages.length} registered page(s): ${missingRegisteredPages.join(', ')}. Refusing to seal an incomplete site.`,
@@ -864,56 +789,24 @@ function* buildCanonicalLaunchArtifactSteps(
 
 
 
-  // ── Final syntax repair ────────────────────────────────────────────────
-  // Catch any syntax damage introduced by binding/nav-wiring attribute
-  // injection before files reach the preview iframe.
+  // ── Immutable syntax validation ────────────────────────────────────────
   yield;
-  let finalRepair: ReturnType<typeof validateSiteSyntax> | null = null;
-  try {
-    finalRepair = yield* validateSiteSyntaxSteps(filesAfterStrip, {
-      context: { industry: input.industry, brand: input.businessName },
-      // Strict launch paths never accept an industry template section in place
-      // of an unparseable AI file — the launch fails and a repair turn runs.
-      allowQuarantine: input.strictPreflight !== true,
-    });
-  } catch (error) {
-    console.warn('[canonicalLaunchVfs] Final preflight syntax repair failed; continuing', error);
-    finalRepair = null;
+  const syntaxValidation = yield* validateSiteSyntaxSteps(filesAfterStrip);
+  if (syntaxValidation.invalidCount > 0) {
+    const blockedReports = syntaxValidation.reports.filter((report) => report.status === 'invalid');
+    const blockedFiles = blockedReports.map((report) => report.path);
+    throw new PreviewPipelineError(
+      'vfs',
+      `Wizard source failed immutable syntax validation: ${blockedReports.map((report) => `${report.path}: ${report.finalError}`).join(' | ')}`,
+      { blockedFiles, diagnostics: blockedReports, recoverableByRelaunch: true },
+    );
   }
-  const safeFiles = finalRepair?.files || filesAfterStrip;
-  if (finalRepair && (finalRepair.repairedCount > 0 || finalRepair.quarantinedCount > 0)) {
-    console.warn('[canonicalLaunchVfs] Final syntax repair:', {
-      clean: finalRepair.cleanCount,
-      repaired: finalRepair.repairedCount,
-      quarantined: finalRepair.quarantinedCount,
-    });
-    if (input.strictPreflight && finalRepair.quarantinedCount > 0) {
-      const blockedReports = finalRepair.reports
-        .filter((report) => report.status === 'quarantined');
-      const blockedFiles = blockedReports.map((report) => report.path);
-      const diagnostics = blockedReports.map((report) => ({
-        path: report.path,
-        error: report.finalError || 'Unknown syntax error',
-        repairPasses: report.passes || [],
-      }));
-      const diagnosticSummary = diagnostics
-        .map(({ path, error }) => `${path}: ${error}`)
-        .join(' | ');
-      throw new PreviewPipelineError(
-        'vfs',
-        `Wizard source failed final syntax preflight for ${blockedFiles.join(', ')}; refusing to persist quarantine scaffolds. ${diagnosticSummary}`,
-        { blockedFiles, diagnostics, recoverableByRelaunch: true },
-      );
-    }
-  }
+  const safeFiles = filesAfterStrip;
 
   yield;
   const mergeProvenance: Record<string, MergedPageProvenance> = {};
   const mergedFiles = input.siteBundleSnapshot && mergeWithCanonicalSnapshot
     ? mergeGeneratedVfsWithCanonicalSnapshot(safeFiles, canonicalFiles, input.siteBundleSnapshot, {
-        allowCanonicalPageFallback: input.allowCanonicalPageFallback,
-        // M1: a wizard launch may never seal without every registered page.
-        requireRegisteredPageClosure: input.allowCanonicalPageFallback !== true,
         provenanceSink: mergeProvenance,
         // Snapshot topology owns registry/router/bindings and Stage 4b owns
         // /src/index.css. The supplied page set must close the registry.
@@ -933,7 +826,6 @@ function* buildCanonicalLaunchArtifactSteps(
   // always passed Stage 4b *after* its last source mutation. Bounded to one
   // pass: the finalizer is idempotent.
   const sourceMutatedAfterStage4b =
-    (finalRepair?.repairedCount ?? 0) > 0 ||
     (preflight?.wired ?? 0) > 0 ||
     forbidden.length > 0;
   if (sourceMutatedAfterStage4b) {
@@ -979,7 +871,7 @@ function* buildCanonicalLaunchArtifactSteps(
     siteBundleSnapshot: input.siteBundleSnapshot,
     industry: input.industry || input.siteBundleSnapshot?.industry,
     brand: input.businessName || undefined,
-    mode: 'repair',
+    mode: 'canonicalize',
   });
   for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
   Object.assign(mergedFiles, convergedPreflight.files);
@@ -1024,7 +916,7 @@ function* buildCanonicalLaunchArtifactSteps(
   // the supported Sandpack runtime (default export, supported UI facade
   // symbols, legal hook placement). Structural failures block the seal;
   // presentation quality is scored separately.
-  if (input.siteBundleSnapshot && mergeWithCanonicalSnapshot && input.allowCanonicalPageFallback !== true) {
+  if (input.siteBundleSnapshot && mergeWithCanonicalSnapshot) {
     const gate = validateRegisteredPageCompilation(mergedFiles, input.siteBundleSnapshot);
     if (!gate.ok) {
       throw new PreviewPipelineError(
