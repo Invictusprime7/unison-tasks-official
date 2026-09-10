@@ -38,7 +38,9 @@ import { LaunchStageTimeline } from "./LaunchStageTimeline";
 import { DesignContractInspector } from "./DesignContractInspector";
 import {
   buildCompositionCards,
+  capabilityDisplay,
   getDefaultTemplateCardFor,
+  resolveIndustryProfileForSystem,
   CUSTOMER_NEEDS,
   INDUSTRY_CARDS,
   LAUNCHER_PRESELECTS,
@@ -64,7 +66,16 @@ export interface LauncherWizardProps {
   } | null;
 }
 
-const STEP_ORDER: WizardStep[] = ["industry", "questions", "templates", "aesthetic"];
+const STEP_ORDER: WizardStep[] = [
+  "industry",
+  "profile",
+  "goals",
+  "pages",
+  "capabilities",
+  "templates",
+  "aesthetic",
+  "review",
+];
 
 export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardProps) => {
   const navigate = useNavigate();
@@ -79,6 +90,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const [template, setTemplate] = useState<TemplateCardData | null>(null);
   const [theme, setTheme] = useState<ThemePreset | null>(THEME_PRESETS[0] ?? null);
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
+  const [profileAnswers, setProfileAnswers] = useState<Record<string, string>>({});
+  const [capabilities, setCapabilities] = useState<string[]>([]);
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
@@ -97,6 +110,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     setTemplate(null);
     setTheme(THEME_PRESETS[0] ?? null);
     setSocialLinks({});
+    setProfileAnswers({});
+    setCapabilities([]);
     setIsLaunching(false);
     setLaunchStatus("");
     setLaunchError(null);
@@ -137,20 +152,46 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     setCustomerNeeds(preselect.customerNeeds);
     setSelectedPages(preselect.pages);
     setTemplate(getDefaultTemplateCardFor(id));
-    setStep("questions");
+    setCapabilities([...(resolveIndustryProfileForSystem(id)?.defaultCapabilities ?? [])]);
+    setProfileAnswers({});
+    setStep("profile");
   };
 
   const toggle = <T extends string>(list: T[], value: T): T[] =>
     list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
 
+  const industryProfile = useMemo(
+    () => resolveIndustryProfileForSystem(systemId, effectiveTemplate?.industry ?? null),
+    [systemId, effectiveTemplate?.industry],
+  );
+
+  const profileFields = industryProfile?.profileFields ?? [];
+  const requiredProfileFieldsAnswered = profileFields
+    .filter((field) => field.required)
+    .every((field) => (profileAnswers[field.id] || "").trim().length > 0);
+
+  const capabilityChoices = useMemo(() => {
+    const anchor = industryProfile?.anchorCapability;
+    const base = industryProfile?.defaultCapabilities ?? [];
+    return Array.from(new Set([...(anchor ? [anchor] : []), ...base, ...capabilities]));
+  }, [industryProfile, capabilities]);
+
   const canContinue =
     step === "industry"
       ? Boolean(systemId)
-      : step === "questions"
-        ? Boolean(primaryGoal)
-        : step === "templates"
-          ? Boolean(effectiveTemplate)
-          : Boolean(businessName.trim() && theme && effectiveTemplate);
+      : step === "profile"
+        ? Boolean(businessName.trim()) && requiredProfileFieldsAnswered
+        : step === "goals"
+          ? Boolean(primaryGoal)
+          : step === "pages"
+            ? true
+            : step === "capabilities"
+              ? capabilities.length > 0
+              : step === "templates"
+                ? Boolean(effectiveTemplate)
+                : step === "aesthetic"
+                  ? Boolean(theme)
+                  : Boolean(businessName.trim() && theme && effectiveTemplate);
 
   const goBack = () => {
     const index = STEP_ORDER.indexOf(step);
@@ -183,6 +224,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
       customerNeeds,
       selectedPages,
       socialLinks,
+      profileAnswers,
+      selectedCapabilities: capabilities,
       existingBusinessId: prefill?.businessId ?? null,
     };
 
@@ -273,7 +316,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                 Back
               </Button>
             )}
-            {step === "aesthetic" ? (
+            {step === "review" ? (
               <Button
                 size="sm"
                 disabled={!canContinue || isLaunching}
