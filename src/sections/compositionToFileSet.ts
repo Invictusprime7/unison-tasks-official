@@ -1370,7 +1370,7 @@ function applyDesignVariants(
         ?? applyVocabularyRecipes(section, designIntervention);
 
       const packVariantId = pack
-        ? clampVariantToPack(pack, section.type, resolved?.variantId ?? section.variantId)
+        ? clampVariantToPack(pack, section.type, resolved?.variantId ?? section.variantId, rotation)
         : undefined;
 
       const variantId = packVariantId ?? resolved?.variantId;
