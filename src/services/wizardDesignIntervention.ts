@@ -10,7 +10,6 @@ import {
 import {
   ART_DIRECTION_PACKS,
   isArtDirectionPackId,
-  resolveArtDirectionPackId,
   type ArtDirectionPackId,
 } from '@/sections/variants/artDirectionPacks';
 import {
@@ -25,7 +24,10 @@ import type {
   VocabularyVisualDominance,
   VocabularyMotionIntensity,
 } from '@/platform/core/designVocabulary';
-import { getDesignImplementation } from '@/services/designImplementationRegistry';
+import {
+  getDesignImplementation,
+  resolveIndustryArtDirectionPackId,
+} from '@/services/designImplementationRegistry';
 
 
 
