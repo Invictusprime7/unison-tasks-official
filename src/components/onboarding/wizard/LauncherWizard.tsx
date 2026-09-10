@@ -396,7 +396,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
               <>
                 <StepHeading
                   title="Tell us about your business"
-                  subtitle="These answers become the real copy and contracts on your site."
+                  subtitle="Only the business name is needed. Skip anything you don't have yet — you can fill it in later, directly on your live preview."
                 />
                 <div>
                   <FieldLabel>Business name</FieldLabel>
