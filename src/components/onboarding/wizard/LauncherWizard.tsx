@@ -301,7 +301,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                 Back
               </Button>
             )}
-            {step === "review" ? (
+            {step === "design" ? (
               <Button
                 size="sm"
                 disabled={!canContinue || isLaunching}
