@@ -1,7 +1,7 @@
 /**
  * LauncherWizard — the Unison System Launcher.
  *
- * Selection surface only. Four steps (industry → goals → template → launch)
+ * Selection surface only. Four steps (industry → business → structure → design/launch)
  * gather answers; `runLaunchPipeline` owns every deterministic stage. This
  * component never touches the VFS or authors a page. The orchestrator owns
  * deterministic generation and any guarded AI enrichment while this surface
@@ -67,16 +67,8 @@ export interface LauncherWizardProps {
   } | null;
 }
 
-const STEP_ORDER: WizardStep[] = [
-  "industry",
-  "profile",
-  "goals",
-  "pages",
-  "capabilities",
-  "templates",
-  "aesthetic",
-  "review",
-];
+const STEP_ORDER: WizardStep[] = ["industry", "business", "structure", "design"];
+
 
 export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardProps) => {
   const navigate = useNavigate();
@@ -155,7 +147,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     setTemplate(getDefaultTemplateCardFor(id));
     setCapabilities([...(resolveIndustryProfileForSystem(id)?.defaultCapabilities ?? [])]);
     setProfileAnswers({});
-    setStep("profile");
+    setStep("business");
   };
 
   const toggle = <T extends string>(list: T[], value: T): T[] =>
@@ -179,19 +171,12 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const canContinue =
     step === "industry"
       ? Boolean(systemId)
-      : step === "profile"
-        ? Boolean(businessName.trim())
-        : step === "goals"
-          ? Boolean(primaryGoal)
-          : step === "pages"
-            ? true
-            : step === "capabilities"
-              ? capabilities.length > 0
-              : step === "templates"
-                ? Boolean(effectiveTemplate)
-                : step === "aesthetic"
-                  ? Boolean(theme)
-                  : Boolean(businessName.trim() && theme && effectiveTemplate);
+      : step === "business"
+        ? Boolean(businessName.trim() && primaryGoal)
+        : step === "structure"
+          ? capabilities.length > 0
+          : Boolean(businessName.trim() && theme && effectiveTemplate);
+
 
   const goBack = () => {
     const index = STEP_ORDER.indexOf(step);
@@ -316,7 +301,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                 Back
               </Button>
             )}
-            {step === "review" ? (
+            {step === "design" ? (
               <Button
                 size="sm"
                 disabled={!canContinue || isLaunching}
@@ -392,11 +377,11 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
               </>
             )}
 
-            {step === "profile" && (
+            {step === "business" && (
               <>
                 <StepHeading
                   title="Tell us about your business"
-                  subtitle="Only the business name is needed. Skip anything you don't have yet — you can fill it in later, directly on your live preview."
+                  subtitle="Only the business name and a primary goal are needed. Skip anything you don't have yet — you can fill it in later, directly on your live preview."
                 />
                 <div>
                   <FieldLabel>Business name</FieldLabel>
@@ -407,53 +392,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                     className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
                   />
                 </div>
-                {profileFields.map((field) => (
-                  <div key={field.key}>
-                    <FieldLabel>
-                      {field.label}
-                      <span className="ml-1 text-white/35">(optional)</span>
-                    </FieldLabel>
-                    <Input
-                      value={profileAnswers[field.key] || ""}
-                      onChange={(event) =>
-                        setProfileAnswers((current) => ({
-                          ...current,
-                          [field.key]: event.target.value,
-                        }))
-                      }
-                      placeholder={field.placeholder || field.label}
-                      aria-label={field.label}
-                      className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
-                    />
-                  </div>
-                ))}
-                <div>
-                  <FieldLabel>Social profiles</FieldLabel>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(["instagram", "facebook", "linkedin", "youtube"] as const).map((platform) => (
-                      <Input
-                        key={platform}
-                        value={socialLinks[platform] || ""}
-                        onChange={(event) => setSocialLinks((current) => ({
-                          ...current,
-                          [platform]: event.target.value,
-                        }))}
-                        placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`}
-                        aria-label={`${platform} profile URL`}
-                        className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
-                      />
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
 
-            {step === "goals" && (
-              <>
-                <StepHeading
-                  title="What should the site do for you?"
-                  subtitle="Goals are contracts — they decide intents and conversion flow."
-                />
                 <FieldLabel>Primary goal</FieldLabel>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {PRIMARY_GOALS.map((goal) => (
@@ -489,15 +428,62 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                     </span>
                   </div>
                 ) : null}
+
+                <details className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                  <summary className="cursor-pointer text-[12px] text-white/60">
+                    Add details & social profiles (optional)
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    {profileFields.map((field) => (
+                      <div key={field.key}>
+                        <FieldLabel>
+                          {field.label}
+                          <span className="ml-1 text-white/35">(optional)</span>
+                        </FieldLabel>
+                        <Input
+                          value={profileAnswers[field.key] || ""}
+                          onChange={(event) =>
+                            setProfileAnswers((current) => ({
+                              ...current,
+                              [field.key]: event.target.value,
+                            }))
+                          }
+                          placeholder={field.placeholder || field.label}
+                          aria-label={field.label}
+                          className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <FieldLabel>Social profiles</FieldLabel>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {(["instagram", "facebook", "linkedin", "youtube"] as const).map((platform) => (
+                          <Input
+                            key={platform}
+                            value={socialLinks[platform] || ""}
+                            onChange={(event) => setSocialLinks((current) => ({
+                              ...current,
+                              [platform]: event.target.value,
+                            }))}
+                            placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`}
+                            aria-label={`${platform} profile URL`}
+                            className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </details>
               </>
             )}
 
-            {step === "pages" && (
+            {step === "structure" && (
               <>
                 <StepHeading
-                  title="Which pages should we build?"
-                  subtitle="Home is always included. Everything you pick is what compiles."
+                  title="Pages and what your site can do"
+                  subtitle="Home is always included. Each capability wires real backend behaviour, not just a section."
                 />
+                <FieldLabel>Pages</FieldLabel>
                 <div className="flex flex-wrap gap-2">
                   {PAGE_CHOICES.map((page) => (
                     <Chip
@@ -510,15 +496,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                     </Chip>
                   ))}
                 </div>
-              </>
-            )}
 
-            {step === "capabilities" && (
-              <>
-                <StepHeading
-                  title="What should your site be able to do?"
-                  subtitle="Each capability wires real backend behaviour, not just a section."
-                />
+                <FieldLabel>Capabilities</FieldLabel>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {capabilityChoices.map((capabilityId) => {
                     const display = capabilityDisplay(capabilityId);
@@ -556,12 +535,13 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
               </>
             )}
 
-            {step === "templates" && (
+            {step === "design" && (
               <>
                 <StepHeading
-                  title="Pick your base composition"
-                  subtitle="Every card is a registered composition — what you pick is what compiles."
+                  title="Choose your look, then launch"
+                  subtitle="Every card is a registered composition and style resolves to the same tokens the compiler writes."
                 />
+                <FieldLabel>Base composition</FieldLabel>
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {templates.map((card) => (
                     <button
@@ -592,15 +572,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                     </button>
                   ))}
                 </div>
-              </>
-            )}
 
-            {step === "aesthetic" && (
-              <>
-                <StepHeading
-                  title="Choose your brand direction"
-                  subtitle="Style resolves to theme tokens — the same tokens the compiler writes."
-                />
                 <FieldLabel>Visual style</FieldLabel>
                 <div className="flex flex-wrap gap-2">
                   {THEME_PRESETS.map((preset) => (
@@ -615,15 +587,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                   ))}
                 </div>
                 <StyleTokenCard theme={theme} businessName={businessName} />
-              </>
-            )}
 
-            {step === "review" && (
-              <>
-                <StepHeading
-                  title="Review and launch"
-                  subtitle="This is exactly what will be generated — no surprises after the build."
-                />
+                <FieldLabel>What gets generated</FieldLabel>
                 <dl className="grid gap-2 text-[12px] sm:grid-cols-2">
                   <ReviewRow label="Business" value={businessName || "—"} />
                   <ReviewRow label="Industry" value={industryProfile?.name || systemId || "—"} />
@@ -633,10 +598,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                   />
                   <ReviewRow label="Template" value={effectiveTemplate?.label || "—"} />
                   <ReviewRow label="Style" value={theme?.label || "—"} />
-                  <ReviewRow
-                    label="Pages"
-                    value={["home", ...selectedPages].join(", ")}
-                  />
+                  <ReviewRow label="Pages" value={["home", ...selectedPages].join(", ")} />
                   <ReviewRow
                     label="Capabilities"
                     value={capabilities.map((id) => capabilityDisplay(id).label).join(", ") || "—"}
@@ -648,6 +610,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                 </dl>
               </>
             )}
+
 
             {launchError && (
               <div className="rounded-xl border border-rose-400/25 bg-rose-500/[0.07] px-4 py-3 text-[12px] text-rose-200">
