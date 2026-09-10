@@ -1045,9 +1045,9 @@ function* buildCanonicalLaunchArtifactSteps(
     backendRequired: input.backendRequired,
     appContext,
     metadataFiles,
-  console.log('DBG keys', JSON.stringify(Object.keys(mergedFiles)));
     sessionKey,
   });
+  console.log('DBG keys', JSON.stringify(Object.keys(mergedFiles)));
   const viteReadyFiles = ensureViteRootFiles(mergedFiles, {
     extraDependencies: runtimeManifest.dependencies,
     themePresetId: appContext.themePresetId || (input.aesthetic as string | undefined) || null,
