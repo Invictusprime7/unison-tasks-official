@@ -54,6 +54,8 @@ export interface VisualQualityReport {
 export interface VisualQualityOptions {
   /** 0-100 from the technical preflight; carried through for one score view. */
   technicalScore?: number;
+  /** Route-specific depth floors from the signed generation brief. */
+  sectionFloors?: Record<string, number>;
 }
 
 const PAGE_PATH = /^\/src\/pages\/.+\.(t|j)sx$/;
@@ -134,7 +136,27 @@ function evaluateHero(source: string): { parts: number; complete: boolean; cropp
   return { parts, complete: parts >= 5, croppedMedia, hasMedia };
 }
 
-function evaluatePage(path: string, source: string): VisualQualityPageReport {
+function resolvePageSurface(path: string, source: string, files: Record<string, string>): string {
+  const directory = path.replace(/\/[^/]*$/, '');
+  const linked: string[] = [];
+  for (const match of source.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+    const specifier = match[1];
+    if (!specifier.startsWith('.') && !specifier.startsWith('@/')) continue;
+    const base = specifier.startsWith('@/')
+      ? `/src/${specifier.slice(2)}`
+      : `${directory}/${specifier}`.replace(/\/\.\//g, '/');
+    for (const candidate of [base, `${base}.tsx`, `${base}.jsx`, `${base}.ts`, `${base}/index.tsx`]) {
+      const hit = files[candidate] || files[candidate.replace(/^\//, '')];
+      if (hit) {
+        linked.push(hit);
+        break;
+      }
+    }
+  }
+  return [source, ...linked].join('\n');
+}
+
+function evaluatePage(path: string, source: string, minSections = 4): VisualQualityPageReport {
   const sectionCount = Math.max(countMatches(source, SECTION_TAG), layoutSignatures(source).size);
   const cardGridCount = countMatches(source, CARD_GRID);
   const mediaCount = countMatches(source, MEDIA_TAG);
@@ -146,7 +168,7 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
 
   const findings: VisualQualityFinding[] = [];
   if (cardGridCount >= 3 && diversity <= 3) findings.push('REPETITIVE_COMPOSITION');
-  if (sectionCount < 4) findings.push('THIN_COMPOSITION');
+  if (sectionCount < minSections) findings.push('THIN_COMPOSITION');
   if (levels.length < 2) findings.push('WEAK_HIERARCHY');
   if (mediaCount === 0) findings.push('LOW_MEDIA_COVERAGE');
   if (ctaCount === 0) findings.push('MISSING_CTA');
@@ -200,7 +222,11 @@ export function evaluateVisualQuality(
 ): VisualQualityReport {
   const pages = Object.entries(files)
     .filter(([path]) => PAGE_PATH.test(path))
-    .map(([path, source]) => evaluatePage(path, source));
+    .map(([path, source]) => evaluatePage(
+      path,
+      resolvePageSurface(path, source, files),
+      options.sectionFloors?.[path] ?? 4,
+    ));
 
   const pageCount = Math.max(pages.length, 1);
   const avg = (pick: (page: VisualQualityPageReport) => number): number =>

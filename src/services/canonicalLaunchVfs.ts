@@ -1062,13 +1062,40 @@ function* buildCanonicalLaunchArtifactSteps(
     }
   }
 
-  // ── Visual quality evaluation (advisory, never blocking) ───────────────
-  // Compositional scoring runs on the sealed page bodies. It never mutates
-  // source and never triggers a fallback; the report travels with the
-  // artifact so the launcher can record ONE focused refinement directive.
+  // ── Visual quality acceptance ──────────────────────────────────────────
+  // Structural visual defects are seal blockers. Softer findings remain in
+  // the persisted report, but incomplete/cropped heroes and shallow routes
+  // can no longer pass merely because TypeScript compiled.
   const visualQuality = convergedPreflight?.visualQuality;
   if (visualQuality) {
     mergedFiles['/.unison/visual-quality.json'] = JSON.stringify(visualQuality, null, 2);
+    const blockingFindings = visualQuality.pages.flatMap((page) =>
+      page.findings
+        .filter((finding) => (
+          finding === 'THIN_COMPOSITION'
+          || finding === 'INCOMPLETE_HERO'
+          || finding === 'CROPPED_HERO_MEDIA'
+          || finding === 'MISSING_CTA'
+        ))
+        .map((finding) => `${page.path}: ${finding}`),
+    );
+    if (blockingFindings.length > 0) {
+      throw new PreviewPipelineError(
+        'vfs',
+        `Generated pages failed visual acceptance: ${blockingFindings.join(' | ')}`,
+        {
+          blockedFiles: visualQuality.pages
+            .filter((page) => page.findings.some((finding) => (
+              finding === 'THIN_COMPOSITION'
+              || finding === 'INCOMPLETE_HERO'
+              || finding === 'CROPPED_HERO_MEDIA'
+              || finding === 'MISSING_CTA'
+            )))
+            .map((page) => page.path),
+          recoverableByRelaunch: true,
+        },
+      );
+    }
   }
 
 
