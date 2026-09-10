@@ -155,8 +155,6 @@ stays independent of pricing UI.
 2. `resolveSiteConfiguration()` in `resolvedComposition`, consuming existing
    `artDirectionPacks`.
 
-2. `resolveSiteConfiguration()` in `resolvedComposition`, consuming existing
-   `artDirectionPacks`.
 
 3. Migrations for `wizard_selections`, `site_configs`, `integrations`.
 4. Selection persistence and the 8-step launcher.
