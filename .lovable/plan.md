@@ -162,14 +162,13 @@ ownership logic stays independent of pricing UI.
    fields, anchor capability), add the parity assertion.
 2. `resolveSiteConfiguration()` in `resolvedComposition`, consuming existing
    `artDirectionPacks`.
+3. Wizard selection persistence into draft metadata + the 8-step launcher.
+4. `SiteConfiguration` stamped into snapshot meta from `launchOrchestrator.plan`.
+5. Journey sections + variant coverage + industry distinctiveness lint.
+6. `integrations` migration + provider-adapter map; move GHL behind it.
+7. Public marketing pages and `/app` shell.
+8. Entitlement tiers on the existing hook.
 
-
-3. Migrations for `wizard_selections`, `site_configs`, `integrations`.
-4. Selection persistence and the 8-step launcher.
-5. `SiteConfiguration` persistence wired into `launchOrchestrator.plan`.
-6. Journey sections + variant coverage + industry distinctiveness lint.
-7. Integration abstraction covering every anchor capability.
-8. Public marketing pages and `/app` shell, then entitlements.
 
 
 ## Technical notes
