@@ -13,6 +13,11 @@ import {
 } from "@/data/templates/types";
 import { getCompositionsBySystemType } from "@/sections/templates";
 import type { BusinessModel, IndustryOverlay } from "@/types/playground";
+import {
+  getIndustryProfile,
+  normalizeIndustryKey,
+  type IndustryProfile,
+} from "@/platform/core/industryMatrix";
 
 // ── Steps ───────────────────────────────────────────────────────────────────
 
@@ -336,4 +341,40 @@ export function getDefaultTemplateCardFor(
     if (match) return match;
   }
   return cards[0];
+}
+
+// ── Industry-aware profile + capability vocabulary ──────────────────────────
+
+/**
+ * The wizard's business-system card resolves to a real industry profile in the
+ * canonical matrix. Profile questions and capability toggles are read from
+ * there — the wizard adds no second industry registry.
+ */
+export function resolveIndustryProfileForSystem(
+  systemId: BusinessSystemType | null,
+  templateIndustry?: string | null,
+): IndustryProfile | undefined {
+  const candidates = [templateIndustry, systemId ? SYSTEM_TO_INDUSTRY_OVERLAY[systemId] : null];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const profile = getIndustryProfile(normalizeIndustryKey(String(candidate)));
+    if (profile) return profile;
+  }
+  return undefined;
+}
+
+export const CAPABILITY_DISPLAY: Record<string, { label: string; description: string }> = {
+  booking: { label: "Booking", description: "Online scheduling with confirmations" },
+  quoting: { label: "Quotes & estimates", description: "Capture job details and send quotes" },
+  contact: { label: "Contact", description: "Contact form routed to your inbox" },
+  "lead-capture": { label: "Lead capture", description: "Save enquiries into your CRM" },
+  newsletter: { label: "Newsletter", description: "Grow an email subscriber list" },
+  commerce: { label: "Store", description: "Catalog, cart and product pages" },
+  payments: { label: "Payments", description: "Take payment at checkout" },
+  auth: { label: "Accounts", description: "Customer sign-in and saved data" },
+  donation: { label: "Donations", description: "Accept one-off and recurring gifts" },
+};
+
+export function capabilityDisplay(id: string): { label: string; description: string } {
+  return CAPABILITY_DISPLAY[id] ?? { label: id, description: "Additional site capability" };
 }
