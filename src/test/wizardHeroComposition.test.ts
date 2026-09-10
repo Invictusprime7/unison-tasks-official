@@ -4,7 +4,7 @@ import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry
 import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
 import { getCompositionById } from '@/sections/templates';
 import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
-import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
+import type { GeneratedSitePlan, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
 
 function registry() {
   const reg = createEmptyPageRegistry();
@@ -109,11 +109,21 @@ describe('hero quality findings', () => {
     const template = getCompositionById('salon-premium');
     if (!template) throw new Error('Missing salon-premium composition');
     const pages = Object.values(pageRegistry.pages);
+    const TOPOLOGY_ROLES = new Set<string>([
+      'home', 'about', 'services', 'contact', 'pricing', 'gallery',
+      'faq', 'booking', 'checkout', 'thank_you', 'blog', 'shop', 'custom',
+    ]);
+    const toTopologyRole = (role: string | undefined): PageRouteNode['role'] => {
+      if (role === 'service') return 'services';
+      if (role && TOPOLOGY_ROLES.has(role)) return role as PageRouteNode['role'];
+      return 'custom';
+    };
     const plan: GeneratedSitePlan = {
       siteId: 'hero-quality-site', industry: 'salon', businessName: 'Canonical Salon Test',
       homePageId: pageRegistry.homePageId, pages: pages.map((page) => ({
-        id: page.pageId, name: page.name, title: page.name || page.title || page.role, route: page.route,
-        role: page.role, filePath: page.filePath, visibleInNav: page.showInNav,
+        id: page.pageId, name: page.title, title: page.title, route: page.path,
+        role: toTopologyRole(page.pageRole), filePath: page.filePath ?? `/src/pages/${page.pageId}.tsx`,
+        visibleInNav: page.showInNav,
         isHome: page.isHome, generatedBy: 'wizard',
       })),
       navItems: pages.filter((page) => page.showInNav).map((page) => page.pageId),
