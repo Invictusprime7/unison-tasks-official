@@ -20,7 +20,15 @@
  * These descriptors are pure data — no AI, no runtime behaviour.
  */
 
+import { getIndustryProfile, normalizeIndustryKey, type PageSpec } from './industryMatrix';
+import { getIndustryIntentProfile } from './industryIntentProfiles';
+import {
+  resolveArtDirectionPackId,
+  type ArtDirectionPackId,
+} from '@/sections/variants/artDirectionPacks';
+
 export const RESOLVED_COMPOSITION_VERSION = '1.0' as const;
+
 
 /** Root directory for per-page composition descriptors inside the VFS. */
 export const RESOLVED_COMPOSITION_ROOT = '/.unison/compositions';
