@@ -67,16 +67,8 @@ export interface LauncherWizardProps {
   } | null;
 }
 
-const STEP_ORDER: WizardStep[] = [
-  "industry",
-  "profile",
-  "goals",
-  "pages",
-  "capabilities",
-  "templates",
-  "aesthetic",
-  "review",
-];
+const STEP_ORDER: WizardStep[] = ["industry", "business", "structure", "design"];
+
 
 export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardProps) => {
   const navigate = useNavigate();
