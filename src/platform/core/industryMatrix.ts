@@ -216,6 +216,40 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     seedDataKeys: ['business_name', 'business_email', 'services', 'service_areas'],
   },
 
+  contractor: {
+    industry: 'contractor',
+    name: 'Contractor & Trades',
+    systemType: 'booking',
+    layoutCategories: ['contractor'],
+    defaultCapabilities: ['quoting', 'lead-capture', 'contact', 'newsletter'],
+    primaryIntent: 'quote.request',
+    anchorCapability: 'quoting',
+    conversionJourney: ['nav.goto', 'quote.request', 'lead.capture'],
+    allowedArtDirectionPacks: ['bold-commercial', 'brutalist-poster', 'swiss-grid', 'warm-craft'],
+    profileFields: withBase([
+      { key: 'trades', label: 'Trades covered', type: 'list', required: true, placeholder: 'Roofing, siding, gutters' },
+      { key: 'serviceAreas', label: 'Areas served', type: 'list', required: true },
+      { key: 'licensing', label: 'Licence number', type: 'text' },
+      { key: 'projectMinimum', label: 'Typical project size', type: 'text', placeholder: 'From $5,000' },
+      { key: 'warranty', label: 'Workmanship warranty', type: 'text' },
+    ]),
+    crmPipeline: {
+      name: 'Contractor Pipeline',
+      stages: ['New Enquiry', 'Site Visit', 'Estimate Sent', 'Job Scheduled', 'Completed', 'Warranty'],
+      defaultStage: 'New Enquiry',
+    },
+    defaultPages: [
+      { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'stats', 'gallery', 'testimonials', 'cta', 'footer'] },
+      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'services', 'faq', 'footer'] },
+      { title: 'Projects', path: '/projects', purpose: 'portfolio', expectedSections: ['navbar', 'gallery', 'testimonials', 'footer'] },
+      { title: 'Get a Quote', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'faq', 'footer'] },
+    ],
+    automationPack: 'local_service',
+    seedDataKeys: ['business_name', 'business_email', 'services', 'service_areas', 'licensing'],
+  },
+
+
+
   coaching: {
     industry: 'coaching',
     name: 'Coaching & Consulting',
