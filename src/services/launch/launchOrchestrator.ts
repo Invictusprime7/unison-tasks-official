@@ -84,6 +84,11 @@ import type { BuilderIdentity } from "@/types/builderIdentity";
 import type { BusinessProfileDTO } from "@/types/businessProfile";
 import type { WizardSelections } from "@/types/playground";
 import {
+  resolveSiteConfiguration,
+  type SiteConfiguration,
+} from "@/platform/core/resolvedComposition";
+
+import {
   getLanguageFromFileName,
   type VirtualNode,
 } from "@/hooks/useVirtualFileSystem";
