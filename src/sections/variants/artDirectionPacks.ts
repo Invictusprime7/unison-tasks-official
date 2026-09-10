@@ -1238,6 +1238,13 @@ export interface ArtDirectionResolutionInput {
    * snapshot is the single truth and no layer may re-derive art direction.
    */
   sealedPackId?: string | null;
+  /**
+   * Industry-allowed packs (`IndustryProfile.allowedArtDirectionPacks`). When
+   * supplied, the resolution is narrowed to this set so an industry can never
+   * be handed an art direction its journey does not support.
+   */
+  allowedPackIds?: ArtDirectionPackId[] | null;
+
 }
 
 /** FNV-1a — the same stable hash the wizard design intervention uses. */
