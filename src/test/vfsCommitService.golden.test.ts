@@ -225,7 +225,7 @@ function mockPipeline(files: Record<string, string>) {
 function mockPreflight(files: Record<string, string>) {
   (runFullPreflight as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
     files,
-    stages: { earlyRepair: 'ok', finalRepair: 'ok' },
+    stages: { syntaxValidation: 'ok', finalSyntaxValidation: 'ok' },
   });
 }
 
@@ -290,8 +290,8 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     vi.mocked(runFullPreflight).mockReturnValue({
       files,
       stages: {
-        earlyRepair: 'ok',
-        finalRepair: 'ok',
+        syntaxValidation: 'ok',
+        finalSyntaxValidation: 'ok',
         runtimeCompatibility: { ok: false, blockers: ['Missing canonical runtime module'] },
       },
     } as unknown as ReturnType<typeof runFullPreflight>);

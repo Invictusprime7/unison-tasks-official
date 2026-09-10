@@ -76,7 +76,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     const compilerGateStart = source.indexOf("// ── M4 compiler gate", convergenceStart);
     const convergence = source.slice(convergenceStart, compilerGateStart);
 
-    expect(convergence.match(/mode: 'repair'/g)).toHaveLength(1);
+    expect(convergence.match(/mode: 'canonicalize'/g)).toHaveLength(1);
     expect(convergence.match(/mode: 'acceptance'/g)).toHaveLength(1);
     expect(convergence).toContain("Object.assign(mergedFiles, refinalized.files)");
     expect(convergence.match(/Object\.assign\(mergedFiles, convergedPreflight\.files\)/g)).toHaveLength(1);
@@ -122,47 +122,6 @@ describe("buildCanonicalLaunchArtifacts", () => {
       snapshot.vfsFiles,
       snapshot,
     )).toThrow("minimal/fallback scaffold");
-  });
-
-  it("seals the canonical page after repairing unusable generated output", () => {
-    const snapshot = createSnapshot();
-    snapshot.vfsFiles["/src/pages/Home.tsx"] =
-      "export default function Home(){ return <main><h1>Canonical generated composition</h1><section>Ready for editing in Web Builder.</section></main>; }";
-
-    const artifacts = buildCanonicalLaunchArtifacts({
-      generatedFiles: {
-        "/src/pages/Home.tsx": "export default function Home(){ return <main>Placeholder</main>; }",
-      },
-      preferredEntryPoint: "/src/App.tsx",
-      siteBundleSnapshot: snapshot,
-      compiledPlayground: { vfsFiles: snapshot.vfsFiles },
-      themePresetId: "modern",
-      allowCanonicalPageFallback: true,
-      previewFirst: true,
-      strictPreflight: true,
-    });
-
-    expect(artifacts.files["/src/pages/Home.tsx"]).toContain("Canonical generated composition");
-    expect(artifacts.siteBundleSnapshot?.meta.seal).toBeDefined();
-    expect(artifacts.visualQuality).toBeDefined();
-    expect(artifacts.runtimeCompatibility).toBeDefined();
-  });
-
-  it("uses a generated single-file App as Home in preview-first mode", () => {
-    const snapshot = createSnapshot();
-    snapshot.vfsFiles["/src/pages/Home.tsx"] =
-      "export default function Home(){ return <main>Canonical home composition</main>; }";
-    const generatedApp = `export default function App(){ return <main><h1>AI generated home</h1><section>${"Generated business content. ".repeat(30)}</section></main>; }`;
-
-    const merged = mergeGeneratedVfsWithCanonicalSnapshot(
-      { "/src/App.tsx": generatedApp },
-      snapshot.vfsFiles,
-      snapshot,
-      { allowCanonicalPageFallback: true, preferGeneratedAppAsHome: true },
-    );
-
-    expect(merged["/src/pages/Home.tsx"]).toContain("AI generated home");
-    expect(merged["/src/App.tsx"]).toContain("react-router-dom");
   });
 
   it("preserves snapshot-owned UI foundation files when merging generated output", () => {
@@ -238,27 +197,6 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(merged["/src/pages/Home.tsx"]).not.toContain("Canonical composed home");
     // The declared composition survives as the design contract, not as a body.
     expect(merged["/.unison/compositions/src/pages/Home.json"]).toContain("hero:full-bleed");
-  });
-
-  it("never substitutes the canonical page body unless a caller explicitly opts in", () => {
-    const snapshot = createSnapshot();
-    snapshot.vfsFiles["/src/pages/Home.tsx"] =
-      "export default function Home(){ return <main>Canonical composed home</main>; }";
-
-    // Default (flag omitted) is now strict: no body substitution.
-    const defaults = mergeGeneratedVfsWithCanonicalSnapshot({}, snapshot.vfsFiles, snapshot);
-    expect(defaults["/src/pages/Home.tsx"]).toBeUndefined();
-
-    const strict = mergeGeneratedVfsWithCanonicalSnapshot({}, snapshot.vfsFiles, snapshot, {
-      allowCanonicalPageFallback: false,
-    });
-    expect(strict["/src/pages/Home.tsx"]).toBeUndefined();
-
-    // Opt-in remains only for non-authoring importers.
-    const optedIn = mergeGeneratedVfsWithCanonicalSnapshot({}, snapshot.vfsFiles, snapshot, {
-      allowCanonicalPageFallback: true,
-    });
-    expect(optedIn["/src/pages/Home.tsx"]).toContain("Canonical composed home");
   });
 
   it("uses LaunchState VFS when the builder preview mounts before VFS import", () => {
@@ -516,7 +454,6 @@ describe("buildCanonicalLaunchArtifacts", () => {
       preferredEntryPoint: "/src/App.tsx",
       siteBundleSnapshot: snapshot,
       compiledPlayground: { vfsFiles: snapshot.vfsFiles },
-      allowCanonicalPageFallback: false,
       businessId: "biz_strict",
       projectId: "project_strict",
       systemType: "agency",
