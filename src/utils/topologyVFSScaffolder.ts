@@ -478,6 +478,11 @@ function buildRoleComposition(
 
   if (definition) {
     for (const source of template.sections) appendSection(source);
+  } else if (explicitPool) {
+    // Authored pool: verbatim filter, repeats preserved.
+    for (const source of template.sections) {
+      if (allowedTypes.has(source.type)) appendSection(source);
+    }
   } else if (declaredSections.length > 0) {
     // One emitted section per declared entry, in declared order. Repeated types
     // rotate through the available source instances (page-seeded) so a page
