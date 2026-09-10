@@ -4,7 +4,7 @@ import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry
 import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
 import { getCompositionById } from '@/sections/templates';
 import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
-import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
+import type { GeneratedSitePlan, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
 
 function registry() {
   const reg = createEmptyPageRegistry();
