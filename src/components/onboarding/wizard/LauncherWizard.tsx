@@ -411,7 +411,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                   <div key={field.key}>
                     <FieldLabel>
                       {field.label}
-                      {field.required ? " *" : ""}
+                      <span className="ml-1 text-white/35">(optional)</span>
                     </FieldLabel>
                     <Input
                       value={profileAnswers[field.key] || ""}
