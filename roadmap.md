@@ -33,7 +33,8 @@ LauncherWizard
 - [x] Preserve the sealed `SiteConfiguration` across `recompileFromPlayground` so recompiles reuse the launch contract instead of re-deriving one.
 - [x] Make `designImplementationRegistry` the single lookup for industry-allowed art direction (`resolveIndustryArtDirectionPackId`) and industry section coverage; `wizardDesignIntervention` no longer calls the pack resolver directly.
 - [x] Delete zero-importer legacy services (`aiIntegrationService`, `automationToggleService`, `businessSystemSnapshot`, `capabilityProvisioner`, `monacoVFSSync`, `systemsAI`).
-- [ ] Remove residual page-authoring fallback APIs in `canonicalLaunchVfs.ts` / `aiSitePreflightRepair.ts` and certify Wizard → Builder rendering in a browser run.
+- [x] Remove residual page-authoring fallback and source-repair APIs; syntax validation is immutable and canonical commits reject invalid authored output without substitution.
+- [ ] Certify Wizard → Builder rendering in a browser run.
 
 ## Active Sequence
 

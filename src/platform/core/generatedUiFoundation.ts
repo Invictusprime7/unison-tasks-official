@@ -1381,9 +1381,8 @@ export function assertGeneratedUiFoundationPersistence(
  * the `@/unison/ui` root barrel — never under a shadcn-style `lib/utils`
  * path — and `tailwind.css` is a global stylesheet Stage 4b already wires
  * into `/src/index.css`, so a page importing it directly is always wrong.
- * Same "auto-repair, then hard reject" policy as the commit-service's known
- * Lucide/Framer artifact healing: safe, narrow rewrites before the strict
- * contract check, not a fallback that hides real violations.
+ * These redirects are deterministic foundation normalization before the strict
+ * contract check, not authored-source repair or a fallback that hides violations.
  */
 const KNOWN_IMPORT_MISTAKE_REDIRECTS: ReadonlyArray<{ from: string; to: string }> = [
   { from: '@/unison/lib/utils', to: '@/unison/ui' },

@@ -88,4 +88,15 @@ describe('hero quality findings', () => {
     const report = evaluateVisualQuality({ '/src/pages/Contact.tsx': banded });
     expect(report.findings).toContain('CROPPED_HERO_MEDIA');
   });
+
+  it('accepts a canonical componentized hero using serialized page data', () => {
+    const page = `import Hero from '@/components/Hero'; const SECTIONS = [{ "type": "hero", "props": { "headline": "Studio", "subheadline": "Care designed around you", "badge": "Welcome", "image": "/studio.jpg", "ctas": [{ "label": "Book", "intent": "booking.create" }, { "label": "Explore", "intent": "nav.goto" }] } }]; export default function Page(){ return <Hero props={SECTIONS[0].props} />; }`;
+    const hero = `export default function Hero({ props }) { const { headline, subheadline, description, ctas = [], badge, stats, image } = props; return <section data-ut-variant="hero:centered"><div>{badge && <span className="ut-eyebrow">{badge}</span>}<h1>{headline}</h1>{subheadline && <p className="ut-lead">{subheadline}</p>}{description && <p>{description}</p>}{ctas.length > 0 && <div className="ut-hero-actions">{ctas.map((cta, index) => <a key={index} data-ut-intent={cta.intent}>{cta.label}</a>)}</div>}{image && <div className="ut-hero-media"><img src={image} alt="" className="object-contain" /></div>}{stats && <div className="ut-hero-stats" />}</div></section>; }`;
+    const report = evaluateVisualQuality({
+      '/src/pages/Home.tsx': page,
+      '/src/components/Hero.tsx': hero,
+    });
+    expect(report.findings).not.toContain('INCOMPLETE_HERO');
+    expect(report.findings).not.toContain('CROPPED_HERO_MEDIA');
+  });
 });

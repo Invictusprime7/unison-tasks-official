@@ -118,14 +118,34 @@ function evaluateHero(source: string): { parts: number; complete: boolean; cropp
     sectionEnd > 0 ? sectionEnd : Math.min(source.length, h1Index + 6000),
   );
 
-  const hasHeadline = true;
-  const hasLead = /<p\b[\s\S]{0,600}?<\/p>/i.test(hero.slice(hero.search(/<h1\b/i)));
-  const hasEyebrow = /(ut-eyebrow|ut-pill|<(?:span|p)\b[^>]*(?:eyebrow|badge|kicker))/i.test(hero);
-  const actions = hero.match(/data-ut-intent\s*=/g)?.length ?? 0;
-  const hasMedia = /<(?:img|video|picture)\b/i.test(hero) || /ut-hero-media|ut-hero-full|ut-hero-bg/.test(hero);
-  const hasProof = /(ut-stat|proof|<dl\b|grid-cols-3[^"'`]*)/i.test(hero);
+  // Canonical pages keep content in a serialized SECTIONS contract and render
+  // it through the registered Hero component. Evaluate that data together with
+  // the component source instead of expecting two fully-expanded CTA nodes in
+  // the page module itself.
+  const registeredHero = /export default function Hero\b/.test(source)
+    && /\bctas\s*=\s*\[\]/.test(source)
+    && /ctas\.map\s*\(/.test(source);
+  const serializedHeroStart = source.search(/["']type["']\s*:\s*["']hero["']/i);
+  const serializedHero = serializedHeroStart >= 0
+    ? source.slice(serializedHeroStart, serializedHeroStart + 6000)
+    : '';
+  const serializedHeroActions = serializedHero.match(/["']intent["']\s*:/g)?.length ?? 0;
+  const serializedHeroHasMedia = /["'](?:image|backgroundImage)["']\s*:\s*["'][^"']+/i.test(serializedHero);
+  const serializedHeroHasProof = /["']stats["']\s*:\s*\[/i.test(serializedHero);
 
-  const parts = [hasHeadline, hasLead, hasEyebrow, actions >= 2, hasMedia || hasProof]
+  const hasHeadline = true;
+  const hasLead = /<p\b[\s\S]{0,600}?<\/p>/i.test(hero.slice(hero.search(/<h1\b/i)))
+    || (registeredHero && /\{(?:subheadline|description)\s*&&\s*<p\b/.test(hero));
+  const hasEyebrow = /(ut-eyebrow|ut-pill|<(?:span|p)\b[^>]*(?:eyebrow|badge|kicker))/i.test(hero)
+    || (registeredHero && /\{badge\s*&&\s*<span\b/.test(hero));
+  const actions = hero.match(/data-ut-intent\s*=/g)?.length ?? 0;
+  const hasActions = actions >= 2 || (registeredHero && serializedHeroActions >= 2);
+  const hasMedia = /<(?:img|video|picture)\b/i.test(hero)
+    || /ut-hero-media|ut-hero-full|ut-hero-bg/.test(hero)
+    || serializedHeroHasMedia;
+  const hasProof = /(ut-stat|proof|<dl\b|grid-cols-3[^"'`]*)/i.test(hero) || serializedHeroHasProof;
+
+  const parts = [hasHeadline, hasLead, hasEyebrow, hasActions, hasMedia || hasProof]
     .filter(Boolean).length;
 
   // A hero image that is neither the hero background nor a ut-hero-media frame

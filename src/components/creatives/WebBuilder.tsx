@@ -7102,9 +7102,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 onApproveCapabilityPlan={approveCapabilityPlanFromPanel}
                 onApplyToVFS={async (rawFiles, applyMeta) => {
                   console.log('[WebBuilder] onApplyToVFS called with files:', Object.keys(rawFiles));
-                  // End-to-end preflight: syntax repair → nav-intent stamping →
-                  // industry forbidden-intent strip → final syntax repair.
-                  // Mirrors the System Launcher pipeline so AI Builder chat
+                  // End-to-end canonicalization: immutable syntax validation →
+                  // nav-intent stamping → industry forbidden-intent strip →
+                  // final immutable validation. Mirrors the Launcher pipeline so AI Builder chat
                   // edits cannot crash preview, ship un-stamped nav links, or
                   // leak intents disallowed by the active industry profile.
                   const snapshotForPreflight = (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null) ?? null;
