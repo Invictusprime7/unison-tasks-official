@@ -10,10 +10,28 @@
 
 import type { ComponentType } from 'react';
 import type { RadixPrimitiveId } from '@/platform/core/generatedUiFoundation';
+import type { VocabularyCategory } from '@/platform/core/designVocabulary';
 import type { SectionType, BaseSectionProps } from '../types';
 
 /** Unique identifier for a variant: "hero:split-image", "cta:gradient-banner", etc. */
 export type VariantId = `${SectionType}:${string}`;
+/** Points at a design vocabulary entry; ids are unique per category only. */
+export interface VocabularyRef {
+  category: VocabularyCategory;
+  id: string;
+}
+/**
+ * How a registered variant relates to the experience (WebGL) layer.
+ *
+ * `declared` records the dependency a future Phase 6A implementation will need
+ * and grants no runtime capability; only `enabled` variants may reach live 3D.
+ * The primitives are never restated here — they are derived from the named
+ * design vocabulary entry, which owns them.
+ */
+export interface VariantExperienceDeclaration {
+  status: 'declared' | 'enabled';
+  vocabulary: { category: VocabularyCategory; id: string };
+}
 
 /** Content extracted from an existing JSX section for re-rendering in a new layout */
 export interface ExtractedSectionContent {
@@ -52,6 +70,10 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   isDefault?: boolean;
   /** Radix behavior facades required by this variant's generated JSX */
   radixPrimitives?: readonly RadixPrimitiveId[];
+  /** Design vocabulary pattern this variant already executes today */
+  vocabulary?: VocabularyRef;
+  /** Experience-layer dependency this variant declares or enables */
+  experience?: VariantExperienceDeclaration;
   /** Generates JSX source string for this variant layout using extracted content */
   renderJSX: (content: ExtractedSectionContent) => string;
 }

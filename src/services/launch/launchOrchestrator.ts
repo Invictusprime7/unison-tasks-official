@@ -77,6 +77,9 @@ import {
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
+import { resolveExperienceRequirement } from "@/sections/variants";
+import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
+import { runExperiencePreflight } from "@/services/experiencePreflightGate";
 import type { BuilderIdentity } from "@/types/builderIdentity";
 import type { BusinessProfileDTO } from "@/types/businessProfile";
 import type { WizardSelections } from "@/types/playground";
@@ -553,10 +556,15 @@ export async function runLaunchPipeline(
         wizardSelections: plan.selections,
         businessRuntime,
         enabledCapabilities: plan.industryProfile?.defaultCapabilities || [],
-        approvedExperienceCapabilities: siteBundleSnapshot.meta.designIntervention?.envelope
-          && siteBundleSnapshot.meta.designIntervention.envelope.webgl !== 'ineligible'
-          ? siteBundleSnapshot.meta.uiFoundation?.experienceCapabilities || []
-          : [],
+        approvedExperienceCapabilities: resolveApprovedExperienceCapabilities({
+          webgl: siteBundleSnapshot.meta.designIntervention?.envelope?.webgl,
+          foundationCapabilities: siteBundleSnapshot.meta.uiFoundation?.experienceCapabilities,
+          requiredCapabilities: resolveExperienceRequirement(
+            Object.values(siteBundleSnapshot.meta.designIntervention?.activeVariants ?? {}),
+          ).capabilities,
+          reachesExperienceLayer:
+            runExperiencePreflight(siteBundleSnapshot.vfsFiles).manifest.totalInstances > 0,
+        }),
         // Every registered body must be present in the Stage 4b output above.
         // Missing pages are a real closure failure, never a fallback request.
         allowCanonicalPageFallback: false,

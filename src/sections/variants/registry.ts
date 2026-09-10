@@ -12,6 +12,12 @@ import {
   RADIX_VFS_PRIMITIVES,
   type RadixPrimitiveId,
 } from '@/platform/core/generatedUiFoundation';
+import {
+  EXPERIENCE_PRIMITIVES,
+  type ExperiencePrimitive,
+} from '@/platform/core/experiencePrimitives';
+import { getVocabularyEntry } from '@/platform/core/designVocabulary';
+import { EXPERIENCE_CAPABILITY_ID } from '@/platform/core/generatedRuntimeCapabilities';
 
 // JSX layout templates for live preview swapping via VFS
 import {
@@ -132,6 +138,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Proof Rail',
       description: 'Horizontal snap rail with scroll controls',
       component: TestimonialsRail,
+      vocabulary: { category: 'content', id: 'horizontal-scroll' },
       thumbnail: '/variants/testimonials-rail.svg',
       tags: ['rail', 'carousel', 'premium'],
       renderJSX: testimonialsRailJSX,
@@ -168,6 +175,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Comparison Matrix',
       description: 'Feature matrix comparing every plan on one axis',
       component: PricingComparison,
+      vocabulary: { category: 'content', id: 'comparison' },
       thumbnail: '/variants/pricing-comparison.svg',
       tags: ['matrix', 'detailed'],
       renderJSX: pricingComparisonJSX,
@@ -208,6 +216,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       component: GalleryMasonry,
       vfs: { mode: 'portable-recipe' },
       radixPrimitives: ['dialog'],
+      vocabulary: { category: 'media', id: 'masonry' },
       thumbnail: '/variants/gallery-masonry.svg',
       tags: ['masonry', 'organic'],
       renderJSX: galleryMasonryJSX,
@@ -221,6 +230,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       component: GalleryCinematicGrid,
       vfs: { mode: 'portable-recipe' },
       radixPrimitives: ['dialog'],
+      // Phase 4 declaration only: records the Phase 6A dependency, grants no
+      // capability, and leaves this variant's DOM implementation unchanged.
+      experience: { status: 'declared', vocabulary: { category: 'media', id: 'depth-gallery' } },
       thumbnail: '/variants/gallery-cinematic-grid.svg',
       tags: ['cinematic', 'wide'],
       renderJSX: galleryCinematicGridJSX,
@@ -234,6 +246,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       component: GalleryLightboxGrid,
       vfs: { mode: 'portable-recipe' },
       radixPrimitives: ['dialog'],
+      vocabulary: { category: 'media', id: 'lightbox' },
       thumbnail: '/variants/gallery-lightbox-grid.svg',
       tags: ['lightbox', 'inspection'],
       renderJSX: galleryLightboxGridJSX,
@@ -273,6 +286,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Split Image',
       description: 'Two-column layout with text and hero image side by side',
       component: HeroSplitImage,
+      vocabulary: { category: 'hero', id: 'split-cinematic' },
       thumbnail: '/variants/hero-split-image.svg',
       tags: ['modern', 'saas', 'image'],
       renderJSX: heroSplitImageJSX,
@@ -364,6 +378,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Centered Logo',
       description: 'Brand centered with links split on either side',
       component: NavbarCenteredLogo,
+      vocabulary: { category: 'navigation', id: 'split' },
       thumbnail: '/variants/navbar-centered-logo.svg',
       tags: ['editorial', 'elegant'],
       renderJSX: navbarCenteredLogoJSX,
@@ -439,6 +454,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Alternating',
       description: 'Alternating left-right rows with images',
       component: ServicesAlternating,
+      vocabulary: { category: 'content', id: 'split-feature' },
       thumbnail: '/variants/services-alternating.svg',
       tags: ['alternating', 'showcase', 'image'],
       renderJSX: servicesAlternatingJSX,
@@ -708,6 +724,44 @@ export const getRequiredRadixPrimitives = (
     }
   }
   return RADIX_VFS_PRIMITIVES.filter((primitive) => required.has(primitive));
+};
+
+/** What the resolved composition needs from the experience (WebGL) layer. */
+export interface ExperienceRequirement {
+  /** Primitives belonging to variants that render live WebGL today. */
+  enabledPrimitives: ExperiencePrimitive[];
+  /** Primitives declared for a future phase; these grant no capability. */
+  declaredPrimitives: ExperiencePrimitive[];
+  /** Runtime capability ids the composition actually reaches today. */
+  capabilities: string[];
+}
+
+/**
+ * Resolve the experience dependency a set of active variants declares.
+ * A declaration is inventory metadata, never an approval: only `enabled`
+ * variants contribute a capability the launch may approve. Primitives come
+ * from the design vocabulary entry each declaration names.
+ */
+export const resolveExperienceRequirement = (
+  variantIds: Iterable<VariantId>,
+): ExperienceRequirement => {
+  const enabled = new Set<ExperiencePrimitive>();
+  const declared = new Set<ExperiencePrimitive>();
+  for (const variantId of variantIds) {
+    const experience = getVariantById(variantId)?.experience;
+    if (!experience) continue;
+    const entry = getVocabularyEntry(experience.vocabulary.category, experience.vocabulary.id);
+    if (!entry) continue;
+    const target = experience.status === 'enabled' ? enabled : declared;
+    for (const primitive of entry.primitives) target.add(primitive);
+  }
+  return {
+    enabledPrimitives: EXPERIENCE_PRIMITIVES.filter((primitive) => enabled.has(primitive)),
+    declaredPrimitives: EXPERIENCE_PRIMITIVES.filter(
+      (primitive) => declared.has(primitive) && !enabled.has(primitive),
+    ),
+    capabilities: enabled.size > 0 ? [EXPERIENCE_CAPABILITY_ID] : [],
+  };
 };
 
 const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {

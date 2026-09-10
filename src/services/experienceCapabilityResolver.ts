@@ -27,12 +27,40 @@ import {
   type VocabularyVisualDominance,
 } from '@/platform/core/designVocabulary';
 import type { ExperiencePrimitive } from '@/platform/core/experiencePrimitives';
+import { EXPERIENCE_CAPABILITY_ID } from '@/platform/core/generatedRuntimeCapabilities';
 import { childSeed, seededRotate } from '@/platform/core/generationSeed';
 
 export const EXPERIENCE_ENVELOPE_VERSION = '1.0' as const;
 
 export type TypographyScale = 'restrained' | 'balanced' | 'oversized';
 export type WebglEligibility = 'ineligible' | 'accent' | 'eligible';
+
+export interface ExperienceApprovalInput {
+  /** Sealed envelope eligibility; absent or `ineligible` denies approval. */
+  webgl?: WebglEligibility | null;
+  /** Capability ids the emitted UI foundation actually supports. */
+  foundationCapabilities?: readonly string[];
+  /** Capability ids the resolved registered implementations require. */
+  requiredCapabilities?: readonly string[];
+  /** True when the sealed VFS already reaches the experience import root. */
+  reachesExperienceLayer?: boolean;
+}
+
+/**
+ * Approval is requirement-derived, never eligibility-derived: a business model
+ * that *could* run WebGL does not approve the capability until a registered
+ * implementation enables it or the sealed VFS already reaches it. Eligibility
+ * only decides whether an existing requirement may be honoured.
+ */
+export function resolveApprovedExperienceCapabilities(
+  input: ExperienceApprovalInput,
+): string[] {
+  if (!input.webgl || input.webgl === 'ineligible') return [];
+  const required = new Set(input.requiredCapabilities ?? []);
+  if (input.reachesExperienceLayer) required.add(EXPERIENCE_CAPABILITY_ID);
+  if (required.size === 0) return [];
+  return (input.foundationCapabilities ?? []).filter((capability) => required.has(capability));
+}
 
 export interface ExperienceEnvelope {
   version: typeof EXPERIENCE_ENVELOPE_VERSION;

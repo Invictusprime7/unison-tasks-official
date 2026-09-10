@@ -87,8 +87,9 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).toContain('designIntervention: siteBundleSnapshot.meta.designIntervention');
     expect(source).toContain('generatedFiles: siteBundleSnapshot.vfsFiles');
     expect(source).toContain('compileArtifact: stage4b.pipelineResult.compileArtifact');
-    expect(source).toContain('approvedExperienceCapabilities: siteBundleSnapshot.meta.designIntervention?.envelope');
-    expect(source).toContain("siteBundleSnapshot.meta.designIntervention.envelope.webgl !== 'ineligible'");
+    expect(source).toContain('approvedExperienceCapabilities: resolveApprovedExperienceCapabilities({');
+    expect(source).toContain('requiredCapabilities: resolveExperienceRequirement(');
+    expect(source).toContain('webgl: siteBundleSnapshot.meta.designIntervention?.envelope?.webgl');
     expect(source).not.toContain('enrichWizardPagesWithAI');
     expect(source).not.toContain('runBuilderTurn');
     expect(source).not.toContain('enrich.ai_rejected');

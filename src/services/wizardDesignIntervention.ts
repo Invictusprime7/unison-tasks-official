@@ -1,6 +1,6 @@
 import type { BusinessModel, IndustryOverlay } from '@/types/playground';
 import { getCompositionById } from '@/sections/templates';
-import { getVariantById, getVariantIdForLayout, getVariantsForSection } from '@/sections/variants';
+import { getVariantById, getVariantIdForLayout, getVariantsForSection, resolveExperienceRequirement } from '@/sections/variants';
 import type { ActiveVariantMap, VariantId } from '@/sections/variants';
 import {
   childSeed,
@@ -25,6 +25,7 @@ import type {
   VocabularyVisualDominance,
   VocabularyMotionIntensity,
 } from '@/platform/core/designVocabulary';
+import { getDesignImplementation } from '@/services/designImplementationRegistry';
 
 
 
@@ -433,8 +434,7 @@ export function buildWizardDesignIntervention(
   const experience = MODEL_EXPERIENCE[input.businessModel] ?? MODEL_EXPERIENCE.general;
   const experienceRecipes = seededRotate(childSeed(seed, 'experience'), experience.recipes);
   if (input.sellsProducts && !experienceRecipes.includes('product-stage')) {
-    experienceRecipes.unshift('product-stage');
-  }
+    experienceRecipes.unshift('product-stage');  }
 
   // PHASE 2 — resolve the constrained vocabulary envelope, then the brief.
   const envelope = resolveExperienceEnvelope({
@@ -452,6 +452,33 @@ export function buildWizardDesignIntervention(
   });
   const brief = buildArtDirectionBrief(envelope, artDirectionPackId);
 
+  const activeVariants = buildActiveVariants(input.templateId, seed);
+  // The immersive layer is only offered when a registered implementation
+  // enables it; otherwise the launch approves nothing and preflight would
+  // reject any edit that followed an immersive instruction.
+  const experienceApproved =
+    resolveExperienceRequirement(Object.values(activeVariants)).capabilities.length > 0;
+  const experienceDirective = experienceApproved
+    ? `Experience budget is "${experience.budget}" — compose the immersive layer only from @/unison/ui/experience (${experienceRecipes.join(', ')}), at most one heavy primitive per page band and two per page, and never import three/@react-three/* directly.`
+    : 'The immersive layer is not approved for this launch: never import @/unison/ui/experience or three/@react-three/*, because those edits are rejected before they can be saved.';
+
+  // The brief must describe the composition that was actually resolved; naming
+  // an unselected vocabulary pattern invites Lane B to hand-author it.
+  const resolvedImplementations = [...new Set(Object.values(activeVariants))].sort();
+  const resolvedPatterns = [...new Set(
+    resolvedImplementations
+      .map((id) => getDesignImplementation(id)?.vocabulary?.id)
+      .filter((id): id is string => Boolean(id)),
+  )];
+  const compositionDirective = [
+    resolvedImplementations.length > 0
+      ? `This launch resolved the registered implementations ${resolvedImplementations.join(', ')} — compose within them and never author replacement section source.`
+      : 'Compose within the registered section implementations resolved for this launch and never author replacement section source.',
+    resolvedPatterns.length > 0
+      ? `Their design language is ${resolvedPatterns.join(', ')}; vary the pattern between pages instead of repeating one section shape.`
+      : 'Vary the pattern between pages instead of repeating one section shape.',
+  ].join(' ');
+
   return {
     version: WIZARD_DESIGN_INTERVENTION_VERSION,
     source: 'deterministic-baseline',
@@ -463,7 +490,7 @@ export function buildWizardDesignIntervention(
     artDirectionPackId,
     layoutRecipe: baseline.layoutRecipe,
     sectionVariants,
-    activeVariants: buildActiveVariants(input.templateId, seed),
+    activeVariants,
     // The pack's motion profile leads; the business-model recipes follow.
     motionRecipes: Array.from(
       new Set([pack.motionProfile, ...seededRotate(childSeed(seed, 'motion'), baseline.motionRecipes)]),
@@ -474,7 +501,7 @@ export function buildWizardDesignIntervention(
     experienceBudget: experience.budget,
     envelope,
     brief,
-    aiDirective: `Compose only with snapshot-owned UI primitives and semantic Stage 4b tokens. Art direction is "${pack.name}" — ${pack.description} Lead the composition with the ${envelope.heroCandidates[0]} hero family, ${envelope.contentCandidates[0]} content pattern and ${envelope.navigationCandidates[0]} navigation; vary the pattern between pages instead of repeating one section shape. Experience budget is "${experience.budget}" — compose the immersive layer only from @/unison/ui/experience (${experienceRecipes.join(', ')}), at most one heavy primitive per page band and two per page, and never import three/@react-three/* directly. Preserve the motion budget, selected recipes, accessibility, responsive constraints, and canonical intent bindings.`,
+    aiDirective: `Compose only with snapshot-owned UI primitives and semantic Stage 4b tokens. Art direction is "${pack.name}" — ${pack.description} ${compositionDirective} ${experienceDirective} Preserve the motion budget, selected recipes, accessibility, responsive constraints, and canonical intent bindings.`,
 
 
   };

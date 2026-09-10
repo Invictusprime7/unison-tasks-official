@@ -14,8 +14,9 @@
 import { getAllSections } from '@/sections/registry';
 import { VARIANT_REGISTRY } from '@/sections/variants';
 import type { VariantId } from '@/sections/variants';
-import type { SectionVariant } from '@/sections/variants/types';
+import type { SectionVariant, VocabularyRef } from '@/sections/variants/types';
 import type { SectionType, SectionRegistryEntry } from '@/sections/types';
+import { DESIGN_VOCABULARY } from '@/platform/core/designVocabulary';
 import { hashSeed } from '@/platform/core/generationSeed';
 
 /** Identity used everywhere a design implementation is referenced. */
@@ -42,9 +43,17 @@ export interface DesignImplementation {
   hasVariants: boolean;
   vfs?: SectionVariant['vfs'];
   radixPrimitives?: SectionVariant['radixPrimitives'];
+  vocabulary?: SectionVariant['vocabulary'];
+  experience?: SectionVariant['experience'];
 }
 
 let cachedIndex: Map<string, DesignImplementation> | null = null;
+let cachedVocabularyIndex: Map<string, DesignImplementation[]> | null = null;
+
+/** Vocabulary ids are unique per category only, so both parts are the key. */
+export function vocabularyKey(ref: VocabularyRef): string {
+  return `${ref.category}:${ref.id}`;
+}
 
 function buildIndex(): Map<string, DesignImplementation> {
   const index = new Map<string, DesignImplementation>();
@@ -85,6 +94,10 @@ function buildIndex(): Map<string, DesignImplementation> {
         hasVariants: true,
         vfs: variant.vfs ? { ...variant.vfs } : undefined,
         radixPrimitives: variant.radixPrimitives ? [...variant.radixPrimitives] : undefined,
+        vocabulary: variant.vocabulary ? { ...variant.vocabulary } : undefined,
+        experience: variant.experience
+          ? { ...variant.experience, vocabulary: { ...variant.experience.vocabulary } }
+          : undefined,
       });
     }
   }
@@ -100,6 +113,7 @@ function index(): Map<string, DesignImplementation> {
 /** Test-only: drop the memoized view (registries are static at runtime). */
 export function resetDesignImplementationIndex(): void {
   cachedIndex = null;
+  cachedVocabularyIndex = null;
 }
 
 export function listDesignImplementations(): DesignImplementation[] {
@@ -117,6 +131,52 @@ export function isRegisteredImplementation(id: string): boolean {
 
 export function listImplementationsForSection(type: SectionType): DesignImplementation[] {
   return listDesignImplementations().filter((impl) => impl.sectionType === type);
+}
+
+function vocabularyIndex(): Map<string, DesignImplementation[]> {
+  if (cachedVocabularyIndex) return cachedVocabularyIndex;
+  const built = new Map<string, DesignImplementation[]>();
+  for (const implementation of listDesignImplementations()) {
+    if (!implementation.vocabulary) continue;
+    const key = vocabularyKey(implementation.vocabulary);
+    const bucket = built.get(key);
+    if (bucket) bucket.push(implementation);
+    else built.set(key, [implementation]);
+  }
+  cachedVocabularyIndex = built;
+  return built;
+}
+
+/** Registered implementations that already execute a vocabulary entry. */
+export function listImplementationsForVocabulary(ref: VocabularyRef): DesignImplementation[] {
+  return vocabularyIndex().get(vocabularyKey(ref)) ?? [];
+}
+
+/** True when the compiler can actually build this vocabulary entry today. */
+export function isExecutableVocabulary(ref: VocabularyRef): boolean {
+  return vocabularyIndex().has(vocabularyKey(ref));
+}
+
+export interface VocabularyExecutability {
+  /** Entries backed by at least one registered implementation. */
+  executable: string[];
+  /** Entries the vocabulary offers that nothing can render yet. */
+  unimplemented: string[];
+}
+
+/**
+ * The measured version of "design vocabulary is richer than the set of
+ * compiler-executable recipes". Phase 5 closes this gap by moving entries from
+ * `unimplemented` to `executable`, never by widening the vocabulary.
+ */
+export function vocabularyExecutabilityReport(): VocabularyExecutability {
+  const executable: string[] = [];
+  const unimplemented: string[] = [];
+  for (const entry of DESIGN_VOCABULARY) {
+    const key = vocabularyKey({ category: entry.category, id: entry.id });
+    (vocabularyIndex().has(key) ? executable : unimplemented).push(key);
+  }
+  return { executable, unimplemented };
 }
 
 /**
