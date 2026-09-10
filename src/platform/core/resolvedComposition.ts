@@ -22,10 +22,8 @@
 
 import { getIndustryProfile, normalizeIndustryKey, type PageSpec } from './industryMatrix';
 import { getIndustryIntentProfile } from './industryIntentProfiles';
-import {
-  resolveArtDirectionPackId,
-  type ArtDirectionPackId,
-} from '@/sections/variants/artDirectionPacks';
+import type { ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
+import { resolveIndustryArtDirectionPackId } from '@/services/designImplementationRegistry';
 
 export const RESOLVED_COMPOSITION_VERSION = '1.0' as const;
 
@@ -274,12 +272,11 @@ export function resolveSiteConfiguration(input: SiteConfigurationInput): SiteCon
     ]),
   );
 
-  const artDirectionPackId = resolveArtDirectionPackId({
+  const artDirectionPackId = resolveIndustryArtDirectionPackId({
     industry: profile.industry,
     themePresetId: input.themePresetId ?? null,
     seed: input.seed ?? null,
     sealedPackId: input.artDirectionPackId ?? null,
-    allowedPackIds: profile.allowedArtDirectionPacks ?? null,
   });
 
   const configuration: Omit<SiteConfiguration, 'signature'> = {

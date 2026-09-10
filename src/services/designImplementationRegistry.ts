@@ -238,6 +238,7 @@ export function resolveIndustryArtDirectionPackId(input: {
   themePresetId?: string | null;
   seed?: string | number | null;
   templateId?: string | null;
+  sealedPackId?: string | null;
 }): ArtDirectionPackId {
   return resolveArtDirectionPackId({
     ...input,

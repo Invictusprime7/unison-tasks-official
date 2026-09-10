@@ -602,7 +602,6 @@ export async function runLaunchPipeline(
         }),
         // Every registered body must be present in the Stage 4b output above.
         // Missing pages are a real closure failure, never a fallback request.
-        allowCanonicalPageFallback: false,
         strictPreflight: true,
       } as Parameters<typeof buildCanonicalLaunchArtifactsAsync>[0],
       { yieldToHost: yieldToBrowser, signal },
