@@ -19,6 +19,7 @@
     "lint:canonical-vfs-writes": "node scripts/lint-canonical-vfs-writes.mjs",
     "lint:single-source-of-truth": "node scripts/lint-single-source-of-truth.mjs",
     "lint:catalog-contracts": "node scripts/lint-catalog-contracts.mjs",
+    "test:edge": "npx --yes deno@2 test --allow-all --no-check supabase/functions/",
     "type-check": "tsc --build --noEmit",
     "preview": "vite preview",
     "deploy": "node scripts/check-clean-git-tree.mjs && vercel --prod",

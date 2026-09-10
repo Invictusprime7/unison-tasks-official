@@ -14,7 +14,7 @@ describe('Launcher Wizard action surface', () => {
     expect(source).toContain('const [socialLinks, setSocialLinks]');
     expect(source).toContain('socialLinks,');
     for (const platform of ['instagram', 'facebook', 'linkedin', 'youtube']) {
-      expect(source).toContain(`\"${platform}\"`);
+      expect(source).toContain(`"${platform}"`);
     }
   });
 

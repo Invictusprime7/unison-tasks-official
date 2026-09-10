@@ -43,6 +43,7 @@ export function isNonEmptyString(value: unknown): value is string {
  */
 export function sanitizeString(input: string, maxLength = 1000): string {
   return input
+    // eslint-disable-next-line no-control-regex -- stripping control chars is the point
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Strip control chars
     .trim()
     .slice(0, maxLength);

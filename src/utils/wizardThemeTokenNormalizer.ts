@@ -128,7 +128,7 @@ function normalizeClassList(classList: string): string {
 }
 
 const CLASS_ATTR = /\b(className|class)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\}|\{"([^"]*)"\}|\{'([^']*)'\})/g;
-const TEMPLATE_OR_STRING_CLASSES = /(["'`])((?:[a-z0-9:/\[\]#()., -]*\b(?:bg|text|border|ring|fill|stroke|from|via|to)-[a-z0-9[\]#(),./-]+\b[a-z0-9:/\[\]#()., -]*)+)\1/gi;
+const TEMPLATE_OR_STRING_CLASSES = /(["'`])((?:[a-z0-9:/[\]#()., -]*\b(?:bg|text|border|ring|fill|stroke|from|via|to)-[a-z0-9[\]#(),./-]+\b[a-z0-9:/[\]#()., -]*)+)\1/gi;
 
 /** Values that must never be interpreted as colour literals. */
 const NON_COLOR_VALUE =
