@@ -110,7 +110,11 @@ function layoutSignatures(source: string): Set<string> {
 function evaluateHero(source: string): { parts: number; complete: boolean; croppedMedia: boolean; hasMedia: boolean } {
   const h1Index = source.search(/<h1\b/i);
   if (h1Index < 0) return { parts: 0, complete: false, croppedMedia: false, hasMedia: false };
-  const hero = source.slice(Math.max(0, h1Index - 2500), h1Index + 3000);
+  const sectionEnd = source.toLowerCase().indexOf('</section>', h1Index);
+  const hero = source.slice(
+    Math.max(0, h1Index - 3000),
+    sectionEnd > 0 ? sectionEnd : Math.min(source.length, h1Index + 6000),
+  );
 
   const hasHeadline = true;
   const hasLead = /<p\b[\s\S]{0,600}?<\/p>/i.test(hero.slice(hero.search(/<h1\b/i)));

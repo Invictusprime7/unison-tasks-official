@@ -163,7 +163,11 @@ export function getWizardPageRoleInstruction(role: string | undefined): string |
 export function assessWizardPageHero(source: string): { ok: boolean; missing: string[] } {
   const h1Index = source.search(/<h1\b/i);
   if (h1Index < 0) return { ok: false, missing: ['an h1 headline'] };
-  const hero = source.slice(Math.max(0, h1Index - 2500), h1Index + 3000);
+  const sectionEnd = source.toLowerCase().indexOf('</section>', h1Index);
+  const hero = source.slice(
+    Math.max(0, h1Index - 3000),
+    sectionEnd > 0 ? sectionEnd : Math.min(source.length, h1Index + 6000),
+  );
   const missing: string[] = [];
   if (!/<p\b/i.test(hero.slice(hero.search(/<h1\b/i)))) missing.push('a supporting lead paragraph');
   if ((hero.match(/data-ut-intent\s*=/g)?.length ?? 0) < 2) missing.push('a primary and a secondary action');
