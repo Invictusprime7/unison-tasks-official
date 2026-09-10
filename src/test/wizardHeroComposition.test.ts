@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { buildWizardGenerationBrief } from '@/services/wizardGenerationBrief';
 import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry';
 import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
+import { getCompositionById } from '@/sections/templates';
+import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
+import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
 
 function registry() {
   const reg = createEmptyPageRegistry();
@@ -96,6 +99,31 @@ describe('hero quality findings', () => {
       '/src/pages/Home.tsx': page,
       '/src/components/Hero.tsx': hero,
     });
+    expect(report.findings).not.toContain('INCOMPLETE_HERO');
+    expect(report.findings).not.toContain('CROPPED_HERO_MEDIA');
+  });
+
+  it('accepts the full salon route set compiled from its sealed generation brief', () => {
+    const pageRegistry = registry();
+    const brief = buildWizardGenerationBrief({ ...input, pageRegistry });
+    const template = getCompositionById('salon-premium');
+    if (!template) throw new Error('Missing salon-premium composition');
+    const pages = Object.values(pageRegistry.pages);
+    const plan: GeneratedSitePlan = {
+      siteId: 'hero-quality-site', industry: 'salon', businessName: 'Canonical Salon Test',
+      homePageId: pageRegistry.homePageId, pages: pages.map((page) => ({
+        id: page.pageId, name: page.name, title: page.name, route: page.route,
+        role: page.role, filePath: page.filePath, visibleInNav: page.showInNav,
+        isHome: page.isHome, generatedBy: 'wizard',
+      })),
+      navItems: pages.filter((page) => page.showInNav).map((page) => page.pageId),
+      funnels: [], redirects: [], generatedAt: '2026-09-10T00:00:00.000Z',
+      selectedTemplateId: template.id, selectedThemePresetId: input.themePresetId,
+    };
+    const files = Object.assign({}, ...plan.pages.map((page) => generateTopologyPlaceholderFiles(
+      page, plan, template, { generationBrief: brief },
+    )));
+    const report = evaluateVisualQuality(files);
     expect(report.findings).not.toContain('INCOMPLETE_HERO');
     expect(report.findings).not.toContain('CROPPED_HERO_MEDIA');
   });

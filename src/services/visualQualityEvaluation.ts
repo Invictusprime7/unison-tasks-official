@@ -128,7 +128,7 @@ function evaluateHero(source: string): { parts: number; complete: boolean; cropp
   const serializedHeroStart = source.search(/["']type["']\s*:\s*["']hero["']/i);
   const serializedHero = serializedHeroStart >= 0
     ? source.slice(serializedHeroStart, serializedHeroStart + 6000)
-    : '';
+    : source;
   const serializedHeroActions = serializedHero.match(/["']intent["']\s*:/g)?.length ?? 0;
   const serializedHeroHasMedia = /["'](?:image|backgroundImage)["']\s*:\s*["'][^"']+/i.test(serializedHero);
   const serializedHeroHasProof = /["']stats["']\s*:\s*\[/i.test(serializedHero);
