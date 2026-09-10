@@ -1337,7 +1337,11 @@ function applyDesignVariants(
   if (!variants?.length && !Object.keys(activeVariants || {}).length && !pack && !hasVocabulary
     && !template.sections.some(section => section.type === 'hero' && section.sourceSectionId && section.variantId)) return template;
 
-  const pageRotationKey = pageFilePath
+  // Home always renders the pack's signature (family-leading) treatment — it is
+  // the style statement for the site. Interior pages rotate within the same
+  // family so they stay cohesive without being carbon copies of Home.
+  const isHomePage = !pageFilePath || /\/(Home|Index)\.(t|j)sx?$/i.test(pageFilePath);
+  const pageRotationKey = pageFilePath && !isHomePage
     ? `${designIntervention?.seed ?? ''}:${pageFilePath}`
     : null;
   const occurrenceByType: Record<string, number> = {};
