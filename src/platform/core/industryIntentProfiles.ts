@@ -112,7 +112,54 @@ const FOOTER_NEWSLETTER: SlotCoord = {
 // ============================================================================
 
 export const INDUSTRY_INTENT_PROFILES: Record<string, IndustryIntentProfile> = {
+  // ─────────────── SaaS / Software ───────────────
+  saas: profileFromMap('saas', {
+    'nav.goto': { level: 'required' },
+    'lead.capture': {
+      level: 'required',
+      synthesize: [
+        { pageRole: 'home', section: 'hero', slot: 'primary-cta', label: 'Start Free Trial',
+          intent: 'form.open', targetRef: 'trial_signup_form', uiAction: 'overlay' },
+        { pageRole: 'home', section: 'navbar', slot: 'primary-cta', label: 'Get Started',
+          intent: 'form.open', targetRef: 'trial_signup_form', uiAction: 'overlay' },
+        { pageRole: 'pricing', section: 'pricing', slot: 'card-cta', ifPageExists: true,
+          label: 'Choose Plan', intent: 'form.open', targetRef: 'trial_signup_form',
+          uiAction: 'overlay', payloadTemplate: { 'data-plan': '$plan.slug' } },
+      ],
+    },
+    'auth.register': {
+      level: 'required',
+      synthesize: [
+        { pageRole: 'home', section: 'cta', slot: 'primary-cta', label: 'Create Your Account',
+          intent: 'form.open', targetRef: 'trial_signup_form', uiAction: 'overlay' },
+      ],
+    },
+    'contact.submit': {
+      level: 'required',
+      synthesize: [
+        { pageRole: 'contact', section: 'contact', slot: 'form-submit', ifPageExists: true,
+          label: 'Talk to Sales', intent: 'form.open', targetRef: 'contact_form', uiAction: 'state' },
+      ],
+    },
+    'auth.login': {
+      level: 'secondary',
+      synthesize: [
+        { pageRole: 'home', section: 'navbar', slot: 'secondary-cta', label: 'Sign In',
+          intent: 'nav.goto_page', targetRef: 'account', uiAction: 'navigate' },
+      ],
+    },
+    'content.download':    { level: 'secondary' },
+    'newsletter.subscribe':{ level: 'secondary', synthesize: [FOOTER_NEWSLETTER] },
+    'contact.email':       { level: 'optional', synthesize: [FOOTER_CONTACT_EMAIL] },
+    'account.open':        { level: 'optional' },
+    'booking.create':      { level: 'optional' },
+    'cart.add':            { level: 'forbidden' },
+    'quote.request':       { level: 'forbidden' },
+    'donation.start':      { level: 'forbidden' },
+  }),
+
   // ─────────────── Salon ───────────────
+
   salon: profileFromMap('salon', {
     'nav.goto': { level: 'required' },
     'booking.create': {
@@ -221,6 +268,13 @@ export const INDUSTRY_INTENT_PROFILES: Record<string, IndustryIntentProfile> = {
       { pageRole: 'contact', section: 'contact', slot: 'form-submit', ifPageExists: true,
         label: 'Send Message', intent: 'form.open', targetRef: 'contact_form', uiAction: 'state' },
     ] },
+    'lead.capture': {
+      level: 'primary',
+      synthesize: [
+        { pageRole: 'home', section: 'cta', slot: 'primary-cta', label: 'Request an Estimate',
+          intent: 'form.open', targetRef: 'quote_form', uiAction: 'overlay' },
+      ],
+    },
     'contact.sms':        { level: 'secondary' },
     'location.directions':{ level: 'secondary', synthesize: [FOOTER_DIRECTIONS] },
     'newsletter.subscribe':{ level: 'optional', synthesize: [FOOTER_NEWSLETTER] },

@@ -51,6 +51,8 @@ import type { WizardInteractionManifest } from '@/services/wizardInteractionEnri
 import { assertSnapshotThemeSeed, assertThemeSeed } from './themeSeedAssert';
 import { GENERATED_RUNTIME_PROFILE } from './generatedRuntimeCapabilities';
 import { assertStage4bCompositionPreserved } from './stage4bCompositionGuard';
+import type { SiteConfiguration } from './resolvedComposition';
+
 
 
 import {
@@ -261,8 +263,16 @@ export interface SiteBundleSnapshotMeta {
     /** Fingerprint of the design implementation inventory used to render. */
     registrySignature?: string;
   };
+  /**
+   * The curated industry configuration this launch was resolved from
+   * (`resolveSiteConfiguration`). Recorded so preview, export and publish can
+   * prove which industry journey, anchor capability and art direction the
+   * sealed site was actually built against.
+   */
+  siteConfiguration?: SiteConfiguration;
   /** Bounded connected-gateway research and route-specific generation plan. */
   generationBrief?: WizardGenerationBrief;
+
   /** Deterministic composition, interaction, and motion recipes for this launch. */
   designIntervention?: WizardDesignIntervention;
   /** Final, non-destructive visual evaluation produced by canonical preflight. */

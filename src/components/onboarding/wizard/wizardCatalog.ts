@@ -13,10 +13,23 @@ import {
 } from "@/data/templates/types";
 import { getCompositionsBySystemType } from "@/sections/templates";
 import type { BusinessModel, IndustryOverlay } from "@/types/playground";
+import {
+  getIndustryProfile,
+  normalizeIndustryKey,
+  type IndustryProfile,
+} from "@/platform/core/industryMatrix";
 
 // ── Steps ───────────────────────────────────────────────────────────────────
 
-export type WizardStep = "industry" | "questions" | "templates" | "aesthetic";
+export type WizardStep =
+  | "industry"
+  | "profile"
+  | "goals"
+  | "pages"
+  | "capabilities"
+  | "templates"
+  | "aesthetic"
+  | "review";
 
 export const STEP_META: {
   key: WizardStep;
@@ -25,10 +38,15 @@ export const STEP_META: {
   sublabel: string;
 }[] = [
   { key: "industry", num: 1, label: "Industry", sublabel: "What you do" },
-  { key: "questions", num: 2, label: "Goals", sublabel: "Your needs" },
-  { key: "templates", num: 3, label: "Templates", sublabel: "Pick a base" },
-  { key: "aesthetic", num: 4, label: "Launch", sublabel: "Name & style" },
+  { key: "profile", num: 2, label: "Profile", sublabel: "Your business" },
+  { key: "goals", num: 3, label: "Goals", sublabel: "Your outcome" },
+  { key: "pages", num: 4, label: "Pages", sublabel: "Your structure" },
+  { key: "capabilities", num: 5, label: "Capabilities", sublabel: "What it does" },
+  { key: "templates", num: 6, label: "Template", sublabel: "Pick a base" },
+  { key: "aesthetic", num: 7, label: "Style", sublabel: "Brand direction" },
+  { key: "review", num: 8, label: "Launch", sublabel: "Review & build" },
 ];
+
 
 // ── Answer vocabulary ───────────────────────────────────────────────────────
 
@@ -323,4 +341,40 @@ export function getDefaultTemplateCardFor(
     if (match) return match;
   }
   return cards[0];
+}
+
+// ── Industry-aware profile + capability vocabulary ──────────────────────────
+
+/**
+ * The wizard's business-system card resolves to a real industry profile in the
+ * canonical matrix. Profile questions and capability toggles are read from
+ * there — the wizard adds no second industry registry.
+ */
+export function resolveIndustryProfileForSystem(
+  systemId: BusinessSystemType | null,
+  templateIndustry?: string | null,
+): IndustryProfile | undefined {
+  const candidates = [templateIndustry, systemId ? SYSTEM_TO_INDUSTRY_OVERLAY[systemId] : null];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const profile = getIndustryProfile(normalizeIndustryKey(String(candidate)));
+    if (profile) return profile;
+  }
+  return undefined;
+}
+
+export const CAPABILITY_DISPLAY: Record<string, { label: string; description: string }> = {
+  booking: { label: "Booking", description: "Online scheduling with confirmations" },
+  quoting: { label: "Quotes & estimates", description: "Capture job details and send quotes" },
+  contact: { label: "Contact", description: "Contact form routed to your inbox" },
+  "lead-capture": { label: "Lead capture", description: "Save enquiries into your CRM" },
+  newsletter: { label: "Newsletter", description: "Grow an email subscriber list" },
+  commerce: { label: "Store", description: "Catalog, cart and product pages" },
+  payments: { label: "Payments", description: "Take payment at checkout" },
+  auth: { label: "Accounts", description: "Customer sign-in and saved data" },
+  donation: { label: "Donations", description: "Accept one-off and recurring gifts" },
+};
+
+export function capabilityDisplay(id: string): { label: string; description: string } {
+  return CAPABILITY_DISPLAY[id] ?? { label: id, description: "Additional site capability" };
 }

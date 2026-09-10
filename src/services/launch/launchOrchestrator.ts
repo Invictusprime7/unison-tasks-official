@@ -84,6 +84,11 @@ import type { BuilderIdentity } from "@/types/builderIdentity";
 import type { BusinessProfileDTO } from "@/types/businessProfile";
 import type { WizardSelections } from "@/types/playground";
 import {
+  resolveSiteConfiguration,
+  type SiteConfiguration,
+} from "@/platform/core/resolvedComposition";
+
+import {
   getLanguageFromFileName,
   type VirtualNode,
 } from "@/hooks/useVirtualFileSystem";
@@ -118,7 +123,12 @@ export interface LaunchOrchestratorInput {
   selectedPages: PageChoice[];
   socialLinks?: Record<string, string>;
   existingBusinessId?: string | null;
+  /** Industry-specific business profile answers (`IndustryProfile.profileFields`). */
+  profileAnswers?: Record<string, string>;
+  /** Capabilities the creator explicitly switched on in the capability step. */
+  selectedCapabilities?: string[];
 }
+
 
 export interface LaunchOrchestratorCallbacks {
   onStatus?: (status: string) => void;
@@ -315,7 +325,27 @@ export async function runLaunchPipeline(
           : "manual-setup",
       wizardSeedId,
       businessId: plannedBusinessId,
+      profileAnswers: input.profileAnswers,
+      selectedCapabilities: input.selectedCapabilities,
+      socialLinks: input.socialLinks,
     };
+
+    // Curated industry configuration — the single resolved answer to "what
+    // does this industry's site actually consist of". Stamped into snapshot
+    // meta below so preview/export/publish can prove the journey it was built
+    // against. Industries outside the matrix simply carry no configuration.
+    let siteConfiguration: SiteConfiguration | null = null;
+    try {
+      siteConfiguration = resolveSiteConfiguration({
+        industry: industryProfile?.industry || industryOverlay,
+        themePresetId: input.theme.id,
+        seed,
+        requestedPages,
+        requestedCapabilities: input.selectedCapabilities ?? [],
+      });
+    } catch {
+      siteConfiguration = null;
+    }
 
     return {
       user,
@@ -331,9 +361,11 @@ export async function runLaunchPipeline(
       wizardSeedId,
       themeTokens,
       selections,
+      siteConfiguration,
       requestedPages,
     };
   }, { timeoutMs: 30_000 });
+
 
   const design = generateDesignVariation(plan.seed);
   const blueprint = createBlueprintFromIndustry(
@@ -407,6 +439,13 @@ export async function runLaunchPipeline(
     sitePlan,
     validations: pipelineValidations,
   } = stage4b.pipelineResult;
+
+  // Stamp the curated industry configuration onto the snapshot before any
+  // gate reads it, so preflight/seal/export all observe the same journey.
+  if (siteBundleSnapshot?.meta && plan.siteConfiguration) {
+    siteBundleSnapshot.meta.siteConfiguration = plan.siteConfiguration;
+  }
+
 
   // Theme tokens are compiler-owned. Repair rather than ship un-themed CSS.
   const expectedCss = buildThemedIndexCssFromTokens(plan.themeTokens, {

@@ -320,10 +320,23 @@ LauncherWizard
 	save/reload and clean hydration. Every-route reopen, all-variant identity,
 	full responsive/visual quality and export/import closure remain uncertified.
 
-## UNISON product foundation (planned)
-- Align every industry (saas, salon, contractor, restaurant, coaching,
-  ecommerce, portfolio, nonprofit, agency) to the new systems — capabilities,
-  design recipes, conversion journeys, profile fields — not just booking.
-- Add `contractor` to INDUSTRY_MATRIX; assert matrix/intent-profile parity.
-- designRecipes.ts + resolveSiteConfiguration(); persisted wizard_selections,
-  site_configs, integrations; 8-step launcher; /app + public marketing routes.
+## UNISON product foundation
+Done:
+- All nine industries aligned in INDUSTRY_MATRIX (anchor capability, conversion
+  journey, profile fields, allowed art-direction packs); `contractor` is now a
+  first-class entry and `industryParity.ts` fails the build on any gap.
+- `resolveArtDirectionPackId` accepts an industry allow-list, so an industry can
+  never be handed an art direction its journey does not support.
+- `resolveSiteConfiguration()` in `resolvedComposition.ts` — one deterministic,
+  signed answer to which pages/sections/capabilities/journey/art direction an
+  industry gets. Stamped into `SiteBundleSnapshot.meta.siteConfiguration`.
+- Launcher is now eight steps (industry, profile, goals, pages, capabilities,
+  template, style, review). Profile answers, selected capabilities and social
+  links persist through `WizardSelections` into draft metadata.
+- Removed dead `WizardTopAction`.
+
+Remaining:
+- Journey sections + variant coverage + industry distinctiveness lint.
+- `integrations` persistence + provider-adapter map (move GHL behind it).
+- Public marketing routes and `/app` shell.
+- Entitlement tiers on the existing `useEntitlements` hook.

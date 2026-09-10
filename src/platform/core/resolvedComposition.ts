@@ -20,7 +20,15 @@
  * These descriptors are pure data — no AI, no runtime behaviour.
  */
 
+import { getIndustryProfile, normalizeIndustryKey, type PageSpec } from './industryMatrix';
+import { getIndustryIntentProfile } from './industryIntentProfiles';
+import {
+  resolveArtDirectionPackId,
+  type ArtDirectionPackId,
+} from '@/sections/variants/artDirectionPacks';
+
 export const RESOLVED_COMPOSITION_VERSION = '1.0' as const;
+
 
 /** Root directory for per-page composition descriptors inside the VFS. */
 export const RESOLVED_COMPOSITION_ROOT = '/.unison/compositions';
@@ -140,3 +148,170 @@ export function declaredHeroSection(
 ): ResolvedSection | undefined {
   return composition?.sections.find((section) => section.semanticType === 'hero');
 }
+
+// ============================================================================
+// SiteConfiguration — the curated, deterministic input to Stage 4b
+// ============================================================================
+
+/**
+ * Upstream of the per-page compositions above sits one curated decision:
+ * given the wizard's selections, WHICH pages, sections, capabilities, journey
+ * and art direction does this industry get?
+ *
+ * `resolveSiteConfiguration` is that single seam. It is pure and deterministic
+ * and it reads only existing registries — the industry matrix, the industry
+ * intent profiles, and the art direction packs. It introduces no new registry
+ * and replaces no compiler stage; Stage 4b consumes its output exactly as it
+ * consumes the wizard payload today.
+ */
+
+export const SITE_CONFIGURATION_VERSION = '1.0' as const;
+
+export interface ResolvedSitePage {
+  /** Playground page role. */
+  role: string;
+  title: string;
+  path: string;
+  purpose: PageSpec['purpose'];
+  /** Semantic section types, in order. */
+  sections: string[];
+  /** True for the page carrying the industry's anchor conversion. */
+  isConversionPage: boolean;
+}
+
+export interface SiteConfiguration {
+  version: typeof SITE_CONFIGURATION_VERSION;
+  industry: string;
+  industryName: string;
+  systemType: string;
+  /** The one capability this site exists to fulfil. */
+  anchorCapability: string | null;
+  capabilities: string[];
+  primaryIntent: string;
+  conversionJourney: string[];
+  /** Intents this industry must never render. */
+  forbiddenIntents: string[];
+  artDirectionPackId: ArtDirectionPackId;
+  themePresetId: string | null;
+  pages: ResolvedSitePage[];
+  /** Deterministic fingerprint — identical inputs produce an identical string. */
+  signature: string;
+}
+
+export interface SiteConfigurationInput {
+  industry: string;
+  themePresetId?: string | null;
+  /** Sealed pack from snapshot meta; wins when present. */
+  artDirectionPackId?: string | null;
+  /** Deterministic wizard seed. */
+  seed?: string | null;
+  /** Page roles the creator explicitly selected. Home is always included. */
+  requestedPages?: string[] | null;
+  /** Capability toggles from the wizard's capability step. */
+  requestedCapabilities?: string[] | null;
+}
+
+const ROLE_BY_PURPOSE: Record<PageSpec['purpose'], string> = {
+  landing: 'home',
+  services: 'services',
+  portfolio: 'gallery',
+  contact: 'contact',
+  about: 'about',
+  blog: 'blog',
+  shop: 'shop',
+  checkout: 'checkout',
+  booking: 'booking',
+  pricing: 'pricing',
+  faq: 'faq',
+};
+
+function pageRole(page: PageSpec): string {
+  if (page.path === '/') return 'home';
+  return ROLE_BY_PURPOSE[page.purpose] ?? 'custom';
+}
+
+/**
+ * Resolve the curated site configuration for a wizard launch.
+ * Throws for an unknown industry — silent generic fallbacks are what turned
+ * every vertical into the same booking site.
+ */
+export function resolveSiteConfiguration(input: SiteConfigurationInput): SiteConfiguration {
+  const industryKey = normalizeIndustryKey(input.industry || '');
+  const profile = getIndustryProfile(industryKey);
+  if (!profile) {
+    throw new Error(`resolveSiteConfiguration: unknown industry "${input.industry}"`);
+  }
+
+  const intentProfile = getIndustryIntentProfile(profile.industry);
+  const forbiddenIntents = intentProfile?.forbidden ?? [];
+
+  const requested = new Set((input.requestedPages ?? []).map((role) => role.trim().toLowerCase()));
+  const pages: ResolvedSitePage[] = profile.defaultPages
+    .filter((page) => page.path === '/' || requested.size === 0 || requested.has(pageRole(page)))
+    .map((page) => {
+      const role = pageRole(page);
+      return {
+        role,
+        title: page.title,
+        path: page.path,
+        purpose: page.purpose,
+        sections: [...page.expectedSections],
+        isConversionPage:
+          role === 'home' ||
+          (profile.anchorCapability === 'booking' && role === 'booking') ||
+          (profile.anchorCapability === 'commerce' && (role === 'shop' || role === 'checkout')) ||
+          ((profile.anchorCapability === 'quoting' || profile.anchorCapability === 'lead-capture' ||
+            profile.anchorCapability === 'contact' || profile.anchorCapability === 'donation') &&
+            role === 'contact'),
+      };
+    });
+
+  const capabilities = Array.from(
+    new Set<string>([
+      ...profile.defaultCapabilities,
+      ...(profile.anchorCapability ? [profile.anchorCapability] : []),
+      ...(input.requestedCapabilities ?? []),
+    ]),
+  );
+
+  const artDirectionPackId = resolveArtDirectionPackId({
+    industry: profile.industry,
+    themePresetId: input.themePresetId ?? null,
+    seed: input.seed ?? null,
+    sealedPackId: input.artDirectionPackId ?? null,
+    allowedPackIds: profile.allowedArtDirectionPacks ?? null,
+  });
+
+  const configuration: Omit<SiteConfiguration, 'signature'> = {
+    version: SITE_CONFIGURATION_VERSION,
+    industry: profile.industry,
+    industryName: profile.name,
+    systemType: profile.systemType,
+    anchorCapability: profile.anchorCapability ?? null,
+    capabilities,
+    primaryIntent: profile.primaryIntent,
+    conversionJourney: profile.conversionJourney ?? [profile.primaryIntent],
+    forbiddenIntents,
+    artDirectionPackId,
+    themePresetId: input.themePresetId ?? null,
+    pages,
+  };
+
+  return { ...configuration, signature: siteConfigurationSignature(configuration) };
+}
+
+/** Stable fingerprint of a configuration — used for drift detection. */
+export function siteConfigurationSignature(
+  configuration: Omit<SiteConfiguration, 'signature'>,
+): string {
+  return [
+    configuration.version,
+    configuration.industry,
+    configuration.anchorCapability ?? 'none',
+    configuration.artDirectionPackId,
+    configuration.capabilities.slice().sort().join(','),
+    configuration.conversionJourney.join('>'),
+    configuration.pages.map((page) => `${page.role}:${page.sections.join('+')}`).join('|'),
+  ].join('::');
+}
+
