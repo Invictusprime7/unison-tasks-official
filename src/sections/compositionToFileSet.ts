@@ -1493,7 +1493,7 @@ export function resolvePageComposition(
   pageFilePath: string,
   options?: { designIntervention?: DesignInterventionSlice },
 ): ResolvedPageComposition {
-  const projected = applyDesignVariants(template, options?.designIntervention);
+  const projected = applyDesignVariants(template, options?.designIntervention, pageFilePath);
   const sections = resolveSnapshotSectionLayouts(projected);
   return {
     version: RESOLVED_COMPOSITION_VERSION,
@@ -1538,7 +1538,7 @@ export function compositionToReactFileSet(
     designIntervention?: DesignInterventionSlice;
   },
 ): Record<string, string> {
-  const projectedTemplate = applyDesignVariants(template, options?.designIntervention);
+  const projectedTemplate = applyDesignVariants(template, options?.designIntervention, pageFilePath);
   const sectionMap = sectionMapModule(projectedTemplate, pageFilePath);
   const sectionMapImport = `./${sectionMap.path.split('/').pop()?.replace(/\.ts$/, '')}`;
   const files: Record<string, string> = {
