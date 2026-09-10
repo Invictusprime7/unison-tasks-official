@@ -11,10 +11,22 @@
 import type { CapabilityId } from './capabilityRegistry';
 import type { BusinessSystemType, LayoutCategory } from '@/data/templates/types';
 import type { CoreIntent } from './coreIntents';
+import type { ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
 
 // ============================================================================
 // Industry Profile
 // ============================================================================
+
+/** A profile question the launcher asks for this industry. */
+export interface BusinessProfileFieldSpec {
+  key: string;
+  label: string;
+  type: 'text' | 'textarea' | 'list' | 'select' | 'number';
+  required?: boolean;
+  placeholder?: string;
+  options?: string[];
+  helpText?: string;
+}
 
 export interface IndustryProfile {
   /** Industry key (matches composition industry field) */
@@ -29,6 +41,17 @@ export interface IndustryProfile {
   defaultCapabilities: CapabilityId[];
   /** Primary intent family for this industry (used for hero CTA defaults) */
   primaryIntent: CoreIntent;
+  /**
+   * The one capability this industry's site exists to fulfil. Never assume
+   * booking — each industry declares its own anchor.
+   */
+  anchorCapability?: CapabilityId;
+  /** Ordered conversion journey for this industry (not a booking retrofit). */
+  conversionJourney?: CoreIntent[];
+  /** Art direction packs the launcher may offer for this industry. */
+  allowedArtDirectionPacks?: ArtDirectionPackId[];
+  /** Profile questions the launcher asks for this industry. */
+  profileFields?: BusinessProfileFieldSpec[];
   /** Default CRM pipeline for this industry */
   crmPipeline: {
     name: string;
@@ -50,6 +73,20 @@ export interface PageSpec {
   /** Section types expected on this page */
   expectedSections: string[];
 }
+
+/** Shared profile questions every industry asks. */
+const BASE_PROFILE_FIELDS: BusinessProfileFieldSpec[] = [
+  { key: 'businessName', label: 'Business name', type: 'text', required: true },
+  { key: 'tagline', label: 'One-line description', type: 'text', required: true, placeholder: 'What you do, in a sentence' },
+  { key: 'location', label: 'Location', type: 'text', placeholder: 'City, region' },
+  { key: 'contactEmail', label: 'Contact email', type: 'text', required: true },
+];
+
+const withBase = (extra: BusinessProfileFieldSpec[]): BusinessProfileFieldSpec[] => [
+  ...BASE_PROFILE_FIELDS,
+  ...extra,
+];
+
 
 // ============================================================================
 // Matrix
