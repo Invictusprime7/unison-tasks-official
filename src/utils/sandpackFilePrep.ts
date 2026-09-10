@@ -2529,8 +2529,11 @@ function repairLocalImportContracts(sandpackFiles: Record<string, string>): void
   for (const [filePath, originalContent] of Object.entries({ ...sandpackFiles })) {
     if (!/\.(tsx?|jsx?)$/.test(filePath)) continue;
 
-    const namedImportRegex = /import\s+\{([\s\S]+?)\}\s+from\s+['"](\.\.?\/[^'"]+)['"];?/g;
-    const defaultImportRegex = /import\s+([A-Z]\w*)(?:\s*,\s*\{([^}]*)\})?\s+from\s+['"](\.\.?\/[^'"]+)['"];?/g;
+    // The specifier block must never span past the end of a single import
+    // statement: excluding quotes/semicolons/braces keeps a non-relative import
+    // (e.g. '@react-three/drei') from being fused with the next relative one.
+    const namedImportRegex = /import\s+\{([^{}'";]*)\}\s+from\s+['"](\.\.?\/[^'"]+)['"];?/g;
+    const defaultImportRegex = /import\s+([A-Z]\w*)(?:\s*,\s*\{([^{}'";]*)\})?\s+from\s+['"](\.\.?\/[^'"]+)['"];?/g;
     let content = originalContent;
 
     content = content.replace(namedImportRegex, (statement, specifierBlock: string, rawImportPath: string) => {

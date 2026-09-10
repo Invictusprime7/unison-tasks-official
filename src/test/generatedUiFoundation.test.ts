@@ -208,6 +208,22 @@ describe('generated UI foundation', () => {
     expect(prepared['/App.tsx']).toContain("from './unison/ui/animation'");
   });
 
+  it('never fuses a package import with the next relative import when repairing contracts', () => {
+    const prepared = prepareSandpackFiles({
+      ...foundation.files,
+      '/src/pages/Home.tsx': [
+        "import { Float, Points, PointMaterial } from '@react-three/drei';",
+        "import { ExperienceCanvas } from '@/unison/ui/experience/canvas';",
+        'export default function Home(){ return <ExperienceCanvas><Float><Points><PointMaterial /></Points></Float></ExperienceCanvas>; }',
+      ].join('\n'),
+      '/src/index.css': ':root { --primary: 0 0% 10%; }',
+    }, { strict: true, entryPoint: '/src/pages/Home.tsx' });
+
+    const home = prepared['/pages/Home.tsx'] || '';
+    expect(home).toContain("import { Float, Points, PointMaterial } from '@react-three/drei';");
+    expect(home).not.toContain('ExperienceCanvas as Points');
+  });
+
   it('restores compatible stagger exports for existing generated pages', () => {
     const legacyAnimationFacade = foundation.files['/src/unison/ui/animation.ts']
       .replace(/import \* as React[\s\S]*?export const StaggerItem = StaggerChild;\n/, "export * from 'framer-motion';\n");
