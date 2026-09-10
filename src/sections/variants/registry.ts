@@ -936,9 +936,19 @@ export function clampVariantToPack(
   pack: ArtDirectionPack,
   sectionType: SectionType,
   variantId: VariantId | undefined,
+  /**
+   * Page-scoped rotation. When a section has no in-family variant of its own,
+   * the pack family is indexed by this rotation instead of always returning
+   * `family[0]` — so the same section type renders a different (but still
+   * pack-compatible) variant on different pages. Omit for site-wide behaviour.
+   */
+  rotation?: number,
 ): VariantId | undefined {
   const family = familyForSection(pack, sectionType);
   if (!family.length) return variantId;
   if (variantId && family.includes(variantId)) return variantId;
+  if (typeof rotation === 'number' && Number.isFinite(rotation)) {
+    return family[Math.abs(Math.trunc(rotation)) % family.length];
+  }
   return family[0];
 }
