@@ -58,7 +58,7 @@ describe('Wizard presentation guard', () => {
   {"id":"services-hero","type":"hero","variantId":"hero:collage","props":{"layout":"split","image":"hero.jpg"}}
 ];
 const HYDRATABLE = new Set([]);`;
-    const faithfulPage = `<main><nav>Menu</nav><section><button data-ut-intent="contact.submit">Contact</button>${'A considered contact experience '.repeat(80)}</section><section>Availability</section><footer>Studio</footer></main>`;
+    const faithfulPage = `<main><nav>Menu</nav><section><h1>Contact the studio</h1><p>Booking enquiries and availability.</p><button data-ut-intent="contact.submit">Contact</button><a data-ut-intent="nav.goto" href="/">Home</a>${'A considered contact experience '.repeat(80)}</section><section>Availability</section><footer>Studio</footer></main>`;
     const result = assessWizardPagePresentations({
       aiFiles: {
         '/src/pages/Services.tsx': '<main><section>Our services</section></main>',
@@ -88,11 +88,11 @@ const HYDRATABLE = new Set([]);`;
   {"id":"services-hero","type":"hero","props":{"headline":"Services","badge":"Services"}}
 ];
 const HYDRATABLE = new Set([]);`;
-    const copiedHomeHero = `<main><nav>Menu</nav><section><h1>Photography with feeling</h1><p>${'Original studio content '.repeat(90)}</p><button data-ut-intent="contact.submit">Contact</button></section><section>Portraits</section><footer>Studio</footer></main>`;
+    const copiedHomeHero = `<main><nav>Menu</nav><section><h1>Photography with feeling</h1><p>${'Original studio content '.repeat(90)}</p><button data-ut-intent="contact.submit">Contact</button><a data-ut-intent="nav.goto" href="/">Home</a></section><section>Portraits</section><footer>Studio</footer></main>`;
 
     const result = assessWizardPagePresentations({
       aiFiles: {
-        '/src/pages/Home.tsx': `<main><nav>Menu</nav><section><h1>Photography with feeling</h1><p>${'Studio story '.repeat(90)}</p><button data-ut-intent="contact.submit">Contact</button></section><section>Portfolio</section><footer>Studio</footer></main>`,
+        '/src/pages/Home.tsx': `<main><nav>Menu</nav><section><h1>Photography with feeling</h1><p>${'Studio story '.repeat(90)}</p><button data-ut-intent="contact.submit">Contact</button><a data-ut-intent="nav.goto" href="/work">Work</a></section><section>Portfolio</section><footer>Studio</footer></main>`,
         '/src/pages/Services.tsx': copiedHomeHero,
       },
       canonicalFiles: { '/src/pages/Home.tsx': homePage, '/src/pages/Services.tsx': servicesPage },
@@ -108,7 +108,7 @@ const HYDRATABLE = new Set([]);`;
   {"id":"services-hero","type":"hero","props":{"headline":"Services"}}
 ];
 const HYDRATABLE = new Set([]);`;
-    const parallelThemePage = `<main><nav>Primary</nav><nav>Duplicate navigation</nav><style>{'body { background: black; }'}</style><section><h1>Services</h1><p>${'A rich but conflicting service page '.repeat(80)}</p><button data-ut-intent="booking.create">Book</button></section><section>Options</section><footer>Duplicate footer</footer></main>`;
+    const parallelThemePage = `<main><nav>Primary</nav><nav>Duplicate navigation</nav><style>{'body { background: black; }'}</style><section><h1>Services</h1><p>${'A rich but conflicting service page '.repeat(80)}</p><button data-ut-intent="booking.create">Book</button><a data-ut-intent="nav.goto" href="/">Home</a></section><section>Options</section><footer>Duplicate footer</footer></main>`;
 
     const result = assessWizardPagePresentations({
       aiFiles: { '/src/pages/Services.tsx': parallelThemePage },
@@ -146,11 +146,11 @@ const HYDRATABLE = new Set([]);`;
   {"id":"pricing-hero","type":"hero","props":{"headline":"Pricing","layout":"split","image":"pricing.jpg"}}
 ];
 const HYDRATABLE = new Set([]);`;
-    const centeredCandidate = `<main><nav>Menu</nav><section data-ut-layout="centered"><img src="pricing.jpg" alt="Pricing" /><h1>Pricing</h1><p>${'A detailed pricing experience '.repeat(90)}</p><button data-ut-intent="booking.create">Book</button></section><section>Plans</section><footer>Studio</footer></main>`;
+    const centeredCandidate = `<main><nav>Menu</nav><section data-ut-layout="centered"><img src="pricing.jpg" alt="Pricing" /><h1>Pricing</h1><p>${'A detailed pricing experience '.repeat(90)}</p><button data-ut-intent="booking.create">Book</button><a data-ut-intent="nav.goto" href="/">Home</a></section><section>Plans</section><footer>Studio</footer></main>`;
 
     const result = assessWizardPagePresentations({
       aiFiles: {
-        '/src/pages/Home.tsx': `<main><nav>Menu</nav><section data-ut-layout="split" data-ut-media-treatment="split-frame"><img src="hero.jpg" alt="Studio" /><h1>Studio</h1><p>${'A polished studio home experience '.repeat(90)}</p><button data-ut-intent="booking.create">Book</button></section><section>Services</section><footer>Studio</footer></main>`,
+        '/src/pages/Home.tsx': `<main><nav>Menu</nav><section data-ut-layout="split" data-ut-media-treatment="split-frame"><img src="hero.jpg" alt="Studio" /><h1>Studio</h1><p>${'A polished studio home experience '.repeat(90)}</p><button data-ut-intent="booking.create">Book</button><a data-ut-intent="nav.goto" href="/">Home</a></section><section>Services</section><footer>Studio</footer></main>`,
         '/src/pages/Pricing.tsx': centeredCandidate,
       },
       canonicalFiles: { '/src/pages/Home.tsx': homePage, '/src/pages/Pricing.tsx': pricingPage },
