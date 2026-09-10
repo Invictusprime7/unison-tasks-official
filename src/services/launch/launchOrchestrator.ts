@@ -435,6 +435,13 @@ export async function runLaunchPipeline(
     validations: pipelineValidations,
   } = stage4b.pipelineResult;
 
+  // Stamp the curated industry configuration onto the snapshot before any
+  // gate reads it, so preflight/seal/export all observe the same journey.
+  if (siteBundleSnapshot?.meta && plan.siteConfiguration) {
+    siteBundleSnapshot.meta.siteConfiguration = plan.siteConfiguration;
+  }
+
+
   // Theme tokens are compiler-owned. Repair rather than ship un-themed CSS.
   const expectedCss = buildThemedIndexCssFromTokens(plan.themeTokens, {
     presetId: input.theme.id,
