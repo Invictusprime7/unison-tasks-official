@@ -871,8 +871,12 @@ function* buildCanonicalLaunchArtifactSteps(
     brand: input.businessName || undefined,
     mode: 'canonicalize',
   });
+  // Copy first: when the pass mutates nothing it returns the SAME object it was
+  // given, so clearing `mergedFiles` in place also cleared the result and wiped
+  // the whole VFS (Stage 4b's /src/index.css included).
+  const convergedFiles = { ...convergedPreflight.files };
   for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
-  Object.assign(mergedFiles, convergedPreflight.files);
+  Object.assign(mergedFiles, convergedFiles);
 
   // Canonical projections are the final source-writing stage. Re-apply Stage
   // 4b's token contract if they touched source, then always prove an immutable
