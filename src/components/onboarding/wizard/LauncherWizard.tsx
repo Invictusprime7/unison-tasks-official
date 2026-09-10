@@ -1,7 +1,7 @@
 /**
  * LauncherWizard — the Unison System Launcher.
  *
- * Selection surface only. Four steps (industry → goals → template → launch)
+ * Selection surface only. Four steps (industry → business → structure → design/launch)
  * gather answers; `runLaunchPipeline` owns every deterministic stage. This
  * component never touches the VFS or authors a page. The orchestrator owns
  * deterministic generation and any guarded AI enrichment while this surface
