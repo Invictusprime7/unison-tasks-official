@@ -124,7 +124,9 @@ describe('hero quality findings', () => {
       page, plan, template, { generationBrief: brief },
     )));
     const report = evaluateVisualQuality(files);
-    expect(report.findings).not.toContain('INCOMPLETE_HERO');
-    expect(report.findings).not.toContain('CROPPED_HERO_MEDIA');
+    const heroFailures = report.pages.filter((page) => page.findings.some((finding) => (
+      finding === 'INCOMPLETE_HERO' || finding === 'CROPPED_HERO_MEDIA'
+    )));
+    expect(heroFailures, JSON.stringify(heroFailures, null, 2)).toEqual([]);
   });
 });
