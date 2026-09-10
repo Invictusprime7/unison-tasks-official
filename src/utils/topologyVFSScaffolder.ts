@@ -421,8 +421,11 @@ function buildRoleComposition(
     configuredOrder.length > 0 ? configuredOrder : industryRoleSections
   ) as SectionType[];
 
+  // An explicit template `sectionPool` is an authored authority: it is applied
+  // as a verbatim filter over the template sections (repeats preserved).
+  const explicitPool = template.sectionPool?.[role as TemplatePageRole];
   const poolList: SectionType[] =
-    template.sectionPool?.[role as TemplatePageRole] ??
+    explicitPool ??
     (declaredSections.length > 0
       ? declaredSections
       : (industryVocabulary.length > 0
@@ -453,7 +456,7 @@ function buildRoleComposition(
     if (source.type === 'hero' && !page.isHome) {
       const roleLabel = page.title.trim() || page.role.replace(/_/g, ' ');
       props.headline = roleLabel;
-      props.subheadline = `${roleLabel} at ${plan.businessName || template.name}.`;
+      props.subheadline = `Explore ${roleLabel.toLowerCase()} from ${plan.businessName || template.name}.`;
       props.badge = roleLabel;
       if (alternateHeroMedia) {
         if (typeof props.image === 'string') props.image = alternateHeroMedia;
