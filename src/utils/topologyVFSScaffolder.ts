@@ -462,7 +462,10 @@ function buildRoleComposition(
   const bodySectionCount = () => filtered.filter((section) => (
     section.type !== 'navbar' && section.type !== 'footer' && section.type !== 'hero'
   )).length;
-  if (!definition && !page.isHome && bodySectionCount() < requestedBodyFloor) {
+  const needsSupplementation = routeBrief
+    ? bodySectionCount() < requestedBodyFloor
+    : filtered.length < MINIMUM_ROUTE_BODY_SECTIONS;
+  if (!definition && !page.isHome && needsSupplementation) {
     const priority = ROLE_SUPPLEMENT_PRIORITY[role] || ROLE_SUPPLEMENT_PRIORITY.custom;
     const candidates = template.sections
       .map((section, index) => ({ section, index, priority: priority.indexOf(section.type) }))
@@ -476,7 +479,9 @@ function buildRoleComposition(
       });
     for (const { section } of candidates) {
       appendSection(section);
-      if (bodySectionCount() >= requestedBodyFloor) break;
+      if (routeBrief
+        ? bodySectionCount() >= requestedBodyFloor
+        : filtered.length >= MINIMUM_ROUTE_BODY_SECTIONS) break;
     }
   }
 
