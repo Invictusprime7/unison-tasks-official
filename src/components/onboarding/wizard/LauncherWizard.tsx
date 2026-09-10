@@ -166,10 +166,9 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     [systemId, effectiveTemplate?.industry],
   );
 
+  // Industry questions are always skippable: anything left blank can be filled in
+  // later inline from the live preview. Only the business name is needed to launch.
   const profileFields = industryProfile?.profileFields ?? [];
-  const requiredProfileFieldsAnswered = profileFields
-    .filter((field) => field.required)
-    .every((field) => (profileAnswers[field.key] || "").trim().length > 0);
 
   const capabilityChoices = useMemo(() => {
     const anchor = industryProfile?.anchorCapability;
