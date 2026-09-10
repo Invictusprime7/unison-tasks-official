@@ -152,15 +152,17 @@ stays independent of pricing UI.
 
 ## Sequencing
 
-1. Industry alignment: add `contractor` to the matrix, extend `IndustryProfile`,
-   add the matrix/intent-profile parity assertion.
+1. Industry alignment across all nine: add `contractor` to the matrix, extend
+   `IndustryProfile` (design directions, conversion journey, profile fields,
+   anchor capability), add the parity assertion.
 2. `designRecipes.ts` + `resolveSiteConfiguration()` in `resolvedComposition`.
 3. Migrations for `wizard_selections`, `site_configs`, `integrations`.
 4. Selection persistence and the 8-step launcher.
 5. `SiteConfiguration` persistence wired into `launchOrchestrator.plan`.
-6. Variant coverage + industry distinctiveness lint.
-7. Integration abstraction.
+6. Journey sections + variant coverage + industry distinctiveness lint.
+7. Integration abstraction covering every anchor capability.
 8. Public marketing pages and `/app` shell, then entitlements.
+
 
 ## Technical notes
 
