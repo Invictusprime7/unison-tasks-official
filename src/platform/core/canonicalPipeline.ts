@@ -644,6 +644,7 @@ export function recompileFromPlayground(
     stage4bCss: themedCss,
     industry: industry || null,
     designIntervention,
+    siteConfiguration: sealedSiteConfiguration,
   });
 
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
