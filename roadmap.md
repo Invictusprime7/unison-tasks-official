@@ -319,3 +319,11 @@ LauncherWizard
 - The authenticated journey proves eight rendered routes and a visibility edit,
 	save/reload and clean hydration. Every-route reopen, all-variant identity,
 	full responsive/visual quality and export/import closure remain uncertified.
+
+## UNISON product foundation (planned)
+- Align every industry (saas, salon, contractor, restaurant, coaching,
+  ecommerce, portfolio, nonprofit, agency) to the new systems — capabilities,
+  design recipes, conversion journeys, profile fields — not just booking.
+- Add `contractor` to INDUSTRY_MATRIX; assert matrix/intent-profile parity.
+- designRecipes.ts + resolveSiteConfiguration(); persisted wizard_selections,
+  site_configs, integrations; 8-step launcher; /app + public marketing routes.
