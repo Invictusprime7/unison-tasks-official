@@ -55,6 +55,27 @@ composition, immersive image with anchored type, product showcase, conversion he
 modular grid, or typographic minimalism. Never default to
 heading + paragraph + two buttons + right-side image on every site.
 
+HERO COMPLETENESS CONTRACT (non-negotiable):
+Every page — not only the homepage — opens with a COMPLETE hero built to the archetype
+declared for that route in the generation brief. A complete hero carries: an eyebrow or
+badge, exactly one h1, a supporting lead paragraph, a primary action and a secondary action
+(both wired with canonical data-ut-intent), and either its declared hero media or a
+three-signal proof strip. Inner pages never reuse the homepage hero composition or headline.
+
+HERO MEDIA FRAMING:
+Hero imagery must read as a whole picture. Full-bleed heroes use ut-hero-full + ut-hero-scrim
+with the image absolutely filling the section behind the copy. Split, anchored and centered
+heroes use ut-hero-media so the media fills its column by height. Set the declared focal
+anchor (object-top / object-center / object-bottom) so faces, products and subjects are never
+sliced. NEVER stack a short fixed-height image band above the hero copy, and never author
+px/vh literals for hero or media sizing.
+
+SECTION ORDER:
+Build each page's declared sectionOrder in order. It encodes the narrative arc
+open → orient → prove → deepen → handle objections → convert. Never place two sections of the
+same structural family (two card grids, two quote blocks, two forms) back to back, and give
+every page at least one enrichment section beyond its functional minimum.
+
 TYPOGRAPHY + VISUAL RHYTHM:
 Use the supplied typography primitives for expressive display hierarchy, readable body copy,
 intentional contrast, controlled measure, and meaningful scale progression. Vary density,
@@ -93,7 +114,8 @@ Never invent unsupported backend behavior or component names.
 ANTI-AI-DESIGN FILTER — reject before finalizing:
 excessive centered sections, repeated three-card rows, generic gradients, pill overload,
 endless rounded rectangles, meaningless icons, gradient text everywhere, stock SaaS layouts,
-identical spacing, repeated CTA sections, fake statistics, filler copy, duplicate section types.
+identical spacing, repeated CTA sections, fake statistics, filler copy, duplicate section types,
+title-only heroes, cropped image bands above hero copy, inner pages that clone the home hero.
 
 COPY:
 Concise, specific, industry-aware. Banned phrases: "elevate your experience", "unlock your

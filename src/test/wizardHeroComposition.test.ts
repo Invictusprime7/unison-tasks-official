@@ -1,0 +1,91 @@
+import { describe, expect, it } from 'vitest';
+import { buildWizardGenerationBrief } from '@/services/wizardGenerationBrief';
+import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry';
+import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
+
+function registry() {
+  const reg = createEmptyPageRegistry();
+  const home = createBuilderPage('home', 'Home', '/', 'home', {
+    isHome: true, showInNav: true, navOrder: 0, filePath: '/src/pages/Home.tsx',
+  });
+  const about = createBuilderPage('about', 'About', '/about', 'about', {
+    showInNav: true, navOrder: 1, filePath: '/src/pages/About.tsx',
+  });
+  const contact = createBuilderPage('contact', 'Contact', '/contact', 'contact', {
+    showInNav: true, navOrder: 2, filePath: '/src/pages/Contact.tsx',
+  });
+  reg.pages = { home, about, contact };
+  reg.homePageId = home.pageId;
+  return reg;
+}
+
+const input = {
+  pageRegistry: registry(),
+  vfsFiles: {} as Record<string, string>,
+  themePresetId: 'midnight-editorial',
+  industry: 'salon',
+  seed: 'seed-a',
+};
+
+describe('per-page hero architecture', () => {
+  it('gives every route a complete hero contract', () => {
+    const brief = buildWizardGenerationBrief(input);
+    for (const route of brief.routes) {
+      const hero = route.hero.geometry;
+      expect(hero.archetype).toBeTruthy();
+      expect(hero.requiredParts.length).toBeGreaterThanOrEqual(5);
+      expect(hero.mediaDirection.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('does not clone the home hero onto inner pages', () => {
+    const brief = buildWizardGenerationBrief(input);
+    const home = brief.routes.find((route) => route.role === 'home')!;
+    const inner = brief.routes.filter((route) => route.role !== 'home');
+    for (const route of inner) {
+      expect(route.hero.geometry.archetype).not.toBe(home.hero.geometry.archetype);
+      expect(route.hero.mustDifferFromHome).toBe(true);
+    }
+  });
+
+  it('orders sections as a narrative arc without repeating a family back to back', () => {
+    const brief = buildWizardGenerationBrief(input);
+    for (const route of brief.routes) {
+      const order = route.signature.sectionOrder;
+      expect(order[0]).toBe('hero');
+      expect(order[order.length - 1]).toBe('cta');
+      expect(new Set(order).size).toBe(order.length);
+      expect(route.signature.narrative.length).toBe(order.length);
+      expect(route.signature.narrative[0]).toBe('open');
+    }
+  });
+});
+
+describe('hero quality findings', () => {
+  const thinHero = `export default function Page(){return(<main><section className="ut-hero"><h1>Contact</h1></section></main>);}`;
+  const fullHero = `export default function Page(){return(<main><section className="ut-hero" data-ut-hero="editorial-split">
+    <div><span className="ut-eyebrow">Studio</span><h1>Book a session</h1><p className="ut-lead">Portrait and wedding photography in Chicago.</p>
+    <a data-ut-intent="booking.create" href="#book">Book</a><a data-ut-intent="nav.goto" href="/work">See work</a></div>
+    <figure className="ut-hero-media is-top"><img src="/a.jpg" alt="Studio" /></figure></section></main>);}`;
+
+  it('flags an incomplete hero', () => {
+    const report = evaluateVisualQuality({ '/src/pages/Contact.tsx': thinHero });
+    expect(report.findings).toContain('INCOMPLETE_HERO');
+    expect(report.refinementDirective).toBeTruthy();
+  });
+
+  it('accepts a complete framed hero', () => {
+    const report = evaluateVisualQuality({ '/src/pages/Home.tsx': fullHero });
+    expect(report.findings).not.toContain('INCOMPLETE_HERO');
+    expect(report.findings).not.toContain('CROPPED_HERO_MEDIA');
+  });
+
+  it('flags a cropped hero image band', () => {
+    const banded = `export default function Page(){return(<main><section className="ut-hero">
+      <img className="h-48 w-full object-cover" src="/a.jpg" alt="" />
+      <span className="ut-eyebrow">Studio</span><h1>Contact</h1><p>Say hello.</p>
+      <a data-ut-intent="contact.submit" href="#">Send</a><a data-ut-intent="nav.goto" href="/">Home</a></section></main>);}`;
+    const report = evaluateVisualQuality({ '/src/pages/Contact.tsx': banded });
+    expect(report.findings).toContain('CROPPED_HERO_MEDIA');
+  });
+});

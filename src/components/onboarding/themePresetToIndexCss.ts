@@ -341,12 +341,54 @@ export function buildThemedIndexCssFromTokens(
     gap: var(--ut-grid-gap);
     min-height: var(--ut-hero-min-height);
     padding-block: var(--ut-hero-pad-block);
+    padding-top: max(var(--ut-hero-pad-block), var(--ut-hero-space-top, var(--ut-nav-block, 5rem)));
     text-align: var(--ut-hero-text-align);
     background-image: var(--ut-gradient-hero);
   }
   @media (max-width: 768px) { .ut-hero { grid-template-columns: 1fr; } }
-  .ut-hero-media { aspect-ratio: var(--ut-hero-media-ratio); overflow: hidden; border-radius: var(--ut-media-frame-radius); }
-  .ut-hero-media > img, .ut-hero-media > video { width: 100%; height: 100%; object-fit: cover; filter: var(--ut-media-filter); }
+
+  /*
+   * Hero media fills its column by height instead of being locked to a hard
+   * aspect ratio, so a tall or wide photograph is never sliced into a band.
+   */
+  .ut-hero-media {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--ut-media-frame-radius);
+    min-height: var(--ut-hero-media-block, 22rem);
+    max-height: var(--ut-hero-media-max, 36rem);
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  @supports not (aspect-ratio: auto) {
+    .ut-hero-media { aspect-ratio: var(--ut-hero-media-ratio); }
+  }
+  .ut-hero-media > img, .ut-hero-media > video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: var(--ut-hero-media-focal, center);
+    filter: var(--ut-media-filter);
+  }
+  /* Focal anchors the AI may declare per hero archetype. */
+  .ut-hero-media.is-top > img, .ut-hero-media.is-top > video { object-position: top center; }
+  .ut-hero-media.is-bottom > img, .ut-hero-media.is-bottom > video { object-position: bottom center; }
+  .ut-hero-media.is-left > img, .ut-hero-media.is-left > video { object-position: center left; }
+  .ut-hero-media.is-right > img, .ut-hero-media.is-right > video { object-position: center right; }
+
+  /*
+   * Full-bleed hero: the image IS the hero background under a legibility
+   * scrim — never a cropped strip stacked above the copy.
+   */
+  .ut-hero-full { position: relative; isolation: isolate; min-height: var(--ut-overlay-block, 78vh); }
+  .ut-hero-full > img, .ut-hero-full > video, .ut-hero-full .ut-hero-bg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: var(--ut-hero-media-focal, center);
+    z-index: -2;
+  }
+  .ut-hero-scrim { position: absolute; inset: 0; z-index: -1; background-image: var(--ut-gradient-hero); background-color: hsl(var(--background) / 0.55); }
+
 
   .ut-reveal {
     animation: ut-reveal var(--ut-motion-duration) var(--ut-motion-ease) both;
