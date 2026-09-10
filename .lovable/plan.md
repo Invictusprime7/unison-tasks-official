@@ -1,63 +1,86 @@
-# Make art-pack variants and their styles reach the live preview
+# Getting variants into the preview first, AI back in after
 
-Yes — your instinct is right, and I found the exact gap. Right now the design
-choices a style pack makes are decided during generation, but most of them never
-get written into the files the preview actually runs, so every page falls back to
-one generic look. That is why About, Services and Contact all render the same
-hero.
+## Direct answer on AI
 
-## What is actually wired today
+Not yet. The guidebook puts optional AI enrichment last (Phase 11) and its entry
+condition is that the earlier phases are complete: the site must already be
+premium, executable, committed, previewed and editable **without** AI. Right now
+the first of those phases — the one where every section family compiles into the
+preview — is still open. Only the gallery family is closed; the other sixteen are
+not. Bringing AI back before that is how the pipeline became fragmented last
+time: AI would be papering over a compiler that cannot yet render what the design
+system chose.
 
-- Stylesheet writes: correct. The themed stylesheet plus the shared style bridge
-  are written and enforced. (One real bug was that the final compile step could
-  wipe the whole file set in place — already fixed this session.)
+So the order is: close the compiler gap, prove the site is complete with AI
+switched off, then reintroduce AI as a constrained proposer.
+
+## What is actually broken today
+
+- Stylesheet writes: correct. The themed stylesheet and the shared style bridge
+  are written and enforced. One real bug — the final compile step wiping the file
+  set in place — is already fixed this session.
 - Section variants: only the **gallery** family is compiled into the preview.
-  Five gallery layouts are marked portable; every other family (hero, services,
-  features, about, testimonials, pricing, cta, contact, footer, faq, stats, team,
-  navbar) ships a single hand-written component that ignores the chosen variant.
-- Result: the pack picks `hero:full-bleed` or `about:story-panel`, the choice is
-  recorded in the page data, and the preview still renders the one generic hero.
+  Five gallery layouts are marked portable; hero, services, features, about,
+  testimonials, pricing, cta, contact, footer, faq, stats, team and navbar each
+  ship one hand-written component that ignores the chosen variant.
+- Result: the style pack picks `hero:full-bleed` or `about:story-panel`, the
+  choice is recorded in the page data, and the preview still renders one generic
+  hero. That is exactly what your three screenshots show.
 
-## The fix, in the systems already in place
+## Step 1 — Close the compiler gap (unblocks everything else)
 
-No new authority, no parallel pipeline. The gallery path is already the correct
-pattern — extend it to the rest.
+The gallery path is already the correct pattern. Extend it, no new authority.
 
-1. **Mark the remaining registered variants portable.** Each variant entry in the
-   variant registry gains the same `vfs: { mode: 'portable-recipe' }` marker
-   gallery already uses.
-2. **Compile them with the existing recipe builder.** The build script already
-   walks the registry generically, bundles each family, and certifies that every
-   dependency is an approved preview module. Regenerating produces one recipe
-   module per family instead of only gallery.
-3. **Emit one recipe module per family used by a page.** The compiler already
-   does this for gallery; make it loop over the families present on the page.
-4. **Resolve by variant id in every family component.** Each emitted family
-   component looks up the chosen variant and falls back to today's generic
-   layout if a variant is unavailable — same shape as the gallery component, so
-   nothing can regress into a blank section.
-5. **Prove it.** A compile guard asserts that for every page, each section's
-   chosen variant resolves to a real module in the written file set, and that the
-   themed stylesheet plus style bridge survive to the end of compilation. Any
-   unresolved variant fails the build instead of silently downgrading.
-6. **Cross-page check.** Extend the existing industry composition tests so two
-   pages of the same generated site never resolve to the same hero variant.
+1. Mark the remaining registered variants portable with the same marker gallery
+   uses.
+2. Regenerate the recipe bundle with the existing build script — it already walks
+   the registry generically and certifies every dependency.
+3. Emit one recipe module per family present on a page, instead of gallery only.
+4. Each emitted family component resolves the chosen variant and falls back to
+   today's generic layout if one is unavailable, so nothing can go blank.
+5. Guard it: for every page, each section's chosen variant must resolve to a real
+   module in the written files, and the themed stylesheet plus style bridge must
+   survive to the end of compilation. Unresolved variants fail the build.
+6. Extend the industry composition tests so two pages of one site never resolve
+   to the same hero variant.
+
+## Step 2 — Certify the site with AI switched off
+
+Generate across several seeds and industries with no model in the loop and
+confirm every route renders complete: no blank canvas, no placeholder, no missing
+import, no fallback authoring, coherent on mobile. This is the gate the guidebook
+requires before AI may re-enter.
+
+## Step 3 — Reintroduce AI, constrained
+
+AI comes back as a proposer, never an author:
+
+- Allowed: copy, media choices, SEO, ranking among already-legal variants,
+  supported layout props.
+- Denied: writing files, replacing page source, changing site structure,
+  overriding theme tokens, inventing components.
+- Placement: after the deterministic site is built, before the final save — a
+  proposal that is validated, applied to structured state, recompiled, and only
+  then committed.
+- Failure is harmless: if the model times out or proposes anything invalid, the
+  proposal is discarded and the deterministic site ships unchanged.
 
 ## Technical notes
 
-- Files touched: `src/sections/variants/registry.ts` (markers),
-  `scripts/build-stylex-recipes.mjs` (only if per-family certification needs
-  widening), `src/sections/recipes/stylexRecipes.generated.json` (regenerated),
-  `src/sections/compositionToFileSet.ts` (per-family emission + variant-aware
-  family components), plus tests.
-- Certification is strict: the builder throws on any dependency outside React,
-  the approved icon module and approved Radix primitives. Some variants may need
-  small import adjustments to pass — those are the only component edits.
-- Any variant that cannot be certified stays on the current generic renderer and
-  is reported, rather than being force-shipped.
+- Step 1 files: `src/sections/variants/registry.ts` (portability markers),
+  `src/sections/recipes/stylexRecipes.generated.json` (regenerated via
+  `scripts/build-stylex-recipes.mjs`), `src/sections/compositionToFileSet.ts`
+  (per-family emission plus variant-aware family components), tests.
+- Certification in the recipe builder is strict — only React, the approved icon
+  module and approved Radix primitives. Some variants may need small import
+  adjustments to pass; any variant that cannot be certified stays on the current
+  generic renderer and is reported rather than force-shipped.
+- Step 3 maps to the guidebook's enrichment envelope, its permission model and
+  its validator chain; no AI route is connected to the launcher until that chain
+  exists.
 
 ## Expected outcome
 
 Each generated page renders the layout its style pack actually chose, interior
-pages stop cloning the home hero, and the preview shows the same composition the
-snapshot recorded.
+pages stop cloning the home hero, and AI returns later on top of a system that is
+already correct without it.
