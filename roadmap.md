@@ -28,9 +28,12 @@ LauncherWizard
 
 ## Active Recovery — Canonical page composition
 
-- [ ] Thread strict `SiteConfiguration` and per-route composition contracts into compilation before VFS emission.
-- [ ] Enforce route hero, section order, depth, and visual quality before sealing.
-- [ ] Remove residual page-authoring fallback APIs and certify Wizard → Builder rendering.
+- [x] Thread strict `SiteConfiguration` and per-route composition contracts into compilation before VFS emission.
+- [x] Enforce route hero, section order, depth, and visual quality before sealing.
+- [x] Preserve the sealed `SiteConfiguration` across `recompileFromPlayground` so recompiles reuse the launch contract instead of re-deriving one.
+- [x] Make `designImplementationRegistry` the single lookup for industry-allowed art direction (`resolveIndustryArtDirectionPackId`) and industry section coverage; `wizardDesignIntervention` no longer calls the pack resolver directly.
+- [x] Delete zero-importer legacy services (`aiIntegrationService`, `automationToggleService`, `businessSystemSnapshot`, `capabilityProvisioner`, `monacoVFSSync`, `systemsAI`).
+- [ ] Remove residual page-authoring fallback APIs in `canonicalLaunchVfs.ts` / `aiSitePreflightRepair.ts` and certify Wizard → Builder rendering in a browser run.
 
 ## Active Sequence
 

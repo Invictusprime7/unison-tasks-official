@@ -18,6 +18,12 @@ import type { SectionVariant, VocabularyRef } from '@/sections/variants/types';
 import type { SectionType, SectionRegistryEntry } from '@/sections/types';
 import { DESIGN_VOCABULARY } from '@/platform/core/designVocabulary';
 import { hashSeed } from '@/platform/core/generationSeed';
+import { getIndustryProfile } from '@/platform/core/industryMatrix';
+import {
+  ART_DIRECTION_PACK_IDS,
+  resolveArtDirectionPackId,
+  type ArtDirectionPackId,
+} from '@/sections/variants/artDirectionPacks';
 
 /** Identity used everywhere a design implementation is referenced. */
 export type ImplementationId = `${string}:${string}`;
@@ -205,4 +211,69 @@ export function designRegistrySignature(): string {
     .map((impl) => `${impl.implementationId}|${impl.category}|${impl.isDefault ? 'default' : '-'}`)
     .join('\n');
   return `dr_${hashSeed(payload)}`;
+}
+
+// ============================================================================
+// Industry + art-direction lookups (derived, never a second catalogue)
+// ============================================================================
+
+/**
+ * The art direction packs an industry is allowed to render with, read from the
+ * industry matrix. Returns every registered pack when the industry declares no
+ * allow-list, so this can never narrow behaviour by accident.
+ */
+export function listAllowedArtDirectionPacks(industry: string | null | undefined): ArtDirectionPackId[] {
+  const profile = industry ? getIndustryProfile(industry) : undefined;
+  const allowed = profile?.allowedArtDirectionPacks;
+  return allowed && allowed.length > 0 ? [...allowed] : [...ART_DIRECTION_PACK_IDS];
+}
+
+/**
+ * Single resolution point for art direction. Callers must not call
+ * `resolveArtDirectionPackId` with an ad-hoc allow-list — this facade derives
+ * the industry constraint from the matrix so the registry stays authoritative.
+ */
+export function resolveIndustryArtDirectionPackId(input: {
+  industry?: string | null;
+  themePresetId?: string | null;
+  seed?: string | number | null;
+  templateId?: string | null;
+}): ArtDirectionPackId {
+  return resolveArtDirectionPackId({
+    ...input,
+    industry: input.industry ?? undefined,
+    allowedPackIds: listAllowedArtDirectionPacks(input.industry),
+  } as Parameters<typeof resolveArtDirectionPackId>[0]);
+}
+
+/**
+ * Every design implementation an industry's default page map can render,
+ * derived from the industry matrix `expectedSections` contract. Used by the
+ * launcher and Lane B vocabulary so page recipes and the registry cannot drift.
+ */
+export function listImplementationsForIndustry(industry: string | null | undefined): DesignImplementation[] {
+  const profile = industry ? getIndustryProfile(industry) : undefined;
+  if (!profile) return listDesignImplementations();
+  const sectionTypes = new Set<string>();
+  for (const page of profile.defaultPages) {
+    for (const section of page.expectedSections) sectionTypes.add(section);
+  }
+  return listDesignImplementations().filter((impl) => sectionTypes.has(impl.sectionType));
+}
+
+/**
+ * Semantic sections an industry expects that have no renderable implementation.
+ * A non-empty result is a wiring gap between the industry matrix and the
+ * section/variant registries, not a runtime fallback opportunity.
+ */
+export function industryImplementationGaps(industry: string): string[] {
+  const profile = getIndustryProfile(industry);
+  if (!profile) return [];
+  const missing = new Set<string>();
+  for (const page of profile.defaultPages) {
+    for (const section of page.expectedSections) {
+      if (listImplementationsForSection(section as SectionType).length === 0) missing.add(section);
+    }
+  }
+  return [...missing].sort();
 }

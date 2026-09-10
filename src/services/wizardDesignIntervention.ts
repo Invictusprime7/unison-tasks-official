@@ -10,7 +10,6 @@ import {
 import {
   ART_DIRECTION_PACKS,
   isArtDirectionPackId,
-  resolveArtDirectionPackId,
   type ArtDirectionPackId,
 } from '@/sections/variants/artDirectionPacks';
 import {
@@ -25,7 +24,10 @@ import type {
   VocabularyVisualDominance,
   VocabularyMotionIntensity,
 } from '@/platform/core/designVocabulary';
-import { getDesignImplementation } from '@/services/designImplementationRegistry';
+import {
+  getDesignImplementation,
+  resolveIndustryArtDirectionPackId,
+} from '@/services/designImplementationRegistry';
 
 
 
@@ -231,7 +233,7 @@ export function readWizardDesignIntervention(
     if (!isArtDirectionPackId(intervention.artDirectionPackId)) {
       // Legacy brief written before art direction was sealed — re-derive it
       // from the SAME inputs so the result is identical to a fresh compile.
-      intervention.artDirectionPackId = resolveArtDirectionPackId({
+      intervention.artDirectionPackId = resolveIndustryArtDirectionPackId({
         industry: intervention.industry,
         themePresetId: intervention.themePresetId,
         seed: intervention.seed,
@@ -412,7 +414,7 @@ export function buildWizardDesignIntervention(
 
   // ART DIRECTION — resolved ONCE, from the style card first. Everything that
   // follows (motion, interaction, CSS, Lane B brief) obeys this pack.
-  const artDirectionPackId = resolveArtDirectionPackId({
+  const artDirectionPackId = resolveIndustryArtDirectionPackId({
     themePresetId: input.themePresetId,
     industry,
     seed,

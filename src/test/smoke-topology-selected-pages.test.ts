@@ -2,7 +2,7 @@
  * Smoke test: verify the router never generates blank routes for unselected
  * industry defaults when the wizard runs in "selected-pages" mode.
  *
- * Simulates the SystemLauncher call for several industries with only a
+ * Simulates the launchOrchestrator call for several industries with only a
  * subset of pages checked, then asserts:
  *  1. The topology plan contains only Home + user-selected pages.
  *  2. The canonical router imports/routes exactly those pages, nothing else.

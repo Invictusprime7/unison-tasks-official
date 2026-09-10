@@ -584,14 +584,20 @@ export function recompileFromPlayground(
   // recompiles preserve chain-of-custody back to the original wizard payload.
   let recoveredSeedId: string | undefined;
   let sealedPackId: string | undefined;
+  let sealedSiteConfiguration: SiteConfiguration | undefined;
   try {
     const snapRaw = existingVfsFiles['/.unison/site-bundle-snapshot.json'];
     if (snapRaw) {
       const snap = JSON.parse(snapRaw) as {
-        meta?: { wizardSeedId?: string; artDirectionPackId?: string | null };
+        meta?: {
+          wizardSeedId?: string;
+          artDirectionPackId?: string | null;
+          siteConfiguration?: SiteConfiguration | null;
+        };
       };
       recoveredSeedId = snap?.meta?.wizardSeedId;
       sealedPackId = snap?.meta?.artDirectionPackId || undefined;
+      sealedSiteConfiguration = snap?.meta?.siteConfiguration || undefined;
     }
   } catch { /* ignore */ }
 
@@ -638,6 +644,7 @@ export function recompileFromPlayground(
     stage4bCss: themedCss,
     industry: industry || null,
     designIntervention,
+    siteConfiguration: sealedSiteConfiguration,
   });
 
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
@@ -686,6 +693,7 @@ export function recompileFromPlayground(
       templateId: options?.selectedTemplateId,
       wizardSeedId: recoveredSeedId,
       themeTokens: options.themeTokens,
+      siteConfiguration: sealedSiteConfiguration,
     },
     'recompile',
     uiFoundation.manifest,
