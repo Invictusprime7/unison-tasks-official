@@ -109,6 +109,15 @@ describe('hero quality findings', () => {
     const template = getCompositionById('salon-premium');
     if (!template) throw new Error('Missing salon-premium composition');
     const pages = Object.values(pageRegistry.pages);
+    const TOPOLOGY_ROLES = new Set<string>([
+      'home', 'about', 'services', 'contact', 'pricing', 'gallery',
+      'faq', 'booking', 'checkout', 'thank_you', 'blog', 'shop', 'custom',
+    ]);
+    const toTopologyRole = (role: string | undefined): PageRouteNode['role'] => {
+      if (role === 'service') return 'services';
+      if (role && TOPOLOGY_ROLES.has(role)) return role as PageRouteNode['role'];
+      return 'custom';
+    };
     const plan: GeneratedSitePlan = {
       siteId: 'hero-quality-site', industry: 'salon', businessName: 'Canonical Salon Test',
       homePageId: pageRegistry.homePageId, pages: pages.map((page) => ({
