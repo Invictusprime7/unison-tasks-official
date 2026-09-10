@@ -320,7 +320,27 @@ export async function runLaunchPipeline(
           : "manual-setup",
       wizardSeedId,
       businessId: plannedBusinessId,
+      profileAnswers: input.profileAnswers,
+      selectedCapabilities: input.selectedCapabilities,
+      socialLinks: input.socialLinks,
     };
+
+    // Curated industry configuration — the single resolved answer to "what
+    // does this industry's site actually consist of". Stamped into snapshot
+    // meta below so preview/export/publish can prove the journey it was built
+    // against. Industries outside the matrix simply carry no configuration.
+    let siteConfiguration: SiteConfiguration | null = null;
+    try {
+      siteConfiguration = resolveSiteConfiguration({
+        industry: industryProfile?.industry || industryOverlay,
+        themePresetId: input.theme.id,
+        seed,
+        requestedPages,
+        requestedCapabilities: input.selectedCapabilities ?? [],
+      });
+    } catch {
+      siteConfiguration = null;
+    }
 
     return {
       user,
@@ -336,9 +356,11 @@ export async function runLaunchPipeline(
       wizardSeedId,
       themeTokens,
       selections,
+      siteConfiguration,
       requestedPages,
     };
   }, { timeoutMs: 30_000 });
+
 
   const design = generateDesignVariation(plan.seed);
   const blueprint = createBlueprintFromIndustry(
