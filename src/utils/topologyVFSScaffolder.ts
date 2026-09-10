@@ -24,6 +24,7 @@ import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
 import { PreviewPipelineError } from '@/services/previewPipelineError';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
+import type { VariantId } from '@/sections/variants/types';
 import { getVariantsForSection } from '@/sections/variants/registry';
 import type { SiteConfiguration } from '@/platform/core/resolvedComposition';
 import { getIndustryRoleSections, getIndustrySectionVocabulary } from '@/platform/core/industryMatrix';
@@ -574,10 +575,12 @@ function resolveRouteHeroVariant(
   page: PageRouteNode,
   pinnedVariantId: string | undefined,
   seed: string | undefined,
-): string | undefined {
+): VariantId | undefined {
   const heroVariants = getVariantsForSection('hero');
   if (pinnedVariantId) {
-    return heroVariants.some((variant) => variant.id === pinnedVariantId) ? pinnedVariantId : undefined;
+    return heroVariants.some((variant) => variant.id === pinnedVariantId)
+      ? (pinnedVariantId as VariantId)
+      : undefined;
   }
   if (page.isHome || role === 'home') return undefined;
   const roleVariants = heroVariants.filter((variant) =>

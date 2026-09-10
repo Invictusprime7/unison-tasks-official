@@ -107,7 +107,10 @@ describe('industry page composition guards', () => {
         );
         const hero = sections.find((section) => section.type === 'hero');
         if (!hero || !homeHero) continue;
-        expect(hero.props.headline, `${industry} ${spec.path}`).not.toBe(homeHero.props.headline);
+        expect(
+          (hero.props as { headline?: string }).headline,
+          `${industry} ${spec.path}`,
+        ).not.toBe((homeHero.props as { headline?: string }).headline);
       }
     });
   }
