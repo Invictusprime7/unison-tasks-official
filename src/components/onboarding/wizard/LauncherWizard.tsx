@@ -169,7 +169,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const profileFields = industryProfile?.profileFields ?? [];
   const requiredProfileFieldsAnswered = profileFields
     .filter((field) => field.required)
-    .every((field) => (profileAnswers[field.id] || "").trim().length > 0);
+    .every((field) => (profileAnswers[field.key] || "").trim().length > 0);
 
   const capabilityChoices = useMemo(() => {
     const anchor = industryProfile?.anchorCapability;
@@ -409,17 +409,17 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                   />
                 </div>
                 {profileFields.map((field) => (
-                  <div key={field.id}>
+                  <div key={field.key}>
                     <FieldLabel>
                       {field.label}
                       {field.required ? " *" : ""}
                     </FieldLabel>
                     <Input
-                      value={profileAnswers[field.id] || ""}
+                      value={profileAnswers[field.key] || ""}
                       onChange={(event) =>
                         setProfileAnswers((current) => ({
                           ...current,
-                          [field.id]: event.target.value,
+                          [field.key]: event.target.value,
                         }))
                       }
                       placeholder={field.placeholder || field.label}
