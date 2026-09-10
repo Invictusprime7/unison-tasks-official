@@ -171,19 +171,12 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const canContinue =
     step === "industry"
       ? Boolean(systemId)
-      : step === "profile"
-        ? Boolean(businessName.trim())
-        : step === "goals"
-          ? Boolean(primaryGoal)
-          : step === "pages"
-            ? true
-            : step === "capabilities"
-              ? capabilities.length > 0
-              : step === "templates"
-                ? Boolean(effectiveTemplate)
-                : step === "aesthetic"
-                  ? Boolean(theme)
-                  : Boolean(businessName.trim() && theme && effectiveTemplate);
+      : step === "business"
+        ? Boolean(businessName.trim() && primaryGoal)
+        : step === "structure"
+          ? capabilities.length > 0
+          : Boolean(businessName.trim() && theme && effectiveTemplate);
+
 
   const goBack = () => {
     const index = STEP_ORDER.indexOf(step);
