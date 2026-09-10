@@ -212,6 +212,153 @@ two-per-page/six-per-site budget. WebGL absence with a fallback remains a runtim
 degradation, never a business-provisioning requirement. No new 3D UI is certified
 until its registered implementation passes the existing closure harness.
 
+Phase 4 declaration batch (2026-09-10): `SectionVariant` now carries an optional
+`experience` declaration — a `status` of `declared` or `enabled` plus the design
+vocabulary entry (`category` + `id`) the implementation executes. Primitives are
+never restated on the variant; they are derived from that entry, so the
+vocabulary stays their only owner. `declared` is inventory metadata that grants
+nothing; only `enabled` contributes a capability. The variant registry exposes
+`resolveExperienceRequirement`, which resolves active variant ids into enabled
+primitives, declared primitives and reached capability ids in
+`EXPERIENCE_PRIMITIVES` order, ignoring unregistered ids and unknown vocabulary
+references. `designImplementationRegistry` projects the declaration as a clone,
+so the derived view still owns no independent list, and
+`designRegistrySignature` is deliberately unchanged so stored signatures stay
+valid.
+
+Launch approval is now requirement-derived rather than eligibility-derived:
+`resolveApprovedExperienceCapabilities` approves only capabilities that a
+registered `enabled` implementation requires or that the sealed VFS already
+reaches, intersected with the emitted foundation's supported set, and only when
+the sealed envelope is not `ineligible`. A business model that merely *could*
+run WebGL no longer approves the 3D capability. Sites whose committed VFS
+already reaches `@/unison/ui/experience` keep their approval, so this is a
+tightening of an over-broad grant, not a migration.
+
+`gallery:cinematic-grid` carries the first declaration (`media:depth-gallery`,
+which owns `DepthGallery`). Its DOM implementation, recipe bytes, Radix
+requirements and emitted output are unchanged; retarget the declaration if
+Phase 6A chooses a different registered surface for that vocabulary entry. A
+per-declaration regression asserts every declaration resolves to a real
+vocabulary entry that actually owns experience primitives, so a typo or a
+retired entry fails the suite instead of silently resolving to nothing.
+
+Validation: 1,252 tests across 155 files pass, including ten new regressions
+covering declaration/vocabulary consistency, declaration projection, the
+registry-wide "nothing is enabled" gate, unregistered ids, and every approval
+branch. Application typecheck, all four architecture lints, recipe freshness and
+the production build pass; existing chunk-size warnings remain. No live 3D was
+enabled, no manifest version or budget changed, and no browser, schema,
+deployment or remote state was touched. Phase 0/1 remain open and Phase 6A
+remains gated.
+
+Directive agreement continuation (2026-09-10): the sealed `aiDirective` now
+agrees with the approval decision above. It previously instructed every eligible
+launch to "compose the immersive layer only from @/unison/ui/experience", so an
+AI edit that obeyed the sealed brief was rejected by the runtime preflight at
+save time. The immersive sentence is emitted only when a registered
+implementation enables the layer; otherwise the directive states that the layer
+is not approved and must not be imported.
+
+`experienceBudget`, `experienceRecipes` and the resolved envelope are
+deliberately unchanged. They remain the business model's candidate/eligibility
+plan, and collapsing them to `none` would later be read as a user WebGL opt-out
+through the legacy `disallowWebgl` migration path — an authority collapse, not a
+fix. Approval, eligibility and the candidate plan stay three separate facts.
+Recompile still prefers the snapshot's stored brief, so existing immersive
+projects keep their sealed directive; only a fresh launch authors a new one. The
+Edge function's hand-maintained prose mirror was intentionally not edited, so
+this batch introduces no undeployed remote drift.
+
+Continuation validation: 1,255 tests across 155 files pass, including two new
+regressions asserting a fresh ecommerce launch seals a directive that forbids
+the immersive layer while retaining its `immersive` budget, `product-stage`
+recipe and non-`ineligible` envelope. Typecheck, all four architecture lints,
+recipe freshness and the production build pass.
+
+### Phase 5 foundation - measured vocabulary executability
+
+The recorded gap "design vocabulary is richer than the set of compiler-executable
+recipes" is now machine-checked instead of prose. `SectionVariant` carries an
+optional `vocabulary` reference (`category` + `id`, because vocabulary ids are
+unique per category only) naming the pattern that variant already executes.
+`designImplementationRegistry` derives the reverse index and exposes
+`listImplementationsForVocabulary`, `isExecutableVocabulary` and
+`vocabularyExecutabilityReport`. No new registry is introduced: the variant
+owns the claim, the vocabulary owns the pattern, and the projection is derived
+from both. `designRegistrySignature` remains unchanged.
+
+Seven entries are executable today, mapped only where a registered variant
+matches the entry's stated mechanism rather than merely its mood:
+`hero:split-cinematic` (`hero:split-image`), `content:horizontal-scroll`
+(`testimonials:rail`), `content:split-feature` (`services:alternating`),
+`content:comparison` (`pricing:comparison`), `media:masonry`
+(`gallery:masonry`), `media:lightbox` (`gallery:lightbox-grid`) and
+`navigation:split` (`navbar:centered-logo`). Everything else in the vocabulary
+is reported as unimplemented. A regression pins the exact partition, so Phase 5
+progress must shrink `unimplemented` by registering implementations - trimming
+the vocabulary to make the test pass would be a contract break, not a closure.
+
+The sealed directive now leads with executable vocabulary only. It previously
+named `envelope.heroCandidates[0]` unconditionally, so a launch could be told to
+lead with a pattern (for example `kinetic-type` or `immersive-product`) that no
+registered implementation renders - an implicit invitation to hand-author page
+source. Each of the hero, content and navigation clauses now selects the first
+*executable* candidate in seeded order, and the clause is omitted when a
+category has none. The envelope itself is unchanged and still version `1.0`:
+candidate eligibility, executability and approval remain three separate facts.
+
+Validation: 1,267 tests across 156 files pass, including a per-variant check
+that every vocabulary claim resolves to a real entry, a guard against two
+section families claiming one entry, the pinned executable/unimplemented
+partition, and a two-launch assertion that the sealed directive names only
+buildable patterns. Typecheck, all four architecture lints, recipe freshness and
+the production build pass. Phase 5 resolution of seeded vocabulary into
+registered recipes remains open; this batch only makes the gap measurable and
+stops the brief from advertising across it.
+
+#### Directive supersession - describe the resolved composition
+
+Naming an executable vocabulary lead was still not truthful: `activeVariants`
+is resolved by seeded rotation from the template's layout baseline and has no
+relationship to `envelope.heroCandidates`, so the brief named a buildable
+pattern the launch had not selected. The directive now names the registered
+implementations the launch actually resolved, and states their design language
+only through the vocabulary those implementations claim. This supersedes the
+executable-lead clause from the previous batch.
+
+Wiring the envelope into variant selection was investigated and deliberately not
+implemented. `candidatesFor` already returns the whole capability-eligible
+category, and none of the seven mapped entries is ever ruled ineligible by the
+current `isAllowed` rules, so eligibility filtering would be a no-op today.
+Preferring an envelope lead instead of filtering would pin `services` to
+`services:alternating` on every seed and destroy the tested per-seed structural
+variety. Selection wiring therefore waits until the registered inventory makes
+eligibility subtraction meaningful; it is not a prerequisite that was skipped.
+
+#### Full lint gate closed
+
+`npm run lint` now exits clean: 0 errors, 46 pre-existing warnings. The ten
+errors were `no-useless-escape` in five regexes, `no-control-regex` in two
+sanitizers where matching control characters is the entire purpose (now
+disabled inline with a reason), one unused ternary expression in
+`AIGatewayOptions`, and one `react-hooks/refs` report in `InteractiveIcon`
+where the ref is only forwarded to a `ref={}` prop and never read during
+render. The regex edits were proved equivalent for the secret-detection and
+workflow-reference patterns; the class-attribute pattern is covered by the
+passing pipeline suite.
+
+Two of those files, `supabase/functions/_shared/validate.ts` and
+`supabase/functions/ai-code-assistant/safetyRules.ts`, are part of the deployed
+`ai-code-assistant` bundle. The repository no longer byte-matches remote version
+341 and a redeploy is required before that match is re-asserted. Nothing was
+deployed in this batch.
+
+Validation: 1,268 tests across 156 files, `npm run lint`, both typecheck
+projects, all four architecture lints, recipe freshness and the production build
+pass. The six Supabase edge tests were not re-run: `vitest.config.ts` includes
+only `src/**`, so they need a separate config that this batch did not add.
+
 Hardening validation (2026-09-08): 1,227 tests across 153 files pass, including
 representative golden Wizard fixtures and a real compiler/finalizer round trip
 with mocked persistence that retains explicit `[]` through reload. Application

@@ -118,6 +118,14 @@ LauncherWizard
 
 ## Current Blockers
 
+- Edge deployment drift (2026-09-10): closing the full-lint gate edited
+	`supabase/functions/_shared/validate.ts` (inline `no-control-regex` disable)
+	and `ai-code-assistant/safetyRules.ts` (redundant regex escape removed, proved
+	semantically identical). The repository no longer byte-matches remote version
+	341; a redeploy is required before that match is re-asserted. Nothing was
+	deployed. The six Supabase edge tests were not re-run because `vitest.config.ts`
+	includes only `src/**` and no separate edge config exists yet.
+
 - Canonical recovery guard: saved snapshot hydration no longer adopts a pending
 	local journal, and canonical hydration defers autosave/forced flushes until a
 	revision loads. Legacy recovery remains supported; journals are preserved.
@@ -138,7 +146,16 @@ LauncherWizard
 	phases, without restoring AI page-source authorship. Explicit empty visual
 	approval now denies 3D; Launcher approval is separate from business capabilities
 	and survives canonical sealing/recompile/reload. Legacy manifest reads no longer
-	grant undeclared 3D or invent a React 19 profile. Legacy execution/migrations,
+	grant undeclared 3D or invent a React 19 profile. Registered variants can now
+	*declare* an experience dependency against a design vocabulary entry without
+	enabling it, launch approval is requirement-derived (eligibility alone no longer
+	grants the 3D capability), and the sealed AI directive no longer instructs
+	composing an immersive layer the launch would reject at save time. Vocabulary
+	executability is now measured: seven entries are backed by registered
+	implementations, the rest are reported unimplemented, and the directive names
+	the implementations the launch actually resolved. 1,268 tests, `npm run lint`
+	(now 0 errors), both typechecks, four architecture lints, recipe freshness and
+	the production build pass. Legacy execution/migrations,
 	recompile profile preservation, exact renderer pins, versioned budgets and
 	registered 3D visual/editor closure remain open. See the execution plan's
 	Experience Capability Integration section. Phase 0 and Phase 1 remain open.
