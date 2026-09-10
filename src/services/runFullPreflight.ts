@@ -58,7 +58,7 @@ export interface RunFullPreflightResult {
     runtimeCompatibility: RuntimeCompatibilityReport;
     finalRepair: 'ok' | 'skipped' | 'failed';
   };
-  /** Compositional quality report — advisory, never blocking. */
+  /** Compositional quality report; canonical launch decides signed-contract acceptance. */
   visualQuality: VisualQualityReport;
 }
 

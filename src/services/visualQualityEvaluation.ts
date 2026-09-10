@@ -136,24 +136,39 @@ function evaluateHero(source: string): { parts: number; complete: boolean; cropp
   return { parts, complete: parts >= 5, croppedMedia, hasMedia };
 }
 
+function normalizeImportPath(ownerPath: string, specifier: string): string {
+  if (specifier.startsWith('@/')) return `/src/${specifier.slice(2)}`;
+  const segments = `${ownerPath.replace(/\/[^/]*$/, '')}/${specifier}`.split('/');
+  const normalized: string[] = [];
+  for (const segment of segments) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') normalized.pop();
+    else normalized.push(segment);
+  }
+  return `/${normalized.join('/')}`;
+}
+
 function resolvePageSurface(path: string, source: string, files: Record<string, string>): string {
-  const directory = path.replace(/\/[^/]*$/, '');
-  const linked: string[] = [];
-  for (const match of source.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
-    const specifier = match[1];
-    if (!specifier.startsWith('.') && !specifier.startsWith('@/')) continue;
-    const base = specifier.startsWith('@/')
-      ? `/src/${specifier.slice(2)}`
-      : `${directory}/${specifier}`.replace(/\/\.\//g, '/');
-    for (const candidate of [base, `${base}.tsx`, `${base}.jsx`, `${base}.ts`, `${base}/index.tsx`]) {
+  const surfaces: string[] = [source];
+  const visited = new Set<string>([path]);
+  const queue: Array<{ path: string; source: string; depth: number }> = [{ path, source, depth: 0 }];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current.depth >= 3) continue;
+    for (const match of current.source.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      const specifier = match[1];
+      if (!specifier.startsWith('.') && !specifier.startsWith('@/')) continue;
+      const base = normalizeImportPath(current.path, specifier);
+      const candidate = [base, `${base}.tsx`, `${base}.jsx`, `${base}.ts`, `${base}/index.tsx`]
+        .find((entry) => Boolean(files[entry] || files[entry.replace(/^\//, '')]));
+      if (!candidate || visited.has(candidate)) continue;
       const hit = files[candidate] || files[candidate.replace(/^\//, '')];
-      if (hit) {
-        linked.push(hit);
-        break;
-      }
+      visited.add(candidate);
+      surfaces.push(hit);
+      queue.push({ path: candidate, source: hit, depth: current.depth + 1 });
     }
   }
-  return [source, ...linked].join('\n');
+  return surfaces.join('\n');
 }
 
 function evaluatePage(path: string, source: string, minSections = 4): VisualQualityPageReport {

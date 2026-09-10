@@ -1079,7 +1079,11 @@ function* buildCanonicalLaunchArtifactSteps(
         ))
         .map((finding) => `${page.path}: ${finding}`),
     );
-    if (blockingFindings.length > 0) {
+    const hasSignedVisualContract = Boolean(
+      input.siteBundleSnapshot?.meta?.siteConfiguration
+      && input.siteBundleSnapshot?.meta?.generationBrief,
+    );
+    if (hasSignedVisualContract && blockingFindings.length > 0) {
       throw new PreviewPipelineError(
         'vfs',
         `Generated pages failed visual acceptance: ${blockingFindings.join(' | ')}`,
