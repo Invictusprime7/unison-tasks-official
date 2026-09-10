@@ -1272,22 +1272,34 @@ export function resolveArtDirectionPackId(input: ArtDirectionResolutionInput): A
   const preset = (input.themePresetId || '').trim().toLowerCase();
   const industry = (input.industry || '').trim().toLowerCase();
   const themeFamily = THEME_PRESET_TO_PACKS[preset];
-  const industryFamily = INDUSTRY_TO_PACKS[industry];
+  const allowed = (input.allowedPackIds || []).filter((id) => Boolean(ART_DIRECTION_PACKS[id]));
+  const narrow = (list: ArtDirectionPackId[] | undefined): ArtDirectionPackId[] | undefined => {
+    if (!list?.length) return list;
+    if (!allowed.length) return list;
+    const kept = list.filter((id) => allowed.includes(id));
+    return kept.length ? kept : undefined;
+  };
+
+  const industryFamily = narrow(INDUSTRY_TO_PACKS[industry]) ?? (allowed.length ? allowed : undefined);
 
   // Theme leads; industry narrows it to packs that support the site's job.
   let candidates: ArtDirectionPackId[] | undefined;
   if (themeFamily?.length) {
-    const compatible = industryFamily?.length
-      ? themeFamily.filter((id) => industryFamily.includes(id))
-      : themeFamily;
-    candidates = compatible.length ? compatible : industryFamily || themeFamily;
+    const themeCandidates = narrow(themeFamily);
+    const compatible = industryFamily?.length && themeCandidates?.length
+      ? themeCandidates.filter((id) => industryFamily.includes(id))
+      : themeCandidates;
+    candidates = compatible?.length ? compatible : industryFamily || themeCandidates;
   } else {
     candidates = industryFamily;
   }
 
-  if (!candidates?.length) return DEFAULT_ART_DIRECTION_PACK_ID;
+  if (!candidates?.length) {
+    return allowed.length ? allowed[0] : DEFAULT_ART_DIRECTION_PACK_ID;
+  }
   if (candidates.length === 1 || !input.seed) return candidates[0];
   return candidates[stableIndex(`${input.seed}|art-direction`, candidates.length)];
+
 }
 
 export function resolveArtDirectionPack(input: ArtDirectionResolutionInput): ArtDirectionPack {
