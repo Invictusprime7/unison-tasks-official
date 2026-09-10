@@ -1,5 +1,6 @@
 import type { TemplateLayoutContract } from '@/services/templateLayoutContract';
 import type { WizardHeroGeometry } from '@/services/wizardGenerationBrief';
+import { assessWizardPageHero } from '@/services/wizardPageQuality';
 
 /**
  * Recovery Phase 4 — this module is a QUALITY GATE, not a design authority.
@@ -132,6 +133,21 @@ function heroGeometryFallbackReason(
     return `generated page does not preserve selected Home hero geometry (expected ${expected})`;
   }
   return null;
+}
+
+/**
+ * Every route must open on a finished hero. A title plus a sentence is an
+ * unfinished screen, so it is rejected and regenerated rather than shipped.
+ */
+function heroCompletenessFallbackReason(generatedPage: string): string | null {
+  if (!generatedPage.trim()) return null;
+  const hero = assessWizardPageHero(generatedPage);
+  // The guard blocks structurally unfinished heroes only. Softer gaps (media
+  // framing, proof strips) are reported by the visual quality evaluator so a
+  // single missing figure never fails an otherwise complete page.
+  const blocking = hero.missing.filter((part) => !part.startsWith('hero media'));
+  if (!blocking.length) return null;
+  return `generated page hero is incomplete — missing ${blocking.join(', ')}`;
 }
 
 function generatedHeroText(source: string): string {
@@ -301,7 +317,8 @@ export function assessWizardPagePresentations(input: {
       resolveLocalImportSources(generatedPage, input.aiFiles, path),
     ) ||
       heroGeometryFallbackReason(generatedPage, input.requiredHeroGeometry) ||
-      pageDepthFallbackReason(generatedPage, floors[path] ?? floors[path.slice(1)]) || (
+      pageDepthFallbackReason(generatedPage, floors[path] ?? floors[path.slice(1)]) ||
+      heroCompletenessFallbackReason(generatedPage) || (
         path === homePath ? null : routeHeroFallbackReason(generatedPage, canonicalPage, canonicalHomePage)
       );
     if (!reason) continue;

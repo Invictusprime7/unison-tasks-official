@@ -20,7 +20,9 @@ export type VisualQualityFinding =
   | 'LOW_MEDIA_COVERAGE'
   | 'MISSING_CTA'
   | 'NO_MOTION_COVERAGE'
-  | 'MOBILE_OVERFLOW_RISK';
+  | 'MOBILE_OVERFLOW_RISK'
+  | 'INCOMPLETE_HERO'
+  | 'CROPPED_HERO_MEDIA';
 
 export interface VisualQualityPageReport {
   path: string;
@@ -31,6 +33,7 @@ export interface VisualQualityPageReport {
   headingLevels: number[];
   ctaCount: number;
   motionCount: number;
+  heroParts: number;
   findings: VisualQualityFinding[];
 }
 
@@ -99,6 +102,38 @@ function layoutSignatures(source: string): Set<string> {
   return signatures;
 }
 
+/**
+ * A hero is complete when it carries its parts: an h1, a supporting lead,
+ * an eyebrow/badge, two actions, and a media or proof element. Anything less
+ * opens the page on an unfinished screen.
+ */
+function evaluateHero(source: string): { parts: number; complete: boolean; croppedMedia: boolean; hasMedia: boolean } {
+  const h1Index = source.search(/<h1\b/i);
+  if (h1Index < 0) return { parts: 0, complete: false, croppedMedia: false, hasMedia: false };
+  const sectionEnd = source.toLowerCase().indexOf('</section>', h1Index);
+  const hero = source.slice(
+    Math.max(0, h1Index - 3000),
+    sectionEnd > 0 ? sectionEnd : Math.min(source.length, h1Index + 6000),
+  );
+
+  const hasHeadline = true;
+  const hasLead = /<p\b[\s\S]{0,600}?<\/p>/i.test(hero.slice(hero.search(/<h1\b/i)));
+  const hasEyebrow = /(ut-eyebrow|ut-pill|<(?:span|p)\b[^>]*(?:eyebrow|badge|kicker))/i.test(hero);
+  const actions = hero.match(/data-ut-intent\s*=/g)?.length ?? 0;
+  const hasMedia = /<(?:img|video|picture)\b/i.test(hero) || /ut-hero-media|ut-hero-full|ut-hero-bg/.test(hero);
+  const hasProof = /(ut-stat|proof|<dl\b|grid-cols-3[^"'`]*)/i.test(hero);
+
+  const parts = [hasHeadline, hasLead, hasEyebrow, actions >= 2, hasMedia || hasProof]
+    .filter(Boolean).length;
+
+  // A hero image that is neither the hero background nor a ut-hero-media frame
+  // is almost always a short cropped band stacked above the copy.
+  const framed = /ut-hero-media|ut-hero-full|ut-hero-bg|absolute[^"'`]*inset-0/.test(hero);
+  const croppedMedia = hasMedia && !framed;
+
+  return { parts, complete: parts >= 5, croppedMedia, hasMedia };
+}
+
 function evaluatePage(path: string, source: string): VisualQualityPageReport {
   const sectionCount = Math.max(countMatches(source, SECTION_TAG), layoutSignatures(source).size);
   const cardGridCount = countMatches(source, CARD_GRID);
@@ -107,6 +142,7 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
   const ctaCount = countMatches(source, CTA_INTENT);
   const diversity = layoutSignatures(source).size;
   const levels = headingLevels(source);
+  const hero = evaluateHero(source);
 
   const findings: VisualQualityFinding[] = [];
   if (cardGridCount >= 3 && diversity <= 3) findings.push('REPETITIVE_COMPOSITION');
@@ -116,6 +152,8 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
   if (ctaCount === 0) findings.push('MISSING_CTA');
   if (motionCount === 0) findings.push('NO_MOTION_COVERAGE');
   if (countMatches(source, FIXED_WIDTH) > 0) findings.push('MOBILE_OVERFLOW_RISK');
+  if (!hero.complete) findings.push('INCOMPLETE_HERO');
+  if (hero.croppedMedia) findings.push('CROPPED_HERO_MEDIA');
 
   return {
     path,
@@ -126,6 +164,7 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
     headingLevels: levels,
     ctaCount,
     motionCount,
+    heroParts: hero.parts,
     findings,
   };
 }
@@ -149,6 +188,10 @@ const REFINEMENT_DIRECTIVES: Partial<Record<VisualQualityFinding, string>> = {
     'Apply the briefed motion recipes (staged reveal / stagger) within the sealed motion budget.',
   MOBILE_OVERFLOW_RISK:
     'Remove fixed pixel widths that overflow small viewports; use fluid and token-driven sizing.',
+  INCOMPLETE_HERO:
+    'Rebuild the hero as a complete composition for its declared archetype: eyebrow, one h1, a supporting lead paragraph, a primary and a secondary action carrying canonical data-ut-intent, plus the declared hero media or a three-signal proof strip.',
+  CROPPED_HERO_MEDIA:
+    'The hero image is rendered as a cropped band. Make it either the hero background (ut-hero-full with ut-hero-scrim, image absolute inset-0 object-cover) or a full-height framed media column (ut-hero-media), and set the declared focal anchor so the subject is never sliced.',
 };
 
 export function evaluateVisualQuality(
@@ -177,8 +220,12 @@ export function evaluateVisualQuality(
     .map((finding) => REFINEMENT_DIRECTIVES[finding])
     .filter((value): value is string => Boolean(value));
 
-  const repetitivePages = pages.filter((page) => page.findings.includes('REPETITIVE_COMPOSITION'));
-  const needsRefinement = repetitivePages.length > 0 || findings.includes('THIN_COMPOSITION');
+  const repetitivePages = pages.filter((page) => page.findings.some((finding) =>
+    finding === 'REPETITIVE_COMPOSITION' || finding === 'INCOMPLETE_HERO' || finding === 'CROPPED_HERO_MEDIA'));
+  const needsRefinement = repetitivePages.length > 0
+    || findings.includes('THIN_COMPOSITION')
+    || findings.includes('INCOMPLETE_HERO')
+    || findings.includes('CROPPED_HERO_MEDIA');
 
   const refinementDirective = needsRefinement && directives.length > 0
     ? [

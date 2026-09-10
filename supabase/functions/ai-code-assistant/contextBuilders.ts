@@ -463,10 +463,29 @@ export interface WizardSeedShape {
         headline?: string;
         contentAngle?: string;
         mustDifferFromHome?: boolean;
-        geometry?: { layout?: string; variantId?: string; mediaTreatment?: string; source?: string };
+        geometry?: {
+          layout?: string;
+          variantId?: string;
+          mediaTreatment?: string;
+          source?: string;
+          archetype?: string;
+          mediaFocal?: string;
+          mediaDirection?: string;
+          requiredParts?: string[];
+        };
+      };
+      depth?: { minSections?: number; maxSections?: number };
+      signature?: {
+        surfaceRhythm?: string;
+        ctaEmphasis?: string;
+        sectionOrder?: string[];
+        narrative?: string[];
       };
     }>;
+    depth?: { rule?: string };
+    hero?: { rule?: string; mediaRule?: string; antiPatterns?: string[] };
     ui?: { formFormats?: string[]; buttonFormats?: string[]; iconFormats?: string[] };
+
     [k: string]: unknown;
   };
   designIntervention?: {
@@ -600,21 +619,42 @@ export function buildWizardSeedContext(seed: WizardSeedShape | undefined): strin
     lines.push('── RESEARCH + ROUTE PLAN (BOUNDED JUDGMENT) ──');
     lines.push(`Use ${brief.research.mode || 'connected-gateway'} research only to inform: ${(brief.research.mayInform || []).join(', ')}.`);
     lines.push(`Never invent or alter: ${(brief.research.mustNotInvent || []).join(', ')}. Canonical data bindings and capability contracts remain authoritative.`);
+    if (brief.hero?.rule) lines.push(`HERO CONTRACT: ${brief.hero.rule}`);
+    if (brief.hero?.mediaRule) lines.push(`HERO MEDIA: ${brief.hero.mediaRule}`);
+    if (brief.hero?.antiPatterns?.length) lines.push(`Hero anti-patterns (auto-rejected): ${brief.hero.antiPatterns.join('; ')}.`);
+    if (brief.depth?.rule) lines.push(`PAGE DEPTH + ORDER: ${brief.depth.rule}`);
     for (const route of brief.routes || []) {
       const hero = route.hero || {};
       const geometry = hero.geometry;
       const geometryAttributes = geometry?.layout
-        ? [`data-ut-layout="${geometry.layout}"`, geometry.mediaTreatment ? `data-ut-media-treatment="${geometry.mediaTreatment}"` : '', geometry.variantId ? `data-ut-variant="${geometry.variantId}"` : ''].filter(Boolean).join(' ')
+        ? [
+            `data-ut-layout="${geometry.layout}"`,
+            geometry.mediaTreatment ? `data-ut-media-treatment="${geometry.mediaTreatment}"` : '',
+            geometry.archetype ? `data-ut-hero="${geometry.archetype}"` : '',
+            geometry.variantId ? `data-ut-variant="${geometry.variantId}"` : '',
+          ].filter(Boolean).join(' ')
         : '';
       const geometryInstruction = geometry?.layout
-        ? `; geometry LOCKED: ${geometry.layout}/${geometry.mediaTreatment || 'media treatment'}. Declare ${geometryAttributes} on the hero section.`
+        ? `; hero archetype LOCKED: ${geometry.archetype || geometry.layout} (${geometry.layout}/${geometry.mediaTreatment || 'media treatment'}, focal ${geometry.mediaFocal || 'center'}). Declare ${geometryAttributes} on the hero section.`
         : '';
-      lines.push(`  • ${route.title || route.role || 'Page'} (${route.path || 'path'}): hero "${hero.headline || route.title || 'route title'}"; angle: ${hero.contentAngle || 'route intent'}${hero.mustDifferFromHome ? '; MUST differ from Home hero copy.' : ''}${geometryInstruction}`);
+      lines.push(`  • ${route.title || route.role || 'Page'} (${route.path || 'path'}): hero "${hero.headline || route.title || 'route title'}"; angle: ${hero.contentAngle || 'route intent'}${hero.mustDifferFromHome ? '; MUST differ from Home hero composition and copy.' : ''}${geometryInstruction}`);
+      if (geometry?.requiredParts?.length) lines.push(`      hero must contain: ${geometry.requiredParts.join(', ')}.`);
+      if (geometry?.mediaDirection) lines.push(`      hero media: ${geometry.mediaDirection}`);
+      if (route.depth?.minSections) lines.push(`      depth: ${route.depth.minSections}–${route.depth.maxSections || route.depth.minSections + 2} content sections, hero included.`);
+      if (route.signature?.sectionOrder?.length) {
+        const narrative = route.signature.narrative || [];
+        const order = route.signature.sectionOrder
+          .map((section, index) => (narrative[index] ? `${section} [${narrative[index]}]` : section))
+          .join(' → ');
+        lines.push(`      section order (build exactly this arc): ${order}`);
+      }
+      if (route.signature?.surfaceRhythm) lines.push(`      surface rhythm: ${route.signature.surfaceRhythm}; CTA treatment: ${route.signature.ctaEmphasis || 'accent band'}.`);
     }
     if (brief.ui) {
       lines.push(`Approved UI formats — forms: ${(brief.ui.formFormats || []).join(', ') || 'none'}; buttons: ${(brief.ui.buttonFormats || []).join(', ') || 'none'}; icons: ${(brief.ui.iconFormats || []).join(', ') || 'none'}.`);
     }
     lines.push('');
+
   }
 
   const g = seed.generation || {};

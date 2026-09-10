@@ -156,6 +156,27 @@ export function getWizardPageRoleInstruction(role: string | undefined): string |
     : undefined;
 }
 
+/**
+ * Hero completeness. A page whose opening screen is just a title and a
+ * sentence reads as unfinished no matter how good the sections below are.
+ */
+export function assessWizardPageHero(source: string): { ok: boolean; missing: string[] } {
+  const h1Index = source.search(/<h1\b/i);
+  if (h1Index < 0) return { ok: false, missing: ['an h1 headline'] };
+  const sectionEnd = source.toLowerCase().indexOf('</section>', h1Index);
+  const hero = source.slice(
+    Math.max(0, h1Index - 3000),
+    sectionEnd > 0 ? sectionEnd : Math.min(source.length, h1Index + 6000),
+  );
+  const missing: string[] = [];
+  if (!/<p\b/i.test(hero.slice(hero.search(/<h1\b/i)))) missing.push('a supporting lead paragraph');
+  if ((hero.match(/data-ut-intent\s*=/g)?.length ?? 0) < 2) missing.push('a primary and a secondary action');
+  const hasMedia = /<(?:img|video|picture)\b/i.test(hero) || /ut-hero-media|ut-hero-full|ut-hero-bg/.test(hero);
+  const hasProof = /(ut-stat|ut-pill|proof|<dl\b)/i.test(hero);
+  if (!hasMedia && !hasProof) missing.push('hero media or a proof strip');
+  return { ok: missing.length === 0, missing };
+}
+
 export function assessWizardPageRoleQuality(
   source: string,
   role: string | undefined,
