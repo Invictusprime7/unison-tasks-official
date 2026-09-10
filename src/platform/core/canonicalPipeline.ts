@@ -433,6 +433,14 @@ export function executeCanonicalPipeline(
     sellsProducts: selections.sellsProducts,
     wantsLeadCapture: selections.wantsLeadCapture,
   });
+  const generationBrief = buildWizardGenerationBrief({
+    pageRegistry: playground.pageRegistry,
+    vfsFiles: {},
+    themePresetId,
+    artDirectionPackId: designIntervention.artDirectionPackId,
+    industry: selections.industryOverlay || (selections as { industry?: string }).industry,
+    seed: designIntervention.seed,
+  });
   const themedCss = buildThemedIndexCssFromTokens(themeTokens, {
     presetId: themePresetId,
     label: themePresetId,
@@ -455,6 +463,8 @@ export function executeCanonicalPipeline(
     stage4bCss: themedCss,
     industry: selections.industryOverlay || (selections as { industry?: string }).industry || null,
     designIntervention,
+    siteConfiguration: selections.siteConfiguration,
+    generationBrief,
   });
 
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
@@ -512,6 +522,7 @@ export function executeCanonicalPipeline(
     'wizard',
     uiFoundation.manifest,
     designIntervention,
+    generationBrief,
   );
   assertSnapshotThemeSeed(siteBundleSnapshot, themePresetId, 'Stage 4b -> SiteBundleSnapshot.meta');
 
@@ -720,10 +731,12 @@ function projectToSiteBundleSnapshot(
     interactionManifest?: WizardInteractionManifest;
     uiFoundation?: GeneratedUiManifest;
     designIntervention?: WizardDesignIntervention;
+    siteConfiguration?: SiteConfiguration;
   },
   source: SiteBundleSnapshotMeta['source'] = 'wizard',
   uiFoundation?: GeneratedUiManifest,
   designIntervention?: WizardDesignIntervention,
+  precompiledGenerationBrief?: WizardGenerationBrief,
 ): SiteBundleSnapshot {
   const registry = compileResult.pageRouteRegistry;
   const pages = Object.values(registry.pages);
@@ -770,7 +783,7 @@ function projectToSiteBundleSnapshot(
     'Stage 4b -> SiteBundleSnapshot.meta',
   );
   const resolvedTemplateId = selections.templateId || null;
-  const generationBrief = buildWizardGenerationBrief({
+  const generationBrief = precompiledGenerationBrief || buildWizardGenerationBrief({
     pageRegistry: registry,
     vfsFiles: compileResult.vfsFiles,
     uiFoundation,
@@ -806,6 +819,7 @@ function projectToSiteBundleSnapshot(
       templateId: resolvedTemplateId,
       artDirectionPackId:
         (designIntervention || selections.designIntervention)?.artDirectionPackId ?? null,
+      siteConfiguration: selections.siteConfiguration,
       wizardSeedId: selections.wizardSeedId ?? undefined,
       generationSeed: (designIntervention || selections.designIntervention)?.seed,
       designPlanSignature: (() => {

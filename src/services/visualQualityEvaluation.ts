@@ -54,6 +54,8 @@ export interface VisualQualityReport {
 export interface VisualQualityOptions {
   /** 0-100 from the technical preflight; carried through for one score view. */
   technicalScore?: number;
+  /** Route-specific depth floors from the signed generation brief. */
+  sectionFloors?: Record<string, number>;
 }
 
 const PAGE_PATH = /^\/src\/pages\/.+\.(t|j)sx$/;
@@ -134,7 +136,42 @@ function evaluateHero(source: string): { parts: number; complete: boolean; cropp
   return { parts, complete: parts >= 5, croppedMedia, hasMedia };
 }
 
-function evaluatePage(path: string, source: string): VisualQualityPageReport {
+function normalizeImportPath(ownerPath: string, specifier: string): string {
+  if (specifier.startsWith('@/')) return `/src/${specifier.slice(2)}`;
+  const segments = `${ownerPath.replace(/\/[^/]*$/, '')}/${specifier}`.split('/');
+  const normalized: string[] = [];
+  for (const segment of segments) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') normalized.pop();
+    else normalized.push(segment);
+  }
+  return `/${normalized.join('/')}`;
+}
+
+function resolvePageSurface(path: string, source: string, files: Record<string, string>): string {
+  const surfaces: string[] = [source];
+  const visited = new Set<string>([path]);
+  const queue: Array<{ path: string; source: string; depth: number }> = [{ path, source, depth: 0 }];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current.depth >= 3) continue;
+    for (const match of current.source.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      const specifier = match[1];
+      if (!specifier.startsWith('.') && !specifier.startsWith('@/')) continue;
+      const base = normalizeImportPath(current.path, specifier);
+      const candidate = [base, `${base}.tsx`, `${base}.jsx`, `${base}.ts`, `${base}/index.tsx`]
+        .find((entry) => Boolean(files[entry] || files[entry.replace(/^\//, '')]));
+      if (!candidate || visited.has(candidate)) continue;
+      const hit = files[candidate] || files[candidate.replace(/^\//, '')];
+      visited.add(candidate);
+      surfaces.push(hit);
+      queue.push({ path: candidate, source: hit, depth: current.depth + 1 });
+    }
+  }
+  return surfaces.join('\n');
+}
+
+function evaluatePage(path: string, source: string, minSections = 4): VisualQualityPageReport {
   const sectionCount = Math.max(countMatches(source, SECTION_TAG), layoutSignatures(source).size);
   const cardGridCount = countMatches(source, CARD_GRID);
   const mediaCount = countMatches(source, MEDIA_TAG);
@@ -146,7 +183,7 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
 
   const findings: VisualQualityFinding[] = [];
   if (cardGridCount >= 3 && diversity <= 3) findings.push('REPETITIVE_COMPOSITION');
-  if (sectionCount < 4) findings.push('THIN_COMPOSITION');
+  if (sectionCount < minSections) findings.push('THIN_COMPOSITION');
   if (levels.length < 2) findings.push('WEAK_HIERARCHY');
   if (mediaCount === 0) findings.push('LOW_MEDIA_COVERAGE');
   if (ctaCount === 0) findings.push('MISSING_CTA');
@@ -200,7 +237,11 @@ export function evaluateVisualQuality(
 ): VisualQualityReport {
   const pages = Object.entries(files)
     .filter(([path]) => PAGE_PATH.test(path))
-    .map(([path, source]) => evaluatePage(path, source));
+    .map(([path, source]) => evaluatePage(
+      path,
+      resolvePageSurface(path, source, files),
+      options.sectionFloors?.[path] ?? 4,
+    ));
 
   const pageCount = Math.max(pages.length, 1);
   const avg = (pick: (page: VisualQualityPageReport) => number): number =>

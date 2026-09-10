@@ -482,7 +482,10 @@ function archetypeForHomeLayout(layout: string, hasMedia: boolean): HeroArchetyp
   return 'centered-statement';
 }
 
-function readWizardHeroGeometry(pageSource: string): WizardHeroContract {
+function readWizardHeroGeometry(
+  pageSource: string,
+  packHero?: { layout: string },
+): WizardHeroContract {
   const match = pageSource.match(/const SECTIONS = ([\s\S]*?);\nconst HYDRATABLE/);
   let hero: { variantId?: unknown; props?: Record<string, unknown> } | undefined;
   if (match) {
@@ -497,7 +500,9 @@ function readWizardHeroGeometry(pageSource: string): WizardHeroContract {
       // Legacy snapshots use the explicit centered/text-only geometry below.
     }
   }
-  const layout = typeof hero?.props?.layout === 'string' ? hero.props.layout : 'centered';
+  const layout = typeof hero?.props?.layout === 'string'
+    ? hero.props.layout
+    : packHero?.layout || 'centered';
   const hasMedia = typeof hero?.props?.image === 'string' || typeof hero?.props?.backgroundImage === 'string';
   const archetype = archetypeForHomeLayout(layout, hasMedia);
   return heroContract(archetype, {
@@ -530,7 +535,7 @@ export function buildWizardGenerationBrief(input: {
   const homeSource = homePath
     ? (input.vfsFiles[homePath] || input.vfsFiles[homePath.replace(/^\//, '')] || '')
     : '';
-  const homeHeroGeometry = readWizardHeroGeometry(homeSource);
+  const homeHeroGeometry = readWizardHeroGeometry(homeSource, pack.signature.hero);
   const industryProfile = input.industry ? getIndustryProfile(input.industry) : undefined;
   const anchorSection = industryProfile?.anchorCapability
     ? ANCHOR_SECTION[industryProfile.anchorCapability] || null

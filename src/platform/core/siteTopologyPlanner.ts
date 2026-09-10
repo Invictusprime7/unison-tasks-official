@@ -78,6 +78,8 @@ export interface PageRouteNode {
   visibleInNav: boolean;
   isHome: boolean;
   generatedBy: 'wizard' | 'ai' | 'manual';
+  /** Ordered semantic section contract inherited from the industry matrix. */
+  expectedSections?: string[];
   funnelId?: string | null;
   seo?: {
     title?: string;
@@ -227,6 +229,8 @@ export function planSiteTopology(
      * the preview never renders blank/irrelevant routes.
      */
     restrictToAdditionalPages?: boolean;
+    /** Pre-resolved page contracts. When supplied they override empty role specs. */
+    siteConfiguration?: import('./resolvedComposition').SiteConfiguration;
   }
 ): GeneratedSitePlan {
   const profile = getIndustryProfile(industryKey);
@@ -249,6 +253,7 @@ function planFromProfile(
     selectedTemplateId?: string;
     selectedThemePresetId?: string;
     restrictToAdditionalPages?: boolean;
+    siteConfiguration?: import('./resolvedComposition').SiteConfiguration;
   }
 ): GeneratedSitePlan {
   const siteId = generateUUID();
@@ -285,6 +290,7 @@ function planFromProfile(
 
     if (isHome) homePageId = pageId;
 
+    const configuredPage = options?.siteConfiguration?.pages.find((page) => page.path === spec.path);
     const node: PageRouteNode = {
       id: pageId,
       name: spec.title,
@@ -297,6 +303,7 @@ function planFromProfile(
       visibleInNav: !HIDDEN_ROLES.has(role),
       isHome,
       generatedBy: 'wizard',
+      expectedSections: [...(configuredPage?.sections.length ? configuredPage.sections : spec.expectedSections)],
       seo: {
         title: `${spec.title} | ${businessName}`,
         description: `${spec.title} page for ${businessName}`,

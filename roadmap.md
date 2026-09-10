@@ -26,6 +26,12 @@ LauncherWizard
 	author Launcher pages, write VFS directly, change topology, or create an
 	alternate snapshot or preview authority.
 
+## Active Recovery — Canonical page composition
+
+- [ ] Thread strict `SiteConfiguration` and per-route composition contracts into compilation before VFS emission.
+- [ ] Enforce route hero, section order, depth, and visual quality before sealing.
+- [ ] Remove residual page-authoring fallback APIs and certify Wizard → Builder rendering.
+
 ## Active Sequence
 
 - [ ] **Phase 0 - Protect and truthfully version the canonical spine.**

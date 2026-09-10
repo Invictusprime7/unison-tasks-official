@@ -334,18 +334,14 @@ export async function runLaunchPipeline(
     // does this industry's site actually consist of". Stamped into snapshot
     // meta below so preview/export/publish can prove the journey it was built
     // against. Industries outside the matrix simply carry no configuration.
-    let siteConfiguration: SiteConfiguration | null = null;
-    try {
-      siteConfiguration = resolveSiteConfiguration({
-        industry: industryProfile?.industry || industryOverlay,
-        themePresetId: input.theme.id,
-        seed,
-        requestedPages,
-        requestedCapabilities: input.selectedCapabilities ?? [],
-      });
-    } catch {
-      siteConfiguration = null;
-    }
+    const siteConfiguration = resolveSiteConfiguration({
+      industry: industryProfile?.industry || industryOverlay,
+      themePresetId: input.theme.id,
+      seed,
+      requestedPages,
+      requestedCapabilities: input.selectedCapabilities ?? [],
+    });
+    selections.siteConfiguration = siteConfiguration;
 
     return {
       user,
@@ -607,7 +603,7 @@ export async function runLaunchPipeline(
         // Every registered body must be present in the Stage 4b output above.
         // Missing pages are a real closure failure, never a fallback request.
         allowCanonicalPageFallback: false,
-        strictPreflight: false,
+        strictPreflight: true,
       } as Parameters<typeof buildCanonicalLaunchArtifactsAsync>[0],
       { yieldToHost: yieldToBrowser, signal },
     );

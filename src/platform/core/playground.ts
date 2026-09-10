@@ -104,6 +104,11 @@ export interface WizardSelections {
    */
   interactionManifest?: import('@/services/wizardInteractionEnrichment').WizardInteractionManifest;
   /**
+   * Curated industry/page contract resolved before compilation. The canonical
+   * compiler consumes this exact value; it is not post-hoc snapshot metadata.
+   */
+  siteConfiguration?: import('@/platform/core/resolvedComposition').SiteConfiguration;
+  /**
    * Primary intent from the industry profile (e.g. 'booking.create', 'contact.submit').
    * Forwarded to the topology planner so the materializer's internal planSiteTopology
    * call produces the same page set as the SystemLauncher's direct call.

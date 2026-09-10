@@ -58,7 +58,7 @@ export interface RunFullPreflightResult {
     runtimeCompatibility: RuntimeCompatibilityReport;
     finalRepair: 'ok' | 'skipped' | 'failed';
   };
-  /** Compositional quality report — advisory, never blocking. */
+  /** Compositional quality report; canonical launch decides signed-contract acceptance. */
   visualQuality: VisualQualityReport;
 }
 
@@ -182,6 +182,9 @@ export function runFullPreflight(
   try {
     visualQuality = evaluateVisualQuality(files, {
       technicalScore: runtimeCompatibility.ok && experience.violations.length === 0 ? 100 : 70,
+      sectionFloors: Object.fromEntries(
+        (siteBundleSnapshot?.meta?.generationBrief?.routes ?? []).map((route) => [route.path, route.depth.minSections]),
+      ),
     });
     if (mode === 'repair' && visualQuality.refinementDirective) {
       console.info('[runFullPreflight] visual quality findings', visualQuality.findings);

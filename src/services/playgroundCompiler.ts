@@ -20,6 +20,8 @@ import type { LayoutCategory } from '@/data/templates/types';
 import type { BuilderPage } from '@/types/pageRegistry';
 import type { GeneratedSitePlan, PageRole, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
+import type { SiteConfiguration } from '@/platform/core/resolvedComposition';
+import type { WizardGenerationBrief } from '@/services/wizardGenerationBrief';
 
 export interface CompilePlaygroundOptions {
   /** Selected template used to generate real role-filtered page scaffolds. */
@@ -34,6 +36,10 @@ export interface CompilePlaygroundOptions {
   industry?: LayoutCategory | string | null;
   /** Versioned visual recipes chosen by the canonical wizard pipeline. */
   designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed'>>;
+  /** Signed industry/page contract resolved before this compiler runs. */
+  siteConfiguration?: SiteConfiguration;
+  /** Per-route hero, narrative, depth, and rhythm contract. */
+  generationBrief?: WizardGenerationBrief;
 }
 
 type WizardSeedLike = Record<string, unknown> & {
@@ -246,6 +252,8 @@ export function compilePlayground(
       // pages and safe to merge by Object.assign.
       const fileSet = generateTopologyPlaceholderFiles(node, scaffoldPlan, undefined, {
         designIntervention: options?.designIntervention,
+        siteConfiguration: options?.siteConfiguration,
+        generationBrief: options?.generationBrief,
       });
       Object.assign(vfsFiles, fileSet);
     } catch (err) {
@@ -331,6 +339,7 @@ function buildScaffoldPlan(
       generatedBy: page.createdBy === 'ai' ? 'ai' : page.createdBy === 'manual' ? 'manual' : 'wizard',
       funnelId: page.funnelId || null,
       seo: page.seo,
+      expectedSections: options?.siteConfiguration?.pages.find((configured) => configured.path === page.path)?.sections ?? [],
     }));
 
   return {
