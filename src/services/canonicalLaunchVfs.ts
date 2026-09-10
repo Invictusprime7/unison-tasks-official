@@ -878,8 +878,10 @@ function* buildCanonicalLaunchArtifactSteps(
   // 4b's token contract if they touched source, then always prove an immutable
   // acceptance pass before the snapshot can be sealed.
   if (convergedPreflight.mutated) {
+    // The finalizer returns the files it touched, not the whole VFS. Overlay
+    // them — replacing the map here silently dropped untouched canonical files
+    // such as Stage 4b's /src/index.css.
     const refinalized = normalizeWizardThemeTokens(mergedFiles);
-    for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
     Object.assign(mergedFiles, refinalized.files);
   }
   const acceptance = runFullPreflight(mergedFiles, {
