@@ -483,3 +483,60 @@ export function getIndustryForSystemType(systemType: BusinessSystemType): Indust
 export function getAllIndustries(): IndustryProfile[] {
   return Object.values(INDUSTRY_MATRIX);
 }
+
+// ============================================================================
+// Section vocabulary — the industry's own answer to "what belongs on a page?"
+//
+// The page scaffolder used to key section pools by page ROLE only, which made
+// every industry's interior pages structurally identical. These helpers make
+// the industry matrix the authority instead. No new registry: they read the
+// `defaultPages[].expectedSections` contracts already declared above.
+// ============================================================================
+
+/** Maps a PageSpec purpose to the topology page role used by the scaffolder. */
+const PURPOSE_TO_ROLE: Record<PageSpec['purpose'], string> = {
+  landing: 'home',
+  services: 'services',
+  portfolio: 'gallery',
+  contact: 'contact',
+  about: 'about',
+  blog: 'blog',
+  shop: 'shop',
+  checkout: 'checkout',
+  booking: 'booking',
+  pricing: 'pricing',
+  faq: 'faq',
+};
+
+export function industryRoleForPage(page: PageSpec): string {
+  if (page.path === '/') return 'home';
+  return PURPOSE_TO_ROLE[page.purpose] ?? 'custom';
+}
+
+/**
+ * The ordered section contract this industry declares for a page role.
+ * Returns an empty array when the industry doesn't declare that role.
+ */
+export function getIndustryRoleSections(industry: string, role: string): string[] {
+  const profile = getIndustryProfile(industry);
+  if (!profile) return [];
+  const match = profile.defaultPages.find((page) => industryRoleForPage(page) === role);
+  return match ? [...match.expectedSections] : [];
+}
+
+/**
+ * Every section type this industry ever uses, ordered by first appearance.
+ * Used as the supplement pool when a page needs more depth — supplements are
+ * drawn from the industry's own vocabulary, never by duplicating what's there.
+ */
+export function getIndustrySectionVocabulary(industry: string): string[] {
+  const profile = getIndustryProfile(industry);
+  if (!profile) return [];
+  const seen: string[] = [];
+  for (const page of profile.defaultPages) {
+    for (const type of page.expectedSections) {
+      if (!seen.includes(type)) seen.push(type);
+    }
+  }
+  return seen;
+}
