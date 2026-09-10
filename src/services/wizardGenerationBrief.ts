@@ -2,7 +2,7 @@ import type { GeneratedUiManifest } from '@/platform/core/generatedUiFoundation'
 import type { PageRegistry } from '@/types/pageRegistry';
 import { normalizeWizardPageRole } from '@/services/wizardPageQuality';
 import { resolveGeometryTokens } from '@/components/onboarding/themePresetToIndexCss';
-import { resolveArtDirectionPack } from '@/sections/variants/artDirectionPacks';
+import { resolveIndustryArtDirectionPack } from '@/services/designImplementationRegistry';
 import { childSeed, seededPick, seededRotate } from '@/platform/core/generationSeed';
 import { getIndustryProfile } from '@/platform/core/industryMatrix';
 
@@ -522,7 +522,7 @@ export function buildWizardGenerationBrief(input: {
   industry?: string | null;
   seed?: string | null;
 }): WizardGenerationBrief {
-  const pack = resolveArtDirectionPack({
+  const pack = resolveIndustryArtDirectionPack({
     sealedPackId: input.artDirectionPackId,
     themePresetId: input.themePresetId,
     industry: input.industry,

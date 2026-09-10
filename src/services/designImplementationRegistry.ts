@@ -247,6 +247,10 @@ export function resolveIndustryArtDirectionPackId(input: {
   } as Parameters<typeof resolveArtDirectionPackId>[0]);
 }
 
+export function resolveIndustryArtDirectionPack(input: Parameters<typeof resolveIndustryArtDirectionPackId>[0]) {
+  return ART_DIRECTION_PACKS[resolveIndustryArtDirectionPackId(input)];
+}
+
 /**
  * Every design implementation an industry's default page map can render,
  * derived from the industry matrix `expectedSections` contract. Used by the

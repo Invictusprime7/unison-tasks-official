@@ -17,9 +17,9 @@ import {
   buildArtDirectionCssDeclarations,
   buildEntranceKeyframes,
   buildArtDirectionTokens,
-  resolveArtDirectionPack,
   type ArtDirectionResolutionInput,
 } from '@/sections/variants/artDirectionPacks';
+import { resolveIndustryArtDirectionPack } from '@/services/designImplementationRegistry';
 
 export const SHADCN_LIBRARY_CSS_MARKER = 'SHADCN LIBRARY: canonical Stage 4b foundation';
 
@@ -105,7 +105,7 @@ export function buildThemedIndexCssFromTokens(
 ): string {
   const c = tokens.colors;
   const professionalGeometry = buildProfessionalGeometry(metadata.presetId);
-  const artDirectionPack = resolveArtDirectionPack({
+  const artDirectionPack = resolveIndustryArtDirectionPack({
     sealedPackId: metadata.artDirectionPackId,
     themePresetId: metadata.presetId,
     industry: metadata.industry,
@@ -611,7 +611,7 @@ export function resolveGeometryTokens(
     if (name.startsWith('--ut-') && value) tokens[name] = value;
   }
 
-  const pack = resolveArtDirectionPack({
+  const pack = resolveIndustryArtDirectionPack({
     ...artDirection,
     themePresetId: artDirection.themePresetId ?? presetId,
   });
