@@ -70,7 +70,7 @@ function createSnapshot(): SiteBundleSnapshot {
 }
 
 describe("buildCanonicalLaunchArtifacts", () => {
-  it("runs one repair pass followed by one mutation-free acceptance pass", () => {
+  it("runs one canonicalization pass followed by one immutable acceptance pass", () => {
     const source = readFileSync("src/services/canonicalLaunchVfs.ts", "utf8");
     const convergenceStart = source.indexOf("// ── Canonical convergence preflight");
     const compilerGateStart = source.indexOf("// ── M4 compiler gate", convergenceStart);
@@ -82,6 +82,8 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(convergence.match(/Object\.assign\(mergedFiles, convergedPreflight\.files\)/g)).toHaveLength(1);
     expect(convergence.indexOf("Object.assign(mergedFiles, convergedPreflight.files)"))
       .toBeLessThan(convergence.indexOf("if (convergedPreflight.mutated)"));
+    expect(convergence.indexOf("const acceptance = runFullPreflight"))
+      .toBeGreaterThan(convergence.indexOf("if (convergedPreflight.mutated)"));
   });
 
   it("never injects router-level chrome so the page body stays the only chrome authority", () => {
@@ -109,7 +111,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(merged["/src/App.tsx"]).not.toContain("<SiteFooter />");
   });
 
-  it("uses the snapshot fallback policy when accepting generated wizard pages", () => {
+  it("rejects minimal generated wizard pages without substituting snapshot content", () => {
     const snapshot = createSnapshot();
     snapshot.vfsFiles["/src/pages/Home.tsx"] =
       "export default function Home(){ return <main>Canonical home</main>; }";
@@ -468,7 +470,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
   });
 
 
-  it("refuses to persist a quarantined wizard page when strict preflight is enabled", () => {
+  it("refuses to persist a syntactically invalid wizard page", () => {
     const snapshot = createSnapshot();
 
     expect(() => buildCanonicalLaunchArtifacts({
@@ -480,7 +482,7 @@ describe("buildCanonicalLaunchArtifacts", () => {
       compiledPlayground: { vfsFiles: snapshot.vfsFiles },
       themePresetId: "modern",
       strictPreflight: true,
-    })).toThrow(/refusing to persist quarantine scaffolds.*Unterminated JSX contents/);
+    })).toThrow(/failed immutable syntax validation/i);
   });
 
   it('refuses to persist a Wizard VFS with an unresolved JSX import contract', () => {

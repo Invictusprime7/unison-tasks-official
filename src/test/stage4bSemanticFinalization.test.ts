@@ -49,9 +49,9 @@ describe('runFullPreflight modes', () => {
     '/src/pages/Home.tsx': 'export default function Home() {\n  return <main>Home</main>;\n}\n',
   };
 
-  it('reports mutation state in repair mode', () => {
+  it('reports mutation state in canonicalization mode', () => {
     const result = runFullPreflight(clean);
-    expect(result.mode).toBe('repair');
+    expect(result.mode).toBe('canonicalize');
     expect(result.mutated).toBe(false);
     expect(result.violations).toEqual([]);
   });

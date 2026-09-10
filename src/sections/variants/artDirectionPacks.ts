@@ -1201,30 +1201,6 @@ const THEME_PRESET_TO_PACKS: Record<string, ArtDirectionPackId[]> = {
   organic: ['organic-studio', 'warm-craft', 'soft-editorial'],
 };
 
-/**
- * Industry → packs whose section families support what the site must DO
- * (catalog grids, booking proof, gallery inspection). Industry CONSTRAINS
- * the theme's family; it no longer overrides it.
- */
-const INDUSTRY_TO_PACKS: Record<string, ArtDirectionPackId[]> = {
-  portfolio: ['cinematic-portfolio', 'print-serif', 'editorial-noir', 'luxury-minimal', 'warm-craft', 'swiss-grid'],
-  photography: ['cinematic-portfolio', 'editorial-noir', 'print-serif', 'luxury-minimal', 'warm-craft'],
-  content: ['editorial-noir', 'print-serif', 'swiss-grid', 'soft-editorial'],
-  restaurant: ['editorial-noir', 'warm-craft', 'print-serif', 'organic-studio', 'cinematic-portfolio'],
-  realestate: ['luxury-minimal', 'cinematic-portfolio', 'swiss-grid', 'soft-editorial'],
-  salon: ['organic-studio', 'warm-craft', 'luxury-minimal', 'soft-editorial'],
-  coaching: ['organic-studio', 'warm-craft', 'soft-editorial', 'print-serif'],
-  nonprofit: ['organic-studio', 'warm-craft', 'print-serif', 'soft-editorial'],
-  agency: ['soft-editorial', 'swiss-grid', 'editorial-noir', 'glass-tech', 'brutalist-poster'],
-  contractor: ['bold-commercial', 'brutalist-poster', 'soft-editorial', 'swiss-grid'],
-  landing: ['bold-commercial', 'brutalist-poster', 'glass-tech', 'neon-grid', 'soft-editorial'],
-  saas: ['glass-tech', 'neon-grid', 'mono-terminal', 'swiss-grid', 'soft-editorial'],
-  store: ['commerce-editorial', 'bold-commercial', 'soft-editorial', 'swiss-grid', 'brutalist-poster'],
-  ecommerce: ['commerce-editorial', 'bold-commercial', 'soft-editorial', 'swiss-grid'],
-  saved: ['soft-editorial', 'swiss-grid'],
-  general: ['soft-editorial', 'swiss-grid', 'glass-tech'],
-};
-
 export interface ArtDirectionResolutionInput {
   industry?: string | null;
   themePresetId?: string | null;
@@ -1270,7 +1246,6 @@ export function resolveArtDirectionPackId(input: ArtDirectionResolutionInput): A
   }
 
   const preset = (input.themePresetId || '').trim().toLowerCase();
-  const industry = (input.industry || '').trim().toLowerCase();
   const themeFamily = THEME_PRESET_TO_PACKS[preset];
   const allowed = (input.allowedPackIds || []).filter((id) => Boolean(ART_DIRECTION_PACKS[id]));
   const narrow = (list: ArtDirectionPackId[] | undefined): ArtDirectionPackId[] | undefined => {
@@ -1280,7 +1255,7 @@ export function resolveArtDirectionPackId(input: ArtDirectionResolutionInput): A
     return kept.length ? kept : undefined;
   };
 
-  const industryFamily = narrow(INDUSTRY_TO_PACKS[industry]) ?? (allowed.length ? allowed : undefined);
+  const industryFamily = allowed.length ? allowed : undefined;
 
   // Theme leads; industry narrows it to packs that support the site's job.
   let candidates: ArtDirectionPackId[] | undefined;
