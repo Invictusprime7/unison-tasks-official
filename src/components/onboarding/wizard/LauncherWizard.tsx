@@ -147,7 +147,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     setTemplate(getDefaultTemplateCardFor(id));
     setCapabilities([...(resolveIndustryProfileForSystem(id)?.defaultCapabilities ?? [])]);
     setProfileAnswers({});
-    setStep("profile");
+    setStep("business");
   };
 
   const toggle = <T extends string>(list: T[], value: T): T[] =>
