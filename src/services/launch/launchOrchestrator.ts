@@ -118,7 +118,12 @@ export interface LaunchOrchestratorInput {
   selectedPages: PageChoice[];
   socialLinks?: Record<string, string>;
   existingBusinessId?: string | null;
+  /** Industry-specific business profile answers (`IndustryProfile.profileFields`). */
+  profileAnswers?: Record<string, string>;
+  /** Capabilities the creator explicitly switched on in the capability step. */
+  selectedCapabilities?: string[];
 }
+
 
 export interface LaunchOrchestratorCallbacks {
   onStatus?: (status: string) => void;
