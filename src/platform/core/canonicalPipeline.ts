@@ -51,6 +51,8 @@ import type { WizardInteractionManifest } from '@/services/wizardInteractionEnri
 import { assertSnapshotThemeSeed, assertThemeSeed } from './themeSeedAssert';
 import { GENERATED_RUNTIME_PROFILE } from './generatedRuntimeCapabilities';
 import { assertStage4bCompositionPreserved } from './stage4bCompositionGuard';
+import type { SiteConfiguration } from './resolvedComposition';
+
 
 
 import {
