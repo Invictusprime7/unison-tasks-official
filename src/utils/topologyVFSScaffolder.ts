@@ -392,7 +392,8 @@ function buildRoleComposition(
     DEFAULT_ROLE_SECTION_POOL.custom;
   const allowedTypes = new Set<SectionType>(poolList);
   const configuredOrder = options?.siteConfiguration?.pages.find((configured) => configured.path === page.route)?.sections
-    ?? page.expectedSections;
+    ?? page.expectedSections
+    ?? [];
   const routeBrief = options?.generationBrief?.routes.find((route) => route.path === page.filePath);
   const alternateMedia = !page.isHome ? collectAlternateHeroMedia(template) : [];
   const alternateHeroMedia = alternateMedia[stableStringHash(page.id) % Math.max(1, alternateMedia.length)];

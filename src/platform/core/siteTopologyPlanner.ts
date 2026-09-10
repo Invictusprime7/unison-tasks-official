@@ -79,7 +79,7 @@ export interface PageRouteNode {
   isHome: boolean;
   generatedBy: 'wizard' | 'ai' | 'manual';
   /** Ordered semantic section contract inherited from the industry matrix. */
-  expectedSections: string[];
+  expectedSections?: string[];
   funnelId?: string | null;
   seo?: {
     title?: string;
