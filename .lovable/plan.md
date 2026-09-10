@@ -118,13 +118,22 @@ choices: hero (editorial/split/immersive/typographic), services
 (featured/minimal/story), cta (booking/lead/editorial). Register only missing
 variants in the existing registry; all token-driven, no colour literals.
 
+Journey-specific sections get the same treatment so non-booking industries are
+not second class: quote/estimate blocks (contractor), menu and reservation
+blocks (restaurant), product grid / cart / checkout summary (ecommerce),
+pricing + trial CTA (saas), case-study and results blocks (agency), donation
+and impact blocks (nonprofit), project/case gallery (portfolio). Each is CTA-
+bound to that industry's anchor capability.
+
 ## 6. Integration boundary
 
-`src/integrations/capabilities/` — capability ids (`lead.capture`,
-`appointment.create`, `quote.request`, `review.request`, `payment.checkout`)
-mapped to provider adapters (GoHighLevel, Stripe, calendar, email). These reuse
-`capabilityRegistry` ids; pages bind to the capability only, and the adapter is
-resolved at runtime from the `integrations` table.
+`src/integrations/capabilities/` — capability ids covering every anchor
+journey: `lead.capture`, `appointment.create`, `quote.request`,
+`order.create`, `payment.checkout`, `donation.create`, `review.request`,
+`subscription.start` — mapped to provider adapters (GoHighLevel, Stripe,
+calendar, email). These reuse `capabilityRegistry` ids; pages bind to the
+capability only, and the adapter is resolved at runtime from `integrations`.
+
 
 ## 7. Public + app surface
 
