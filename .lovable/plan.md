@@ -150,8 +150,11 @@ stays independent of pricing UI.
 ## Sequencing
 
 1. Industry alignment across all nine: add `contractor` to the matrix, extend
-   `IndustryProfile` (design directions, conversion journey, profile fields,
-   anchor capability), add the parity assertion.
+   `IndustryProfile` (allowed art-direction packs, conversion journey, profile
+   fields, anchor capability), add the parity assertion.
+2. `resolveSiteConfiguration()` in `resolvedComposition`, consuming existing
+   `artDirectionPacks`.
+
 2. `designRecipes.ts` + `resolveSiteConfiguration()` in `resolvedComposition`.
 3. Migrations for `wizard_selections`, `site_configs`, `integrations`.
 4. Selection persistence and the 8-step launcher.
