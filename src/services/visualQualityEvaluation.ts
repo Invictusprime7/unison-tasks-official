@@ -110,6 +110,40 @@ function layoutSignatures(source: string): Set<string> {
  * opens the page on an unfinished screen.
  */
 function evaluateHero(source: string): { parts: number; complete: boolean; croppedMedia: boolean; hasMedia: boolean } {
+  const sectionsMatch = source.match(/const SECTIONS = ([\s\S]*?);\nconst HYDRATABLE/);
+  if (sectionsMatch) {
+    try {
+      const sections = JSON.parse(sectionsMatch[1]) as Array<{ type?: string; props?: Record<string, unknown> }>;
+      const props = sections.find((section) => section.type === 'hero')?.props;
+      if (props) {
+        const ctas = Array.isArray(props.ctas) ? props.ctas : [];
+        const stats = Array.isArray(props.stats) ? props.stats : [];
+        const hasHeadline = typeof props.headline === 'string' && props.headline.trim().length > 0;
+        const hasLead = [props.subheadline, props.description].some((value) => typeof value === 'string' && value.trim().length > 0);
+        const hasEyebrow = typeof props.badge === 'string' && props.badge.trim().length > 0;
+        const hasActions = ctas.filter((cta) => (
+          cta && typeof cta === 'object' && typeof (cta as Record<string, unknown>).intent === 'string'
+        )).length >= 2;
+        const hasMedia = [props.image, props.backgroundImage].some((value) => typeof value === 'string' && value.trim().length > 0);
+        const hasProof = stats.length >= 3;
+        const parts = [hasHeadline, hasLead, hasEyebrow, hasActions, hasMedia || hasProof].filter(Boolean).length;
+        const layout = typeof props.layout === 'string' ? props.layout : 'centered';
+        const canonicalMediaFrame = layout === 'full-bleed'
+          ? /ut-hero-full/.test(source)
+          : layout === 'split'
+            ? /ut-hero-media/.test(source)
+            : layout === 'editorial-banner'
+              ? /ut-hero-media/.test(source)
+              : layout === 'centered'
+                ? /ut-hero-media/.test(source)
+                : true;
+        return { parts, complete: parts >= 5, croppedMedia: hasMedia && !canonicalMediaFrame, hasMedia };
+      }
+    } catch {
+      // Non-canonical sources continue through JSX heuristics below.
+    }
+  }
+
   const h1Index = source.search(/<h1\b/i);
   if (h1Index < 0) return { parts: 0, complete: false, croppedMedia: false, hasMedia: false };
   const sectionEnd = source.toLowerCase().indexOf('</section>', h1Index);
