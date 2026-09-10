@@ -180,7 +180,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     step === "industry"
       ? Boolean(systemId)
       : step === "profile"
-        ? Boolean(businessName.trim()) && requiredProfileFieldsAnswered
+        ? Boolean(businessName.trim())
         : step === "goals"
           ? Boolean(primaryGoal)
           : step === "pages"
