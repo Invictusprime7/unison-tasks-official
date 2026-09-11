@@ -409,7 +409,9 @@ export function buildWizardDesignIntervention(
     projectId: input.projectId,
     launchNonce: input.wizardSeedId,
   });
-  const baseline = MODEL_RECIPES[input.businessModel];
+  // `general` (and any model added before its recipe lands) must still design a
+  // real site — a missing recipe can never be allowed to abort a launch.
+  const baseline = MODEL_RECIPES[input.businessModel] ?? MODEL_RECIPES.quote_lead;
   const sectionVariants = seededRotate(childSeed(seed, 'section-variants'), baseline.sectionVariants);
 
   // ART DIRECTION — resolved ONCE, from the style card first. Everything that
