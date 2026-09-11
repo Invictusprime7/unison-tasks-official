@@ -955,42 +955,39 @@ function* buildCanonicalLaunchArtifactSteps(
   }
 
   // ── Visual quality acceptance ──────────────────────────────────────────
-  // Structural visual defects are seal blockers. Softer findings remain in
-  // the persisted report, but incomplete/cropped heroes and shallow routes
-  // can no longer pass merely because TypeScript compiled.
+  // Structural visual defects are still findings against the signed contract,
+  // but they are presentation quality — not a broken build. A caller that can
+  // report degradations (the launcher) gets them reported and keeps the site;
+  // a caller that cannot still fails hard, so nothing seals silently.
   const visualQuality = convergedPreflight?.visualQuality;
   if (visualQuality) {
     mergedFiles['/.unison/visual-quality.json'] = JSON.stringify(visualQuality, null, 2);
+    const isBlocking = (finding: string) => (
+      finding === 'THIN_COMPOSITION'
+      || finding === 'INCOMPLETE_HERO'
+      || finding === 'CROPPED_HERO_MEDIA'
+      || finding === 'MISSING_CTA'
+    );
     const blockingFindings = visualQuality.pages.flatMap((page) =>
-      page.findings
-        .filter((finding) => (
-          finding === 'THIN_COMPOSITION'
-          || finding === 'INCOMPLETE_HERO'
-          || finding === 'CROPPED_HERO_MEDIA'
-          || finding === 'MISSING_CTA'
-        ))
-        .map((finding) => `${page.path}: ${finding}`),
+      page.findings.filter(isBlocking).map((finding) => `${page.path}: ${finding}`),
     );
     const hasSignedVisualContract = Boolean(
       input.siteBundleSnapshot?.meta?.siteConfiguration
       && input.siteBundleSnapshot?.meta?.generationBrief,
     );
     if (hasSignedVisualContract && blockingFindings.length > 0) {
-      throw new PreviewPipelineError(
-        'vfs',
-        `Generated pages failed visual acceptance: ${blockingFindings.join(' | ')}`,
-        {
-          blockedFiles: visualQuality.pages
-            .filter((page) => page.findings.some((finding) => (
-              finding === 'THIN_COMPOSITION'
-              || finding === 'INCOMPLETE_HERO'
-              || finding === 'CROPPED_HERO_MEDIA'
-              || finding === 'MISSING_CTA'
-            )))
-            .map((page) => page.path),
-          recoverableByRelaunch: true,
-        },
-      );
+      const blockedFiles = visualQuality.pages
+        .filter((page) => page.findings.some(isBlocking))
+        .map((page) => page.path);
+      if (input.onVisualQualityFindings) {
+        input.onVisualQualityFindings(blockingFindings, blockedFiles);
+      } else {
+        throw new PreviewPipelineError(
+          'vfs',
+          `Generated pages failed visual acceptance: ${blockingFindings.join(' | ')}`,
+          { blockedFiles, recoverableByRelaunch: true },
+        );
+      }
     }
   }
 
