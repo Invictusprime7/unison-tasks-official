@@ -478,18 +478,25 @@ function buildRoleComposition(
       ? resolveRouteHeroVariant(role, page, selectedAlternative?.heroVariantId, options?.designIntervention?.seed)
       : undefined;
     if (source.type === 'hero' && !page.isHome) {
-      const roleLabel = page.title.trim() || page.role.replace(/_/g, ' ');
-      props.headline = roleLabel;
-      props.subheadline = `Explore ${roleLabel.toLowerCase()} from ${plan.businessName || template.name}.`;
-      props.badge = roleLabel;
+      // Interior pages are NOT re-skins of Home. Copy is written for the
+      // route's own purpose, and the hero presentation is resolved from the
+      // route's own contract rather than inherited from the home template.
+      const copy = routeHeroCopy(role, page, plan, template);
+      props.headline = copy.headline;
+      props.subheadline = copy.subheadline;
+      props.badge = copy.badge;
       if (alternateHeroMedia) {
         if (typeof props.image === 'string') props.image = alternateHeroMedia;
         else props.backgroundImage = alternateHeroMedia;
       }
     }
-    if (source.type === 'hero' && routeBrief) {
-      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan, alternateHeroMedia);
+    if (source.type === 'hero') {
+      const contract = page.isHome
+        ? routeBrief?.hero.geometry
+        : routeBrief?.hero.geometry ?? deriveRouteHeroContract(role, page, plan);
+      if (contract) applyRouteHeroContract(props, contract, page, plan, alternateHeroMedia);
     }
+
     filtered.push({
       ...source,
       id: definition ? `${page.id}-${source.id}` : `${page.id}-${source.type}-${idx}`,
