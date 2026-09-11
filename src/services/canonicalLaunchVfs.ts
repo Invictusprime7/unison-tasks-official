@@ -153,6 +153,12 @@ export interface BuildCanonicalLaunchArtifactsInput {
   approvedExperienceCapabilities?: readonly string[];
   /** Throw when immutable preflight detects invalid generated code. */
   strictPreflight?: boolean;
+  /**
+   * Receives structural visual-quality findings instead of the build throwing.
+   * Only callers that can surface them to the user (the launcher, which
+   * records launch degradations) should pass this.
+   */
+  onVisualQualityFindings?: (findings: string[], blockedFiles: string[]) => void;
 }
 
 const GENERATED_MODULE_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'] as const;
