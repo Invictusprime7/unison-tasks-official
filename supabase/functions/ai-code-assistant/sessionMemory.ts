@@ -1,6 +1,6 @@
 /**
- * Session Memory — builder-aware memory for Lane B.
- * Used by both System Launcher wizard-seed generation and in-builder edits.
+ * Session Memory — builder-aware memory for Lane B (in-builder edits).
+ * NOT used for Wizard fast path (Lane A).
  * 
  * Tracks: user goals, file changes, preview errors, broken imports,
  * open intents, recent diagnostics, and goal categorization.

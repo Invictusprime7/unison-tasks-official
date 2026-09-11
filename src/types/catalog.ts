@@ -1,60 +1,39 @@
 /**
- * Universal Catalog Runtime — type contracts (thin adapter over the registry).
+ * Universal Catalog Runtime — type contracts.
  *
- * Real definitions live in `@/platform/core/catalogSurfaceRegistry`. This
- * file exists only to keep long-standing import paths (`@/types/catalog`)
- * working. Do NOT add new maps here — extend the registry instead.
+ * Every generated section is either static design or a live data surface.
+ * Live-data sections declare a CatalogSource + SectionDataRequirement so the
+ * runtime knows what to fetch, what CTA payloads to build, and what to render
+ * when the business hasn't seeded rows yet.
+ *
+ * These types are read by:
+ *   - sectionDataBindingService     (persistence for site_data_bindings)
+ *   - catalogCollectionService      (persistence for catalog_collections)
+ *   - catalogRuntime                (read-side hydration for the preview)
+ *   - Builder Catalog panel         (UI editing surfaces)
  */
 
-import {
-  CATALOG_KIND_TO_TABLE as REGISTRY_KIND_TO_TABLE,
-  CATALOG_SURFACES,
-  getCatalogSurface,
-  isHydratableSectionType,
-  type CatalogFallbackMode,
-  type CatalogKind,
-  type CatalogSourceTable,
-} from '@/platform/core/catalogSurfaceRegistry';
+export type CatalogKind =
+  | 'product'
+  | 'service'
+  | 'menu_item'
+  | 'pricing_plan'
+  | 'offer'
+  | 'project'
+  | 'testimonial';
 
-// Re-export the primitive types.
-export type { CatalogKind, CatalogSourceTable };
+export const CATALOG_KIND_TO_TABLE: Record<CatalogKind, string> = {
+  product: 'products',
+  service: 'services',
+  menu_item: 'menu_items',
+  pricing_plan: 'pricing_plans',
+  offer: 'offers',
+  project: 'projects',
+  testimonial: 'testimonials',
+};
 
-/** Legacy alias name preserved for old imports. */
-export type SectionDataFallback = CatalogFallbackMode;
+export type SectionDataFallback = 'empty_state' | 'hide_section' | 'show_placeholder';
 export type BindingType = 'section' | 'slot' | 'card';
-
-export interface CatalogBindingPresentation {
-  showImage: boolean;
-  showDescription: boolean;
-  showPrice: boolean;
-  showCTA: boolean;
-  imageAspectRatio?: string;
-  layout?: string;
-  typography?: string;
-  alignment?: string;
-  ctaStyle?: string;
-  featuredBadge?: boolean;
-  [key: string]: unknown;
-}
-
-export interface CatalogBindingActions {
-  primary?: 'cart.add' | 'booking.start' | 'quote.request';
-  secondary?: 'catalog.view_details';
-}
-
-/**
- * Canonical binding for a single rendered catalog card. Content remains in
- * the catalog row; this object only identifies that row and its local view.
- */
-export interface CatalogBinding {
-  type: 'catalog.item';
-  itemId: string;
-  presentation: CatalogBindingPresentation;
-  actions: CatalogBindingActions;
-}
-
-/** kind → table map. Now sourced from catalogSurfaceRegistry. */
-export const CATALOG_KIND_TO_TABLE = REGISTRY_KIND_TO_TABLE; // from catalogSurfaceRegistry
 
 export interface CatalogCollectionDTO {
   id: string;
@@ -88,16 +67,15 @@ export interface SectionDataBindingDTO {
   filters: Record<string, unknown>;
   sort: { field?: string; direction?: 'asc' | 'desc' };
   limitCount: number | null;
-  displayMapping: Record<string, unknown>;
+  displayMapping: Record<string, string>;
   fallbackMode: SectionDataFallback;
   createdAt: string;
   updatedAt: string;
 }
 
 /**
- * Legacy shape. Prefer `getCatalogSurface(sectionType)` from the registry.
- * We synthesize a requirement per registry surface so existing callers
- * (readiness, autoEmit) can keep working.
+ * Static section-type → data contract map.
+ * Used by the generator and readiness gate to know which sections are live.
  */
 export interface SectionDataRequirement {
   sectionType: string;
@@ -107,27 +85,44 @@ export interface SectionDataRequirement {
   supportedIntents: string[];
 }
 
-export const SECTION_DATA_REQUIREMENTS: Record<string, SectionDataRequirement> = // from catalogSurfaceRegistry
-  (() => {
-  const out: Record<string, SectionDataRequirement> = {};
-  for (const surface of Object.values(CATALOG_SURFACES)) {
-    out[surface.componentType] = {
-      sectionType: surface.componentType,
-      requiredKind: surface.catalogKind,
-      minRows: surface.minRows,
-      emptyState: surface.fallbackMode,
-      supportedIntents: [...surface.supportedIntents],
-    };
-  }
-  return out;
-})();
+export const SECTION_DATA_REQUIREMENTS: Record<string, SectionDataRequirement> = {
+  ServiceGrid: {
+    sectionType: 'ServiceGrid',
+    requiredKind: 'service',
+    minRows: 1,
+    emptyState: 'show_setup_prompt' as unknown as SectionDataFallback, // maps to empty_state in DB
+    supportedIntents: ['booking.create', 'quote.request'],
+  },
+  ProductGrid: {
+    sectionType: 'ProductGrid',
+    requiredKind: 'product',
+    minRows: 1,
+    emptyState: 'empty_state',
+    supportedIntents: ['cart.add', 'checkout.start'],
+  },
+  FeaturedProducts: {
+    sectionType: 'FeaturedProducts',
+    requiredKind: 'product',
+    minRows: 1,
+    emptyState: 'hide_section',
+    supportedIntents: ['cart.add'],
+  },
+  MenuSection: {
+    sectionType: 'MenuSection',
+    requiredKind: 'menu_item',
+    minRows: 3,
+    emptyState: 'empty_state',
+    supportedIntents: ['reservation.create', 'order.create'],
+  },
+  PricingTable: {
+    sectionType: 'PricingTable',
+    requiredKind: 'pricing_plan',
+    minRows: 1,
+    emptyState: 'empty_state',
+    supportedIntents: ['checkout.start', 'contact.form'],
+  },
+};
 
-export function requirementForSection(
-  sectionType: string,
-): SectionDataRequirement | null {
-  const surface = getCatalogSurface(sectionType);
-  if (!surface) return null;
-  return SECTION_DATA_REQUIREMENTS[surface.componentType] ?? null;
+export function requirementForSection(sectionType: string): SectionDataRequirement | null {
+  return SECTION_DATA_REQUIREMENTS[sectionType] ?? null;
 }
-
-export { isHydratableSectionType };

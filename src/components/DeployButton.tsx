@@ -38,9 +38,7 @@ import type { BusinessSystemType } from '@/data/templates/types';
 
 interface DeployButtonProps {
   /** File map to deploy (path -> content) */
-  files?: Record<string, string>;
-  /** Lazily resolves deploy files so expensive bundle/export work never runs during shell render. */
-  getFiles?: () => Record<string, string> | null | undefined;
+  files: Record<string, string>;
   /** Default site name */
   defaultSiteName?: string;
   /** Callback when deployment completes */
@@ -82,8 +80,7 @@ interface DeployButtonProps {
 }
 
 export function DeployButton({
-  files = {},
-  getFiles,
+  files,
   defaultSiteName,
   onDeployComplete,
   variant = 'default',
@@ -131,9 +128,7 @@ export function DeployButton({
   );
 
   const handleDeploy = async () => {
-    const resolvedFiles = getFiles?.() ?? files;
-
-    if (!resolvedFiles || Object.keys(resolvedFiles).length === 0) {
+    if (!files || Object.keys(files).length === 0) {
       toast.error('No files to deploy');
       return;
     }
@@ -141,7 +136,7 @@ export function DeployButton({
     // Canonical runtime gate — launcher-backed drafts cannot deploy without a
     // valid SiteBundleSnapshot. Blank/manual drafts bypass this check.
     try {
-      requireCanonicalSnapshot(resolvedFiles, 'deploy');
+      requireCanonicalSnapshot(files, 'deploy');
     } catch (err) {
       if (isCanonicalRuntimeError(err)) {
         toast.error('Deployment blocked by launch gate', {
@@ -160,7 +155,7 @@ export function DeployButton({
     
     // Process files to ensure proper HTML structure with Tailwind
     const processedFiles: Record<string, string> = {};
-    for (const [path, content] of Object.entries(resolvedFiles)) {
+    for (const [path, content] of Object.entries(files)) {
       if (path.endsWith('.html') || path === 'index.html') {
         // Wrap HTML files with Tailwind CDN and proper structure
         processedFiles[path] = wrapHtmlForDeployment(content, name);
@@ -192,8 +187,8 @@ export function DeployButton({
     }
   };
 
-  const fileCount = getFiles ? 1 : Object.keys(files || {}).length;
-  const hasIndexHtml = getFiles ? true : !!(files && (files['index.html'] || files['/index.html']));
+  const fileCount = Object.keys(files || {}).length;
+  const hasIndexHtml = !!(files && (files['index.html'] || files['/index.html']));
 
   return (
     <>

@@ -12,8 +12,9 @@
  * VFS → FileMap Snapshot → ECS Worker (Vite) → Gateway → iframe
  */
 
-import { GENERATED_RUNTIME_PROFILE } from '@/platform/core/generatedRuntimeCapabilities';
 import { extractDependencies } from '@/utils/dependencyExtractor';
+import { buildThemedIndexCss } from '@/components/onboarding/themePresetToIndexCss';
+import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import type { RuntimeManifest } from '@/types/runtimeManifest';
 import { PreviewPipelineError } from './previewPipelineError';
 
@@ -92,12 +93,12 @@ const DEFAULT_PACKAGE_JSON = `{
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
@@ -248,7 +249,6 @@ export function ensureViteRootFiles(
   options?: {
     extraDependencies?: Record<string, string>;
     themePresetId?: string | null;
-    stage4bCss?: string;
   },
 ): FileMap {
   const result = { ...fileMap };
@@ -272,8 +272,8 @@ export function ensureViteRootFiles(
 
   // Merge: extracted deps (widest coverage) < worker-template base < VFS pkg overrides
   const baseDeps: Record<string, string> = {
-    'react': GENERATED_RUNTIME_PROFILE.react,
-    'react-dom': GENERATED_RUNTIME_PROFILE.reactDom,
+    'react': '^18.3.1',
+    'react-dom': '^18.3.1',
   };
 
   const mergedDeps: Record<string, string> = {
@@ -285,8 +285,8 @@ export function ensureViteRootFiles(
 
   // Standard devDependencies for the Vite/React/TS toolchain
   const defaultDevDeps: Record<string, string> = {
-    '@types/react': GENERATED_RUNTIME_PROFILE.reactTypes,
-    '@types/react-dom': GENERATED_RUNTIME_PROFILE.reactDomTypes,
+    '@types/react': '^18.3.12',
+    '@types/react-dom': '^18.3.1',
     '@vitejs/plugin-react': '^4.3.4',
     'autoprefixer': '^10.4.20',
     'postcss': '^8.4.49',
@@ -340,15 +340,54 @@ export function ensureViteRootFiles(
   });
 
   if (!result['/src/index.css']) {
-    if (options?.stage4bCss?.includes('--primary:')) {
-      result['/src/index.css'] = options.stage4bCss;
-      return result;
+    // Per checkpoint invariant 5 (Theme injection unconditional): when the
+    // caller doesn't pass themePresetId explicitly, recover it from the
+    // persisted wizard metadata files in the VFS. This mirrors the recovery
+    // already implemented in canonicalPipeline.recompileFromPlayground and
+    // snapshotProjector.resolveSnapshot — the chain of custody is:
+    //   snapshot.meta.themePresetId
+    //     → app-context.themePresetId
+    //     → runtime-manifest.appContext.themePresetId
+    let presetId: string | null | undefined = options?.themePresetId ?? null;
+    if (!presetId) {
+      const tryRead = (path: string): Record<string, unknown> | null => {
+        const raw = result[path];
+        if (!raw || typeof raw !== 'string') return null;
+        try { return JSON.parse(raw) as Record<string, unknown>; } catch { return null; }
+      };
+      const snap = tryRead('/.unison/site-bundle-snapshot.json') as
+        | { meta?: { themePresetId?: string }; appContext?: { themePresetId?: string } }
+        | null;
+      const appCtx = tryRead('/.unison/app-context.json') as { themePresetId?: string } | null;
+      const runtime = tryRead('/.unison/runtime-manifest.json') as
+        | { appContext?: { themePresetId?: string } }
+        | null;
+      presetId =
+        snap?.meta?.themePresetId ||
+        snap?.appContext?.themePresetId ||
+        appCtx?.themePresetId ||
+        runtime?.appContext?.themePresetId ||
+        null;
+      if (presetId) {
+        console.log(`[ensureViteRootFiles] Recovered themePresetId="${presetId}" from VFS metadata`);
+      }
     }
-    throw new PreviewPipelineError(
-      'vfs',
-      'Missing /src/index.css. Stage 4b must inject the authoritative themed stylesheet before preview root files are prepared.',
-      { recoverableByRelaunch: true },
-    );
+    if (!presetId) {
+      throw new PreviewPipelineError(
+        'vfs',
+        'Missing wizard themePresetId — refusing to inject default/minimal preview CSS.',
+        { recoverableByRelaunch: true },
+      );
+    }
+    const preset = THEME_PRESETS.find((p) => p.id === presetId);
+    if (!preset) {
+      throw new PreviewPipelineError(
+        'vfs',
+        `Unknown wizard themePresetId "${presetId}" — refusing to inject default/minimal preview CSS.`,
+        { recoverableByRelaunch: true },
+      );
+    }
+    result['/src/index.css'] = buildThemedIndexCss(preset);
   }
 
 

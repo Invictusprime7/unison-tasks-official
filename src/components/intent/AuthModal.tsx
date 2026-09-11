@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Mail, Lock, Eye, EyeOff, Chrome } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 import { toast } from 'sonner';
 import type { AuthModalConfig } from '@/runtime/intentPipeline';
 
@@ -93,14 +94,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}${config.redirectOnSuccess || '/'}`,
-        },
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin,
       });
 
-      if (oauthError) throw oauthError;
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.redirected) {
+        return;
+      }
+
+      toast.success('Welcome back!');
+      onOpenChange(false);
+      onSuccess?.();
+
+      if (config.redirectOnSuccess) {
+        window.location.href = config.redirectOnSuccess;
+      }
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
       toast.error(err.message || 'Google sign-in failed');

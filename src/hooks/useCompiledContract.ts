@@ -23,7 +23,7 @@ import type { BusinessSystemType } from '@/data/templates/types';
 export interface ContractNavState {
   /** Pre-compiled contract (from BusinessLauncher) */
   _compiledContract?: CompiledContract;
-  /** SystemsBuildContext (from SystemLauncher / BusinessLauncher) */
+  /** SystemsBuildContext (from SystemsAIPanel / BusinessLauncher) */
   systemsBuildContext?: SystemsBuildContext;
   /** System type from launcher */
   systemType?: string;

@@ -15,13 +15,9 @@ import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder'
 import { PreviewPipelineError } from './previewPipelineError';
 import { deriveFilePath } from './routeNavigationService';
 import { ensureViteRootFiles } from './previewSession';
-import { getCompositionById } from '@/sections/templates';
 import type { LayoutCategory } from '@/data/templates/types';
 import type { BuilderPage } from '@/types/pageRegistry';
 import type { GeneratedSitePlan, PageRole, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
-import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
-import type { SiteConfiguration } from '@/platform/core/resolvedComposition';
-import type { WizardGenerationBrief } from '@/services/wizardGenerationBrief';
 
 export interface CompilePlaygroundOptions {
   /** Selected template used to generate real role-filtered page scaffolds. */
@@ -30,105 +26,8 @@ export interface CompilePlaygroundOptions {
   selectedThemeId?: string;
   /** Resolved wizard ThemePreset id used for route-level token seeding. */
   themePresetId?: string;
-  /** Exact Stage 4b stylesheet supplied by the canonical pipeline. */
-  stage4bCss?: string;
   /** Industry overlay used by template/page scaffolding. */
   industry?: LayoutCategory | string | null;
-  /** Versioned visual recipes chosen by the canonical wizard pipeline. */
-  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed'>>;
-  /** Signed industry/page contract resolved before this compiler runs. */
-  siteConfiguration?: SiteConfiguration;
-  /** Per-route hero, narrative, depth, and rhythm contract. */
-  generationBrief?: WizardGenerationBrief;
-}
-
-type WizardSeedLike = Record<string, unknown> & {
-  templateId?: string;
-  themePresetId?: string;
-  themeId?: string;
-  industry?: string;
-  business?: { industry?: string };
-  template?: { id?: string };
-  theme?: { presetId?: string; id?: string };
-  selections?: {
-    templateId?: string;
-    themePresetId?: string;
-    themeId?: string;
-    industryOverlay?: string;
-    industry?: string;
-  };
-};
-
-function parseWizardSeed(existingVfsFiles: Record<string, string>): WizardSeedLike | null {
-  const seedRaw = existingVfsFiles['/.unison/wizard-seed.json'];
-  if (!seedRaw) return null;
-  try {
-    return JSON.parse(seedRaw) as WizardSeedLike;
-  } catch (err) {
-    console.warn('[playgroundCompiler] Failed to parse /.unison/wizard-seed.json; subpages will use pipeline options only.', err);
-    return null;
-  }
-}
-
-function parseJsonFile<T>(existingVfsFiles: Record<string, string>, path: string): T | null {
-  const raw = existingVfsFiles[path];
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-function firstText(...values: Array<unknown>): string | undefined {
-  for (const value of values) {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return undefined;
-}
-
-function assertWizardTopologyClosure(
-  pages: BuilderPage[],
-  vfsFiles: Record<string, string>,
-  routerContent: string,
-  selectedTemplateId?: string,
-): void {
-  if (!selectedTemplateId) return;
-
-  const blockedFiles: string[] = [];
-  const problems: string[] = [];
-
-  for (const page of pages) {
-    const filePath = page.filePath || deriveFilePath(page);
-    const source = vfsFiles[filePath];
-    const role = page.pageRole;
-    const isClassified = Boolean(role && role !== 'custom' && page.pageType !== 'custom');
-    const isRenderable = Boolean(source?.trim() && /export\s+default\b/.test(source));
-
-    if (!isClassified || !page.path || !filePath || !isRenderable) {
-      blockedFiles.push(filePath);
-      problems.push(
-        `${filePath}: ${[
-          !isClassified ? 'unclassified page role' : null,
-          !page.path ? 'missing route' : null,
-          !isRenderable ? 'missing renderable module' : null,
-        ].filter(Boolean).join(', ')}`,
-      );
-    }
-  }
-
-  if (!routerContent.trim()) {
-    problems.push('/src/App.tsx: missing canonical router');
-    blockedFiles.push('/src/App.tsx');
-  }
-
-  if (problems.length > 0) {
-    throw new PreviewPipelineError(
-      'vfs',
-      `Wizard template "${selectedTemplateId}" did not produce a closed renderable topology: ${problems.join(' | ')}`,
-      { blockedFiles, recoverableByRelaunch: true },
-    );
-  }
 }
 
 export function compilePlayground(
@@ -140,81 +39,13 @@ export function compilePlayground(
   const registry = state.pageRegistry;
   const pages = Object.values(registry.pages);
 
-  const wizardSeed = parseWizardSeed(existingVfsFiles);
-  const snapshotMeta = parseJsonFile<{
-    meta?: { templateId?: string | null; themePresetId?: string | null; industry?: string | null };
-    appContext?: { templateId?: string | null; themePresetId?: string | null; industry?: string | null };
-    industry?: string | null;
-  }>(existingVfsFiles, '/.unison/site-bundle-snapshot.json');
-  const runtimeManifest = parseJsonFile<{
-    appContext?: { templateId?: string | null; themePresetId?: string | null; industry?: string | null };
-    aesthetic?: string | null;
-    industry?: string | null;
-  }>(existingVfsFiles, '/.unison/runtime-manifest.json');
-  const appContext = parseJsonFile<{
-    templateId?: string | null;
-    themePresetId?: string | null;
-    industry?: string | null;
-  }>(existingVfsFiles, '/.unison/app-context.json');
-  const resolvedTemplateId = firstText(
-    options?.selectedTemplateId,
-    snapshotMeta?.meta?.templateId,
-    snapshotMeta?.appContext?.templateId,
-    runtimeManifest?.appContext?.templateId,
-    appContext?.templateId,
-    wizardSeed?.templateId,
-    wizardSeed?.template?.id,
-    wizardSeed?.selections?.templateId,
-  );
-  const resolvedThemePresetId = firstText(
-    options?.themePresetId,
-    options?.selectedThemeId,
-    snapshotMeta?.meta?.themePresetId,
-    snapshotMeta?.appContext?.themePresetId,
-    runtimeManifest?.appContext?.themePresetId,
-    runtimeManifest?.aesthetic,
-    appContext?.themePresetId,
-    wizardSeed?.themePresetId,
-    wizardSeed?.theme?.presetId,
-    wizardSeed?.theme?.id,
-    wizardSeed?.selections?.themePresetId,
-    wizardSeed?.selections?.themeId,
-  );
-  const resolvedIndustry = firstText(
-    options?.industry,
-    snapshotMeta?.meta?.industry,
-    snapshotMeta?.appContext?.industry,
-    snapshotMeta?.industry,
-    runtimeManifest?.appContext?.industry,
-    runtimeManifest?.industry,
-    appContext?.industry,
-    wizardSeed?.business?.industry,
-    wizardSeed?.industry,
-    wizardSeed?.selections?.industry,
-    wizardSeed?.selections?.industryOverlay,
-  );
-
-  if (options?.selectedTemplateId && !getCompositionById(options.selectedTemplateId)) {
-    throw new PreviewPipelineError(
-      'vfs',
-      `Wizard selected template "${options.selectedTemplateId}" is not registered; refusing to substitute an unrelated industry composition.`,
-      { recoverableByRelaunch: true },
-    );
-  }
-
   for (const page of pages) {
     if (!page.filePath) {
       page.filePath = deriveFilePath(page);
     }
   }
 
-  const scaffoldPlan = buildScaffoldPlan(registry.homePageId, pages, businessName, {
-    ...options,
-    selectedTemplateId: resolvedTemplateId,
-    selectedThemeId: options?.selectedThemeId,
-    themePresetId: resolvedThemePresetId,
-    industry: resolvedIndustry,
-  });
+  const scaffoldPlan = buildScaffoldPlan(registry.homePageId, pages, businessName, options);
 
   // ── Wizard-seed injection (page hash routes) ─────────────────────────────
   // Parse the durable WizardSeed from `/.unison/wizard-seed.json` if the
@@ -224,8 +55,14 @@ export function compilePlayground(
   // page module — so subpages reflect the wizard selections instead of the
   // template's neutral sample copy. Without this overlay, only Lane B's
   // AI-authored Home page would carry brand context.
-  if (wizardSeed) {
-    (scaffoldPlan as GeneratedSitePlan & { wizardSeed?: Record<string, unknown> }).wizardSeed = wizardSeed;
+  const seedRaw = existingVfsFiles['/.unison/wizard-seed.json'];
+  if (seedRaw) {
+    try {
+      const parsed = JSON.parse(seedRaw) as Record<string, unknown>;
+      (scaffoldPlan as GeneratedSitePlan & { wizardSeed?: Record<string, unknown> }).wizardSeed = parsed;
+    } catch (err) {
+      console.warn('[playgroundCompiler] Failed to parse /.unison/wizard-seed.json; subpages will use template defaults.', err);
+    }
   }
 
 
@@ -250,11 +87,7 @@ export function compilePlayground(
       // Multi-file emit: page module + per-section components under
       // /src/components/*. Shared component files are idempotent across
       // pages and safe to merge by Object.assign.
-      const fileSet = generateTopologyPlaceholderFiles(node, scaffoldPlan, undefined, {
-        designIntervention: options?.designIntervention,
-        siteConfiguration: options?.siteConfiguration,
-        generationBrief: options?.generationBrief,
-      });
+      const fileSet = generateTopologyPlaceholderFiles(node, scaffoldPlan);
       Object.assign(vfsFiles, fileSet);
     } catch (err) {
       if (err instanceof PreviewPipelineError) {
@@ -284,15 +117,12 @@ export function compilePlayground(
     vfsFiles['/src/App.tsx'] = routerContent;
   }
 
-  assertWizardTopologyClosure(pages, vfsFiles, routerContent, options?.selectedTemplateId);
-
   // Inject canonical root config files (.json + tooling) so the wizard runtime
   // VFS always has package.json/tsconfig/vite/tailwind/postcss, matching what
   // canonical launch and live preview expect. Idempotent — won't overwrite
   // existing user-authored config files.
   const hydratedVfsFiles = ensureViteRootFiles(vfsFiles, {
-    themePresetId: resolvedThemePresetId ?? null,
-    stage4bCss: options?.stage4bCss,
+    themePresetId: options?.themePresetId ?? null,
   });
 
   for (const [p, c] of Object.entries(hydratedVfsFiles)) {
@@ -339,7 +169,6 @@ function buildScaffoldPlan(
       generatedBy: page.createdBy === 'ai' ? 'ai' : page.createdBy === 'manual' ? 'manual' : 'wizard',
       funnelId: page.funnelId || null,
       seo: page.seo,
-      expectedSections: options?.siteConfiguration?.pages.find((configured) => configured.path === page.path)?.sections ?? [],
     }));
 
   return {

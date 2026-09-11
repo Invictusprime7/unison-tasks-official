@@ -11,22 +11,10 @@
 import type { CapabilityId } from './capabilityRegistry';
 import type { BusinessSystemType, LayoutCategory } from '@/data/templates/types';
 import type { CoreIntent } from './coreIntents';
-import type { ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
 
 // ============================================================================
 // Industry Profile
 // ============================================================================
-
-/** A profile question the launcher asks for this industry. */
-export interface BusinessProfileFieldSpec {
-  key: string;
-  label: string;
-  type: 'text' | 'textarea' | 'list' | 'select' | 'number';
-  required?: boolean;
-  placeholder?: string;
-  options?: string[];
-  helpText?: string;
-}
 
 export interface IndustryProfile {
   /** Industry key (matches composition industry field) */
@@ -41,17 +29,6 @@ export interface IndustryProfile {
   defaultCapabilities: CapabilityId[];
   /** Primary intent family for this industry (used for hero CTA defaults) */
   primaryIntent: CoreIntent;
-  /**
-   * The one capability this industry's site exists to fulfil. Never assume
-   * booking — each industry declares its own anchor.
-   */
-  anchorCapability?: CapabilityId;
-  /** Ordered conversion journey for this industry (not a booking retrofit). */
-  conversionJourney?: CoreIntent[];
-  /** Art direction packs the launcher may offer for this industry. */
-  allowedArtDirectionPacks?: ArtDirectionPackId[];
-  /** Profile questions the launcher asks for this industry. */
-  profileFields?: BusinessProfileFieldSpec[];
   /** Default CRM pipeline for this industry */
   crmPipeline: {
     name: string;
@@ -74,20 +51,6 @@ export interface PageSpec {
   expectedSections: string[];
 }
 
-/** Shared profile questions every industry asks. */
-const BASE_PROFILE_FIELDS: BusinessProfileFieldSpec[] = [
-  { key: 'businessName', label: 'Business name', type: 'text', required: true },
-  { key: 'tagline', label: 'One-line description', type: 'text', required: true, placeholder: 'What you do, in a sentence' },
-  { key: 'location', label: 'Location', type: 'text', placeholder: 'City, region' },
-  { key: 'contactEmail', label: 'Contact email', type: 'text', required: true },
-];
-
-const withBase = (extra: BusinessProfileFieldSpec[]): BusinessProfileFieldSpec[] => [
-  ...BASE_PROFILE_FIELDS,
-  ...extra,
-];
-
-
 // ============================================================================
 // Matrix
 // ============================================================================
@@ -100,15 +63,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['saas', 'landing'],
     defaultCapabilities: ['contact', 'newsletter', 'lead-capture'],
     primaryIntent: 'contact.submit',
-    anchorCapability: 'lead-capture',
-    conversionJourney: ['nav.goto', 'lead.capture', 'auth.register'],
-    allowedArtDirectionPacks: ['glass-tech', 'swiss-grid', 'neon-grid', 'mono-terminal', 'bold-commercial'],
-    profileFields: withBase([
-      { key: 'productCategory', label: 'What does the product do?', type: 'text', required: true },
-      { key: 'targetCustomer', label: 'Who is it for?', type: 'text', required: true },
-      { key: 'pricingTiers', label: 'Plan names', type: 'list', placeholder: 'Starter, Growth, Scale' },
-      { key: 'trialLength', label: 'Free trial length', type: 'text', placeholder: '14 days' },
-    ]),
     crmPipeline: {
       name: 'SaaS Pipeline',
       stages: ['New Lead', 'Demo Requested', 'Trial Started', 'Qualified', 'Customer'],
@@ -116,9 +70,9 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'features', 'stats', 'testimonials', 'cta', 'footer'] },
-      { title: 'Features', path: '/services', purpose: 'services', expectedSections: ['navbar', 'hero', 'features', 'services', 'stats', 'faq', 'cta', 'footer'] },
-      { title: 'Pricing', path: '/pricing', purpose: 'pricing', expectedSections: ['navbar', 'hero', 'pricing', 'faq', 'testimonials', 'cta', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'Features', path: '/services', purpose: 'services', expectedSections: ['navbar', 'features', 'services', 'footer'] },
+      { title: 'Pricing', path: '/pricing', purpose: 'pricing', expectedSections: ['navbar', 'pricing', 'faq', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'saas_growth',
     seedDataKeys: ['business_name', 'business_email', 'features', 'pricing_tiers'],
@@ -131,15 +85,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['salon'],
     defaultCapabilities: ['booking', 'contact', 'newsletter'],
     primaryIntent: 'booking.create',
-    anchorCapability: 'booking',
-    conversionJourney: ['nav.goto', 'booking.create', 'contact.submit'],
-    allowedArtDirectionPacks: ['luxury-minimal', 'soft-editorial', 'warm-craft', 'editorial-noir', 'organic-studio'],
-    profileFields: withBase([
-      { key: 'services', label: 'Services offered', type: 'list', required: true, placeholder: 'Cut, colour, treatment' },
-      { key: 'stylists', label: 'Team members', type: 'list' },
-      { key: 'operatingHours', label: 'Opening hours', type: 'textarea', required: true },
-      { key: 'bookingLeadTime', label: 'How far ahead can clients book?', type: 'text', placeholder: '30 days' },
-    ]),
     crmPipeline: {
       name: 'Salon Clients',
       stages: ['New Client', 'Booked', 'Completed', 'VIP', 'Inactive'],
@@ -147,9 +92,9 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'testimonials', 'cta', 'footer'] },
-      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'hero', 'services', 'pricing', 'gallery', 'testimonials', 'footer'] },
-      { title: 'Book', path: '/booking', purpose: 'booking', expectedSections: ['navbar', 'hero', 'services', 'contact', 'faq', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'services', 'pricing', 'footer'] },
+      { title: 'Book', path: '/booking', purpose: 'booking', expectedSections: ['navbar', 'services', 'contact', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'booking_salon',
     seedDataKeys: ['business_name', 'business_email', 'services', 'operating_hours'],
@@ -162,16 +107,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['restaurant'],
     defaultCapabilities: ['booking', 'contact', 'newsletter'],
     primaryIntent: 'booking.create',
-    anchorCapability: 'booking',
-    conversionJourney: ['nav.goto', 'booking.create', 'pay.checkout'],
-    allowedArtDirectionPacks: ['warm-craft', 'print-serif', 'editorial-noir', 'organic-studio', 'soft-editorial'],
-    profileFields: withBase([
-      { key: 'cuisine', label: 'Cuisine', type: 'text', required: true },
-      { key: 'menuHighlights', label: 'Signature dishes', type: 'list', required: true },
-      { key: 'operatingHours', label: 'Service hours', type: 'textarea', required: true },
-      { key: 'seatingCapacity', label: 'Seating capacity', type: 'number' },
-      { key: 'orderingMode', label: 'Ordering', type: 'select', options: ['Reservations only', 'Takeaway only', 'Reservations and takeaway'] },
-    ]),
     crmPipeline: {
       name: 'Restaurant Guests',
       stages: ['New Reservation', 'Confirmed', 'Seated', 'Completed', 'VIP'],
@@ -179,8 +114,8 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'gallery', 'testimonials', 'cta', 'footer'] },
-      { title: 'Menu', path: '/menu', purpose: 'services', expectedSections: ['navbar', 'hero', 'services', 'gallery', 'stats', 'cta', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'Menu', path: '/menu', purpose: 'services', expectedSections: ['navbar', 'services', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'booking_restaurant',
     seedDataKeys: ['business_name', 'business_email', 'menu_items', 'operating_hours'],
@@ -193,15 +128,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['contractor'],
     defaultCapabilities: ['quoting', 'contact', 'newsletter', 'lead-capture'],
     primaryIntent: 'quote.request',
-    anchorCapability: 'quoting',
-    conversionJourney: ['nav.goto', 'quote.request', 'lead.capture'],
-    allowedArtDirectionPacks: ['bold-commercial', 'swiss-grid', 'warm-craft', 'brutalist-poster'],
-    profileFields: withBase([
-      { key: 'services', label: 'Services offered', type: 'list', required: true },
-      { key: 'serviceAreas', label: 'Areas served', type: 'list', required: true },
-      { key: 'licensing', label: 'Licences and insurance', type: 'text' },
-      { key: 'emergencyAvailability', label: 'Emergency callouts?', type: 'select', options: ['Yes, 24/7', 'Business hours only'] },
-    ]),
     crmPipeline: {
       name: 'Service Pipeline',
       stages: ['New Lead', 'Quote Sent', 'Scheduled', 'In Progress', 'Completed', 'Follow-up'],
@@ -209,46 +135,12 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'testimonials', 'stats', 'cta', 'footer'] },
-      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'hero', 'services', 'pricing', 'faq', 'testimonials', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'services', 'pricing', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'local_service',
     seedDataKeys: ['business_name', 'business_email', 'services', 'service_areas'],
   },
-
-  contractor: {
-    industry: 'contractor',
-    name: 'Contractor & Trades',
-    systemType: 'booking',
-    layoutCategories: ['contractor'],
-    defaultCapabilities: ['quoting', 'lead-capture', 'contact', 'newsletter'],
-    primaryIntent: 'quote.request',
-    anchorCapability: 'quoting',
-    conversionJourney: ['nav.goto', 'quote.request', 'lead.capture'],
-    allowedArtDirectionPacks: ['bold-commercial', 'brutalist-poster', 'swiss-grid', 'warm-craft'],
-    profileFields: withBase([
-      { key: 'trades', label: 'Trades covered', type: 'list', required: true, placeholder: 'Roofing, siding, gutters' },
-      { key: 'serviceAreas', label: 'Areas served', type: 'list', required: true },
-      { key: 'licensing', label: 'Licence number', type: 'text' },
-      { key: 'projectMinimum', label: 'Typical project size', type: 'text', placeholder: 'From $5,000' },
-      { key: 'warranty', label: 'Workmanship warranty', type: 'text' },
-    ]),
-    crmPipeline: {
-      name: 'Contractor Pipeline',
-      stages: ['New Enquiry', 'Site Visit', 'Estimate Sent', 'Job Scheduled', 'Completed', 'Warranty'],
-      defaultStage: 'New Enquiry',
-    },
-    defaultPages: [
-      { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'stats', 'gallery', 'testimonials', 'cta', 'footer'] },
-      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'hero', 'services', 'stats', 'faq', 'cta', 'footer'] },
-      { title: 'Projects', path: '/projects', purpose: 'portfolio', expectedSections: ['navbar', 'hero', 'gallery', 'stats', 'testimonials', 'cta', 'footer'] },
-      { title: 'Get a Quote', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'testimonials', 'footer'] },
-    ],
-    automationPack: 'local_service',
-    seedDataKeys: ['business_name', 'business_email', 'services', 'service_areas', 'licensing'],
-  },
-
-
 
   coaching: {
     industry: 'coaching',
@@ -257,15 +149,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['coaching'],
     defaultCapabilities: ['booking', 'contact', 'newsletter', 'lead-capture'],
     primaryIntent: 'booking.create',
-    anchorCapability: 'booking',
-    conversionJourney: ['nav.goto', 'booking.create', 'lead.capture'],
-    allowedArtDirectionPacks: ['soft-editorial', 'luxury-minimal', 'print-serif', 'organic-studio'],
-    profileFields: withBase([
-      { key: 'programs', label: 'Programs offered', type: 'list', required: true },
-      { key: 'credentials', label: 'Credentials', type: 'text', required: true },
-      { key: 'clientOutcome', label: 'Outcome you deliver', type: 'text', required: true },
-      { key: 'discoveryCallLength', label: 'Discovery call length', type: 'text', placeholder: '30 minutes' },
-    ]),
     crmPipeline: {
       name: 'Coaching Pipeline',
       stages: ['Discovery', 'Proposal', 'Active Client', 'Completed', 'Alumni'],
@@ -273,8 +156,8 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'testimonials', 'about', 'cta', 'footer'] },
-      { title: 'Programs', path: '/programs', purpose: 'services', expectedSections: ['navbar', 'hero', 'services', 'pricing', 'faq', 'testimonials', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'about', 'faq', 'footer'] },
+      { title: 'Programs', path: '/programs', purpose: 'services', expectedSections: ['navbar', 'services', 'pricing', 'faq', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'coaching',
     seedDataKeys: ['business_name', 'business_email', 'programs', 'credentials'],
@@ -287,14 +170,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['realestate'],
     defaultCapabilities: ['contact', 'lead-capture', 'booking', 'newsletter'],
     primaryIntent: 'contact.submit',
-    anchorCapability: 'lead-capture',
-    conversionJourney: ['nav.goto', 'lead.capture', 'booking.create'],
-    allowedArtDirectionPacks: ['luxury-minimal', 'cinematic-portfolio', 'editorial-noir', 'swiss-grid'],
-    profileFields: withBase([
-      { key: 'serviceAreas', label: 'Markets served', type: 'list', required: true },
-      { key: 'specialties', label: 'Specialties', type: 'list' },
-      { key: 'licenseNumber', label: 'Licence number', type: 'text' },
-    ]),
     crmPipeline: {
       name: 'Real Estate Pipeline',
       stages: ['New Lead', 'Showing Scheduled', 'Offer Made', 'Under Contract', 'Closed'],
@@ -302,8 +177,8 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'stats', 'testimonials', 'cta', 'footer'] },
-      { title: 'Listings', path: '/listings', purpose: 'portfolio', expectedSections: ['navbar', 'hero', 'gallery', 'stats', 'services', 'cta', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'Listings', path: '/listings', purpose: 'portfolio', expectedSections: ['navbar', 'gallery', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'real_estate',
     seedDataKeys: ['business_name', 'business_email', 'service_areas', 'specialties'],
@@ -316,15 +191,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['store'],
     defaultCapabilities: ['commerce', 'contact', 'newsletter'],
     primaryIntent: 'cart.add',
-    anchorCapability: 'commerce',
-    conversionJourney: ['nav.goto', 'cart.add', 'cart.view', 'cart.checkout'],
-    allowedArtDirectionPacks: ['commerce-editorial', 'bold-commercial', 'luxury-minimal', 'swiss-grid', 'editorial-noir'],
-    profileFields: withBase([
-      { key: 'productCategories', label: 'Product categories', type: 'list', required: true },
-      { key: 'priceRange', label: 'Typical price range', type: 'text' },
-      { key: 'shippingRegions', label: 'Ships to', type: 'list', required: true },
-      { key: 'returnsPolicy', label: 'Returns policy', type: 'textarea' },
-    ]),
     crmPipeline: {
       name: 'Customer Pipeline',
       stages: ['Prospect', 'First Purchase', 'Repeat Customer', 'VIP', 'Win-back'],
@@ -332,8 +198,8 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'testimonials', 'cta', 'footer'] },
-      { title: 'Shop', path: '/shop', purpose: 'shop', expectedSections: ['navbar', 'hero', 'services', 'gallery', 'testimonials', 'cta', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'Shop', path: '/shop', purpose: 'shop', expectedSections: ['navbar', 'services', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'ecommerce',
     seedDataKeys: ['business_name', 'business_email', 'products', 'shipping_info'],
@@ -346,15 +212,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['portfolio'],
     defaultCapabilities: ['contact', 'newsletter'],
     primaryIntent: 'contact.submit',
-    anchorCapability: 'contact',
-    conversionJourney: ['nav.goto', 'contact.submit'],
-    allowedArtDirectionPacks: ['cinematic-portfolio', 'editorial-noir', 'print-serif', 'brutalist-poster', 'mono-terminal'],
-    profileFields: withBase([
-      { key: 'discipline', label: 'Your discipline', type: 'text', required: true },
-      { key: 'featuredProjects', label: 'Projects to feature', type: 'list', required: true },
-      { key: 'clients', label: 'Notable clients', type: 'list' },
-      { key: 'availability', label: 'Currently taking work?', type: 'select', options: ['Available', 'Booked, taking enquiries'] },
-    ]),
     crmPipeline: {
       name: 'Creative Pipeline',
       stages: ['Inquiry', 'Briefing', 'Proposal', 'Active Project', 'Delivered'],
@@ -362,8 +219,8 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'gallery', 'about', 'testimonials', 'cta', 'footer'] },
-      { title: 'Work', path: '/work', purpose: 'portfolio', expectedSections: ['navbar', 'hero', 'gallery', 'stats', 'features', 'cta', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'about', 'faq', 'footer'] },
+      { title: 'Work', path: '/work', purpose: 'portfolio', expectedSections: ['navbar', 'gallery', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'portfolio',
     seedDataKeys: ['business_name', 'business_email', 'portfolio_items'],
@@ -376,15 +233,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['nonprofit'],
     defaultCapabilities: ['donation', 'contact', 'newsletter'],
     primaryIntent: 'donation.start',
-    anchorCapability: 'donation',
-    conversionJourney: ['nav.goto', 'donation.start', 'newsletter.subscribe'],
-    allowedArtDirectionPacks: ['warm-craft', 'soft-editorial', 'print-serif', 'organic-studio'],
-    profileFields: withBase([
-      { key: 'mission', label: 'Mission statement', type: 'textarea', required: true },
-      { key: 'programs', label: 'Programs', type: 'list', required: true },
-      { key: 'impactStats', label: 'Impact numbers', type: 'list', placeholder: '12,000 meals served' },
-      { key: 'donationTiers', label: 'Suggested donation amounts', type: 'list' },
-    ]),
     crmPipeline: {
       name: 'Donor Pipeline',
       stages: ['Prospect', 'First-time Donor', 'Recurring Donor', 'Major Donor', 'Lapsed'],
@@ -392,8 +240,8 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'stats', 'services', 'testimonials', 'cta', 'footer'] },
-      { title: 'About', path: '/about', purpose: 'about', expectedSections: ['navbar', 'hero', 'about', 'team', 'stats', 'testimonials', 'cta', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'About', path: '/about', purpose: 'about', expectedSections: ['navbar', 'about', 'team', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'nonprofit',
     seedDataKeys: ['business_name', 'business_email', 'mission_statement', 'programs'],
@@ -406,15 +254,6 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     layoutCategories: ['agency', 'landing'],
     defaultCapabilities: ['contact', 'quoting', 'lead-capture', 'newsletter'],
     primaryIntent: 'contact.submit',
-    anchorCapability: 'lead-capture',
-    conversionJourney: ['nav.goto', 'lead.capture', 'contact.submit'],
-    allowedArtDirectionPacks: ['swiss-grid', 'editorial-noir', 'glass-tech', 'bold-commercial', 'brutalist-poster'],
-    profileFields: withBase([
-      { key: 'servicesOffered', label: 'Services offered', type: 'list', required: true },
-      { key: 'caseStudies', label: 'Case studies to feature', type: 'list', required: true },
-      { key: 'clientResults', label: 'Headline client results', type: 'list' },
-      { key: 'engagementModel', label: 'Engagement model', type: 'select', options: ['Retainer', 'Project', 'Both'] },
-    ]),
     crmPipeline: {
       name: 'Agency Pipeline',
       stages: ['New Lead', 'Qualified', 'Proposal Sent', 'Negotiation', 'Won', 'Lost'],
@@ -422,8 +261,8 @@ export const INDUSTRY_MATRIX: Record<string, IndustryProfile> = {
     },
     defaultPages: [
       { title: 'Home', path: '/', purpose: 'landing', expectedSections: ['navbar', 'hero', 'services', 'stats', 'testimonials', 'cta', 'footer'] },
-      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'hero', 'services', 'pricing', 'stats', 'faq', 'cta', 'footer'] },
-      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'hero', 'contact', 'faq', 'footer'] },
+      { title: 'Services', path: '/services', purpose: 'services', expectedSections: ['navbar', 'services', 'pricing', 'faq', 'footer'] },
+      { title: 'Contact', path: '/contact', purpose: 'contact', expectedSections: ['navbar', 'contact', 'footer'] },
     ],
     automationPack: 'agency',
     seedDataKeys: ['business_name', 'business_email', 'services', 'case_studies'],
@@ -436,6 +275,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   wellness: 'salon',
   dental: 'local-service',
   healthcare: 'local-service',
+  contractor: 'local-service',
   local_service: 'local-service',
   hvac: 'local-service',
   cleaning: 'local-service',
@@ -482,61 +322,4 @@ export function getIndustryForSystemType(systemType: BusinessSystemType): Indust
 
 export function getAllIndustries(): IndustryProfile[] {
   return Object.values(INDUSTRY_MATRIX);
-}
-
-// ============================================================================
-// Section vocabulary — the industry's own answer to "what belongs on a page?"
-//
-// The page scaffolder used to key section pools by page ROLE only, which made
-// every industry's interior pages structurally identical. These helpers make
-// the industry matrix the authority instead. No new registry: they read the
-// `defaultPages[].expectedSections` contracts already declared above.
-// ============================================================================
-
-/** Maps a PageSpec purpose to the topology page role used by the scaffolder. */
-const PURPOSE_TO_ROLE: Record<PageSpec['purpose'], string> = {
-  landing: 'home',
-  services: 'services',
-  portfolio: 'gallery',
-  contact: 'contact',
-  about: 'about',
-  blog: 'blog',
-  shop: 'shop',
-  checkout: 'checkout',
-  booking: 'booking',
-  pricing: 'pricing',
-  faq: 'faq',
-};
-
-export function industryRoleForPage(page: PageSpec): string {
-  if (page.path === '/') return 'home';
-  return PURPOSE_TO_ROLE[page.purpose] ?? 'custom';
-}
-
-/**
- * The ordered section contract this industry declares for a page role.
- * Returns an empty array when the industry doesn't declare that role.
- */
-export function getIndustryRoleSections(industry: string, role: string): string[] {
-  const profile = getIndustryProfile(industry);
-  if (!profile) return [];
-  const match = profile.defaultPages.find((page) => industryRoleForPage(page) === role);
-  return match ? [...match.expectedSections] : [];
-}
-
-/**
- * Every section type this industry ever uses, ordered by first appearance.
- * Used as the supplement pool when a page needs more depth — supplements are
- * drawn from the industry's own vocabulary, never by duplicating what's there.
- */
-export function getIndustrySectionVocabulary(industry: string): string[] {
-  const profile = getIndustryProfile(industry);
-  if (!profile) return [];
-  const seen: string[] = [];
-  for (const page of profile.defaultPages) {
-    for (const type of page.expectedSections) {
-      if (!seen.includes(type)) seen.push(type);
-    }
-  }
-  return seen;
 }

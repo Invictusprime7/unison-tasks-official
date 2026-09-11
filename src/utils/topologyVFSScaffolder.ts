@@ -23,12 +23,6 @@ import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
 import { PreviewPipelineError } from '@/services/previewPipelineError';
-import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
-import type { VariantId } from '@/sections/variants/types';
-import { getVariantsForSection } from '@/sections/variants/registry';
-import type { SiteConfiguration } from '@/platform/core/resolvedComposition';
-import { getIndustryProfile, getIndustryRoleSections, getIndustrySectionVocabulary } from '@/platform/core/industryMatrix';
-import type { WizardGenerationBrief, WizardHeroContract } from '@/services/wizardGenerationBrief';
 
 /**
  * Options shared by the scaffolding entry points.
@@ -46,10 +40,6 @@ import type { WizardGenerationBrief, WizardHeroContract } from '@/services/wizar
 export interface ScaffoldOptions {
   /** @deprecated Strict composition is now the only supported mode. */
   strictWizardComposition?: boolean;
-  /** Canonical, opt-in visual recipes projected into generated page modules. */
-  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed'>>;
-  siteConfiguration?: SiteConfiguration;
-  generationBrief?: WizardGenerationBrief;
 }
 
 
@@ -60,36 +50,18 @@ export interface ScaffoldOptions {
 
 const DEFAULT_ROLE_SECTION_POOL: Record<PageRole, SectionType[]> = {
   home:      ['navbar', 'hero', 'services', 'features', 'testimonials', 'cta', 'footer'],
-  services:  ['navbar', 'hero', 'services', 'features', 'pricing', 'testimonials', 'cta', 'footer'],
-  pricing:   ['navbar', 'hero', 'pricing', 'services', 'faq', 'testimonials', 'cta', 'footer'],
-  about:     ['navbar', 'hero', 'about', 'team', 'stats', 'testimonials', 'cta', 'footer'],
-  contact:   ['navbar', 'hero', 'contact', 'faq', 'testimonials', 'cta', 'footer'],
-  gallery:   ['navbar', 'hero', 'gallery', 'testimonials', 'cta', 'footer'],
-  faq:       ['navbar', 'hero', 'faq', 'services', 'testimonials', 'cta', 'footer'],
-  booking:   ['navbar', 'hero', 'services', 'testimonials', 'contact', 'cta', 'footer'],
-  shop:      ['navbar', 'hero', 'services', 'gallery', 'testimonials', 'cta', 'footer'],
-  checkout:  ['navbar', 'hero', 'services', 'contact', 'faq', 'cta', 'footer'],
-  thank_you: ['navbar', 'hero', 'stats', 'testimonials', 'cta', 'footer'],
-  blog:      ['navbar', 'hero', 'blog-preview', 'testimonials', 'cta', 'footer'],
-  custom:    ['navbar', 'hero', 'services', 'testimonials', 'faq', 'cta', 'footer'],
-};
-
-const MINIMUM_ROUTE_BODY_SECTIONS = 4;
-
-const ROLE_SUPPLEMENT_PRIORITY: Record<PageRole, SectionType[]> = {
-  home: ['services', 'features', 'testimonials', 'cta'],
-  services: ['features', 'pricing', 'testimonials', 'faq', 'cta'],
-  pricing: ['services', 'faq', 'testimonials', 'cta'],
-  about: ['team', 'stats', 'testimonials', 'cta'],
-  contact: ['faq', 'testimonials', 'services', 'cta'],
-  gallery: ['testimonials', 'services', 'cta', 'faq'],
-  faq: ['services', 'testimonials', 'cta', 'contact'],
-  booking: ['services', 'testimonials', 'contact', 'cta'],
-  shop: ['services', 'gallery', 'testimonials', 'cta'],
-  checkout: ['services', 'contact', 'faq', 'cta'],
-  thank_you: ['stats', 'testimonials', 'cta', 'services'],
-  blog: ['blog-preview', 'testimonials', 'services', 'cta'],
-  custom: ['services', 'testimonials', 'faq', 'cta'],
+  services:  ['navbar', 'hero', 'services', 'pricing', 'cta', 'footer'],
+  pricing:   ['navbar', 'hero', 'pricing', 'faq', 'cta', 'footer'],
+  about:     ['navbar', 'hero', 'about', 'team', 'stats', 'footer'],
+  contact:   ['navbar', 'hero', 'contact', 'footer'],
+  gallery:   ['navbar', 'hero', 'gallery', 'cta', 'footer'],
+  faq:       ['navbar', 'hero', 'faq', 'cta', 'footer'],
+  booking:   ['navbar', 'hero', 'services', 'contact', 'footer'],
+  shop:      ['navbar', 'hero', 'services', 'cta', 'footer'],
+  checkout:  ['navbar', 'hero', 'contact', 'footer'],
+  thank_you: ['navbar', 'hero', 'cta', 'footer'],
+  blog:      ['navbar', 'hero', 'blog-preview', 'cta', 'footer'],
+  custom:    ['navbar', 'hero', 'cta', 'footer'],
 };
 
 // ============================================================================
@@ -100,20 +72,6 @@ const ROLE_SUPPLEMENT_PRIORITY: Record<PageRole, SectionType[]> = {
  * Resolve which TemplateComposition drives this site plan.
  * Priority: explicit selectedTemplateId → industry-matched composition → null.
  */
-/**
- * Explicit composition aliases for shipped industries that do not yet own a
- * first-class composition file. This is a *declared* mapping, reviewable in one
- * place — it replaces the old silent fallback ladder (industry → first layout
- * category → first system type → fuzzy lexical scan) which let an industry
- * inherit an unrelated industry's entire site without anyone noticing.
- */
-const INDUSTRY_COMPOSITION_ALIAS: Record<string, string> = {
-  // Only legacy industry keys that no longer exist as first-class industries
-  // may alias. Every shipped industry owns its own composition file.
-  photography: 'portfolio',
-  fitness: 'coaching',
-};
-
 function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | null {
   // The plan carries selectedTemplateId via planSiteTopology options (see planner).
   const selectedId = (plan as GeneratedSitePlan & { selectedTemplateId?: string }).selectedTemplateId;
@@ -122,20 +80,16 @@ function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | n
     if (direct) return direct;
   }
 
+  // Industry fallback — use first composition matching the plan's industry.
   const byIndustry = getCompositionsByIndustry(plan.industry);
   if (byIndustry.length > 0) return byIndustry[0];
 
-  const aliased = INDUSTRY_COMPOSITION_ALIAS[plan.industry];
-  if (aliased) {
-    const byAlias = getCompositionsByIndustry(aliased);
-    if (byAlias.length > 0) return byAlias[0];
-  }
-
-  // No registered composition. Returning another industry's template here is
-  // what produced look-alike sites; the caller raises a named failure instead.
-  return null;
+  // Last-resort lexical scan against composition.industry/category.
+  const fuzzy = ALL_COMPOSITIONS.find(
+    c => c.industry === plan.industry || c.category === plan.industry
+  );
+  return fuzzy ?? null;
 }
-
 
 function applyPlanThemeToTemplate(
   template: TemplateComposition | null,
@@ -167,7 +121,7 @@ function applyPlanThemeToTemplate(
 //   • navbar/footer `brand`              → always overwritten with seed.business.name
 //   • hero `headline` (empty/placeholder)→ filled from seed.business.tagline
 //   • hero `subheadline` (empty)         → filled from seed.business.tagline
-//   • contact email / phone (empty)      → filled from seed.socials
+//   • contact email / phone (empty)      → filled from seed.generation.socials
 //   • footer copyright (empty)           → filled with `© <year> <brand>`
 //   • any string field containing the literal `{{businessName}}` is replaced
 // ============================================================================
@@ -206,34 +160,6 @@ function substituteBrandTokens<T>(value: T, brand: string): T {
   return value;
 }
 
-function collectTemplateBrandLiterals(composition: TemplateComposition): string[] {
-  return [...new Set(composition.sections.flatMap((section) => {
-    if (section.type !== 'navbar' && section.type !== 'footer') return [];
-    const value = (section.props as Record<string, unknown> | undefined)?.brand;
-    return typeof value === 'string' && value.trim() ? [value.trim()] : [];
-  }))];
-}
-
-function replaceTemplateBrandLiterals<T>(value: T, templateBrands: readonly string[], brand: string): T {
-  if (typeof value === 'string') {
-    return templateBrands.reduce(
-      (result, templateBrand) => result.split(templateBrand).join(brand),
-      value,
-    ) as unknown as T;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => replaceTemplateBrandLiterals(item, templateBrands, brand)) as unknown as T;
-  }
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
-      out[key] = replaceTemplateBrandLiterals(nestedValue, templateBrands, brand);
-    }
-    return out as T;
-  }
-  return value;
-}
-
 interface NormalizedSeed {
   brand?: string;
   tagline?: string;
@@ -248,14 +174,9 @@ function normalizeWizardSeed(seed: Record<string, unknown> | undefined): Normali
   if (!seed || typeof seed !== 'object') return {};
   const business = (seed.business as Record<string, unknown> | undefined) || {};
   const generation = (seed.generation as Record<string, unknown> | undefined) || {};
-  const topLevelSocials = Array.isArray(seed.socials) ? seed.socials : [];
-  const legacySocials = Array.isArray(generation.socials) ? generation.socials : [];
-  const socials = (topLevelSocials.length > 0 ? topLevelSocials : legacySocials) as Array<{
-    platform?: string;
-    href?: string;
-    email?: string;
-    phone?: string;
-  }>;
+  const socials = Array.isArray(generation.socials)
+    ? (generation.socials as Array<{ platform?: string; href?: string; email?: string; phone?: string }>)
+    : [];
   const findSocial = (kind: string) =>
     socials.find((s) => String(s?.platform || '').toLowerCase() === kind)?.href;
   return {
@@ -276,18 +197,12 @@ function applyWizardSeedToComposition(
   const seed = normalizeWizardSeed(
     (plan as GeneratedSitePlan & { wizardSeed?: Record<string, unknown> }).wizardSeed,
   );
-  const brand = seed.brand?.trim() || plan.businessName.trim();
+  const brand = seed.brand || plan.businessName;
   if (!brand && !seed.tagline && !seed.email && !seed.phone) return composition;
 
-  // Template brand copy is sample data. Replace it across the full composition
-  // before deriving route-specific pages so Wizard identity remains canonical.
-  const templateBrands = collectTemplateBrandLiterals(composition);
+  // 1. Recursively substitute `{{businessName}}` tokens across every section.
   let nextSections = brand
-    ? composition.sections.map((section) => replaceTemplateBrandLiterals(
-        substituteBrandTokens(section, brand),
-        templateBrands,
-        brand,
-      ))
+    ? composition.sections.map((s) => substituteBrandTokens(s, brand))
     : composition.sections.slice();
 
   // 2. Per-section structural overrides for brand-critical fields.
@@ -296,27 +211,15 @@ function applyWizardSeedToComposition(
     switch (section.type) {
       case 'navbar':
       case 'footer': {
-        if (brand) props.brand = brand;
+        if (brand && (looksLikePlaceholder(props.brand) || isBlank(props.brand))) {
+          props.brand = brand;
+        }
         if (section.type === 'footer') {
           if (isBlank(props.copyright) && brand) {
             props.copyright = `© ${new Date().getFullYear()} ${brand}. All rights reserved.`;
           }
           if (isBlank(props.tagline) && seed.tagline) {
             props.tagline = seed.tagline;
-          }
-          // Merge wizard-seed socials into footer.socials so that the runtime
-          // Footer renders lucide icons even when the composition step was
-          // bypassed. Seed uses `href`; Footer runtime uses `url`.
-          if (Array.isArray(seed.socials) && seed.socials.length > 0) {
-            const byPlatform = new Map<string, { platform: string; url: string }>();
-            for (const s of seed.socials) {
-              const p = String(s?.platform || '').toLowerCase();
-              if (!p) continue;
-              const url = s.href || (s as { url?: string }).url;
-              if (!url) continue;
-              byPlatform.set(p, { platform: p, url });
-            }
-            props.socials = Array.from(byPlatform.values());
           }
         }
         break;
@@ -345,7 +248,7 @@ function applyWizardSeedToComposition(
     return { ...section, props } as SectionEntry;
   });
 
-  return { ...composition, name: brand || composition.name, sections: nextSections };
+  return { ...composition, sections: nextSections };
 }
 
 
@@ -370,213 +273,28 @@ function applyWizardSeedToComposition(
 function buildRoleComposition(
   template: TemplateComposition,
   role: PageRole,
-  page: PageRouteNode,
-  plan: GeneratedSitePlan,
-  options?: ScaffoldOptions,
+  page: PageRouteNode
 ): TemplateComposition | null {
-  const routeBrief = options?.generationBrief?.routes.find((route) => route.path === page.filePath);
-  const configuredOrder = options?.siteConfiguration?.pages.find((configured) => configured.path === page.route)?.sections
-    ?? page.expectedSections
-    ?? [];
-
-  if (page.isHome || role === 'home') {
-    // Home gets the same media chain as interior pages: it can borrow imagery
-    // from its own sibling sections before falling back to the industry pool.
-    const homeAlternateMedia = collectAlternateHeroMedia(template)[0];
-    const sections = template.sections.map((section) => {
-      if (section.type !== 'hero' || !routeBrief) return section;
-      const props = { ...(section.props as Record<string, unknown>) };
-      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan, homeAlternateMedia);
-      return { ...section, props: props as SectionEntry['props'] };
-    });
-    if (configuredOrder.length > 0) sortByConfiguredOrder(sections, configuredOrder);
-    return sections.length > 0 ? { ...template, sections } : null;
-  }
-
-  const definition = template.pageCompositions?.[role as TemplatePageRole];
-  let selectedAlternative: import('@/sections/types').TemplatePageAlternative | undefined;
-  if (definition) {
-    const alternatives = definition.alternatives.filter(alternative =>
-      !alternative.themePresetIds || alternative.themePresetIds.includes(plan.selectedThemePresetId || ''));
-    if (!alternatives.length) throw new PreviewPipelineError('vfs', `No eligible ${role} composition for ${template.id}.`);
-    const seed = options?.designIntervention?.seed || 'default';
-    selectedAlternative = alternatives[stableStringHash(`${template.id}:${role}:${plan.selectedThemePresetId || ''}:${seed}`) % alternatives.length];
-    const inventorySections = [...template.sections, ...definition.sections];
-    const inventory = new Map(inventorySections.map(section => [section.id, section]));
-    if (inventory.size !== inventorySections.length || new Set(definition.alternatives.map(alternative => alternative.id)).size !== definition.alternatives.length) {
-      throw new PreviewPipelineError('vfs', `Duplicate composition identity in ${template.id}/${role}.`);
-    }
-    if (selectedAlternative.heroVariantId && !getVariantsForSection('hero').some(variant => variant.id === selectedAlternative!.heroVariantId)) {
-      throw new PreviewPipelineError('vfs', `Unknown hero variant in ${selectedAlternative.id}.`);
-    }
-    const sections = selectedAlternative.sectionIds.map(sectionId => {
-      const section = inventory.get(sectionId);
-      if (!section) throw new PreviewPipelineError('vfs', `Unknown section ${sectionId} in ${selectedAlternative!.id}.`);
-      return section;
-    });
-    if (!sections.length || new Set(selectedAlternative.sectionIds).size !== sections.length) {
-      throw new PreviewPipelineError('vfs', `Invalid ordered sections in ${selectedAlternative.id}.`);
-    }
-    if ((role === 'pricing' || role === 'faq') && !sections.some(section => section.type === role)) {
-      throw new PreviewPipelineError('vfs', `Missing ${role} section in ${selectedAlternative.id}.`);
-    }
-    template = applyWizardSeedToComposition({ ...template, sections }, plan);
-  }
-
-  // --------------------------------------------------------------------
-  // Section selection authority (industry contract first)
-  //
-  // The page's declared section contract — SiteConfiguration, else the page's
-  // own expectedSections, else the industry matrix's contract for this role —
-  // decides *which* sections appear and *in what order*. The role-generic pool
-  // is only the last resort. Previously the contract was used solely to SORT a
-  // wholesale copy of Home's sections, which is what produced clone pages and
-  // repeated galleries.
-  // --------------------------------------------------------------------
-  const industryKey =
-    options?.siteConfiguration?.industry
-    || options?.designIntervention?.industry
-    || '';
-  const industryRoleSections = industryKey ? getIndustryRoleSections(industryKey, role) : [];
-  const industryVocabulary = industryKey ? getIndustrySectionVocabulary(industryKey) : [];
-  const declaredSections: SectionType[] = (
-    configuredOrder.length > 0 ? configuredOrder : industryRoleSections
-  ) as SectionType[];
-
-  // An explicit template `sectionPool` is an authored authority: it is applied
-  // as a verbatim filter over the template sections (repeats preserved).
-  const explicitPool = template.sectionPool?.[role as TemplatePageRole];
   const poolList: SectionType[] =
-    explicitPool ??
-    (declaredSections.length > 0
-      ? declaredSections
-      : (industryVocabulary.length > 0
-        ? industryVocabulary as SectionType[]
-        : DEFAULT_ROLE_SECTION_POOL[role] ?? DEFAULT_ROLE_SECTION_POOL.custom));
+    template.sectionPool?.[role as TemplatePageRole] ??
+    DEFAULT_ROLE_SECTION_POOL[role] ??
+    DEFAULT_ROLE_SECTION_POOL.custom;
   const allowedTypes = new Set<SectionType>(poolList);
-  const alternateMedia = !page.isHome ? collectAlternateHeroMedia(template) : [];
-  const alternateHeroMedia = alternateMedia[stableStringHash(page.id) % Math.max(1, alternateMedia.length)];
 
-  /** Source sections grouped by type, in template order. */
-  const sourcesByType = new Map<SectionType, SectionEntry[]>();
-  for (const source of template.sections) {
-    const bucket = sourcesByType.get(source.type);
-    if (bucket) bucket.push(source);
-    else sourcesByType.set(source.type, [source]);
-  }
-
+  // Iterate template sections in source order and keep every section whose
+  // type is in the allowed set. Duplicates are preserved with unique ids so
+  // React keys + intent slots stay distinct. All section payload fields
+  // (items, cards, products, gallery, layout, props) are passed through.
   const filtered: SectionEntry[] = [];
   const typeCounters = new Map<SectionType, number>();
-  const selectedSourceIds = new Set<string>();
-  const appendSection = (source: SectionEntry) => {
+  for (const source of template.sections) {
+    if (!allowedTypes.has(source.type)) continue;
     const idx = typeCounters.get(source.type) ?? 0;
     typeCounters.set(source.type, idx + 1);
-    const props = { ...(source.props as Record<string, unknown>) };
-    const routeHeroVariant = source.type === 'hero'
-      ? resolveRouteHeroVariant(role, page, selectedAlternative?.heroVariantId, options?.designIntervention?.seed)
-      : undefined;
-    if (source.type === 'hero' && !page.isHome) {
-      // Interior pages are NOT re-skins of Home. Copy is written for the
-      // route's own purpose, and the hero presentation is resolved from the
-      // route's own contract rather than inherited from the home template.
-      const copy = routeHeroCopy(role, page, plan, template);
-      props.headline = copy.headline;
-      props.subheadline = copy.subheadline;
-      props.badge = copy.badge;
-      if (alternateHeroMedia) {
-        if (typeof props.image === 'string') props.image = alternateHeroMedia;
-        else props.backgroundImage = alternateHeroMedia;
-      }
-    }
-    if (source.type === 'hero') {
-      const contract = page.isHome
-        ? routeBrief?.hero.geometry
-        : routeBrief?.hero.geometry ?? deriveRouteHeroContract(role, page, plan);
-      if (contract) applyRouteHeroContract(props, contract, page, plan, alternateHeroMedia);
-    }
-
     filtered.push({
       ...source,
-      id: definition ? `${page.id}-${source.id}` : `${page.id}-${source.type}-${idx}`,
-      sourceSectionId: source.sourceSectionId || source.id,
-      ...(routeHeroVariant ? { variantId: routeHeroVariant } : {}),
-      props: props as SectionEntry['props'],
+      id: `${page.id}-${source.type}-${idx}`,
     });
-    selectedSourceIds.add(source.id);
-  };
-
-  if (definition) {
-    for (const source of template.sections) appendSection(source);
-  } else if (explicitPool) {
-    // Authored pool: verbatim filter, repeats preserved.
-    for (const source of template.sections) {
-      if (allowedTypes.has(source.type)) appendSection(source);
-    }
-  } else if (declaredSections.length > 0) {
-    // One emitted section per declared entry, in declared order. Repeated types
-    // rotate through the available source instances (page-seeded) so a page
-    // never renders the same instance twice, and adjacent repeats are dropped.
-    const usedByType = new Map<SectionType, number>();
-    for (const type of declaredSections) {
-      const sources = sourcesByType.get(type);
-      if (!sources || sources.length === 0) continue;
-      const used = usedByType.get(type) ?? 0;
-      if (used > 0 && filtered[filtered.length - 1]?.type === type) continue;
-      if (used >= sources.length) continue;
-      const offset = stableStringHash(`${page.id}:${type}`);
-      appendSection(sources[(offset + used) % sources.length]);
-      usedByType.set(type, used + 1);
-    }
-  } else {
-    for (const source of template.sections) {
-      if (!allowedTypes.has(source.type)) continue;
-      if ((typeCounters.get(source.type) ?? 0) > 0) continue; // never duplicate a type implicitly
-      appendSection(source);
-    }
-  }
-
-  if (configuredOrder.length > 0) {
-    sortByConfiguredOrder(filtered, configuredOrder);
-  }
-
-  const requestedBodyFloor = Math.max(
-    MINIMUM_ROUTE_BODY_SECTIONS,
-    routeBrief?.depth.minSections ?? MINIMUM_ROUTE_BODY_SECTIONS,
-  );
-  const bodySectionCount = () => filtered.filter((section) => (
-    section.type !== 'navbar' && section.type !== 'footer' && section.type !== 'hero'
-  )).length;
-  const needsSupplementation = routeBrief
-    ? bodySectionCount() < requestedBodyFloor
-    : filtered.length < MINIMUM_ROUTE_BODY_SECTIONS;
-  if (!definition && !page.isHome && needsSupplementation) {
-    // Supplement with section TYPES the page doesn't have yet, drawn from the
-    // industry's own vocabulary first. Never re-add an existing type — that is
-    // exactly what produced gallery + gallery + gallery.
-    const presentTypes = new Set(filtered.map((section) => section.type));
-    const priority: SectionType[] = [
-      ...(industryVocabulary as SectionType[]),
-      ...(ROLE_SUPPLEMENT_PRIORITY[role] || ROLE_SUPPLEMENT_PRIORITY.custom),
-    ];
-    const candidates = template.sections
-      .map((section, index) => ({ section, index, priority: priority.indexOf(section.type) }))
-      .filter(({ section }) => (
-        section.type !== 'navbar' && section.type !== 'footer' && section.type !== 'hero'
-        && !selectedSourceIds.has(section.id)
-        && !presentTypes.has(section.type)
-      ))
-      .sort((left, right) => {
-        const leftPriority = left.priority === -1 ? Number.MAX_SAFE_INTEGER : left.priority;
-        const rightPriority = right.priority === -1 ? Number.MAX_SAFE_INTEGER : right.priority;
-        return leftPriority - rightPriority || left.index - right.index;
-      });
-    for (const { section } of candidates) {
-      appendSection(section);
-      presentTypes.add(section.type);
-      if (routeBrief
-        ? bodySectionCount() >= requestedBodyFloor
-        : filtered.length >= MINIMUM_ROUTE_BODY_SECTIONS) break;
-    }
   }
 
   if (filtered.length === 0) return null;
@@ -585,308 +303,8 @@ function buildRoleComposition(
     ...template,
     id: `${template.id}--${role}`,
     name: `${template.name} · ${page.title}`,
-    compositionAlternativeId: selectedAlternative?.id,
     sections: filtered,
   };
-}
-
-/**
- * Hero provisioning per page (M4).
- *
- * Home keeps the template/pack statement hero. Interior pages resolve a hero
- * variant from the set declared for their page role, seeded by the page id so
- * two interior pages of the same site don't lead with the same hero. When a
- * template alternative pins a hero variant, that pin always wins.
- */
-function resolveRouteHeroVariant(
-  role: PageRole,
-  page: PageRouteNode,
-  pinnedVariantId: string | undefined,
-  seed: string | undefined,
-): VariantId | undefined {
-  const heroVariants = getVariantsForSection('hero');
-  if (pinnedVariantId) {
-    return heroVariants.some((variant) => variant.id === pinnedVariantId)
-      ? (pinnedVariantId as VariantId)
-      : undefined;
-  }
-  if (page.isHome || role === 'home') return undefined;
-  const roleVariants = heroVariants.filter((variant) =>
-    variant.pageRoles?.includes(role as TemplatePageRole));
-  const candidates = roleVariants.length > 0 ? roleVariants : heroVariants;
-  if (candidates.length === 0) return undefined;
-  return candidates[stableStringHash(`${seed ?? ''}:${page.id}:hero`) % candidates.length].id;
-}
-
-// ============================================================================
-// Per-route hero authorship
-//
-// Interior routes used to be Home with a swapped title. Each route now owns
-// its purpose-written copy, its own conversion pair and its own presentation
-// contract, resolved deterministically from the route identity so two siblings
-// never land on the same treatment and two launches stay reproducible.
-// ============================================================================
-
-interface RouteCta { label: string; href: string; intent: string; variant: string }
-
-const ROLE_HERO_CTAS: Record<PageRole, [RouteCta, RouteCta]> = {
-  home:      [{ label: 'Get started', href: '#contact', intent: 'contact.submit', variant: 'primary' }, { label: 'See what we do', href: '#services', intent: 'nav.goto', variant: 'outline' }],
-  services:  [{ label: 'Request a quote', href: '#contact', intent: 'quote.request', variant: 'primary' }, { label: 'Compare pricing', href: '/pricing', intent: 'nav.goto', variant: 'outline' }],
-  pricing:   [{ label: 'Choose a plan', href: '#pricing', intent: 'checkout.start', variant: 'primary' }, { label: 'Talk to us first', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
-  about:     [{ label: 'Meet the team', href: '#team', intent: 'nav.goto', variant: 'primary' }, { label: 'Work with us', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
-  contact:   [{ label: 'Send a message', href: '#contact', intent: 'contact.submit', variant: 'primary' }, { label: 'Call us', href: 'tel:', intent: 'contact.call', variant: 'outline' }],
-  gallery:   [{ label: 'View the work', href: '#gallery', intent: 'nav.goto', variant: 'primary' }, { label: 'Start a project', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
-  faq:       [{ label: 'Ask a question', href: '/contact', intent: 'nav.goto', variant: 'primary' }, { label: 'Browse services', href: '/services', intent: 'nav.goto', variant: 'outline' }],
-  booking:   [{ label: 'Book now', href: '#booking', intent: 'booking.create', variant: 'primary' }, { label: 'See availability', href: '#booking', intent: 'nav.goto', variant: 'outline' }],
-  shop:      [{ label: 'Shop the range', href: '#shop', intent: 'nav.goto', variant: 'primary' }, { label: 'View your bag', href: '#cart', intent: 'cart.open', variant: 'outline' }],
-  checkout:  [{ label: 'Complete checkout', href: '#checkout', intent: 'cart.checkout', variant: 'primary' }, { label: 'Keep shopping', href: '/shop', intent: 'nav.goto', variant: 'outline' }],
-  thank_you: [{ label: 'Back to home', href: '/', intent: 'nav.goto', variant: 'primary' }, { label: 'Explore more', href: '/services', intent: 'nav.goto', variant: 'outline' }],
-  blog:      [{ label: 'Read the latest', href: '#blog', intent: 'nav.goto', variant: 'primary' }, { label: 'Subscribe', href: '#newsletter', intent: 'newsletter.subscribe', variant: 'outline' }],
-  custom:    [{ label: 'Get in touch', href: '/contact', intent: 'nav.goto', variant: 'primary' }, { label: 'Browse services', href: '/services', intent: 'nav.goto', variant: 'outline' }],
-};
-
-const ROLE_HERO_COPY: Record<PageRole, { badge: string; headline: (title: string, brand: string) => string; lead: (title: string, brand: string, industry: string) => string }> = {
-  home:      { badge: 'Welcome', headline: (_t, brand) => brand, lead: (_t, brand, industry) => `${brand} — ${industry} done properly, from the first conversation to the finished result.` },
-  services:  { badge: 'What we do', headline: () => 'Work we take on', lead: (_t, brand) => `Every engagement at ${brand} is scoped, priced and delivered by the same team you meet on day one.` },
-  pricing:   { badge: 'Pricing', headline: () => 'Straightforward pricing', lead: (_t, brand) => `Clear numbers, no surprises. Pick the level of support that fits, and change it whenever you need to.` },
-  about:     { badge: 'Our story', headline: (_t, brand) => `The people behind ${brand}`, lead: () => 'Why we started, how we work, and the standards we hold ourselves to on every project.' },
-  contact:   { badge: 'Get in touch', headline: () => 'Let’s talk', lead: (_t, brand) => `Tell ${brand} what you need. We read every message and reply the same working day.` },
-  gallery:   { badge: 'Selected work', headline: () => 'Recent projects', lead: () => 'A closer look at finished work — the detail, the materials and the results behind each one.' },
-  faq:       { badge: 'Answers', headline: () => 'Questions, answered', lead: () => 'The things people ask us most, written out plainly so you can decide before you get in touch.' },
-  booking:   { badge: 'Availability', headline: () => 'Book your appointment', lead: (_t, brand) => `Choose a time that suits you and ${brand} will confirm it straight away.` },
-  shop:      { badge: 'Shop', headline: () => 'Browse the collection', lead: () => 'Everything we make, in stock and ready to ship, with the details that matter listed up front.' },
-  checkout:  { badge: 'Checkout', headline: () => 'Secure checkout', lead: () => 'Review your order and complete payment. Your details are encrypted end to end.' },
-  thank_you: { badge: 'All done', headline: () => 'Thank you', lead: (_t, brand) => `Your request is with ${brand}. We’ll be in touch shortly with next steps.` },
-  blog:      { badge: 'Journal', headline: () => 'Notes and updates', lead: () => 'What we are learning, building and paying attention to right now.' },
-  custom:    { badge: 'More', headline: (title) => title, lead: (title, brand) => `${title} at ${brand} — what to expect and how to get started.` },
-};
-
-function routeHeroCopy(
-  role: PageRole,
-  page: PageRouteNode,
-  plan: GeneratedSitePlan,
-  template: TemplateComposition,
-): { headline: string; subheadline: string; badge: string } {
-  const brand = plan.businessName?.trim() || template.name;
-  const title = page.title.trim() || role.replace(/_/g, ' ');
-  const industry = getIndustryProfile(plan.industry)?.name || plan.industry.replace(/[-_]/g, ' ');
-  const spec = ROLE_HERO_COPY[role] ?? ROLE_HERO_COPY.custom;
-  return {
-    headline: spec.headline(title, brand),
-    subheadline: spec.lead(title, brand, industry),
-    badge: spec.badge,
-  };
-}
-
-/** Presentation pools per role — siblings rotate, so no two share a treatment. */
-const ROLE_HERO_PRESENTATION: Record<PageRole, Array<Pick<WizardHeroContract, 'layout' | 'mediaTreatment' | 'archetype' | 'mediaFocal'>>> = {
-  home:      [{ layout: 'full-bleed', mediaTreatment: 'full-bleed-overlay', archetype: 'immersive-full-bleed', mediaFocal: 'center' }],
-  services:  [
-    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
-    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
-  ],
-  pricing:   [
-    { layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' },
-    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
-  ],
-  about:     [
-    { layout: 'split', mediaTreatment: 'edge-anchored', archetype: 'anchored-portrait', mediaFocal: 'top' },
-    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
-  ],
-  contact:   [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
-  gallery:   [
-    { layout: 'full-bleed', mediaTreatment: 'full-bleed-overlay', archetype: 'immersive-full-bleed', mediaFocal: 'center' },
-    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
-  ],
-  faq:       [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
-  booking:   [
-    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
-    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
-  ],
-  shop:      [
-    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
-    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
-  ],
-  checkout:  [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
-  thank_you: [{ layout: 'centered', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
-  blog:      [
-    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
-    { layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' },
-  ],
-  custom:    [
-    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
-    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
-  ],
-};
-
-function deriveRouteHeroContract(
-  role: PageRole,
-  page: PageRouteNode,
-  plan: GeneratedSitePlan,
-): WizardHeroContract {
-  const pool = ROLE_HERO_PRESENTATION[role] ?? ROLE_HERO_PRESENTATION.custom;
-  const routeIndex = Math.max(0, plan.pages.findIndex((candidate) => candidate.id === page.id));
-  const pick = pool[(routeIndex + stableStringHash(`${plan.siteId}:${page.id}`)) % pool.length];
-  return {
-    ...pick,
-    source: 'seeded-role-archetype',
-    mediaDirection: `${role} route imagery, framed ${pick.mediaFocal}`,
-    requiredParts: ['badge', 'headline', 'lead', 'primary-cta', 'secondary-cta'],
-    rule: 'Route-owned hero contract: never inherit the home hero treatment.',
-  };
-}
-
-
-
-function sortByConfiguredOrder(sections: SectionEntry[], configuredOrder: readonly string[]): void {
-  const order = new Map(configuredOrder.map((type, index) => [type, index]));
-  sections.sort((left, right) => {
-    const leftChrome = left.type === 'navbar' ? -2 : left.type === 'hero' ? -1 : left.type === 'footer' ? 10_000 : undefined;
-    const rightChrome = right.type === 'navbar' ? -2 : right.type === 'hero' ? -1 : right.type === 'footer' ? 10_000 : undefined;
-    const leftIndex = leftChrome ?? order.get(left.type) ?? 5_000;
-    const rightIndex = rightChrome ?? order.get(right.type) ?? 5_000;
-    return leftIndex - rightIndex;
-  });
-}
-
-/**
- * The fifth hero part — media OR a three-signal proof strip — is what the
- * visual acceptance gate rejects a page for. It used to be resolved
- * opportunistically (only if the template happened to ship an image), which
- * meant an industry template without photography produced an INCOMPLETE_HERO
- * on every single route. Media is now resolved through a fixed chain and
- * text-only archetypes always emit the proof strip their own contract
- * promises, so the part is guaranteed rather than hoped for.
- */
-function resolveHeroProofSignals(
-  page: PageRouteNode,
-  plan: GeneratedSitePlan,
-): Array<{ value: string; label: string }> {
-  const profile = getIndustryProfile(plan.industry);
-  const industryName = profile?.name || plan.industry.replace(/[-_]/g, ' ');
-  const pool: Array<{ value: string; label: string }> = [
-    { value: 'Same day', label: 'Response time' },
-    { value: 'Local', label: 'Serving your area' },
-    { value: 'Mon–Sat', label: 'Open hours' },
-    { value: 'Licensed', label: 'Qualified team' },
-    { value: '5-star', label: 'Client rated' },
-    { value: industryName, label: 'Specialists' },
-  ];
-  const offset = stableStringHash(`${plan.siteId}:${page.id}:proof`) % pool.length;
-  return [0, 1, 2].map((index) => pool[(offset + index) % pool.length]);
-}
-
-/** Deterministic hero imagery pool drawn from the industry's own compositions. */
-function industryHeroMediaPool(plan: GeneratedSitePlan): string[] {
-  const media = new Set<string>();
-  for (const composition of getCompositionsByIndustry(plan.industry)) {
-    for (const section of composition.sections) {
-      const props = section.props as Record<string, unknown>;
-      for (const key of ['image', 'backgroundImage']) {
-        const value = props[key];
-        if (typeof value === 'string' && value.trim()) media.add(value);
-      }
-    }
-  }
-  return [...media];
-}
-
-function applyRouteHeroContract(
-  props: Record<string, unknown>,
-  contract: WizardHeroContract,
-  page: PageRouteNode,
-  plan: GeneratedSitePlan,
-  alternateHeroMedia?: string,
-): void {
-  const executableLayout = contract.layout === 'anchored'
-    ? 'split'
-    : contract.layout === 'intro'
-      ? 'page-title'
-      : contract.layout;
-  props.layout = executableLayout;
-  props.badge = typeof props.badge === 'string' && props.badge.trim() ? props.badge : page.title;
-  // Never overwrite route-authored copy with the page title — that rewrite is
-  // what made every interior hero read like a renamed Home hero.
-  props.headline = typeof props.headline === 'string' && props.headline.trim() && !page.isHome
-    ? props.headline
-    : page.isHome ? props.headline : page.title;
-  props.subheadline = typeof props.subheadline === 'string' && props.subheadline.trim()
-    ? props.subheadline
-    : `Discover ${page.title.toLowerCase()} from ${plan.businessName}.`;
-  const roleCtas = ROLE_HERO_CTAS[page.role as PageRole] ?? ROLE_HERO_CTAS.custom;
-  const ctas = Array.isArray(props.ctas) ? [...props.ctas] as Array<Record<string, unknown>> : [];
-  if (ctas.length === 0) ctas.push({ ...roleCtas[0] });
-  if (!ctas[0].intent) ctas[0] = { ...ctas[0], intent: roleCtas[0].intent };
-  if (ctas.length < 2) ctas.push({ ...roleCtas[1] });
-  if (!ctas[1].intent) ctas[1] = { ...ctas[1], intent: roleCtas[1].intent };
-  props.ctas = ctas.slice(0, 2);
-
-
-  if (contract.mediaTreatment === 'text-only') {
-    // The utility/intro archetype declares an inline proof strip of three
-    // signals in place of a photograph. Emit it — an intro hero with no proof
-    // is the unfinished opening screen the gate exists to catch.
-    const existing = Array.isArray(props.stats) ? props.stats as Array<Record<string, unknown>> : [];
-    props.stats = existing.length >= 3 ? existing.slice(0, 3) : resolveHeroProofSignals(page, plan);
-  } else {
-    const pool = industryHeroMediaPool(plan);
-    const media = (typeof props.image === 'string' && props.image)
-      || (typeof props.backgroundImage === 'string' && props.backgroundImage)
-      || alternateHeroMedia
-      || (pool.length > 0 ? pool[stableStringHash(`${plan.siteId}:${page.id}:hero-media`) % pool.length] : undefined);
-    if (media) {
-      if (executableLayout === 'full-bleed') props.backgroundImage = media;
-      else props.image = media;
-      delete props.stats;
-    } else {
-      // No imagery exists anywhere in this industry's compositions. Rather than
-      // ship a four-part hero the gate will reject page by page, fall back to
-      // the same proof strip the intro archetype uses.
-      const existing = Array.isArray(props.stats) ? props.stats as Array<Record<string, unknown>> : [];
-      props.stats = existing.length >= 3 ? existing.slice(0, 3) : resolveHeroProofSignals(page, plan);
-    }
-  }
-
-  props.mediaFocal = contract.mediaFocal;
-  props.heroArchetype = contract.archetype;
-
-  const hasMedia = Boolean(
-    (typeof props.image === 'string' && props.image.trim())
-    || (typeof props.backgroundImage === 'string' && props.backgroundImage.trim()),
-  );
-  const hasProof = Array.isArray(props.stats) && props.stats.length >= 3;
-  if (!hasMedia && !hasProof) {
-    throw new PreviewPipelineError(
-      'vfs',
-      `Hero for ${page.filePath || page.route} resolved neither media nor a three-signal proof strip.`,
-      { blockedFiles: [page.filePath || page.route], recoverableByRelaunch: true },
-    );
-  }
-}
-
-function stableStringHash(value: string): number {
-  let hash = 0;
-  for (const character of value) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
-  return Math.abs(hash);
-}
-
-function collectAlternateHeroMedia(template: TemplateComposition): string[] {
-  const media = new Set<string>();
-  for (const section of template.sections) {
-    if (section.type === 'hero') continue;
-    const props = section.props as Record<string, unknown>;
-    for (const key of ['image', 'backgroundImage']) {
-      if (typeof props[key] === 'string' && props[key]) media.add(props[key]);
-    }
-    if (Array.isArray(props.items)) {
-      for (const item of props.items) {
-        if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).image === 'string') {
-          media.add((item as Record<string, string>).image);
-        }
-      }
-    }
-  }
-  return [...media];
 }
 
 
@@ -917,7 +335,7 @@ export function scaffoldMissingTopologyPages(
 
   const blocked: string[] = [];
   for (const page of missing) {
-    const compositional = tryComposeTopologyPageFiles(page, plan, activeTemplate, options);
+    const compositional = tryComposeTopologyPageFiles(page, plan, activeTemplate);
     if (compositional) {
       Object.assign(out, compositional);
       continue;
@@ -1005,9 +423,8 @@ export function generateTopologyPlaceholderFiles(
   page: PageRouteNode,
   plan: GeneratedSitePlan,
   template?: TemplateComposition | null,
-  options?: ScaffoldOptions,
 ): Record<string, string> {
-  const composed = tryComposeTopologyPageFiles(page, plan, template, options);
+  const composed = tryComposeTopologyPageFiles(page, plan, template);
   if (composed) return composed;
   throw new PreviewPipelineError(
     'vfs',
@@ -1024,15 +441,14 @@ export function tryComposeTopologyPage(
   page: PageRouteNode,
   plan: GeneratedSitePlan,
   template?: TemplateComposition | null,
-  options?: ScaffoldOptions,
 ): string | null {
   const active = applyPlanThemeToTemplate(template ?? resolveActiveTemplate(plan), plan);
   if (!active) return null;
-  const seeded = applyWizardSeedToComposition(active, plan);
-  const sub = buildRoleComposition(seeded, page.role, page, plan, options);
+  const sub = buildRoleComposition(active, page.role, page);
   if (!sub) return null;
+  const seeded = applyWizardSeedToComposition(sub, plan);
   try {
-    return compositionToReactCode(sub);
+    return compositionToReactCode(seeded);
   } catch {
     return null;
   }
@@ -1047,17 +463,14 @@ export function tryComposeTopologyPageFiles(
   page: PageRouteNode,
   plan: GeneratedSitePlan,
   template?: TemplateComposition | null,
-  options?: ScaffoldOptions,
 ): Record<string, string> | null {
   const active = applyPlanThemeToTemplate(template ?? resolveActiveTemplate(plan), plan);
   if (!active) return null;
-  const seeded = applyWizardSeedToComposition(active, plan);
-  const sub = buildRoleComposition(seeded, page.role, page, plan, options);
+  const sub = buildRoleComposition(active, page.role, page);
   if (!sub) return null;
+  const seeded = applyWizardSeedToComposition(sub, plan);
   try {
-    return compositionToReactFileSet(sub, page.filePath, {
-      designIntervention: options?.designIntervention,
-    });
+    return compositionToReactFileSet(seeded, page.filePath);
   } catch {
     return null;
   }

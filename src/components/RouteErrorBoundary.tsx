@@ -5,7 +5,7 @@
  * Catches errors, logs them for observability, and displays user-friendly messages.
  */
 
-import React, { Component, ErrorInfo, ReactNode, useEffect, useState } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,35 +27,6 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorId: string | null;
-}
-
-const DYNAMIC_IMPORT_FAILURE = /failed to fetch dynamically imported module|importing a module script failed|loading chunk \d+ failed/i;
-
-export function isDynamicImportFailure(error: unknown): boolean {
-  const message = error instanceof Error
-    ? error.message
-    : typeof error === 'string'
-      ? error
-      : '';
-  return DYNAMIC_IMPORT_FAILURE.test(message);
-}
-
-function dynamicImportRecoveryKey(): string {
-  return `unison:dynamic-import-recovery:${window.location.pathname}`;
-}
-
-function recoverDynamicImportOnce(error: unknown): boolean {
-  if (!isDynamicImportFailure(error)) return false;
-
-  try {
-    const key = dynamicImportRecoveryKey();
-    if (window.sessionStorage.getItem(key)) return false;
-    window.sessionStorage.setItem(key, '1');
-    window.location.reload();
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // ============================================
@@ -81,10 +52,6 @@ export class RouteErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { onError, routeName } = this.props;
     const { errorId } = this.state;
-
-    if (recoverDynamicImportOnce(error)) {
-      return;
-    }
 
     // Log to console for development
     console.error('Route Error Boundary caught error:', error, errorInfo);
@@ -134,15 +101,6 @@ export class RouteErrorBoundary extends Component<Props, State> {
   }
 
   private handleRetry = () => {
-    if (isDynamicImportFailure(this.state.error)) {
-      try {
-        window.sessionStorage.removeItem(dynamicImportRecoveryKey());
-      } catch {
-        // Storage can be disabled; the normal reload action still applies.
-      }
-      window.location.reload();
-      return;
-    }
     this.setState({ hasError: false, error: null, errorId: null });
   };
 
@@ -253,55 +211,6 @@ interface AsyncBoundaryProps {
   children: ReactNode;
   loading?: ReactNode;
   error?: ReactNode;
-}
-
-interface AsyncRouteLoadingFallbackProps {
-  label?: string;
-  timeoutMs?: number;
-}
-
-/**
- * Lazy imports can remain pending when a deployed chunk is stale or a large
- * dependency graph is interrupted. Replace the indeterminate spinner with a
- * reloadable state instead of leaving the route visually frozen forever.
- */
-export function AsyncRouteLoadingFallback({
-  label = 'Loading…',
-  timeoutMs = 12_000,
-}: AsyncRouteLoadingFallbackProps) {
-  const [timedOut, setTimedOut] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setTimedOut(true), timeoutMs);
-    return () => window.clearTimeout(timer);
-  }, [timeoutMs]);
-
-  if (timedOut) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center p-6">
-        <div className="max-w-sm text-center">
-          <AlertTriangle className="mx-auto mb-4 h-10 w-10 text-amber-500" />
-          <h2 className="text-lg font-semibold">Web Builder took too long to start</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Reload to fetch a fresh builder runtime.
-          </p>
-          <Button className="mt-5" onClick={() => window.location.reload()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reload builder
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-        <p className="text-muted-foreground">{label}</p>
-      </div>
-    </div>
-  );
 }
 
 /**

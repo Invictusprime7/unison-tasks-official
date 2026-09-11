@@ -1,23 +1,20 @@
 /**
  * catalogRuntime — read-side hydration for generated sections.
  *
- * Milestone 1 refactor: all section-type resolution + row projection now
- * derives from `catalogSurfaceRegistry`. No local wizard-type maps and no
- * hand-rolled display projections in this file.
+ * Given a SectionDataBindingDTO, resolve the actual rows the section
+ * should render. Applies filters, sort, limit, and collection membership
+ * (rules or manual_item_ids).
+ *
+ * Returns a `CatalogRenderResult` that includes the rows plus a fallback
+ * decision so the section renderer knows whether to show data, an empty
+ * state, a placeholder, or hide itself.
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { getCollectionBySlug } from '@/services/catalogCollectionService';
 import { getBinding } from '@/services/sectionDataBindingService';
-import { catalogCardBindingFor } from '@/services/catalogCardBindingService';
-import {
-  getCatalogSurface,
-  getCatalogSurfaceByTable,
-  projectRowToCardViewModel,
-  type CatalogCardViewModel,
-} from '@/platform/core/catalogSurfaceRegistry';
 import type {
   CatalogCollectionDTO,
-  CatalogBinding,
   SectionDataBindingDTO,
   SectionDataFallback,
 } from '@/types/catalog';
@@ -25,7 +22,6 @@ import type {
 export interface CatalogRenderResult {
   rows: Array<Record<string, unknown>>;
   binding: SectionDataBindingDTO | null;
-  cardBinding: CatalogBinding | null;
   collection: CatalogCollectionDTO | null;
   fallback: SectionDataFallback | 'ok';
 }
@@ -38,7 +34,7 @@ export async function resolveSectionData(
 ): Promise<CatalogRenderResult> {
   const binding = await getBinding(projectId, pagePath, sectionId, slotKey);
   if (!binding) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
+    return { rows: [], binding: null, collection: null, fallback: 'hide_section' };
   }
   return hydrateBinding(binding);
 }
@@ -77,10 +73,12 @@ export async function hydrateBinding(
     .select('*')
     .eq('business_id', binding.businessId);
 
+  // Apply flat equality filters (e.g. { featured: true, is_active: true }).
   for (const [key, value] of Object.entries(binding.filters ?? {})) {
     query = query.eq(key, value as never);
   }
 
+  // Manual collection membership overrides filter set.
   if (collection && collection.manualItemIds.length > 0) {
     query = query.in('id', collection.manualItemIds);
   }
@@ -97,20 +95,13 @@ export async function hydrateBinding(
   const { data, error } = await query;
   if (error) {
     console.warn('[catalogRuntime] hydrate failed', error);
-    return {
-      rows: [],
-      binding,
-      cardBinding: catalogCardBindingFor(binding),
-      collection,
-      fallback: binding.fallbackMode,
-    };
+    return { rows: [], binding, collection, fallback: binding.fallbackMode };
   }
 
   const rows = (data as unknown as Array<Record<string, unknown>>) ?? [];
   return {
     rows,
     binding,
-    cardBinding: catalogCardBindingFor(binding),
     collection,
     fallback: rows.length === 0 ? binding.fallbackMode : 'ok',
   };
@@ -118,7 +109,11 @@ export async function hydrateBinding(
 
 /**
  * Resolve a hydration request coming from the preview iframe.
- * Direct sectionId match first; otherwise (page + sectionType occurrence).
+ *
+ * The generated site posts `{ pagePath, sectionId?, sectionType?, occurrenceIndex? }`.
+ * When `sectionId` matches an emitted binding directly we use it; otherwise
+ * we fall back to (page + sectionType occurrence) which is what
+ * `autoEmitSectionBindings` currently keys on (`${requirementKey}-${index}`).
  */
 export async function resolveHydrationRequest(params: {
   projectId: string;
@@ -129,27 +124,30 @@ export async function resolveHydrationRequest(params: {
 }): Promise<CatalogRenderResult> {
   const { projectId, pagePath } = params;
   if (!projectId || !pagePath) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
+    return { rows: [], binding: null, collection: null, fallback: 'hide_section' };
   }
 
+  // 1) Direct match by explicit sectionId.
   if (params.sectionId) {
     const direct = await resolveSectionData(projectId, pagePath, params.sectionId, null);
     if (direct.binding) return direct;
   }
 
-  const surface = getCatalogSurface(params.sectionType ?? '');
-  if (!surface) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
+  // 2) Occurrence-based match: pull all bindings for the page whose sectionId
+  //    starts with the requirement key implied by `sectionType`.
+  const requirementKey = mapWizardTypeToRequirement(params.sectionType ?? '');
+  if (!requirementKey) {
+    return { rows: [], binding: null, collection: null, fallback: 'hide_section' };
   }
   const { data, error } = await supabase
     .from('site_data_bindings' as never)
     .select('id, business_id, project_id, snapshot_id, page_path, section_id, slot_key, binding_type, source_kind, source_table, collection_id, filters, sort, limit_count, display_mapping, fallback_mode, created_at, updated_at')
     .eq('project_id', projectId)
     .eq('page_path', pagePath)
-    .like('section_id', `${surface.bindingPrefix}-%`)
+    .like('section_id', `${requirementKey}-%`)
     .order('section_id', { ascending: true });
   if (error || !data || (data as unknown[]).length === 0) {
-    return { rows: [], binding: null, cardBinding: null, collection: null, fallback: 'show_placeholder' };
+    return { rows: [], binding: null, collection: null, fallback: 'hide_section' };
   }
   const rows = data as unknown as Array<{
     id: string; business_id: string; project_id: string; snapshot_id: string | null;
@@ -170,23 +168,52 @@ export async function resolveHydrationRequest(params: {
     sort: (pick.sort && typeof pick.sort === 'object') ? pick.sort as SectionDataBindingDTO['sort'] : {},
     limitCount: pick.limit_count,
     displayMapping: (pick.display_mapping && typeof pick.display_mapping === 'object')
-      ? pick.display_mapping as Record<string, unknown> : {},
+      ? pick.display_mapping as Record<string, string> : {},
     fallbackMode: (pick.fallback_mode as SectionDataBindingDTO['fallbackMode']) ?? 'empty_state',
     createdAt: pick.created_at, updatedAt: pick.updated_at,
   };
   return hydrateBinding(binding);
 }
 
+const WIZARD_TYPE_TO_REQUIREMENT_LOCAL: Record<string, string> = {
+  services: 'ServiceGrid', service_grid: 'ServiceGrid', featured_services: 'ServiceGrid',
+  products: 'ProductGrid', product_grid: 'ProductGrid', shop: 'ProductGrid',
+  featured_products: 'FeaturedProducts',
+  menu: 'MenuSection', menu_section: 'MenuSection',
+  pricing: 'PricingTable', pricing_table: 'PricingTable', plans: 'PricingTable',
+};
+
+function mapWizardTypeToRequirement(t: string): string | null {
+  if (!t) return null;
+  const n = t.toLowerCase().replace(/[-\s]/g, '_');
+  return WIZARD_TYPE_TO_REQUIREMENT_LOCAL[n] ?? null;
+}
+
 /**
- * Project raw DB rows into the canonical CatalogCardViewModel — so generated
- * sections only ever see `title`, `description`, `imageUrl`, `priceCents`,
- * `priceLabel`, etc., regardless of whether the DB stored dollars or cents.
+ * Given a hydration result and the binding's displayMapping, project the raw
+ * DB rows into the shape generated section components consume (title,
+ * description, price, image, cta, badge).
  */
 export function projectRowsForSection(
   result: CatalogRenderResult,
-): CatalogCardViewModel[] {
+): Array<Record<string, unknown>> {
   if (!result.binding || result.rows.length === 0) return [];
-  const surface = getCatalogSurfaceByTable(result.binding.sourceTable);
-  if (!surface) return [];
-  return result.rows.map((row) => projectRowToCardViewModel(surface, row));
+  const map = result.binding.displayMapping ?? {};
+  const defaults: Record<string, string> = {
+    title: map.title ?? 'name',
+    description: map.description ?? 'description',
+    price: map.price ?? 'price',
+    image: map.image ?? 'image_url',
+    badge: map.badge ?? 'badge',
+    duration: map.duration ?? 'duration_minutes',
+  };
+  return result.rows.map((row) => {
+    const out: Record<string, unknown> = { ...row };
+    for (const [outKey, srcKey] of Object.entries(defaults)) {
+      if (out[outKey] === undefined && row[srcKey] !== undefined) {
+        out[outKey] = row[srcKey];
+      }
+    }
+    return out;
+  });
 }

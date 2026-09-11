@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { AlertCircle, Zap } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
-import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
+import { SystemLauncher } from "@/components/onboarding/SystemLauncher";
 import { 
   NavigationBar,
   HeroSection, 
@@ -88,11 +88,7 @@ const Index = () => {
       try {
         const { data, error } = await supabase
           .from('builder_drafts')
-          // The home screen only needs project summaries. Pulling code,
-          // editor_code, and the complete VFS TOAST payload made this four-row
-          // query read megabytes of canonical runtime state and could exceed
-          // PostgREST's statement timeout.
-          .select('id, metadata, updated_at, created_at')
+          .select('id, code, editor_code, vfs_files, metadata, updated_at, created_at')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
           .limit(4);
@@ -102,7 +98,7 @@ const Index = () => {
         } else {
           const projects: RecentProject[] = (data || []).map((row: any) => {
             const meta = (row.metadata || {}) as Record<string, any>;
-            const previewCode = typeof meta.previewCode === 'string' ? meta.previewCode : '';
+            const previewCode = row.editor_code || row.code || '';
             return {
               id: row.id,
               name: meta.name || 'Untitled Project',
@@ -347,7 +343,7 @@ const Index = () => {
       <FooterSection />
 
       {/* System Launcher Wizard — direct entry, no pre-dialog step */}
-      <LauncherWizard open={launcherOpen} onOpenChange={setLauncherOpen} />
+      <SystemLauncher open={launcherOpen} onOpenChange={setLauncherOpen} />
     </div>
   );
 };

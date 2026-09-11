@@ -1,9 +1,9 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "node:path";
-import { readFileSync } from 'node:fs';
+import { componentTagger } from "lovable-tagger";
 import { visualizer } from 'rollup-plugin-visualizer';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -15,49 +15,8 @@ export default defineConfig(({ mode }) => ({
     react({
       jsxImportSource: undefined, // Use automatic JSX runtime
     }),
-    ({
-      name: 'sandpack-root-iframe',
-      enforce: 'pre',
-      configureServer(server) {
-        const runnerHtml = readFileSync(
-          path.resolve(__dirname, 'node_modules/@codesandbox/sandpack-client/sandpack/index.html'),
-          'utf8',
-        );
-        server.middlewares.use((request, response, next) => {
-          if (request.url === '/' && request.headers.referer?.includes('/web-builder')) {
-            response.statusCode = 200;
-            response.setHeader('Content-Type', 'text/html; charset=utf-8');
-            response.end(runnerHtml);
-            return;
-          }
-          next();
-        });
-      },
-    }) satisfies Plugin,
-    viteStaticCopy({
-      targets: [
-        {
-          src: 'node_modules/@codesandbox/sandpack-client/sandpack/index.html',
-          dest: 'sandpack',
-          rename: { stripBase: true },
-        },
-        {
-          src: 'node_modules/@codesandbox/sandpack-client/sandpack/static/**/*',
-          dest: 'static',
-          rename: { stripBase: 5 },
-        },
-        {
-          src: 'node_modules/@codesandbox/sandpack-client/sandpack/*.worker.js',
-          dest: '.',
-          rename: { stripBase: true },
-        },
-        {
-          src: 'node_modules/@codesandbox/sandpack-client/sandpack/{sandbox-service-worker.js,service-worker.js,file-manifest.json,version.txt}',
-          dest: '.',
-          rename: { stripBase: true },
-        },
-      ],
-    }),
+    mcpPlugin(),
+    mode === "development" && componentTagger(),
     mode === "analyze" && visualizer({
       filename: "dist/bundle-analysis.html",
       open: true,
@@ -72,9 +31,6 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
   },
-  worker: {
-    format: 'es',
-  },
   build: {
     // Increase chunk size warning limit to 1000kb for large AI/Canvas libraries
     chunkSizeWarningLimit: 1000,
@@ -84,17 +40,6 @@ export default defineConfig(({ mode }) => ({
       output: {
         // Comprehensive manual chunk splitting for optimal loading
         manualChunks: (id: string) => {
-          // Builder-only runtime libraries are large enough to make the
-          // WebBuilder route appear permanently suspended when bundled into
-          // the shared vendor chunk. Keep them independently cacheable and
-          // loadable in parallel with the route shell.
-          if (id.includes('@babel/standalone')) {
-            return 'babel-standalone';
-          }
-          if (id.includes('@codesandbox/sandpack')) {
-            return 'sandpack-runtime';
-          }
-
           // React core, router, and React-dependent utilities (must stay together)
           if (id.includes('react') || id.includes('react-dom') || id.includes('react-router') ||
               id.includes('use-callback-ref') || id.includes('use-sidecar') || 
@@ -211,8 +156,6 @@ export default defineConfig(({ mode }) => ({
       // Core libraries that should be pre-bundled
       'react',
       'react-dom',
-      'react-dom/client',
-      'react/jsx-dev-runtime',
       'react-router-dom',
       'lucide-react',
       'clsx',

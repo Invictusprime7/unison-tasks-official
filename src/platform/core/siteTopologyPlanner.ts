@@ -48,26 +48,6 @@ export type PageRole =
   | 'shop'
   | 'custom';
 
-const PAGE_ROLE_SPECS: Partial<Record<PageRole, PageSpec>> = {
-  about:    { title: 'About',    path: '/about',    purpose: 'about', expectedSections: [] },
-  services: { title: 'Services', path: '/services', purpose: 'services', expectedSections: [] },
-  pricing:  { title: 'Pricing',  path: '/pricing',  purpose: 'pricing', expectedSections: [] },
-  gallery:  { title: 'Gallery',  path: '/gallery',  purpose: 'portfolio', expectedSections: [] },
-  faq:      { title: 'FAQ',      path: '/faq',      purpose: 'faq', expectedSections: [] },
-  contact:  { title: 'Contact',  path: '/contact',  purpose: 'contact', expectedSections: [] },
-  booking:  { title: 'Book',     path: '/booking',  purpose: 'booking', expectedSections: [] },
-  checkout: { title: 'Checkout', path: '/checkout', purpose: 'checkout', expectedSections: [] },
-  blog:     { title: 'Blog',     path: '/blog',     purpose: 'blog', expectedSections: [] },
-  shop:     { title: 'Shop',     path: '/shop',     purpose: 'shop', expectedSections: [] },
-};
-
-export function resolvePageSpecsForRoles(roles: readonly string[]): PageSpec[] {
-  return roles.flatMap((role) => {
-    const spec = PAGE_ROLE_SPECS[role as PageRole];
-    return spec ? [{ ...spec, expectedSections: [...spec.expectedSections] }] : [];
-  });
-}
-
 export interface PageRouteNode {
   id: string;
   name: string;
@@ -78,8 +58,6 @@ export interface PageRouteNode {
   visibleInNav: boolean;
   isHome: boolean;
   generatedBy: 'wizard' | 'ai' | 'manual';
-  /** Ordered semantic section contract inherited from the industry matrix. */
-  expectedSections?: string[];
   funnelId?: string | null;
   seo?: {
     title?: string;
@@ -222,15 +200,6 @@ export function planSiteTopology(
     selectedTemplateId?: string;
     /** Resolved ThemePreset id selected by the wizard Style card. */
     selectedThemePresetId?: string;
-    /**
-     * When true, only the Home page from the industry profile plus the
-     * caller-supplied `additionalPages` are scaffolded. Industry default
-     * pages the user did NOT select in the 4-step wizard are excluded so
-     * the preview never renders blank/irrelevant routes.
-     */
-    restrictToAdditionalPages?: boolean;
-    /** Pre-resolved page contracts. When supplied they override empty role specs. */
-    siteConfiguration?: import('./resolvedComposition').SiteConfiguration;
   }
 ): GeneratedSitePlan {
   const profile = getIndustryProfile(industryKey);
@@ -252,8 +221,6 @@ function planFromProfile(
     primaryIntent?: string;
     selectedTemplateId?: string;
     selectedThemePresetId?: string;
-    restrictToAdditionalPages?: boolean;
-    siteConfiguration?: import('./resolvedComposition').SiteConfiguration;
   }
 ): GeneratedSitePlan {
   const siteId = generateUUID();
@@ -263,24 +230,10 @@ function planFromProfile(
   let homePageId = '';
 
   // 1. Build pages from industry defaultPages
-  // In "selected-pages" mode (restrictToAdditionalPages=true) only Home is
-  // retained from the industry defaults; every other route MUST come from
-  // the user's explicit wizard selection to avoid blank scaffolded pages.
-  const homeSpec =
-    profile.defaultPages.find((p) => p.path === '/') || profile.defaultPages[0];
-  const baseSpecs = options?.restrictToAdditionalPages
-    ? (homeSpec ? [homeSpec] : [])
-    : profile.defaultPages;
-
-  // Deduplicate by path so a user selection matching a default doesn't double-emit.
-  const seenPaths = new Set<string>();
-  const allPageSpecs: PageSpec[] = [];
-  for (const spec of [...baseSpecs, ...(options?.additionalPages || [])]) {
-    const key = (spec.path || '').toLowerCase();
-    if (seenPaths.has(key)) continue;
-    seenPaths.add(key);
-    allPageSpecs.push(spec);
-  }
+  const allPageSpecs = [
+    ...profile.defaultPages,
+    ...(options?.additionalPages || []),
+  ];
 
   for (const spec of allPageSpecs) {
     const pageId = generateUUID();
@@ -290,7 +243,6 @@ function planFromProfile(
 
     if (isHome) homePageId = pageId;
 
-    const configuredPage = options?.siteConfiguration?.pages.find((page) => page.path === spec.path);
     const node: PageRouteNode = {
       id: pageId,
       name: spec.title,
@@ -303,7 +255,6 @@ function planFromProfile(
       visibleInNav: !HIDDEN_ROLES.has(role),
       isHome,
       generatedBy: 'wizard',
-      expectedSections: [...(configuredPage?.sections.length ? configuredPage.sections : spec.expectedSections)],
       seo: {
         title: `${spec.title} | ${businessName}`,
         description: `${spec.title} page for ${businessName}`,
@@ -468,31 +419,9 @@ function planFromProfile(
   // 4. Validate the plan
   plan.validationErrors = validateSitePlan(plan);
 
-  // 5. STRICT SELECTED-PAGES GUARD ─────────────────────────────────────────
-  // When the wizard restricted scaffolding to explicit user selections, we
-  // must never allow an industry-default page to leak into the plan. Doing
-  // so is exactly what caused "default template preset" bodies to render
-  // for pages the user did not select.
-  if (options?.restrictToAdditionalPages) {
-    const allowedPaths = new Set<string>(['/']);
-    for (const spec of options.additionalPages || []) {
-      allowedPaths.add((spec.path || '').toLowerCase());
-    }
-    const stray = plan.pages
-      .map((p) => p.route)
-      .filter((route) => !allowedPaths.has((route || '').toLowerCase()));
-    if (stray.length > 0) {
-      throw new Error(
-        `[SiteTopologyPlanner] Selected-pages guard violated for industry "${profile.industry}": ` +
-        `unselected industry-default routes leaked into the plan: ${stray.join(', ')}. ` +
-        `Only Home + wizard-selected pages are permitted.`,
-      );
-    }
-  }
 
   return plan;
 }
-
 
 // ============================================================================
 // Registry Population

@@ -8,7 +8,6 @@
 import type { BuilderPageType, FunnelRole } from '@/types/pageRegistry';
 import type { CreatorData } from '@/types/creatorData';
 import type { PageRegistry } from '@/types/pageRegistry';
-import type { GeneratedSitePlan } from './siteTopologyPlanner';
 import type {
   BuilderPageRole,
   BuilderPublishedStatus,
@@ -54,8 +53,6 @@ export type IndustryOverlay =
   | 'ecommerce'
   | 'creator'
   | 'agency'
-  | 'saas'
-  | 'portfolio'
   | 'nonprofit'
   | 'general';
 
@@ -92,23 +89,6 @@ export interface WizardSelections {
    */
   themePresetId?: string;
   /**
-   * Fully resolved semantic HSL tokens captured from the selected Style card.
-   * Stage 4b consumes these directly instead of reconstructing colors from a
-   * hardcoded preset registry.
-   */
-  themeTokens?: import('@/sections/types').ThemeTokens;
-  /**
-   * Constrained final interaction plan. Lane B may supply this after page
-   * generation; the platform compiler persists and reapplies it on later
-   * saves/restores without asking the model to regenerate the plan.
-   */
-  interactionManifest?: import('@/services/wizardInteractionEnrichment').WizardInteractionManifest;
-  /**
-   * Curated industry/page contract resolved before compilation. The canonical
-   * compiler consumes this exact value; it is not post-hoc snapshot metadata.
-   */
-  siteConfiguration?: import('@/platform/core/resolvedComposition').SiteConfiguration;
-  /**
    * Primary intent from the industry profile (e.g. 'booking.create', 'contact.submit').
    * Forwarded to the topology planner so the materializer's internal planSiteTopology
    * call produces the same page set as the SystemLauncher's direct call.
@@ -124,9 +104,9 @@ export interface WizardSelections {
   /**
    * Scaffold strategy:
    *  - 'selected-pages' → Home + visitor-selected pages (default).
-   *  - 'capability-full'→ deprecated/normalized to selected-pages for wizard launches.
-   * Home-only/minimal/capability-expanded scaffold modes are intentionally
-   * unsupported; every rendered wizard page must be explicitly selected.
+   *  - 'capability-full'→ Home + all capability-implied pages.
+   * Home-only/minimal scaffold modes are intentionally unsupported; every
+   * wizard page must be materialized through the selected SiteBundle/template.
    */
   scaffoldMode?: WizardScaffoldMode;
   /**
@@ -148,26 +128,7 @@ export interface WizardSelections {
    * chain-of-custody between the wizard payload and the live snapshot.
    */
   wizardSeedId?: string;
-  /**
-   * Target Business Profile the generated project should be saved under.
-   * Chosen by the creator in the wizard (BusinessSelector) and threaded
-   * into LaunchState + builder_drafts so `sync_draft_to_project` stamps
-   * the correct `projects.business_id` on first persist.
-   */
-  businessId?: string;
-  /**
-   * Industry-specific business profile answers gathered by the launcher
-   * (keys are `IndustryProfile.profileFields[].id`). Copy/content resolution
-   * reads these so a contractor site talks about service areas and a
-   * restaurant site talks about cuisine and seating.
-   */
-  profileAnswers?: Record<string, string>;
-  /** Capability ids the creator explicitly enabled in the capability step. */
-  selectedCapabilities?: string[];
-  /** Social profile URLs captured by the launcher's brand step. */
-  socialLinks?: Record<string, string>;
 }
-
 
 // ============================================================================
 // Slot-Bound Section & Slot Types
@@ -424,7 +385,6 @@ export interface PlaygroundState {
 
 export interface PlaygroundMaterializationResult {
   playground: PlaygroundState;
-  sitePlan: GeneratedSitePlan;
   warnings: string[];
 }
 

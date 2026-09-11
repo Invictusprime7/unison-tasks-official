@@ -1,9 +1,8 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "serve";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
 import { safeParseBody, sanitizeString } from "../_shared/validate.ts";
-import { createChatCompletion, isTextGenerationConfigured } from "../_shared/ai/providerClient.ts";
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -39,11 +38,13 @@ serve(async (req) => {
       return errorResponse("text is required", 400, corsHeaders);
     }
 
-    if (!isTextGenerationConfigured()) {
-      console.warn("No direct AI provider configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    if (!LOVABLE_API_KEY) {
+      console.warn("LOVABLE_API_KEY not configured - AI features unavailable in local development");
       return secureJsonResponse(
         { 
-          error: "AI features are not configured. Set OPENAI_API_KEY, GEMINI_API_KEY, or ANTHROPIC_API_KEY.",
+          error: "AI features are not available in local development. Deploy to Lovable Cloud to enable AI capabilities.",
           isLocalDevelopment: true
         },
         503,
@@ -61,19 +62,29 @@ serve(async (req) => {
 
     systemPrompt += ` Use a ${tone} tone. Keep the core message but enhance clarity, impact, and engagement. Return only the rewritten text without explanations.`;
 
-    const response = await createChatCompletion({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: text }
-      ],
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: text }
+        ],
+      }),
     });
 
     if (!response.ok) {
       if (response.status === 429) {
         return errorResponse("Rate limit exceeded. Please try again later.", 429, corsHeaders);
       }
-      return errorResponse(`AI provider error: ${response.status}`, 503, corsHeaders);
+      if (response.status === 402) {
+        return errorResponse("Payment required. Please add credits to your workspace.", 402, corsHeaders);
+      }
+      return errorResponse(`AI Gateway error: ${response.status}`, 503, corsHeaders);
     }
 
     const data = await response.json();

@@ -3,8 +3,6 @@
 
 export type AssistantTaskType =
   | "wizard_seed_generation"
-  | "wizard_interaction_enrichment"
-  | "wizard_content_enrichment"
   | "nav_page_generation"
   | "template_json_generation"
   | "template_html_generation"
@@ -19,7 +17,7 @@ export type AssistantTaskType =
 
 export interface ClassifiedTask {
   type: AssistantTaskType;
-  /** True for low-context tasks that skip learned patterns and user history. */
+  /** True for wizard launches and nav-page gen — skips research, thinking, memory */
   fastPath: boolean;
   /** Whether to inject session memory context */
   shouldUseMemory: boolean;
@@ -66,42 +64,19 @@ export function classifyTask(opts: {
     wizardSeed,
   } = opts;
 
-  // ── Legacy wizard-seed compatibility route. The deterministic Launcher no
-  //    longer calls this mode; Stage 4b owns launch page authorship. Keep this
-  //    bounded while external-client usage is audited before removal.
+  // ── Wizard seed — sole launch lane. Routes to Lane B so wizard launches
+  //    share the builder brain (memory, research, VFS, transactional patches).
+  //    The legacy `wizard_template_react` fast path has been removed; wizard
+  //    launches MUST send `mode: "wizard-seed"` with a structured `wizardSeed`.
   if (mode === "wizard-seed") {
     return {
       type: "wizard_seed_generation",
-      fastPath: true,
-      shouldUseMemory: false,
-      shouldUseCompactContext: true,
-      prefersJsonOutput: true,
-      skipResearch: true,
-      skipThinking: true,
-    };
-  }
-
-  if (mode === "wizard-interactions") {
-    return {
-      type: "wizard_interaction_enrichment",
       fastPath: false,
-      shouldUseMemory: false,
+      shouldUseMemory: true,
       shouldUseCompactContext: true,
       prefersJsonOutput: true,
-      skipResearch: true,
-      skipThinking: true,
-    };
-  }
-
-  if (mode === "wizard-content") {
-    return {
-      type: "wizard_content_enrichment",
-      fastPath: true,
-      shouldUseMemory: false,
-      shouldUseCompactContext: true,
-      prefersJsonOutput: true,
-      skipResearch: true,
-      skipThinking: true,
+      skipResearch: false,
+      skipThinking: false,
     };
   }
 

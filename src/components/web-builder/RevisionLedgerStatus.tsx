@@ -31,7 +31,7 @@ interface RevisionLedgerStatusProps {
   /** Notified after a successful restore so the host can rehydrate the builder. */
   onRestored?: (revisionId: string) => void;
   /**
-  * When explicitly enabled, drift detection auto-fires a `system-restore` commit
+   * When true (default), drift detection auto-fires a `system-restore` commit
    * from the latest ledger row. Requires `identity` to be set.
    */
   autoResyncOnDrift?: boolean;
@@ -43,7 +43,7 @@ export default function RevisionLedgerStatus({
   vfsFiles,
   identity,
   onRestored,
-  autoResyncOnDrift = false,
+  autoResyncOnDrift = true,
   className,
 }: RevisionLedgerStatusProps) {
   const [report, setReport] = useState<DriftReport | null>(null);

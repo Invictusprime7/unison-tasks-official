@@ -93,8 +93,7 @@ export function resolveIntentTarget(
 // Topology Persistence
 // ============================================================================
 
-const TOPOLOGY_STORAGE_KEY = 'unison_site_topology';
-const LEGACY_TOPOLOGY_STORAGE_KEY = 'lovable_site_topology';
+const TOPOLOGY_STORAGE_KEY = 'lovable_site_topology';
 
 /**
  * Persist a site plan to sessionStorage so it survives page refreshes.
@@ -112,12 +111,9 @@ export function persistTopology(plan: GeneratedSitePlan): void {
  */
 export function recoverTopology(): GeneratedSitePlan | null {
   try {
-    const raw = sessionStorage.getItem(TOPOLOGY_STORAGE_KEY) ?? sessionStorage.getItem(LEGACY_TOPOLOGY_STORAGE_KEY);
+    const raw = sessionStorage.getItem(TOPOLOGY_STORAGE_KEY);
     if (!raw) return null;
-    const plan = JSON.parse(raw) as GeneratedSitePlan;
-    sessionStorage.setItem(TOPOLOGY_STORAGE_KEY, JSON.stringify(plan));
-    sessionStorage.removeItem(LEGACY_TOPOLOGY_STORAGE_KEY);
-    return plan;
+    return JSON.parse(raw) as GeneratedSitePlan;
   } catch {
     return null;
   }
@@ -129,7 +125,6 @@ export function recoverTopology(): GeneratedSitePlan | null {
 export function clearTopology(): void {
   try {
     sessionStorage.removeItem(TOPOLOGY_STORAGE_KEY);
-    sessionStorage.removeItem(LEGACY_TOPOLOGY_STORAGE_KEY);
   } catch {
     // ignore
   }
@@ -144,11 +139,48 @@ export function clearTopology(): void {
  * Requires authenticated user.
  */
 export async function persistTopologyToDb(
-  _plan: GeneratedSitePlan,
-  _draftId?: string
+  plan: GeneratedSitePlan,
+  draftId?: string
 ): Promise<string | null> {
-  console.warn('[TopologyResolver] Direct draft topology persistence is retired; commit the site plan with project state.');
-  return null;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.warn('[TopologyResolver] No auth user, skipping DB persist');
+      return null;
+    }
+
+    const metadata = JSON.parse(JSON.stringify({
+      sitePlan: plan,
+      persistedAt: new Date().toISOString(),
+    }));
+
+    if (draftId) {
+      // Update existing draft
+      const { error } = await supabase
+        .from('builder_drafts')
+        .update({ metadata, updated_at: new Date().toISOString() })
+        .eq('id', draftId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return draftId;
+    } else {
+      // Create new draft with topology
+      const { data, error } = await supabase
+        .from('builder_drafts')
+        .insert([{
+          user_id: user.id,
+          code: '',
+          metadata,
+        }])
+        .select('id')
+        .single();
+      if (error) throw error;
+      return data?.id || null;
+    }
+  } catch (err) {
+    console.warn('[TopologyResolver] Failed to persist topology to DB:', err);
+    return null;
+  }
 }
 
 /**

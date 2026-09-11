@@ -52,17 +52,8 @@ import { rewriteDemoEmbeds } from "@/utils/demoEmbedRewriter";
 import type { BusinessSystemType } from "@/data/templates/types";
 import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { buildWebBuilderAIContext } from "@/utils/aiAssistantContext";
-import { buildCatalogContext, renderCatalogContextForPrompt, type SelectedSectionRef } from "@/utils/catalogContext";
 // Removed deprecated aiFileTags - functionality consolidated in aiResponseParser
 import { parseAIResponse, getPrimaryCodeBlock, type AIResponseParseResult } from "@/utils/aiResponseParser";
-import {
-  interpretBuilderRequest,
-  templateActionFromEnvelope,
-  requiresApproval,
-  envelopeBrief,
-} from "@/services/builderRequestInterpreter";
-import type { BuilderRequestEnvelope } from "@/types/builderRequestEnvelope";
-import { envelopeRunIdFromResponse, recordRunOutcome } from "@/services/builderEnvelopeRuns";
 
 interface Message {
   role: "user" | "assistant";
@@ -316,13 +307,6 @@ interface AICodeAssistantProps {
   pageStructureContext?: string | null;
   backendStateContext?: string | null;
   businessDataContext?: string | null;
-  /** Identity for AI Builder catalog awareness (M5–M7). */
-  businessId?: string | null;
-  projectId?: string | null;
-  /** Builder draft this conversation belongs to (Milestone 4 run log scope). */
-  draftId?: string | null;
-  industry?: string | null;
-  selectedSectionRef?: SelectedSectionRef | null;
   selectedElement?: {
     html: string;
     selector: string;
@@ -358,11 +342,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
   pageStructureContext,
   backendStateContext,
   businessDataContext,
-  businessId,
-  projectId,
-  draftId,
-  industry,
-  selectedSectionRef,
   selectedElement,
   userDesignProfile,
   requestAIEdit,
@@ -424,7 +403,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
     return AI_THEMES.find(t => t.id === savedThemeId) || AI_THEMES[0];
   });
   const scrollRef = useRef<HTMLDivElement>(null);
-  const lastEnvelopeRunIdRef = useRef<string | null>(null);
   const { toast } = useToast();
   
   // Image slot system for AI with taste
@@ -804,34 +782,9 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       
       // Check if editing a selected element
       const isEditingSelectedElement = selectedElement && isEditingElement;
-
-      // ========== REQUEST INTERPRETER (authoritative classifier) ==========
-      // Every request is interpreted into a BuilderRequestEnvelope BEFORE any
-      // code path is chosen. Regexes below are demoted to advisory hints.
-      const interpretation = await interpretBuilderRequest(userMessage.content, {
-        projectMode: 'react',
-        runtimeEngine: 'vfs',
-        hasExistingTemplate: Boolean(hasExistingTemplate),
-        selectedElement: selectedElement
-          ? { selector: (selectedElement as { selector?: string })?.selector }
-          : null,
-        recentTurns: messages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
-      });
-      const envelope: BuilderRequestEnvelope = interpretation.envelope;
-      console.log('[AICodeAssistant] Request envelope:', {
-        kinds: envelope.requestKinds,
-        domains: envelope.domains,
-        scope: envelope.scope,
-        complexity: envelope.complexity,
-        executionMode: envelope.executionMode,
-        degraded: interpretation.degraded,
-        source: envelope.source,
-      });
-      // ========== END REQUEST INTERPRETER ==========
-
-      // ========== BUILDER ACTIONS DETECTION (hint layer only) ==========
-      // Deterministic extraction of pack/selector/intent details. It no longer
-      // decides *whether* this is a backend request — the envelope does.
+      
+      // ========== BUILDER ACTIONS DETECTION ==========
+      // Detect if user wants to install packs or wire buttons
       const detectBuilderAction = (message: string): { type: 'install_pack' | 'wire_button' | null; packs?: string[]; selector?: string; intent?: string } => {
         const lowerMessage = message.toLowerCase();
         
@@ -901,26 +854,11 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         return { type: null };
       };
       
-      const builderActionHint = opts?.skipBuilderActions ? { type: null } : detectBuilderAction(userMessage.content);
-      // Envelope decides whether this is a backend/approval request; the hint
-      // only supplies the concrete pack/selector/intent details.
-      const envelopeWantsBackend =
-        envelope.requestKinds.includes('backend_configuration') ||
-        envelope.requestKinds.includes('data_binding') ||
-        envelope.domains.some((d) => ['booking', 'crm', 'auth', 'commerce', 'automation', 'database'].includes(d));
-      // A compound/mixed request must NOT be reduced to a single pack install —
-      // it continues into the code path so every requirement is honored.
-      const canShortCircuit =
-        builderActionHint.type === 'install_pack' ||
-        (envelope.complexity === 'simple' && envelope.executionMode !== 'mixed');
-      const builderAction =
-        builderActionHint.type && envelopeWantsBackend && requiresApproval(envelope) && canShortCircuit
-          ? builderActionHint
-          : { type: null as null | 'install_pack' | 'wire_button' };
-
+      const builderAction = opts?.skipBuilderActions ? { type: null } : detectBuilderAction(userMessage.content);
+      
       // Handle builder actions (install packs / wire buttons) - propose+approve
       if (builderAction.type) {
-        console.log('[AICodeAssistant] Builder action approved by envelope:', builderAction);
+        console.log('[AICodeAssistant] Builder action detected:', builderAction);
 
         // If this is a "build the whole thing" style request, store the original prompt
         // so we can continue with template generation after the user approves pack install.
@@ -939,9 +877,49 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       }
       // ========== END BUILDER ACTIONS ==========
       
-      // Template action is DERIVED from the interpreted envelope — no keyword
-      // routing. (Multi-label, scope- and complexity-aware.)
-      const templateAction = templateActionFromEnvelope(envelope, Boolean(hasExistingTemplate));
+      // Detect template action from user message
+      const detectTemplateAction = (message: string): string | undefined => {
+        const lowerMessage = message.toLowerCase();
+        
+        // Check for full control mode first (highest priority)
+        if (lowerMessage.match(/\b(full control|full reign|ai decide|you decide|your choice|go wild|do whatever|improve everything|make it better|optimize everything|enhance everything|fix everything|revamp|overhaul|transform|reimagine)\b/)) {
+          return 'full-control';
+        }
+        // E-commerce/checkout flow requests
+        if (lowerMessage.match(/\b(add|create|implement|build)\b.*\b(cart|checkout|ecommerce|e-commerce|shopping|payment|buy now|add to cart)\b/)) {
+          return 'full-control';
+        }
+        // Dynamic/interactive element requests
+        if (lowerMessage.match(/\b(make|add)\b.*\b(dynamic|interactive|animated|live|real-time)\b/)) {
+          return 'full-control';
+        }
+        // Auth/login flow requests — these are modify actions (wire existing elements)
+        if (lowerMessage.match(/\b(add|wire|connect|implement|enable)\b.*\b(sign\s*in|sign\s*up|login|logout|auth|authentication)\b/)) {
+          return 'modify';
+        }
+        // Routing/navigation requests
+        if (lowerMessage.match(/\b(add|wire|implement)\b.*\b(navigation|routing|redirect|page\s*link)\b/)) {
+          return 'modify';
+        }
+        if (lowerMessage.match(/\b(add|insert|include|create new|put|place)\b.*\b(section|element|component|button|image|form|card|hero|footer|header|nav)/)) {
+          return 'add';
+        }
+        if (lowerMessage.match(/\b(remove|delete|hide|get rid of|take out)\b/)) {
+          return 'remove';
+        }
+        if (lowerMessage.match(/\b(change|modify|update|edit|adjust|tweak|fix)\b/)) {
+          return 'modify';
+        }
+        if (lowerMessage.match(/\b(suggest|improve|recommend|enhance|optimize|better|upgrade)\b/)) {
+          return 'suggest';
+        }
+        if (lowerMessage.match(/\b(restyle|redesign|new look|change color|change style|theme|recolor)\b/)) {
+          return 'restyle';
+        }
+        return hasExistingTemplate ? 'modify' : undefined;
+      };
+      
+      const templateAction = hasExistingTemplate ? detectTemplateAction(userMessage.content) : undefined;
       
       // Add image slot context for AI with taste
       let slotContext = '';
@@ -955,22 +933,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         }
       }
       
-      // Catalog awareness context (M6): live row counts + bindings + selected surface.
-      let catalogContextStr: string | null = null;
-      if (businessId || projectId) {
-        try {
-          const ctx = await buildCatalogContext({
-            businessId: businessId ?? null,
-            projectId: projectId ?? null,
-            industry: industry ?? null,
-            selectedSection: selectedSectionRef ?? null,
-          });
-          catalogContextStr = renderCatalogContextForPrompt(ctx);
-        } catch (err) {
-          console.warn('[AICodeAssistant] buildCatalogContext failed; continuing without it', err);
-        }
-      }
-
       // Backend + template awareness context (Web Builder only)
       const backendContext = buildWebBuilderAIContext({
         systemType: systemType ?? null,
@@ -979,7 +941,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         pageStructure: pageStructureContext ?? null,
         backendState: backendStateContext ?? null,
         businessData: businessDataContext ?? null,
-        catalogContext: catalogContextStr,
       });
 
       // Enhanced context for element editing
@@ -1052,11 +1013,7 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
         // Design/review modes still benefit from system context
         enhancedPrompt = `${userMessage.content}${backendContext}`;
       }
-
-      // The interpreted envelope leads the prompt so goals/constraints survive
-      // any downstream truncation.
-      enhancedPrompt = `${envelopeBrief(envelope)}\n\n${enhancedPrompt}`;
-
+      
       console.log('[AICodeAssistant] Sending request - Mode:', mode, 'Template Action:', templateAction, 'Debug Mode:', mode === "debug");
 
       // The backend function enforces a hard 10k limit per message content. Keep a buffer.
@@ -1089,17 +1046,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
               editMode: hasExistingTemplate || mode === "debug",
               debugMode: mode === "debug",
               templateAction,
-              // Structured interpretation — authoritative routing signal.
-              requestEnvelope: envelope,
-              // Milestone 4: durable envelope + verdict log for learning/replay.
-              runContext: {
-                draftId: draftId ?? null,
-                projectId: projectId ?? null,
-                businessId: businessId ?? null,
-                prompt: userMessage.content.slice(0, 8000),
-              },
-              // Research only runs when the interpreter says it's needed.
-              skipResearch: !envelope.needsExternalResearch,
               // Pass user design profile for personalized AI generation
               userDesignProfile: userDesignProfile || undefined,
             },
@@ -1166,38 +1112,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
       }
       
       console.log('[AICodeAssistant] AI response received:', assistantContent.substring(0, 200) + '...');
-
-      // ── Milestone 3: envelope verification verdict from the server ────────
-      const verification = (data as {
-        envelopeVerification?: {
-          passed: boolean;
-          summary: string;
-          unmetCriteria: string[];
-          outOfScopeFiles: string[];
-          blockingMisses: string[];
-        };
-      })?.envelopeVerification;
-      if (verification) {
-        console.log('[AICodeAssistant] envelope verification', verification);
-        if (!verification.passed) {
-          const detail = [
-            verification.outOfScopeFiles.length
-              ? `Out of scope: ${verification.outOfScopeFiles.slice(0, 3).join(', ')}`
-              : '',
-            ...verification.unmetCriteria.slice(0, 2),
-          ].filter(Boolean).join(' • ');
-          toast({
-            title: verification.blockingMisses.length
-              ? 'Requires review — goals not fully met'
-              : 'Partial match to your request',
-            description: detail || verification.summary,
-            variant: verification.blockingMisses.length ? 'destructive' : 'default',
-          });
-        }
-      }
-
-      // Milestone 4: remember the run id so the apply/cancel decision is logged.
-      lastEnvelopeRunIdRef.current = envelopeRunIdFromResponse(data);
 
       // ========== COMPREHENSIVE AI RESPONSE PARSING ==========
       // Use the new parser to extract all structured content types
@@ -1844,11 +1758,6 @@ export const AICodeAssistant: React.FC<AICodeAssistantProps> = ({
                 if (!pendingFiles || Object.keys(pendingFiles).length === 0) return;
 
                 const ok = onFilesPatch ? onFilesPatch(pendingFiles) : false;
-                void recordRunOutcome(
-                  lastEnvelopeRunIdRef.current,
-                  ok ? 'applied' : 'failed',
-                  { appliedPaths: Object.keys(pendingFiles), note: 'file-plan dialog' },
-                );
                 if (!ok && onCodeGenerated) {
                   // Fallback: if caller didn't provide file patch handling, try best-effort
                   // by applying main entry file if present.

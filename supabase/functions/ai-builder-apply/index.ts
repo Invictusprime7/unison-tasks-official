@@ -1,6 +1,6 @@
 // ai-builder-apply
 // Marks an AI Builder proposal as approved/rejected/applied. Executing raw SQL
-// from an edge function is intentionally forbidden by the hosted runtime — SQL
+// from an edge function is intentionally forbidden on Lovable Cloud — SQL
 // migrations must go through the platform migration tool, which requires a
 // human review step. So this function's job for `sql_migration` proposals is:
 //   - verify caller has rights (owner or project/business member)
@@ -12,9 +12,8 @@
 // approved so the operator knows to redeploy — no auto-deploy from here.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.23.8';
-import { getCorsHeaders } from '../_shared/cors.ts';
-import { describeLintResult, lintMigrationSql } from '../_shared/migrationSqlLint.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -27,7 +26,6 @@ const BodySchema = z.object({
 });
 
 Deno.serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
@@ -99,26 +97,8 @@ Deno.serve(async (req) => {
     } else if (action === 'approve') {
       nextStatus = 'approved';
       if (proposal.kind === 'sql_migration') {
-        const sql = String((proposal.payload as Record<string, unknown>)?.sql ?? '');
-        const lint = lintMigrationSql(sql);
-        if (!lint.ok) {
-          await admin
-            .from('ai_builder_proposals')
-            .update({
-              status: 'failed',
-              reviewed_by: userId,
-              reviewed_at: now,
-              apply_result: { reviewer_note: reviewer_note ?? null, lint, error: describeLintResult(lint) },
-            })
-            .eq('id', proposal_id);
-          return new Response(
-            JSON.stringify({ error: describeLintResult(lint), lint }),
-            { status: 422, headers: jsonHeaders },
-          );
-        }
-        applyResult.lint = lint;
-        applyResult.migration_sql = sql;
-        applyResult.next_step = 'run_via_supabase_migration_tool';
+        applyResult.migration_sql = String((proposal.payload as Record<string, unknown>)?.sql ?? '');
+        applyResult.next_step = 'run_via_lovable_migration_tool';
       } else if (proposal.kind === 'edge_function') {
         applyResult.next_step = 'redeploy_edge_function_manually';
       } else if (proposal.kind === 'config_change') {

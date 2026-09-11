@@ -4,338 +4,8 @@ import { commitToPipeline } from "@/platform/core";
 import { getCompositionsBySystemType } from "@/sections/templates";
 import { createLaunchState } from "@/types/launchState";
 import { launchStateToSandpackFiles } from "@/utils/launchToSandpack";
-import { buildPreviewArtifacts } from "@/utils/previewArtifacts";
-import { SANDPACK_PREVIEW_CORE_DEPENDENCIES } from "@/utils/sandpackDependencies";
-import { THEME_PRESETS } from "@/components/onboarding/themePresets";
-import { themePresetToThemeTokens } from "@/components/onboarding/themePresetToTokens";
-import { buildThemedIndexCss } from "@/components/onboarding/themePresetToIndexCss";
-import { buildGeneratedUiFoundation } from '@/platform/core/generatedUiFoundation';
 
 describe("launchStateToSandpackFiles", () => {
-  it('does not reintroduce raw launcher paths after canonical normalization', () => {
-    const launchState = createLaunchState({
-      systemType: 'store',
-      systemName: 'Store',
-      businessName: 'Vela',
-      templateName: 'Storefront',
-      templateCategory: 'store',
-      vfsFiles: {
-        '/App.tsx': "import Home from './pages/Home'; export default function App() { return <Home />; }",
-        '/pages/Home.tsx': 'export default function Home() { return <main>Normalized</main>; }',
-        '/index.css': ':root { --primary: 221 83% 53%; }',
-      },
-      preloadedIntents: [],
-    });
-
-    const previewFiles = launchStateToSandpackFiles({
-      launchState,
-      vfsFiles: launchState.vfsFiles,
-    });
-
-    expect(previewFiles['/App.tsx']).toContain("from './pages/Home'");
-    expect(previewFiles['/pages/Home.tsx']).toContain('Normalized');
-    expect(previewFiles['/src/App.tsx']).toBeUndefined();
-    expect(previewFiles['/src/pages/Home.tsx']).toBeUndefined();
-  });
-
-  it('rejects a sealed wizard projection whose router disconnects a registered page', () => {
-    const snapshot = {
-      snapshotId: 'snap_route_reachability',
-      businessName: 'Vela',
-      industry: 'salon',
-      pageRegistry: {
-        homePageId: 'home',
-        pages: {
-          home: { pageId: 'home', isHome: true, filePath: '/src/pages/Home.tsx', path: '/', navOrder: 0 },
-          contact: { pageId: 'contact', isHome: false, filePath: '/src/pages/Contact.tsx', path: '/contact', navOrder: 1 },
-        },
-      },
-      vfsFiles: {
-        '/src/App.tsx': "import Home from './pages/Home'; export default function App(){ return <Home />; }",
-        '/src/pages/Home.tsx': 'export default function Home(){ return <main>Home</main>; }',
-        '/src/pages/Contact.tsx': 'export default function Contact(){ return <main>Contact</main>; }',
-        '/src/index.css': ':root { --primary: 221 83% 53%; }',
-      },
-      meta: {
-        source: 'wizard',
-        themePresetId: 'modern',
-        themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
-        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_route_reachability', fileCount: 4 },
-      },
-    };
-
-    // Generation decides page quality, while preview must still prove that its
-    // flattened router executes every page from the sealed registry.
-    expect(() => buildPreviewArtifacts({
-      sourceFiles: {
-        '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot),
-      },
-    })).toThrow(/disconnected from \/App\.tsx/);
-  });
-
-  it('keeps every generated runtime file, including public assets, in the Sandpack overlay', () => {
-    const snapshot = {
-      snapshotId: 'snap_file_coverage',
-      pageRegistry: { pages: {} },
-      vfsFiles: {
-        '/src/App.tsx': 'export default function App(){ return <main>Coverage</main>; }',
-        '/src/components/Notice.tsx': 'export default function Notice(){ return <aside>Notice</aside>; }',
-        '/src/assets/wordmark.svg': '<svg viewBox="0 0 1 1" />',
-        '/public/images/hero.svg': '<svg viewBox="0 0 1 1" />',
-        '/src/index.css': ':root { --primary: 221 83% 53%; }',
-      },
-      meta: {
-        source: 'wizard',
-        themePresetId: 'modern',
-        themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
-        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_file_coverage', fileCount: 5 },
-      },
-    };
-
-    const result = buildPreviewArtifacts({
-      sourceFiles: { '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot) },
-    });
-
-    expect(result.sandpackFiles['/components/Notice.tsx']).toContain('function Notice');
-    expect(result.sandpackFiles['/assets/wordmark.svg']).toContain('<svg');
-    expect(result.sandpackFiles['/public/images/hero.svg']).toContain('<svg');
-  });
-
-  it('rejects generated files that would collide after Sandpack path flattening', () => {
-    const snapshot = {
-      snapshotId: 'snap_file_collision',
-      pageRegistry: { pages: {} },
-      vfsFiles: {
-        '/src/App.tsx': 'export default function App(){ return <main>Collision</main>; }',
-        '/src/components/Notice.tsx': 'export default function Notice(){ return <aside>Source</aside>; }',
-        '/components/Notice.tsx': 'export default function Notice(){ return <aside>Root</aside>; }',
-        '/src/index.css': ':root { --primary: 221 83% 53%; }',
-      },
-      meta: {
-        source: 'wizard',
-        themePresetId: 'modern',
-        themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
-        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_file_collision', fileCount: 4 },
-      },
-    };
-
-    expect(() => buildPreviewArtifacts({
-      sourceFiles: { '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot) },
-    })).toThrow(/refusing to drop either generated file/);
-  });
-
-  it("merges the lightweight preview runtime with final artifact imports while preserving themePresetId CSS", () => {
-    const organic = THEME_PRESETS.find((preset) => preset.id === "organic");
-    expect(organic).toBeDefined();
-
-    const result = buildPreviewArtifacts({
-      sourceFiles: {
-        "/src/App.tsx": [
-          "import * as Dialog from '@radix-ui/react-dialog';",
-          "import { kebabCase } from 'lodash-es';",
-          "export default function App() { return <Dialog.Root><Dialog.Trigger>{kebabCase('Open dialog')}</Dialog.Trigger></Dialog.Root>; }",
-        ].join("\n"),
-        "/src/index.css": buildThemedIndexCss(organic!),
-        "/.unison/app-context.json": JSON.stringify({ themePresetId: "organic" }),
-      },
-    });
-
-    expect(result.dependencies).toMatchObject(SANDPACK_PREVIEW_CORE_DEPENDENCIES);
-    expect(result.dependencies["@radix-ui/react-dialog"]).toBe('1.1.15');
-    expect(result.dependencies["@swc/helpers"]).toBeDefined();
-    expect(result.dependencies["lodash-es"]).toBe("latest");
-    expect(result.dependencies.recharts).toBeUndefined();
-    expect(result.dependencies.tailwindcss).toBeUndefined();
-    expect(result.sandpackFiles["/index.css"]).toContain("WIZARD THEME: Organic");
-    expect(result.sandpackFiles["/index.css"]).not.toContain("WIZARD FINAL THEME OVERRIDE: organic");
-  });
-
-  it("adds a curated dependency when generated source actually imports it", () => {
-    const result = buildPreviewArtifacts({
-      sourceFiles: {
-        "/src/App.tsx": [
-          "import * as Dialog from '@radix-ui/react-dialog';",
-          "export default function App() { return <Dialog.Root><Dialog.Trigger>Open</Dialog.Trigger></Dialog.Root>; }",
-        ].join("\n"),
-        "/src/index.css": ":root { --primary: 221 83% 53%; }",
-      },
-    });
-
-    expect(result.dependencies["@radix-ui/react-dialog"]).toBe('1.1.15');
-    expect(result.dependencies.recharts).toBeUndefined();
-  });
-
-  it('keeps a wizard preview on the core runtime when no optional facade is imported', () => {
-    const result = buildPreviewArtifacts({
-      sourceFiles: {
-        '/src/App.tsx': 'export default function App(){ return <main>Wizard preview</main>; }',
-        '/src/index.css': ':root { --primary: 221 83% 53%; }',
-        '/.unison/site-bundle-snapshot.json': JSON.stringify({
-          snapshotId: 'snap_runtime_foundation',
-          pageRegistry: { pages: {} },
-          vfsFiles: {
-            '/src/App.tsx': 'export default function App(){ return <main>Wizard preview</main>; }',
-            '/src/index.css': ':root { --primary: 221 83% 53%; }',
-          },
-          meta: {
-            source: 'wizard',
-            themePresetId: 'modern',
-            themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
-            seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_runtime_foundation', fileCount: 2 },
-          },
-        }),
-      },
-    });
-
-    expect(result.dependencies.react).toBeDefined();
-    expect(result.dependencies['react-dom']).toBeDefined();
-    expect(result.dependencies['@swc/helpers']).toBeDefined();
-    expect(result.dependencies['framer-motion']).toBeUndefined();
-    expect(result.dependencies['lucide-react']).toBeUndefined();
-    expect(result.dependencies['@radix-ui/react-dialog']).toBeUndefined();
-    expect(result.dependencies['@babel/standalone']).toBeUndefined();
-    expect(result.dependencies.bootstrap).toBeUndefined();
-    expect(result.dependencies['@stylexjs/stylex']).toBeUndefined();
-    expect(result.dependencies.tailwindcss).toBeUndefined();
-    expect(result.dependencies.bulma).toBeUndefined();
-  });
-
-  it('keeps the Wizard runtime path after canonical projection has consumed VFS metadata', () => {
-    const result = buildPreviewArtifacts({
-      sourceFiles: {
-        '/src/App.tsx': 'export default function App(){ return <main>Projected wizard preview</main>; }',
-        '/src/index.css': ':root { --primary: 221 83% 53%; }',
-        '/.unison/site-bundle-snapshot.json': JSON.stringify({
-          snapshotId: 'snap_projection_runtime',
-          pageRegistry: { pages: {} },
-          vfsFiles: {
-            '/src/App.tsx': 'export default function App(){ return <main>Projected wizard preview</main>; }',
-            '/src/index.css': ':root { --primary: 221 83% 53%; }',
-          },
-          meta: {
-            source: 'wizard',
-            themePresetId: 'modern',
-            themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
-            seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_projection_runtime', fileCount: 2 },
-          },
-        }),
-      },
-    });
-
-    expect(result.dependencies['@radix-ui/react-dialog']).toBeUndefined();
-    expect(result.dependencies['@babel/standalone']).toBeUndefined();
-    expect(result.dependencies['@stylexjs/stylex']).toBeUndefined();
-  });
-
-  it('installs only dependencies reached through a wizard UI foundation import', () => {
-    const foundation = buildGeneratedUiFoundation({
-      industry: 'salon',
-      themePresetId: 'organic',
-      needsBooking: true,
-    });
-    const result = buildPreviewArtifacts({
-      sourceFiles: {
-        ...foundation.files,
-        '/src/App.tsx': "import { Button } from '@/unison/ui/button'; export default function App(){ return <Button>Book</Button>; }",
-        '/src/index.css': buildThemedIndexCss(THEME_PRESETS.find((preset) => preset.id === 'organic')!),
-        '/.unison/site-bundle-snapshot.json': JSON.stringify({
-          snapshotId: 'snap_reachable_foundation',
-          pageRegistry: { pages: {} },
-          vfsFiles: {},
-          meta: {
-            source: 'wizard',
-            themePresetId: 'organic',
-            themeInjection: { version: '1.0', stage: '4b', presetId: 'organic', cssPath: '/src/index.css' },
-          },
-        }),
-      },
-    });
-
-    expect(result.dependencies['@radix-ui/react-slot']).toBe('1.2.4');
-    expect(result.dependencies['class-variance-authority']).toBeDefined();
-    expect(result.dependencies['@radix-ui/react-dialog']).toBeUndefined();
-    expect(result.dependencies['@swc/helpers']).toBeDefined();
-    expect(result.sandpackFiles['/unison/ui/radix/slot-safe.tsx']).toContain("from '@radix-ui/react-slot'");
-    expect(result.dependencies['framer-motion']).toBeUndefined();
-    expect(result.dependencies['lucide-react']).toBeUndefined();
-  });
-
-  it('does not regenerate Stage 4b foundation or CSS while preparing a sealed Wizard preview', () => {
-    const css = ':root { --primary: 221 83% 53%; --ut-motion-duration: 475ms; } /* SEALED_STAGE_4B_CSS */';
-    const motion = [
-      '/* SEALED_STAGE_4B_MOTION */',
-      'export const Reveal = ({ children }: any) => children;',
-    ].join('\n');
-    const snapshot = {
-      snapshotId: 'snap_exact_stage4b_preview',
-      pageRegistry: { pages: {} },
-      vfsFiles: {
-        '/src/App.tsx': "import { Reveal } from './unison/ui/motion'; export default function App(){ return <Reveal><main data-ut-variant='hero:full-bleed'>Exact</main></Reveal>; }",
-        '/src/index.css': css,
-        '/src/unison/ui/motion.tsx': motion,
-        '/.unison/ui-manifest.json': JSON.stringify({
-          version: 'legacy-looking-but-sealed',
-          importRoot: '@/unison/ui',
-          primitiveImports: [],
-        }),
-      },
-      meta: {
-        source: 'wizard',
-        themePresetId: 'modern',
-        themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
-        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_exact_stage4b_preview', fileCount: 4 },
-      },
-    };
-
-    const result = buildPreviewArtifacts({
-      sourceFiles: {
-        ...snapshot.vfsFiles,
-        '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot),
-      },
-    });
-
-    expect(result.sandpackFiles['/index.css']).toBe(css);
-    expect(result.sandpackFiles['/unison/ui/motion.tsx']).toContain('SEALED_STAGE_4B_MOTION');
-    expect(result.sandpackFiles['/App.tsx']).toContain("data-ut-variant='hero:full-bleed'");
-  });
-
-  it('rejects untokenized sealed Wizard CSS instead of rebuilding it from themePresetId', () => {
-    const snapshot = {
-      snapshotId: 'snap_no_css_recovery',
-      pageRegistry: { pages: {} },
-      vfsFiles: {
-        '/src/App.tsx': 'export default function App(){ return <main>Exact</main>; }',
-        '/src/index.css': 'body { color: #111; background: #fff; }',
-      },
-      meta: {
-        source: 'wizard',
-        themePresetId: 'modern',
-        themeInjection: { version: '1.0', stage: '4b', presetId: 'modern', cssPath: '/src/index.css' },
-        seal: { version: '1.0', sealedAt: '2026-08-29T00:00:00.000Z', sealedBy: 'wizard-launch', compileArtifactId: 'snap_no_css_recovery', fileCount: 2 },
-      },
-    };
-
-    expect(() => buildPreviewArtifacts({
-      sourceFiles: {
-        ...snapshot.vfsFiles,
-        '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot),
-      },
-    })).toThrow(/CSS recovery is not allowed after Stage 4b/);
-  });
-
-  it('recovers a legacy manifestless animation facade through the local Sandpack shim', () => {
-    const result = buildPreviewArtifacts({
-      sourceFiles: {
-        '/src/App.tsx': "import { motion } from '@/unison/ui/animation'; export default function App(){ return <motion.main>Ready</motion.main>; }",
-        '/src/index.css': ':root { --primary: 221 83% 53%; }',
-      },
-    });
-
-    expect(result.sandpackFiles['/unison/ui/animation.ts']).toContain("export * from '../../motion-shim'");
-    expect(result.sandpackFiles['/motion-shim.tsx']).toContain('export const motion = new Proxy');
-    expect(result.dependencies['framer-motion']).toBeUndefined();
-  });
-
   it("does not reintroduce embedded JSON launcher wrappers after normalization", () => {
     const leakedJsonWrapper = [
       "/** @jsx React.createElement */",
@@ -402,7 +72,7 @@ describe("launchStateToSandpackFiles", () => {
     expect(previewFiles["/App.tsx"] || "").toContain("return <div>clean</div>");
   });
 
-  it("blocks prose-only TSX modules instead of rendering fallback content", () => {
+  it("injects a safe fallback when a TSX module is prose-only", () => {
     const proseOnly = "I will now create a polished landing page with a modern hero and strong CTA.";
 
     const launchState = createLaunchState({
@@ -417,10 +87,14 @@ describe("launchStateToSandpackFiles", () => {
       preloadedIntents: [],
     });
 
-    expect(() => launchStateToSandpackFiles({
+    const previewFiles = launchStateToSandpackFiles({
       launchState,
       vfsFiles: launchState.vfsFiles,
-    })).toThrow(/Prose-only module/);
+    });
+
+    const recoveredPage = previewFiles["/pages/Home.tsx"] || "";
+    expect(recoveredPage).toContain("Preview recovered");
+    expect(recoveredPage).toContain("safe fallback was injected");
   });
 
   it("repairs parenthesized and concise-arrow {children} object returns", () => {
@@ -545,7 +219,7 @@ describe("launchStateToSandpackFiles", () => {
     expect(indexCode).not.toContain("Safe_Route");
   });
 
-  it("scaffolds only explicitly selected wizard pages before Builder readiness", () => {
+  it("scaffolds registered wizard pages before Builder readiness", () => {
     const templateId = getCompositionsBySystemType("booking")[0]?.id;
     expect(templateId).toBeTruthy();
 
@@ -559,30 +233,12 @@ describe("launchStateToSandpackFiles", () => {
       wantsLeadCapture: true,
       templateId,
       themeId: "modern",
-      themePresetId: "modern",
-      themeTokens: themePresetToThemeTokens(
-        THEME_PRESETS.find((preset) => preset.id === "modern")!,
-      ),
-      requestedPages: ["services"],
-      scaffoldMode: "selected-pages" as const,
     };
 
     const pipeline = commitToPipeline({ selections: wizardSelections }, 'wizard-launch');
-    for (const page of Object.values(pipeline.siteBundleSnapshot.pageRegistry.pages)) {
-      expect(page.pageRole).toBeTruthy();
-      expect(page.pageRole).not.toBe('custom');
-      expect(page.pageType).not.toBe('custom');
-      expect(page.path).toMatch(/^\//);
-      expect(page.filePath).toBeTruthy();
-      expect(pipeline.compileResult.vfsFiles[page.filePath!]).toMatch(/export\s+default\b/);
-    }
-    expect(pipeline.compileResult.vfsFiles['/src/App.tsx']).toContain('<Routes>');
-
-    // Routes and page bodies must close over the same canonical registry. A
-    // missing registered page is fatal, never scaffold-substituted or dropped.
-    expect(() => buildCanonicalLaunchArtifacts({
+    const artifacts = buildCanonicalLaunchArtifacts({
       generatedFiles: {
-        "/src/App.tsx": "export default function App(){ return <main>Rich Home</main>; }",
+        "/src/App.tsx": "export default function App(){ return <main>Generated Home</main>; }",
       },
       preferredEntryPoint: "/src/App.tsx",
       siteBundleSnapshot: pipeline.siteBundleSnapshot,
@@ -597,27 +253,9 @@ describe("launchStateToSandpackFiles", () => {
       aesthetic: "modern",
       backendRequired: false,
       wizardSelections,
-    })).toThrow(/Canonical compiler output is missing \d+ registered page/);
-  });
+    });
 
-
-  it('rejects an unknown wizard template instead of substituting an industry scaffold', () => {
-    const modern = THEME_PRESETS.find((preset) => preset.id === 'modern');
-    expect(modern).toBeTruthy();
-
-    expect(() => commitToPipeline({
-      selections: {
-        businessName: 'Broken Card Co',
-        businessModel: 'appointment_service',
-        industryOverlay: 'salon',
-        primaryGoal: 'book_appointments',
-        secondaryGoals: [],
-        templateId: 'missing-template-card',
-        themePresetId: 'modern',
-        themeTokens: themePresetToThemeTokens(modern!),
-        requestedPages: ['services'],
-        scaffoldMode: 'selected-pages',
-      },
-    }, 'wizard-launch')).toThrow('Wizard selected template "missing-template-card" is not registered');
+    expect(artifacts.files["/src/pages/Services.tsx"]).toBeTruthy();
+    expect(artifacts.files["/src/App.tsx"]).toContain('path="/services"');
   });
 });

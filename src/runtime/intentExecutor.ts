@@ -1,5 +1,5 @@
 /**
- * Unified Intent Executor runtime
+ * Unified Intent Executor - The "Lovable feeling" runtime
  * 
  * Every intent execution flows through this SINGLE entry point.
  * 

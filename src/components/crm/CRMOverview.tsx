@@ -5,8 +5,6 @@ import { supabase as _sb } from "@/integrations/supabase/client";
 const supabase: any = _sb;
 import { WorkflowActivityFeed } from "./WorkflowActivityFeed";
 import { GhlReactionsManager } from "./GhlReactionsManager";
-import { CRMActivityFeed } from "./CRMActivityFeed";
-
 
 interface OverviewStats {
   contacts: number;
@@ -201,9 +199,6 @@ export function CRMOverview({ onNavigate, businessId, projectId }: CRMOverviewPr
         </Card>
       </div>
 
-      {/* Real-time outcomes from generated sites (Milestone 5) */}
-      {businessId && <CRMActivityFeed businessId={businessId} />}
-
       {/* Live GHL workflow activity */}
       <WorkflowActivityFeed businessId={businessId} />
 
@@ -212,4 +207,3 @@ export function CRMOverview({ onNavigate, businessId, projectId }: CRMOverviewPr
     </div>
   );
 }
-

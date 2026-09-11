@@ -1,16 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { 
   Users, 
   Target, 
   Workflow, 
   FileText, 
   BarChart3, 
+  Settings,
   Menu,
   X,
+  Plus,
+  Home,
   Kanban,
   Zap,
   Sparkles,
-  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,15 +25,13 @@ import { CRMOverview } from "@/components/crm/CRMOverview";
 import { CRMPipeline } from "@/components/crm/CRMPipeline";
 import { CRMAutomations } from "@/components/crm/CRMAutomations";
 import { PrebuiltWorkflows } from "@/components/crm/PrebuiltWorkflows";
-import { CRMBookings } from "@/components/crm/CRMBookings";
 
-export type CRMView = "overview" | "contacts" | "leads" | "bookings" | "pipeline" | "workflows" | "recipes" | "automations" | "forms";
+type CRMView = "overview" | "contacts" | "leads" | "pipeline" | "workflows" | "recipes" | "automations" | "forms";
 
 const navItems = [
   { id: "overview" as CRMView, label: "Overview", icon: BarChart3 },
   { id: "contacts" as CRMView, label: "Contacts", icon: Users },
   { id: "leads" as CRMView, label: "Leads", icon: Target },
-  { id: "bookings" as CRMView, label: "Bookings", icon: Calendar },
   { id: "pipeline" as CRMView, label: "Pipeline", icon: Kanban },
   { id: "workflows" as CRMView, label: "Workflows", icon: Workflow },
   { id: "recipes" as CRMView, label: "Prebuilt", icon: Sparkles },
@@ -40,59 +41,35 @@ const navItems = [
 
 interface CRMDashboardProps {
   initialView?: CRMView;
-  businessId: string;
-  projectId: string;
-  embedded?: boolean;
 }
 
-export default function CRMDashboard({
-  initialView = "overview",
-  businessId,
-  projectId,
-  embedded = false,
-}: CRMDashboardProps) {
+export default function CRMDashboard({ initialView = "overview" }: CRMDashboardProps) {
   const [activeView, setActiveView] = useState<CRMView>(initialView);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  useEffect(() => {
-    setActiveView(initialView);
-  }, [initialView]);
-
-  const selectView = (view: CRMView) => {
-    setActiveView(view);
-  };
 
   const renderContent = () => {
     switch (activeView) {
       case "contacts":
-        return <CRMContacts businessId={businessId} projectId={projectId} />;
+        return <CRMContacts />;
       case "leads":
-        return <CRMLeads businessId={businessId} projectId={projectId} />;
-      case "bookings":
-        return <CRMBookings businessId={businessId} projectId={projectId} />;
+        return <CRMLeads />;
       case "pipeline":
-        return <CRMPipeline businessId={businessId} projectId={projectId} />;
+        return <CRMPipeline />;
       case "workflows":
-        return <CRMWorkflows businessId={businessId} projectId={projectId} />;
+        return <CRMWorkflows />;
       case "recipes":
-        return <PrebuiltWorkflows businessId={businessId} />;
+        return <PrebuiltWorkflows />;
       case "automations":
-        return <CRMAutomations businessId={businessId} projectId={projectId} />;
+        return <CRMAutomations />;
       case "forms":
-        return <CRMFormSubmissions businessId={businessId} projectId={projectId} />;
+        return <CRMFormSubmissions />;
       default:
-        return (
-          <CRMOverview
-            businessId={businessId}
-            projectId={projectId}
-            onNavigate={selectView}
-          />
-        );
+        return <CRMOverview onNavigate={setActiveView} />;
     }
   };
 
   return (
-    <div className={cn("bg-background flex", embedded ? "min-h-[36rem]" : "min-h-screen")}>
+    <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <aside
         className={cn(
@@ -103,11 +80,13 @@ export default function CRMDashboard({
         {/* Header */}
         <div className="h-16 border-b border-border flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
+            <Link to="/">
+              <Button variant="ghost" size="icon" title="Back to Home">
+                <Home className="h-4 w-4" />
+              </Button>
+            </Link>
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-base text-foreground">CRM</h1>
-                {embedded && <p className="text-[11px] text-muted-foreground">Project workspace</p>}
-              </div>
+              <h1 className="font-bold text-lg text-foreground">CRM</h1>
             )}
           </div>
           <Button
@@ -129,7 +108,7 @@ export default function CRMDashboard({
                 "w-full justify-start",
                 !sidebarOpen && "justify-center px-2"
               )}
-              onClick={() => selectView(item.id)}
+              onClick={() => setActiveView(item.id)}
             >
               <item.icon className={cn("h-4 w-4", sidebarOpen && "mr-2")} />
               {sidebarOpen && <span>{item.label}</span>}
@@ -137,6 +116,21 @@ export default function CRMDashboard({
           ))}
         </nav>
 
+        {/* Footer */}
+        <div className="p-2 border-t border-border">
+          <Link to="/business-settings" className="block">
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                !sidebarOpen && "justify-center px-2"
+              )}
+            >
+              <Settings className={cn("h-4 w-4", sidebarOpen && "mr-2")} />
+              {sidebarOpen && <span>Settings</span>}
+            </Button>
+          </Link>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -148,8 +142,13 @@ export default function CRMDashboard({
               {activeView === "forms" ? "Form Submissions" : activeView === "recipes" ? "Prebuilt Workflows" : activeView}
             </h2>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {projectId ? "Project scoped" : businessId ? "Business scoped" : "Workspace scope required"}
+          <div className="flex items-center gap-2">
+            {activeView !== "overview" && activeView !== "forms" && activeView !== "pipeline" && activeView !== "automations" && activeView !== "recipes" && (
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Add {activeView === "workflows" ? "Workflow" : activeView.slice(0, -1)}
+              </Button>
+            )}
           </div>
         </header>
 

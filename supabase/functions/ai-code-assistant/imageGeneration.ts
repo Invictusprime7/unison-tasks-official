@@ -13,6 +13,7 @@ export async function generateImageIfNeeded(opts: {
   generateImage: boolean;
   imagePlacement?: string;
   fastTemplateReact: boolean;
+  lovableApiKey?: string;
   openaiApiKey?: string;
 }): Promise<ImageGenerationResult> {
   const result: ImageGenerationResult = { generatedImageUrl: '', imageHtml: '' };
@@ -20,7 +21,7 @@ export async function generateImageIfNeeded(opts: {
   const imageKeywords = ['generate image', 'create image', 'generate a logo', 'create a logo', 'make a logo', 'add logo image', 'insert image'];
   const shouldGenerate = !opts.fastTemplateReact && (opts.generateImage || imageKeywords.some(kw => opts.userPrompt.includes(kw)));
 
-  const imageApiKey = opts.openaiApiKey;
+  const imageApiKey = opts.openaiApiKey || opts.lovableApiKey;
   if (!shouldGenerate || !imageApiKey) return result;
 
   console.log('[AI-Code-Assistant] Generating image for request');

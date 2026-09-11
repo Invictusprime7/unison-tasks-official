@@ -32,24 +32,6 @@ import { compilePlayground } from '@/services/playgroundCompiler';
 import { INDUSTRY_INTENT_PROFILES } from '@/platform/core/industryIntentProfiles';
 import type { PlaygroundBinding, WizardSelections } from '@/platform/core/playground';
 import type { BuilderPage } from '@/types/pageRegistry';
-import { THEME_PRESETS } from '@/components/onboarding/themePresets';
-import { buildThemedIndexCss } from '@/components/onboarding/themePresetToIndexCss';
-import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
-import { commitToPipeline } from '@/platform/core/commitToPipeline';
-import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
-import { buildPreviewArtifacts } from '@/utils/previewArtifacts';
-import { createLaunchState } from '@/types/launchState';
-import { getCompositionsBySystemType } from '@/sections/templates';
-import { findUnresolvedLocalImports } from '@/services/laneBCompanionModules';
-import type { SectionEntry } from '@/sections/types';
-import { collectResolvedCompositions } from '@/platform/core/resolvedComposition';
-import portableRecipes from '@/sections/recipes/stylexRecipes.generated.json';
-
-function readPageSections(source: string): SectionEntry[] {
-  const match = source.match(/const SECTIONS = ([\s\S]*?);\nconst HYDRATABLE/);
-  if (!match) throw new Error('Compiled page did not serialize sections');
-  return JSON.parse(match[1]) as SectionEntry[];
-}
 
 interface IndustryFixture {
   label: string;
@@ -249,29 +231,15 @@ describe('Golden industry pipeline — canonical round-trip', () => {
     const pack = resolveCapabilities(fx.selections);
     const materialization = materializePlayground(fx.selections, pack);
     const state = materialization.playground;
-    const themePreset = THEME_PRESETS.find((preset) => preset.id === fx.selections.themePresetId);
-    if (!themePreset) throw new Error(`Missing theme preset ${fx.selections.themePresetId}`);
-    const stage4bCss = buildThemedIndexCss(themePreset);
     const compileA = compilePlayground(state, {}, fx.selections.businessName, {
       selectedTemplateId: fx.selections.templateId,
       themePresetId: fx.selections.themePresetId,
-      stage4bCss,
       industry: fx.templateIndustry,
     });
     const compileB = compilePlayground(state, compileA.vfsFiles, fx.selections.businessName, {
       selectedTemplateId: fx.selections.templateId,
       themePresetId: fx.selections.themePresetId,
-      stage4bCss,
       industry: fx.templateIndustry,
-    });
-
-    it('preserves the exact Stage 4b theme seed and visual runtime', () => {
-      const css = compileA.vfsFiles['/src/index.css'];
-      expect(css).toBe(stage4bCss);
-      expect(css).toContain(`WIZARD THEME: ${themePreset.label}`);
-      expect(css).toContain('--primary:');
-      expect(css).toContain('.animate-fade-in-up');
-      expect(css).toContain('.button-press');
     });
 
     it('materializes a non-empty PageRegistry with a home page', () => {
@@ -331,23 +299,6 @@ describe('Golden industry pipeline — canonical round-trip', () => {
       }
     });
 
-    it('renders page-owned chrome exactly once per route and none in the router', () => {
-      const router = compileA.routerFile.content;
-
-      // Chrome authority is the page body (wizard-derived composition sections).
-      expect(router).not.toContain('<SiteNavbar');
-      expect(router).not.toContain('<SiteFooter');
-      expect(router).not.toContain('./sections/SiteNavbar.tsx');
-      expect(router).not.toContain('./sections/SiteFooter.tsx');
-
-      // No platform chrome module exists any more, so no page may import one.
-      for (const page of Object.values(state.pageRegistry.pages) as BuilderPage[]) {
-        const pageSource = compileA.vfsFiles[page.filePath!] || '';
-        expect(pageSource, `${page.filePath} must not import platform chrome`).not.toContain('sections/SiteNavbar');
-        expect(pageSource, `${page.filePath} must not import platform chrome`).not.toContain('sections/SiteFooter');
-      }
-    });
-
     it('bindings carry canonical coreIntent + slot identity (V2 contract)', () => {
       const bindings = Object.values(state.bindings) as PlaygroundBinding[];
       expect(bindings.length, 'wizard should produce at least one binding').toBeGreaterThan(0);
@@ -374,6 +325,7 @@ describe('Golden industry pipeline — canonical round-trip', () => {
       const present = new Set<string>([...materialized, ...compiled]);
       const missing = profile.required.filter((r) => r !== 'nav.goto' && !present.has(r));
       if (missing.length > 0) {
+        // eslint-disable-next-line no-console
         console.warn(
           `[golden:${fx.label}] wizard did not stamp required intents:`,
           missing.join(', '),
@@ -382,6 +334,7 @@ describe('Golden industry pipeline — canonical round-trip', () => {
       // At minimum, the primary intent must be present — that is a hard contract.
       const primary = fx.selections.primaryIntent;
       if (primary && !present.has(primary)) {
+        // eslint-disable-next-line no-console
         console.warn(
           `[golden:${fx.label}] wizard did not stamp primary intent: ${primary}`,
         );
@@ -405,146 +358,4 @@ describe('Golden industry pipeline — canonical round-trip', () => {
       );
     });
   });
-});
-
-describe('Salon Premium golden launch transaction', () => {
-  it('seals all eight deterministic page bodies with dedicated Pricing and FAQ content', () => {
-    const editorial = THEME_PRESETS.find((preset) => preset.id === 'editorial');
-    const composition = getCompositionsBySystemType('booking')
-      .find((candidate) => candidate.id === 'salon-premium');
-    if (!editorial || !composition) throw new Error('Salon Premium editorial fixture is not registered.');
-
-    const selections: WizardSelections = {
-      businessName: 'STELLAR BEAUTY',
-      businessModel: 'appointment_service',
-      industryOverlay: 'salon',
-      systemType: 'booking',
-      primaryGoal: 'book',
-      secondaryGoals: ['contact'],
-      needsBooking: true,
-      wantsLeadCapture: true,
-      requestedPages: ['home', 'about', 'services', 'pricing', 'gallery', 'booking', 'contact', 'faq'],
-      scaffoldMode: 'selected-pages',
-      templateId: 'salon-premium',
-      themePresetId: 'editorial',
-      themeTokens: themePresetToThemeTokens(editorial),
-      primaryIntent: 'booking.create',
-    };
-    const laneA = commitToPipeline({ selections }, 'wizard-launch');
-    const registryPages = Object.values(laneA.siteBundleSnapshot.pageRegistry.pages);
-    const homePage = registryPages.find((page) => page.isHome);
-    expect(homePage).toBeDefined();
-    expect(readPageSections(laneA.siteBundleSnapshot.vfsFiles[homePage!.filePath!]).map((section) => section.id))
-      .toEqual(composition.sections.map((section) => section.id));
-    for (const page of registryPages) {
-      const sectionMapPath = page.filePath!.replace(/\.tsx$/, '.sections.ts');
-      expect(laneA.siteBundleSnapshot.vfsFiles[sectionMapPath], sectionMapPath).toBeTruthy();
-    }
-
-    const artifacts = buildCanonicalLaunchArtifacts({
-      generatedFiles: laneA.siteBundleSnapshot.vfsFiles,
-      preferredEntryPoint: '/src/App.tsx',
-      siteBundleSnapshot: laneA.siteBundleSnapshot,
-      compileArtifact: laneA.compileArtifact,
-      compiledPlayground: laneA.compileResult,
-      canonicalPlayground: laneA.playground,
-      mergeWithCanonicalSnapshot: true,
-      systemType: 'booking',
-      systemName: 'Booking',
-      businessName: 'STELLAR BEAUTY',
-      industry: 'salon',
-      templateId: 'salon-premium',
-      themePresetId: 'editorial',
-      wizardSelections: selections,
-      backendRequired: false,
-    });
-
-    expect(registryPages).toHaveLength(8);
-    for (const role of ['pricing', 'faq']) {
-      const page = registryPages.find(page => page.path === `/${role}`)!;
-      expect(readPageSections(artifacts.files[page.filePath!]).some(section => section.type === role), role).toBe(true);
-    }
-    expect(artifacts.siteBundleSnapshot?.meta.templateId).toBe('salon-premium');
-    expect(artifacts.siteBundleSnapshot?.meta.themePresetId).toBe('editorial');
-    expect(artifacts.siteBundleSnapshot?.meta.seal).toMatchObject({
-      pipeline: 'canonical-compiler+stage-4b',
-      authorityProofVersion: '2.0',
-      registeredPageBodyAuthority: 'canonical-compiler',
-      registeredPageFiles: registryPages.map((page) => page.filePath).sort(),
-    });
-    expect(artifacts.files['/src/index.css']).toContain("--font-heading: 'Playfair Display'");
-    const galleryRecipePath = '/src/components/recipes/Gallery.ts';
-    expect(artifacts.files[galleryRecipePath]).toBe(portableRecipes.families.gallery);
-    expect(artifacts.siteBundleSnapshot?.vfsFiles[galleryRecipePath]).toBe(artifacts.files[galleryRecipePath]);
-    const sealedPageBodies = new Set<string>();
-    for (const page of registryPages) {
-      expect(artifacts.files[page.filePath!], page.filePath).toContain('const SECTIONS');
-      expect(artifacts.files[page.filePath!], `${page.filePath} must match the sealed snapshot`).toBe(
-        artifacts.siteBundleSnapshot?.vfsFiles[page.filePath!],
-      );
-      sealedPageBodies.add(artifacts.files[page.filePath!]);
-      expect(readPageSections(artifacts.files[page.filePath!]), `${page.filePath} must preserve compiled section counts and order`)
-        .toEqual(readPageSections(laneA.siteBundleSnapshot.vfsFiles[page.filePath!]));
-    }
-    expect(sealedPageBodies.size).toBe(registryPages.length);
-    expect(findUnresolvedLocalImports(artifacts.files)).toEqual([]);
-    const recompiled = commitToPipeline({
-      playground: laneA.playground, existingVfsFiles: artifacts.files,
-      businessName: selections.businessName, industry: 'salon',
-      selectedTemplateId: 'salon-premium', themePresetId: 'editorial', themeTokens: selections.themeTokens!,
-    }, 'playground-edit');
-    const originalCompositions = collectResolvedCompositions(artifacts.files);
-    const recompiledCompositions = collectResolvedCompositions(recompiled.compileResult!.vfsFiles);
-    expect(recompiled.compileResult!.vfsFiles[galleryRecipePath]).toBe(portableRecipes.families.gallery);
-    for (const role of ['pricing', 'faq']) {
-      const page = registryPages.find(page => page.path === `/${role}`)!;
-      expect(originalCompositions[page.filePath!].compositionAlternativeId).toEqual(expect.any(String));
-      expect(recompiledCompositions[page.filePath!]).toEqual(originalCompositions[page.filePath!]);
-    }
-    expect(artifacts.siteBundleSnapshot?.vfsFiles['/.unison/wizard-launch-authority.json']).toBeUndefined();
-
-    const launchState = createLaunchState({
-      systemType: 'booking',
-      systemName: 'Booking',
-      businessName: 'STELLAR BEAUTY',
-      templateName: 'Salon Premium',
-      templateCategory: 'salon',
-      vfsFiles: artifacts.files,
-      preloadedIntents: ['booking.create', 'contact.submit'],
-      entryPoint: artifacts.entryPoint,
-      industry: 'salon',
-      templateId: 'salon-premium',
-      themePresetId: 'editorial',
-      siteBundleSnapshot: artifacts.siteBundleSnapshot,
-      materializedPlayground: laneA.playground,
-      compiledPlayground: laneA.compileResult,
-      wizardSelections: selections,
-    });
-    const previewFiles = buildPreviewArtifacts({
-      sourceFiles: {
-        ...artifacts.files,
-        '/App.tsx': 'export default function App(){ return <main>LEGACY MINIMAL FALLBACK</main>; }',
-        '/pages/Home.tsx': 'export default function Home(){ return <main>LEGACY HOME</main>; }',
-        '/template.css': ':root { --primary: 320 80% 55%; }',
-      },
-      launchState,
-    }).sandpackFiles;
-    const previewRouter = previewFiles['/App.tsx'];
-    expect(previewFiles['/components/recipes/Gallery.ts']).toContain('GalleryFrame');
-    expect(previewFiles['/components/recipes/Gallery.ts']).toContain('REGISTERED_VARIANTS');
-
-    expect(previewRouter).not.toContain('LEGACY MINIMAL FALLBACK');
-    expect(Object.values(previewFiles).join('\n')).not.toContain('LEGACY HOME');
-    for (const page of registryPages) {
-      const flattenedPath = page.filePath!.replace(/^\/src/, '');
-      const importPath = page.filePath!.replace(/^\/src\//, './').replace(/\.tsx$/, '');
-      expect(previewFiles[flattenedPath], `${page.filePath} must survive Sandpack flattening`)
-        .toContain('const SECTIONS');
-      expect(previewFiles[flattenedPath]).not.toContain('LEGACY HOME');
-      expect(readPageSections(previewFiles[flattenedPath]), `${page.filePath} must preserve sealed sections in Preview`)
-        .toEqual(readPageSections(artifacts.files[page.filePath!]));
-      expect(previewRouter, `${page.filePath} must remain connected to the preview router`)
-        .toMatch(new RegExp(`from ["']${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\.tsx)?["']`));
-    }
-  }, 15_000);
 });

@@ -14,7 +14,6 @@
  */
 
 import type { SiteBundle } from '@/types/siteBundle';
-import type { SiteBundleSnapshot } from './canonicalPipeline';
 import type { CompiledContract, ValidationIssue, ValidationSeverity } from './contractCompiler';
 import type { ProvisioningStatus } from './provisioningValidator';
 import type { TemplateComposition } from '@/sections/types';
@@ -103,7 +102,7 @@ export interface IntegrityReportOptions {
  * Run a full integrity report against a SiteBundle + CompiledContract.
  */
 export function runIntegrityReport(
-  bundle: SiteBundle | SiteBundleSnapshot | null,
+  bundle: SiteBundle | null,
   contract: CompiledContract | null,
   options: IntegrityReportOptions = {},
 ): IntegrityReport {
@@ -111,11 +110,7 @@ export function runIntegrityReport(
 
   // ── 1. Bundle structural integrity ──────────────────────────────────
   if (bundle) {
-    checks.push(...(
-      isSiteBundleSnapshot(bundle)
-        ? validateSnapshotStructure(bundle)
-        : validateBundleStructure(bundle)
-    ));
+    checks.push(...validateBundleStructure(bundle));
   } else {
     checks.push(fail('bundle-structure', 'bundle-exists', 'SiteBundle present', 'error', 'No SiteBundle provided'));
   }
@@ -191,53 +186,6 @@ function fail(
 // ============================================================================
 // Validators
 // ============================================================================
-
-function isSiteBundleSnapshot(
-  bundle: SiteBundle | SiteBundleSnapshot,
-): bundle is SiteBundleSnapshot {
-  return 'snapshotId' in bundle && 'pageRegistry' in bundle && 'vfsFiles' in bundle;
-}
-
-function validateSnapshotStructure(snapshot: SiteBundleSnapshot): IntegrityCheckResult[] {
-  const results: IntegrityCheckResult[] = [];
-  const pages = Object.values(snapshot.pageRegistry.pages);
-
-  if (snapshot.snapshotId?.trim()) {
-    results.push(pass('bundle-structure', 'snapshot-id', 'Snapshot identity', `Snapshot ID: ${snapshot.snapshotId}`));
-  } else {
-    results.push(fail('bundle-structure', 'snapshot-id', 'Snapshot identity', 'error', 'Snapshot ID is empty'));
-  }
-
-  if (pages.length > 0) {
-    results.push(pass('bundle-structure', 'has-pages', 'Pages exist', `${pages.length} page(s) defined`));
-  } else {
-    results.push(fail('bundle-structure', 'has-pages', 'Pages exist', 'error', 'No pages defined'));
-  }
-
-  const homePage = pages.find((page) => page.pageId === snapshot.pageRegistry.homePageId || page.path === '/');
-  if (homePage) {
-    results.push(pass('bundle-structure', 'has-home', 'Home page', 'Home page exists'));
-  } else {
-    results.push(fail('bundle-structure', 'has-home', 'Home page', 'warning', 'No home page identified'));
-  }
-
-  const missingPageFiles = pages
-    .map((page) => page.filePath)
-    .filter((path): path is string => Boolean(path) && !snapshot.vfsFiles[path!]);
-  if (missingPageFiles.length === 0) {
-    results.push(pass('bundle-structure', 'page-file-closure', 'Page file closure', 'Every registered page has source'));
-  } else {
-    results.push(fail(
-      'bundle-structure',
-      'page-file-closure',
-      'Page file closure',
-      'error',
-      `Missing page source: ${missingPageFiles.join(', ')}`,
-    ));
-  }
-
-  return results;
-}
 
 function validateBundleStructure(bundle: SiteBundle): IntegrityCheckResult[] {
   const results: IntegrityCheckResult[] = [];
@@ -462,20 +410,17 @@ function validateProvisioningStatus(contract: CompiledContract): IntegrityCheckR
   return results;
 }
 
-function validateCrossConsistency(
-  bundle: SiteBundle | SiteBundleSnapshot,
-  contract: CompiledContract,
-): IntegrityCheckResult[] {
+function validateCrossConsistency(bundle: SiteBundle, contract: CompiledContract): IntegrityCheckResult[] {
   const results: IntegrityCheckResult[] = [];
 
   // Bundle pages match contract pages
-  const bundlePagePaths = isSiteBundleSnapshot(bundle)
-    ? Object.values(bundle.pageRegistry.pages).map((page) => page.path)
-    : Object.values(bundle.pages || {}).map((page) => page.path).filter(Boolean);
+  const bundlePages = bundle.pages ? Object.keys(bundle.pages) : [];
   const contractPages = contract.pages.map(p => p.path);
 
-  if (bundlePagePaths.length > 0 && contractPages.length > 0) {
-    const bundlePaths = new Set(bundlePagePaths);
+  if (bundlePages.length > 0 && contractPages.length > 0) {
+    const bundlePaths = new Set(
+      Object.values(bundle.pages || {}).map((p) => p.path).filter(Boolean)
+    );
     const contractPaths = new Set(contractPages);
 
     const inBundleNotContract = [...bundlePaths].filter(p => !contractPaths.has(p));
