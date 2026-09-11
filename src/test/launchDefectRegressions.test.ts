@@ -143,10 +143,9 @@ describe('layout audit resolves expression class lists', () => {
 });
 
 function prepared(source: string): string {
-  const files = prepareSandpackFiles({ '/src/pages/Footer.tsx': source });
-  const entry = files['/src/pages/Footer.tsx'];
-  return entry;
+  return processCode(source, '/src/pages/Footer.tsx');
 }
+
 
 function iconDeclarationCount(code: string, name: string): number {
   const re = new RegExp(`^\\s*const\\s+${name}\\s*=\\s*__LucideIcons`, 'gm');
