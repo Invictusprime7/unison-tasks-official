@@ -231,7 +231,12 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
     }
   });
 
-  if (blocks.length > 0 && !sawCenteredContainer) {
+  // Pages that delegate their body to section components own no container of
+  // their own — the shell lives inside each section module. Flagging those was
+  // a false "content hugs the left edge" report on every generated route.
+  const delegatesToSections = /<SiteLayout\b/.test(source) || /\bSECTIONS\b/.test(source);
+
+  if (blocks.length > 0 && !sawCenteredContainer && !delegatesToSections) {
     issues.push({
       code: 'uncontained-section',
       severity: 'error',
@@ -240,6 +245,7 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
       snippet: path,
     });
   }
+
 
   const name = path.split('/').pop()?.replace(/\.(tsx|jsx)$/, '') ?? path;
 
