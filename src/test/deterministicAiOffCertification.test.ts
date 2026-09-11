@@ -16,6 +16,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { SystemType } from '@/types/launchState';
+import type { LayoutCategory } from '@/data/templates/types';
 import { commitToPipeline } from '@/platform/core/commitToPipeline';
 import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
 import { buildPreviewArtifacts } from '@/utils/previewArtifacts';
@@ -44,16 +46,16 @@ const PLACEHOLDER_MARKERS = [
 
 interface Fixture {
   label: string;
-  industry: string;
-  systemType: string;
+  industry: LayoutCategory;
+  systemType: SystemType;
   themePresetId: string;
   selections: WizardSelections;
 }
 
 function fixture(
   label: string,
-  industry: string,
-  systemType: string,
+  industry: LayoutCategory,
+  systemType: SystemType,
   themePresetId: string,
   extra: Partial<WizardSelections>,
 ): Fixture {
@@ -97,7 +99,7 @@ const FIXTURES: Fixture[] = [
     requestedPages: ['home', 'about', 'services', 'gallery', 'contact'],
     primaryIntent: 'booking.create',
   }),
-  fixture('contractor', 'contractor', 'lead', 'bold', {
+  fixture('contractor', 'contractor', 'agency', 'bold', {
     businessModel: 'quote_lead',
     primaryGoal: 'contact',
     wantsLeadCapture: true,
@@ -111,27 +113,27 @@ const FIXTURES: Fixture[] = [
     requestedPages: ['home', 'about', 'services', 'pricing', 'booking', 'contact'],
     primaryIntent: 'booking.create',
   }),
-  fixture('ecommerce', 'ecommerce', 'commerce', 'futuristic', {
+  fixture('ecommerce', 'ecommerce', 'store', 'futuristic', {
     businessModel: 'ecommerce',
     primaryGoal: 'sell',
     requestedPages: ['home', 'about', 'shop', 'contact'],
     primaryIntent: 'cart.add',
   }),
-  fixture('nonprofit', 'nonprofit', 'lead', 'organic', {
+  fixture('nonprofit', 'nonprofit', 'content', 'organic', {
     businessModel: 'quote_lead',
     primaryGoal: 'contact',
     wantsLeadCapture: true,
     requestedPages: ['home', 'about', 'services', 'contact'],
     primaryIntent: 'donation.start',
   }),
-  fixture('agency', 'agency', 'lead', 'editorial', {
+  fixture('agency', 'agency', 'agency', 'editorial', {
     businessModel: 'quote_lead',
     primaryGoal: 'contact',
     wantsLeadCapture: true,
     requestedPages: ['home', 'about', 'services', 'contact', 'faq'],
     primaryIntent: 'lead.submit',
   }),
-  fixture('saas', 'saas', 'lead', 'futuristic', {
+  fixture('saas', 'saas', 'saas', 'futuristic', {
     businessModel: 'saas_digital',
     primaryGoal: 'signup',
     wantsLeadCapture: true,
