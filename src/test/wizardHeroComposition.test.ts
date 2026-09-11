@@ -149,16 +149,19 @@ describe('hero quality findings', () => {
  * stays closed, not just the one template that happened to be complete.
  */
 describe('every industry compiles complete heroes on every route', () => {
-  const ROUTES: Array<{ id: string; title: string; path: string; role: PageRouteNode['role'] }> = [
-    { id: 'home', title: 'Home', path: '/', role: 'home' },
-    { id: 'about', title: 'About', path: '/about', role: 'about' },
-    { id: 'services', title: 'Services', path: '/services', role: 'services' },
-    { id: 'pricing', title: 'Pricing', path: '/pricing', role: 'pricing' },
-    { id: 'gallery', title: 'Gallery', path: '/gallery', role: 'gallery' },
-    { id: 'shop', title: 'Shop', path: '/shop', role: 'shop' },
-    { id: 'checkout', title: 'Checkout', path: '/checkout', role: 'checkout' },
-    { id: 'contact', title: 'Contact', path: '/contact', role: 'contact' },
-    { id: 'faq', title: 'Faq', path: '/faq', role: 'faq' },
+  const ROUTES: Array<{
+    id: string; title: string; path: string;
+    role: PageRouteNode['role']; type: BuilderPageType;
+  }> = [
+    { id: 'home', title: 'Home', path: '/', role: 'home', type: 'home' },
+    { id: 'about', title: 'About', path: '/about', role: 'about', type: 'about' },
+    { id: 'services', title: 'Services', path: '/services', role: 'services', type: 'custom' },
+    { id: 'pricing', title: 'Pricing', path: '/pricing', role: 'pricing', type: 'pricing' },
+    { id: 'gallery', title: 'Gallery', path: '/gallery', role: 'gallery', type: 'gallery' },
+    { id: 'shop', title: 'Shop', path: '/shop', role: 'shop', type: 'shop' },
+    { id: 'checkout', title: 'Checkout', path: '/checkout', role: 'checkout', type: 'checkout' },
+    { id: 'contact', title: 'Contact', path: '/contact', role: 'contact', type: 'contact' },
+    { id: 'faq', title: 'Faq', path: '/faq', role: 'faq', type: 'faq' },
   ];
 
   const INDUSTRIES = ['saas', 'salon', 'contractor', 'restaurant', 'coaching', 'ecommerce', 'portfolio', 'nonprofit', 'agency'];
@@ -170,8 +173,9 @@ describe('every industry compiles complete heroes on every route', () => {
 
       const reg = createEmptyPageRegistry();
       for (const [index, route] of ROUTES.entries()) {
-        reg.pages[route.id] = createBuilderPage(route.id, route.title, route.path, route.role === 'home' ? 'home' : route.role, {
+        reg.pages[route.id] = createBuilderPage(route.id, route.title, route.path, route.type, {
           isHome: route.role === 'home', showInNav: true, navOrder: index,
+          pageRole: route.role === 'services' ? 'service' : route.role,
           filePath: `/src/pages/${route.title}.tsx`,
         });
       }
