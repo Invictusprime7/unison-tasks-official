@@ -3419,6 +3419,28 @@ export function processCode(code: string, filePath: string): string {
     }
   }
 
+  // ── Final safety net: never emit the same icon binding twice ──────────
+  // Multiple passes (named-import rewrite, missing-icon injection, an earlier
+  // preparation run persisted into the VFS) can each contribute a lookup line.
+  // Keep the first top-level occurrence of every generated binding and drop
+  // any later duplicate, so Babel can never fail with "Duplicate declaration".
+  {
+    const seenIconBindings = new Set<string>();
+    const lookupLineRe = /^const\s+([A-Za-z_$][\w$]*)\s*=\s*(?:__LucideIcons\[[^\]]+\]\s*\|\|\s*)+__LucideFallback;\s*$/;
+    code = code
+      .split('\n')
+      .filter((line) => {
+        const match = lookupLineRe.exec(line);
+        if (!match) return true;
+        if (seenIconBindings.has(match[1])) return false;
+        seenIconBindings.add(match[1]);
+        return true;
+      })
+      .join('\n');
+  }
+
+
+
   // ── Safe framer-motion imports ─────────────────────────────────────────
   // The AI frequently imports { motion, AnimatePresence } from 'framer-motion'.
   // If framer-motion fails to load or specific exports are missing, provide safe fallbacks.
