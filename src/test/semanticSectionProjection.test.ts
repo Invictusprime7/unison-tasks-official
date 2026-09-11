@@ -41,7 +41,7 @@ describe('M1 — semantic section projection', () => {
   });
 
   it('never collapses gallery or pricing into the Services renderer', () => {
-    expect(familySource(files, 'Services')).toBeUndefined();
+    expect(files['/src/components/Services.tsx']).toBeUndefined();
     expect(map).toContain('"gallery": Gallery');
     expect(map).toContain('"pricing": Pricing');
     expect(map).toContain('"about": About');
