@@ -7,6 +7,21 @@ import type { GeneratedSitePlan, PageRouteNode } from '@/platform/core/siteTopol
 import type { SectionEntry } from '@/sections/types';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 
+/**
+ * Registered variants now ship as real modules: the family file resolves the
+ * chosen variant, `<Component>Base.tsx` is the deterministic fallback and
+ * `recipes/<Component>.ts` carries the registered implementations. Structural
+ * assertions read that whole emitted surface.
+ */
+function familySource(files: Record<string, string>, component: string): string {
+  return [
+    `/src/components/recipes/${component}.ts`,
+    `/src/components/${component}Base.tsx`,
+    `/src/components/${component}.tsx`,
+  ].map((path) => files[path] || '').join('\n');
+}
+
+
 function readSections(source: string): SectionEntry[] {
   const match = source.match(/const SECTIONS = ([\s\S]*?);\nconst HYDRATABLE/);
   if (!match) throw new Error('Compiled page did not serialize sections');
@@ -59,8 +74,8 @@ describe('composition VFS variants', () => {
       }
       expect(routeHero.sourceSectionId).toBe(hero.id);
       expect(routeHero.props.ctas).toEqual(hero.props.ctas);
-      expect(files['/src/components/Hero.tsx']).toContain('function HeroPageIntro');
-      expect(files['/src/components/Hero.tsx']).not.toContain("from '../../types'");
+      expect(familySource(files, 'Hero')).toContain('function HeroPageIntro');
+      expect(familySource(files, 'Hero')).not.toContain("from '../../types'");
     }
   });
 
@@ -253,19 +268,19 @@ describe('composition VFS variants', () => {
   it('emits structural renderer branches for variant layouts and supplied media', () => {
     const files = compileHome('restaurant-premium');
 
-    expect(files['/src/components/Hero.tsx']).toContain('data-ut-variant="hero:full-bleed"');
-    expect(files['/src/components/Hero.tsx']).toContain("const HERO_TOP_PADDING = 'var(--ut-hero-space-top)'");
-    expect(files['/src/components/Hero.tsx']).toContain('paddingTop: HERO_TOP_PADDING');
-    expect(files['/src/components/Hero.tsx']).not.toContain("paddingTop: '8rem'");
-    expect(files['/src/components/Hero.tsx']).not.toContain("paddingTop: '10rem'");
-    expect(files['/src/components/Hero.tsx']).toContain('<img src={media}');
-    expect(files['/src/components/Services.tsx']).toContain('data-ut-variant="services:alternating"');
-    expect(files['/src/components/Testimonials.tsx']).toContain('data-ut-variant="testimonials:carousel"');
-    expect(files['/src/components/CTA.tsx']).toContain('data-ut-variant="cta:split-card"');
-    expect(files['/src/components/Contact.tsx']).toContain('data-ut-variant="contact:split-card"');
-    expect(files['/src/components/Footer.tsx']).toContain('data-ut-variant="footer:dark-band"');
-    expect(files['/src/components/Hero.tsx']).toContain('{media && <div className="ut-media-frame min-h-[var(--ut-hero-media-block)]">');
-    expect(files['/src/components/Services.tsx']).toContain("item.image ? 'grid items-center gap-8 md:grid-cols-2 lg:gap-14' : 'max-w-2xl'");
+    expect(familySource(files, 'Hero')).toContain('data-ut-variant="hero:full-bleed"');
+    expect(familySource(files, 'Hero')).toContain("const HERO_TOP_PADDING = 'var(--ut-hero-space-top)'");
+    expect(familySource(files, 'Hero')).toContain('paddingTop: HERO_TOP_PADDING');
+    expect(familySource(files, 'Hero')).not.toContain("paddingTop: '8rem'");
+    expect(familySource(files, 'Hero')).not.toContain("paddingTop: '10rem'");
+    expect(familySource(files, 'Hero')).toContain('<img src={media}');
+    expect(familySource(files, 'Services')).toContain('data-ut-variant="services:alternating"');
+    expect(familySource(files, 'Testimonials')).toContain('data-ut-variant="testimonials:carousel"');
+    expect(familySource(files, 'CTA')).toContain('data-ut-variant="cta:split-card"');
+    expect(familySource(files, 'Contact')).toContain('data-ut-variant="contact:split-card"');
+    expect(familySource(files, 'Footer')).toContain('data-ut-variant="footer:dark-band"');
+    expect(familySource(files, 'Hero')).toContain('{media && <div className="ut-media-frame min-h-[var(--ut-hero-media-block)]">');
+    expect(familySource(files, 'Services')).toContain("item.image ? 'grid items-center gap-8 md:grid-cols-2 lg:gap-14' : 'max-w-2xl'");
     expect(files['/src/pages/Home.tsx']).toContain('data-ut-media-treatment={section.type === \'hero\' ? mediaTreatment : undefined}');
   });
 
@@ -366,7 +381,7 @@ describe('composition VFS variants', () => {
 
     expect(heroOnly['/src/components/theme.ts']).toContain('"primary": "var(--primary)"');
     expect(heroOnly['/src/components/theme.ts']).toContain('"headingFont": "var(--font-heading)"');
-    expect(heroOnly['/src/components/SiteLayout.tsx']).not.toContain('TEMPLATE_GLOBAL_STYLES');
+    expect(familySource(heroOnly, 'SiteLayout')).not.toContain('TEMPLATE_GLOBAL_STYLES');
     expect(heroOnly['/src/components/Hero.tsx']).toBeDefined();
     expect(heroOnly['/src/components/Navbar.tsx']).toBeUndefined();
     expect(heroOnly['/src/components/Footer.tsx']).toBeUndefined();
@@ -397,8 +412,8 @@ describe('composition VFS variants', () => {
   it('routes generated social icons through the snapshot VFS facade', () => {
     const files = compileHome('restaurant-premium');
 
-    expect(files['/src/components/SocialIcon.tsx']).toContain("from '@/unison/ui/icons'");
-    expect(files['/src/components/SocialIcon.tsx']).not.toContain("from 'lucide-react'");
+    expect(familySource(files, 'SocialIcon')).toContain("from '@/unison/ui/icons'");
+    expect(familySource(files, 'SocialIcon')).not.toContain("from 'lucide-react'");
   });
 
   it('requires explicit shell layouts and keeps representative industries structurally distinct', () => {

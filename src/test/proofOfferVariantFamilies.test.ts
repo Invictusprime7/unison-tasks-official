@@ -3,6 +3,21 @@ import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { getVariantById, getVariantsForSection, getDefaultVariant, getVariantIdForLayout } from '@/sections/variants';
 import type { TemplateComposition } from '@/sections/types';
 
+/**
+ * Registered variants now ship as real modules: the family file resolves the
+ * chosen variant, `<Component>Base.tsx` is the deterministic fallback and
+ * `recipes/<Component>.ts` carries the registered implementations. Structural
+ * assertions read that whole emitted surface.
+ */
+function familySource(files: Record<string, string>, component: string): string {
+  return [
+    `/src/components/recipes/${component}.ts`,
+    `/src/components/${component}Base.tsx`,
+    `/src/components/${component}.tsx`,
+  ].map((path) => files[path] || '').join('\n');
+}
+
+
 function build(sectionVariants: string[], sections: unknown[]) {
   const template = {
     id: 'fixture', name: 'Fixture', industry: 'consulting', sections,
@@ -60,11 +75,11 @@ describe('Phase 3 — testimonials and pricing are first-class variant families'
 
   it('generated VFS modules can execute the new layouts', () => {
     const files = build(['pricing-accordion'], [{ id: 'p-1', type: 'pricing', props: { tiers: [] } }]);
-    const pricingModule = files['/src/components/Pricing.tsx'];
+    const pricingModule = familySource(files, 'Pricing');
     expect(pricingModule).toContain('pricing:accordion');
     expect(pricingModule).toContain('pricing:comparison');
 
     const proof = build(['testimonial-rail'], [{ id: 't-1', type: 'testimonials', props: { items: [] } }]);
-    expect(proof['/src/components/Testimonials.tsx']).toContain("rawLayout === 'rail'");
+    expect(familySource(proof, 'Testimonials')).toContain("rawLayout === 'rail'");
   });
 });

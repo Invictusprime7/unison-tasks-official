@@ -32,7 +32,9 @@ const files = compositionToReactFileSet(template, '/src/pages/Home.tsx');
 const themeModule = loadModule(files['/src/components/theme.ts']);
 const Gallery = loadModule(files['/src/components/Gallery.tsx'], {
   './theme': themeModule,
+  './GalleryBase': loadModule(files['/src/components/GalleryBase.tsx']),
   './recipes/Gallery': loadModule(files['/src/components/recipes/Gallery.ts']),
+
 }).default as React.ComponentType<{
   props: SectionEntry<'gallery'>['props'] & { layout?: string }; variantId?: string;
 }>;

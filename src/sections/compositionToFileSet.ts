@@ -1058,17 +1058,8 @@ const SECTION_MODULE_SOURCE: Record<keyof typeof SECTION_FILES, string> = {
   About: ABOUT_MODULE,
   Services: SERVICES_MODULE,
   Features: FEATURES_MODULE,
-  Gallery: `import { REGISTERED_VARIANTS } from './recipes/Gallery';
-${LEGACY_GALLERY_MODULE.replace('export default function Gallery', 'function LegacyGallery')}
-import { THEME } from './theme';
-const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('gallery').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
-export default function Gallery({ props, variantId }: { props: any; variantId?: string }) {
-  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'grid'];
-  const Component = REGISTERED_VARIANTS[resolvedId];
-  if (!Component) return <LegacyGallery props={props} />;
-  return <Component section={{ type: 'gallery', variantId: resolvedId, props }} theme={THEME} />;
-}
-`,
+  Gallery: LEGACY_GALLERY_MODULE,
+
   Pricing: PRICING_MODULE,
   LogoCloud: LOGO_CLOUD_MODULE,
   BlogPreview: BLOG_PREVIEW_MODULE,
@@ -1082,7 +1073,69 @@ export default function Gallery({ props, variantId }: { props: any; variantId?: 
   FAQ: FAQ_MODULE,
 };
 
+/**
+ * Phase 1 closure — registered variants are materialized, not described.
+ *
+ * Every semantic family whose registered variants are certified portable by
+ * `scripts/build-stylex-recipes.mjs` ships its real implementations into the
+ * VFS. The family file at `SECTION_FILES[component]` becomes a thin resolver:
+ * it looks the chosen `variantId` up in the emitted recipe module and renders
+ * that exact implementation. The previous hand-written module stays alongside
+ * it as `<Component>Base.tsx` and is used only when a variant cannot be
+ * resolved, so a page can never go blank.
+ *
+ * FAQ is intentionally excluded: its StyleX module already resolves variants.
+ */
+const RECIPE_FAMILY_BY_COMPONENT: Partial<Record<keyof typeof SECTION_FILES, string>> =
+  Object.fromEntries(
+    Object.entries(SECTION_COMPONENT_BY_TYPE)
+      .filter(([sectionType, component]) =>
+        component !== 'FAQ'
+        && Object.prototype.hasOwnProperty.call(stylexRecipes.families, sectionType))
+      .map(([sectionType, component]) => [component, sectionType]),
+  );
 
+function recipeModulePathFor(component: keyof typeof SECTION_FILES): string {
+  return `/src/components/recipes/${component}.ts`;
+}
+
+function baseModulePathFor(component: keyof typeof SECTION_FILES): string {
+  return SECTION_FILES[component].replace(/\.tsx$/, 'Base.tsx');
+}
+
+/** `layout` token / variant slug → registered variant id, for legacy sections. */
+function layoutVariantIndex(sectionType: string): Record<string, string> {
+  return Object.fromEntries(
+    getVariantsForSection(sectionType as never).flatMap((variant) => [
+      [getLayoutForVariantId(variant.id), variant.id],
+      [variant.slug, variant.id],
+    ]).filter(([key]) => typeof key === 'string' && key.length > 0),
+  );
+}
+
+function variantResolverModule(
+  component: keyof typeof SECTION_FILES,
+  sectionType: string,
+): string {
+  const baseImport = `./${baseModulePathFor(component).split('/').pop()?.replace(/\.tsx$/, '')}`;
+  return `import React from 'react';
+import { REGISTERED_VARIANTS } from './recipes/${component}';
+import ${component}Base from '${baseImport}';
+import { THEME } from './theme';
+
+const LAYOUT_VARIANTS: Record<string, string> = ${JSON.stringify(layoutVariantIndex(sectionType))};
+
+export default function ${component}({ props, variantId }: { props: any; variantId?: string }) {
+  const registry = REGISTERED_VARIANTS as Record<string, React.ComponentType<any>>;
+  const resolvedId = (variantId && registry[variantId])
+    ? variantId
+    : LAYOUT_VARIANTS[(props && props.layout) || ''];
+  const Component = resolvedId ? registry[resolvedId] : undefined;
+  if (!Component) return <${component}Base props={props} />;
+  return <Component section={{ type: ${JSON.stringify(sectionType)}, variantId: resolvedId, props }} theme={THEME} />;
+}
+`;
+}
 
 
 /**
@@ -1558,14 +1611,22 @@ export function compositionToReactFileSet(
     ),
   };
   for (const component of sectionMap.components) {
-    files[SECTION_FILES[component]] = SECTION_MODULE_SOURCE[component];
+    const recipeFamily = RECIPE_FAMILY_BY_COMPONENT[component];
+    if (!recipeFamily) {
+      files[SECTION_FILES[component]] = SECTION_MODULE_SOURCE[component];
+      continue;
+    }
+    // The registered implementations, the deterministic fallback, and the
+    // resolver that picks between them all travel into the VFS together.
+    files[recipeModulePathFor(component)] =
+      (stylexRecipes.families as Record<string, string>)[recipeFamily];
+    files[baseModulePathFor(component)] = SECTION_MODULE_SOURCE[component];
+    files[SECTION_FILES[component]] = variantResolverModule(component, recipeFamily);
   }
   if (sectionMap.components.has('Navbar')) {
     files['/src/components/MobileNavigation.tsx'] = stylexRecipes.mobileNavigationModule;
   }
-  if (sectionMap.components.has('Gallery')) {
-    files['/src/components/recipes/Gallery.ts'] = stylexRecipes.families.gallery;
-  }
+
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;
   }
