@@ -112,11 +112,25 @@ function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | n
   const byIndustry = getCompositionsByIndustry(plan.industry);
   if (byIndustry.length > 0) return byIndustry[0];
 
+  // Canonical industry authority fallback: industries that are first-class in
+  // INDUSTRY_MATRIX but have no dedicated composition file (e.g. contractor)
+  // resolve through their declared layout categories, then their system type.
+  const profile = getIndustryProfile(plan.industry);
+  if (profile) {
+    for (const category of profile.layoutCategories) {
+      const byCategory = ALL_COMPOSITIONS.find((c) => c.category === category);
+      if (byCategory) return byCategory;
+    }
+    const bySystem = ALL_COMPOSITIONS.find((c) => c.systemType === profile.systemType);
+    if (bySystem) return bySystem;
+  }
+
   // Last-resort lexical scan against composition.industry/category.
   const fuzzy = ALL_COMPOSITIONS.find(
     c => c.industry === plan.industry || c.category === plan.industry
   );
   return fuzzy ?? null;
+
 }
 
 function applyPlanThemeToTemplate(
