@@ -1073,7 +1073,69 @@ const SECTION_MODULE_SOURCE: Record<keyof typeof SECTION_FILES, string> = {
   FAQ: FAQ_MODULE,
 };
 
+/**
+ * Phase 1 closure — registered variants are materialized, not described.
+ *
+ * Every semantic family whose registered variants are certified portable by
+ * `scripts/build-stylex-recipes.mjs` ships its real implementations into the
+ * VFS. The family file at `SECTION_FILES[component]` becomes a thin resolver:
+ * it looks the chosen `variantId` up in the emitted recipe module and renders
+ * that exact implementation. The previous hand-written module stays alongside
+ * it as `<Component>Base.tsx` and is used only when a variant cannot be
+ * resolved, so a page can never go blank.
+ *
+ * FAQ is intentionally excluded: its StyleX module already resolves variants.
+ */
+const RECIPE_FAMILY_BY_COMPONENT: Partial<Record<keyof typeof SECTION_FILES, string>> =
+  Object.fromEntries(
+    Object.entries(SECTION_COMPONENT_BY_TYPE)
+      .filter(([sectionType, component]) =>
+        component !== 'FAQ'
+        && Object.prototype.hasOwnProperty.call(stylexRecipes.families, sectionType))
+      .map(([sectionType, component]) => [component, sectionType]),
+  );
 
+function recipeModulePathFor(component: keyof typeof SECTION_FILES): string {
+  return `/src/components/recipes/${component}.ts`;
+}
+
+function baseModulePathFor(component: keyof typeof SECTION_FILES): string {
+  return SECTION_FILES[component].replace(/\.tsx$/, 'Base.tsx');
+}
+
+/** `layout` token / variant slug → registered variant id, for legacy sections. */
+function layoutVariantIndex(sectionType: string): Record<string, string> {
+  return Object.fromEntries(
+    getVariantsForSection(sectionType as never).flatMap((variant) => [
+      [getLayoutForVariantId(variant.id), variant.id],
+      [variant.slug, variant.id],
+    ]).filter(([key]) => typeof key === 'string' && key.length > 0),
+  );
+}
+
+function variantResolverModule(
+  component: keyof typeof SECTION_FILES,
+  sectionType: string,
+): string {
+  const baseImport = `./${baseModulePathFor(component).split('/').pop()?.replace(/\.tsx$/, '')}`;
+  return `import React from 'react';
+import { REGISTERED_VARIANTS } from './recipes/${component}';
+import ${component}Base from '${baseImport}';
+import { THEME } from './theme';
+
+const LAYOUT_VARIANTS: Record<string, string> = ${JSON.stringify(layoutVariantIndex(sectionType))};
+
+export default function ${component}({ props, variantId }: { props: any; variantId?: string }) {
+  const registry = REGISTERED_VARIANTS as Record<string, React.ComponentType<any>>;
+  const resolvedId = (variantId && registry[variantId])
+    ? variantId
+    : LAYOUT_VARIANTS[(props && props.layout) || ''];
+  const Component = resolvedId ? registry[resolvedId] : undefined;
+  if (!Component) return <${component}Base props={props} />;
+  return <Component section={{ type: ${JSON.stringify(sectionType)}, variantId: resolvedId, props }} theme={THEME} />;
+}
+`;
+}
 
 
 /**
