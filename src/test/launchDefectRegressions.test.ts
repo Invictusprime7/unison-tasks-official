@@ -145,7 +145,7 @@ describe('layout audit resolves expression class lists', () => {
 function prepared(source: string): string {
   const files = prepareSandpackFiles({ '/src/pages/Footer.tsx': source });
   const entry = files['/src/pages/Footer.tsx'];
-  return typeof entry === 'string' ? entry : (entry as { code: string }).code;
+  return entry;
 }
 
 function iconDeclarationCount(code: string, name: string): number {
