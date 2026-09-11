@@ -163,11 +163,16 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
  * applied it to the working VFS. Returns the new revision id on success.
  */
 export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutationResult> {
+  const scope = checkAiPatchScope(ctx.beforeFiles, ctx.nextFiles);
+  if (!scope.allowed) {
+    throw new Error(`[aiApplyGate] ${describeAiPatchScopeViolations(scope.violations)}`);
+  }
   const identity = await resolveIdentity(ctx);
   if (!identity) {
     throw new Error('[aiApplyGate] authenticated canonical identity is unavailable');
   }
   const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
+
   return commitMutation({
     source: 'ai-builder',
     identity,
