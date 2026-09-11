@@ -1,88 +1,66 @@
-# Wire Launch Wizard Lane B design proposals into the canonical pipeline
+# Fix the launch blocker, then continue AI wiring
 
-## Current state
+## Part A — Why every page is rejected at launch (confirmed)
 
-- **Lane B at launch time is not invoked.** `launchOrchestrator.ts` runs a fully deterministic Stage 4b compile from `WizardSelections`. The page bodies, section order, and variant choices come from the deterministic compiler + `wizardDesignIntervention.ts` rule engine.
-- **Lane B scaffolding exists but is dormant.** `laneBBatchPlanner.ts` and `wizardLaneBVfsPayload.ts` were built to split a wizard-time Lane B request across batches, but no production caller uses them.
-- **Lane B currently only runs in the editor.** `AIBuilderPanel.tsx` calls `runBuilderTurn()` in `builderBrainClient.ts`, and its output re-enters the canonical pipeline through `commitToPipeline({ source: 'ai-builder' })`.
-- **In-builder AI edits are already gated.** `aiApplyGate.ts` → `aiPatchScopeGuard.ts` → `commitMutation` → `VFSCommitService` is the only write path; AI cannot touch the router, entry file, Unison modules, or backend code.
-- **Launch Wizard "AI design proposal" does not exist as an LLM feature.** `wizardDesignIntervention.ts` is a deterministic, seeded rule engine that emits an `aiDirective` string. No LLM call generates the design plan.
+The launcher stops at "Checking every page compiles" with `INCOMPLETE_HERO` on all nine pages. This is not a random failure — it is a contradiction between two parts of the system that both currently ship.
 
-## Goal
+The quality checker (`src/services/visualQualityEvaluation.ts:113-145`) scores each page's opening screen out of five required parts and rejects anything under five:
 
-Add a constrained, optional AI design-proposal stage to the Launch Wizard that runs **before** the deterministic Stage 4b compiler. The AI proposes industry-aware design choices; the proposal is validated against existing registries and then fed into the deterministic compiler. If the AI is slow, fails, or is disabled, the launch still ships the deterministic site unchanged.
+1. headline
+2. supporting sentence
+3. eyebrow/badge
+4. two actions carrying an intent
+5. **a hero image OR a proof strip of at least three signals**
 
-## Plan
+The page builder (`src/utils/topologyVFSScaffolder.ts:618-653`) reliably guarantees parts 1-4 for every page, but part 5 only by accident:
 
-### 1. Add a wizard-time design-proposal entry point
+- Image archetypes (`immersive-full-bleed`, `editorial-split`, `anchored-portrait`, `centered-statement`) set an image **only if one already happens to exist** in the template composition or in a sibling section (`alternateHeroMedia`). When the chosen industry template ships no photography, no image is set.
+- The `utility-intro-proof` archetype is explicitly `text-only` and its contract calls for "an inline proof strip of three signals" — but the builder **never writes a `stats` array**, so the promised proof strip does not exist.
+- On the Home page (`topologyVFSScaffolder.ts:382`) the hero contract is applied **without** passing `alternateHeroMedia`, so Home cannot even borrow imagery from its own sibling sections.
 
-- Create `src/services/launch/wizardDesignProposal.ts` that accepts the same pre-compile context as Stage 4b: `WizardSelections`, `SiteConfiguration`, `industryMatrix` profile, selected art-direction pack, page topology, and the deterministic design brief.
-- The function calls an edge function or `builderBrainClient.ts` design-proposal route with a prompt that asks for a **design proposal only**, not code.
-- The proposal shape is typed and registry-bound:
-  - `palette`: registered token overrides (must match declared CSS variables).
-  - `typography`: registered font pair / scale choice.
-  - `sectionOrder`: per-page array of registered section family ids.
-  - `variantRanking`: per-section ranked list of registered variant ids.
-  - `motionIntensity`: one of registered motion presets.
-  - `mediaDirection`: focal treatment, mood, subject tags.
-  - `copyVoice`: tone directive string consumed by the deterministic copy layer.
-- Any proposed value not found in the registry is dropped. Missing values are filled by the deterministic rule engine.
+Result: every hero lands on four of five parts, and the launcher correctly refuses to publish an unfinished site. The user sees a hard stop instead of their site.
 
-### 2. Validate the proposal against canonical authorities
+### The fix
 
-- Reuse `designImplementationRegistry.ts` to verify every section family, variant, and token exists.
-- Reuse `industryMatrix.ts` to verify every proposed section is legal for the industry and page role.
-- Reuse `artDirectionPacks.ts` to verify palette/motion/media choices belong to the selected pack or the industry's allowed packs.
-- Reuse `wizardDesignIntervention.ts` to merge the validated AI proposal with the deterministic `aiDirective`.
+Make the builder guarantee the fifth hero part instead of hoping for it.
 
-### 3. Feed the validated proposal into Stage 4b
+1. **Media archetypes always resolve imagery.** In `applyRouteHeroContract`, resolve hero media in a fixed order: existing `props.image`/`props.backgroundImage` → `alternateHeroMedia` from sibling sections → the art-direction pack / industry imagery pool. Pass `alternateHeroMedia` into the Home call site at line 382 so Home has the same chain as interior pages.
+2. **Text-only archetypes always emit their proof strip.** For `mediaTreatment === 'text-only'`, write a `stats` array of exactly three factual signals derived from the business profile and industry (response time, location/service area, hours, credentials, years in business, guarantee). This is what the archetype's own contract already promises.
+3. **Fail loudly, not silently.** If neither media nor three proof signals can be resolved for a hero, throw a specific `PreviewPipelineError` naming the page and the missing part, so the cause is visible instead of surfacing as a generic acceptance failure nine times over.
+4. **Lock it with tests.** Extend `src/test/wizardHeroComposition.test.ts` to assert that, for every industry and every page role, the compiled hero scores five of five — no page reaches acceptance with four parts. This makes the class of bug impossible to reintroduce, not just this instance.
 
-- Extend `WizardSelections` (or `SiteConfiguration`) with an optional `aiDesignProposal` field.
-- In `launchOrchestrator.ts`, add a new stage before `seed`: `design-proposal`.
-  - If AI proposals are enabled and the proposal succeeds, write it into the launch context.
-  - If it fails or times out, mark a degradation and continue with deterministic defaults.
-- In `wizardStage4bRuntime.ts` / `executeCanonicalPipeline`, read `aiDesignProposal` when resolving section order and variant choices. The deterministic compiler remains the sole author of the actual page files.
+### Error-boundary behaviour during launch
 
-### 4. Wire the existing Lane B batch planner
+The report also asks that these boundaries not be persistent. Two changes:
 
-- Use `planLaneBBatches()` from `laneBBatchPlanner.ts` to split multi-page proposal generation across batches when the topology has many pages.
-- Use `wizardLaneBVfsPayload.ts` to assemble the VFS/catalog context sent to the AI for each batch.
-- Ensure the proposal call streams or uses bounded timeouts so it cannot hang the launch.
+- `recoverableByRelaunch: true` is already set on this error, but the wizard currently ends the run on it. Since the missing part is now deterministically resolvable, the run will not reach that state; if it still does, the launcher records it as a **degradation** and continues rather than terminating, so the user lands in the builder with a working site and a visible note.
+- The failure detail stays in the launch report for diagnosis, but is no longer a fatal stage for a recoverable finding.
 
-### 5. Harden the in-builder AI patch surface (B2 continuation)
+## Part B — Continue the AI wiring
 
-- Extend `aiPatchScopeGuard.ts` allowed surfaces to explicitly include `/src/generated/styleBridge.ts` and any new recipe modules emitted by Stage 4b.
-- Add `presentationOps` and `bindingOps` helpers so the AI Builder can propose section swaps, variant swaps, token edits, and canonical intent bindings as typed `PatchPlan` operations rather than raw file diffs.
-- Keep the escape-hatch `fileOps` patch for genuine page-body edits, but require the same preflight/seal gate.
+Picking up the previously agreed direction: AI is a constrained designer inside the canonical path, never a file writer.
 
-### 6. Add tests and certification
+### B1 — Launch Wizard design proposals
 
-- Add `src/test/wizardDesignProposal.test.ts`:
-  - Proposed unknown variant is dropped.
-  - Proposed forbidden section for an industry is dropped.
-  - AI failure still yields a launch-ready deterministic site.
-  - Valid proposal changes section order and variant ranking.
-- Add `src/test/launchOrchestratorDesignProposal.test.ts`:
-  - Orchestrator stage sequence includes `design-proposal` → `seed` → `enrich` → `preflight`.
-  - Degradation is recorded on proposal failure but launch completes.
-- Re-run `deterministicAiOffCertification.test.ts` to confirm AI-off mode still passes.
+- Add `src/services/launch/wizardDesignProposal.ts`: an optional, bounded call that returns a **design proposal**, not code — palette tokens, typography pair, per-page section order, ranked registered variants, motion intensity, media direction, copy voice.
+- Validate every field against the existing authorities: `designImplementationRegistry.ts` (variants and families must exist), `industryMatrix.ts` (section legal for this industry and page role), `artDirectionPacks.ts` (palette/motion/media within the selected pack). Anything unrecognised is dropped; gaps fall back to the deterministic rule engine in `wizardDesignIntervention.ts`.
+- Add a `design-proposal` stage to `launchOrchestrator.ts` before `seed`. Failure or timeout records a degradation and the launch proceeds deterministically. The compiler stays the only author of page files.
+- Use the existing but currently dormant `laneBBatchPlanner.ts` / `wizardLaneBVfsPayload.ts` to split proposal generation across batches for large topologies, so those modules stop being orphaned code.
 
-### 7. Remove dormant scaffolding or put it to use
+### B2 — In-builder AI edits
 
-- If `laneBBatchPlanner.ts` and `wizardLaneBVfsPayload.ts` remain unused after wiring, either delete them or mark them as used by the new proposal stage. The goal is no orphaned, untested production code.
+- Extend `aiPatchScopeGuard.ts` allowed surfaces to cover the recipe modules Stage 4b now emits alongside the style bridge.
+- Add typed presentation and binding operations so the builder AI can propose a section swap, variant swap, token change, or intent binding as a structured patch rather than a raw file diff, still routed through `commitMutation`.
 
-## What this plan does NOT do
+### Naming
 
-- It does not let AI write VFS files directly.
-- It does not let AI change site topology, page routes, or the deterministic router.
-- It does not create a new parallel registry or pipeline.
-- It does not make AI required for launch.
+Production code uses "Stage 4b" for the deterministic launch compile and reserves "Lane B" for post-launch editor turns. The new wizard-time work is a **design proposal stage**, not a second Lane B compiler. Tests and comments will say so explicitly.
 
-## Rollout order
+## Order of work
 
-1. Implement the proposal type and validation helpers.
-2. Add the `design-proposal` stage to `launchOrchestrator.ts` behind a feature flag.
-3. Feed the proposal into `wizardDesignIntervention.ts` / Stage 4b.
-4. Wire `laneBBatchPlanner.ts` for multi-page batches.
-5. Extend B2 presentation/binding ops and tests.
-6. Run full certification suite and remove any remaining dormant scaffolding.
+1. Hero part guarantee + Home media chain + tests (unblocks launch).
+2. Recoverable findings become degradations rather than fatal stops.
+3. Design proposal type, validation, and orchestrator stage behind a flag.
+4. Batch planner wired for multi-page proposals.
+5. B2 presentation/binding operations.
+6. Full certification run, then remove anything left dormant.
