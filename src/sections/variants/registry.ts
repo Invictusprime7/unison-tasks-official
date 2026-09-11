@@ -22,11 +22,11 @@ import { EXPERIENCE_CAPABILITY_ID } from '@/platform/core/generatedRuntimeCapabi
 // JSX layout templates for live preview swapping via VFS
 import {
   heroCenteredJSX, heroSplitImageJSX, heroFullBleedJSX,
-  ctaCenteredJSX, ctaGradientBannerJSX, ctaSplitCardJSX,
-  navbarStandardJSX, navbarCenteredLogoJSX, navbarMinimalDarkJSX,
+  ctaCenteredJSX, ctaGradientBannerJSX, ctaSplitCardJSX, ctaStickyBarJSX,
+  navbarStandardJSX, navbarCenteredLogoJSX, navbarMinimalDarkJSX, navbarTransparentOverlayJSX,
   featuresGridJSX, featuresIconLeftJSX, featuresMinimalCenteredJSX,
   servicesCardGridJSX, servicesAlternatingJSX, servicesCompactListJSX,
-  contactCenteredJSX, contactSplitCardJSX, contactMinimalInlineJSX,
+  contactCenteredJSX, contactSplitCardJSX, contactMinimalInlineJSX, contactQuoteRequestJSX,
   footerColumnsJSX, footerCenteredMinimalJSX, footerDarkBandJSX,
   galleryEditorialMosaicJSX, galleryMasonryJSX, galleryCinematicGridJSX,
   galleryLightboxGridJSX, galleryFeatureSplitJSX,
@@ -50,11 +50,13 @@ import { heroPageTitleJSX, heroEditorialBannerJSX } from './hero/heroPageIntroJS
 import { CTACentered } from './cta/CTACentered';
 import { CTAGradientBanner } from './cta/CTAGradientBanner';
 import { CTASplitCard } from './cta/CTASplitCard';
+import { CTAStickyBar } from './cta/CTAStickyBar';
 
 // Navbar variants
 import { NavbarStandard } from './navbar/NavbarStandard';
 import { NavbarCenteredLogo } from './navbar/NavbarCenteredLogo';
 import { NavbarMinimalDark } from './navbar/NavbarMinimalDark';
+import { NavbarTransparentOverlay } from './navbar/NavbarTransparentOverlay';
 
 // Features variants
 import { FeaturesGrid } from './features/FeaturesGrid';
@@ -70,6 +72,7 @@ import { ServicesCompactList } from './services/ServicesCompactList';
 import { ContactCentered } from './contact/ContactCentered';
 import { ContactSplitCard } from './contact/ContactSplitCard';
 import { ContactMinimalInline } from './contact/ContactMinimalInline';
+import { ContactQuoteRequest } from './contact/ContactQuoteRequest';
 
 // Gallery variants (premium proof family)
 import { GalleryEditorialMosaic } from './gallery/GalleryEditorialMosaic';
@@ -366,6 +369,19 @@ const VARIANT_REGISTRY: VariantRegistry = {
       tags: ['modern', 'card', 'asymmetric'],
       renderJSX: ctaSplitCardJSX,
     },
+    {
+      id: 'cta:sticky-bar',
+      sectionType: 'cta',
+      slug: 'sticky-bar',
+      name: 'Sticky Bar',
+      description: 'Low-height conversion bar pinned to the viewport bottom',
+      component: CTAStickyBar,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/cta-sticky-bar.svg',
+      tags: ['conversion', 'persistent', 'compact'],
+      pageRoles: ['services', 'pricing', 'shop', 'booking'],
+      renderJSX: ctaStickyBarJSX,
+    },
   ],
 
   navbar: [
@@ -530,6 +546,19 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/contact-minimal-inline.svg',
       tags: ['minimal', 'inline', 'compact'],
       renderJSX: contactMinimalInlineJSX,
+    },
+    {
+      id: 'contact:quote-request',
+      sectionType: 'contact',
+      slug: 'quote-request',
+      name: 'Quote Request',
+      description: 'Qualifying intake form: scope, timing and contact details',
+      component: ContactQuoteRequest,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/contact-quote-request.svg',
+      tags: ['form', 'lead', 'service'],
+      pageRoles: ['contact', 'services', 'custom'],
+      renderJSX: contactQuoteRequestJSX,
     },
   ],
 
@@ -821,6 +850,9 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'contact:centered': ['centered'],
   'contact:split-card': ['split-card'],
   'contact:minimal-inline': ['minimal-inline'],
+  'contact:quote-request': ['quote-request'],
+  'cta:sticky-bar': ['sticky-bar'],
+  'navbar:transparent-overlay': ['transparent-overlay', 'overlay'],
   'footer:columns': ['columns'],
   'footer:centered-minimal': ['centered-minimal'],
   'footer:dark-band': ['dark-band'],

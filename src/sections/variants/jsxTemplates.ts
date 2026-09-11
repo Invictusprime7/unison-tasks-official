@@ -869,3 +869,53 @@ ${memberPortrait('              ', c.imageSrc, m.name, 'aspect-square rounded-[v
           </div>`;
   return sectionShell('team:lead-spotlight', c, body);
 }
+
+// ============================================================================
+// Extended surfaces — sticky conversion bar, overlay navigation, quote intake.
+// Token-only classes so the style card owns colour, not the template.
+// ============================================================================
+
+export function ctaStickyBarJSX(c: ExtractedSectionContent): string {
+  return `      <section className="sticky bottom-0 z-40 w-full border-t border-border bg-card/95 backdrop-blur py-3.5" data-variant="cta:sticky-bar">
+        <div className="ut-content flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+${c.heading ? `            <p className="text-sm font-semibold text-foreground truncate">${esc(c.heading)}</p>\n` : ''}\
+${c.subheading ? `            <p className="text-xs text-muted-foreground truncate">${esc(c.subheading)}</p>\n` : ''}\
+          </div>
+${c.ctaButtons?.length ? `          <div className="flex gap-2 flex-shrink-0">
+${renderButtons(c.ctaButtons, 'inline-block px-5 py-2.5 rounded-[var(--radius)] bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity', 'inline-block px-5 py-2.5 rounded-[var(--radius)] border border-border text-foreground text-sm font-medium hover:bg-accent transition-colors')}
+          </div>\n` : ''}\
+        </div>
+      </section>`;
+}
+
+export function navbarTransparentOverlayJSX(c: ExtractedSectionContent): string {
+  return `      <header className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-foreground/40 to-transparent" data-variant="navbar:transparent-overlay">
+        <div className="ut-content flex items-center justify-between h-20">
+          <a href="#" className="text-lg font-semibold tracking-tight text-primary-foreground">${esc(c.brandName || 'Brand')}</a>
+          <nav className="flex items-center gap-8">
+${renderLinks(c.navLinks, 'text-sm text-primary-foreground/85 hover:text-primary-foreground transition-colors')}
+${c.ctaButtons?.length ? renderButtons(c.ctaButtons.slice(0, 1), 'inline-block px-4 py-2 rounded-[var(--radius)] border border-primary-foreground/45 bg-primary-foreground/15 text-primary-foreground text-sm font-medium hover:bg-primary-foreground/25 transition-colors', '') : ''}
+          </nav>
+        </div>
+      </header>`;
+}
+
+export function contactQuoteRequestJSX(c: ExtractedSectionContent): string {
+  return `      <section className="ut-section bg-primary/5" data-variant="contact:quote-request">
+        <div className="ut-content grid gap-10 md:grid-cols-5">
+          <div className="md:col-span-2">
+${c.heading ? `            <h2 className="text-3xl font-bold text-foreground mb-3">${esc(c.heading)}</h2>\n` : ''}\
+${c.subheading ? `            <p className="text-base text-muted-foreground">${esc(c.subheading)}</p>\n` : ''}\
+          </div>
+          <form data-demo-form="true" data-ut-intent="quote.request" className="md:col-span-3 grid gap-4 sm:grid-cols-2 p-6 rounded-[var(--radius)] border border-border bg-card">
+            <input name="name" type="text" placeholder="Full name" className="w-full px-3.5 py-2.5 rounded-[var(--radius)] border border-border bg-background text-foreground text-sm" />
+            <input name="email" type="email" placeholder="you@example.com" className="w-full px-3.5 py-2.5 rounded-[var(--radius)] border border-border bg-background text-foreground text-sm" />
+            <input name="service" type="text" placeholder="Describe the work" className="w-full px-3.5 py-2.5 rounded-[var(--radius)] border border-border bg-background text-foreground text-sm" />
+            <input name="timing" type="text" placeholder="Preferred timing" className="w-full px-3.5 py-2.5 rounded-[var(--radius)] border border-border bg-background text-foreground text-sm" />
+            <textarea name="detail" rows={4} placeholder="Anything else" className="sm:col-span-2 w-full px-3.5 py-2.5 rounded-[var(--radius)] border border-border bg-background text-foreground text-sm" />
+            <button type="submit" className="sm:col-span-2 px-6 py-3 rounded-[var(--radius)] bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">Request a quote</button>
+          </form>
+        </div>
+      </section>`;
+}
