@@ -46,7 +46,7 @@ const PLACEHOLDER_MARKERS = [
 
 interface Fixture {
   label: string;
-  industry: LayoutCategory;
+  industry: string;
   systemType: SystemType;
   themePresetId: string;
   selections: WizardSelections;
@@ -54,7 +54,7 @@ interface Fixture {
 
 function fixture(
   label: string,
-  industry: LayoutCategory,
+  industry: string,
   systemType: SystemType,
   themePresetId: string,
   extra: Partial<WizardSelections>,
@@ -227,7 +227,7 @@ describe.each(FIXTURES)('deterministic launch certification — $label', (fx) =>
       systemName: fx.systemType,
       businessName: fx.selections.businessName!,
       templateName: fx.label,
-      templateCategory: fx.industry,
+      templateCategory: fx.industry as LayoutCategory,
       vfsFiles: artifacts.files,
       preloadedIntents: [],
       entryPoint: artifacts.entryPoint,
