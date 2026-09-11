@@ -108,16 +108,10 @@ const ROLE_SUPPLEMENT_PRIORITY: Record<PageRole, SectionType[]> = {
  * inherit an unrelated industry's entire site without anyone noticing.
  */
 const INDUSTRY_COMPOSITION_ALIAS: Record<string, string> = {
-  // Every alias target must be an industry that actually owns a shipped
-  // composition (salon, restaurant, saas, agency, photography, ecommerce,
-  // coaching, fitness, nonprofit). Aliases are temporary until each industry
-  // owns a first-class composition of its own.
-  contractor: 'agency',
-  'local-service': 'agency',
-  'real-estate': 'agency',
-  portfolio: 'photography',
+  // Only legacy industry keys that no longer exist as first-class industries
+  // may alias. Every shipped industry owns its own composition file.
+  photography: 'portfolio',
   fitness: 'coaching',
-  photography: 'agency',
 };
 
 function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | null {
