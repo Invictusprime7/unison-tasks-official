@@ -1611,14 +1611,22 @@ export function compositionToReactFileSet(
     ),
   };
   for (const component of sectionMap.components) {
-    files[SECTION_FILES[component]] = SECTION_MODULE_SOURCE[component];
+    const recipeFamily = RECIPE_FAMILY_BY_COMPONENT[component];
+    if (!recipeFamily) {
+      files[SECTION_FILES[component]] = SECTION_MODULE_SOURCE[component];
+      continue;
+    }
+    // The registered implementations, the deterministic fallback, and the
+    // resolver that picks between them all travel into the VFS together.
+    files[recipeModulePathFor(component)] =
+      (stylexRecipes.families as Record<string, string>)[recipeFamily];
+    files[baseModulePathFor(component)] = SECTION_MODULE_SOURCE[component];
+    files[SECTION_FILES[component]] = variantResolverModule(component, recipeFamily);
   }
   if (sectionMap.components.has('Navbar')) {
     files['/src/components/MobileNavigation.tsx'] = stylexRecipes.mobileNavigationModule;
   }
-  if (sectionMap.components.has('Gallery')) {
-    files['/src/components/recipes/Gallery.ts'] = stylexRecipes.families.gallery;
-  }
+
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;
   }
