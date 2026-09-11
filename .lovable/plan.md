@@ -1,81 +1,84 @@
-# Restore page-level composition authority, complete industries, then unlock 3D and motion
+# Unison: real per-page design, full component registries, all industries
 
-## What the audit found
+## Root cause of the repeating heroes (confirmed by tracing the live path)
 
-The registries disagree about how many industries the product actually ships, so anything downstream (recipes, art packs, AI enrichment) is aligning to an incomplete set.
+The pipeline already computes a different hero per route — a per-page variant id, rotated media, page-specific headline, badge, CTAs and proof stats. The variance is real and reachable. It is then **thrown away at the last step**:
 
-- The industry matrix describes **11** industries: saas, salon, local-service, contractor, coaching, restaurant, ecommerce, agency, nonprofit, portfolio, real-estate.
-- The parity assertion (`industryParity.ts`) only enforces **9** — `local-service` and `real-estate` are never checked, so they can silently degrade.
-- Intent profiles cover all 11.
-- Page recipes are keyed to a different vocabulary (`salon_spa`, `local_service`, `creator_portfolio`, `real_estate`, `other`) and are bridged by a hand-written map; saas, agency and contractor all borrow another industry's recipe set.
-- Template compositions exist for 9 industry strings, but they are the wrong 9: `fitness` and `photography` exist while `local-service`, `real-estate`, `contractor` and `portfolio` have none.
+- The generated `Hero.tsx` module written into the site's own file system takes no variant id at all. It branches only on a narrow `layout` prop that collapses to `centered | split | full-bleed`, so five registered hero designs render as two or three shapes, with `centered` as the near-universal default.
+- Every other section family's generated module *does* receive the variant id and look it up. Hero is the single family that discards it.
+- The in-app preview renderer uses the correct variant-registry lookup, so preview and shipped site disagree. Two hero authorities exist; the one that ships is the broken one.
+- Home is explicitly excluded from any variant or media rotation, and no industry template ever authors a hero variant. So every business in the same industry gets a byte-identical home hero, and interior pages inherit that same collapsed shape.
 
-This mismatch is why AI fortification drifts: the AI is handed art-pack and recipe direction for an industry that has no first-class composition or recipe of its own.
+That is the whole "why does this keep recurring". It was never fixed because each pass fixed the resolution layer, not the emitter.
 
-The repeated heroes have a second, confirmed cause in the active compiler path:
-
-- `topologyVFSScaffolder.resolveActiveTemplate()` still falls through from the selected template to the **first industry composition**, then the first matching layout category/system type, and finally a fuzzy match. That is an active legacy substitution path, not merely dead code.
-- Home preserves the selected template hero. Interior routes are then derived from that same template inventory and rewritten by `applyRouteHeroContract()`. Although a seeded hero variant is selected, every route is forced back through a small `WizardHeroContract` layout/archetype vocabulary and shared completion logic. This makes different pages structurally converge again.
-- The generation brief still seals per-route `hero.geometry` and applies it during scaffolding. AI therefore cannot actually compose the hero; it can only decorate geometry already chosen upstream.
-- The preview adapter does not re-normalize sealed Wizard drafts, so the recurring duplication is primarily being produced before the snapshot is sealed. However, launch assembly still contains compatibility/fallback branches that must be proven unreachable for Wizard drafts rather than trusted by comments.
-
-So this is fragmentation: topology, template fallback, generation-brief geometry, role scaffolding, and Stage 4b all participate in hero authorship. The fix is to give them one contract and one acceptance point, not add another hero generator.
-
-The guidebook is explicit that 3D and advanced motion (Phase 6A) may not start until the industry/page-archetype expansion (Phase 6) is complete and accepted cross-industry. So the order below is not optional.
+Second, structural cause: `resolveActiveTemplate()` still falls back from the selected template to the first industry composition, then a layout category, then a system type, then a fuzzy match. Industries with no first-class composition silently borrow another industry's site.
 
 ## Plan
 
-### Step 1 — Eliminate active legacy substitutions from the canonical launch
+### Step 1 — Make the emitter variant-aware and delete the home-clone rules
 
-Trace every production-reachable branch from `LauncherWizard → launchOrchestrator → topology → composition → Stage 4b → snapshot → preview`. Remove the template/category/system/fuzzy substitutions used when a selected industry lacks a first-class composition. A missing registered composition becomes a named compile failure, never another industry's first template.
+- The generated hero module receives and honours the variant id exactly like every other family: registry lookup, real component per variant, no `layout`-only switch.
+- Remove the home exclusion. Home resolves its hero from the same seeded, role-eligible pool as every other route, so two businesses in one industry no longer open identically.
+- Remove the "interior page derives from Home's sections" derivation and the hardcoded per-role section pools. Each route composes from its own contract.
+- Retire the fallback ladder in template resolution. A missing registered composition is a named failure, not another industry's template.
+- Add assertions: sibling routes may not share a hero implementation + layout + media-treatment signature, and no interior page may reproduce Home's section sequence.
 
-Remove or isolate every Wizard-reachable minimal/default scaffold, generic role pool, CSS injection, App derivation, page-body repair, and preview normalization path. Keep compatibility migration only for explicitly identified legacy/non-Wizard drafts behind one boundary. Add a zero-bypass test proving a sealed Wizard launch never enters any compatibility branch.
+### Step 2 — Colour depth through HSL tokens
 
-### Step 2 — One industry list, enforced
+Art packs currently resolve a flat token set, which is why output reads bland. Extend the token contract each pack emits, all in HSL, all semantic:
 
-Make the matrix the single list of shipped industries and derive the parity list from it instead of hand-maintaining a second array. `local-service` and `real-estate` join the enforced set, and the parity test fails the build if any industry lacks an anchor capability, conversion journey, profile fields, intent profile, recipe mapping, or at least three allowed art packs.
+- full ramps rather than single stops (surface levels 1–4, foreground levels, border/hairline, overlay/scrim),
+- accent system: accent, accent-soft, accent-strong, accent-contrast, plus a declared accent policy per pack,
+- state colours derived from the base ramp: hover, active, focus ring, selected, disabled,
+- gradients and shadows composed *from* those tokens, so they retheme automatically,
+- guaranteed contrast pairing for every foreground/background combination, asserted at compile time.
 
-### Step 3 — Close the per-industry gaps the parity check exposes
+Components consume tokens only. No literal colour ever reaches a generated page.
 
-For each industry now failing parity, fill in the missing pieces inside the existing authorities — no new files:
+### Step 3 — Write every component registry out in full
 
-- complete page contracts (which pages, their purpose, their expected sections),
-- capability set and anchor capability, with the conversion journey steps all declared in the intent profile,
-- allowed art-direction packs (minimum three, all registered).
+Today several families resolve to placeholders or a single shape. Each family gets a complete, registered, materialized inventory with real variants, declared page-role and industry eligibility, art-pack compatibility, intent slots and editable slots:
 
-### Step 4 — Recipes speak one vocabulary
+- Navbar: standard, centered-logo, minimal, split-utility, mega-menu, sticky-condensing, mobile drawer behaviour.
+- Hero: all five existing plus statement, editorial split, offset media, proof-led, and (later) immersive.
+- Buttons and pills: variants, sizes, icon placement, pill/rounded/square driven by pack geometry, loading and disabled states.
+- Menus: dropdown, mega, sidebar, filter, sort, account, cart — each wired to canonical intents.
+- CTA bands, services, features, pricing, testimonials, gallery, team, stats, FAQ, about, contact, footer, logo cloud, blog preview, before/after: real variants each, no placeholder aliases.
+- Section positioning as first-class data: band rhythm, vertical density, alignment, container width, overlap/bleed, divider treatment, sticky and scroll behaviour — all token-driven.
 
-Extend the page-recipe set so every shipped industry has its own entry rather than borrowing (`saas`, `agency`, `contractor`, `portfolio` today resolve to someone else's recipes). Keep the bridge map only where an industry genuinely shares a journey, and assert in the parity check that no two industries resolve to an identical recipe + journey signature.
+### Step 4 — One industry list, enforced
 
-### Step 5 — One page-composition contract per route
+The industry matrix becomes the single shipped list. The parity check is derived from it and fails the build when an industry lacks an anchor capability, conversion journey, profile fields, intent profile, recipe, compositions, or at least three registered art packs. `local-service` and `real-estate` join the enforced set.
 
-Add template compositions for the industries that have none (local-service, real-estate, contractor, portfolio) and re-key `fitness`/`photography` as variations under coaching and portfolio.
+### Step 5 — Per-industry completeness
 
-Replace the shared-home derivation pattern with a signed per-route composition contract. Each route receives its own eligible registered hero family, section narrative, media treatment, rhythm, conversion anchor, and anti-repetition signature. Topology owns page identity and purpose; the industry recipe supplies eligible structure; the art pack supplies visual vocabulary; registered primitives supply executable choices; Stage 4b materializes the accepted result exactly once.
+For every industry: complete page contracts, capabilities and anchor capability, journey steps present in the intent profile, first-class page recipes instead of borrowed ones, and its own home plus interior compositions. Re-key `fitness` and `photography` as variations under coaching and portfolio. Distinctness is asserted so no two industries compile to the same experience.
 
-Add compile-time assertions that sibling pages do not share the same hero implementation + layout recipe + media treatment signature unless explicitly allowed, and that no interior page silently clones Home's section sequence.
+### Step 6 — Replace strict geometry with bounded AI composition
 
-### Step 6 — Replace strict hero geometry with bounded AI composition
+Remove sealed per-route hero geometry as an authoring authority. Keep only semantic and safety constraints: required content slots, valid intents, accessibility, media focal metadata, responsive bounds, token-only styling.
 
-Remove `homeHeroGeometry` and per-route `hero.geometry` as authoring authorities. Keep only semantic and safety constraints: required content slots, valid intents, accessibility, media focal metadata, responsive bounds, and token-only styling.
+AI then composes freely *inside* the registered envelope — choosing hero and section implementations, ordering, motion recipes, media treatment and supported layout props for that industry, role, pack and capability set. It returns a typed design proposal, never files. The proposal is validated against the registries, rejected on duplicate sibling signatures, and compiled deterministically. Launch still succeeds fully without AI.
 
-Reintroduce AI at the guidebook's constrained augmentation seam. AI may choose and compose registered hero/section primitives, supported layout props, section ordering, motion recipes, and media treatments from the deterministic eligibility envelope for that industry, page role, art pack, and capability set. It may not invent component identities, change topology/capabilities, write routers/runtime files, bypass tokens, or write directly to VFS.
+### Step 7 — Certification
 
-AI output is a typed page design proposal, not TSX authority. Validate it against the registries, reject duplicate sibling signatures, then feed it back into the canonical compiler. The compiler remains deterministic for a given accepted proposal; Stage 4b remains the sole materializer; launch retains a complete deterministic registered composition when AI is unavailable.
+Walk all industries × allowed packs with AI off: complete routes, distinct hero signatures per sibling, no duplicate sections, no home cloning, every variant materialized, themed CSS present, contrast passing, no placeholder leakage, no legacy branch entered. Repeat with AI on and prove proposals stay inside the envelope.
 
-### Step 7 — Cross-industry and page-level certification
+### Step 8 — Then 3D and motion (guidebook Phase 6A)
 
-Extend the existing AI-off certification walk to all 11 industries × allowed art packs: complete routes, distinct hero signatures per sibling route, no duplicate sections, no Home-layout cloning, materialized variants, themed CSS present, no placeholder leakage, and no legacy branch activation. Then run the same matrix with AI proposals enabled and prove proposals remain inside the deterministic envelope. This is the Phase 6 acceptance gate.
+Only after Step 7 is green. One complete immersive recipe end-to-end first, registered like any other variant, with reduced-motion and no-WebGL fallbacks, asset-failure recovery, bounded performance budget, and industry/page-role eligibility so ordinary sites never carry unused 3D. Advanced motion follows as declared, deterministic motion recipes.
 
-### Step 8 — Only then, 3D and motion primitives (Phase 6A)
+## Senior-engineering additions I recommend
 
-With Step 5 green, implement one complete immersive recipe end-to-end before any others — registered as a normal variant in the existing registry, with reduced-motion and no-WebGL fallbacks, asset-failure recovery, and eligibility limited by industry and page role so ordinary sites never install unused 3D. Advanced motion follows the same route: declared motion recipes with deterministic configuration and a bounded runtime budget. Screenshot, interaction, and persisted edit/reopen proof required per recipe.
+- **Signature-based duplication guard, not eyeballing.** Every emitted page carries a composition signature; the compiler refuses a site where two sibling routes match. This makes "identical pages" impossible to reintroduce rather than something we notice later.
+- **Golden-output snapshots per industry.** Commit the generated composition descriptors for one seed per industry. Any pipeline change that flattens design shows up as a reviewable diff.
+- **One emitter, no second authority.** The preview renderer and the generated module must resolve variants through the same registry call. The hero bug existed only because two paths were allowed.
+- **Contrast and token lint at compile time.** A page fails the build on a literal colour or an unreadable pair, the same way a syntax error fails.
+- **Capability-eligibility on every variant.** A variant declares which industries, page roles, packs and capabilities it is valid for, so eligibility is data the AI reads rather than prose in a prompt.
 
 ## Technical notes
 
-- Authorities stay as-is: `industryMatrix.ts` (industries and page contracts), `industryIntentProfiles.ts` (intents), `pageRecipes.ts` (recipes), `artDirectionPacks.ts` (art direction), `designImplementationRegistry.ts` (derived facade). No new parallel registry is introduced.
-- `SHIPPED_INDUSTRIES` becomes derived from `INDUSTRY_MATRIX` keys; `INDUSTRY_RECIPE_KEY` shrinks as recipes gain first-class entries.
-- Parity gains distinctness assertions so two industries can never compile to the same experience.
-- The current `resolveActiveTemplate()` fallback ladder and `applyRouteHeroContract()` geometry rewrite are retired from Wizard authorship after their registered replacements are wired; they are not replaced with another free-standing resolver.
-- “AI freely composes” means freedom inside the registered eligibility envelope, not arbitrary CSS/TSX generation. Semantic tokens still own spacing/materials, while the AI controls high-level composition and supported responsive layout props.
-- 3D/motion recipes register through the existing variant registry and snapshot-owned experience foundation; no alternate scene authoring pipeline.
+- Authorities stay as they are: the industry matrix, intent profiles, page recipes, art-direction packs, the variant registry, and the derived design-implementation facade. No new parallel registry.
+- The generated hero module gains the same variant-dispatch shape the other families already use; the narrow layout map is retired.
+- The template fallback ladder and the sealed hero-geometry rewrite are removed from wizard authorship once their registered replacements are wired — not replaced by another standalone resolver.
+- "AI composes freely" means freedom inside the registered eligibility envelope. Tokens still own colour, spacing and material; AI owns composition.
