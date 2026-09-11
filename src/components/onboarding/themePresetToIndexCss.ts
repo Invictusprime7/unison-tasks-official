@@ -99,12 +99,138 @@ export function buildThemedIndexCss(
   });
 }
 
+// ============================================================================
+// Canonical HSL chroma system
+//
+// The style card owns three or four base hues. On their own they read flat:
+// every surface is `--card`, every hover is `--primary / 0.9`. This layer
+// derives a full tonal system from those base hues — ramps, hover/active
+// states, subtle washes, semantic states, gradients and glows — so generated
+// sites have depth without any component ever hardcoding a colour.
+//
+// Every value stays HSL and is consumed only through semantic tokens.
+// ============================================================================
+
+interface Hsl { h: number; s: number; l: number }
+
+function parseHsl(value: string | undefined): Hsl | null {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(/^(-?[\d.]+)\s+(-?[\d.]+)%\s+(-?[\d.]+)%$/);
+  if (!match) return null;
+  return { h: Number(match[1]), s: Number(match[2]), l: Number(match[3]) };
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const fmt = (c: Hsl) =>
+  `${Math.round(((c.h % 360) + 360) % 360)} ${clamp(c.s, 0, 100).toFixed(1)}% ${clamp(c.l, 0, 100).toFixed(1)}%`;
+
+const lighten = (c: Hsl, amount: number): Hsl => ({ ...c, l: clamp(c.l + amount, 0, 100) });
+const saturate = (c: Hsl, amount: number): Hsl => ({ ...c, s: clamp(c.s + amount, 0, 100) });
+const rotate = (c: Hsl, degrees: number): Hsl => ({ ...c, h: c.h + degrees });
+
+/**
+ * Per-industry chroma intent. Industries do not merely pick different hues —
+ * they carry different colour *temperament*. A restaurant should read warm and
+ * appetising, a SaaS product cool and restrained, a salon deep and luxurious.
+ * This is expressed as a saturation and accent-rotation intent applied to the
+ * derived ramp, never as a hardcoded palette.
+ */
+const INDUSTRY_CHROMA_INTENT: Record<string, { saturation: number; accentRotate: number; contrast: number }> = {
+  saas:            { saturation: -4, accentRotate: -12, contrast: 2 },
+  agency:          { saturation: 6,  accentRotate: 18,  contrast: 4 },
+  salon:           { saturation: 10, accentRotate: -22, contrast: 5 },
+  'local-service': { saturation: 4,  accentRotate: 14,  contrast: 3 },
+  contractor:      { saturation: 8,  accentRotate: 26,  contrast: 5 },
+  coaching:        { saturation: 2,  accentRotate: 10,  contrast: 2 },
+  restaurant:      { saturation: 14, accentRotate: 22,  contrast: 4 },
+  ecommerce:       { saturation: 8,  accentRotate: -16, contrast: 3 },
+  nonprofit:       { saturation: 5,  accentRotate: 30,  contrast: 3 },
+  portfolio:       { saturation: -2, accentRotate: -28, contrast: 6 },
+  'real-estate':   { saturation: 3,  accentRotate: -18, contrast: 4 },
+};
+
+function chromaIntentFor(industry?: string | null) {
+  const key = (industry || '').trim().toLowerCase();
+  return INDUSTRY_CHROMA_INTENT[key] ?? { saturation: 0, accentRotate: 0, contrast: 0 };
+}
+
+/**
+ * Derive the full colour system from the style card's base tokens.
+ * Returns CSS custom property declarations (no selector wrapper).
+ */
+export function buildChromaScale(
+  colors: ThemeTokens['colors'],
+  industry?: string | null,
+): string {
+  const intent = chromaIntentFor(industry);
+  const background = parseHsl(colors.background) ?? { h: 0, s: 0, l: 100 };
+  const foreground = parseHsl(colors.foreground) ?? { h: 0, s: 0, l: 10 };
+  const primary = parseHsl(colors.primary) ?? { h: 220, s: 80, l: 52 };
+  const secondary = parseHsl(colors.secondary) ?? rotate(primary, 40);
+  const accent = parseHsl(colors.accent) ?? rotate(primary, -35);
+  const border = parseHsl(colors.border) ?? lighten(background, background.l > 50 ? -12 : 12);
+  const isDark = background.l < 50;
+  // In a dark theme "up" is lighter; in a light theme "up" is darker.
+  const up = (c: Hsl, amount: number) => lighten(c, isDark ? amount : -amount);
+
+  const tunedPrimary = saturate(primary, intent.saturation);
+  const tunedSecondary = saturate(secondary, intent.saturation * 0.6);
+  const tunedAccent = saturate(rotate(accent, intent.accentRotate), intent.saturation);
+
+  const ramp = (name: string, base: Hsl) => [
+    `--${name}-hover: ${fmt(up(base, 6))};`,
+    `--${name}-active: ${fmt(up(base, 11))};`,
+    `--${name}-emphasis: ${fmt(saturate(up(base, 4), 8))};`,
+    `--${name}-muted: ${fmt({ ...base, s: clamp(base.s * 0.45, 0, 100), l: isDark ? clamp(base.l - 26, 8, 92) : clamp(base.l + 30, 8, 96) })};`,
+    `--${name}-subtle: ${fmt({ ...base, s: clamp(base.s * 0.3, 0, 100), l: isDark ? clamp(base.l - 34, 6, 92) : clamp(base.l + 40, 8, 98) })};`,
+  ].join('\n  ');
+
+  const semantic = (name: string, hue: number, light: number) => {
+    const base: Hsl = { h: hue, s: clamp(62 + intent.saturation, 30, 92), l: isDark ? light + 6 : light };
+    return [
+      `--${name}: ${fmt(base)};`,
+      `--${name}-foreground: ${fmt({ h: hue, s: 30, l: isDark ? 96 : 99 })};`,
+      `--${name}-subtle: ${fmt({ ...base, s: clamp(base.s * 0.35, 0, 100), l: isDark ? 18 : 95 })};`,
+    ].join('\n  ');
+  };
+
+  return [
+    '/* --- Derived chroma system (industry-tuned, HSL only) ------------- */',
+    `--surface: ${fmt(up(background, 3))};`,
+    `--surface-elevated: ${fmt(up(background, 6))};`,
+    `--surface-sunken: ${fmt(up(background, -3))};`,
+    `--surface-foreground: ${fmt(foreground)};`,
+    `--border-subtle: ${fmt(lighten(border, isDark ? -4 : 5))};`,
+    `--border-strong: ${fmt(saturate(up(border, 12), 4))};`,
+    `--foreground-muted: ${fmt(lighten(foreground, isDark ? -18 : 22))};`,
+    `--foreground-subtle: ${fmt(lighten(foreground, isDark ? -30 : 38))};`,
+    `--primary-tuned: ${fmt(tunedPrimary)};`,
+    ramp('primary', tunedPrimary),
+    `--secondary-tuned: ${fmt(tunedSecondary)};`,
+    ramp('secondary', tunedSecondary),
+    `--accent-tuned: ${fmt(tunedAccent)};`,
+    ramp('accent', tunedAccent),
+    semantic('success', 152, 40),
+    semantic('warning', 38, 50),
+    semantic('info', 208, 48),
+    '/* Gradients, glows and elevation derive from the same hues. */',
+    `--gradient-primary: linear-gradient(135deg, hsl(${fmt(tunedPrimary)}), hsl(${fmt(rotate(saturate(tunedPrimary, 6), 24))}));`,
+    `--gradient-accent: linear-gradient(135deg, hsl(${fmt(tunedAccent)}), hsl(${fmt(rotate(tunedAccent, -26))}));`,
+    `--gradient-surface: linear-gradient(180deg, hsl(${fmt(up(background, 4))}), hsl(${fmt(background)}));`,
+    `--gradient-hero-scrim: linear-gradient(180deg, hsl(${fmt(background)} / 0) 0%, hsl(${fmt(background)} / 0.62) 62%, hsl(${fmt(background)} / 0.92) 100%);`,
+    `--shadow-glow: 0 0 0 1px hsl(${fmt(tunedPrimary)} / 0.22), 0 18px 48px -18px hsl(${fmt(tunedPrimary)} / 0.55);`,
+    `--shadow-elevated: 0 24px 60px -28px hsl(${fmt(foreground)} / ${(isDark ? 0.75 : 0.28).toFixed(2)});`,
+    `--ring-accent: ${fmt(tunedAccent)};`,
+  ].join('\n  ');
+}
+
 export function buildThemedIndexCssFromTokens(
   tokens: ThemeTokens,
   metadata: ThemedIndexCssMetadata = {},
 ): string {
   const c = tokens.colors;
   const professionalGeometry = buildProfessionalGeometry(metadata.presetId);
+  const chromaScale = buildChromaScale(c, metadata.industry);
   const artDirectionPack = resolveIndustryArtDirectionPack({
     sealedPackId: metadata.artDirectionPackId,
     themePresetId: metadata.presetId,
@@ -113,6 +239,7 @@ export function buildThemedIndexCssFromTokens(
   });
   const artDirection = buildArtDirectionCssDeclarations(artDirectionPack);
   const entrance = buildEntranceKeyframes(artDirectionPack);
+
 
 
   // Web-font import for the exact typography injected by the selected card.
