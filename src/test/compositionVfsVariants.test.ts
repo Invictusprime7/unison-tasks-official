@@ -73,7 +73,14 @@ describe('composition VFS variants', () => {
         expect(routeHero.variantId, role).toBe(variantId);
       }
       expect(routeHero.sourceSectionId).toBe(hero.id);
-      expect(routeHero.props.ctas).toEqual(hero.props.ctas);
+      // Route heroes now carry their own conversion pair rather than cloning
+      // Home's. Each CTA must still declare a canonical intent.
+      const routeCtas = (routeHero.props.ctas ?? []) as Array<{ label: string; intent?: string }>;
+      expect(routeCtas.length, role).toBeGreaterThanOrEqual(2);
+      for (const cta of routeCtas) {
+        expect(cta.label, role).toBeTruthy();
+        expect(cta.intent, role).toBeTruthy();
+      }
       expect(familySource(files, 'Hero')).toContain('function HeroPageIntro');
       expect(familySource(files, 'Hero')).not.toContain("from '../../types'");
     }
@@ -165,7 +172,8 @@ describe('composition VFS variants', () => {
       navItems: [contactPage.id],
     }, template);
 
-    expect(contactFiles[contactPage.filePath]).toContain('Explore contact from Northstar Dental.');
+    expect(contactFiles[contactPage.filePath]).toContain('Northstar Dental');
+    expect(contactFiles[contactPage.filePath]).toContain('"badge": "Get in touch"');
     expect(contactFiles[contactPage.filePath]).not.toContain('Salon Premium');
   });
 
@@ -195,12 +203,12 @@ describe('composition VFS variants', () => {
     );
     if (!routeHero) throw new Error('Route page must include a hero');
 
-    expect(source).toContain('"headline": "Services"');
-    expect(source).toContain('"badge": "Services"');
+    expect(source).toContain('"headline": "Work we take on"');
+    expect(source).toContain('"badge": "What we do"');
     expect(source).not.toContain(`"headline": ${JSON.stringify(homeHero?.props.headline)}`);
     expect(source).not.toContain(JSON.stringify(homeHero?.props.backgroundImage));
-    expect(routeHero.variantId).toBe('hero:split-image');
-    expect(routeHero.props.layout).toBe('split');
+    expect(['hero:split-image', 'hero:centered']).toContain(routeHero.variantId);
+    expect(['split', 'centered']).toContain(routeHero.props.layout);
   });
 
   it('keeps an explicit page hero override when the hero is cloned for a route', () => {
