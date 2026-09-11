@@ -191,7 +191,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         type: 'contact',
         variantId: 'contact:quote-request',
         props: {
-          layout: 'quote-request',
+          layout: 'split',
           headline: 'Tell Us About the Job',
           description: 'The more detail you give us, the more accurate the first number will be.',
           submitLabel: 'Request a Quote',
@@ -355,7 +355,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         variantId: 'testimonials:rail',
         props: {
           headline: 'Neighbours Who Called Us',
-          layout: 'rail',
+          layout: 'carousel',
           items: [
             { quote: 'Burst pipe at 11pm. Someone answered, someone arrived, and the price was the price they quoted on the phone.', author: 'Rosa L.', role: 'Northside', rating: 5 },
             { quote: 'They showed me the camera footage of the blocked drain before quoting. No upselling at all.', author: 'Michael T.', role: 'Harbour View', rating: 5 },
@@ -390,7 +390,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         type: 'cta',
         variantId: 'cta:sticky-bar',
         props: {
-          layout: 'sticky-bar',
+          layout: 'banner',
           headline: 'Need someone today?',
           description: 'Same-day slots are still open.',
           ctas: [
@@ -584,7 +584,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         variantId: 'testimonials:spotlight',
         props: {
           headline: 'Sold & Settled',
-          layout: 'spotlight',
+          layout: 'single',
           items: [
             { quote: 'Three viewings, two offers, above asking. Helena handled the chain when it wobbled and it completed on time.', author: 'The Whitmores', role: 'Chapel Row', rating: 5 },
             { quote: 'They talked us out of over-pricing it. Sold in nineteen days at a number we were delighted with.', author: 'Ade & Nia B.', role: 'Willow Drive', rating: 5 },
@@ -610,7 +610,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         type: 'cta',
         variantId: 'cta:gradient-banner',
         props: {
-          layout: 'gradient-banner',
+          layout: 'banner',
           headline: 'Find Out What Your Home Is Worth',
           description: 'A free, in-person valuation backed by real comparable sales — not an online estimate.',
           ctas: [
