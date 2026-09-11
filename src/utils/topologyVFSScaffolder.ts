@@ -687,16 +687,22 @@ function applyRouteHeroContract(
       : contract.layout;
   props.layout = executableLayout;
   props.badge = typeof props.badge === 'string' && props.badge.trim() ? props.badge : page.title;
-  props.headline = page.isHome ? props.headline : page.title;
+  // Never overwrite route-authored copy with the page title — that rewrite is
+  // what made every interior hero read like a renamed Home hero.
+  props.headline = typeof props.headline === 'string' && props.headline.trim() && !page.isHome
+    ? props.headline
+    : page.isHome ? props.headline : page.title;
   props.subheadline = typeof props.subheadline === 'string' && props.subheadline.trim()
     ? props.subheadline
     : `Discover ${page.title.toLowerCase()} from ${plan.businessName}.`;
+  const roleCtas = ROLE_HERO_CTAS[page.role as PageRole] ?? ROLE_HERO_CTAS.custom;
   const ctas = Array.isArray(props.ctas) ? [...props.ctas] as Array<Record<string, unknown>> : [];
-  if (ctas.length === 0) ctas.push({ label: 'Get started', href: '#contact', intent: 'contact.submit', variant: 'primary' });
-  if (!ctas[0].intent) ctas[0] = { ...ctas[0], intent: 'nav.goto' };
-  if (ctas.length < 2) ctas.push({ label: 'View home', href: '/', intent: 'nav.goto', variant: 'outline' });
-  if (!ctas[1].intent) ctas[1] = { ...ctas[1], intent: 'nav.goto' };
+  if (ctas.length === 0) ctas.push({ ...roleCtas[0] });
+  if (!ctas[0].intent) ctas[0] = { ...ctas[0], intent: roleCtas[0].intent };
+  if (ctas.length < 2) ctas.push({ ...roleCtas[1] });
+  if (!ctas[1].intent) ctas[1] = { ...ctas[1], intent: roleCtas[1].intent };
   props.ctas = ctas.slice(0, 2);
+
 
   if (contract.mediaTreatment === 'text-only') {
     // The utility/intro archetype declares an inline proof strip of three
