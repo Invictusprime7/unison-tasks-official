@@ -27,7 +27,7 @@ import type { WizardDesignIntervention } from '@/services/wizardDesignInterventi
 import type { VariantId } from '@/sections/variants/types';
 import { getVariantsForSection } from '@/sections/variants/registry';
 import type { SiteConfiguration } from '@/platform/core/resolvedComposition';
-import { getIndustryRoleSections, getIndustrySectionVocabulary } from '@/platform/core/industryMatrix';
+import { getIndustryProfile, getIndustryRoleSections, getIndustrySectionVocabulary } from '@/platform/core/industryMatrix';
 import type { WizardGenerationBrief, WizardHeroContract } from '@/services/wizardGenerationBrief';
 
 /**
