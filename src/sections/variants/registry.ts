@@ -426,7 +426,22 @@ const VARIANT_REGISTRY: VariantRegistry = {
       tags: ['dark', 'modern', 'minimal'],
       renderJSX: navbarMinimalDarkJSX,
     },
+    {
+      id: 'navbar:transparent-overlay',
+      radixPrimitives: ['dialog'],
+      sectionType: 'navbar',
+      slug: 'transparent-overlay',
+      name: 'Transparent Overlay',
+      description: 'Sits over an immersive hero with a legibility scrim',
+      component: NavbarTransparentOverlay,
+      vfs: { mode: 'portable-recipe' },
+      vocabulary: { category: 'navigation', id: 'split' },
+      thumbnail: '/variants/navbar-transparent-overlay.svg',
+      tags: ['immersive', 'overlay', 'editorial'],
+      renderJSX: navbarTransparentOverlayJSX,
+    },
   ],
+
 
   features: [
     {
