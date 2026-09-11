@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildWizardGenerationBrief } from '@/services/wizardGenerationBrief';
 import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry';
+import type { BuilderPageType } from '@/types/pageRegistry';
 import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
 import { getCompositionById, getCompositionsByIndustry } from '@/sections/templates';
 import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
