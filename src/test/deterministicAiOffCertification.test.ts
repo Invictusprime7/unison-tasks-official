@@ -199,11 +199,15 @@ describe.each(FIXTURES)('deterministic launch certification — $label', (fx) =>
         if (!section.variantId) continue;
         const family = (stylexRecipes.families as Record<string, string>)[section.type];
         if (!family) continue;
+        expect(family, `${page.path}: ${section.variantId} has no registered implementation`)
+          .toContain(JSON.stringify(section.variantId));
+        const emitted = Object.entries(artifacts.files)
+          .filter(([path]) => path.startsWith('/src/components/recipes/'))
+          .map(([, source]) => source);
         expect(
-          artifacts.files[`/src/components/recipes/${section.type}`.replace(/recipes\/(\w)/, (_m, c: string) => `recipes/${c.toUpperCase()}`) + '.ts']
-            ?? family,
-          `${page.path}: ${section.variantId} has no emitted implementation`,
-        ).toContain(JSON.stringify(section.variantId));
+          emitted.some((source) => source.includes(JSON.stringify(section.variantId))),
+          `${page.path}: ${section.variantId} was never emitted into the VFS`,
+        ).toBe(true);
       }
     }
     expect(artifacts.files['/src/index.css']).toBeTruthy();
