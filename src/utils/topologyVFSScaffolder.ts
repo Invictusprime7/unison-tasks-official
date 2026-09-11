@@ -100,6 +100,26 @@ const ROLE_SUPPLEMENT_PRIORITY: Record<PageRole, SectionType[]> = {
  * Resolve which TemplateComposition drives this site plan.
  * Priority: explicit selectedTemplateId → industry-matched composition → null.
  */
+/**
+ * Explicit composition aliases for shipped industries that do not yet own a
+ * first-class composition file. This is a *declared* mapping, reviewable in one
+ * place — it replaces the old silent fallback ladder (industry → first layout
+ * category → first system type → fuzzy lexical scan) which let an industry
+ * inherit an unrelated industry's entire site without anyone noticing.
+ */
+const INDUSTRY_COMPOSITION_ALIAS: Record<string, string> = {
+  // Every alias target must be an industry that actually owns a shipped
+  // composition (salon, restaurant, saas, agency, photography, ecommerce,
+  // coaching, fitness, nonprofit). Aliases are temporary until each industry
+  // owns a first-class composition of its own.
+  contractor: 'agency',
+  'local-service': 'agency',
+  'real-estate': 'agency',
+  portfolio: 'photography',
+  fitness: 'coaching',
+  photography: 'agency',
+};
+
 function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | null {
   // The plan carries selectedTemplateId via planSiteTopology options (see planner).
   const selectedId = (plan as GeneratedSitePlan & { selectedTemplateId?: string }).selectedTemplateId;
@@ -108,30 +128,20 @@ function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | n
     if (direct) return direct;
   }
 
-  // Industry fallback — use first composition matching the plan's industry.
   const byIndustry = getCompositionsByIndustry(plan.industry);
   if (byIndustry.length > 0) return byIndustry[0];
 
-  // Canonical industry authority fallback: industries that are first-class in
-  // INDUSTRY_MATRIX but have no dedicated composition file (e.g. contractor)
-  // resolve through their declared layout categories, then their system type.
-  const profile = getIndustryProfile(plan.industry);
-  if (profile) {
-    for (const category of profile.layoutCategories) {
-      const byCategory = ALL_COMPOSITIONS.find((c) => c.category === category);
-      if (byCategory) return byCategory;
-    }
-    const bySystem = ALL_COMPOSITIONS.find((c) => c.systemType === profile.systemType);
-    if (bySystem) return bySystem;
+  const aliased = INDUSTRY_COMPOSITION_ALIAS[plan.industry];
+  if (aliased) {
+    const byAlias = getCompositionsByIndustry(aliased);
+    if (byAlias.length > 0) return byAlias[0];
   }
 
-  // Last-resort lexical scan against composition.industry/category.
-  const fuzzy = ALL_COMPOSITIONS.find(
-    c => c.industry === plan.industry || c.category === plan.industry
-  );
-  return fuzzy ?? null;
-
+  // No registered composition. Returning another industry's template here is
+  // what produced look-alike sites; the caller raises a named failure instead.
+  return null;
 }
+
 
 function applyPlanThemeToTemplate(
   template: TemplateComposition | null,
@@ -472,18 +482,25 @@ function buildRoleComposition(
       ? resolveRouteHeroVariant(role, page, selectedAlternative?.heroVariantId, options?.designIntervention?.seed)
       : undefined;
     if (source.type === 'hero' && !page.isHome) {
-      const roleLabel = page.title.trim() || page.role.replace(/_/g, ' ');
-      props.headline = roleLabel;
-      props.subheadline = `Explore ${roleLabel.toLowerCase()} from ${plan.businessName || template.name}.`;
-      props.badge = roleLabel;
+      // Interior pages are NOT re-skins of Home. Copy is written for the
+      // route's own purpose, and the hero presentation is resolved from the
+      // route's own contract rather than inherited from the home template.
+      const copy = routeHeroCopy(role, page, plan, template);
+      props.headline = copy.headline;
+      props.subheadline = copy.subheadline;
+      props.badge = copy.badge;
       if (alternateHeroMedia) {
         if (typeof props.image === 'string') props.image = alternateHeroMedia;
         else props.backgroundImage = alternateHeroMedia;
       }
     }
-    if (source.type === 'hero' && routeBrief) {
-      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan, alternateHeroMedia);
+    if (source.type === 'hero') {
+      const contract = page.isHome
+        ? routeBrief?.hero.geometry
+        : routeBrief?.hero.geometry ?? deriveRouteHeroContract(role, page, plan);
+      if (contract) applyRouteHeroContract(props, contract, page, plan, alternateHeroMedia);
     }
+
     filtered.push({
       ...source,
       id: definition ? `${page.id}-${source.id}` : `${page.id}-${source.type}-${idx}`,
@@ -607,6 +624,126 @@ function resolveRouteHeroVariant(
   return candidates[stableStringHash(`${seed ?? ''}:${page.id}:hero`) % candidates.length].id;
 }
 
+// ============================================================================
+// Per-route hero authorship
+//
+// Interior routes used to be Home with a swapped title. Each route now owns
+// its purpose-written copy, its own conversion pair and its own presentation
+// contract, resolved deterministically from the route identity so two siblings
+// never land on the same treatment and two launches stay reproducible.
+// ============================================================================
+
+interface RouteCta { label: string; href: string; intent: string; variant: string }
+
+const ROLE_HERO_CTAS: Record<PageRole, [RouteCta, RouteCta]> = {
+  home:      [{ label: 'Get started', href: '#contact', intent: 'contact.submit', variant: 'primary' }, { label: 'See what we do', href: '#services', intent: 'nav.goto', variant: 'outline' }],
+  services:  [{ label: 'Request a quote', href: '#contact', intent: 'quote.request', variant: 'primary' }, { label: 'Compare pricing', href: '/pricing', intent: 'nav.goto', variant: 'outline' }],
+  pricing:   [{ label: 'Choose a plan', href: '#pricing', intent: 'checkout.start', variant: 'primary' }, { label: 'Talk to us first', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
+  about:     [{ label: 'Meet the team', href: '#team', intent: 'nav.goto', variant: 'primary' }, { label: 'Work with us', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
+  contact:   [{ label: 'Send a message', href: '#contact', intent: 'contact.submit', variant: 'primary' }, { label: 'Call us', href: 'tel:', intent: 'contact.call', variant: 'outline' }],
+  gallery:   [{ label: 'View the work', href: '#gallery', intent: 'nav.goto', variant: 'primary' }, { label: 'Start a project', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
+  faq:       [{ label: 'Ask a question', href: '/contact', intent: 'nav.goto', variant: 'primary' }, { label: 'Browse services', href: '/services', intent: 'nav.goto', variant: 'outline' }],
+  booking:   [{ label: 'Book now', href: '#booking', intent: 'booking.create', variant: 'primary' }, { label: 'See availability', href: '#booking', intent: 'nav.goto', variant: 'outline' }],
+  shop:      [{ label: 'Shop the range', href: '#shop', intent: 'nav.goto', variant: 'primary' }, { label: 'View your bag', href: '#cart', intent: 'cart.open', variant: 'outline' }],
+  checkout:  [{ label: 'Complete checkout', href: '#checkout', intent: 'cart.checkout', variant: 'primary' }, { label: 'Keep shopping', href: '/shop', intent: 'nav.goto', variant: 'outline' }],
+  thank_you: [{ label: 'Back to home', href: '/', intent: 'nav.goto', variant: 'primary' }, { label: 'Explore more', href: '/services', intent: 'nav.goto', variant: 'outline' }],
+  blog:      [{ label: 'Read the latest', href: '#blog', intent: 'nav.goto', variant: 'primary' }, { label: 'Subscribe', href: '#newsletter', intent: 'newsletter.subscribe', variant: 'outline' }],
+  custom:    [{ label: 'Get in touch', href: '/contact', intent: 'nav.goto', variant: 'primary' }, { label: 'Browse services', href: '/services', intent: 'nav.goto', variant: 'outline' }],
+};
+
+const ROLE_HERO_COPY: Record<PageRole, { badge: string; headline: (title: string, brand: string) => string; lead: (title: string, brand: string, industry: string) => string }> = {
+  home:      { badge: 'Welcome', headline: (_t, brand) => brand, lead: (_t, brand, industry) => `${brand} — ${industry} done properly, from the first conversation to the finished result.` },
+  services:  { badge: 'What we do', headline: () => 'Work we take on', lead: (_t, brand) => `Every engagement at ${brand} is scoped, priced and delivered by the same team you meet on day one.` },
+  pricing:   { badge: 'Pricing', headline: () => 'Straightforward pricing', lead: (_t, brand) => `Clear numbers, no surprises. Pick the level of support that fits, and change it whenever you need to.` },
+  about:     { badge: 'Our story', headline: (_t, brand) => `The people behind ${brand}`, lead: () => 'Why we started, how we work, and the standards we hold ourselves to on every project.' },
+  contact:   { badge: 'Get in touch', headline: () => 'Let’s talk', lead: (_t, brand) => `Tell ${brand} what you need. We read every message and reply the same working day.` },
+  gallery:   { badge: 'Selected work', headline: () => 'Recent projects', lead: () => 'A closer look at finished work — the detail, the materials and the results behind each one.' },
+  faq:       { badge: 'Answers', headline: () => 'Questions, answered', lead: () => 'The things people ask us most, written out plainly so you can decide before you get in touch.' },
+  booking:   { badge: 'Availability', headline: () => 'Book your appointment', lead: (_t, brand) => `Choose a time that suits you and ${brand} will confirm it straight away.` },
+  shop:      { badge: 'Shop', headline: () => 'Browse the collection', lead: () => 'Everything we make, in stock and ready to ship, with the details that matter listed up front.' },
+  checkout:  { badge: 'Checkout', headline: () => 'Secure checkout', lead: () => 'Review your order and complete payment. Your details are encrypted end to end.' },
+  thank_you: { badge: 'All done', headline: () => 'Thank you', lead: (_t, brand) => `Your request is with ${brand}. We’ll be in touch shortly with next steps.` },
+  blog:      { badge: 'Journal', headline: () => 'Notes and updates', lead: () => 'What we are learning, building and paying attention to right now.' },
+  custom:    { badge: 'More', headline: (title) => title, lead: (title, brand) => `${title} at ${brand} — what to expect and how to get started.` },
+};
+
+function routeHeroCopy(
+  role: PageRole,
+  page: PageRouteNode,
+  plan: GeneratedSitePlan,
+  template: TemplateComposition,
+): { headline: string; subheadline: string; badge: string } {
+  const brand = plan.businessName?.trim() || template.name;
+  const title = page.title.trim() || role.replace(/_/g, ' ');
+  const industry = getIndustryProfile(plan.industry)?.name || plan.industry.replace(/[-_]/g, ' ');
+  const spec = ROLE_HERO_COPY[role] ?? ROLE_HERO_COPY.custom;
+  return {
+    headline: spec.headline(title, brand),
+    subheadline: spec.lead(title, brand, industry),
+    badge: spec.badge,
+  };
+}
+
+/** Presentation pools per role — siblings rotate, so no two share a treatment. */
+const ROLE_HERO_PRESENTATION: Record<PageRole, Array<Pick<WizardHeroContract, 'layout' | 'mediaTreatment' | 'archetype' | 'mediaFocal'>>> = {
+  home:      [{ layout: 'full-bleed', mediaTreatment: 'full-bleed-overlay', archetype: 'immersive-full-bleed', mediaFocal: 'center' }],
+  services:  [
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+  ],
+  pricing:   [
+    { layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' },
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+  ],
+  about:     [
+    { layout: 'split', mediaTreatment: 'edge-anchored', archetype: 'anchored-portrait', mediaFocal: 'top' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+  ],
+  contact:   [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  gallery:   [
+    { layout: 'full-bleed', mediaTreatment: 'full-bleed-overlay', archetype: 'immersive-full-bleed', mediaFocal: 'center' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+  ],
+  faq:       [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  booking:   [
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+  ],
+  shop:      [
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
+  ],
+  checkout:  [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  thank_you: [{ layout: 'centered', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  blog:      [
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
+    { layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' },
+  ],
+  custom:    [
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+  ],
+};
+
+function deriveRouteHeroContract(
+  role: PageRole,
+  page: PageRouteNode,
+  plan: GeneratedSitePlan,
+): WizardHeroContract {
+  const pool = ROLE_HERO_PRESENTATION[role] ?? ROLE_HERO_PRESENTATION.custom;
+  const routeIndex = Math.max(0, plan.pages.findIndex((candidate) => candidate.id === page.id));
+  const pick = pool[(routeIndex + stableStringHash(`${plan.siteId}:${page.id}`)) % pool.length];
+  return {
+    ...pick,
+    source: 'seeded-role-archetype',
+    mediaDirection: `${role} route imagery, framed ${pick.mediaFocal}`,
+    requiredParts: ['badge', 'headline', 'lead', 'primary-cta', 'secondary-cta'],
+    rule: 'Route-owned hero contract: never inherit the home hero treatment.',
+  };
+}
+
+
+
 function sortByConfiguredOrder(sections: SectionEntry[], configuredOrder: readonly string[]): void {
   const order = new Map(configuredOrder.map((type, index) => [type, index]));
   sections.sort((left, right) => {
@@ -674,16 +811,22 @@ function applyRouteHeroContract(
       : contract.layout;
   props.layout = executableLayout;
   props.badge = typeof props.badge === 'string' && props.badge.trim() ? props.badge : page.title;
-  props.headline = page.isHome ? props.headline : page.title;
+  // Never overwrite route-authored copy with the page title — that rewrite is
+  // what made every interior hero read like a renamed Home hero.
+  props.headline = typeof props.headline === 'string' && props.headline.trim() && !page.isHome
+    ? props.headline
+    : page.isHome ? props.headline : page.title;
   props.subheadline = typeof props.subheadline === 'string' && props.subheadline.trim()
     ? props.subheadline
     : `Discover ${page.title.toLowerCase()} from ${plan.businessName}.`;
+  const roleCtas = ROLE_HERO_CTAS[page.role as PageRole] ?? ROLE_HERO_CTAS.custom;
   const ctas = Array.isArray(props.ctas) ? [...props.ctas] as Array<Record<string, unknown>> : [];
-  if (ctas.length === 0) ctas.push({ label: 'Get started', href: '#contact', intent: 'contact.submit', variant: 'primary' });
-  if (!ctas[0].intent) ctas[0] = { ...ctas[0], intent: 'nav.goto' };
-  if (ctas.length < 2) ctas.push({ label: 'View home', href: '/', intent: 'nav.goto', variant: 'outline' });
-  if (!ctas[1].intent) ctas[1] = { ...ctas[1], intent: 'nav.goto' };
+  if (ctas.length === 0) ctas.push({ ...roleCtas[0] });
+  if (!ctas[0].intent) ctas[0] = { ...ctas[0], intent: roleCtas[0].intent };
+  if (ctas.length < 2) ctas.push({ ...roleCtas[1] });
+  if (!ctas[1].intent) ctas[1] = { ...ctas[1], intent: roleCtas[1].intent };
   props.ctas = ctas.slice(0, 2);
+
 
   if (contract.mediaTreatment === 'text-only') {
     // The utility/intro archetype declares an inline proof strip of three
