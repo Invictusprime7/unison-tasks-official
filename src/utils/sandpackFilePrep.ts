@@ -3370,16 +3370,23 @@ export function processCode(code: string, filePath: string): string {
     usedIdentifiers.add(idMatch[1]);
   }
 
-  // Check which are missing declarations
+  // Check which are missing declarations. `collectTopLevelBindingNames` is the
+  // single authority here: an ad-hoc regex missed bindings it does not model
+  // (notably `let`/`var`), which produced a second top-level
+  // `const Instagram = ...` and a Babel "Duplicate declaration" for the page.
+  const existingTopLevelBindings = collectTopLevelBindingNames(code);
   const missingIcons: string[] = [];
   for (const name of usedIdentifiers) {
     if (!COMMON_LUCIDE_ICONS.has(name)) continue;
-    // Check if already declared (import, const, function, class)
-    const declRe = new RegExp(`(?:import\\s+.*\\b${name}\\b|const\\s+${name}\\s*=|function\\s+${name}\\b|class\\s+${name}\\b)`, 'm');
+    if (existingTopLevelBindings.has(name)) continue;
+    // Nested/inner declarations still shadow the injected binding safely, but a
+    // same-name declaration anywhere in the file means we must not emit one.
+    const declRe = new RegExp(`(?:import\\s+.*\\b${name}\\b|(?:const|let|var)\\s+${name}\\s*[=;:]|function\\s+${name}\\b|class\\s+${name}\\b)`, 'm');
     if (!declRe.test(code)) {
       missingIcons.push(name);
     }
   }
+
 
   if (missingIcons.length > 0) {
     // Inject lucide proxy declarations for missing icons
