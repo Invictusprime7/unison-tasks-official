@@ -2,6 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import type { TemplateComposition } from '@/sections/types';
 
+/**
+ * Registered variants now ship as real modules: the family file resolves the
+ * chosen variant, `<Component>Base.tsx` is the deterministic fallback and
+ * `recipes/<Component>.ts` carries the registered implementations. Structural
+ * assertions read that whole emitted surface.
+ */
+function familySource(files: Record<string, string>, component: string): string {
+  return [
+    `/src/components/recipes/${component}.ts`,
+    `/src/components/${component}Base.tsx`,
+    `/src/components/${component}.tsx`,
+  ].map((path) => files[path] || '').join('\n');
+}
+
+
 function composition(sections: TemplateComposition['sections']): TemplateComposition {
   return { id: 'fixture', name: 'Fixture', industry: 'photography', sections } as unknown as TemplateComposition;
 }
@@ -34,14 +49,14 @@ describe('M1 — semantic section projection', () => {
   });
 
   it('gallery renderer consumes src/alt/caption/category', () => {
-    const gallery = files['/src/components/Gallery.tsx'];
+    const gallery = familySource(files, 'Gallery');
     expect(gallery).toContain('item.caption');
     expect(gallery).toContain('item.category');
     expect(gallery).toContain('data-ut-variant="gallery:');
   });
 
   it('pricing renderer consumes tiers and features', () => {
-    const pricing = files['/src/components/Pricing.tsx'];
+    const pricing = familySource(files, 'Pricing');
     expect(pricing).toContain('tier.features');
     expect(pricing).toContain('data-ut-variant="pricing:tiers"');
   });

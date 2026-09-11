@@ -3,6 +3,21 @@ import { getVariantsForSection, getVariantById, getVariantIdForLayout } from '@/
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import type { TemplateComposition } from '@/sections/types';
 
+/**
+ * Registered variants now ship as real modules: the family file resolves the
+ * chosen variant, `<Component>Base.tsx` is the deterministic fallback and
+ * `recipes/<Component>.ts` carries the registered implementations. Structural
+ * assertions read that whole emitted surface.
+ */
+function familySource(files: Record<string, string>, component: string): string {
+  return [
+    `/src/components/recipes/${component}.ts`,
+    `/src/components/${component}Base.tsx`,
+    `/src/components/${component}.tsx`,
+  ].map((path) => files[path] || '').join('\n');
+}
+
+
 const REQUIRED = [
   'gallery:editorial-mosaic',
   'gallery:masonry',
@@ -36,7 +51,7 @@ describe('Phase 4 — gallery premium variant family', () => {
       id: 'fixture', name: 'Fixture', industry: 'photography',
       sections: [{ id: 'gallery-1', type: 'gallery', props: { headline: 'Work', layout: 'masonry', items: [{ src: '/a.jpg', caption: 'A', category: 'weddings' }] } }],
     } as unknown as TemplateComposition;
-    const gallery = compositionToReactFileSet(composition, '/src/pages/Home.tsx')['/src/components/Gallery.tsx'];
+    const gallery = familySource(compositionToReactFileSet(composition, '/src/pages/Home.tsx'), 'Gallery');
     for (const marker of ['gallery:editorial-mosaic', 'gallery:masonry', 'gallery:lightbox-grid', 'gallery:feature-split', 'gallery:cinematic-grid']) {
       expect(gallery).toContain(marker);
     }

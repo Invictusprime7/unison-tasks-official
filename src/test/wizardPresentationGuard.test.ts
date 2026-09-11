@@ -6,6 +6,21 @@ import { buildTemplateLayoutContract } from '@/services/templateLayoutContract';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { getCompositionById } from '@/sections/templates';
 import {
+
+/**
+ * Registered variants now ship as real modules: the family file resolves the
+ * chosen variant, `<Component>Base.tsx` is the deterministic fallback and
+ * `recipes/<Component>.ts` carries the registered implementations. Structural
+ * assertions read that whole emitted surface.
+ */
+function familySource(files: Record<string, string>, component: string): string {
+  return [
+    `/src/components/recipes/${component}.ts`,
+    `/src/components/${component}Base.tsx`,
+    `/src/components/${component}.tsx`,
+  ].map((path) => files[path] || '').join('\n');
+}
+
   assessTemplateVisualFidelity,
   assessWizardHomePresentation,
   assessWizardPagePresentations,
@@ -42,7 +57,7 @@ describe('Wizard presentation guard', () => {
     if (!composition) throw new Error('Photography composition must be registered');
     const canonicalFiles = compositionToReactFileSet(composition, '/src/pages/Home.tsx');
     // The canonical composition is the *expectation*, not a replacement body.
-    expect(canonicalFiles['/src/components/Hero.tsx']).toContain('data-ut-variant');
+    expect(familySource(canonicalFiles, 'Hero')).toContain('data-ut-variant');
     const result = assessWizardHomePresentation({
       aiFiles: { '/src/pages/Home.tsx': '<main><section>Generic photographer</section></main>' },
       homePath: '/src/pages/Home.tsx',
