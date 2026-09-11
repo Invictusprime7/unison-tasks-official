@@ -100,6 +100,22 @@ const ROLE_SUPPLEMENT_PRIORITY: Record<PageRole, SectionType[]> = {
  * Resolve which TemplateComposition drives this site plan.
  * Priority: explicit selectedTemplateId → industry-matched composition → null.
  */
+/**
+ * Explicit composition aliases for shipped industries that do not yet own a
+ * first-class composition file. This is a *declared* mapping, reviewable in one
+ * place — it replaces the old silent fallback ladder (industry → first layout
+ * category → first system type → fuzzy lexical scan) which let an industry
+ * inherit an unrelated industry's entire site without anyone noticing.
+ */
+const INDUSTRY_COMPOSITION_ALIAS: Record<string, string> = {
+  contractor: 'local-service',
+  'local-service': 'local-service',
+  'real-estate': 'agency',
+  portfolio: 'photography',
+  fitness: 'coaching',
+  photography: 'portfolio',
+};
+
 function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | null {
   // The plan carries selectedTemplateId via planSiteTopology options (see planner).
   const selectedId = (plan as GeneratedSitePlan & { selectedTemplateId?: string }).selectedTemplateId;
@@ -108,30 +124,20 @@ function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | n
     if (direct) return direct;
   }
 
-  // Industry fallback — use first composition matching the plan's industry.
   const byIndustry = getCompositionsByIndustry(plan.industry);
   if (byIndustry.length > 0) return byIndustry[0];
 
-  // Canonical industry authority fallback: industries that are first-class in
-  // INDUSTRY_MATRIX but have no dedicated composition file (e.g. contractor)
-  // resolve through their declared layout categories, then their system type.
-  const profile = getIndustryProfile(plan.industry);
-  if (profile) {
-    for (const category of profile.layoutCategories) {
-      const byCategory = ALL_COMPOSITIONS.find((c) => c.category === category);
-      if (byCategory) return byCategory;
-    }
-    const bySystem = ALL_COMPOSITIONS.find((c) => c.systemType === profile.systemType);
-    if (bySystem) return bySystem;
+  const aliased = INDUSTRY_COMPOSITION_ALIAS[plan.industry];
+  if (aliased) {
+    const byAlias = getCompositionsByIndustry(aliased);
+    if (byAlias.length > 0) return byAlias[0];
   }
 
-  // Last-resort lexical scan against composition.industry/category.
-  const fuzzy = ALL_COMPOSITIONS.find(
-    c => c.industry === plan.industry || c.category === plan.industry
-  );
-  return fuzzy ?? null;
-
+  // No registered composition. Returning another industry's template here is
+  // what produced look-alike sites; the caller raises a named failure instead.
+  return null;
 }
+
 
 function applyPlanThemeToTemplate(
   template: TemplateComposition | null,
