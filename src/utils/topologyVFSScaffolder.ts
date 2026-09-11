@@ -376,10 +376,13 @@ function buildRoleComposition(
     ?? [];
 
   if (page.isHome || role === 'home') {
+    // Home gets the same media chain as interior pages: it can borrow imagery
+    // from its own sibling sections before falling back to the industry pool.
+    const homeAlternateMedia = collectAlternateHeroMedia(template)[0];
     const sections = template.sections.map((section) => {
       if (section.type !== 'hero' || !routeBrief) return section;
       const props = { ...(section.props as Record<string, unknown>) };
-      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan);
+      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan, homeAlternateMedia);
       return { ...section, props: props as SectionEntry['props'] };
     });
     if (configuredOrder.length > 0) sortByConfiguredOrder(sections, configuredOrder);
