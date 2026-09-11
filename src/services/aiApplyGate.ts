@@ -90,6 +90,19 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
       rejectMessage: 'Canonical project identity is unavailable.',
     };
   }
+  const scope = checkAiPatchScope(ctx.beforeFiles, ctx.nextFiles);
+  if (!scope.allowed) {
+    const message = describeAiPatchScopeViolations(scope.violations);
+    return {
+      accepted: false,
+      blockers: scope.violations.map((v) => ({
+        source: 'preview' as const,
+        code: 'ai-patch-out-of-scope',
+        message: `${v.path}: ${v.reason}`,
+      })),
+      rejectMessage: message,
+    };
+  }
   try {
     const identity = await resolveIdentity(ctx);
     if (!identity) {
@@ -104,6 +117,7 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
       };
     }
     const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
+
     const commit = await commitMutation({
       source: 'ai-builder',
       identity,
