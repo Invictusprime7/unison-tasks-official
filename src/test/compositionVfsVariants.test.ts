@@ -274,13 +274,13 @@ describe('composition VFS variants', () => {
     expect(familySource(files, 'Hero')).not.toContain("paddingTop: '8rem'");
     expect(familySource(files, 'Hero')).not.toContain("paddingTop: '10rem'");
     expect(familySource(files, 'Hero')).toContain('<img src={media}');
-    expect(files['/src/components/Services.tsx']).toContain('data-ut-variant="services:alternating"');
+    expect(familySource(files, 'Services')).toContain('data-ut-variant="services:alternating"');
     expect(familySource(files, 'Testimonials')).toContain('data-ut-variant="testimonials:carousel"');
-    expect(files['/src/components/CTA.tsx']).toContain('data-ut-variant="cta:split-card"');
-    expect(files['/src/components/Contact.tsx']).toContain('data-ut-variant="contact:split-card"');
-    expect(files['/src/components/Footer.tsx']).toContain('data-ut-variant="footer:dark-band"');
+    expect(familySource(files, 'CTA')).toContain('data-ut-variant="cta:split-card"');
+    expect(familySource(files, 'Contact')).toContain('data-ut-variant="contact:split-card"');
+    expect(familySource(files, 'Footer')).toContain('data-ut-variant="footer:dark-band"');
     expect(familySource(files, 'Hero')).toContain('{media && <div className="ut-media-frame min-h-[var(--ut-hero-media-block)]">');
-    expect(files['/src/components/Services.tsx']).toContain("item.image ? 'grid items-center gap-8 md:grid-cols-2 lg:gap-14' : 'max-w-2xl'");
+    expect(familySource(files, 'Services')).toContain("item.image ? 'grid items-center gap-8 md:grid-cols-2 lg:gap-14' : 'max-w-2xl'");
     expect(files['/src/pages/Home.tsx']).toContain('data-ut-media-treatment={section.type === \'hero\' ? mediaTreatment : undefined}');
   });
 
@@ -381,10 +381,10 @@ describe('composition VFS variants', () => {
 
     expect(heroOnly['/src/components/theme.ts']).toContain('"primary": "var(--primary)"');
     expect(heroOnly['/src/components/theme.ts']).toContain('"headingFont": "var(--font-heading)"');
-    expect(heroOnly['/src/components/SiteLayout.tsx']).not.toContain('TEMPLATE_GLOBAL_STYLES');
-    expect(heroOnly['/src/components/Hero.tsx']).toBeDefined();
-    expect(heroOnly['/src/components/Navbar.tsx']).toBeUndefined();
-    expect(heroOnly['/src/components/Footer.tsx']).toBeUndefined();
+    expect(familySource(heroOnly, 'SiteLayout')).not.toContain('TEMPLATE_GLOBAL_STYLES');
+    expect(familySource(heroOnly, 'Hero')).toBeDefined();
+    expect(familySource(heroOnly, 'Navbar')).toBeUndefined();
+    expect(familySource(heroOnly, 'Footer')).toBeUndefined();
     expect(heroOnly['/src/pages/Offer.sections.ts']).not.toContain("import Navbar");
   });
 
@@ -412,8 +412,8 @@ describe('composition VFS variants', () => {
   it('routes generated social icons through the snapshot VFS facade', () => {
     const files = compileHome('restaurant-premium');
 
-    expect(files['/src/components/SocialIcon.tsx']).toContain("from '@/unison/ui/icons'");
-    expect(files['/src/components/SocialIcon.tsx']).not.toContain("from 'lucide-react'");
+    expect(familySource(files, 'SocialIcon')).toContain("from '@/unison/ui/icons'");
+    expect(familySource(files, 'SocialIcon')).not.toContain("from 'lucide-react'");
   });
 
   it('requires explicit shell layouts and keeps representative industries structurally distinct', () => {
