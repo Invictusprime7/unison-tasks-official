@@ -176,9 +176,14 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
       const repeats = /\.map\s*\(/.test(following.slice(0, 600));
       blocks.push({ mode, columns, repeats, line: index + 1 });
 
-      const isMultiTrack = mode === 'grid' ? columns > 1 : true;
+      // A flex container only needs a gap when it actually holds several
+      // tracks. A single centered CTA wrapper (`flex justify-center`) has one
+      // child, so demanding a gap there produced noise that hid real defects.
+      const flexIsMultiTrack = /(^|\s|:)(justify-between|justify-around|justify-evenly|flex-wrap|divide-x)(\s|$)/.test(classes)
+        || repeats;
+      const isMultiTrack = mode === 'grid' ? columns > 1 : flexIsMultiTrack;
 
-      if (isMultiTrack && !/(^|\s|:)gap-/.test(classes)) {
+      if (isMultiTrack && !/(^|\s|:)(gap-|gap-x-|space-x-)/.test(classes)) {
         issues.push({
           code: 'grid-without-gap',
           severity: 'warning',
@@ -187,6 +192,7 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
           snippet: classes.trim(),
         });
       }
+
 
       if (mode === 'grid' && columns > 1) {
         const next = nextMeaningfulLine(lines, index + 1);
