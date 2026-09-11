@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildWizardGenerationBrief } from '@/services/wizardGenerationBrief';
 import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry';
 import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
-import { getCompositionById } from '@/sections/templates';
+import { getCompositionById, getCompositionsByIndustry } from '@/sections/templates';
 import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
 import type { GeneratedSitePlan, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
 
