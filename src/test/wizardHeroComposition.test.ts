@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildWizardGenerationBrief } from '@/services/wizardGenerationBrief';
 import { createBuilderPage, createEmptyPageRegistry } from '@/types/pageRegistry';
+import type { BuilderPageType } from '@/types/pageRegistry';
 import { evaluateVisualQuality } from '@/services/visualQualityEvaluation';
-import { getCompositionById } from '@/sections/templates';
+import { getCompositionById, getCompositionsByIndustry } from '@/sections/templates';
 import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
 import type { GeneratedSitePlan, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
 
@@ -139,4 +140,73 @@ describe('hero quality findings', () => {
     )));
     expect(heroFailures, JSON.stringify(heroFailures, null, 2)).toEqual([]);
   });
+});
+
+/**
+ * The launcher rejected every route of a real generation with INCOMPLETE_HERO
+ * because the fifth hero part (media OR a three-signal proof strip) was only
+ * resolved when a template happened to ship photography. This walks every
+ * first-class industry across the full route set so the whole class of failure
+ * stays closed, not just the one template that happened to be complete.
+ */
+describe('every industry compiles complete heroes on every route', () => {
+  const ROUTES: Array<{
+    id: string; title: string; path: string;
+    role: PageRouteNode['role']; type: BuilderPageType;
+  }> = [
+    { id: 'home', title: 'Home', path: '/', role: 'home', type: 'home' },
+    { id: 'about', title: 'About', path: '/about', role: 'about', type: 'about' },
+    { id: 'services', title: 'Services', path: '/services', role: 'services', type: 'custom' },
+    { id: 'pricing', title: 'Pricing', path: '/pricing', role: 'pricing', type: 'pricing' },
+    { id: 'gallery', title: 'Gallery', path: '/gallery', role: 'gallery', type: 'gallery' },
+    { id: 'shop', title: 'Shop', path: '/shop', role: 'shop', type: 'shop' },
+    { id: 'checkout', title: 'Checkout', path: '/checkout', role: 'checkout', type: 'checkout' },
+    { id: 'contact', title: 'Contact', path: '/contact', role: 'contact', type: 'contact' },
+    { id: 'faq', title: 'Faq', path: '/faq', role: 'faq', type: 'faq' },
+  ];
+
+  const INDUSTRIES = ['saas', 'salon', 'contractor', 'restaurant', 'coaching', 'ecommerce', 'portfolio', 'nonprofit', 'agency'];
+
+  for (const industry of INDUSTRIES) {
+    it(`${industry}: no route opens on an unfinished hero`, () => {
+      const template = getCompositionsByIndustry(industry)[0];
+      if (!template) return;
+
+      const reg = createEmptyPageRegistry();
+      for (const [index, route] of ROUTES.entries()) {
+        reg.pages[route.id] = createBuilderPage(route.id, route.title, route.path, route.type, {
+          isHome: route.role === 'home', showInNav: true, navOrder: index,
+          pageRole: route.role === 'services' ? 'service' : route.role,
+          filePath: `/src/pages/${route.title}.tsx`,
+        });
+      }
+      reg.homePageId = 'home';
+
+      const brief = buildWizardGenerationBrief({
+        pageRegistry: reg, vfsFiles: {}, themePresetId: 'midnight-editorial', industry, seed: `seed-${industry}`,
+      });
+
+      const plan: GeneratedSitePlan = {
+        siteId: `${industry}-hero-site`, industry, businessName: `${industry} test co`,
+        homePageId: 'home',
+        pages: ROUTES.map((route) => ({
+          id: route.id, name: route.title, title: route.title, route: route.path,
+          role: route.role, filePath: `/src/pages/${route.title}.tsx`,
+          visibleInNav: true, isHome: route.role === 'home', generatedBy: 'wizard' as const,
+        })),
+        navItems: ROUTES.map((route) => route.id),
+        funnels: [], redirects: [], generatedAt: '2026-09-11T00:00:00.000Z',
+        selectedTemplateId: template.id, selectedThemePresetId: 'midnight-editorial',
+      };
+
+      const files = Object.assign({}, ...plan.pages.map((page) => generateTopologyPlaceholderFiles(
+        page, plan, template, { generationBrief: brief },
+      )));
+      const report = evaluateVisualQuality(files);
+      const heroFailures = report.pages
+        .filter((page) => page.findings.includes('INCOMPLETE_HERO'))
+        .map((page) => ({ path: page.path, heroParts: page.heroParts }));
+      expect(heroFailures, JSON.stringify(heroFailures, null, 2)).toEqual([]);
+    });
+  }
 });

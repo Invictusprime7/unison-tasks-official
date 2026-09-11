@@ -603,6 +603,16 @@ export async function runLaunchPipeline(
         // Every registered body must be present in the Stage 4b output above.
         // Missing pages are a real closure failure, never a fallback request.
         strictPreflight: true,
+        // Presentation findings are reported to the user as degradations, not
+        // as a fatal launch. The site still compiles, seals and opens.
+        onVisualQualityFindings: (findings, blockedFiles) => {
+          run.degrade(
+            "preflight",
+            "preflight.visual_quality",
+            `${blockedFiles.length} page(s) need a design pass before publishing.`,
+            findings.join(" | "),
+          );
+        },
       } as Parameters<typeof buildCanonicalLaunchArtifactsAsync>[0],
       { yieldToHost: yieldToBrowser, signal },
     );

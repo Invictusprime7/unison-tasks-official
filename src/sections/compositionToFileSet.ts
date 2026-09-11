@@ -308,7 +308,7 @@ export default function Hero({ props }: { props: any }) {
       <section data-ut-variant="hero:split-image" className="bg-background pb-24" style={{ paddingTop: HERO_TOP_PADDING }}>
         <div className={shellClass + ' grid items-center gap-10 md:grid-cols-2 lg:gap-20'}>
           <div className="text-left">{content}</div>
-          {media && <div className="ut-media-frame min-h-[var(--ut-hero-media-block)]"><img src={media} alt="" className="block min-h-[var(--ut-hero-media-block)] h-full w-full object-cover" /></div>}
+          {media && <div className="ut-hero-media ut-media-frame min-h-[var(--ut-hero-media-block)]"><img src={media} alt="" className="block min-h-[var(--ut-hero-media-block)] h-full w-full object-cover" /></div>}
         </div>
       </section>
     );

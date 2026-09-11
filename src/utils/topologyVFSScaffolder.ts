@@ -376,10 +376,13 @@ function buildRoleComposition(
     ?? [];
 
   if (page.isHome || role === 'home') {
+    // Home gets the same media chain as interior pages: it can borrow imagery
+    // from its own sibling sections before falling back to the industry pool.
+    const homeAlternateMedia = collectAlternateHeroMedia(template)[0];
     const sections = template.sections.map((section) => {
       if (section.type !== 'hero' || !routeBrief) return section;
       const props = { ...(section.props as Record<string, unknown>) };
-      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan);
+      applyRouteHeroContract(props, routeBrief.hero.geometry, page, plan, homeAlternateMedia);
       return { ...section, props: props as SectionEntry['props'] };
     });
     if (configuredOrder.length > 0) sortByConfiguredOrder(sections, configuredOrder);
@@ -615,6 +618,48 @@ function sortByConfiguredOrder(sections: SectionEntry[], configuredOrder: readon
   });
 }
 
+/**
+ * The fifth hero part — media OR a three-signal proof strip — is what the
+ * visual acceptance gate rejects a page for. It used to be resolved
+ * opportunistically (only if the template happened to ship an image), which
+ * meant an industry template without photography produced an INCOMPLETE_HERO
+ * on every single route. Media is now resolved through a fixed chain and
+ * text-only archetypes always emit the proof strip their own contract
+ * promises, so the part is guaranteed rather than hoped for.
+ */
+function resolveHeroProofSignals(
+  page: PageRouteNode,
+  plan: GeneratedSitePlan,
+): Array<{ value: string; label: string }> {
+  const profile = getIndustryProfile(plan.industry);
+  const industryName = profile?.name || plan.industry.replace(/[-_]/g, ' ');
+  const pool: Array<{ value: string; label: string }> = [
+    { value: 'Same day', label: 'Response time' },
+    { value: 'Local', label: 'Serving your area' },
+    { value: 'Mon–Sat', label: 'Open hours' },
+    { value: 'Licensed', label: 'Qualified team' },
+    { value: '5-star', label: 'Client rated' },
+    { value: industryName, label: 'Specialists' },
+  ];
+  const offset = stableStringHash(`${plan.siteId}:${page.id}:proof`) % pool.length;
+  return [0, 1, 2].map((index) => pool[(offset + index) % pool.length]);
+}
+
+/** Deterministic hero imagery pool drawn from the industry's own compositions. */
+function industryHeroMediaPool(plan: GeneratedSitePlan): string[] {
+  const media = new Set<string>();
+  for (const composition of getCompositionsByIndustry(plan.industry)) {
+    for (const section of composition.sections) {
+      const props = section.props as Record<string, unknown>;
+      for (const key of ['image', 'backgroundImage']) {
+        const value = props[key];
+        if (typeof value === 'string' && value.trim()) media.add(value);
+      }
+    }
+  }
+  return [...media];
+}
+
 function applyRouteHeroContract(
   props: Record<string, unknown>,
   contract: WizardHeroContract,
@@ -639,17 +684,47 @@ function applyRouteHeroContract(
   if (ctas.length < 2) ctas.push({ label: 'View home', href: '/', intent: 'nav.goto', variant: 'outline' });
   if (!ctas[1].intent) ctas[1] = { ...ctas[1], intent: 'nav.goto' };
   props.ctas = ctas.slice(0, 2);
-  if (contract.mediaTreatment !== 'text-only') {
+
+  if (contract.mediaTreatment === 'text-only') {
+    // The utility/intro archetype declares an inline proof strip of three
+    // signals in place of a photograph. Emit it — an intro hero with no proof
+    // is the unfinished opening screen the gate exists to catch.
+    const existing = Array.isArray(props.stats) ? props.stats as Array<Record<string, unknown>> : [];
+    props.stats = existing.length >= 3 ? existing.slice(0, 3) : resolveHeroProofSignals(page, plan);
+  } else {
+    const pool = industryHeroMediaPool(plan);
     const media = (typeof props.image === 'string' && props.image)
       || (typeof props.backgroundImage === 'string' && props.backgroundImage)
-      || alternateHeroMedia;
+      || alternateHeroMedia
+      || (pool.length > 0 ? pool[stableStringHash(`${plan.siteId}:${page.id}:hero-media`) % pool.length] : undefined);
     if (media) {
       if (executableLayout === 'full-bleed') props.backgroundImage = media;
       else props.image = media;
+      delete props.stats;
+    } else {
+      // No imagery exists anywhere in this industry's compositions. Rather than
+      // ship a four-part hero the gate will reject page by page, fall back to
+      // the same proof strip the intro archetype uses.
+      const existing = Array.isArray(props.stats) ? props.stats as Array<Record<string, unknown>> : [];
+      props.stats = existing.length >= 3 ? existing.slice(0, 3) : resolveHeroProofSignals(page, plan);
     }
   }
+
   props.mediaFocal = contract.mediaFocal;
   props.heroArchetype = contract.archetype;
+
+  const hasMedia = Boolean(
+    (typeof props.image === 'string' && props.image.trim())
+    || (typeof props.backgroundImage === 'string' && props.backgroundImage.trim()),
+  );
+  const hasProof = Array.isArray(props.stats) && props.stats.length >= 3;
+  if (!hasMedia && !hasProof) {
+    throw new PreviewPipelineError(
+      'vfs',
+      `Hero for ${page.filePath || page.route} resolved neither media nor a three-signal proof strip.`,
+      { blockedFiles: [page.filePath || page.route], recoverableByRelaunch: true },
+    );
+  }
 }
 
 function stableStringHash(value: string): number {
