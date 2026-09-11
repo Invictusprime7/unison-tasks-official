@@ -158,13 +158,15 @@ function nextMeaningfulLine(lines: string[], from: number): { text: string; inde
 /** Snapshot a single page/section source file. */
 export function auditLayoutSource(path: string, source: string): PageLayoutSnapshot {
   const lines = source.split('\n');
+  const classConstants = collectClassConstants(source);
   const blocks: LayoutBlock[] = [];
   const issues: LayoutIssue[] = [];
   let sawCenteredContainer = false;
 
   lines.forEach((rawLine, index) => {
     const line = rawLine;
-    for (const classes of classNamesOnLine(line)) {
+    for (const classes of classNamesOnLine(line, classConstants)) {
+
       if (isCentered(classes)) sawCenteredContainer = true;
       const mode = detectMode(classes);
       if (!mode) continue;
