@@ -620,6 +620,126 @@ function resolveRouteHeroVariant(
   return candidates[stableStringHash(`${seed ?? ''}:${page.id}:hero`) % candidates.length].id;
 }
 
+// ============================================================================
+// Per-route hero authorship
+//
+// Interior routes used to be Home with a swapped title. Each route now owns
+// its purpose-written copy, its own conversion pair and its own presentation
+// contract, resolved deterministically from the route identity so two siblings
+// never land on the same treatment and two launches stay reproducible.
+// ============================================================================
+
+interface RouteCta { label: string; href: string; intent: string; variant: string }
+
+const ROLE_HERO_CTAS: Record<PageRole, [RouteCta, RouteCta]> = {
+  home:      [{ label: 'Get started', href: '#contact', intent: 'contact.submit', variant: 'primary' }, { label: 'See what we do', href: '#services', intent: 'nav.goto', variant: 'outline' }],
+  services:  [{ label: 'Request a quote', href: '#contact', intent: 'quote.request', variant: 'primary' }, { label: 'Compare pricing', href: '/pricing', intent: 'nav.goto', variant: 'outline' }],
+  pricing:   [{ label: 'Choose a plan', href: '#pricing', intent: 'checkout.start', variant: 'primary' }, { label: 'Talk to us first', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
+  about:     [{ label: 'Meet the team', href: '#team', intent: 'nav.goto', variant: 'primary' }, { label: 'Work with us', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
+  contact:   [{ label: 'Send a message', href: '#contact', intent: 'contact.submit', variant: 'primary' }, { label: 'Call us', href: 'tel:', intent: 'contact.call', variant: 'outline' }],
+  gallery:   [{ label: 'View the work', href: '#gallery', intent: 'nav.goto', variant: 'primary' }, { label: 'Start a project', href: '/contact', intent: 'nav.goto', variant: 'outline' }],
+  faq:       [{ label: 'Ask a question', href: '/contact', intent: 'nav.goto', variant: 'primary' }, { label: 'Browse services', href: '/services', intent: 'nav.goto', variant: 'outline' }],
+  booking:   [{ label: 'Book now', href: '#booking', intent: 'booking.create', variant: 'primary' }, { label: 'See availability', href: '#booking', intent: 'nav.goto', variant: 'outline' }],
+  shop:      [{ label: 'Shop the range', href: '#shop', intent: 'nav.goto', variant: 'primary' }, { label: 'View your bag', href: '#cart', intent: 'cart.open', variant: 'outline' }],
+  checkout:  [{ label: 'Complete checkout', href: '#checkout', intent: 'cart.checkout', variant: 'primary' }, { label: 'Keep shopping', href: '/shop', intent: 'nav.goto', variant: 'outline' }],
+  thank_you: [{ label: 'Back to home', href: '/', intent: 'nav.goto', variant: 'primary' }, { label: 'Explore more', href: '/services', intent: 'nav.goto', variant: 'outline' }],
+  blog:      [{ label: 'Read the latest', href: '#blog', intent: 'nav.goto', variant: 'primary' }, { label: 'Subscribe', href: '#newsletter', intent: 'newsletter.subscribe', variant: 'outline' }],
+  custom:    [{ label: 'Get in touch', href: '/contact', intent: 'nav.goto', variant: 'primary' }, { label: 'Browse services', href: '/services', intent: 'nav.goto', variant: 'outline' }],
+};
+
+const ROLE_HERO_COPY: Record<PageRole, { badge: string; headline: (title: string, brand: string) => string; lead: (title: string, brand: string, industry: string) => string }> = {
+  home:      { badge: 'Welcome', headline: (_t, brand) => brand, lead: (_t, brand, industry) => `${brand} — ${industry} done properly, from the first conversation to the finished result.` },
+  services:  { badge: 'What we do', headline: () => 'Work we take on', lead: (_t, brand) => `Every engagement at ${brand} is scoped, priced and delivered by the same team you meet on day one.` },
+  pricing:   { badge: 'Pricing', headline: () => 'Straightforward pricing', lead: (_t, brand) => `Clear numbers, no surprises. Pick the level of support that fits, and change it whenever you need to.` },
+  about:     { badge: 'Our story', headline: (_t, brand) => `The people behind ${brand}`, lead: () => 'Why we started, how we work, and the standards we hold ourselves to on every project.' },
+  contact:   { badge: 'Get in touch', headline: () => 'Let’s talk', lead: (_t, brand) => `Tell ${brand} what you need. We read every message and reply the same working day.` },
+  gallery:   { badge: 'Selected work', headline: () => 'Recent projects', lead: () => 'A closer look at finished work — the detail, the materials and the results behind each one.' },
+  faq:       { badge: 'Answers', headline: () => 'Questions, answered', lead: () => 'The things people ask us most, written out plainly so you can decide before you get in touch.' },
+  booking:   { badge: 'Availability', headline: () => 'Book your appointment', lead: (_t, brand) => `Choose a time that suits you and ${brand} will confirm it straight away.` },
+  shop:      { badge: 'Shop', headline: () => 'Browse the collection', lead: () => 'Everything we make, in stock and ready to ship, with the details that matter listed up front.' },
+  checkout:  { badge: 'Checkout', headline: () => 'Secure checkout', lead: () => 'Review your order and complete payment. Your details are encrypted end to end.' },
+  thank_you: { badge: 'All done', headline: () => 'Thank you', lead: (_t, brand) => `Your request is with ${brand}. We’ll be in touch shortly with next steps.` },
+  blog:      { badge: 'Journal', headline: () => 'Notes and updates', lead: () => 'What we are learning, building and paying attention to right now.' },
+  custom:    { badge: 'More', headline: (title) => title, lead: (title, brand) => `${title} at ${brand} — what to expect and how to get started.` },
+};
+
+function routeHeroCopy(
+  role: PageRole,
+  page: PageRouteNode,
+  plan: GeneratedSitePlan,
+  template: TemplateComposition,
+): { headline: string; subheadline: string; badge: string } {
+  const brand = plan.businessName?.trim() || template.name;
+  const title = page.title.trim() || role.replace(/_/g, ' ');
+  const industry = getIndustryProfile(plan.industry)?.name || plan.industry.replace(/[-_]/g, ' ');
+  const spec = ROLE_HERO_COPY[role] ?? ROLE_HERO_COPY.custom;
+  return {
+    headline: spec.headline(title, brand),
+    subheadline: spec.lead(title, brand, industry),
+    badge: spec.badge,
+  };
+}
+
+/** Presentation pools per role — siblings rotate, so no two share a treatment. */
+const ROLE_HERO_PRESENTATION: Record<PageRole, Array<Pick<WizardHeroContract, 'layout' | 'mediaTreatment' | 'archetype' | 'mediaFocal'>>> = {
+  home:      [{ layout: 'full-bleed', mediaTreatment: 'full-bleed-overlay', archetype: 'immersive-full-bleed', mediaFocal: 'center' }],
+  services:  [
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+  ],
+  pricing:   [
+    { layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' },
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+  ],
+  about:     [
+    { layout: 'split', mediaTreatment: 'edge-anchored', archetype: 'anchored-portrait', mediaFocal: 'top' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+  ],
+  contact:   [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  gallery:   [
+    { layout: 'full-bleed', mediaTreatment: 'full-bleed-overlay', archetype: 'immersive-full-bleed', mediaFocal: 'center' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+  ],
+  faq:       [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  booking:   [
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+  ],
+  shop:      [
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
+  ],
+  checkout:  [{ layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  thank_you: [{ layout: 'centered', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' }],
+  blog:      [
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'left' },
+    { layout: 'page-title', mediaTreatment: 'text-only', archetype: 'utility-intro-proof', mediaFocal: 'center' },
+  ],
+  custom:    [
+    { layout: 'centered', mediaTreatment: 'centered-frame', archetype: 'centered-statement', mediaFocal: 'center' },
+    { layout: 'split', mediaTreatment: 'split-frame', archetype: 'editorial-split', mediaFocal: 'right' },
+  ],
+};
+
+function deriveRouteHeroContract(
+  role: PageRole,
+  page: PageRouteNode,
+  plan: GeneratedSitePlan,
+): WizardHeroContract {
+  const pool = ROLE_HERO_PRESENTATION[role] ?? ROLE_HERO_PRESENTATION.custom;
+  const routeIndex = Math.max(0, plan.pages.findIndex((candidate) => candidate.id === page.id));
+  const pick = pool[(routeIndex + stableStringHash(`${plan.siteId}:${page.id}`)) % pool.length];
+  return {
+    ...pick,
+    source: 'seeded-role-archetype',
+    mediaDirection: `${role} route imagery, framed ${pick.mediaFocal}`,
+    requiredParts: ['badge', 'headline', 'lead', 'primary-cta', 'secondary-cta'],
+    rule: 'Route-owned hero contract: never inherit the home hero treatment.',
+  };
+}
+
+
+
 function sortByConfiguredOrder(sections: SectionEntry[], configuredOrder: readonly string[]): void {
   const order = new Map(configuredOrder.map((type, index) => [type, index]));
   sections.sort((left, right) => {
