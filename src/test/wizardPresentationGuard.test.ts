@@ -7,6 +7,11 @@ import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { getCompositionById } from '@/sections/templates';
 import {
 
+  assessTemplateVisualFidelity,
+  assessWizardHomePresentation,
+  assessWizardPagePresentations,
+} from '@/services/wizardPresentationGuard';
+
 /**
  * Registered variants now ship as real modules: the family file resolves the
  * chosen variant, `<Component>Base.tsx` is the deterministic fallback and
@@ -20,11 +25,6 @@ function familySource(files: Record<string, string>, component: string): string 
     `/src/components/${component}.tsx`,
   ].map((path) => files[path] || '').join('\n');
 }
-
-  assessTemplateVisualFidelity,
-  assessWizardHomePresentation,
-  assessWizardPagePresentations,
-} from '@/services/wizardPresentationGuard';
 
 const contract: TemplateLayoutContract = {
   version: '1.0',
