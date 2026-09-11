@@ -54,7 +54,13 @@ export async function persistLaunchFormDefinitions(
   }
 
   if (error) {
-    return { persistedCount: 0, error: error.message };
+    // Carry the database code/details through: a bare message hides structural
+    // failures (a missing conflict target reads only as "no unique constraint").
+    const detail = [error.code, error.message, error.details, error.hint]
+      .filter((part): part is string => Boolean(part && String(part).trim()))
+      .join(' | ');
+    return { persistedCount: 0, error: detail || 'Unknown form persistence failure' };
   }
   return { persistedCount: rows.length, error: null };
+
 }

@@ -244,7 +244,7 @@ export default function Navbar({ props }: { props: any }) {
     return (
       <header data-ut-variant="navbar:minimal-dark" className={positionClass + ' border-b border-border bg-foreground text-background'}>
         <MobileNavigation brand={brand} links={links} cta={cta} />
-        <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
+        <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between gap-8'}>
           <a href="#" className="font-heading text-xl font-semibold text-background no-underline">{brand}</a>
           <nav className="ut-nav-links flex items-center gap-6">{links.map((link: any, index: number) => <a key={index} href={link.href} className="font-body text-sm text-background/75 no-underline hover:text-background">{link.label}</a>)}{cta && <a href={cta.href || '#'} data-ut-intent={cta.intent} className="rounded-[var(--radius)] bg-background px-4 py-2 font-body text-sm font-semibold text-foreground no-underline">{cta.label}</a>}</nav>
         </div>
@@ -255,7 +255,7 @@ export default function Navbar({ props }: { props: any }) {
   return (
     <header data-ut-variant="navbar:standard" className={positionClass + ' border-b border-border/50 bg-background/85 backdrop-blur-md'}>
       <MobileNavigation brand={brand} links={links} cta={cta} />
-      <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
+      <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between gap-8'}>
         <a href="#" className="font-heading text-2xl font-semibold text-primary no-underline">{brand}</a>
         <nav className="ut-nav-links flex items-center gap-8">
           {links.map((link: any, index: number) => <a key={index} href={link.href} className={linkClass}>{link.label}</a>)}
@@ -599,7 +599,7 @@ export default function Footer({ props }: { props: any }) {
           </div>
           {columns.map((column: any, index: number) => <div key={index}><h4 className="mb-4 font-heading text-sm font-semibold uppercase">{column.title}</h4><ul className="flex list-none flex-col gap-2 p-0">{column.links.map((link: any, linkIndex: number) => <li key={linkIndex}><a href={link.href} className="font-body text-sm text-muted-foreground no-underline hover:text-foreground">{link.label}</a></li>)}</ul></div>)}
         </div>
-        <div className="ut-footer-bottom flex items-center justify-between border-t border-border/50 pt-6">
+        <div className="ut-footer-bottom flex flex-wrap items-center justify-between gap-4 border-t border-border/50 pt-6">
           <p className="font-body text-xs text-muted-foreground">{copyright || '© ' + new Date().getFullYear() + ' ' + brand + '. All rights reserved.'}</p>
           {socials.length > 0 && <div className="flex items-center gap-3">{socials.map((social: any, index: number) => { const hasUrl = social.url && social.url !== '#'; return <a key={index} href={hasUrl ? social.url : undefined} target={hasUrl ? '_blank' : undefined} rel={hasUrl ? 'noopener noreferrer' : undefined} aria-label={'Visit our ' + social.platform + ' page'} className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"><SocialIcon platform={social.platform} size={16} /></a>; })}</div>}
         </div>

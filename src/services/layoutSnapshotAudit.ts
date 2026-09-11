@@ -66,16 +66,59 @@ const TRANSPARENT_WRAPPERS = [
 
 const PAGE_PATH = /^\/src\/pages\/[^/]+\.(tsx|jsx)$/;
 
-function classNamesOnLine(line: string): string[] {
+/**
+ * Collect top-level `const NAME = '...'` string constants so class lists that a
+ * page applies through an expression (`className={shellClass + ' grid gap-8'}`)
+ * are audited with their real utilities instead of appearing empty.
+ */
+function collectClassConstants(source: string): Map<string, string> {
+  const constants = new Map<string, string>();
+  const re = /^(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::\s*string\s*)?=\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`)\s*;?\s*$/gm;
+  let match = re.exec(source);
+  while (match) {
+    constants.set(match[1], match[2] ?? match[3] ?? match[4] ?? '');
+    match = re.exec(source);
+  }
+  return constants;
+}
+
+function resolveClassExpression(expression: string, constants: Map<string, string>): string | null {
+  const parts = expression.split('+').map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+  const resolved: string[] = [];
+  for (const part of parts) {
+    const literal = /^(?:"([^"]*)"|'([^']*)'|`([^`]*)`)$/.exec(part);
+    if (literal) {
+      resolved.push(literal[1] ?? literal[2] ?? literal[3] ?? '');
+      continue;
+    }
+    if (/^[A-Za-z_$][\w$]*$/.test(part) && constants.has(part)) {
+      resolved.push(constants.get(part) as string);
+      continue;
+    }
+    // Unknown fragment (ternary, helper call): keep what we could resolve so a
+    // real container/gap is never reported as missing on a partial read.
+    return resolved.length > 0 ? resolved.join(' ') : null;
+  }
+  return resolved.join(' ');
+}
+
+function classNamesOnLine(line: string, constants: Map<string, string> = new Map()): string[] {
   const out: string[] = [];
-  const re = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g;
+  const re = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^{}]*)\})/g;
   let match = re.exec(line);
   while (match) {
-    out.push(match[1] ?? match[2] ?? match[3] ?? '');
+    if (match[1] !== undefined || match[2] !== undefined) {
+      out.push(match[1] ?? match[2] ?? '');
+    } else {
+      const resolved = resolveClassExpression(match[3] ?? '', constants);
+      if (resolved !== null) out.push(resolved);
+    }
     match = re.exec(line);
   }
   return out;
 }
+
 
 function largestGridColumns(classes: string): number {
   let columns = 1;
@@ -115,13 +158,15 @@ function nextMeaningfulLine(lines: string[], from: number): { text: string; inde
 /** Snapshot a single page/section source file. */
 export function auditLayoutSource(path: string, source: string): PageLayoutSnapshot {
   const lines = source.split('\n');
+  const classConstants = collectClassConstants(source);
   const blocks: LayoutBlock[] = [];
   const issues: LayoutIssue[] = [];
   let sawCenteredContainer = false;
 
   lines.forEach((rawLine, index) => {
     const line = rawLine;
-    for (const classes of classNamesOnLine(line)) {
+    for (const classes of classNamesOnLine(line, classConstants)) {
+
       if (isCentered(classes)) sawCenteredContainer = true;
       const mode = detectMode(classes);
       if (!mode) continue;
@@ -131,9 +176,14 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
       const repeats = /\.map\s*\(/.test(following.slice(0, 600));
       blocks.push({ mode, columns, repeats, line: index + 1 });
 
-      const isMultiTrack = mode === 'grid' ? columns > 1 : true;
+      // A flex container only needs a gap when it actually holds several
+      // tracks. A single centered CTA wrapper (`flex justify-center`) has one
+      // child, so demanding a gap there produced noise that hid real defects.
+      const flexIsMultiTrack = /(^|\s|:)(justify-between|justify-around|justify-evenly|flex-wrap|divide-x)(\s|$)/.test(classes)
+        || repeats;
+      const isMultiTrack = mode === 'grid' ? columns > 1 : flexIsMultiTrack;
 
-      if (isMultiTrack && !/(^|\s|:)gap-/.test(classes)) {
+      if (isMultiTrack && !/(^|\s|:)(gap-|gap-x-|space-x-)/.test(classes)) {
         issues.push({
           code: 'grid-without-gap',
           severity: 'warning',
@@ -142,6 +192,7 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
           snippet: classes.trim(),
         });
       }
+
 
       if (mode === 'grid' && columns > 1) {
         const next = nextMeaningfulLine(lines, index + 1);
@@ -180,7 +231,12 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
     }
   });
 
-  if (blocks.length > 0 && !sawCenteredContainer) {
+  // Pages that delegate their body to section components own no container of
+  // their own — the shell lives inside each section module. Flagging those was
+  // a false "content hugs the left edge" report on every generated route.
+  const delegatesToSections = /<SiteLayout\b/.test(source) || /\bSECTIONS\b/.test(source);
+
+  if (blocks.length > 0 && !sawCenteredContainer && !delegatesToSections) {
     issues.push({
       code: 'uncontained-section',
       severity: 'error',
@@ -189,6 +245,7 @@ export function auditLayoutSource(path: string, source: string): PageLayoutSnaps
       snippet: path,
     });
   }
+
 
   const name = path.split('/').pop()?.replace(/\.(tsx|jsx)$/, '') ?? path;
 

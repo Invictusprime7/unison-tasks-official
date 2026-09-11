@@ -26,6 +26,8 @@ import {
   type PublishBlockerSummary,
 } from '@/services/vfsCommitService';
 import { legacyFilesToPatchPlan } from '@/types/patchPlan';
+import { checkAiPatchScope, describeAiPatchScopeViolations } from '@/services/aiPatchScopeGuard';
+
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import type { PlaygroundState } from '@/platform/core/playground';
@@ -90,6 +92,19 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
       rejectMessage: 'Canonical project identity is unavailable.',
     };
   }
+  const scope = checkAiPatchScope(ctx.beforeFiles, ctx.nextFiles);
+  if (!scope.allowed) {
+    const message = describeAiPatchScopeViolations(scope.violations);
+    return {
+      accepted: false,
+      blockers: scope.violations.map((v) => ({
+        source: 'preview' as const,
+        code: 'ai-patch-out-of-scope',
+        message: `${v.path}: ${v.reason}`,
+      })),
+      rejectMessage: message,
+    };
+  }
   try {
     const identity = await resolveIdentity(ctx);
     if (!identity) {
@@ -104,6 +119,7 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
       };
     }
     const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
+
     const commit = await commitMutation({
       source: 'ai-builder',
       identity,
@@ -147,11 +163,16 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
  * applied it to the working VFS. Returns the new revision id on success.
  */
 export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutationResult> {
+  const scope = checkAiPatchScope(ctx.beforeFiles, ctx.nextFiles);
+  if (!scope.allowed) {
+    throw new Error(`[aiApplyGate] ${describeAiPatchScopeViolations(scope.violations)}`);
+  }
   const identity = await resolveIdentity(ctx);
   if (!identity) {
     throw new Error('[aiApplyGate] authenticated canonical identity is unavailable');
   }
   const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
+
   return commitMutation({
     source: 'ai-builder',
     identity,
