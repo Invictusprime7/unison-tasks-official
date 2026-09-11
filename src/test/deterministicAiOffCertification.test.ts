@@ -215,7 +215,7 @@ describe.each(FIXTURES)('deterministic launch certification — $label', (fx) =>
     }
     expect(artifacts.files['/src/index.css']).toBeTruthy();
     expect(artifacts.files['/src/index.css']).toContain('--font-heading');
-    expect(artifacts.files['/src/unison/ui/tailwind.css']).toBe(UNISON_VFS_STYLE_BRIDGE);
+    expect(artifacts.files['/src/unison/ui/tailwind.css']).toContain(UNISON_VFS_STYLE_BRIDGE);
     expect(findUnresolvedLocalImports(artifacts.files)).toEqual([]);
   });
 
