@@ -20,6 +20,7 @@ import {
   type ExperiencePrimitive,
 } from '@/platform/core/experiencePrimitives';
 import { EXPERIENCE_PERFORMANCE_BUDGET } from '@/platform/core/generatedRuntimeCapabilities';
+import { collectReachableFiles, runtimeEntryPoints } from '@/utils/dependencyExtractor';
 
 export const EXPERIENCE_MANIFEST_PATH = '/.unison/experience-manifest.json';
 
@@ -71,7 +72,9 @@ export function runExperiencePreflight(
   const violations: string[] = [];
   const instances: ExperienceInstance[] = [];
 
-  for (const [path, source] of Object.entries(files)) {
+  const roots = runtimeEntryPoints(files);
+  const reachable = roots.length ? collectReachableFiles(files, roots) : files;
+  for (const [path, source] of Object.entries(reachable)) {
     if (typeof source !== 'string' || !isGeneratedPage(path)) continue;
 
     // 1. WebGL may only be reached through the canonical experience layer.

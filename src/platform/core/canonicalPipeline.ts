@@ -50,7 +50,10 @@ import { normalizeWizardThemeTokens } from '@/utils/wizardThemeTokenNormalizer';
 import type { WizardInteractionManifest } from '@/services/wizardInteractionEnrichment';
 import { assertSnapshotThemeSeed, assertThemeSeed } from './themeSeedAssert';
 import { GENERATED_RUNTIME_PROFILE } from './generatedRuntimeCapabilities';
+import { resolveApprovedExperienceCapabilities } from '@/services/experienceCapabilityResolver';
+import { runExperiencePreflight } from '@/services/experiencePreflightGate';
 import { assertStage4bCompositionPreserved } from './stage4bCompositionGuard';
+import { refreshCompositionOwnership } from './resolvedComposition';
 
 
 import {
@@ -448,7 +451,7 @@ export function executeCanonicalPipeline(
   });
 
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
-  compileResult.vfsFiles = normalizedThemeFiles.files;
+  compileResult.vfsFiles = refreshCompositionOwnership(compileResult.vfsFiles, normalizedThemeFiles.files);
 
   // Stage 4b: Lock in the wizard's Style-card tokens at the compile layer so
   // every downstream artifact (siteBundleSnapshot.vfsFiles, builder_drafts
@@ -620,7 +623,7 @@ export function recompileFromPlayground(
   });
 
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
-  compileResult.vfsFiles = normalizedThemeFiles.files;
+  compileResult.vfsFiles = refreshCompositionOwnership(compileResult.vfsFiles, normalizedThemeFiles.files);
 
   // Snapshot the composed bodies BEFORE the art-direction skin is applied.
   // Composition ownership belongs to the compiler above; everything below is
@@ -815,6 +818,11 @@ function projectToSiteBundleSnapshot(
         importRoot: uiFoundation.importRoot,
         runtimeProfile: uiFoundation.runtimeProfile || GENERATED_RUNTIME_PROFILE.id,
         experienceCapabilities: [...(uiFoundation.experience?.capabilities || [])],
+        approvedExperienceCapabilities: resolveApprovedExperienceCapabilities({
+          webgl: (designIntervention || selections.designIntervention)?.envelope?.webgl,
+          foundationCapabilities: uiFoundation.experience?.capabilities,
+          reachesExperienceLayer: runExperiencePreflight(compileResult.vfsFiles).manifest.totalInstances > 0,
+        }),
       } : undefined,
       themeContract: readThemeContract(compileResult.vfsFiles)
         ? {

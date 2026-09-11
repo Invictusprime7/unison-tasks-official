@@ -77,6 +77,8 @@ import ReadinessCenterPanel from "@/components/web-builder/ReadinessCenterPanel"
 import ThemeTokenEditorPanel from "@/components/web-builder/ThemeTokenEditorPanel";
 import GateVerdictStrip from "@/components/web-builder/GateVerdictStrip";
 import RevisionLedgerStatus from "@/components/web-builder/RevisionLedgerStatus";
+import CompositionUpgradePanel from '@/components/web-builder/CompositionUpgradePanel';
+import { isScratchPreviewMessage } from '@/utils/scratchPreview';
 import { useCompiledContract } from "@/hooks/useCompiledContract";
 import type { BusinessSystemType } from "@/data/templates/types";
 import { normalizeTemplateForCtaContract, type TemplateCtaAnalysis } from "@/utils/ctaContract";
@@ -4652,6 +4654,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const handleCartViewIntent = () => openPreviewCart('cart');
 
     const handleRuntimeOverlayMessage = (event: MessageEvent) => {
+      if (isScratchPreviewMessage(event)) return;
       if (event.data?.type === 'OVERLAY_OPEN') {
         const overlayId = String(event.data.overlayId || '');
         const payload = (event.data.payload || {}) as Record<string, unknown>;
@@ -4702,6 +4705,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Listen for INTENT_TRIGGER messages from iframe previews
   useEffect(() => {
     const handleIntentMessage = (event: MessageEvent) => {
+      if (isScratchPreviewMessage(event)) return;
       // Research overlay messages (context intelligence)
       if (event.data?.type === 'RESEARCH_OPEN') {
         const payload = event.data?.payload as ResearchOverlayPayload | undefined;
@@ -5166,6 +5170,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // doesn't hang waiting for a reply, and we keep NAV_PAGE_RELOAD_REQUIRED.
   useEffect(() => {
     const handleNavPageGenerate = (event: MessageEvent) => {
+      if (isScratchPreviewMessage(event)) return;
       if (event.data?.type !== 'NAV_PAGE_GENERATE') return;
       const source = (event.source && typeof (event.source as any).postMessage === 'function')
         ? (event.source as Window) : null;
@@ -5181,6 +5186,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
     // Handle fallback reload request when in-iframe navigation fails
     const handleNavPageReload = (event: MessageEvent) => {
+      if (isScratchPreviewMessage(event)) return;
       if (event.data?.type !== 'NAV_PAGE_RELOAD_REQUIRED') return;
       const { pageName, pageContent } = event.data;
       console.log('[WebBuilder] Navigation reload required for:', pageName);
@@ -7535,6 +7541,32 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       contract={compiledContract}
                       onPublishCheck={() => {
                         toast.info('Running publish checks...');
+                      }}
+                    />
+                    <CompositionUpgradePanel
+                      projectKey={`${resolvedProjectId || currentDraftId}:${businessId}`}
+                      getInput={() => {
+                        if (!currentUserId || !businessId || !currentDraftId) return null;
+                        const files = virtualFSRef.current.getSandpackFiles();
+                        const snapshot = resolveSnapshot(files, effectiveRouteState as any).snapshot
+                          ?? effectiveRouteState?.siteBundleSnapshot ?? null;
+                        return {
+                          identity: {
+                            userId: currentUserId, businessId, projectId: resolvedProjectId || currentDraftId,
+                            draftId: currentDraftId, revisionId: currentRevisionIdRef.current,
+                            sessionId: `web-builder:${currentDraftId}`,
+                          },
+                          current: buildCanonicalCommitCurrent(files, snapshot),
+                          options: { industry: snapshot?.industry, themePresetId: snapshot?.meta?.themePresetId, themeTokens: snapshot?.themeTokens },
+                        };
+                      }}
+                      onCommitted={commit => {
+                        importBuilderFiles(commit.vfsFiles, {
+                          replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
+                          adoption: { source: commit.source, vfsHash: commit.vfsHash, revisionId: commit.persistedRevisionId },
+                        });
+                        if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
+                        toast.success('Template composition saved');
                       }}
                     />
                     <RevisionLedgerStatus

@@ -29,6 +29,10 @@ const cardClass = 'ut-foundation-card bg-card text-card-foreground';
  */
 
 import type { TemplateComposition } from './types';
+import { resolveImplementationId } from '@/services/designImplementationRegistry';
+import { compilerOwnershipHash } from '@/platform/core/resolvedComposition';
+export { compilerOwnershipHash } from '@/platform/core/resolvedComposition';
+import { emitCompositionEnhancements, resolveCompositionEnhancements } from './compositionEnhancements';
 import {
   RESOLVED_COMPOSITION_VERSION,
   resolvedCompositionPathFor,
@@ -66,8 +70,13 @@ export type DesignInterventionSlice =
   & Partial<Pick<
     WizardDesignIntervention,
     'activeVariants' | 'motionRecipes' | 'industry' | 'themePresetId' | 'layoutRecipe'
-    | 'interactionRecipes' | 'artDirectionPackId' | 'seed'
+    | 'interactionRecipes' | 'artDirectionPackId' | 'seed' | 'envelope' | 'compositionPolicy'
   >>;
+
+export interface CompositionCompileOptions {
+  designIntervention?: DesignInterventionSlice;
+  enhancementCanvasBudget?: number;
+}
 
 import {
   CATALOG_HYDRATION_MODULE,
@@ -1288,6 +1297,32 @@ function applyVocabularyRecipes(
 
 
 
+/** Apply an explicit presentation operation to authored data without recomposing the page. */
+export function updateResolvedCompositionVariants(source: string, previous: ResolvedPageComposition, nextOverrides: WizardDesignIntervention['activeVariants']) {
+  const data = source.match(/const SECTIONS = ([\s\S]*?);\r?\nconst HYDRATABLE/);
+  if (!data) throw new Error(`Cannot apply a variant to custom page data: ${previous.pageFilePath}`);
+  const previousOverrides = previous.variantOverrides ?? {};
+  const sections = (JSON.parse(data[1]) as TemplateComposition['sections']).map(section => {
+    const key = section.id in nextOverrides ? section.id : section.type !== 'hero' ? section.sourceSectionId : undefined;
+    if (!key || previousOverrides[key] === nextOverrides[key]) return section;
+    const variant = getVariantById(nextOverrides[key]);
+    if (!variant || variant.sectionType !== section.type) return section;
+    const layout = getLayoutForVariantId(variant.id);
+    return { ...section, variantId: variant.id, props: { ...section.props, ...(layout ? { layout } : {}) } };
+  });
+  const composition: ResolvedPageComposition = { ...previous, variantOverrides: { ...nextOverrides },
+    sections: previous.sections.map(resolved => {
+      const section = sections.find(item => item.id === resolved.sectionId);
+      return section ? { ...resolved, variantId: section.variantId, layoutRecipe: (section.props as { layout?: string }).layout } : resolved;
+    }),
+    activation: previous.activation ? { ...previous.activation, decisions: previous.activation.decisions.map(decision => {
+      const section = sections.find(item => item.id === decision.sectionId);
+      return section ? { ...decision, implementationId: resolveImplementationId(section.type, section.variantId) } : decision;
+    }) } : undefined,
+  };
+  return { source: source.replace(data[0], `const SECTIONS = ${JSON.stringify(sections, null, 2)};\nconst HYDRATABLE`), composition };
+}
+
 function applyDesignVariants(
   template: TemplateComposition,
   designIntervention?: DesignInterventionSlice,
@@ -1376,7 +1411,9 @@ function applyDesignVariants(
 function pageModule(
   template: TemplateComposition,
   sectionMapImport: string,
+  activation?: ResolvedPageComposition['activation'],
 ): string {
+  const enhancements = emitCompositionEnhancements(activation);
   const sectionsJson = JSON.stringify(resolveSnapshotSectionLayouts(template), null, 2);
   const title = JSON.stringify(template.name);
   const hydratableJson = JSON.stringify(HYDRATABLE_SECTION_TYPES);
@@ -1384,6 +1421,7 @@ function pageModule(
 import SiteLayout from '@/components/SiteLayout';
 import { SECTION_MAP } from '${sectionMapImport}';
 import { useSectionData, mergeHydratedItems } from '@/components/catalogHydration';
+${enhancements.imports}
 
 // ============================================================================
 // Page Content (data only)
@@ -1394,6 +1432,7 @@ import { useSectionData, mergeHydratedItems } from '@/components/catalogHydratio
 // ============================================================================
 const SECTIONS = ${sectionsJson};
 const HYDRATABLE = new Set(${hydratableJson});
+${enhancements.source}
 
 /**
  * Renders a single section. Live-catalog section types subscribe to
@@ -1426,6 +1465,7 @@ function RenderedSection({ section, occurrence }: { section: any; occurrence: nu
   return (
     <div
       data-ut-section-id={section.id}
+      ${enhancements.source ? "className={section.type !== 'navbar' && section.type !== 'footer' ? 'relative isolate' : undefined}" : ''}
       data-ut-composition-id={${JSON.stringify(template.compositionAlternativeId || null)}}
       data-ut-section-type={section.type}
       data-ut-variant={section.variantId || undefined}
@@ -1433,7 +1473,7 @@ function RenderedSection({ section, occurrence }: { section: any; occurrence: nu
       data-ut-media-treatment={section.type === 'hero' ? mediaTreatment : undefined}
       data-ut-hydration={isHydratable ? (hydration.loading ? 'loading' : (hydration.rows ? 'live' : 'seed')) : undefined}
     >
-      <C props={props} variantId={section.variantId} />
+      ${enhancements.source ? '{enhanceSection(section, props, <C props={props} variantId={section.variantId} />)}' : '<C props={props} variantId={section.variantId} />'}
     </div>
   );
 }
@@ -1467,7 +1507,7 @@ export default function Page() {
 export function resolvePageComposition(
   template: TemplateComposition,
   pageFilePath: string,
-  options?: { designIntervention?: DesignInterventionSlice },
+  options?: CompositionCompileOptions,
 ): ResolvedPageComposition {
   const projected = applyDesignVariants(template, options?.designIntervention);
   const sections = resolveSnapshotSectionLayouts(projected);
@@ -1476,8 +1516,12 @@ export function resolvePageComposition(
     compiledBy: 'stage-4b',
     pageFilePath,
     templateName: template.name,
+    variantOverrides: options?.designIntervention?.activeVariants ? { ...options.designIntervention.activeVariants } : {},
     compositionAlternativeId: template.compositionAlternativeId,
     layoutRecipe: options?.designIntervention?.layoutRecipe,
+    activation: options?.designIntervention?.compositionPolicy === 'maximum-compatible'
+      ? resolveCompositionEnhancements(projected, options.designIntervention.envelope, options.enhancementCanvasBudget)
+      : undefined,
     sections: sections.map((section) => {
       const props = (section.props || {}) as Record<string, unknown>;
       const layout = typeof props.layout === 'string' ? props.layout : undefined;
@@ -1510,11 +1554,10 @@ export function resolvePageComposition(
 export function compositionToReactFileSet(
   template: TemplateComposition,
   pageFilePath: string,
-  options?: {
-    designIntervention?: DesignInterventionSlice;
-  },
+  options?: CompositionCompileOptions,
 ): Record<string, string> {
   const projectedTemplate = applyDesignVariants(template, options?.designIntervention);
+  const composition = resolvePageComposition(template, pageFilePath, options);
   const sectionMap = sectionMapModule(projectedTemplate, pageFilePath);
   const sectionMapImport = `./${sectionMap.path.split('/').pop()?.replace(/\.ts$/, '')}`;
   const files: Record<string, string> = {
@@ -1524,7 +1567,7 @@ export function compositionToReactFileSet(
     [CATALOG_HYDRATION_PATH]: CATALOG_HYDRATION_MODULE,
     [FORM_RUNTIME_PATH]: FORM_RUNTIME_MODULE,
     [PUBLISHED_ACTION_RUNTIME_PATH]: PUBLISHED_ACTION_RUNTIME_MODULE,
-    [pageFilePath]: pageModule(projectedTemplate, sectionMapImport),
+    [pageFilePath]: pageModule(projectedTemplate, sectionMapImport, composition.activation),
     [resolvedCompositionPathFor(pageFilePath)]: serializeResolvedComposition(
       resolvePageComposition(template, pageFilePath, options),
     ),
@@ -1544,6 +1587,9 @@ export function compositionToReactFileSet(
   if (sectionMap.components.has('Footer')) {
     files[SOCIAL_PATH] = SOCIAL_ICON_MODULE;
   }
+  composition.compilerOwnership = Object.fromEntries(Object.entries(files)
+    .filter(([path]) => /\.[jt]sx?$/.test(path))
+    .map(([path, source]) => [path, compilerOwnershipHash(source)]));
+  files[resolvedCompositionPathFor(pageFilePath)] = serializeResolvedComposition(composition);
   return files;
 }
-

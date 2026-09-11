@@ -48,8 +48,8 @@ export function buildPublicBusinessContext(profile: BusinessProfileDTO): PublicB
 }
 
 const INDUSTRY_OVERLAY_ALIASES: Record<string, IndustryOverlay> = {
-  'local-service': 'contractor',
-  local_service: 'contractor',
+  'local-service': 'local-service',
+  local_service: 'local-service',
   realestate: 'real_estate',
   'real-estate': 'real_estate',
   store: 'ecommerce',
@@ -61,7 +61,7 @@ const INDUSTRY_OVERLAY_ALIASES: Record<string, IndustryOverlay> = {
 
 const INDUSTRY_OVERLAYS = new Set<IndustryOverlay>([
   'salon', 'barber', 'medspa', 'wellness', 'dental', 'fitness',
-  'photographer', 'coaching', 'contractor', 'hvac', 'cleaning',
+  'photographer', 'coaching', 'local-service', 'contractor', 'hvac', 'cleaning',
   'landscaping', 'auto_detailing', 'moving', 'legal', 'real_estate',
   'restaurant', 'cafe', 'bakery', 'ecommerce', 'creator', 'agency',
   'nonprofit', 'saas', 'portfolio', 'general',

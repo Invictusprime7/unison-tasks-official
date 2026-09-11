@@ -61,9 +61,21 @@ const PAGE_ROLE_SPECS: Partial<Record<PageRole, PageSpec>> = {
   shop:     { title: 'Shop',     path: '/shop',     purpose: 'shop', expectedSections: [] },
 };
 
-export function resolvePageSpecsForRoles(roles: readonly string[]): PageSpec[] {
+export function resolvePageSpecsForRoles(
+  roles: readonly string[],
+  industryKey?: string | null,
+): PageSpec[] {
+  const profile = industryKey ? getIndustryProfile(industryKey) : undefined;
   return roles.flatMap((role) => {
-    const spec = PAGE_ROLE_SPECS[role as PageRole];
+    // Preserve the selected semantic role while recovering the industry's
+    // authored page identity. Example: contractor `gallery` => Projects
+    // (/projects), real-estate `gallery` => Listings (/listings), restaurant
+    // `services` => Menu (/menu). Falling back to PAGE_ROLE_SPECS keeps this
+    // API safe for callers that intentionally operate without an industry.
+    const industrySpec = profile?.defaultPages.find(
+      (candidate) => PURPOSE_TO_ROLE[candidate.purpose] === role,
+    );
+    const spec = industrySpec ?? PAGE_ROLE_SPECS[role as PageRole];
     return spec ? [{ ...spec, expectedSections: [...spec.expectedSections] }] : [];
   });
 }

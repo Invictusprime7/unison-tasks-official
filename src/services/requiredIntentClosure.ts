@@ -76,7 +76,10 @@ function renderIntentForm(intent: string): string {
 }
 
 function injectIntentSurface(source: string, intent: string): string | null {
-  const closeIndex = Math.max(source.lastIndexOf('</main>'), source.lastIndexOf('</section>'), source.lastIndexOf('</div>'));
+  // Canonical pages have a repeated SectionRenderer. Inject once at the page
+  // boundary so a required action is not duplicated inside every section.
+  const layoutClose = source.lastIndexOf('</SiteLayout>');
+  const closeIndex = layoutClose >= 0 ? layoutClose : Math.max(source.lastIndexOf('</main>'), source.lastIndexOf('</section>'), source.lastIndexOf('</div>'));
   if (closeIndex < 0) return null;
 
   const label = labelForIntent(intent);

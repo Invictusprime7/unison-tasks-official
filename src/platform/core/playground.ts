@@ -40,6 +40,7 @@ export type IndustryOverlay =
   | 'fitness'
   | 'photographer'
   | 'coaching'
+  | 'local-service'
   | 'contractor'
   | 'hvac'
   | 'cleaning'

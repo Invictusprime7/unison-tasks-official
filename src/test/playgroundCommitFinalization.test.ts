@@ -80,9 +80,10 @@ describe('Playground canonical finalization', () => {
       businessId: identity.businessId, projectId: identity.projectId,
       organizationId: '66666666-6666-4666-8666-666666666666',
       siteId: '55555555-5555-4555-8555-555555555555',
-      approvedExperienceCapabilities: [],
     });
-    expect(launched.siteBundleSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities).toEqual([]);
+    const approved = compiled.siteBundleSnapshot.meta.uiFoundation?.approvedExperienceCapabilities;
+    expect(approved).toContain('experience.three-d');
+    expect(launched.siteBundleSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities).toEqual(approved);
     const before = JSON.stringify(launched.siteBundleSnapshot);
     const edited = structuredClone(compiled.playground);
     const gallery = Object.values(edited.pageRegistry.pages).find((page) => page.path === '/gallery')!;
@@ -97,7 +98,7 @@ describe('Playground canonical finalization', () => {
     expect(result.status).toBe('committed');
     expect(result.siteBundleSnapshot?.businessName).toBe('Gallery Closure Salon');
     expect(result.siteBundleSnapshot?.industry).toBe('salon');
-    expect(result.siteBundleSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities).toEqual([]);
+    expect(result.siteBundleSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities).toEqual(approved);
     expect(findUnresolvedLocalImports(result.vfsFiles)).toEqual([]);
     expect(result.vfsFiles['/src/unison/publishedRuntime.ts']).toContain(identity.projectId);
     expect(result.vfsFiles['/src/unison/generatedSiteRuntimeManifest.ts']).toContain('GENERATED_SITE_RUNTIME_MANIFEST');

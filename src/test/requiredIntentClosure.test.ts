@@ -11,6 +11,12 @@ const HARDENED_INDUSTRIES = [
 const page = '<main><section><h1>Ready</h1></section></main>';
 
 describe('closeRequiredIndustryIntents', () => {
+  it('adds required actions at the canonical page boundary, outside repeated section renderers', () => {
+    const source = 'function SectionRenderer(){return <div>Section</div>}\nexport default function Home(){return <SiteLayout>{sections.map(renderSection)}</SiteLayout>}';
+    const result = closeRequiredIndustryIntents({ '/src/pages/Home.tsx': source }, 'salon').files['/src/pages/Home.tsx'];
+    expect(result.slice(0, result.indexOf('export default'))).toBe(source.slice(0, source.indexOf('export default')));
+    expect(result.indexOf('data-ut-generated-intent')).toBeGreaterThan(result.indexOf('<SiteLayout>'));
+  });
   it.each(HARDENED_INDUSTRIES)('closes every required renderable intent for %s', (industry) => {
     const result = closeRequiredIndustryIntents({ '/src/pages/Home.tsx': page }, industry);
     const source = result.files['/src/pages/Home.tsx'];

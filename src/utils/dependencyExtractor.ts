@@ -178,19 +178,28 @@ function resolveLocalModule(
   importPath: string,
   filePaths: Set<string>,
 ): string | null {
-  const root = importPath.startsWith('@/')
-    ? `/${importPath.slice(2)}`
-    : normalizeVfsPath(`${fromPath.slice(0, fromPath.lastIndexOf('/'))}/${importPath}`);
-  const candidates = [
+  // Canonical projects use /src; Sandpack preparation flattens that prefix.
+  const roots = importPath.startsWith('@/')
+    ? (fromPath.startsWith('/src/') ? [`/src/${importPath.slice(2)}`, `/${importPath.slice(2)}`] : [`/${importPath.slice(2)}`, `/src/${importPath.slice(2)}`])
+    : [normalizeVfsPath(`${fromPath.slice(0, fromPath.lastIndexOf('/'))}/${importPath}`)];
+  const candidates = roots.flatMap(root => [
     root,
     ...['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.css'].map((extension) => `${root}${extension}`),
     ...['.ts', '.tsx', '.js', '.jsx'].map((extension) => `${root}/index${extension}`),
-  ];
+  ]);
 
   return candidates.find((candidate) => filePaths.has(candidate)) ?? null;
 }
 
-function collectReachableFiles(
+/** Canonical and flattened Sandpack roots; partial module sets have no inferred root. */
+export function runtimeEntryPoints(files: Record<string, string>): string[] {
+  const paths = new Set(Object.keys(files).map(normalizeVfsPath));
+  const root = ['/src/main.tsx', '/src/main.jsx', '/src/index.tsx', '/index.tsx', '/src/App.tsx', '/App.tsx']
+    .find(path => paths.has(path));
+  return root ? [root] : [];
+}
+
+export function collectReachableFiles(
   files: Record<string, string>,
   entryPoints: string[],
 ): Record<string, string> {
@@ -373,7 +382,7 @@ export function getDependenciesForSandpack(
   dependencies: Record<string, string>;
   extractionInfo: ExtractedDependencies;
 } {
-  const extractionInfo = extractDependencies(files, options);
+  const extractionInfo = extractDependencies(files, { ...options, entryPoints: options.entryPoints ?? runtimeEntryPoints(files) });
   // The curated baseline is part of the generated-site runtime contract, not
   // an optimization hint. It keeps Radix primitives and Tailwind plugin paths
   // available for rich components even before a particular variant imports

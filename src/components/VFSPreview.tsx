@@ -774,8 +774,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
 
   // Resolve a target window for posting bridge messages (Sandpack iframe or docker iframe)
   const getPreviewWindow = useCallback((): Window | null => {
-    if (sandpackIframeRef.current?.contentWindow) return sandpackIframeRef.current.contentWindow;
-    const sp = document.querySelector('iframe.sp-preview-iframe, .sp-preview iframe') as HTMLIFrameElement | null;
+    if (sandpackIframeRef.current?.isConnected && sandpackIframeRef.current.contentWindow) return sandpackIframeRef.current.contentWindow;
+    const sp = previewContainerRef.current?.querySelector('iframe.sp-preview-iframe, .sp-preview iframe') as HTMLIFrameElement | null;
     if (sp?.contentWindow) {
       sandpackIframeRef.current = sp;
       return sp.contentWindow;
@@ -915,6 +915,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
 
   useEffect(() => {
     const handlePreviewMessage = (event: MessageEvent) => {
+      if (event.source !== getPreviewWindow()) return;
       const data = event.data;
       if (!data?.type) return;
 
@@ -1207,7 +1208,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       // reach the running app iframe.
       if (iframeRef.current) return iframeRef.current;
       try {
-        const sp = document.querySelector(
+        const sp = previewContainerRef.current?.querySelector(
           'iframe.sp-preview-iframe, .sp-preview iframe'
         ) as HTMLIFrameElement | null;
         return sp ?? null;

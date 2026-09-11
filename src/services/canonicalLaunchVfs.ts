@@ -33,7 +33,7 @@ import type { WizardInteractionManifest } from './wizardInteractionEnrichment';
 import { WIZARD_PREVIEW_RUNTIME_DEPENDENCIES } from '@/utils/sandpackDependencies';
 import { assertSnapshotThemeSeed, assertThemeSeed } from '@/platform/core/themeSeedAssert';
 import { isMinimalPreviewFallbackSource } from './snapshotProjector';
-import { RESOLVED_COMPOSITION_ROOT } from '@/platform/core/resolvedComposition';
+import { RESOLVED_COMPOSITION_ROOT, refreshCompositionOwnership } from '@/platform/core/resolvedComposition';
 import { normalizeWizardThemeTokens } from '@/utils/wizardThemeTokenNormalizer';
 import {
   type VisualQualityReport,
@@ -1151,7 +1151,7 @@ function* buildCanonicalLaunchArtifactSteps(
   // added between that gate and `viteReadyFiles` is deterministic platform
   // runtime code, so reparsing every generated page here only duplicates CPU
   // work and can freeze the launcher shell.
-  const verifiedViteFiles = viteReadyFiles;
+  const verifiedViteFiles = refreshCompositionOwnership(input.generatedFiles, viteReadyFiles);
   // Launch assembly reports missing page files instead of throwing: the wizard
   // deliberately drops minimal canonical stubs, and the launcher's
   // `enrich.pages_missing_baseline` gate (Pass 4) is the layer that decides to

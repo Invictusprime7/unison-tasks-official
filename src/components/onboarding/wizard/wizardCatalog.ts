@@ -12,7 +12,13 @@ import {
   type LayoutCategory,
 } from "@/data/templates/types";
 import { getCompositionsBySystemType } from "@/sections/templates";
+import { getDefaultTemplateIdForIndustry } from "@/sections/templates/industryDefaultRegistry";
 import type { BusinessModel, IndustryOverlay } from "@/types/playground";
+import {
+  getAllIndustries,
+  getIndustryProfile,
+  normalizeIndustryKey,
+} from "@/platform/core/industryMatrix";
 
 // ── Steps ───────────────────────────────────────────────────────────────────
 
@@ -129,12 +135,14 @@ export const GOAL_TO_NEEDS: Record<
 export const INDUSTRY_DISPLAY: Record<string, { label: string; icon: string }> = {
   salon: { label: "Salon & Beauty", icon: "💇" },
   "local-service": { label: "Local Service", icon: "🔧" },
+  contractor: { label: "Contractor & Trades", icon: "🏗️" },
   coaching: { label: "Coaching & Consulting", icon: "🎯" },
   restaurant: { label: "Restaurant & Food", icon: "🍽️" },
   ecommerce: { label: "E-Commerce", icon: "🛍️" },
   fitness: { label: "Fitness & Wellness", icon: "💪" },
   legal: { label: "Legal", icon: "⚖️" },
   realestate: { label: "Real Estate", icon: "🏠" },
+  "real-estate": { label: "Real Estate", icon: "🏠" },
   photography: { label: "Photography", icon: "📷" },
   universal: { label: "Universal", icon: "✦" },
   saas: { label: "SaaS & Software", icon: "🚀" },
@@ -147,10 +155,13 @@ export const INDUSTRY_DISPLAY: Record<string, { label: string; icon: string }> =
 export const TEMPLATE_INDUSTRY_TO_CATEGORY: Partial<Record<string, LayoutCategory>> = {
   salon: "salon",
   "local-service": "contractor",
+  contractor: "contractor",
   coaching: "coaching",
   restaurant: "restaurant",
   ecommerce: "store",
   realestate: "realestate",
+  "real-estate": "realestate",
+  real_estate: "realestate",
   photography: "portfolio",
   legal: "agency",
   fitness: "coaching",
@@ -250,6 +261,147 @@ export function buildCompositionCards(systemId: BusinessSystemType): TemplateCar
   }));
 }
 
+export interface IndustryFocusCard {
+  industry: string;
+  systemId: BusinessSystemType;
+  label: string;
+  icon: string;
+  tagline: string;
+  defaultTemplateId: string | null;
+}
+
+const INDUSTRY_FOCUS_ICONS: Record<string, string> = {
+  salon: "✂️",
+  restaurant: "🍽️",
+  "local-service": "🔧",
+  contractor: "🏗️",
+  coaching: "🎯",
+  "real-estate": "🏠",
+  ecommerce: "🛍️",
+  portfolio: "🎨",
+  nonprofit: "🤝",
+  agency: "🏢",
+  saas: "🚀",
+};
+
+/**
+ * Real industry choices for Launcher Step 1. The canonical Industry Matrix is
+ * still the authority; this merely adapts it into presentation metadata.
+ */
+export const INDUSTRY_FOCUS_CARDS: IndustryFocusCard[] = getAllIndustries().map((profile) => ({
+  industry: profile.industry,
+  systemId: profile.systemType,
+  label: profile.name,
+  icon: INDUSTRY_FOCUS_ICONS[profile.industry] || "✦",
+  tagline: profile.defaultPages
+    .filter((page) => page.path !== "/")
+    .slice(0, 3)
+    .map((page) => page.title)
+    .join(" · ") || "Industry-ready site",
+  defaultTemplateId: getDefaultTemplateIdForIndustry(profile.industry) || null,
+}));
+
+export function getDefaultTemplateCardForIndustry(industry: string | null | undefined): TemplateCardData | null {
+  if (!industry) return null;
+  const profile = getIndustryProfile(industry);
+  if (!profile) return null;
+  const cards = buildCompositionCards(profile.systemType);
+  const normalized = normalizeIndustryKey(industry);
+  const defaultId = getDefaultTemplateIdForIndustry(normalized);
+  return (defaultId ? cards.find((card) => card.id === defaultId) : undefined)
+    || cards.find((card) => normalizeIndustryKey(card.industry) === normalized)
+    || null;
+}
+
+export function getCompositionCardsForIndustry(industry: string | null | undefined): TemplateCardData[] {
+  if (!industry) return [];
+  const profile = getIndustryProfile(industry);
+  if (!profile) return [];
+  const normalized = normalizeIndustryKey(industry);
+  const exact = buildCompositionCards(profile.systemType).filter(
+    (card) => normalizeIndustryKey(card.industry) === normalized,
+  );
+  // A canonical industry must always expose its registered default. If an
+  // older alias composition normalizes differently, keep the default visible.
+  const defaultCard = getDefaultTemplateCardForIndustry(industry);
+  if (defaultCard && !exact.some((card) => card.id === defaultCard.id)) exact.unshift(defaultCard);
+  return exact;
+}
+
+function pageChoiceForPurpose(purpose: string): PageChoice | null {
+  switch (purpose) {
+    case "services": return "services";
+    case "portfolio": return "gallery";
+    case "contact": return "contact";
+    case "about": return "about";
+    case "blog": return "blog";
+    case "shop": return "shop";
+    case "checkout": return "checkout";
+    case "booking": return "booking";
+    case "pricing": return "pricing";
+    case "faq": return "faq";
+    default: return null;
+  }
+}
+
+export function getIndustryDefaultPageChoices(industry: string): PageChoice[] {
+  const profile = getIndustryProfile(industry);
+  if (!profile) return [];
+  return uniqueValues(
+    profile.defaultPages
+      .filter((page) => page.path !== "/")
+      .map((page) => pageChoiceForPurpose(page.purpose))
+      .filter((page): page is PageChoice => Boolean(page)),
+  );
+}
+
+/**
+ * Keep the compact wizard role vocabulary, but display the industry's authored
+ * route identity. Contractor users see “Projects”, restaurant users see “Menu”,
+ * real-estate users see “Listings”, etc., while optional roles keep their
+ * generic labels.
+ */
+export function getIndustryPageChoiceCards(industry: string | null | undefined) {
+  if (!industry) return PAGE_CHOICES;
+  const profile = getIndustryProfile(industry);
+  if (!profile) return PAGE_CHOICES;
+  const authoredLabels = new Map<PageChoice, string>();
+  for (const page of profile.defaultPages) {
+    if (page.path === "/") continue;
+    const choice = pageChoiceForPurpose(page.purpose);
+    if (choice) authoredLabels.set(choice, page.title);
+  }
+  return PAGE_CHOICES.map((choice) => ({
+    ...choice,
+    label: authoredLabels.get(choice.id) || choice.label,
+  }));
+}
+
+export function getIndustryPrimaryGoal(industry: string): PrimaryGoal {
+  const profile = getIndustryProfile(industry);
+  switch (profile?.primaryIntent) {
+    case "booking.create": return "book_appointments";
+    case "cart.add": return "sell_offers";
+    case "donation.start": return "grow_email_list";
+    case "contact.submit":
+      return profile?.systemType === "portfolio" ? "showcase_work" : "collect_leads";
+    case "quote.request":
+    default: return profile?.systemType === "content" ? "grow_email_list" : "collect_leads";
+  }
+}
+
+export function getIndustryCustomerNeeds(industry: string): CustomerNeed[] {
+  const profile = getIndustryProfile(industry);
+  switch (profile?.primaryIntent) {
+    case "booking.create": return ["book_service", "browse_services", "fill_form"];
+    case "cart.add": return ["buy_offer", "browse_services"];
+    case "quote.request": return ["request_quote", "browse_services", "fill_form"];
+    case "contact.submit": return ["request_quote", "fill_form"];
+    case "donation.start": return ["fill_form", "browse_services"];
+    default: return ["fill_form", "browse_services"];
+  }
+}
+
 // ── Deterministic per-system preselects ─────────────────────────────────────
 
 export interface LauncherPreselect {
@@ -317,9 +469,10 @@ export function getDefaultTemplateCardFor(
   if (cards.length === 0) return null;
   const preferred = LAUNCHER_PRESELECTS[systemId]?.preferredIndustry;
   if (preferred) {
+    const defaultTemplateId = getDefaultTemplateIdForIndustry(preferred);
     const match =
-      cards.find((card) => card.id === `${preferred}-premium`) ||
-      cards.find((card) => card.industry === preferred);
+      (defaultTemplateId ? cards.find((card) => card.id === defaultTemplateId) : undefined) ||
+      cards.find((card) => normalizeIndustryKey(card.industry) === normalizeIndustryKey(preferred));
     if (match) return match;
   }
   return cards[0];

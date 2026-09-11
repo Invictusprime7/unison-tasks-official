@@ -19,6 +19,7 @@ import {
 } from '@/platform/core/experiencePrimitives';
 import { isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 import { runExperiencePreflight } from '@/services/experiencePreflightGate';
+import { collectReachableFiles, runtimeEntryPoints } from '@/utils/dependencyExtractor';
 
 export interface RuntimeCompatibilityReport {
   runtimeProfile: string;
@@ -71,7 +72,9 @@ export function runRuntimeCompatibilityPreflight(
 
   const localModules = new Set(Object.keys(files).map((path) => (path.startsWith('/') ? path : `/${path}`)));
 
-  for (const [path, source] of Object.entries(files)) {
+  const roots = runtimeEntryPoints(files);
+  const reachable = roots.length ? collectReachableFiles(files, roots) : files;
+  for (const [path, source] of Object.entries(reachable)) {
     if (typeof source !== 'string' || !/\.(tsx|jsx|ts|js)$/i.test(path)) continue;
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     // Vite/Node build configuration is never executed inside the browser

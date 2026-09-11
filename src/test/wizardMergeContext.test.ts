@@ -29,7 +29,7 @@ describe('Wizard merge industry authority', () => {
   });
 
   it.each([
-    ['local-service', 'contractor'],
+    ['local-service', 'local-service'],
     ['real-estate', 'real_estate'],
     ['store', 'ecommerce'],
     ['saas', 'saas'],

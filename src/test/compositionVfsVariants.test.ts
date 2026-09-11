@@ -269,14 +269,14 @@ describe('composition VFS variants', () => {
     expect(files['/src/pages/Home.tsx']).toContain('data-ut-media-treatment={section.type === \'hero\' ? mediaTreatment : undefined}');
   });
 
-  it('keeps snapshot motion recipes as metadata without wrapping Lane A sections', () => {
+  it('keeps legacy snapshot motion recipes inert until an explicit upgrade', () => {
     const restaurant = getCompositionById('restaurant-premium');
     if (!restaurant) throw new Error('Restaurant composition must be registered');
     const designIntervention = buildWizardDesignIntervention({
       businessName: 'Motion Kitchen', businessModel: 'restaurant_hospitality', industryOverlay: 'restaurant',
       templateId: restaurant.id, themePresetId: 'organic',
     });
-    const page = compositionToReactFileSet(restaurant, '/src/pages/Home.tsx', { designIntervention })['/src/pages/Home.tsx'];
+    const page = compositionToReactFileSet(restaurant, '/src/pages/Home.tsx', { designIntervention: { ...designIntervention, compositionPolicy: undefined } })['/src/pages/Home.tsx'];
 
     expect(designIntervention.motionRecipes.length).toBeGreaterThan(0);
     expect(page).not.toContain("from '@/unison/ui/motion'");

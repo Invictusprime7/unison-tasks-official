@@ -24,7 +24,10 @@ import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
 import { PreviewPipelineError } from '@/services/previewPipelineError';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
+import { EXPERIENCE_PERFORMANCE_BUDGET } from '@/platform/core/generatedRuntimeCapabilities';
 import { getVariantsForSection } from '@/sections/variants/registry';
+import { getIndustryProfile } from '@/platform/core/industryMatrix';
+import { getDefaultTemplateIdForIndustry, createIndustryStarterSection } from '@/sections/templates/industryDefaultRegistry';
 
 /**
  * Options shared by the scaffolding entry points.
@@ -43,7 +46,7 @@ export interface ScaffoldOptions {
   /** @deprecated Strict composition is now the only supported mode. */
   strictWizardComposition?: boolean;
   /** Canonical, opt-in visual recipes projected into generated page modules. */
-  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed'>>;
+  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed' | 'envelope' | 'compositionPolicy'>>;
 }
 
 
@@ -100,6 +103,15 @@ function resolveActiveTemplate(plan: GeneratedSitePlan): TemplateComposition | n
   if (selectedId) {
     const direct = getCompositionById(selectedId);
     if (direct) return direct;
+  }
+
+  // Explicit default registry — every canonical industry resolves to one
+  // known-good composition before generic industry/category fallbacks, so
+  // alias handling and registration order can never change the default.
+  const registeredDefaultId = getDefaultTemplateIdForIndustry(plan.industry);
+  if (registeredDefaultId) {
+    const registeredDefault = getCompositionById(registeredDefaultId);
+    if (registeredDefault) return registeredDefault;
   }
 
   // Industry fallback — use first composition matching the plan's industry.
@@ -382,10 +394,20 @@ function buildRoleComposition(
     template = applyWizardSeedToComposition({ ...template, sections }, plan);
   }
 
-  const poolList: SectionType[] =
+  // The canonical Industry Matrix owns each interior page's section contract.
+  // Honour it ahead of the generic role pool so an industry's authored route
+  // (coaching /programs, contractor /projects) keeps its declared shape.
+  const contractTypes = (
+    getIndustryProfile(plan.industry)?.defaultPages.find((spec) => spec.path === page.route)
+      ?.expectedSections ?? []
+  ) as SectionType[];
+  const rolePool: SectionType[] =
     template.sectionPool?.[role as TemplatePageRole] ??
     DEFAULT_ROLE_SECTION_POOL[role] ??
     DEFAULT_ROLE_SECTION_POOL.custom;
+  const poolList: SectionType[] = contractTypes.length > 0
+    ? [...contractTypes, ...rolePool.filter((type) => !contractTypes.includes(type))]
+    : rolePool;
   const allowedTypes = new Set<SectionType>(poolList);
   const alternateMedia = !page.isHome ? collectAlternateHeroMedia(template) : [];
   const alternateHeroMedia = alternateMedia[stableStringHash(page.id) % Math.max(1, alternateMedia.length)];
@@ -428,6 +450,36 @@ function buildRoleComposition(
   for (const source of template.sections) {
     if (!definition && !allowedTypes.has(source.type)) continue;
     appendSection(source);
+  }
+
+  // The role pool can declare a section type the Home composition never
+  // contains. Provision it from the industry starter registry instead of
+  // silently dropping the industry's page contract.
+  if (!definition && !page.isHome) {
+    const presentTypes = new Set(filtered.map((section) => section.type));
+    let addedStarter = false;
+    for (const type of poolList) {
+      if (type === 'navbar' || type === 'footer' || presentTypes.has(type)) continue;
+      const starter = createIndustryStarterSection(plan.industry, type, {
+        businessName: plan.businessName || template.name,
+        pageTitle: page.title,
+        idPrefix: `${template.id}-${page.id}-pool`,
+      });
+      if (!starter) continue;
+      appendSection(starter);
+      presentTypes.add(type);
+      addedStarter = true;
+    }
+    if (addedStarter) {
+      const rank = (type: SectionType) => {
+        const index = poolList.indexOf(type);
+        return index === -1 ? poolList.length : index;
+      };
+      filtered.sort((left, right) => rank(left.type) - rank(right.type));
+      const footers = filtered.filter((section) => section.type === 'footer');
+      for (const footer of footers) filtered.splice(filtered.indexOf(footer), 1);
+      filtered.push(...footers);
+    }
   }
 
   if (!definition && !page.isHome && filtered.length < MINIMUM_ROUTE_BODY_SECTIONS) {
@@ -650,8 +702,15 @@ export function tryComposeTopologyPageFiles(
   const sub = buildRoleComposition(seeded, page.role, page, plan, options);
   if (!sub) return null;
   try {
+    const pageIndex = [...plan.pages]
+      .sort((a, b) => Number(b.isHome) - Number(a.isHome) || a.filePath.localeCompare(b.filePath))
+      .findIndex(candidate => candidate.filePath === page.filePath);
+    const { maxCanvasRootsPerPage, maxHeavyScenesPerSite } = EXPERIENCE_PERFORMANCE_BUDGET;
     return compositionToReactFileSet(sub, page.filePath, {
       designIntervention: options?.designIntervention,
+      // Reserve a stable share of the existing site budget, with home first.
+      enhancementCanvasBudget: pageIndex < 0 ? 0 : Math.max(0,
+        Math.min(maxCanvasRootsPerPage, maxHeavyScenesPerSite - pageIndex * maxCanvasRootsPerPage)),
     });
   } catch {
     return null;

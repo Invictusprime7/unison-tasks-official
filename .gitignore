@@ -50,3 +50,6 @@ supabase.exe
 
 # Backup/archive directories
 zip_extract/
+
+# Reproducible composition reports and browser fixtures
+.artifacts/composition/

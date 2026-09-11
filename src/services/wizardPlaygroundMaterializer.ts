@@ -41,10 +41,10 @@ import {
 
 const OVERLAY_TO_INDUSTRY: Record<string, string> = {
   salon: 'salon', barber: 'salon', medspa: 'salon', wellness: 'salon',
-  dental: 'local-service', healthcare: 'local-service', contractor: 'local-service',
+  dental: 'local-service', healthcare: 'local-service', 'local-service': 'local-service', contractor: 'contractor',
   hvac: 'local-service', cleaning: 'local-service', landscaping: 'local-service',
   auto_detailing: 'local-service', moving: 'local-service', legal: 'agency',
-  real_estate: 'real-estate', realestate: 'real-estate',
+  real_estate: 'real-estate', realestate: 'real-estate', 'real-estate': 'real-estate',
   restaurant: 'restaurant', cafe: 'restaurant', bakery: 'restaurant',
   ecommerce: 'ecommerce', store: 'ecommerce', fitness: 'coaching',
   portfolio: 'portfolio', photographer: 'portfolio', photography: 'portfolio', creator: 'portfolio', creative: 'portfolio',
@@ -460,7 +460,7 @@ export function materializePlayground(
   const scaffoldMode = 'selected-pages';
 
   const selectedPageRoles = new Set<string>(selections.requestedPages ?? []);
-  const additionalPages = resolvePageSpecsForRoles(selections.requestedPages ?? []);
+  const additionalPages = resolvePageSpecsForRoles(selections.requestedPages ?? [], industryKey);
 
   // 1. Generate site topology plan → PageRegistry
   const sitePlan = planSiteTopology(industryKey, selections.businessName, {

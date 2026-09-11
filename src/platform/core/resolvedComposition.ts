@@ -20,6 +20,31 @@
  * These descriptors are pure data — no AI, no runtime behaviour.
  */
 
+import { hashSeed } from './generationSeed';
+
+export function compilerOwnershipHash(source: string): string {
+  return String(hashSeed(source.replace(/const SECTIONS = [\s\S]*?;\r?\nconst HYDRATABLE/, 'const SECTIONS = [];\nconst HYDRATABLE').replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n')));
+}
+
+/** Only sanctioned compiler transformations may refresh an existing ownership proof. */
+export function refreshCompositionOwnership(before: Record<string, string>, after: Record<string, string>): Record<string, string> {
+  const result = { ...after };
+  for (const composition of Object.values(collectResolvedCompositions(before))) {
+    if (!composition.compilerOwnership) continue;
+    const path = resolvedCompositionPathFor(composition.pageFilePath);
+    const next = collectResolvedCompositions({ [path]: after[path] })[composition.pageFilePath];
+    if (!next) continue;
+    const ownership = { ...next.compilerOwnership };
+    for (const [file, fingerprint] of Object.entries(composition.compilerOwnership)) {
+      if (before[file] && after[file] && compilerOwnershipHash(before[file]) === fingerprint) {
+        ownership[file] = compilerOwnershipHash(after[file]);
+      }
+    }
+    result[path] = serializeResolvedComposition({ ...next, compilerOwnership: ownership });
+  }
+  return result;
+}
+
 export const RESOLVED_COMPOSITION_VERSION = '1.0' as const;
 
 /** Root directory for per-page composition descriptors inside the VFS. */
@@ -56,6 +81,12 @@ export interface ResolvedPageComposition {
   /** Page-wide layout recipe from the wizard design brief. */
   layoutRecipe?: string;
   sections: ResolvedSection[];
+  /** Executed adapters and reasons other candidates were excluded. */
+  activation?: import('@/sections/compositionEnhancements').CompositionActivation;
+  /** Fingerprints of compiler-owned source; content data is excluded for pages. */
+  compilerOwnership?: Record<string, string>;
+  /** The explicit authoring choices that produced this activated page. */
+  variantOverrides?: Record<string, string>;
 }
 
 export type ResolvedCompositionMap = Record<string, ResolvedPageComposition>;

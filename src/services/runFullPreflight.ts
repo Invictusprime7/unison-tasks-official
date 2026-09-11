@@ -144,20 +144,23 @@ export function runFullPreflight(
   let runtimeCompatibility: RuntimeCompatibilityReport;
   try {
     const { dependencies } = getDependenciesForSandpack(files, SANDPACK_PREVIEW_CORE_DEPENDENCIES);
-    runtimeCompatibility = runRuntimeCompatibilityPreflight({ files, dependencies });
+    runtimeCompatibility = runRuntimeCompatibilityPreflight({
+      files, dependencies,
+      approvedCapabilities: siteBundleSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities,
+    });
   } catch (e) {
     console.warn('[runFullPreflight] runtime compatibility preflight failed', e);
     runtimeCompatibility = {
       runtimeProfile: 'unknown',
-      dependenciesResolvable: true,
-      importsApproved: true,
-      reactRuntimeCompatible: true,
-      fallbackPresent: true,
-      budgetValid: true,
+      dependenciesResolvable: false,
+      importsApproved: false,
+      reactRuntimeCompatible: false,
+      fallbackPresent: false,
+      budgetValid: false,
       capabilitiesUsed: [],
       warnings: ['runtime compatibility preflight could not run'],
-      blockers: [],
-      ok: true,
+      blockers: ['Runtime compatibility validation could not complete.'],
+      ok: false,
     };
   }
   if (!runtimeCompatibility.ok) {
@@ -256,4 +259,3 @@ export function runFullPreflight(
     visualQuality,
   };
 }
-

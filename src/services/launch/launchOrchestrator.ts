@@ -25,6 +25,7 @@ import {
   createBlueprintFromIndustry,
   evaluateAllGates,
   getIndustryForCategory,
+  getIndustryProfile,
   getAllowedIntents,
   runIntegrityReport,
 } from "@/platform/core";
@@ -159,6 +160,8 @@ function resolveGenerationCategory(
   system: (typeof businessSystems)[number],
   template: TemplateCardData,
 ): LayoutCategory {
+  const directIndustry = getIndustryProfile(template.industry);
+  if (directIndustry?.layoutCategories[0]) return directIndustry.layoutCategories[0];
   return (TEMPLATE_INDUSTRY_TO_CATEGORY[template.industry] ||
     system.templateCategories[0]) as LayoutCategory;
 }
@@ -216,7 +219,11 @@ export async function runLaunchPipeline(
     const ownerEmail = user.email || "";
 
     const generationCategory = resolveGenerationCategory(system, input.template);
-    const industryProfile = getIndustryForCategory(generationCategory);
+    // Template industry is the most specific launcher decision. Resolve its
+    // canonical profile before category fallback so shared categories (for
+    // example local-service + contractor) cannot silently cross-wire.
+    const industryProfile =
+      getIndustryProfile(input.template.industry) || getIndustryForCategory(generationCategory);
     const industryOverlay = resolveWizardIndustryOverlay({
       templateIndustry: input.template.industry,
       generationIndustry: industryProfile?.industry || generationCategory,

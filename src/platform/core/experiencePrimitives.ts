@@ -14,7 +14,7 @@ import {
   THREE_D_CAPABILITY,
 } from '@/platform/core/generatedRuntimeCapabilities';
 
-export const EXPERIENCE_FOUNDATION_VERSION = '1.1' as const;
+export const EXPERIENCE_FOUNDATION_VERSION = '1.2' as const;
 
 /** The runtime capability that backs this layer (single source of truth). */
 export const EXPERIENCE_CAPABILITY = THREE_D_CAPABILITY;
@@ -170,6 +170,13 @@ export interface ExperienceCanvasProps {
   frameloop?: 'always' | 'demand';
 }
 
+class ExperienceBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: Error) { console.warn('[Experience] Using DOM fallback:', error.message); }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
 /**
  * The single WebGL entry point of the generated runtime: caps device pixel
  * ratio, suspends on assets, and degrades to a DOM fallback rather than
@@ -188,7 +195,9 @@ export function ExperienceCanvas({
   }
   return (
     <div className={cn('absolute inset-0', className)} aria-hidden="true">
+      <ExperienceBoundary fallback={fallback}>
       <Canvas
+        fallback={fallback}
         dpr={[1, 2]}
         frameloop={frameloop}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
@@ -196,6 +205,7 @@ export function ExperienceCanvas({
       >
         <React.Suspense fallback={null}>{children}</React.Suspense>
       </Canvas>
+      </ExperienceBoundary>
     </div>
   );
 }

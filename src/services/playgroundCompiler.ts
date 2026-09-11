@@ -20,6 +20,9 @@ import type { LayoutCategory } from '@/data/templates/types';
 import type { BuilderPage } from '@/types/pageRegistry';
 import type { GeneratedSitePlan, PageRole, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
+import { collectResolvedCompositions, resolvedCompositionPathFor } from '@/platform/core/resolvedComposition';
+import { collectReachableFiles } from '@/utils/dependencyExtractor';
+import { updateResolvedCompositionVariants } from '@/sections/compositionToFileSet';
 
 export interface CompilePlaygroundOptions {
   /** Selected template used to generate real role-filtered page scaffolds. */
@@ -33,7 +36,7 @@ export interface CompilePlaygroundOptions {
   /** Industry overlay used by template/page scaffolding. */
   industry?: LayoutCategory | string | null;
   /** Versioned visual recipes chosen by the canonical wizard pipeline. */
-  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed'>>;
+  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed' | 'envelope' | 'compositionPolicy'>>;
 }
 
 type WizardSeedLike = Record<string, unknown> & {
@@ -229,6 +232,8 @@ export function compilePlayground(
   // source of the hardcoded minimal preview regressions. The SiteBundleSnapshot
   // + WizardSeed pipeline is authoritative for every registered hash route.
   const vfsFiles: Record<string, string> = {};
+  const activated = collectResolvedCompositions(existingVfsFiles);
+  const preserved: Record<string, string> = {};
   const blockedWizardPages: string[] = [];
 
   for (const page of pages) {
@@ -241,11 +246,35 @@ export function compilePlayground(
     }
 
     try {
+      const previous = activated[fp];
+      const previousOverrides = previous?.variantOverrides ?? {};
+      const nextOverrides = options?.designIntervention?.activeVariants ?? {};
+      const overridesUnchanged = [...new Set([...Object.keys(previousOverrides), ...Object.keys(nextOverrides)])]
+        .every(id => previousOverrides[id] === nextOverrides[id]);
+      if (previous?.activation && existingVfsFiles[fp]) {
+        // An accepted composition is durable authoring state. Ordinary recompiles
+        // must not replace its content or custom components with template samples.
+        Object.assign(preserved, collectReachableFiles(existingVfsFiles, [fp]));
+        const descriptor = resolvedCompositionPathFor(fp);
+        preserved[descriptor] = existingVfsFiles[descriptor];
+        if (!overridesUnchanged) {
+          const updated = updateResolvedCompositionVariants(existingVfsFiles[fp], previous, nextOverrides);
+          preserved[fp] = updated.source;
+          preserved[descriptor] = JSON.stringify(updated.composition, null, 2) + '\n';
+        }
+        if (!node.isHome && businessName && node.title) {
+          const composition = collectResolvedCompositions({ [descriptor]: preserved[descriptor] })[fp];
+          preserved[descriptor] = JSON.stringify({ ...composition, templateName: `${businessName} · ${node.title}` }, null, 2) + '\n';
+        }
+        continue;
+      }
       // Multi-file emit: page module + per-section components under
       // /src/components/*. Shared component files are idempotent across
       // pages and safe to merge by Object.assign.
       const fileSet = generateTopologyPlaceholderFiles(node, scaffoldPlan, undefined, {
-        designIntervention: options?.designIntervention,
+        designIntervention: previous?.activation && options?.designIntervention
+          ? { ...options.designIntervention, compositionPolicy: 'maximum-compatible' }
+          : options?.designIntervention,
       });
       Object.assign(vfsFiles, fileSet);
     } catch (err) {
@@ -266,6 +295,7 @@ export function compilePlayground(
   }
 
 
+  Object.assign(vfsFiles, preserved);
   const routerContent = generateCanonicalRouterForFiles(registry, vfsFiles, businessName);
   const routerFile = {
     path: '/src/App.tsx',

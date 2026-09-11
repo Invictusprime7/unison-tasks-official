@@ -124,6 +124,8 @@ export interface WizardDesignIntervention {
   /** Sealed experience-layer plan; the preflight gate budgets against it. */
   experienceRecipes: WizardExperienceRecipe[];
   experienceBudget: WizardExperienceBudget;
+  /** Absent on existing projects until an explicit composition upgrade. */
+  compositionPolicy?: 'maximum-compatible';
   /** Phase 2: the constrained vocabulary Lane B may compose from. */
   envelope: ExperienceEnvelope;
   /** Phase 2: the art-direction brief handed to Lane B. */
@@ -317,10 +319,17 @@ function buildActiveVariants(templateId: string | null | undefined, seed: string
   if (!composition) return {};
 
   return Object.fromEntries(composition.sections.flatMap((section) => {
-    const variants = getVariantsForSection(section.type);
+    const available = getVariantsForSection(section.type);
+    const score = (id: string) => {
+      const implementation = getDesignImplementation(id);
+      return (implementation?.vfs?.mode === 'portable-recipe' ? 4 : 0)
+        + (implementation?.radixPrimitives?.length || 0) * 2;
+    };
+    const richest = Math.max(0, ...available.map(variant => score(variant.id)));
+    const variants = available.filter(variant => score(variant.id) === richest);
     if (variants.length === 0) return [];
     const layout = (section.props as { layout?: string }).layout;
-    const baselineVariantId = getVariantIdForLayout(section.type, layout);
+    const baselineVariantId = section.variantId ?? getVariantIdForLayout(section.type, layout);
     const baselineIndex = Math.max(0, variants.findIndex((variant) => variant.id === baselineVariantId));
     const selected = variants[(baselineIndex + stableIndex(`${seed}|${section.id}`, variants.length)) % variants.length]?.id;
     return selected ? [[section.id, selected]] : [];
@@ -460,7 +469,7 @@ export function buildWizardDesignIntervention(
     resolveExperienceRequirement(Object.values(activeVariants)).capabilities.length > 0;
   const experienceDirective = experienceApproved
     ? `Experience budget is "${experience.budget}" — compose the immersive layer only from @/unison/ui/experience (${experienceRecipes.join(', ')}), at most one heavy primitive per page band and two per page, and never import three/@react-three/* directly.`
-    : 'The immersive layer is not approved for this launch: never import @/unison/ui/experience or three/@react-three/*, because those edits are rejected before they can be saved.';
+    : 'Additional immersive components are not approved for this launch. Preserve the compiler-owned composition adapters and their recorded capability decisions; never add experience imports or import three/@react-three/* directly.';
 
   // The brief must describe the composition that was actually resolved; naming
   // an unselected vocabulary pattern invites Lane B to hand-author it.
@@ -499,6 +508,7 @@ export function buildWizardDesignIntervention(
     motionBudget: baseline.motionBudget,
     experienceRecipes,
     experienceBudget: experience.budget,
+    compositionPolicy: 'maximum-compatible',
     envelope,
     brief,
     aiDirective: `Compose only with snapshot-owned UI primitives and semantic Stage 4b tokens. Art direction is "${pack.name}" — ${pack.description} ${compositionDirective} ${experienceDirective} Preserve the motion budget, selected recipes, accessibility, responsive constraints, and canonical intent bindings.`,

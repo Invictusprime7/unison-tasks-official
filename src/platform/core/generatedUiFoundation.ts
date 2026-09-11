@@ -28,8 +28,8 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.6' as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5']);
+export const GENERATED_UI_FOUNDATION_VERSION = '1.7' as const;
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6']);
 
 export type GeneratedUiLayoutRecipe =
   | 'floating-navbar'
@@ -1141,7 +1141,7 @@ const recipeOffset: Record<MotionRecipe, number> = {
 export function Reveal({ children, className, recipe = 'editorial-reveal' }: { children: React.ReactNode; className?: string; recipe?: MotionRecipe }) {
   const reduceMotion = useReducedMotion();
   const offset = reduceMotion ? 0 : recipeOffset[recipe];
-  return <motion.div className={cn(className)} initial={{ opacity: reduceMotion ? 1 : 0, y: offset }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.18 }} transition={{ duration: reduceMotion ? 0 : 0.45, ease: 'easeOut' }}>{children}</motion.div>;
+  return <motion.div className={cn(className)} initial={{ opacity: reduceMotion ? 1 : 0, y: offset }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0 }} transition={{ duration: reduceMotion ? 0 : 0.45, ease: 'easeOut' }}>{children}</motion.div>;
 }
 
 export function Stagger({ children, className }: { children: React.ReactNode; className?: string }) {

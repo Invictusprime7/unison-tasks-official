@@ -192,6 +192,8 @@ import {
   commitMutation,
   loadLatestRevisionForProject,
   loadLatestPublishReadyRevisionForProject,
+  hashVfsFiles,
+  restoreRevision,
 } from '@/services/vfsCommitService';
 import { commitToPipeline } from '@/platform/core/commitToPipeline';
 import { runFullPreflight } from '@/services/runFullPreflight';
@@ -252,6 +254,67 @@ beforeEach(() => {
 });
 
 describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
+  it('rejects authored replacements of compiler-owned composition records', async () => {
+    const path = '/.unison/compositions/home.json';
+    await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: { [path]: '{"activation":"sealed"}' } },
+      patch: legacyFilesToPatchPlan({ [path]: '{"activation":"changed"}' }),
+    })).rejects.toThrow('compiler-owned');
+    expect(revisionStore).toHaveLength(0);
+  });
+  it('accepts the exact scratch composition without regenerating and rejects stale reviews', async () => {
+    const before = { '/src/App.tsx': 'export default function App(){return <main>Before</main>}' };
+    const after = { '/src/App.tsx': 'export default function App(){return <main>Enhanced</main>}' };
+    mockPipeline(after); mockPreflight(after); mockIntents();
+    const candidate = await commitMutation({ source: 'playground-edit', identity: IDENTITY,
+      current: { vfsFiles: before, playground: { pages: [], theme: {} } as never },
+      patch: legacyFilesToPatchPlan(after), options: { dryRun: true },
+    });
+    expect(candidate.status).toBe('committed');
+    expect(revisionStore).toHaveLength(0);
+    const reviewedComposition = { baseVfsHash: await hashVfsFiles(before), candidate };
+    const pipelineCalls = vi.mocked(commitToPipeline).mock.calls.length;
+    await expect(commitMutation({ source: 'playground-edit', identity: IDENTITY,
+      current: { vfsFiles: after }, patch: emptyPatchPlan(), options: { reviewedComposition },
+    })).rejects.toThrow('stale');
+    await expect(commitMutation({ source: 'playground-edit', identity: { ...IDENTITY, projectId: 'another-project' },
+      current: { vfsFiles: before }, patch: emptyPatchPlan(), options: { reviewedComposition },
+    })).rejects.toThrow();
+    await expect(commitMutation({ source: 'playground-edit', identity: { ...IDENTITY, revisionId: '66666666-6666-4666-8666-666666666666' },
+      current: { vfsFiles: before }, patch: emptyPatchPlan(), options: { reviewedComposition },
+    })).rejects.toThrow('stale');
+    await expect(commitMutation({ source: 'playground-edit', identity: IDENTITY,
+      current: { vfsFiles: before }, patch: legacyFilesToPatchPlan(after), options: { reviewedComposition },
+    })).rejects.toThrow('stale');
+    const result = await commitMutation({ source: 'playground-edit', identity: IDENTITY,
+      current: { vfsFiles: before }, patch: emptyPatchPlan(), options: { reviewedComposition },
+    });
+    expect(vi.mocked(commitToPipeline).mock.calls).toHaveLength(pipelineCalls);
+    expect(result.vfsFiles).toEqual(after);
+    expect(result.vfsHash).toBe(candidate.vfsHash);
+    expect(revisionStore).toHaveLength(1);
+  });
+  it('rolls the exact previous composition forward and reloads it without regeneration', async () => {
+    const before = { '/src/App.tsx': 'export default function App(){return <main>Original content</main>}' };
+    mockPipeline(before); mockPreflight(before); mockIntents();
+    const original = await commitMutation({ source: 'playground-edit', identity: IDENTITY,
+      current: { vfsFiles: before }, patch: emptyPatchPlan(),
+    });
+    const after = { '/src/App.tsx': 'export default function App(){return <main>Enhanced content</main>}' };
+    mockPipeline(after); mockPreflight(after);
+    const enhanced = await commitMutation({ source: 'playground-edit', identity: { ...IDENTITY, revisionId: original.persistedRevisionId! },
+      current: { vfsFiles: before }, patch: legacyFilesToPatchPlan(after),
+    });
+    mockPreflight(before);
+    const calls = vi.mocked(commitToPipeline).mock.calls.length;
+    const restored = await restoreRevision({ targetRevisionId: original.persistedRevisionId!, identity: { ...IDENTITY, revisionId: enhanced.persistedRevisionId! } });
+    expect(restored.status).toBe('committed');
+    expect(restored.vfsFiles).toEqual(before);
+    expect(restored.parentRevisionId).toBe(enhanced.persistedRevisionId);
+    expect(vi.mocked(commitToPipeline).mock.calls).toHaveLength(calls);
+    expect((await loadLatestRevisionForProject(IDENTITY.projectId))?.vfsFiles).toEqual(before);
+    expect(revisionStore).toHaveLength(3);
+  });
   it('persists repaired Playground files in the same snapshot projection', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return null}' };
     const repairedFiles = { '/src/App.tsx': 'export default function App(){return <main>Repaired</main>}' };

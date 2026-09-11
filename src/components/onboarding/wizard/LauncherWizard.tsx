@@ -37,12 +37,15 @@ import {
 import { LaunchStageTimeline } from "./LaunchStageTimeline";
 import { DesignContractInspector } from "./DesignContractInspector";
 import {
-  buildCompositionCards,
+  getCompositionCardsForIndustry,
   getDefaultTemplateCardFor,
+  getDefaultTemplateCardForIndustry,
+  getIndustryCustomerNeeds,
+  getIndustryDefaultPageChoices,
+  getIndustryPageChoiceCards,
+  getIndustryPrimaryGoal,
   CUSTOMER_NEEDS,
-  INDUSTRY_CARDS,
-  LAUNCHER_PRESELECTS,
-  PAGE_CHOICES,
+  INDUSTRY_FOCUS_CARDS,
   PRIMARY_GOALS,
   STEP_META,
   SYSTEM_TO_BUSINESS_MODEL,
@@ -71,6 +74,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const { setLaunch } = useLaunch();
 
   const [step, setStep] = useState<WizardStep>("industry");
+  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
   const [systemId, setSystemId] = useState<BusinessSystemType | null>(null);
   const [businessName, setBusinessName] = useState("");
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal | null>(null);
@@ -89,6 +93,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
 
   const reset = useCallback(() => {
     setStep("industry");
+    setSelectedIndustry(null);
     setSystemId(null);
     setBusinessName("");
     setPrimaryGoal(null);
@@ -110,42 +115,50 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   }, [open, prefill?.businessName]);
 
   const templates = useMemo(
-    () => (systemId ? buildCompositionCards(systemId) : []),
-    [systemId],
+    () => (selectedIndustry ? getCompositionCardsForIndustry(selectedIndustry) : []),
+    [selectedIndustry],
   );
-  const effectiveTemplate = template || getDefaultTemplateCardFor(systemId);
+  const effectiveTemplate =
+    template ||
+    getDefaultTemplateCardForIndustry(selectedIndustry) ||
+    getDefaultTemplateCardFor(systemId);
 
   const previewSeed = useMemo(
     () =>
       deriveGenerationSeed({
         businessName,
         businessModel: systemId ? SYSTEM_TO_BUSINESS_MODEL[systemId] : "general",
-        industry: effectiveTemplate?.industry,
+        industry: selectedIndustry || effectiveTemplate?.industry,
         templateId: effectiveTemplate?.id,
         themePresetId: theme?.id,
         primaryGoal,
         secondaryGoals: customerNeeds,
         requestedPages: ["home", ...selectedPages],
       }),
-    [businessName, systemId, effectiveTemplate, theme, primaryGoal, customerNeeds, selectedPages],
+    [businessName, systemId, selectedIndustry, effectiveTemplate, theme, primaryGoal, customerNeeds, selectedPages],
   );
 
-  const selectSystem = (id: BusinessSystemType) => {
+  const selectIndustry = (industry: string, id: BusinessSystemType) => {
+    setSelectedIndustry(industry);
     setSystemId(id);
-    const preselect = LAUNCHER_PRESELECTS[id];
-    setPrimaryGoal(preselect.primaryGoal);
-    setCustomerNeeds(preselect.customerNeeds);
-    setSelectedPages(preselect.pages);
-    setTemplate(getDefaultTemplateCardFor(id));
+    setPrimaryGoal(getIndustryPrimaryGoal(industry));
+    setCustomerNeeds(getIndustryCustomerNeeds(industry));
+    setSelectedPages(getIndustryDefaultPageChoices(industry));
+    setTemplate(getDefaultTemplateCardForIndustry(industry));
     setStep("questions");
   };
 
   const toggle = <T extends string>(list: T[], value: T): T[] =>
     list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
 
+  const pageChoices = useMemo(
+    () => getIndustryPageChoiceCards(selectedIndustry),
+    [selectedIndustry],
+  );
+
   const canContinue =
     step === "industry"
-      ? Boolean(systemId)
+      ? Boolean(systemId && selectedIndustry)
       : step === "questions"
         ? Boolean(primaryGoal)
         : step === "templates"
@@ -308,31 +321,30 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
               <>
                 <StepHeading
                   title="What kind of business is this?"
-                  subtitle="This decides your pages, capabilities and intent contracts."
+                  subtitle="Choose the real industry first. Unison will load its registered default composition, page contract, capabilities, and conversion journey."
                 />
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {INDUSTRY_CARDS.map((card) => (
+                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {INDUSTRY_FOCUS_CARDS.map((card) => (
                     <button
-                      key={card.systemId}
+                      key={card.industry}
                       type="button"
-                      onClick={() => selectSystem(card.systemId)}
+                      onClick={() => selectIndustry(card.industry, card.systemId)}
                       className={cn(
                         "group relative overflow-hidden rounded-xl border p-4 text-left transition-all",
-                        systemId === card.systemId
+                        selectedIndustry === card.industry
                           ? "border-cyan-400/40 bg-cyan-400/[0.06]"
                           : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
                       )}
                     >
-                      <div
-                        className={cn(
-                          "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-60",
-                          card.gradient,
-                        )}
-                      />
                       <div className="relative">
                         <div className="mb-1.5 text-xl">{card.icon}</div>
                         <div className="text-sm font-semibold">{card.label}</div>
-                        <div className="text-[11px] text-white/35">{card.tagline}</div>
+                        <div className="mt-1 text-[11px] leading-4 text-white/35">{card.tagline}</div>
+                        {card.defaultTemplateId ? (
+                          <div className="mt-2 text-[9px] uppercase tracking-[0.12em] text-cyan-300/60">
+                            Registry default ready
+                          </div>
+                        ) : null}
                       </div>
                     </button>
                   ))}
@@ -385,7 +397,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
 
                 <FieldLabel>Pages to build (Home is always included)</FieldLabel>
                 <div className="flex flex-wrap gap-2">
-                  {PAGE_CHOICES.map((page) => (
+                  {pageChoices.map((page) => (
                     <Chip
                       key={page.id}
                       active={selectedPages.includes(page.id)}
