@@ -85,7 +85,7 @@ const FIXTURES: Fixture[] = [
     primaryIntent: 'booking.create',
   }),
   fixture('portfolio', 'portfolio', 'portfolio', 'minimalist', {
-    businessModel: 'showcase',
+    businessModel: 'portfolio_creator',
     primaryGoal: 'contact',
     requestedPages: ['home', 'about', 'gallery', 'contact'],
     primaryIntent: 'contact.submit',
@@ -112,7 +112,7 @@ const FIXTURES: Fixture[] = [
     primaryIntent: 'booking.create',
   }),
   fixture('ecommerce', 'ecommerce', 'commerce', 'futuristic', {
-    businessModel: 'product_sales',
+    businessModel: 'ecommerce',
     primaryGoal: 'sell',
     requestedPages: ['home', 'about', 'shop', 'contact'],
     primaryIntent: 'cart.add',
@@ -132,7 +132,7 @@ const FIXTURES: Fixture[] = [
     primaryIntent: 'lead.submit',
   }),
   fixture('saas', 'saas', 'lead', 'futuristic', {
-    businessModel: 'subscription',
+    businessModel: 'saas_digital',
     primaryGoal: 'signup',
     wantsLeadCapture: true,
     requestedPages: ['home', 'about', 'pricing', 'faq', 'contact'],
