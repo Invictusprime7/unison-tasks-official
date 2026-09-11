@@ -173,7 +173,7 @@ export interface SectionPropsMap {
     cta?: CTAButton;
     sticky?: boolean;
     transparent?: boolean;
-    layout?: 'standard' | 'centered-logo' | 'minimal-dark';
+    layout?: 'standard' | 'centered-logo' | 'minimal-dark' | 'transparent-overlay';
   };
   hero: {
     headline: string;
@@ -235,13 +235,13 @@ export interface SectionPropsMap {
     headline: string;
     description?: string;
     ctas: CTAButton[];
-    layout?: 'centered' | 'split' | 'banner';
+    layout?: 'centered' | 'split' | 'banner' | 'sticky-bar';
     backgroundImage?: string;
   };
   contact: {
     headline?: string;
     description?: string;
-    layout?: 'centered' | 'split-card' | 'minimal-inline';
+    layout?: 'centered' | 'split-card' | 'minimal-inline' | 'quote-request';
     fields?: { name: string; type: string; placeholder?: string; required?: boolean }[];
     submitLabel?: string;
     submitIntent?: string;

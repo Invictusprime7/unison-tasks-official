@@ -154,7 +154,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         type: 'about',
         props: {
           headline: 'A Crew, Not a Call Centre',
-          body: 'Ironhill has been building in this county since 1999. The person who quotes your job is on site while it is built, and you have their number for the life of the warranty.',
+          description: 'Ironhill has been building in this county since 1999. The person who quotes your job is on site while it is built, and you have their number for the life of the warranty.',
           image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=900&q=80',
         },
       },
@@ -191,7 +191,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         type: 'contact',
         variantId: 'contact:quote-request',
         props: {
-          layout: 'split',
+          layout: 'quote-request',
           headline: 'Tell Us About the Job',
           description: 'The more detail you give us, the more accurate the first number will be.',
           submitLabel: 'Request a Quote',
@@ -368,7 +368,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         type: 'about',
         props: {
           headline: 'Serving This County Since 2008',
-          body: 'Every technician is employed, background-checked and paid hourly — never on commission — so the fix you are quoted is the fix you need.',
+          description: 'Every technician is employed, background-checked and paid hourly — never on commission — so the fix you are quoted is the fix you need.',
           image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=900&q=80',
         },
       },
@@ -390,7 +390,7 @@ export const LOCAL_SERVICE_COMPOSITIONS: TemplateComposition[] = [
         type: 'cta',
         variantId: 'cta:sticky-bar',
         props: {
-          layout: 'banner',
+          layout: 'sticky-bar',
           headline: 'Need someone today?',
           description: 'Same-day slots are still open.',
           ctas: [
