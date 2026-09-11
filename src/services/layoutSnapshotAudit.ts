@@ -66,16 +66,59 @@ const TRANSPARENT_WRAPPERS = [
 
 const PAGE_PATH = /^\/src\/pages\/[^/]+\.(tsx|jsx)$/;
 
-function classNamesOnLine(line: string): string[] {
+/**
+ * Collect top-level `const NAME = '...'` string constants so class lists that a
+ * page applies through an expression (`className={shellClass + ' grid gap-8'}`)
+ * are audited with their real utilities instead of appearing empty.
+ */
+function collectClassConstants(source: string): Map<string, string> {
+  const constants = new Map<string, string>();
+  const re = /^(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::\s*string\s*)?=\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`)\s*;?\s*$/gm;
+  let match = re.exec(source);
+  while (match) {
+    constants.set(match[1], match[2] ?? match[3] ?? match[4] ?? '');
+    match = re.exec(source);
+  }
+  return constants;
+}
+
+function resolveClassExpression(expression: string, constants: Map<string, string>): string | null {
+  const parts = expression.split('+').map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+  const resolved: string[] = [];
+  for (const part of parts) {
+    const literal = /^(?:"([^"]*)"|'([^']*)'|`([^`]*)`)$/.exec(part);
+    if (literal) {
+      resolved.push(literal[1] ?? literal[2] ?? literal[3] ?? '');
+      continue;
+    }
+    if (/^[A-Za-z_$][\w$]*$/.test(part) && constants.has(part)) {
+      resolved.push(constants.get(part) as string);
+      continue;
+    }
+    // Unknown fragment (ternary, helper call): keep what we could resolve so a
+    // real container/gap is never reported as missing on a partial read.
+    return resolved.length > 0 ? resolved.join(' ') : null;
+  }
+  return resolved.join(' ');
+}
+
+function classNamesOnLine(line: string, constants: Map<string, string> = new Map()): string[] {
   const out: string[] = [];
-  const re = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g;
+  const re = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^{}]*)\})/g;
   let match = re.exec(line);
   while (match) {
-    out.push(match[1] ?? match[2] ?? match[3] ?? '');
+    if (match[1] !== undefined || match[2] !== undefined) {
+      out.push(match[1] ?? match[2] ?? '');
+    } else {
+      const resolved = resolveClassExpression(match[3] ?? '', constants);
+      if (resolved !== null) out.push(resolved);
+    }
     match = re.exec(line);
   }
   return out;
 }
+
 
 function largestGridColumns(classes: string): number {
   let columns = 1;
