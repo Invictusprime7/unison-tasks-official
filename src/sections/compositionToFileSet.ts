@@ -1058,17 +1058,8 @@ const SECTION_MODULE_SOURCE: Record<keyof typeof SECTION_FILES, string> = {
   About: ABOUT_MODULE,
   Services: SERVICES_MODULE,
   Features: FEATURES_MODULE,
-  Gallery: `import { REGISTERED_VARIANTS } from './recipes/Gallery';
-${LEGACY_GALLERY_MODULE.replace('export default function Gallery', 'function LegacyGallery')}
-import { THEME } from './theme';
-const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('gallery').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
-export default function Gallery({ props, variantId }: { props: any; variantId?: string }) {
-  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'grid'];
-  const Component = REGISTERED_VARIANTS[resolvedId];
-  if (!Component) return <LegacyGallery props={props} />;
-  return <Component section={{ type: 'gallery', variantId: resolvedId, props }} theme={THEME} />;
-}
-`,
+  Gallery: LEGACY_GALLERY_MODULE,
+
   Pricing: PRICING_MODULE,
   LogoCloud: LOGO_CLOUD_MODULE,
   BlogPreview: BLOG_PREVIEW_MODULE,
