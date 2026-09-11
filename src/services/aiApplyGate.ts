@@ -26,6 +26,8 @@ import {
   type PublishBlockerSummary,
 } from '@/services/vfsCommitService';
 import { legacyFilesToPatchPlan } from '@/types/patchPlan';
+import { checkAiPatchScope, describeAiPatchScopeViolations } from '@/services/aiPatchScopeGuard';
+
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import type { PlaygroundState } from '@/platform/core/playground';
