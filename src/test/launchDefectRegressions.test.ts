@@ -12,7 +12,7 @@ import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
 import { auditLayoutSource } from '@/services/layoutSnapshotAudit';
-import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
+import { processCode } from '@/utils/sandpackFilePrep';
 import type { WizardSelections } from '@/platform/core/playground';
 
 interface Fixture {
