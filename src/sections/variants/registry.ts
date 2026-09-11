@@ -315,14 +315,14 @@ const VARIANT_REGISTRY: VariantRegistry = {
     {
       id: 'hero:page-title', sectionType: 'hero', slug: 'page-title',
       name: 'Page Title', description: 'Compact left-aligned introduction for task-focused pages',
-      component: HeroPageTitle, thumbnail: '/variants/hero-centered.svg',
+      component: HeroPageTitle, vfs: { mode: 'portable-recipe' }, thumbnail: '/variants/hero-centered.svg',
       tags: ['compact', 'subpage'], pageRoles: ['pricing', 'faq', 'checkout', 'thank_you'],
       renderJSX: heroPageTitleJSX,
     },
     {
       id: 'hero:editorial-banner', sectionType: 'hero', slug: 'editorial-banner',
       name: 'Editorial Banner', description: 'Wide image band above a restrained page introduction',
-      component: HeroEditorialBanner, thumbnail: '/variants/hero-full-bleed.svg',
+      component: HeroEditorialBanner, vfs: { mode: 'portable-recipe' }, thumbnail: '/variants/hero-full-bleed.svg',
       tags: ['editorial', 'subpage', 'image'], pageRoles: ['booking', 'contact', 'blog', 'custom'],
       renderJSX: heroEditorialBannerJSX,
     },
