@@ -201,9 +201,12 @@ describe.each(FIXTURES)('deterministic launch certification — $label', (fx) =>
         if (!family) continue;
         expect(family, `${page.path}: ${section.variantId} has no registered implementation`)
           .toContain(JSON.stringify(section.variantId));
+        // Some families ship one variant-aware module (FAQ), others ship a
+        // recipe per variant — accept either, as long as the id reaches the VFS.
         const emitted = Object.entries(artifacts.files)
-          .filter(([path]) => path.startsWith('/src/components/recipes/'))
+          .filter(([path]) => path.startsWith('/src/components/'))
           .map(([, source]) => source);
+
         expect(
           emitted.some((source) => source.includes(JSON.stringify(section.variantId))),
           `${page.path}: ${section.variantId} was never emitted into the VFS`,
