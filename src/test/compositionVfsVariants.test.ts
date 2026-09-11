@@ -383,8 +383,8 @@ describe('composition VFS variants', () => {
     expect(heroOnly['/src/components/theme.ts']).toContain('"headingFont": "var(--font-heading)"');
     expect(familySource(heroOnly, 'SiteLayout')).not.toContain('TEMPLATE_GLOBAL_STYLES');
     expect(heroOnly['/src/components/Hero.tsx']).toBeDefined();
-    expect(familySource(heroOnly, 'Navbar')).toBeUndefined();
-    expect(familySource(heroOnly, 'Footer')).toBeUndefined();
+    expect(heroOnly['/src/components/Navbar.tsx']).toBeUndefined();
+    expect(heroOnly['/src/components/Footer.tsx']).toBeUndefined();
     expect(heroOnly['/src/pages/Offer.sections.ts']).not.toContain("import Navbar");
   });
 
