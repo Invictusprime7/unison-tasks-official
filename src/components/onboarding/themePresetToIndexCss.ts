@@ -295,6 +295,9 @@ export function buildThemedIndexCssFromTokens(
 
   ${professionalGeometry}
 
+  ${chromaScale}
+
+
   /* ART DIRECTION: ${artDirectionPack.name} — ${artDirectionPack.description} */
   ${artDirection}
   /* The pack owns radius language; the theme card owns colour + typography. */
