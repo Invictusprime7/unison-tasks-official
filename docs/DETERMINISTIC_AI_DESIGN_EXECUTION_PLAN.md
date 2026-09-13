@@ -1067,38 +1067,53 @@ import, fallback authoring, or incoherent mobile layout.
 premium, executable, committed, previewed, and editable without AI.
 
 **Permitted role:** AI may propose content, media, SEO, registered variant
-ranking, supported layout props, and registered primitive recipes. Default
-Launcher levels are E2 or E3. AI may not write VFS, replace page source, change
-topology, override Stage 4b, invent runtime identities, or become required for
-launch success.
+ranking, supported layout props, registered primitive recipes, and candidate
+page-body VFS patches. Default Launcher levels are E2 or E3. AI must not 
+directly mutate canonical VFS, replace protected infrastructure, change 
+topology, override Stage 4b, invent runtime identities, or become required for 
+launch success. All AI output follows the candidate → validation → canonical 
+acceptance → commitMutation pipeline.
 
 **Work:**
 
-- Define `AIEnrichmentEnvelope`, `AIEnrichmentPlan`, explicit permissions, and
-  stable ranking input/provenance.
+- Define `AIEnrichmentEnvelope`, `AIEnrichmentPlan`, `WizardLaneBEnrichmentProposal`, 
+  explicit permissions, and stable ranking input/provenance.
 - Distinguish implementation prerequisites from per-launch execution order:
   the deterministic system must first be proven without AI, but optional
   enrichment within a launch happens before its final canonical commit.
-  Execute complete deterministic base -> optional plan -> canonical validators
-  and resolvers -> canonical recompile -> Stage 4b -> preflight ->
-  `commitMutation` -> sealed snapshot/revision -> Preview and Playground.
+  Execute complete deterministic base -> optional enrichment plan -> candidate
+  validation -> canonical acceptance -> canonical resolvers -> canonical recompile 
+  -> Stage 4b -> preflight -> `commitMutation` -> sealed snapshot/revision -> 
+  Preview and Playground.
+- Lane B candidate VFS patches may only target registered page file paths and 
+  must preserve canonical page identity, required intents/bindings, design 
+  contract semantics, and protected infrastructure (App.tsx, index.css, 
+  .unison/**, /src/unison/**).
 - Include canonical topology, contracts, registries, artifacts, capabilities,
   runtime manifest, normalized imports, and export constraints.
 - Default to safe registered enrichment (Mode A). Creative proposals (Mode B)
-  must resolve into existing registered recipes or return unsupported, never
-  generate arbitrary Launcher TSX.
+  may author candidate page-body replacements but must resolve into existing 
+  registered compositions, preserve canonical intent/binding contracts, use 
+  snapshot-owned UI foundation imports, and survive canonical acceptance 
+  preflight. Reject proposals that change topology or protected infrastructure.
 - Default permissions allow content, media, SEO, registered variant swaps,
-  supported layout props, and primitive composition; deny section reorder,
-  topology changes, component creation, direct VFS writes, and theme overrides.
-- Validate schema, permissions, artifact compatibility, registry identity,
-  primitives, capabilities, bindings, Preview runtime, imports, exports, theme
-  compliance, canonical compile, and preflight in that order.
-- Let AI rank only a deterministic legal candidate set. The seeded resolver
-  chooses from the accepted ranking and records the ranking input.
-- Apply accepted operations to canonical structured state, recompile, then
-  commit through `VFSCommitService`.
-- On timeout, invalid output, incompatibility, or compile failure, discard the
-  plan and launch the deterministic base site.
+  supported layout props, primitive composition, and candidate page-body
+  enrichment; deny section reorder, topology changes, component creation, 
+  direct VFS writes that bypass validation, protected infrastructure writes, 
+  and theme overrides.
+- Validate candidate proposal schema, permissions, artifact compatibility, 
+  registry identity, primitives, capabilities, bindings, Preview runtime, 
+  imports, exports, theme compliance, canonical merge with protected-file 
+  authority win, and strict preflight in that order.
+- Let AI author candidate page bodies only when the UI manifest confirms 
+  required imports exist. Never import directly from invented `@/unison/ui/*` 
+  paths.
+- Apply accepted candidate operations to canonical structured state via 
+  canonical merge preserving protected owners, recompile, then commit through 
+  `VFSCommitService`. Candidate is not canonical until `commitMutation` 
+  succeeds.
+- On timeout, invalid output, incompatibility, or compile failure, discard the 
+  enrichment plan and launch the deterministic base site.
 - Record deterministic, AI, and user provenance in design contracts and
   resolved compositions.
 
@@ -1163,7 +1178,8 @@ assertions across every family.
 A phase cannot close unless all relevant checks pass:
 
 - Zero canonical VFS bypasses.
-- Zero direct Launcher AI VFS writes or page-authoring calls.
+- Zero Launcher AI writes that bypass candidate validation + canonical acceptance + commitMutation.
+- Zero AI writes to protected canonical infrastructure (App.tsx, index.css, .unison/**, /src/unison/**).
 - Zero placeholder section families after Phase 2.
 - 100% registered variant-to-emitter coverage after its migration phase.
 - 100% Launcher vocabulary-to-executable-recipe coverage after Phase 4.

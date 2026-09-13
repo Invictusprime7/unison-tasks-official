@@ -126,6 +126,50 @@ Do not return files, source code, JSX, CSS, markdown, prose outside JSON, arbitr
 Follow the exact JSON schema and enum values supplied in the user message. Write specific, polished copy grounded in the supplied business and industry context.`;
 }
 
+function buildWizardCanonicalEnrichmentBasePrompt(): string {
+  return `You are Unison's senior digital art director and React composition engineer for page-body enrichment.
+
+The canonical compiler has already established:
+- page topology and routes
+- page identities and required purposes
+- required intents and data bindings
+- theme tokens and Stage 4b CSS authority
+- approved UI imports and component facade
+
+Your responsibility: rewrite the supplied canonical page body into a visually stronger, production-quality React component while preserving all semantic contracts.
+
+You may author:
+- Asymmetric, expressive composition and grid geometry
+- Oversized editorial typography and visual rhythm
+- Layered media with motion and hover depth
+- Horizontal rails, marquee bands, parallax treatments
+- Sticky narrative regions and varied section widths
+- Free-form but responsive layout within semantic tokens
+- Intentional hover and focus behavior using @/unison/ui/motion primitives
+- Bounded motion choreography honoring useReducedMotion()
+
+You must NOT:
+- Change page topology, routes, or identities
+- Replace protected files (App.tsx, index.css, .unison/**, /src/unison/**)
+- Override Stage 4b theme tokens or palette
+- Invent imports or use paths outside the approved @/unison/ui contract
+- Add npm dependencies or mutate package.json
+- Lose or hide required intents (data-ut-intent attributes)
+- Create duplicate H1 elements
+- Use hardcoded CSS values instead of Stage 4b tokens or Tailwind classes
+
+OUTPUT RULES:
+- Return ONLY raw JSON: {"version":"1.0","wizardSeedId":"...","snapshotId":"...","designRegistrySignature":"...","fileOps":[{"type":"replace","path":"/src/pages/...","content":"..."}]}
+- Do not use markdown fences or prose.
+- Emit complete, valid React/TypeScript page source.
+- One file per page, path must match the registered page registry.
+- Preserve the canonical routes, data-ut-intent contract, and binding semantics.
+- Use only @/unison/ui imports (motion, animation, layout, content, surface, form-fields, icons, button, card, navigation, recipes).
+- Compose from the vocabulary: Section, Container, Stack, Grid, Split, Heading, Body, Lead, Panel, MediaFrame, CTAGroup, and motion primitives.
+- All motion must honor useReducedMotion() for accessibility.`;
+}
+
+
 // ── Main Orchestrator Entry ─────────────────────────────────────────────────
 
 export function runAssistantOrchestrator(
@@ -253,6 +297,7 @@ async function runBuilderLane(
   console.log(`[orchestrator] LANE B: ${task.type} (sub-behavior: ${
     task.type === 'debug_fix' ? 'builder_debug' :
     task.type === 'wizard_seed_generation' ? 'wizard_seed_generation' :
+    task.type === 'wizard_canonical_enrichment' ? 'wizard_canonical_enrichment' :
     ['surgical_edit', 'behavioral_edit', 'single_file_edit', 'multi_file_edit', 'template_react_edit'].includes(task.type) ? 'builder_edit' :
     'builder_generate'
   })`);
@@ -328,6 +373,8 @@ async function runBuilderLane(
   let basePrompt: string;
   if (task.type === 'wizard_seed_generation') {
     basePrompt = buildWizardSeedBasePrompt();
+  } else if (task.type === 'wizard_canonical_enrichment') {
+    basePrompt = buildWizardCanonicalEnrichmentBasePrompt();
   } else if (task.type === 'wizard_interaction_enrichment') {
     basePrompt = buildWizardInteractionBasePrompt();
   } else if (task.type === 'wizard_content_enrichment') {
@@ -392,7 +439,7 @@ async function runBuilderLane(
     : { compactedFiles: '', fileCount: 0, excludedFiles: [] };
 
   // ── 7. Assemble final prompt by task type ──────────────────────────────
-  const thinkingInstruction = task.type === 'wizard_seed_generation' || task.type === 'wizard_interaction_enrichment'
+  const thinkingInstruction = task.type === 'wizard_seed_generation' || task.type === 'wizard_canonical_enrichment' || task.type === 'wizard_interaction_enrichment'
     ? ''
     : buildThinkingInstruction(task.skipThinking);
   const elementsLibraryBlock = buildElementsLibraryBlock(siteElementsLibraryContext, surgicalEdit);
@@ -408,7 +455,7 @@ async function runBuilderLane(
     : '';
 
   // Use the non-surgical compacted files for non-surgical edits
-  const compactedFilesBlock = task.type === 'wizard_seed_generation'
+  const compactedFilesBlock = task.type === 'wizard_seed_generation' || task.type === 'wizard_canonical_enrichment'
     ? ''
     : (surgicalEdit ? '' : builderContext.compactedFiles);
 

@@ -80,24 +80,25 @@ describe('launch orchestrator canonical handoff', () => {
     const publicProfile = position('buildPublicBusinessContext(businessProfile)');
     const canonicalPages = position('const canonicalPages = Object.values(siteBundleSnapshot.pageRegistry.pages)');
     const bindingGuide = position('buildWizardBindingGuide(siteBundleSnapshot');
-    const deterministicEnrichment = position('run.markStage("enrich", "done")');
+    const enrichmentBatching = position('planLaneBBatches({');
     const preflight = position('await buildCanonicalLaunchArtifactsAsync(');
 
     expect(source).toContain('generationBrief: siteBundleSnapshot.meta.generationBrief');
     expect(source).toContain('designIntervention: siteBundleSnapshot.meta.designIntervention');
-    expect(source).toContain('generatedFiles: siteBundleSnapshot.vfsFiles');
+    expect(source).toContain('generatedFiles: enrichedVfsFiles');
     expect(source).toContain('compileArtifact: stage4b.pipelineResult.compileArtifact');
     expect(source).toContain('approvedExperienceCapabilities: resolveApprovedExperienceCapabilities({');
     expect(source).toContain('requiredCapabilities: resolveExperienceRequirement(');
     expect(source).toContain('webgl: siteBundleSnapshot.meta.designIntervention?.envelope?.webgl');
     expect(source).not.toContain('enrichWizardPagesWithAI');
-    expect(source).not.toContain('runBuilderTurn');
-    expect(source).not.toContain('enrich.ai_rejected');
+    expect(source).toContain("mode: 'wizard-canonical-enrichment'");
+    expect(source).toContain('buildLaneBVfsContext(enrichedVfsFiles)');
+    expect(source).toContain('retaining deterministic pages');
     expect(stage4bResult).toBeLessThan(canonicalPages);
     expect(canonicalPages).toBeLessThan(publicProfile);
     expect(publicProfile).toBeLessThan(bindingGuide);
-    expect(bindingGuide).toBeLessThan(deterministicEnrichment);
-    expect(deterministicEnrichment).toBeLessThan(preflight);
+    expect(bindingGuide).toBeLessThan(enrichmentBatching);
+    expect(enrichmentBatching).toBeLessThan(preflight);
   });
 
   it('plans forms and degrades embedded published-runtime readiness without blocking launch', () => {
@@ -124,6 +125,7 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).toContain('"/.unison/intent-surfaces.json": JSON.stringify(');
     expect(source).toContain('"/.unison/gate-verdicts.json": JSON.stringify(');
     expect(source).toContain('"/.unison/integrity-report.json": JSON.stringify(');
+    expect(source).toContain('[WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(wizardRegistryContext, null, 2)');
     expect(source).toContain('vfsFiles["/.unison/draft-classification.json"]');
     expect(source).toContain('wizardAudit,');
     expect(source).toContain('launchContract: plan.launchContract,');

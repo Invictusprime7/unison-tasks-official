@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+import {
+  validateWizardLaneBProposal,
+  type WizardLaneBEnrichmentRequest,
+} from '@/services/wizardLaneBEnrichment';
+
+const request = {
+  wizardSeedId: 'seed',
+  snapshotId: 'snapshot',
+  designRegistrySignature: 'registry',
+  pageRegistry: [{
+    id: 'home', filePath: '/src/pages/Home.tsx', route: '/',
+    title: 'Home', requiredIntents: ['contact.submit'],
+  }],
+} as WizardLaneBEnrichmentRequest;
+
+const validProposal = {
+  version: '1.0',
+  wizardSeedId: request.wizardSeedId,
+  snapshotId: request.snapshotId,
+  designRegistrySignature: request.designRegistrySignature,
+  fileOps: [{
+    type: 'replace',
+    path: '/src/pages/Home.tsx',
+    content: 'import React from "react"; export default function Home() { return <main><h1>Studio</h1><button data-ut-intent="contact.submit">Contact</button></main>; }',
+  }],
+};
+
+const validate = (proposal: unknown) => validateWizardLaneBProposal({
+  proposal, request,
+  uiFoundationManifest: { primitiveImports: [], requirements: [] },
+});
+
+describe('Lane B proposal validation', () => {
+  it.each([
+    null, undefined, 'invalid', [], {},
+    { ...validProposal, fileOps: null },
+    { ...validProposal, fileOps: {} },
+    { ...validProposal, fileOps: [] },
+    { ...validProposal, fileOps: [null] },
+    { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], path: 123 }] },
+    { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], content: {} }] },
+    { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], type: 'delete' }] },
+    { ...validProposal, metadata: { motionStrategy: 123 } },
+  ])('rejects malformed provider output without throwing: %#', (proposal) => {
+    const result = validate(proposal);
+    expect(result.valid).toBe(false);
+    expect(result.violations.length).toBeGreaterThan(0);
+  });
+
+  it('accepts a well-formed candidate with matching identity and required intent', () => {
+    expect(validate(validProposal)).toMatchObject({ valid: true, violations: [] });
+  });
+
+  it('still rejects stale snapshot identity after schema validation', () => {
+    expect(validate({ ...validProposal, snapshotId: 'stale' }).violations)
+      .toContain('Snapshot mismatch: proposal has stale, expected snapshot.');
+  });
+
+  it('still rejects protected paths after schema validation', () => {
+    const result = validate({ ...validProposal, fileOps: [{
+      ...validProposal.fileOps[0], path: '/src/App.tsx',
+    }] });
+    expect(result.valid).toBe(false);
+    expect(result.violations.some((violation) => violation.includes('protected path'))).toBe(true);
+  });
+});

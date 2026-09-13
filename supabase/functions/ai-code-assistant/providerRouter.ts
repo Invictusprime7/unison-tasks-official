@@ -49,7 +49,7 @@ export function isGeminiExclusiveProviderMode(
   const mode = (readEnv('AI_PROVIDER_MODE') || 'gemini-only').trim().toLowerCase();
   if (mode === 'hybrid') return false;
   // Never lock to Gemini when it has no key but OpenAI does.
-  if (!readEnv('GEMINI_API_KEY') && !readEnv('GOOGLE_API_KEY')) return false;
+  if (!readEnv('GEMINI_API_KEY') && !readEnv('GOOGLE_API_KEY') && !readEnv('UNISONGEMINI_API_KEY')) return false;
   return true;
 }
 
@@ -105,7 +105,7 @@ function selectPrimaryProvider(
   routingKey: string | undefined,
   readEnv: EnvReader,
 ): ParallelTextProvider | undefined {
-  const hasGemini = Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY'));
+  const hasGemini = Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'));
   const hasOpenAI = !isGeminiExclusiveProviderMode(readEnv) && Boolean(readEnv('OPENAI_API_KEY'));
   if (!hasGemini && !hasOpenAI) return undefined;
   if (!hasGemini) return 'openai';
@@ -129,7 +129,7 @@ function prioritizeProviderModels(models: ModelSpec[], primaryProvider?: Paralle
 const MODELS = {
   // Full-site Wizard generation selects the stable 2.5 Flash tier below;
   // shorter tasks may still use the newer Flash tier.
-  geminiFlash: { id: "google/gemini-3.6-flash", label: "Gemini 3.6 Flash" },
+  geminiFlash: { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   gemini25Flash: { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   geminiFlashLite: { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
   geminiPro: { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },

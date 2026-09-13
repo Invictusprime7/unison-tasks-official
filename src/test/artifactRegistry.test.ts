@@ -21,6 +21,10 @@ describe('artifactRegistry', () => {
     }
     expect(getArtifact('HeroSection')?.artifactId).toBe('hero');
     expect(getArtifact('SiteNavbar')?.artifactId).toBe('navbar');
+    expect(getArtifact('availability')?.artifactId).toBe('availability');
+    expect(getArtifact('logo-cloud')?.artifactId).toBe('logo-cloud');
+    expect(getArtifact('blog-preview')?.artifactId).toBe('blog-preview');
+    expect(getArtifact('before-after')?.artifactId).toBe('before-after');
     expect(getArtifact('definitely-not-real')).toBeNull();
   });
 

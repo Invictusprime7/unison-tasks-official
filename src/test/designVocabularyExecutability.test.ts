@@ -40,6 +40,7 @@ describe('design vocabulary executability', () => {
     expect([...report.executable, ...report.unimplemented].sort())
       .toEqual(DESIGN_VOCABULARY.map((entry) => vocabularyKey(entry)).sort());
     expect(report.executable).toEqual([
+      'hero:oversized-editorial',
       'hero:split-cinematic',
       'content:horizontal-scroll',
       'content:split-feature',

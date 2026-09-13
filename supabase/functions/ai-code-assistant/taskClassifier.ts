@@ -3,6 +3,7 @@
 
 export type AssistantTaskType =
   | "wizard_seed_generation"
+  | "wizard_canonical_enrichment"
   | "wizard_interaction_enrichment"
   | "wizard_content_enrichment"
   | "nav_page_generation"
@@ -78,6 +79,23 @@ export function classifyTask(opts: {
       prefersJsonOutput: true,
       skipResearch: true,
       skipThinking: true,
+    };
+  }
+
+  // ── Wizard Canonical Enrichment ───────────────────────────────────────
+  // Rewrite canonical page bodies with visual richness. AI receives the
+  // deterministic snapshot and current page sources, proposes enhanced
+  // candidate TSX, validates against contracts, then passes to canonical
+  // merge and commit pipeline.
+  if (mode === "wizard-canonical-enrichment") {
+    return {
+      type: "wizard_canonical_enrichment",
+      fastPath: true,
+      shouldUseMemory: false,
+      shouldUseCompactContext: true,
+      prefersJsonOutput: true,
+      skipResearch: true,
+      skipThinking: false,
     };
   }
 

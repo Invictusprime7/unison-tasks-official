@@ -268,6 +268,8 @@ export interface SiteBundleSnapshotMeta {
   generationBrief?: WizardGenerationBrief;
   /** Deterministic composition, interaction, and motion recipes for this launch. */
   designIntervention?: WizardDesignIntervention;
+  /** Unified registry context aggregating sections, variants, artifacts, and catalog surfaces for this launch. */
+  registryContext?: import('@/services/launch/wizardRegistryAggregation').WizardAggregatedRegistryContext;
   /** Final, non-destructive visual evaluation produced by canonical preflight. */
   visualQuality?: {
     version: string;

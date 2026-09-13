@@ -132,7 +132,7 @@ describe('generated UI foundation', () => {
     // The two confusable facade pairs must be explicitly disambiguated.
     expect(directive).toContain('"@/unison/ui/icons" (plural) is a full lucide-react re-export');
     expect(directive).toContain('"@/unison/ui/icon" (singular) exports only the <Icon icon={...} /> wrapper component');
-    expect(directive).toContain('"@/unison/ui/motion" exports ONLY Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, and the MotionRecipe type');
+    expect(directive).toContain('"@/unison/ui/motion" exports Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, MotionRecipe, and expanded curated motion primitives (MarqueeBand, HorizontalRail, HoverDepth, ImageReveal, ParallaxMedia, MaskReveal, MotionImage)');
     expect(directive).toContain('"@/unison/ui/animation" is the full framer-motion re-export');
     expect(directive).toContain('Never import from "next", any "next/*" module, "gatsby", or "remix"');
     expect(directive).toContain('never from a flat "@/unison/ui/input"');

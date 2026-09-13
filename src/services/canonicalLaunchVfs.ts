@@ -1195,7 +1195,7 @@ function* buildCanonicalLaunchArtifactSteps(
   // artifact is persisted or opened in Playground. Syntax repair protects
   // source shape above; this final pass catches unresolved JSX named/default
   // imports after every canonical merge and generated-runtime transformation.
-  // Callers on the hot launch path (SystemLauncher) already wrap this step in
+  // Callers on the hot launch path (launchOrchestrator) already wrap this step in
   // a timeout + non-strict fallback, so this can never freeze the UI forever.
   if (input.strictPreflight) {
     yield;

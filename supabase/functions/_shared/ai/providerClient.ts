@@ -150,20 +150,23 @@ function modelFor(provider: Provider, requestedModel?: string): string {
     if (model.startsWith("gpt-")) return `openai/${model}`;
     if (model.startsWith("gemini-")) return `google/${model}`;
     if (model.startsWith("claude-")) return `anthropic/${model}`;
-    return "google/gemini-3.6-flash";
+    return "google/gemini-2.5-flash";
   }
 
   if (provider === "openai") {
     if (Deno.env.get("OPENAI_MODEL")) return Deno.env.get("OPENAI_MODEL")!;
-    if (model.startsWith("openai/")) return model.slice("openai/".length);
-    if (model.startsWith("gpt-")) return model;
-    return "gpt-4.1-mini";
+    const bare = model.startsWith("openai/") ? model.slice("openai/".length) : model;
+    if (bare === "gpt-4.1" || bare === "gpt-5") return "gpt-4o";
+    if (bare === "gpt-5-mini") return "gpt-4o-mini";
+    if (bare.startsWith("gpt-")) return bare;
+    return "gpt-4o-mini";
   }
 
   if (provider === "gemini") {
     if (Deno.env.get("GEMINI_MODEL")) return Deno.env.get("GEMINI_MODEL")!;
-    if (model.startsWith("google/")) return model.slice("google/".length);
-    if (model.startsWith("gemini-")) return model;
+    const bare = model.startsWith("google/") ? model.slice("google/".length) : model;
+    if (bare === "gemini-3.6-flash" || bare === "gemini-3-flash-preview") return "gemini-2.5-flash";
+    if (bare.startsWith("gemini-")) return bare;
     return "gemini-2.5-flash";
   }
 

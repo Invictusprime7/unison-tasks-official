@@ -1,5 +1,6 @@
 /**
- * WizardTopAction — top-right action button for the SystemLauncher wizard.
+ * @deprecated Legacy action button for the retired SystemLauncher dialog.
+ * `LauncherWizard.tsx` now manages its own generation triggers and state.
  *
  * Renders the primary Continue / Generate button in the header (top-right)
  * and, while generating, expands into a live horizontal process rail driven

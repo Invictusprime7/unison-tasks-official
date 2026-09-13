@@ -77,6 +77,20 @@ import {
   type LaunchRun,
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
+import {
+  validateWizardLaneBProposal,
+  mergeLaneBProposalWithSnapshot,
+  type WizardLaneBEnrichmentRequest,
+  type WizardLaneBEnrichmentProposal,
+} from "@/services/wizardLaneBEnrichment";
+import { runBuilderTurn } from "@/services/builderBrainClient";
+import { buildGeneratedUiFoundationDirective } from "@/platform/core/generatedUiFoundation";
+import {
+  buildLaneBVfsContext,
+  measurePayloadBytes,
+  planLaneBBatches,
+} from "@/services/laneBBatchPlanner";
+import { designRegistrySignature } from "@/services/designImplementationRegistry";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
 import { resolveExperienceRequirement } from "@/sections/variants";
 import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
@@ -108,6 +122,10 @@ import {
   resolveWizardIndustryOverlay,
 } from '@/services/wizardMergeContext';
 import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
+import {
+  buildWizardAggregatedRegistryContext,
+  WIZARD_REGISTRY_CONTEXT_PATH,
+} from "@/services/launch/wizardRegistryAggregation";
 
 export interface LaunchOrchestratorInput {
   systemId: BusinessSystemType;
@@ -356,6 +374,12 @@ export async function runLaunchPipeline(
     styleVariation: design,
     pageRole: "home",
   });
+  const wizardRegistryContext = buildWizardAggregatedRegistryContext({
+    industry: plan.industryOverlay,
+    templateId: input.template.id,
+    themePresetId: input.theme.id,
+    seed: plan.seed,
+  });
 
   const wizardSeedFile = {
     version: "2.0",
@@ -379,6 +403,7 @@ export async function runLaunchPipeline(
     },
     theme: { presetId: input.theme.id, label: input.theme.label, tokens: plan.themeTokens },
     design: { seed: plan.seed, contractSignature: designContract.contractSignature },
+    registryContext: wizardRegistryContext,
     socials: Object.entries(input.socialLinks || {})
       .map(([platform, raw]) => {
         const value = (raw || "").trim();
@@ -396,6 +421,7 @@ export async function runLaunchPipeline(
       existingVfsFiles: {
         "/.unison/wizard-seed.json": JSON.stringify(wizardSeedFile, null, 2),
         [TEMPLATE_DESIGN_CONTRACT_PATH]: JSON.stringify(designContract, null, 2),
+        [WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(wizardRegistryContext, null, 2),
       },
       signal,
       yieldToHost: yieldToBrowser,
@@ -488,10 +514,14 @@ export async function runLaunchPipeline(
     uiFoundation,
     generationBrief: siteBundleSnapshot.meta.generationBrief,
     designIntervention: siteBundleSnapshot.meta.designIntervention,
+    registryContext: wizardRegistryContext,
     bindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
       industry: plan.industryOverlay,
     }),
   };
+  if (siteBundleSnapshot?.meta) {
+    siteBundleSnapshot.meta.registryContext = wizardRegistryContext;
+  }
   const plannedDataBindings = planSectionDataBindings(siteBundleSnapshot);
   const businessRuntime = buildBusinessRuntimeContract({
     businessId: plan.confirmed.businessId,
@@ -527,19 +557,167 @@ export async function runLaunchPipeline(
   const intentSurfacesFile = buildIntentSurfacesFile(materializedPlayground);
 
   // ── Stage: enrich ─────────────────────────────────────────────────────────
-  // Launcher enrichment is deterministic compiler work. AI may consume this
-  // context after launch, but it never authors or replaces Launcher page files.
-  status("Finalizing your deterministic design…");
-  run.markStage("enrich", "done");
+  // Lane B enrichment: AI proposes candidate page-body enrichments.
+  // All AI output remains a candidate until validated and accepted via
+  // canonical merge + preflight + commitMutation.
+  status("Art-directing your site…");
+
+  let enrichedVfsFiles = siteBundleSnapshot.vfsFiles;
+
+  try {
+    await run.stage("enrich", async () => {
+      // Parse UI foundation manifest from snapshot VFS
+      let manifestData: any = {
+        primitiveImports: [],
+        iconLibrary: 'lucide-react',
+        requirements: [],
+      };
+      try {
+        const manifestJson = siteBundleSnapshot.vfsFiles['/.unison/ui-manifest.json'];
+        if (manifestJson) {
+          manifestData = JSON.parse(manifestJson);
+        }
+      } catch (e) {
+        console.warn('[launch] Could not parse UI foundation manifest:', e);
+      }
+
+      // Build the enrichment request context from the canonical snapshot
+      const uiFoundationDirective = buildGeneratedUiFoundationDirective({
+        primitiveImports: manifestData.primitiveImports || [],
+        iconLibrary: manifestData.iconLibrary || 'lucide-react',
+        requirements: manifestData.requirements || [],
+      });
+
+      const designVocabularyReport = {
+        executableIds: Array.from(
+          new Set(
+            Object.values(siteBundleSnapshot.meta.designIntervention?.activeVariants || {})
+              .flatMap((v: any) => v?.vocabulary)
+              .map((v: any) => v?.id)
+              .filter(Boolean),
+          ),
+        ),
+        unimplementedIds: [],
+      };
+
+      // Build the page registry for AI visibility
+      const pageRegistry = Object.entries(siteBundleSnapshot.pageRegistry.pages || {}).map(
+        ([id, page]: [string, any]) => ({
+          id,
+          filePath: page.filePath || `/src/pages/${id}.tsx`,
+          route: page.route || `/${id}`,
+          title: page.title || id,
+          requiredIntents: page.requiredIntents || [],
+        }),
+      );
+
+      const enrichmentRequest: WizardLaneBEnrichmentRequest = {
+        version: '1.0',
+        wizardSeedId: plan.seed,
+        businessName: brand,
+        industryOverlay: plan.industryOverlay,
+        primaryGoal: plan.selections.primaryGoal as string,
+        selectedPages: Array.from(plan.selections.requestedPages || ['home']),
+        selectedTemplateId: input.template.id,
+        selectedThemeId: input.theme.id,
+        snapshotId: siteBundleSnapshot.snapshotId,
+        designRegistrySignature: designRegistrySignature(),
+        designIntervention: siteBundleSnapshot.meta.designIntervention || ({} as any),
+        pageRegistry,
+        currentPageSources: Object.fromEntries(
+          pageRegistry.map((page) => [
+            page.id,
+            {
+              filePath: page.filePath,
+              content: siteBundleSnapshot.vfsFiles[page.filePath] || '',
+            },
+          ]),
+        ),
+        uiFoundationDirective,
+        designVocabularyReport,
+        intentBindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
+          industry: plan.industryOverlay,
+        }),
+      };
+
+      const pagePaths = pageRegistry.map((page) => page.filePath);
+      const batchPlan = planLaneBBatches({
+        pages: pagePaths,
+        basePayloadBytes: measurePayloadBytes({
+          ...enrichmentRequest,
+          pageRegistry: [],
+          currentPageSources: {},
+        }),
+      });
+      let acceptedBatchCount = 0;
+
+      // Each batch is independently validated and merged. A failed batch leaves
+      // its deterministic Stage 4b pages untouched while later batches proceed.
+      for (const batchPaths of batchPlan.batches) {
+        const batchPathSet = new Set(batchPaths);
+        const batchRequest: WizardLaneBEnrichmentRequest = {
+          ...enrichmentRequest,
+          pageRegistry: pageRegistry.filter((page) => batchPathSet.has(page.filePath)),
+          currentPageSources: Object.fromEntries(
+            Object.entries(enrichmentRequest.currentPageSources)
+              .filter(([, source]) => batchPathSet.has(source.filePath)),
+          ),
+        };
+
+        const enrichmentResult = await runBuilderTurn<WizardLaneBEnrichmentProposal>(
+          {
+            mode: 'wizard-canonical-enrichment',
+            messages: [{ role: 'user', content: JSON.stringify(batchRequest) }],
+            wizardSeed: { id: plan.seed } as any,
+            vfsFiles: buildLaneBVfsContext(enrichedVfsFiles),
+          },
+          { timeoutMs: 60_000, signal: undefined },
+        );
+
+        if (enrichmentResult.error || !enrichmentResult.data) {
+          console.warn('[launch] Lane B batch failed; retaining deterministic pages:', {
+            batchPaths,
+            error: enrichmentResult.error || 'empty proposal',
+          });
+          continue;
+        }
+
+        const proposal = enrichmentResult.data;
+        const validation = validateWizardLaneBProposal({
+          proposal,
+          request: batchRequest,
+          uiFoundationManifest: manifestData,
+        });
+
+        if (!validation.valid) {
+          console.warn('[launch] Lane B batch validation failed; retaining deterministic pages:', {
+            batchPaths,
+            violations: validation.violations,
+          });
+          continue;
+        }
+
+        enrichedVfsFiles = mergeLaneBProposalWithSnapshot(enrichedVfsFiles, proposal);
+        acceptedBatchCount += 1;
+      }
+
+      console.log('[launch] Lane B enrichment complete:', {
+        batches: batchPlan.batches.length,
+        acceptedBatches: acceptedBatchCount,
+        pagesPerBatch: batchPlan.pagesPerBatch,
+        limitedBy: batchPlan.limitedBy,
+      });
+    });
+  } catch (e) {
+    console.error('[launch] Enrichment stage error:', e);
+  }
 
   // ── Stage: preflight (merge + seal + strict import contract) ──────────────
   status("Running preview gates…");
   const artifacts = await run.stage("preflight", async (signal) => {
     const built = await buildCanonicalLaunchArtifactsAsync(
       {
-        // Stage 4b's snapshot VFS is the authored source for the deterministic
-        // launcher. Pass it explicitly so merge never treats pages as fallback.
-        generatedFiles: siteBundleSnapshot.vfsFiles,
+        generatedFiles: enrichedVfsFiles,
         preferredEntryPoint: "/src/App.tsx",
         siteBundleSnapshot,
         compileArtifact: stage4b.pipelineResult.compileArtifact,
@@ -633,6 +811,7 @@ export async function runLaunchPipeline(
     "/.unison/intent-surfaces.json": JSON.stringify(intentSurfacesFile, null, 2),
     "/.unison/gate-verdicts.json": JSON.stringify(gateVerdicts, null, 2),
     "/.unison/integrity-report.json": JSON.stringify(integrityReport, null, 2),
+    [WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(wizardRegistryContext, null, 2),
   };
   const draftClassification = classifyDraft(vfsFiles);
   vfsFiles["/.unison/draft-classification.json"] = JSON.stringify(

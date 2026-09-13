@@ -23,6 +23,7 @@ const COMPACT_UNISON_METADATA_PATHS = new Set([
   '/.unison/gate-verdicts.json',
   '/.unison/draft-classification.json',
   '/.unison/integrity-report.json',
+  '/.unison/wizard-registry-context.json',
   CANONICAL_METADATA_FILE_PATHS.publishedRuntime,
 ]);
 

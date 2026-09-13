@@ -1,0 +1,431 @@
+/**
+ * Lane B Canonical Enrichment — AI-authored candidate page-body patches.
+ *
+ * Guidebook contract (section 4 & 15):
+ *   AI receives bounded canonical context and a deterministic page body.
+ *   AI proposes a candidate enrichment (TSX page-body replacement).
+ *   Candidate is validated against protected-path, registry, import, and
+ *   canonical-merge rules. Only after validation and acceptance does the
+ *   candidate become canonical via commitMutation.
+ *
+ * AI output is never immediately canonical. All candidates must survive
+ * validation and canonical merge before commit.
+ */
+
+import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
+import type { WizardSelections } from '@/types/playground';
+import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
+import { z } from 'zod';
+
+const laneBProposalSchema = z.object({
+  version: z.literal('1.0'),
+  wizardSeedId: z.string().min(1),
+  snapshotId: z.string().min(1),
+  designRegistrySignature: z.string().min(1),
+  fileOps: z.array(z.object({
+    type: z.literal('replace'),
+    path: z.string().min(1),
+    content: z.string().min(1),
+  })).min(1),
+  metadata: z.object({
+    designApproach: z.string().optional(),
+    motionStrategy: z.string().optional(),
+    geometryReasoning: z.string().optional(),
+  }).optional(),
+});
+
+/**
+ * Enumerated Lane B enrichment status.
+ */
+export type LaneBEnrichmentStatus =
+  | 'idle'
+  | 'requesting'
+  | 'received'
+  | 'validating'
+  | 'valid'
+  | 'invalid'
+  | 'accepted'
+  | 'failed'
+  | 'timeout';
+
+/**
+ * A single file operation in a Lane B proposal. Initially supports replace-only
+ * on registered page paths. Future phases may add create/delete under an
+ * explicit generated namespace.
+ */
+export interface LaneBFileOp {
+  type: 'replace';
+  /** Absolute path matching a registered page file in the snapshot. */
+  path: string;
+  /** New TSX content. Must be parseable and meet canonical contracts. */
+  content: string;
+}
+
+/**
+ * The request sent to Lane B (AI enrichment mode) from launchOrchestrator.
+ *
+ * Includes canonical context: wizard identity, design intervention, current
+ * stage 4b snapshot, registry inventory, UI foundation contract, and binding guide.
+ * Excludes direct business logic or persistence state.
+ */
+export interface WizardLaneBEnrichmentRequest {
+  version: '1.0';
+
+  /** Wizard/launch identity. */
+  wizardSeedId: string;
+  businessName: string;
+  industryOverlay: string;
+  primaryGoal: string;
+  selectedPages: string[];
+  selectedTemplateId: string;
+  selectedThemeId: string;
+
+  /** Canonical snapshot identity and registry state. */
+  snapshotId: string;
+  designRegistrySignature: string;
+
+  /** The Design Contract V2 object with active variants, budget, brief, etc. */
+  designIntervention: WizardDesignIntervention;
+
+  /** Current canonical page registry with file paths and required intents. */
+  pageRegistry: Array<{
+    id: string;
+    filePath: string;
+    route: string;
+    title: string;
+    requiredIntents: string[];
+  }>;
+
+  /** Current Stage 4b page sources — Lane B enriches these, not the template. */
+  currentPageSources: Record<
+    string,
+    {
+      filePath: string;
+      content: string;
+    }
+  >;
+
+  /** The manifest-derived UI foundation contract — exact imports + requirements. */
+  uiFoundationDirective: string;
+
+  /** Design vocabulary and implementation registry status. */
+  designVocabularyReport: {
+    executableIds: string[];
+    unimplementedIds: string[];
+  };
+
+  /** Intent and binding guidance. */
+  intentBindingGuide: string;
+}
+
+/**
+ * The response from Lane B — a candidate enrichment proposal that must survive
+ * validation before canonical acceptance.
+ */
+export interface WizardLaneBEnrichmentProposal {
+  version: '1.0';
+
+  /** Must match request identity exactly. */
+  wizardSeedId: string;
+  snapshotId: string;
+  designRegistrySignature: string;
+
+  /** One or more candidate file replacements. Initially page-body only. */
+  fileOps: LaneBFileOp[];
+
+  /** Optional metadata from enrichment reasoning. */
+  metadata?: {
+    designApproach?: string;
+    motionStrategy?: string;
+    geometryReasoning?: string;
+  };
+}
+
+/**
+ * Validation result for a Lane B proposal. Failure reasons are enumerated
+ * for deterministic debugging.
+ */
+export interface LaneBEnrichmentValidationResult {
+  valid: boolean;
+  violations: string[];
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Protected file paths that Lane B may never target. These paths are canonical
+ * infrastructure and must always win in canonical merge.
+ */
+export const WIZARD_LANE_B_PROTECTED_PATHS = new Set([
+  '/src/App.tsx',
+  '/src/main.tsx',
+  '/src/index.css',
+  '/src/index.tsx',
+  '/src/vite-env.d.ts',
+  '/.unison',
+  '/src/unison',
+  '/package.json',
+  '/vite.config.ts',
+  '/tsconfig.json',
+  '/tsconfig.app.json',
+  '/tailwind.config.ts',
+  '/postcss.config.js',
+  '/eslint.config.js',
+  '/vitest.config.ts',
+]);
+
+/**
+ * Validate a Lane B enrichment proposal against the canonical contract.
+ *
+ * Checks in order (section 15):
+ * 1. schema/version
+ * 2. wizard seed ID equality
+ * 3. snapshot ID equality
+ * 4. registry signature equality
+ * 5. only registered page file paths targeted
+ * 6. no protected file path
+ * 7. exactly one replacement per targeted page
+ * 8. parseable TSX
+ * 9. import contract satisfied
+ * 10. theme token compliance
+ * 11. required page identity remains intact
+ * 12. required intents remain reachable
+ * 13. one H1 per page
+ * 14. canonical merge safety (protected files win)
+ * 15. strict final preflight
+ *
+ * Returns a full validation result; caller decides whether to accept or discard.
+ */
+export function validateWizardLaneBProposal(options: {
+  proposal: unknown;
+  request: WizardLaneBEnrichmentRequest;
+  uiFoundationManifest: {
+    primitiveImports: readonly string[];
+    requirements: readonly string[];
+  };
+}): LaneBEnrichmentValidationResult {
+  const violations: string[] = [];
+
+  // Validate untrusted provider output before inspecting identities or file ops.
+  const parsed = laneBProposalSchema.safeParse(options.proposal);
+  if (!parsed.success) {
+    return {
+      valid: false,
+      violations: parsed.error.issues.map((issue) =>
+        `Invalid proposal at ${issue.path.join('.') || 'root'}: ${issue.message}`),
+    };
+  }
+  const proposal = parsed.data;
+
+  // 2. Wizard seed ID equality
+  if (proposal.wizardSeedId !== options.request.wizardSeedId) {
+    violations.push(
+      `Wizard seed mismatch: proposal has ${proposal.wizardSeedId}, expected ${options.request.wizardSeedId}.`,
+    );
+  }
+
+  // 3. Snapshot ID equality
+  if (proposal.snapshotId !== options.request.snapshotId) {
+    violations.push(
+      `Snapshot mismatch: proposal has ${proposal.snapshotId}, expected ${options.request.snapshotId}.`,
+    );
+  }
+
+  // 4. Registry signature equality
+  if (proposal.designRegistrySignature !== options.request.designRegistrySignature) {
+    violations.push(
+      `Registry signature mismatch: proposal was built against a different design registry state.`,
+    );
+  }
+
+  // Build allowed target paths from request registry
+  const allowedPagePaths = new Set(
+    options.request.pageRegistry.map((p) => p.filePath),
+  );
+
+  // 5, 6, 7: Path validation and protected file check
+  const filePathCounts = new Map<string, number>();
+  for (const op of proposal.fileOps) {
+    const count = filePathCounts.get(op.path) || 0;
+    filePathCounts.set(op.path, count + 1);
+
+    // Check protected paths
+    if (
+      WIZARD_LANE_B_PROTECTED_PATHS.has(op.path) ||
+      WIZARD_LANE_B_PROTECTED_PATHS.has(op.path.split('/').slice(0, -1).join('/')) ||
+      op.path.startsWith('/.unison') ||
+      op.path.startsWith('/src/unison')
+    ) {
+      violations.push(
+        `Cannot target protected path: ${op.path}. Lane B may only enrich registered page files.`,
+      );
+    }
+
+    // Check registered page paths
+    if (!allowedPagePaths.has(op.path)) {
+      violations.push(
+        `Path ${op.path} is not a registered page file. Allowed: ${Array.from(allowedPagePaths).join(', ')}.`,
+      );
+    }
+
+    // Check for duplicate replacements
+    if (count > 0) {
+      violations.push(
+        `Duplicate file operation for ${op.path}. Lane B may not replace the same file twice.`,
+      );
+    }
+  }
+
+  // 8. TSX parseability
+  for (const op of proposal.fileOps) {
+    try {
+      // Simple heuristic: check for unbalanced braces and basic JSX structure
+      const openBraces = (op.content.match(/{/g) || []).length;
+      const closeBraces = (op.content.match(/}/g) || []).length;
+      const openAngle = (op.content.match(/</g) || []).length;
+      const closeAngle = (op.content.match(/>/g) || []).length;
+
+      if (openBraces !== closeBraces) {
+        violations.push(
+          `File ${op.path} has unbalanced braces: {${openBraces} vs }${closeBraces}.`,
+        );
+      }
+
+      if (openAngle !== closeAngle) {
+        violations.push(
+          `File ${op.path} has unbalanced angle brackets: <${openAngle} vs >${closeAngle}.`,
+        );
+      }
+
+      // Check for React import
+      if (!op.content.includes('import') || !op.content.includes('React')) {
+        violations.push(
+          `File ${op.path} must import React for JSX composition.`,
+        );
+      }
+    } catch (e) {
+      violations.push(`File ${op.path} is not valid TSX: ${e instanceof Error ? e.message : String(e)}.`);
+    }
+  }
+
+  // 9. Import contract check
+  const allowedImports = new Set(options.uiFoundationManifest.primitiveImports);
+  for (const op of proposal.fileOps) {
+    // Extract import statements
+    const importMatches = op.content.matchAll(/import\s+(?:[^'"\n]*)\s+from\s+['"]([^'"]+)['"]/g);
+    for (const match of importMatches) {
+      const importPath = match[1];
+      // Allow exact matches or subpaths of allowed imports
+      const isAllowed =
+        allowedImports.has(importPath) ||
+        Array.from(allowedImports).some(
+          (allowed) =>
+            allowed.startsWith('@/unison/ui/radix/') &&
+            importPath === allowed,
+        );
+
+      if (!isAllowed && importPath.startsWith('@/unison/ui')) {
+        violations.push(
+          `File ${op.path} imports non-existent path ${importPath}. Allowed @/unison/ui paths: ${Array.from(allowedImports)
+            .filter((p) => p.startsWith('@/unison'))
+            .join(', ')}.`,
+        );
+      }
+    }
+  }
+
+  // 10. Theme token compliance
+  for (const op of proposal.fileOps) {
+    // Check for hardcoded CSS values (px, rem, vh, vw, #hex)
+    const hardcodedValues = op.content.match(/\b\d+(?:px|rem|vh|vw)\b|#[0-9a-fA-F]{3,6}\b/g);
+    if (hardcodedValues) {
+      violations.push(
+        `File ${op.path} contains hardcoded CSS values: ${hardcodedValues.join(', ')}. Use Stage 4b tokens (var(--ut-*), --radius) or Tailwind classes instead.`,
+      );
+    }
+  }
+
+  // 11. Page identity check
+  for (const op of proposal.fileOps) {
+    const page = options.request.pageRegistry.find((p) => p.filePath === op.path);
+    if (page) {
+      // Check that page-level identity markers are preserved
+      if (!op.content.includes(`export default`) && !op.content.includes(`export function`)) {
+        violations.push(
+          `File ${op.path} must export a React component as default for page rendering.`,
+        );
+      }
+    }
+  }
+
+  // 12. Intent preservation check
+  for (const op of proposal.fileOps) {
+    const page = options.request.pageRegistry.find((p) => p.filePath === op.path);
+    if (page && page.requiredIntents.length > 0) {
+      // Heuristic: check for data-ut-intent attributes
+      const intentsInContent = op.content.match(/data-ut-intent="([^"]+)"/g) || [];
+      const usedIntents = new Set(
+        intentsInContent.map((m) => m.match(/"([^"]+)"/)?.[1]).filter(Boolean),
+      );
+
+      for (const intent of page.requiredIntents) {
+        if (!usedIntents.has(intent)) {
+          violations.push(
+            `File ${op.path} is missing required intent binding: ${intent}. Use data-ut-intent="${intent}" on a control.`,
+          );
+        }
+      }
+    }
+  }
+
+  // 13. Single H1 per page
+  for (const op of proposal.fileOps) {
+    const h1Count = (op.content.match(/<h1/gi) || []).length;
+    if (h1Count !== 1) {
+      violations.push(
+        `File ${op.path} must have exactly one <h1> element; found ${h1Count}.`,
+      );
+    }
+  }
+
+  // 14, 15: Merge and preflight safety is handled by canonical merge + preflight
+  // gates. This validator confirms structural readiness; final approval happens
+  // during canonical merge and strict preflight in buildCanonicalLaunchArtifactsAsync.
+
+  return {
+    valid: violations.length === 0,
+    violations,
+    details: violations.length > 0 ? { fileOperationCount: proposal.fileOps.length } : undefined,
+  };
+}
+
+/**
+ * Merge a validated Lane B proposal into the current VFS, preserving canonical
+ * infrastructure. This is a safe merge that canonicalLaunchVfs.ts later seals.
+ *
+ * Protected paths always win; Lane B replacements are applied only to allowed
+ * page files.
+ */
+export function mergeLaneBProposalWithSnapshot(
+  snapshot: Record<string, string>,
+  proposal: WizardLaneBEnrichmentProposal,
+): Record<string, string> {
+  const merged = { ...snapshot };
+
+  for (const op of proposal.fileOps) {
+    // Double-check: never overwrite protected paths
+    if (
+      WIZARD_LANE_B_PROTECTED_PATHS.has(op.path) ||
+      WIZARD_LANE_B_PROTECTED_PATHS.has(op.path.split('/').slice(0, -1).join('/')) ||
+      op.path.startsWith('/.unison') ||
+      op.path.startsWith('/src/unison')
+    ) {
+      continue; // Skip, protected path wins
+    }
+
+    if (op.type === 'replace' && op.path in merged) {
+      merged[op.path] = op.content;
+    }
+  }
+
+  return merged;
+}

@@ -228,6 +228,12 @@ const ARTIFACTS: ArtifactDef[] = [
   }),
   catalogArtifact('portfolio', { sectionType: 'gallery', capabilities: [], category: 'content' }),
   catalogArtifact('offers', { sectionType: 'cta', capabilities: [], category: 'conversion' }),
+  catalogArtifact('availability', {
+    sectionType: 'contact',
+    capabilities: ['booking'],
+    category: 'conversion',
+    aiEditScope: 'layout',
+  }),
 
   // ── Business-profile backed ───────────────────────────────────────────────
   {
@@ -412,6 +418,51 @@ const ARTIFACTS: ArtifactDef[] = [
     toolbarActions: AUTHORED_TOOLBAR,
     aiEditScope: 'full',
   },
+  {
+    artifactId: 'logo-cloud',
+    name: 'Logo Cloud',
+    description: 'Partner, client or sponsor logo grid providing social proof',
+    sectionType: 'logo-cloud',
+    componentType: 'LogoCloudSection',
+    aliases: ['LogoCloud', 'LogoCloudSection', 'Logos', 'Partners', 'Clients', 'logo_cloud'],
+    category: 'social-proof',
+    dataSource: { kind: 'authored', minRows: 4, fallbackMode: 'hide_section' },
+    capabilities: [],
+    supportedSlots: ['logos.grid', 'logos.heading'],
+    intentBindings: ['nav.goto'],
+    toolbarActions: AUTHORED_TOOLBAR,
+    aiEditScope: 'full',
+  },
+  {
+    artifactId: 'blog-preview',
+    name: 'Blog Preview',
+    description: 'Recent articles, publications, or updates with reading links',
+    sectionType: 'blog-preview',
+    componentType: 'BlogPreviewSection',
+    aliases: ['BlogPreview', 'BlogSection', 'Articles', 'News', 'RecentPosts', 'blog_preview'],
+    category: 'content',
+    dataSource: { kind: 'authored', minRows: 3, fallbackMode: 'hide_section' },
+    capabilities: [],
+    supportedSlots: ['blog.list', 'blog.heading', 'blog.cta'],
+    intentBindings: ['nav.goto'],
+    toolbarActions: AUTHORED_TOOLBAR,
+    aiEditScope: 'full',
+  },
+  {
+    artifactId: 'before-after',
+    name: 'Before & After',
+    description: 'Visual transformation showcase highlighting client results',
+    sectionType: 'before-after',
+    componentType: 'BeforeAfterSection',
+    aliases: ['BeforeAfter', 'Transformation', 'Results', 'ComparisonGallery', 'before_after'],
+    category: 'content',
+    dataSource: { kind: 'authored', minRows: 2, fallbackMode: 'hide_section' },
+    capabilities: [],
+    supportedSlots: ['beforeAfter.grid', 'beforeAfter.heading'],
+    intentBindings: ['booking.create', 'quote.request'],
+    toolbarActions: AUTHORED_TOOLBAR,
+    aiEditScope: 'full',
+  },
 
   // ── Behavioral ────────────────────────────────────────────────────────────
   {
@@ -446,11 +497,15 @@ const ARTIFACTS: ArtifactDef[] = [
 const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s_-]+/g, '');
 
 const BY_KEY = new Map<string, ArtifactDef>();
+// Explicit artifactId always wins first
 for (const def of ARTIFACTS) {
-  const keys = [def.artifactId, def.componentType, def.sectionType, ...def.aliases];
+  BY_KEY.set(normalize(def.artifactId), def);
+}
+// Secondary keys (componentType, sectionType, aliases) register only if not already claimed
+for (const def of ARTIFACTS) {
+  const keys = [def.componentType, def.sectionType, ...def.aliases];
   for (const key of keys) {
     const k = normalize(key);
-    // First writer wins: an explicit artifactId always beats a shared alias.
     if (!BY_KEY.has(k)) BY_KEY.set(k, def);
   }
 }

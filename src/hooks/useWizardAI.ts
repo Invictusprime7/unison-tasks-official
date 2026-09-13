@@ -1,11 +1,7 @@
 /**
- * useWizardAI Hook
- * 
- * Bridges SystemLauncher wizard with AI execution system.
- * Provides simplified interface for multi-step AI operations during site generation
- * and allows wizard steps to trigger AI analysis, code generation, and optimization.
- * 
- * This hook wraps AITaskExecutor with wizard-specific context awareness.
+ * @deprecated Legacy hook for the retired SystemLauncher. Site generation
+ * runs deterministically through `runLaunchPipeline` in `launchOrchestrator.ts`.
+ * In-builder AI operations run through `builderBrainClient.ts`.
  */
 
 import { useState, useCallback, useRef } from 'react';

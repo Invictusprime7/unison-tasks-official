@@ -87,6 +87,14 @@ export const CATALOG_SURFACE_SUMMARY: EdgeSurfaceSummary[] = [
     supportedIntents: [],
     priceColumn: null,
   },
+  {
+    surfaceId: 'availability',
+    componentType: 'BookingAvailability',
+    sourceTable: 'availability_slots',
+    aliases: ['BookingAvailability', 'availability', 'availability_slots', 'slots'],
+    supportedIntents: ['booking.create'],
+    priceColumn: null,
+  },
 ];
 
 /**
@@ -136,6 +144,13 @@ export const CMS_RESOURCE_CONTRACTS: CmsResourceContract[] = [
     sourceTable: "portfolio_projects",
     sortField: "sort_order",
     editableFields: { title: "text", subtitle: "text", client_name: "text", external_url: "text", sort_order: "number", cover_image_url: "image", summary: "textarea", featured: "boolean" }, requiredFields: ["title"],
+  },
+  {
+    resource: "availability",
+    sourceTable: "availability_slots",
+    sortField: "starts_at",
+    editableFields: { starts_at: "text", ends_at: "text", is_booked: "boolean" },
+    requiredFields: ["starts_at", "ends_at"],
   },
 ];
 

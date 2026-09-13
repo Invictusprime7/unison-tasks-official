@@ -357,6 +357,11 @@ function collectViolations(dir) {
       for (const usage of findDeprecatedPagePruningUsages(text, full)) {
         violations.push({ file: rel, ...usage });
       }
+      if (rel === 'src/components/onboarding/wizard/LauncherWizard.tsx') {
+        for (const usage of findWizardRegistryMutationViolations(text, full)) {
+          violations.push({ file: rel, ...usage });
+        }
+      }
       if (rel === 'src/components/onboarding/SystemLauncher.tsx') {
         for (const usage of findWizardRegistryMutationViolations(text, full)) {
           violations.push({ file: rel, ...usage });

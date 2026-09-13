@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, Fingerprint, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCompositionById } from "@/sections/templates";
+import { getArtifact } from "@/platform/core/artifactRegistry";
 import {
   buildTemplateLayoutContract,
   type TemplateLayoutContract,
@@ -126,19 +127,30 @@ export const DesignContractInspector = ({
               Resolved implementations
             </div>
             <ul className="space-y-1">
-              {contract.sections.map((section) => (
-                <li
-                  key={section.id}
-                  className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] px-2 py-1"
-                >
-                  <span className="truncate text-[11px] text-white/70">
-                    {section.type}
-                  </span>
-                  <span className="shrink-0 font-mono text-[10px] text-cyan-300/60">
-                    {shorten(section.implementationId || section.variantId || "generic", 28)}
-                  </span>
-                </li>
-              ))}
+              {contract.sections.map((section) => {
+                const artifact = getArtifact(section.type);
+                const sourceKind = artifact?.dataSource.kind;
+                return (
+                  <li
+                    key={section.id}
+                    className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] px-2 py-1"
+                  >
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-[11px] text-white/70">
+                        {section.type}
+                      </span>
+                      {sourceKind && (
+                        <span className="rounded bg-white/[0.04] px-1 text-[9px] text-white/40">
+                          {sourceKind}
+                        </span>
+                      )}
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-cyan-300/60">
+                      {shorten(section.implementationId || section.variantId || "generic", 28)}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 

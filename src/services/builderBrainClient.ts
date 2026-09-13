@@ -380,14 +380,15 @@ export async function runBuilderTurn<TResponse = any>(
       }
     }
     const refreshedSession = await refreshBuilderSession(forceRefresh, rejectedToken);
-    if (!refreshedSession) return null;
+    if (!refreshedSession) return session?.access_token || null;
     if (await isTokenAcceptedByAuth(refreshedSession.access_token)) {
       return refreshedSession.access_token;
     }
-    // Irrecoverable local session (wrong project / rotated keys): evict it so
-    // the app can prompt for a fresh sign-in instead of replaying 401s.
+    // Fall back to existing token before giving up, rather than immediately signing out
+    if (session?.access_token && (expiresAt - Date.now() > 0)) {
+      return session.access_token;
+    }
     recentBuilderRefresh = null;
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
     return null;
   };
 
