@@ -32,15 +32,16 @@ export interface GatewayOverrides {
 // ── Model tiers ─────────────────────────────────────────────────────────────
 
 const MODELS = {
-  // Lovable AI Gateway models. Gemini Flash is much faster than GPT-5
-  // (which uses heavy reasoning + frequently times out at 50s).
-  geminiFlash: { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash" },
-  gemini25Flash: { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  geminiFlashLite: { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
-  geminiPro: { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  gpt4oMini: { id: "openai/gpt-5-mini", label: "GPT-5 Mini" },
-  gpt4o: { id: "openai/gpt-5", label: "GPT-5" },
+  // Lovable AI Gateway models (current catalog). Gemini Flash is much faster
+  // than the GPT-5 family, which uses heavy reasoning and can time out.
+  geminiFlash: { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+  gemini25Flash: { id: "google/gemini-3.6-flash", label: "Gemini 3.6 Flash" },
+  geminiFlashLite: { id: "google/gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite" },
+  geminiPro: { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+  gpt4oMini: { id: "openai/gpt-5.4-mini", label: "GPT-5.4 Mini" },
+  gpt4o: { id: "openai/gpt-5.4", label: "GPT-5.4" },
 } as const;
+
 
 function m(spec: typeof MODELS[keyof typeof MODELS], maxTokens: number): ModelSpec {
   return { id: spec.id, maxTokens, label: spec.label };
