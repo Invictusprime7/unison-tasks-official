@@ -1,0 +1,48 @@
+<svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    text { font-family: var(--font-sans); fill: var(--fg-primary); }
+    .lbl { font-size: 14px; font-weight: 480; }
+    .note { font-size: 12px; fill: var(--fg-secondary); }
+    .bx { fill: none; stroke: var(--fg-secondary); stroke-width: 1; }
+    .wire { stroke: var(--fg-secondary); stroke-width: 1; fill: none; }
+    .zone { fill: none; stroke: var(--border-translucent); stroke-width: 1; stroke-dasharray: 4 3; }
+  </style>
+  <defs>
+    <marker id="cv" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L8 4 L0 8" fill="none" stroke="var(--fg-secondary)" stroke-width="1"/>
+    </marker>
+  </defs>
+
+  <rect class="zone" x="12" y="16" width="300" height="90" rx="8"/>
+  <text class="note" x="24" y="36">today — here</text>
+  <rect class="bx" x="28" y="48" width="120" height="40" rx="8"/>
+  <text class="lbl" x="88" y="73" text-anchor="middle">Work in progress</text>
+  <rect class="bx" x="172" y="48" width="124" height="40" rx="8"/>
+  <text class="note" x="234" y="66" text-anchor="middle">no orchestrator</text>
+  <text class="note" x="234" y="81" text-anchor="middle">no Lane B service</text>
+
+  <rect class="zone" x="332" y="16" width="296" height="90" rx="8"/>
+  <text class="note" x="344" y="36">after your sync</text>
+  <rect x="348" y="48" width="264" height="40" rx="8" fill="var(--bg-accent-translucent)" stroke="var(--fg-accent)" stroke-width="1"/>
+  <text class="lbl" x="480" y="73" text-anchor="middle" style="fill: var(--fg-accent)">newer commit lands</text>
+
+  <path class="wire" d="M312 68 L344 68" marker-end="url(#cv)"/>
+
+  <rect class="bx" x="28" y="146" width="130" height="44" rx="8"/>
+  <text class="lbl" x="93" y="172" text-anchor="middle">Verify checks</text>
+  <rect class="bx" x="186" y="146" width="130" height="44" rx="8"/>
+  <text class="lbl" x="251" y="172" text-anchor="middle">Model switch</text>
+  <rect class="bx" x="344" y="146" width="130" height="44" rx="8"/>
+  <text class="lbl" x="409" y="172" text-anchor="middle">Session fix</text>
+  <rect class="bx" x="502" y="146" width="110" height="44" rx="8"/>
+  <text class="lbl" x="557" y="172" text-anchor="middle">Redeploy</text>
+
+  <path class="wire" d="M158 168 L186 168" marker-end="url(#cv)"/>
+  <path class="wire" d="M316 168 L344 168" marker-end="url(#cv)"/>
+  <path class="wire" d="M474 168 L502 168" marker-end="url(#cv)"/>
+  <path class="wire" d="M480 92 L480 140" marker-end="url(#cv)" stroke-dasharray="4 3"/>
+
+  <circle cx="34" cy="216" r="9" fill="var(--bg-accent-translucent)"/>
+  <text x="34" y="220" text-anchor="middle" style="font-size:11px; fill: var(--fg-accent)">1</text>
+  <text class="note" x="50" y="220">Nothing in the second row can start until the sync lands.</text>
+</svg>
