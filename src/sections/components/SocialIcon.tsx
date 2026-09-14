@@ -44,6 +44,9 @@ const XSvg: React.FC<{ size: number; color: string }> = ({ size, color }) => (
   </svg>
 );
 
+const isComponent = (comp: any): boolean =>
+  typeof comp === 'function' || (typeof comp === 'object' && comp !== null);
+
 export const SocialIcon: React.FC<SocialIconProps> = ({
   platform,
   size = 18,
@@ -53,40 +56,45 @@ export const SocialIcon: React.FC<SocialIconProps> = ({
   const key = (platform || '').toLowerCase().trim();
   const props = { size, className, color, 'aria-hidden': true } as const;
 
+  const fallbackGlobe = <Globe {...props} />;
+  const fallbackX = <span className={className}><XSvg size={size} color={color} /></span>;
+  const fallbackTikTok = <span className={className}><TikTokSvg size={size} color={color} /></span>;
+  const fallbackPinterest = <span className={className}><PinterestSvg size={size} color={color} /></span>;
+
   switch (key) {
     case 'instagram':
     case 'ig':
-      return <Instagram {...props} />;
+      return isComponent(Instagram) ? <Instagram {...props} /> : fallbackGlobe;
     case 'facebook':
     case 'fb':
     case 'meta':
-      return <Facebook {...props} />;
+      return isComponent(Facebook) ? <Facebook {...props} /> : fallbackGlobe;
     case 'twitter':
-      return <Twitter {...props} />;
+      return isComponent(Twitter) ? <Twitter {...props} /> : fallbackGlobe;
     case 'x':
     case 'x.com':
-      return <span className={className}><XSvg size={size} color={color} /></span>;
+      return fallbackX;
     case 'linkedin':
     case 'in':
-      return <Linkedin {...props} />;
+      return isComponent(Linkedin) ? <Linkedin {...props} /> : fallbackGlobe;
     case 'youtube':
     case 'yt':
-      return <Youtube {...props} />;
+      return isComponent(Youtube) ? <Youtube {...props} /> : fallbackGlobe;
     case 'github':
     case 'gh':
-      return <Github {...props} />;
+      return isComponent(Github) ? <Github {...props} /> : fallbackGlobe;
     case 'twitch':
-      return <Twitch {...props} />;
+      return isComponent(Twitch) ? <Twitch {...props} /> : fallbackGlobe;
     case 'dribbble':
-      return <Dribbble {...props} />;
+      return isComponent(Dribbble) ? <Dribbble {...props} /> : fallbackGlobe;
     case 'figma':
-      return <Figma {...props} />;
+      return isComponent(Figma) ? <Figma {...props} /> : fallbackGlobe;
     case 'tiktok':
-      return <span className={className}><TikTokSvg size={size} color={color} /></span>;
+      return fallbackTikTok;
     case 'pinterest':
-      return <span className={className}><PinterestSvg size={size} color={color} /></span>;
+      return fallbackPinterest;
     default:
-      return <Globe {...props} />;
+      return isComponent(Globe) ? <Globe {...props} /> : fallbackGlobe;
   }
 };
 
@@ -95,3 +103,5 @@ export const socialAriaLabel = (platform: string): string => {
   if (!key) return 'Social link';
   return `Visit our ${key.charAt(0).toUpperCase()}${key.slice(1)} page`;
 };
+
+export default SocialIcon;

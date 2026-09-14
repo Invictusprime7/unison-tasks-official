@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Loader2, Sparkle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Sparkle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,10 @@ import {
 } from "@/services/launch/launchRun";
 import { LaunchStageTimeline } from "./LaunchStageTimeline";
 import { DesignContractInspector } from "./DesignContractInspector";
+import {
+  classifyPromptForWizard,
+  type WizardPromptAnalysis,
+} from "./wizardPromptClassifier";
 import {
   getCompositionCardsForIndustry,
   getDefaultTemplateCardFor,
@@ -69,6 +73,15 @@ export interface LauncherWizardProps {
 
 const STEP_ORDER: WizardStep[] = ["industry", "questions", "templates", "aesthetic"];
 
+const PROMPT_PRESETS = [
+  { label: "🚀 SaaS Platform", prompt: "Developer SaaS platform named Apex with cloud APIs, tier pricing, and documentation" },
+  { label: "✂️ Salon & Spa", prompt: "Luxury boutique salon and spa named Studio Glow with online booking and lookbook gallery" },
+  { label: "🍽️ Bistro & Dining", prompt: "Farm-to-table bistro called Bella Tavola with seasonal dinner menu and reservations" },
+  { label: "🔨 Home Contractor", prompt: "Residential construction contractor named Forge Builders with project estimates and past work" },
+  { label: "🏠 Real Estate", prompt: "Modern real estate agency named Horizon Estates with luxury property listings" },
+  { label: "🛍️ E-Commerce Shop", prompt: "Streetwear fashion store with product catalog, cart, and instant checkout" },
+];
+
 export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardProps) => {
   const navigate = useNavigate();
   const { setLaunch } = useLaunch();
@@ -83,6 +96,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const [template, setTemplate] = useState<TemplateCardData | null>(null);
   const [theme, setTheme] = useState<ThemePreset | null>(THEME_PRESETS[0] ?? null);
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
+  const [visionPrompt, setVisionPrompt] = useState("");
+  const [aiAnalysis, setAiAnalysis] = useState<WizardPromptAnalysis | null>(null);
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
@@ -102,6 +117,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     setTemplate(null);
     setTheme(THEME_PRESETS[0] ?? null);
     setSocialLinks({});
+    setVisionPrompt("");
+    setAiAnalysis(null);
     setIsLaunching(false);
     setLaunchStatus("");
     setLaunchError(null);
@@ -109,6 +126,30 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     setProgress(null);
     latestProgressRef.current = null;
   }, []);
+
+  const handleVisionPromptChange = (value: string) => {
+    setVisionPrompt(value);
+    const analysis = classifyPromptForWizard(value);
+    setAiAnalysis(analysis);
+    if (analysis) {
+      setSelectedIndustry(analysis.industry);
+      setSystemId(analysis.systemId);
+      if (analysis.businessName && !businessName) {
+        setBusinessName(analysis.businessName);
+      }
+      setPrimaryGoal(analysis.primaryGoal);
+      setCustomerNeeds(analysis.customerNeeds);
+      setSelectedPages(analysis.selectedPages);
+      setTemplate(getDefaultTemplateCardForIndustry(analysis.industry));
+      const matchedTheme = THEME_PRESETS.find((p) => p.id === analysis.themePresetId);
+      if (matchedTheme) setTheme(matchedTheme);
+    }
+  };
+
+  const applyAiAnalysisAndContinue = () => {
+    if (!aiAnalysis) return;
+    setStep("questions");
+  };
 
   useEffect(() => {
     if (open && prefill?.businessName) setBusinessName(prefill.businessName);
@@ -319,35 +360,96 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
           <div className="min-w-0 space-y-4">
             {step === "industry" && (
               <>
-                <StepHeading
-                  title="What kind of business is this?"
-                  subtitle="Choose the real industry first. Unison will load its registered default composition, page contract, capabilities, and conversion journey."
-                />
+                <div className="relative overflow-hidden rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-950/30 via-slate-900/40 to-black/60 p-4 shadow-xl">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-cyan-400">
+                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-cyan-400" />
+                      <span>AI Vision & Lead-Gen Intake</span>
+                    </div>
+                    {aiAnalysis && (
+                      <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
+                        {Math.round(aiAnalysis.confidence * 100)}% Match: {aiAnalysis.industry}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mb-2.5 text-[11px] text-white/50">
+                    Describe your business, offerings, or audience. AI will extract your industry, recommend pages, goals, and canonical design architecture.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={visionPrompt}
+                      onChange={(e) => handleVisionPromptChange(e.target.value)}
+                      placeholder="e.g. Developer platform named Apex with cloud APIs, tier pricing, and documentation"
+                      className="h-9 border-white/10 bg-black/40 text-xs text-white placeholder:text-white/30"
+                    />
+                    {aiAnalysis && (
+                      <Button
+                        size="sm"
+                        onClick={applyAiAnalysisAndContinue}
+                        className="h-9 shrink-0 bg-cyan-500 px-3 text-xs font-semibold text-[#07080F] hover:bg-cyan-400"
+                      >
+                        Apply & Continue <ArrowRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] text-white/30">Try:</span>
+                    {PROMPT_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => handleVisionPromptChange(preset.prompt)}
+                        className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] text-white/60 transition-colors hover:border-cyan-400/30 hover:text-cyan-300"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="h-px flex-1 bg-white/[0.06]" />
+                  <span className="text-[10px] uppercase tracking-wider text-white/30">Or choose your industry</span>
+                  <div className="h-px flex-1 bg-white/[0.06]" />
+                </div>
+
                 <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {INDUSTRY_FOCUS_CARDS.map((card) => (
-                    <button
-                      key={card.industry}
-                      type="button"
-                      onClick={() => selectIndustry(card.industry, card.systemId)}
-                      className={cn(
-                        "group relative overflow-hidden rounded-xl border p-4 text-left transition-all",
-                        selectedIndustry === card.industry
-                          ? "border-cyan-400/40 bg-cyan-400/[0.06]"
-                          : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
-                      )}
-                    >
-                      <div className="relative">
-                        <div className="mb-1.5 text-xl">{card.icon}</div>
-                        <div className="text-sm font-semibold">{card.label}</div>
-                        <div className="mt-1 text-[11px] leading-4 text-white/35">{card.tagline}</div>
-                        {card.defaultTemplateId ? (
-                          <div className="mt-2 text-[9px] uppercase tracking-[0.12em] text-cyan-300/60">
-                            Registry default ready
+                  {INDUSTRY_FOCUS_CARDS.map((card) => {
+                    const isAiMatch = aiAnalysis?.industry === card.industry;
+                    return (
+                      <button
+                        key={card.industry}
+                        type="button"
+                        onClick={() => selectIndustry(card.industry, card.systemId)}
+                        className={cn(
+                          "group relative overflow-hidden rounded-xl border p-4 text-left transition-all",
+                          selectedIndustry === card.industry
+                            ? "border-cyan-400/40 bg-cyan-400/[0.06]"
+                            : isAiMatch
+                              ? "border-cyan-400/60 bg-cyan-400/[0.08] shadow-[0_0_20px_rgba(34,211,238,0.15)]"
+                              : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
+                        )}
+                      >
+                        <div className="relative">
+                          <div className="flex items-center justify-between">
+                            <div className="mb-1.5 text-xl">{card.icon}</div>
+                            {isAiMatch && (
+                              <span className="rounded-full bg-cyan-400/20 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300">
+                                ✨ AI Pick
+                              </span>
+                            )}
                           </div>
-                        ) : null}
-                      </div>
-                    </button>
-                  ))}
+                          <div className="text-sm font-semibold">{card.label}</div>
+                          <div className="mt-1 text-[11px] leading-4 text-white/35">{card.tagline}</div>
+                          {card.defaultTemplateId ? (
+                            <div className="mt-2 text-[9px] uppercase tracking-[0.12em] text-cyan-300/60">
+                              Registry default ready
+                            </div>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
                   <ImportProjectZipButton onImported={() => onOpenChange(false)} />

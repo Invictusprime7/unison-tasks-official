@@ -192,34 +192,72 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
 const SOCIAL_ICON_MODULE = `import React from 'react';
 import { Instagram, Facebook, Twitter, Linkedin, Youtube, Github, Twitch, Dribbble, Figma, Globe } from '@/unison/ui/icons';
 
-interface SocialIconProps {
+export interface SocialIconProps {
   platform: string;
   size?: number;
+  className?: string;
+  color?: string;
 }
 
-export default function SocialIcon({ platform, size = 16 }: SocialIconProps) {
+const isComponent = (comp: any): boolean =>
+  typeof comp === 'function' || (typeof comp === 'object' && comp !== null);
+
+export function SocialIcon({ platform, size = 16, className, color }: SocialIconProps) {
   const key = String(platform || '').toLowerCase().trim();
-  const common = { size, 'aria-hidden': true } as const;
-  if (key === 'instagram' || key === 'ig') return <Instagram {...common} />;
-  if (key === 'facebook' || key === 'fb' || key === 'meta') return <Facebook {...common} />;
-  if (key === 'twitter') return <Twitter {...common} />;
-  if (key === 'x' || key === 'x.com') return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2H21l-6.52 7.45L22 22h-6.83l-4.79-6.27L4.8 22H2l6.97-7.97L2 2h6.91l4.34 5.75L18.24 2zm-1.2 18h1.66L7.05 4H5.27l11.77 16z"/></svg>
+  const common = { size, className, color, 'aria-hidden': true } as const;
+
+  const fallbackGlobe = (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+    </svg>
   );
-  if (key === 'linkedin' || key === 'in') return <Linkedin {...common} />;
-  if (key === 'youtube' || key === 'yt') return <Youtube {...common} />;
-  if (key === 'github' || key === 'gh') return <Github {...common} />;
-  if (key === 'twitch') return <Twitch {...common} />;
-  if (key === 'dribbble') return <Dribbble {...common} />;
-  if (key === 'figma') return <Figma {...common} />;
-  if (key === 'tiktok') return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.83a8.16 8.16 0 0 0 4.77 1.52V6.94a4.85 4.85 0 0 1-1.84-.25z"/></svg>
+
+  const fallbackX = (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color || "currentColor"} aria-hidden="true" className={className}><path d="M18.244 2H21l-6.52 7.45L22 22h-6.83l-4.79-6.27L4.8 22H2l6.97-7.97L2 2h6.91l4.34 5.75L18.24 2zm-1.2 18h1.66L7.05 4H5.27l11.77 16z"/></svg>
   );
-  if (key === 'pinterest') return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0a12 12 0 0 0-4.37 23.17c-.06-.94-.11-2.38.02-3.4.12-.93 1.27-5.93 1.27-5.93s-.32-.65-.32-1.6c0-1.5.87-2.62 1.95-2.62.92 0 1.36.69 1.36 1.51 0 .92-.59 2.3-.89 3.58-.25 1.07.54 1.95 1.6 1.95 1.92 0 3.4-2.03 3.4-4.95 0-2.59-1.86-4.4-4.52-4.4-3.08 0-4.89 2.31-4.89 4.7 0 .93.36 1.93.81 2.47.09.11.1.2.07.32-.08.34-.27 1.07-.31 1.22-.05.2-.16.24-.37.15-1.38-.64-2.25-2.66-2.25-4.28 0-3.49 2.53-6.69 7.3-6.69 3.83 0 6.81 2.73 6.81 6.38 0 3.81-2.4 6.87-5.74 6.87-1.12 0-2.18-.58-2.54-1.27 0 0-.55 2.11-.69 2.62-.25.96-.93 2.17-1.39 2.9A12 12 0 1 0 12 0z"/></svg>
+
+  const fallbackTikTok = (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color || "currentColor"} aria-hidden="true" className={className}><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.83a8.16 8.16 0 0 0 4.77 1.52V6.94a4.85 4.85 0 0 1-1.84-.25z"/></svg>
   );
-  return <Globe {...common} />;
+
+  const fallbackPinterest = (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color || "currentColor"} aria-hidden="true" className={className}><path d="M12 0a12 12 0 0 0-4.37 23.17c-.06-.94-.11-2.38.02-3.4.12-.93 1.27-5.93 1.27-5.93s-.32-.65-.32-1.6c0-1.5.87-2.62 1.95-2.62.92 0 1.36.69 1.36 1.51 0 .92-.59 2.3-.89 3.58-.25 1.07.54 1.95 1.6 1.95 1.92 0 3.4-2.03 3.4-4.95 0-2.59-1.86-4.4-4.52-4.4-3.08 0-4.89 2.31-4.89 4.7 0 .93.36 1.93.81 2.47.09.11.1.2.07.32-.08.34-.27 1.07-.31 1.22-.05.2-.16.24-.37.15-1.38-.64-2.25-2.66-2.25-4.28 0-3.49 2.53-6.69 7.3-6.69 3.83 0 6.81 2.73 6.81 6.38 0 3.81-2.4 6.87-5.74 6.87-1.12 0-2.18-.58-2.54-1.27 0 0-.55 2.11-.69 2.62-.25.96-.93 2.17-1.39 2.9A12 12 0 1 0 12 0z"/></svg>
+  );
+
+  const fallbackGithub = (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+  );
+
+  const fallbackLinkedin = (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+  );
+
+  const fallbackTwitter = (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+  );
+
+  if (key === 'instagram' || key === 'ig') return isComponent(Instagram) ? <Instagram {...common} /> : fallbackGlobe;
+  if (key === 'facebook' || key === 'fb' || key === 'meta') return isComponent(Facebook) ? <Facebook {...common} /> : fallbackGlobe;
+  if (key === 'twitter') return isComponent(Twitter) ? <Twitter {...common} /> : fallbackTwitter;
+  if (key === 'x' || key === 'x.com') return fallbackX;
+  if (key === 'linkedin' || key === 'in') return isComponent(Linkedin) ? <Linkedin {...common} /> : fallbackLinkedin;
+  if (key === 'youtube' || key === 'yt') return isComponent(Youtube) ? <Youtube {...common} /> : fallbackGlobe;
+  if (key === 'github' || key === 'gh') return isComponent(Github) ? <Github {...common} /> : fallbackGithub;
+  if (key === 'twitch') return isComponent(Twitch) ? <Twitch {...common} /> : fallbackGlobe;
+  if (key === 'dribbble') return isComponent(Dribbble) ? <Dribbble {...common} /> : fallbackGlobe;
+  if (key === 'figma') return isComponent(Figma) ? <Figma {...common} /> : fallbackGlobe;
+  if (key === 'tiktok') return fallbackTikTok;
+  if (key === 'pinterest') return fallbackPinterest;
+  return isComponent(Globe) ? <Globe {...common} /> : fallbackGlobe;
 }
+
+export function socialAriaLabel(platform: string): string {
+  const key = String(platform || '').toLowerCase().trim();
+  if (!key) return 'Social link';
+  return 'Visit our ' + key.charAt(0).toUpperCase() + key.slice(1) + ' page';
+}
+
+export default SocialIcon;
 `;
 
 const NAVBAR_MODULE = `import React from 'react';
@@ -290,7 +328,7 @@ const outlineButtonClass = 'inline-flex items-center justify-center rounded-[var
 export default function Hero({ props }: { props: any }) {
   const { headline, subheadline, description, ctas = [], badge, stats, layout = 'centered', image, backgroundImage } = props;
   if (layout === 'page-title' || layout === 'editorial-banner') return <HeroPageIntro props={props} />;
-  const split = layout === 'split';
+  const split = layout === 'split' || layout === 'split-image';
   const fullBleed = layout === 'full-bleed';
   const media = image || backgroundImage;
   const content = <>
@@ -342,9 +380,11 @@ const buttonClass = 'mt-4 inline-flex items-center justify-center rounded-[var(-
 
 export default function Services({ props }: { props: any }) {
   const { headline, subheadline, items = [], layout = 'grid' } = props;
-  const intro = <>{headline && <div className={(layout === 'alternating' ? 'text-left' : 'text-center') + ' mb-12'}><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className={(layout === 'alternating' ? '' : 'mx-auto ') + 'max-w-2xl font-body text-lg text-muted-foreground'}>{subheadline}</p>}</div>}</>;
+  const isAlternating = layout === 'alternating';
+  const isList = layout === 'list' || layout === 'compact-list';
+  const intro = <>{headline && <div className={(isAlternating ? 'text-left' : 'text-center') + ' mb-12'}><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className={(isAlternating ? '' : 'mx-auto ') + 'max-w-2xl font-body text-lg text-muted-foreground'}>{subheadline}</p>}</div>}</>;
 
-  if (layout === 'alternating') {
+  if (isAlternating) {
     return (
       <section data-ut-variant="services:alternating" className="bg-background py-24">
         <div className={shellClass}>
@@ -368,7 +408,7 @@ export default function Services({ props }: { props: any }) {
     );
   }
 
-  if (layout === 'list') {
+  if (isList) {
     return (
       <section data-ut-variant="services:compact-list" className="bg-muted py-24">
         <div className="mx-auto w-full max-w-4xl px-5 sm:px-8">
@@ -472,7 +512,9 @@ const outlineButtonClass = 'inline-flex items-center justify-center rounded-[var
 
 export default function CTA({ props }: { props: any }) {
   const { headline, description, ctas = [], layout = 'centered', backgroundImage } = props;
-  if (layout === 'split') {
+  const isSplit = layout === 'split' || layout === 'split-card';
+  const isBanner = layout === 'banner' || layout === 'gradient-banner';
+  if (isSplit) {
     return (
       <section data-ut-variant="cta:split-card" className="bg-background py-24">
         <div className="relative mx-auto grid w-[var(--ut-shell-width)] items-center gap-8 overflow-hidden rounded-[var(--radius)] bg-foreground p-8 text-background sm:p-16 md:grid-cols-2">
@@ -483,9 +525,9 @@ export default function CTA({ props }: { props: any }) {
       </section>
     );
   }
-  if (layout === 'banner') {
+  if (isBanner) {
     return (
-      <section data-ut-variant="cta:banner" className="relative overflow-hidden bg-primary py-24 text-center text-primary-foreground">
+      <section data-ut-variant="cta:gradient-banner" className="relative overflow-hidden bg-primary py-24 text-center text-primary-foreground">
         {backgroundImage && <img src={backgroundImage} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
         <div className="relative mx-auto w-full max-w-7xl px-5 sm:px-8"><h2 className="mb-4 font-heading text-3xl font-semibold sm:text-5xl">{headline}</h2>{description && <p className="mx-auto mb-8 max-w-2xl font-body text-lg text-primary-foreground/85">{description}</p>}<div className="flex flex-wrap justify-center gap-4">{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? outlineButtonClass + ' border-primary-foreground/60 text-primary-foreground hover:bg-primary-foreground/10' : primaryButtonClass + ' bg-primary-foreground text-primary'}>{cta.label}</a>)}</div></div>
       </section>
@@ -1434,6 +1476,21 @@ const SECTIONS = ${sectionsJson};
 const HYDRATABLE = new Set(${hydratableJson});
 ${enhancements.source}
 
+class SectionErrorBoundary extends React.Component<{ sectionId: string; children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err: any) {
+    console.warn('[SectionErrorBoundary] Section failed to render:', this.props.sectionId, err);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 /**
  * Renders a single section. Live-catalog section types subscribe to
  * useSectionData; when the host resolves rows, they override the seeded
@@ -1441,9 +1498,13 @@ ${enhancements.source}
  */
 function RenderedSection({ section, occurrence }: { section: any; occurrence: number }) {
   const C = SECTION_MAP[section.id] || SECTION_MAP[section.type];
+  if (!C || (typeof C !== 'function' && typeof C !== 'object')) {
+    console.warn('[RenderedSection] Invalid or missing component for section:', section.id, section.type);
+    return null;
+  }
+
   const isHydratable = HYDRATABLE.has(section.type);
   const hydration = useSectionData(section.id, isHydratable ? section.type : undefined, occurrence);
-  if (!C) return null;
 
   let props = section.props;
   let hidden = false;
@@ -1463,18 +1524,20 @@ function RenderedSection({ section, occurrence }: { section: any; occurrence: nu
         ? 'centered-frame'
         : 'text-only';
   return (
-    <div
-      data-ut-section-id={section.id}
-      ${enhancements.source ? "className={section.type !== 'navbar' && section.type !== 'footer' ? 'relative isolate' : undefined}" : ''}
-      data-ut-composition-id={${JSON.stringify(template.compositionAlternativeId || null)}}
-      data-ut-section-type={section.type}
-      data-ut-variant={section.variantId || undefined}
-      data-ut-layout={layoutToken || undefined}
-      data-ut-media-treatment={section.type === 'hero' ? mediaTreatment : undefined}
-      data-ut-hydration={isHydratable ? (hydration.loading ? 'loading' : (hydration.rows ? 'live' : 'seed')) : undefined}
-    >
-      ${enhancements.source ? '{enhanceSection(section, props, <C props={props} variantId={section.variantId} />)}' : '<C props={props} variantId={section.variantId} />'}
-    </div>
+    <SectionErrorBoundary sectionId={section.id}>
+      <div
+        data-ut-section-id={section.id}
+        ${enhancements.source ? "className={section.type !== 'navbar' && section.type !== 'footer' ? 'relative isolate' : undefined}" : ''}
+        data-ut-composition-id={${JSON.stringify(template.compositionAlternativeId || null)}}
+        data-ut-section-type={section.type}
+        data-ut-variant={section.variantId || undefined}
+        data-ut-layout={layoutToken || undefined}
+        data-ut-media-treatment={section.type === 'hero' ? mediaTreatment : undefined}
+        data-ut-hydration={isHydratable ? (hydration.loading ? 'loading' : (hydration.rows ? 'live' : 'seed')) : undefined}
+      >
+        ${enhancements.source ? '{enhanceSection(section, props, <C props={props} variantId={section.variantId} />)}' : '<C props={props} variantId={section.variantId} />'}
+      </div>
+    </SectionErrorBoundary>
   );
 }
 
@@ -1584,9 +1647,7 @@ export function compositionToReactFileSet(
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;
   }
-  if (sectionMap.components.has('Footer')) {
-    files[SOCIAL_PATH] = SOCIAL_ICON_MODULE;
-  }
+  files[SOCIAL_PATH] = SOCIAL_ICON_MODULE;
   composition.compilerOwnership = Object.fromEntries(Object.entries(files)
     .filter(([path]) => /\.[jt]sx?$/.test(path))
     .map(([path, source]) => [path, compilerOwnershipHash(source)]));

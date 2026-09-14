@@ -441,6 +441,11 @@ export const Facebook = brandIcon('Facebook');
 export const Linkedin = brandIcon('Linkedin');
 export const Youtube = brandIcon('Youtube');
 export const Twitter = brandIcon('Twitter');
+export const Github = brandIcon('Github');
+export const Twitch = brandIcon('Twitch');
+export const Dribbble = brandIcon('Dribbble');
+export const Figma = brandIcon('Figma');
+export const Globe = brandIcon('Globe');
 `,
     '/src/unison/ui/zod.ts': `${marker}
 export * from 'zod';

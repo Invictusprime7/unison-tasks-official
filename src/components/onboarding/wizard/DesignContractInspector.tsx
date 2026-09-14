@@ -10,10 +10,11 @@
  */
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Fingerprint, Layers } from "lucide-react";
+import { ChevronDown, Fingerprint, Layers, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCompositionById } from "@/sections/templates";
 import { getArtifact } from "@/platform/core/artifactRegistry";
+import { resolveArtDirectionPack } from "@/sections/variants";
 import {
   buildTemplateLayoutContract,
   type TemplateLayoutContract,
@@ -55,6 +56,14 @@ export const DesignContractInspector = ({
 
   const style = useMemo(() => generateStyleVariation(seed), [seed]);
   const planSignature = useMemo(() => designPlanSignature(seed), [seed]);
+  const pack = useMemo(() => {
+    if (!contract?.industry) return null;
+    try {
+      return resolveArtDirectionPack({ industry: contract.industry, seed });
+    } catch {
+      return null;
+    }
+  }, [contract?.industry, seed]);
 
   if (!contract) {
     return (
@@ -105,6 +114,8 @@ export const DesignContractInspector = ({
             {[
               ["Template", contract.templateId],
               ["Industry", contract.industry],
+              ["Aesthetic pack", pack ? pack.name : "Default"],
+              ["Motion profile", pack ? pack.motionProfile : "standard"],
               ["Plan signature", planSignature],
               ["Contract signature", (contract.contractSignature || "").slice(0, 16)],
               ["Hero posture", style.layout.hero_style],
