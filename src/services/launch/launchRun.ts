@@ -54,12 +54,12 @@ export interface LaunchRunSnapshot {
 }
 
 export const LAUNCH_STAGE_LABELS: Record<LaunchStageName, string> = {
-  plan: 'Planning your site structure',
-  seed: 'Building your themed scaffold',
-  enrich: 'Finalizing your page content',
-  preflight: 'Checking every page compiles',
-  commit: 'Saving your project',
-  handoff: 'Opening the builder',
+  plan: 'Designing your site layout',
+  seed: 'Styling your brand & colors',
+  enrich: 'AI crafting bespoke content',
+  preflight: 'Polishing interactive details',
+  commit: 'Building your live workspace',
+  handoff: 'Opening your visual studio',
 };
 
 const DEFAULT_STAGE_TIMEOUTS: Record<LaunchStageName, number> = {

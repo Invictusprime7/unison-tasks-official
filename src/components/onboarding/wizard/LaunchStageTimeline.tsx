@@ -6,7 +6,7 @@
  * only place the wizard reports pipeline progress — no toasts, no hidden work.
  */
 
-import { Check, Loader2, AlertTriangle, X, Circle } from "lucide-react";
+import { Check, Loader2, AlertCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   LaunchRunSnapshot,
@@ -15,35 +15,35 @@ import type {
 } from "@/services/launch/launchRun";
 
 const STAGE_HINT: Record<string, string> = {
-  plan: "Resolving topology, pages and business capabilities",
-  seed: "Compiling the deterministic themed site from your selections",
-  enrich: "Finalizing page copy, media and metadata from your selections",
-  preflight: "Type, import, route, intent and presentation gates",
-  commit: "Sealing the snapshot and saving a revision",
-  handoff: "Opening the builder on the sealed revision",
+  plan: "Curating your pages, navigation, and customer journey",
+  seed: "Setting up your visual theme, custom fonts, and palette",
+  enrich: "Writing tailored copy, lookbook imagery, and layout vibes",
+  preflight: "Checking every button, form, and animation for perfection",
+  commit: "Saving your project so you can edit and share it anytime",
+  handoff: "Get ready to see and customize your new website!",
 };
 
 function statusIcon(status: LaunchStageStatus) {
   switch (status) {
     case "done":
-      return <Check className="h-3 w-3" />;
+      return <Check className="h-3 w-3 stroke-[2.5]" />;
     case "active":
-      return <Loader2 className="h-3 w-3 animate-spin" />;
+      return <Loader2 className="h-3 w-3 animate-spin text-cyan-200" />;
     case "degraded":
-      return <AlertTriangle className="h-3 w-3" />;
+      return <Sparkles className="h-3 w-3 text-amber-300" />;
     case "failed":
-      return <X className="h-3 w-3" />;
+      return <AlertCircle className="h-3 w-3 text-rose-300" />;
     default:
-      return <Circle className="h-2 w-2" />;
+      return <div className="h-1.5 w-1.5 rounded-full bg-white/20" />;
   }
 }
 
 function statusRing(status: LaunchStageStatus) {
   switch (status) {
     case "done":
-      return "bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/30";
+      return "bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.2)]";
     case "active":
-      return "bg-cyan-500 text-[#07080F] ring-1 ring-cyan-300/60";
+      return "bg-gradient-to-r from-cyan-500 to-blue-500 text-[#07080F] ring-2 ring-cyan-300/80 shadow-[0_0_20px_rgba(34,211,238,0.4)] animate-pulse";
     case "degraded":
       return "bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/30";
     case "failed":
@@ -75,17 +75,18 @@ export const LaunchStageTimeline = ({
   return (
     <div
       className={cn(
-        "rounded-xl border border-white/[0.06] bg-white/[0.02] p-4",
+        "relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-[#0c0f1d] to-[#07080f] p-5 shadow-2xl backdrop-blur-xl",
         className,
       )}
     >
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div>
-          <div className="text-xs font-semibold tracking-tight text-white/80">
-            Generation pipeline
+          <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-cyan-400">
+            <Sparkles className="h-3.5 w-3.5 animate-pulse text-cyan-400" />
+            <span>AI Design Studio</span>
           </div>
-          <div className="text-[11px] text-white/35">
-            {statusText || "Canonical launch stages"}
+          <div className="text-[11px] text-white/50">
+            {statusText || "Crafting your website from your vision"}
           </div>
         </div>
         {snapshot.degradations.length > 0 && (
@@ -96,14 +97,22 @@ export const LaunchStageTimeline = ({
         )}
       </div>
 
-      <ol className="space-y-1.5">
+      <ol className="space-y-3">
         {snapshot.stages.map((stage) => {
           const time = duration(stage);
+          const isActive = stage.status === "active";
+          const isDone = stage.status === "done";
           return (
-            <li key={stage.name} className="flex items-start gap-2.5">
+            <li
+              key={stage.name}
+              className={cn(
+                "flex items-start gap-3 rounded-xl p-2 transition-all duration-300",
+                isActive && "bg-cyan-950/30 ring-1 ring-cyan-500/20",
+              )}
+            >
               <span
                 className={cn(
-                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors",
+                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300",
                   statusRing(stage.status),
                 )}
               >
@@ -113,8 +122,12 @@ export const LaunchStageTimeline = ({
                 <div className="flex items-baseline justify-between gap-2">
                   <span
                     className={cn(
-                      "truncate text-[12px] leading-tight",
-                      stage.status === "pending" ? "text-white/30" : "text-white/80",
+                      "text-[12px] font-medium leading-tight",
+                      isActive
+                        ? "text-cyan-200 font-semibold"
+                        : isDone
+                          ? "text-white/90"
+                          : "text-white/30",
                     )}
                   >
                     {stage.label}
@@ -125,7 +138,7 @@ export const LaunchStageTimeline = ({
                     </span>
                   )}
                 </div>
-                <div className="truncate text-[10px] text-white/25">
+                <div className="mt-0.5 text-[10px] leading-relaxed text-white/40">
                   {STAGE_HINT[stage.name]}
                 </div>
               </div>
@@ -141,7 +154,7 @@ export const LaunchStageTimeline = ({
               key={`${degradation.code}-${index}`}
               className="flex items-start gap-2 text-[11px] text-amber-200/70"
             >
-              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
               <span className="min-w-0">
                 <span className="font-mono text-[10px] text-amber-300/60">
                   {degradation.code}

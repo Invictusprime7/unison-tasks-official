@@ -405,6 +405,61 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                       </button>
                     ))}
                   </div>
+
+                  {aiAnalysis && (
+                    <div className="mt-3.5 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-3.5 shadow-lg backdrop-blur-md">
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
+                          <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                          <span>AI Blueprint Ready</span>
+                        </div>
+                        <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[9px] font-semibold text-cyan-300">
+                          ✨ Tap to build
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <div className="rounded-lg border border-white/[0.08] bg-black/40 p-2">
+                          <div className="text-[9px] uppercase tracking-wider text-white/40">Brand & Category</div>
+                          <div className="mt-0.5 truncate text-xs font-semibold text-white">{businessName || aiAnalysis.businessName || "Your Brand"}</div>
+                          <div className="text-[10px] capitalize text-cyan-400">{aiAnalysis.industry}</div>
+                        </div>
+                        <div className="rounded-lg border border-white/[0.08] bg-black/40 p-2">
+                          <div className="text-[9px] uppercase tracking-wider text-white/40">Pages & Flow</div>
+                          <div className="mt-0.5 flex flex-wrap gap-1">
+                            {["Home", ...aiAnalysis.selectedPages].slice(0, 3).map((p) => (
+                              <span key={p} className="rounded bg-white/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-white/80 capitalize">
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-white/[0.08] bg-black/40 p-2">
+                          <div className="text-[9px] uppercase tracking-wider text-white/40">Style Vibe</div>
+                          <div className="mt-0.5 text-xs font-semibold capitalize text-white">{theme?.label || "Organic"}</div>
+                          <div className="text-[10px] text-white/40">Custom fonts & geometry</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/[0.06] pt-2.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={applyAiAnalysisAndContinue}
+                          className="h-7 text-xs text-white/60 hover:text-white"
+                        >
+                          Customize Details
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleGenerate}
+                          disabled={isLaunching || !systemId || !effectiveTemplate || !theme}
+                          className="h-7 bg-gradient-to-r from-cyan-500 to-blue-500 px-3 text-xs font-semibold text-[#07080F] shadow-md hover:from-cyan-400 hover:to-blue-400"
+                        >
+                          <Sparkles className="mr-1 h-3 w-3" />
+                          Launch Site Now
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 pt-1">
