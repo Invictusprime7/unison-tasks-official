@@ -2,6 +2,7 @@
 // Classifies incoming requests into task types for routing and optimization.
 
 export type AssistantTaskType =
+  | "theme_edit"
   | "wizard_seed_generation"
   | "wizard_canonical_enrichment"
   | "wizard_interaction_enrichment"
@@ -66,6 +67,8 @@ export function classifyTask(opts: {
     launchBrief,
     wizardSeed,
   } = opts;
+
+  if (mode === 'theme-edit') return { type: 'theme_edit', fastPath: true, shouldUseMemory: false, shouldUseCompactContext: true, prefersJsonOutput: true, skipResearch: true, skipThinking: true };
 
   // ── Legacy wizard-seed compatibility route. The deterministic Launcher no
   //    longer calls this mode; Stage 4b owns launch page authorship. Keep this

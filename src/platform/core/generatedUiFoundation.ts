@@ -1,3 +1,4 @@
+import { normalizeImageCompatibility } from '@/utils/imageCompatibility';
 import { isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 import {
   RADIX_STYLE_RECIPE_VERSION,
@@ -28,8 +29,8 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.7' as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6']);
+export const GENERATED_UI_FOUNDATION_VERSION = '1.8' as const;
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7']);
 
 export type GeneratedUiLayoutRecipe =
   | 'floating-navbar'
@@ -176,6 +177,16 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   '  - <Panel tone="surface|gradient|outline|plain" interactive?={boolean} padded?={boolean}>',
   '  - <MediaFrame src alt ratio="media|hero|square" loading? overlay?>',
   '  - <FeaturePanel title description? icon? media? actions?> — the standard offering/feature card.',
+  '  - <BentoFeatureGrid> — high-fidelity Framer-style feature card arrangement.',
+  'Motion & Micro-interactions — "@/unison/ui/motion":',
+  '  - <Reveal recipe="editorial-reveal"> — entrance reveal animations for headers and key bands.',
+  '  - <StaggerGroup> + <StaggerItem> — staggered cascade entrance for cards and grids.',
+  '  - <MarqueeBand speed="slow|normal|fast" direction="left|right"> — moving ticker ribbon for trust badges, reviews, logos.',
+  '  - <HoverDepth scale={1.02} liftAmount={8}> — smooth depth lift and scale interaction on interactive cards.',
+  'Forms & Actions — "@/unison/ui/forms":',
+  '  - Frame all forms inside a <Panel> with <FormGrid columns={2}>. Never leave uncontained inputs at the top of a page.',
+  '  - Every submit button or interactive link MUST retain data-ut-intent="[intent.name]" (e.g. contact.submit, booking.create).',
+  'Section Hierarchy Rule: Band 1 is always Hero with exactly ONE <h1>. Content bands (features, services, bento grids) follow Hero. Form/action bands precede Footer. Footer is always the final band.',
   'Rules: exactly ONE <h1> per page (a single <Heading level={1}>). Use <Section> for every band and <Container> inside it. Pass className only for standard Tailwind scale utilities or var(--ut-*)/var(--radius) arbitrary values — never a raw px/rem/vh/vw/#hex literal.',
 ].join('\n');
 
@@ -544,7 +555,7 @@ export { Panel, MediaFrame, FeaturePanel, type PanelProps, type PanelTone, type 
 export { FieldLabel, Label, FormLabel, Input, TextInput, Textarea, TextArea, Select, Checkbox, FormField, FormFields, FormGrid, FormHint, FormError, Form, FormItem, FormControl, FormDescription, FormMessage } from './form-fields';
 export { useForm, useFormContext, useFieldArray, Controller, zodResolver, z } from './forms';
 export { Icon } from './icon';
-export { Image, ImageLightbox, type ImageProps } from './media';
+export { Image, ImageLightbox, type ImageProps, type ImageSource, type StaticImageData } from './media';
 export { Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, type MotionRecipe } from './motion';
 export { FloatingNavbar, type NavigationLink } from './navigation';
 export { BentoFeatureGrid, FeatureCard } from './recipes';
@@ -611,7 +622,7 @@ export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDiv
 }
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn('text-xl font-semibold leading-none tracking-tight', className)} {...props} />;
+  return <h3 className={cn('text-xl font-[number:var(--ut-weight-display)] leading-none tracking-tight', className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
@@ -799,7 +810,7 @@ export type HeadingSize = 'display' | 'title' | 'subtitle';
 const headingSize: Record<HeadingSize, string> = {
   display: 'text-[length:var(--ut-type-display)] leading-[var(--ut-display-leading)] font-[number:var(--ut-weight-display)]',
   title: 'text-[length:var(--ut-type-title)] leading-tight font-[number:var(--ut-weight-display)]',
-  subtitle: 'text-xl font-semibold leading-snug',
+  subtitle: 'text-xl font-[number:var(--ut-weight-display)] leading-snug',
 };
 
 export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
@@ -914,6 +925,7 @@ export function SectionHeader({ eyebrow, title, lead, align = 'start', level = 2
 `,
     '/src/unison/ui/surface.tsx': `${marker}
 import * as React from 'react';
+import { Image } from './media';
 import { cn } from './cn';
 
 /**
@@ -980,7 +992,7 @@ export function MediaFrame({ src, alt, ratio = 'media', loading = 'lazy', overla
       )}
       {...props}
     >
-      <img src={src} alt={alt} loading={loading} className="size-full object-cover [filter:var(--ut-media-filter)]" />
+      <Image src={src} alt={alt} loading={loading} className="size-full object-cover [filter:var(--ut-media-filter)]" />
       {overlay && <div className="absolute inset-0">{overlay}</div>}
     </div>
   );
@@ -1001,7 +1013,7 @@ export function FeaturePanel({ title, description, icon, media, actions, classNa
       {media}
       {icon && <span className="inline-flex size-11 items-center justify-center rounded-[var(--ut-radius-base)] bg-accent text-accent-foreground">{icon}</span>}
       <div className="flex flex-col gap-2">
-        <h3 className="font-heading text-lg font-semibold text-foreground">{title}</h3>
+        <h3 className="font-heading text-lg font-[number:var(--ut-weight-display)] text-foreground">{title}</h3>
         {description && <p className="text-sm leading-6 text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="mt-auto flex flex-wrap gap-2 pt-2">{actions}</div>}
@@ -1100,36 +1112,57 @@ import * as Dialog from './radix/dialog';
 import { Expand } from './icons';
 import { cn } from './cn';
 
-export interface ImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'children'> {
+export interface StaticImageData { src: string; width: number; height: number; blurDataURL?: string }
+export type ImageSource = string | Partial<StaticImageData> | { default: string | Partial<StaticImageData> };
+export interface ImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'children' | 'src'> {
+  src?: ImageSource | null;
+  children?: React.ReactNode;
   ratio?: string;
   fill?: boolean;
   priority?: boolean;
+  layout?: 'fill' | 'responsive' | 'intrinsic' | 'fixed';
+  objectFit?: React.CSSProperties['objectFit'];
+  objectPosition?: React.CSSProperties['objectPosition'];
+  placeholder?: string;
+  blurDataURL?: string;
+  quality?: number;
+  unoptimized?: boolean;
+  loader?: unknown;
+  onLoadingComplete?: (image: HTMLImageElement) => void;
+}
+
+export function resolveImageSource(value: ImageProps['src']): Partial<StaticImageData> {
+  const asset = value && typeof value === 'object' && 'default' in value ? value.default : value;
+  if (typeof asset === 'string') return { src: asset.trim() || undefined };
+  if (!asset || typeof asset !== 'object' || typeof asset.src !== 'string') return {};
+  return { src: asset.src.trim() || undefined, width: Number(asset.width) > 0 ? Number(asset.width) : undefined, height: Number(asset.height) > 0 ? Number(asset.height) : undefined };
 }
 
 export const Image = React.forwardRef<HTMLImageElement, ImageProps>(
-  ({ ratio = '4/3', fill = false, priority = false, alt = '', className, loading, style, ...props }, ref) => (
-    <img
-      ref={ref}
-      {...props}
-      alt={alt}
-      loading={priority ? 'eager' : loading}
-      fetchPriority={priority ? 'high' : undefined}
-      decoding="async"
-      style={{ ...style, aspectRatio: fill ? undefined : ratio }}
-      className={cn('w-full rounded-[var(--radius)] object-cover', fill && 'absolute inset-0 h-full', className)}
-    />
-  ),
+  ({ src, ratio, fill = false, priority = false, alt = '', className, loading, style, width, height, layout, objectFit = 'cover', objectPosition, children: _children, placeholder: _placeholder, blurDataURL: _blur, quality: _quality, unoptimized: _unoptimized, loader: _loader, onLoadingComplete, onError, onLoad, ...props }, ref) => {
+    const asset = resolveImageSource(src);
+    const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+    const fills = fill || layout === 'fill';
+    const imageWidth = width ?? asset.width, imageHeight = height ?? asset.height;
+    const aspectRatio = ratio ?? (Number(imageWidth) > 0 && Number(imageHeight) > 0 ? String(imageWidth) + ' / ' + String(imageHeight) : '4 / 3');
+    const frameStyle: React.CSSProperties = { width: fills ? '100%' : undefined, height: fills ? '100%' : undefined, aspectRatio: fills ? undefined : aspectRatio, objectFit, objectPosition, ...style };
+    const classes = cn('w-full rounded-[var(--ut-media-frame-radius)] object-cover', fills && 'absolute inset-0 h-full', className);
+    if (!asset.src || failedSrc === asset.src) return <span role={alt ? 'img' : undefined} aria-label={alt ? alt + ': image unavailable' : undefined} aria-hidden={alt ? undefined : true} data-image-fallback="true" className={cn(classes, 'inline-grid place-items-center bg-muted text-muted-foreground')} style={frameStyle}><span className="p-4 text-sm">Image unavailable</span></span>;
+    return <img ref={ref} {...props} src={asset.src} alt={alt} width={imageWidth} height={imageHeight} loading={priority ? 'eager' : loading ?? 'lazy'} fetchPriority={priority ? 'high' : undefined} decoding="async" style={frameStyle} className={classes} onError={(event) => { setFailedSrc(asset.src!); onError?.(event); }} onLoad={(event) => { setFailedSrc(null); onLoad?.(event); onLoadingComplete?.(event.currentTarget); }} />;
+  },
 );
 Image.displayName = 'Image';
+export default Image;
 
 export function ImageLightbox({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  return <Dialog.Root><Dialog.Trigger asChild><button type="button" className={cn('group relative block overflow-hidden rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}><img src={src} alt={alt} className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-105" /><span className="absolute inset-0 grid place-items-center bg-foreground/0 text-background transition-colors group-hover:bg-foreground/45"><Expand className="size-6 opacity-0 transition-opacity group-hover:opacity-100" /></span></button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/70 backdrop-blur-sm" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[var(--ut-overlay-block)] w-[min(92vw,var(--ut-content-width))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[var(--radius)] bg-card shadow-2xl"><Dialog.Title className="sr-only">{alt}</Dialog.Title><img src={src} alt={alt} className="max-h-[var(--ut-overlay-block)] w-full object-contain" /></Dialog.Content></Dialog.Portal></Dialog.Root>;
+  return <Dialog.Root><Dialog.Trigger asChild><button type="button" className={cn('group relative block overflow-hidden rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}><Image src={src} alt={alt} className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-105" /><span className="absolute inset-0 grid place-items-center bg-foreground/0 text-background transition-colors group-hover:bg-foreground/45"><Expand className="size-6 opacity-0 transition-opacity group-hover:opacity-100" /></span></button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/70 backdrop-blur-sm" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[var(--ut-overlay-block)] w-[min(92vw,var(--ut-content-width))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[var(--radius)] bg-card shadow-2xl"><Dialog.Title className="sr-only">{alt}</Dialog.Title><Image src={src} alt={alt} className="max-h-[var(--ut-overlay-block)] w-full object-contain" /></Dialog.Content></Dialog.Portal></Dialog.Root>;
 }
 `,
 
     '/src/unison/ui/motion.tsx': `${marker}
 import * as React from 'react';
   import { motion, useReducedMotion, useScroll, useTransform } from './animation';
+import { Image } from './media';
 import { cn } from './cn';
 
 export type MotionRecipe = 'editorial-reveal' | 'product-focus' | 'service-progressive-disclosure' | 'proof-led-stagger' | 'gallery-inspection' | 'conversion-feedback';
@@ -1380,7 +1413,7 @@ export function MotionImage({ src, alt, className, animationType = 'reveal', rat
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: reduceMotion ? 0 : 0.5, ease: 'easeOut' }}
     >
-      <img src={src} alt={alt} className="h-full w-full object-cover" />
+      <Image src={src} alt={alt} className="h-full w-full object-cover" />
     </motion.div>
   );
 }
@@ -1395,7 +1428,7 @@ import { cn } from './cn';
 export interface NavigationLink { label: string; href: string; intent?: string; }
 
 export function FloatingNavbar({ brand, links, ctaLabel, ctaIntent, className }: { brand: string; links: NavigationLink[]; ctaLabel?: string; ctaIntent?: string; className?: string }) {
-  return <header className={cn('sticky top-3 z-40 mx-auto w-[var(--ut-shell-width)] rounded-[var(--radius)] border border-border bg-background/80 px-4 py-3 shadow-sm backdrop-blur-md', className)}><div className="flex items-center justify-between gap-4"><a href="#top" className="text-base font-bold text-foreground">{brand}</a><nav className="hidden items-center gap-5 md:flex">{links.map((link) => <a key={link.href} href={link.href} data-ut-intent={link.intent || 'nav.anchor'} className="text-sm text-muted-foreground transition-colors hover:text-foreground">{link.label}</a>)}</nav>{ctaLabel && <Button className="hidden md:inline-flex" data-ut-intent={ctaIntent || 'cta.primary'}>{ctaLabel}</Button>}<Dialog.Root><Dialog.Trigger asChild><button type="button" aria-label="Open navigation" className="grid size-10 place-items-center rounded-[var(--ut-control-radius)] hover:bg-accent md:hidden"><Menu className="size-5" /></button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm" /><Dialog.Content className="fixed right-3 top-3 z-50 w-[var(--ut-panel-width)] rounded-[var(--radius)] border border-border bg-card p-5 shadow-xl"><div className="mb-6 flex items-center justify-between"><Dialog.Title className="font-semibold">{brand}</Dialog.Title><Dialog.Close asChild><button type="button" aria-label="Close navigation" className="grid size-9 place-items-center rounded-[var(--ut-control-radius)] hover:bg-accent"><X className="size-5" /></button></Dialog.Close></div><nav className="grid gap-2">{links.map((link) => <Dialog.Close key={link.href} asChild><a href={link.href} data-ut-intent={link.intent || 'nav.anchor'} className="rounded-[var(--ut-control-radius)] px-3 py-3 text-foreground hover:bg-accent">{link.label}</a></Dialog.Close>)}{ctaLabel && <Button data-ut-intent={ctaIntent || 'cta.primary'}>{ctaLabel}</Button>}</nav></Dialog.Content></Dialog.Portal></Dialog.Root></div></header>;
+  return <header className={cn('sticky top-3 z-40 mx-auto w-[var(--ut-shell-width)] rounded-[var(--radius)] border border-border bg-background/80 px-4 py-3 shadow-sm backdrop-blur-md', className)}><div className="flex items-center justify-between gap-4"><a href="#top" className="text-base font-bold text-foreground">{brand}</a><nav className="hidden items-center gap-5 md:flex">{links.map((link) => <a key={link.href} href={link.href} data-ut-intent={link.intent || 'nav.anchor'} className="text-sm text-muted-foreground transition-colors hover:text-foreground">{link.label}</a>)}</nav>{ctaLabel && <Button className="hidden md:inline-flex" data-ut-intent={ctaIntent || 'cta.primary'}>{ctaLabel}</Button>}<Dialog.Root><Dialog.Trigger asChild><button type="button" aria-label="Open navigation" className="grid size-10 place-items-center rounded-[var(--ut-control-radius)] hover:bg-accent md:hidden"><Menu className="size-5" /></button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm" /><Dialog.Content className="fixed right-3 top-3 z-50 w-[var(--ut-panel-width)] rounded-[var(--radius)] border border-border bg-card p-5 shadow-xl"><div className="mb-6 flex items-center justify-between"><Dialog.Title className="font-[number:var(--ut-weight-display)]">{brand}</Dialog.Title><Dialog.Close asChild><button type="button" aria-label="Close navigation" className="grid size-9 place-items-center rounded-[var(--ut-control-radius)] hover:bg-accent"><X className="size-5" /></button></Dialog.Close></div><nav className="grid gap-2">{links.map((link) => <Dialog.Close key={link.href} asChild><a href={link.href} data-ut-intent={link.intent || 'nav.anchor'} className="rounded-[var(--ut-control-radius)] px-3 py-3 text-foreground hover:bg-accent">{link.label}</a></Dialog.Close>)}{ctaLabel && <Button data-ut-intent={ctaIntent || 'cta.primary'}>{ctaLabel}</Button>}</nav></Dialog.Content></Dialog.Portal></Dialog.Root></div></header>;
 }
 `,
     '/src/unison/ui/recipes.tsx': `${marker}
@@ -1408,7 +1441,7 @@ export function BentoFeatureGrid({ children, className }: React.HTMLAttributes<H
 }
 
 export function FeatureCard({ title, description, media, className }: { title: string; description: string; media?: React.ReactNode; className?: string }) {
-  return <Card className={cn('min-h-56 overflow-hidden', className)}><CardContent className="flex h-full flex-col gap-4">{media}<div className="mt-auto"><h3 className="text-lg font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p></div></CardContent></Card>;
+  return <Card className={cn('min-h-56 overflow-hidden', className)}><CardContent className="flex h-full flex-col gap-4">{media}<div className="mt-auto"><h3 className="text-lg font-[number:var(--ut-weight-display)]">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p></div></CardContent></Card>;
 }
 `,
     '/.unison/ui-manifest.json': JSON.stringify(manifest, null, 2),
@@ -1735,6 +1768,8 @@ export function healKnownGeneratedUiImportMistakes(
     for (const specifier of KNOWN_PAGE_LEVEL_IMPORTS_TO_STRIP) {
       if (updated.includes(specifier)) updated = stripImportsForSpecifier(updated, specifier);
     }
+    const imageCompatibility = normalizeImageCompatibility(updated, normalizedPath);
+    if (!imageCompatibility.issues.length) updated = imageCompatibility.code;
     if (updated !== source) {
       next[path] = updated;
       healed.push(path);
@@ -1786,6 +1821,7 @@ export function validateGeneratedUiContract(
   const supportedMotionExports = new Set(['Reveal', 'RevealGroup', 'StaggerGroup', 'Stagger', 'StaggerItem', 'MotionRecipe']);
 
   for (const [path, source] of generatedSources) {
+    violations.push(...normalizeImageCompatibility(source, path).issues);
     if (source.includes('dangerouslySetInnerHTML')) {
       violations.push(`${path} uses dangerouslySetInnerHTML, which is not allowed in Lane B output.`);
     }

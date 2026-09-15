@@ -74,6 +74,10 @@ import { ResearchOverlay, type ResearchOverlayPayload } from "./web-builder/Rese
 import { decideIntentUx } from "@/runtime/intentUx";
 import SystemHealthPanel from "@/components/web-builder/SystemHealthPanel";
 import ReadinessCenterPanel from "@/components/web-builder/ReadinessCenterPanel";
+import { decodeThemeEdit, type ThemeEdit } from '@/services/theme/themeEdit';
+import { runBuilderTurn } from '@/services/builderBrainClient';
+import { buildThemeContract } from '@/platform/core/themeContract';
+import { readCompiledTokenValues, readThemeOverrides, isEditableThemeToken } from '@/services/theme/themeTokenOverrides';
 import ThemeTokenEditorPanel from "@/components/web-builder/ThemeTokenEditorPanel";
 import GateVerdictStrip from "@/components/web-builder/GateVerdictStrip";
 import RevisionLedgerStatus from "@/components/web-builder/RevisionLedgerStatus";
@@ -874,6 +878,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
     return { ok: false, reason: next === previewCode ? 'no-change' : 'no-match' };
   }, [previewCode, recordManualPageEdit]);
+
+
 
   // ── Preview Floating Toolbar → VFSCommitService bridge ───────────────────
   // Every direct edit dispatched by the floating toolbar (style/text/image/
@@ -3142,8 +3148,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const commitThemeTokenOps = useCallback(async (
     ops: FileOp[],
     summary: string,
+    themeEdit?: ThemeEdit,
   ): Promise<boolean> => {
-    if (!businessId || !currentDraftId || ops.length === 0) return false;
+    if (!businessId || !currentDraftId || (ops.length === 0 && !themeEdit)) return false;
     const beforeFiles = virtualFSRef.current.getSandpackFiles();
     const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
       ?? effectiveRouteState?.siteBundleSnapshot
@@ -3157,6 +3164,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (!user) return false;
       const patch = emptyPatchPlan(summary);
       patch.fileOps.push(...ops);
+      if (themeEdit) patch.themeEdit = themeEdit;
       const commit = await commitMutation({
         source: 'theme-change',
         identity: {
@@ -3200,7 +3208,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       return true;
     } catch (err) {
       console.warn('[WebBuilder] theme token commit failed:', err);
-      toast.error('Could not apply the theme tokens');
+      toast.error(err instanceof Error ? err.message : 'Could not apply the theme tokens');
+      if (themeEdit) throw err;
       return false;
     }
   }, [
@@ -3214,6 +3223,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     effectiveRouteState,
     importBuilderFiles,
   ]);
+
+  const requestThemeEdit = useCallback(async (prompt: string): Promise<boolean> => {
+    const files = virtualFSRef.current.getSandpackFiles();
+    const snapshot = resolveSnapshot(files, effectiveRouteState as any).snapshot;
+    if (!snapshot) throw new Error('Save or open a site before changing its theme.');
+    const revisionId = currentRevisionIdRef.current || null;
+    const contract = buildThemeContract({ artDirectionPackId: snapshot.meta.artDirectionPackId, themePresetId: snapshot.meta.themePresetId });
+    const response = await runBuilderTurn<unknown>({ mode: 'theme-edit', messages: [{ role: 'user', content: JSON.stringify({ prompt, snapshotId: snapshot.snapshotId, revisionId, presetId: snapshot.meta.themePresetId, contract: { ...contract, tokenNames: contract.tokenNames.filter(isEditableThemeToken) }, effectiveValues: { ...readCompiledTokenValues(files['/src/index.css'] || '', true), ...readThemeOverrides(files) }, overrides: readThemeOverrides(files), businessName: snapshot.businessName, industry: snapshot.industry }) }] });
+    if (response.error) throw response.error;
+    if ((currentRevisionIdRef.current || null) !== revisionId) throw new Error('The site changed during this request. Please request the theme change again.');
+    return commitThemeTokenOps([], prompt, decodeThemeEdit(response.data));
+  }, [commitThemeTokenOps, effectiveRouteState]);
 
 
   // ── Preview Floating Toolbar → VFSCommitService bridge ───────────────────
@@ -7087,6 +7108,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           <>
             <ResizablePanel defaultSize={22} minSize={18} maxSize={35}>
               <AIBuilderPanel
+                onThemeEdit={requestThemeEdit}
                 currentCode={previewCode}
                 systemType={activeSystemType}
                 templateName={currentTemplateName}
@@ -7615,6 +7637,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         {isMobile && aiPanelOpen && (
           <div className="absolute inset-0 z-40 bg-[#0d0d18] flex flex-col">
             <AIBuilderPanel
+                onThemeEdit={requestThemeEdit}
               currentCode={previewCode}
               systemType={activeSystemType}
               templateName={currentTemplateName}

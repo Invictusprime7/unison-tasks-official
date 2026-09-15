@@ -21,10 +21,9 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
       }}
     >
       <div
-        className="mx-auto relative grid items-center gap-12"
+        className="mx-auto relative grid grid-cols-1 lg:grid-cols-2 items-center gap-12"
         style={{
           maxWidth: theme.containerWidth,
-          gridTemplateColumns: '1fr 1fr',
         }}
       >
         {/* Text Column */}

@@ -23,9 +23,8 @@ export const CTASplitCard: React.FC<BaseSectionProps<'cta'>> = ({ section, theme
         style={{ maxWidth: theme.containerWidth }}
       >
         <div
-          className="grid items-center gap-8 rounded-2xl overflow-hidden"
+          className="grid grid-cols-1 lg:grid-cols-2 items-center gap-8 rounded-2xl overflow-hidden shadow-sm"
           style={{
-            gridTemplateColumns: '1fr 1fr',
             background: hsla(theme.colors.card, 1),
             border: `1px solid ${hsla(theme.colors.border, 0.5)}`,
           }}

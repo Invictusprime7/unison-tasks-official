@@ -3,30 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { createAuthRecoveryFetch } from './authSessionRecovery';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nfrdomdvyrbwuokathtw.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY =
-	import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-	import.meta.env.VITE_SUPABASE_ANON_KEY ||
-	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mcmRvbWR2eXJid3Vva2F0aHR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyODE5MzgsImV4cCI6MjA3NTg1NzkzOH0.TFjyJIMlSMd3P0ZQkaStMiQpVlCviCLDrXyhLE5hZ2k";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, isSupabaseEnvConfigured } from './env';
 
-function sanitizeEnvValue(value: string): string {
-	// Removes hidden CR/LF or accidental whitespace in copied keys/URLs.
-	return String(value || "").trim().replace(/[\r\n]+/g, "");
-}
-
-const SANITIZED_SUPABASE_URL = sanitizeEnvValue(SUPABASE_URL);
-const SANITIZED_SUPABASE_PUBLISHABLE_KEY = sanitizeEnvValue(SUPABASE_PUBLISHABLE_KEY);
 const supabaseFetch = createAuthRecoveryFetch(async () => {
-	// `getUser()` validates the persisted access token remotely. If Supabase
-	// rejects it, clear this browser's stale session once so independent
-	// WebBuilder consumers do not repeat the same /auth/v1/user 403 forever.
+	// Only a rejected refresh credential clears the local session.
 	await supabase.auth.signOut({ scope: 'local' });
 });
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SANITIZED_SUPABASE_URL, SANITIZED_SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 	auth: {
 		autoRefreshToken: true,
 		persistSession: true,
@@ -42,6 +29,4 @@ export const supabase = createClient<Database>(SANITIZED_SUPABASE_URL, SANITIZED
 });
 
 // Export configuration status flag
-export const isSupabaseConfigured = Boolean(
-	SANITIZED_SUPABASE_URL && SANITIZED_SUPABASE_PUBLISHABLE_KEY,
-);
+export const isSupabaseConfigured = isSupabaseEnvConfigured;

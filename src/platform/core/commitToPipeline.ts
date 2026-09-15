@@ -61,6 +61,7 @@ export interface CommitInput {
   selectedThemeId?: string;
   themePresetId?: string;
   themeTokens?: ThemeTokens;
+  preservePageSources?: boolean;
   /**
    * Optional pre-compiled contract. When provided we run PreviewGate +
    * PublishGate and surface their verdict on the result.
@@ -172,6 +173,7 @@ function runRecompile(input: CommitInput): CanonicalPipelineResult {
       selectedThemeId: input.selectedThemeId,
       themePresetId: input.themePresetId,
       themeTokens: input.themeTokens,
+      preservePageSources: input.preservePageSources,
     },
   );
   // Recompile path returns capabilities: null — normalize to the wider shape.

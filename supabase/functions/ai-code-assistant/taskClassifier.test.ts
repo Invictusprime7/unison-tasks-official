@@ -40,3 +40,12 @@ Deno.test("classifies Wizard content enrichment as compiler-owned JSON data", ()
   assertEquals(task.skipResearch, true);
   assertEquals(task.skipThinking, true);
 });
+
+Deno.test("routes theme edits to isolated structured output", () => {
+  const task = classifyTask({ mode: "theme-edit", editMode: true, navPageGen: false, surgicalEdit: false, behavioralEdit: false, debugMode: false });
+  assertEquals(task.type, "theme_edit");
+  assertEquals(task.prefersJsonOutput, true);
+  assertEquals(task.shouldUseMemory, false);
+  assertEquals(task.skipResearch, true);
+  assertEquals(task.skipThinking, true);
+});

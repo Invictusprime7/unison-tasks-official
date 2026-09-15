@@ -120,6 +120,8 @@ export interface CanonicalLaunchArtifacts {
 
 export interface BuildCanonicalLaunchArtifactsInput {
   generatedFiles: Record<string, string>;
+  /** Already committed page bodies are immutable during a theme-only edit. */
+  preservePageSources?: boolean;
   preferredEntryPoint?: string;
   siteBundleSnapshot?: SiteBundleSnapshot;
   compileArtifact?: WizardCompileArtifact;
@@ -799,7 +801,7 @@ function* buildCanonicalLaunchArtifactSteps(
   const repairedFiles = normalizedFiles;
 
   yield;
-  const bindingApplication = input.siteBundleSnapshot
+  const bindingApplication = input.siteBundleSnapshot && !input.preservePageSources
     ? applyWizardBindingsToVfs(repairedFiles, input.siteBundleSnapshot)
     : null;
 
@@ -818,7 +820,7 @@ function* buildCanonicalLaunchArtifactSteps(
     : input.compiledPlayground?.vfsFiles || {};
   const boundFiles = bindingApplication?.files || repairedFiles;
   yield;
-  const preflight = input.siteBundleSnapshot
+  const preflight = input.siteBundleSnapshot && !input.preservePageSources
     ? (() => {
         try {
           return preflightNavWiring(boundFiles, input.siteBundleSnapshot);

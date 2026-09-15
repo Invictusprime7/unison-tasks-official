@@ -28,6 +28,7 @@ export interface WizardGenerationBrief {
     title: string;
     hero: {
       required: true;
+      posture: 'visual-hero' | 'editorial-header' | 'task-header';
       headline: string;
       contentAngle: string;
       mustDifferFromHome: boolean;
@@ -246,6 +247,12 @@ export function buildWizardGenerationBrief(input: {
       const role = normalizeWizardPageRole(page.pageRole || page.pageType || (page.isHome ? 'home' : 'custom'));
       const title = generationTitle(role, page.title);
       const depth = routeDepth(role);
+      const isTaskPage = ['contact', 'booking', 'checkout'].includes(role);
+      const posture = page.isHome
+        ? ('visual-hero' as const)
+        : isTaskPage
+          ? ('task-header' as const)
+          : ('editorial-header' as const);
       return {
         pageId: page.pageId,
         path: page.filePath,
@@ -253,6 +260,7 @@ export function buildWizardGenerationBrief(input: {
         title,
         hero: {
           required: true as const,
+          posture,
           headline: title,
           contentAngle: generationAngle(role, title),
           mustDifferFromHome: !page.isHome,

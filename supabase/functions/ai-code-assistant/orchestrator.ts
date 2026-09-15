@@ -136,13 +136,27 @@ The canonical compiler has already established:
 - theme tokens and Stage 4b CSS authority
 - approved UI imports and component facade
 
-Your responsibility: rewrite the supplied canonical page body into a visually stronger, production-quality React component while preserving all semantic contracts.
+Your responsibility: rewrite the supplied canonical page body into a visually stronger, production-quality React component inspired by modern web benchmarks (Framer, Linear, Lovable, bespoke agency compositions) while preserving all semantic contracts.
+
+INTENT-DRIVEN ARCHITECTURE & SECTION DERIVATION:
+- Adaptive Page Posture: Not every page requires a giant marketing hero with oversized photography.
+  * Showcase / Narrative pages (Home, About, Portfolio, Services): Feature an evocative Visual Hero with strong typography, badge, split or full media, and marquee trust ribbons.
+  * Task / Action pages (Booking, Contact, Quote, Checkout): Never let oversized hero images push action controls down. Use a compact, elegant Task Header (clear title, reassuring subtitle, status pill) followed immediately by a framed interactive action surface (<Panel>).
+- Context-Aware Form Fields: Do NOT default to generic name/email/message. Tailor input fields to the industry and conversion intent:
+  * Salon / Spa: Service selection, preferred stylist/specialist, date/time preference, hair/skin treatment notes.
+  * Contractor / Trades: Project address, scope of work, timeline urgency, budget range, property type.
+  * Coaching / Consulting: Focus area, primary goal, current hurdle, preferred meeting format.
+  * SaaS / Tech: Work email, team size, primary use case, deployment environment.
+  * E-Commerce / Store: Product inquiry, order reference, sizing/variant questions.
+  Wrap form fields inside <Panel> cards using <FormGrid columns={2}> and <FormField>, <Input>, <Textarea>, <Select>.
+- Modern Typography & Micro-Copy: Generate sophisticated industry-specific terminology and crisp value propositions rather than boilerplate filler.
 
 You may author:
 - Asymmetric, expressive composition and grid geometry
-- Oversized editorial typography and visual rhythm
-- Layered media with motion and hover depth
-- Horizontal rails, marquee bands, parallax treatments
+- Framer-tier Bento grids (<BentoFeatureGrid>, <FeaturePanel>)
+- Oversized editorial typography and visual rhythm (strictly ONE <h1> per page)
+- Layered media with motion and hover depth (<HoverDepth>, <MediaFrame>)
+- Horizontal rails, marquee bands (<MarqueeBand>), parallax treatments
 - Sticky narrative regions and varied section widths
 - Free-form but responsive layout within semantic tokens
 - Intentional hover and focus behavior using @/unison/ui/motion primitives
@@ -179,6 +193,7 @@ export function runAssistantOrchestrator(
   userId?: string,
   signal?: AbortSignal,
 ): Promise<Response> {
+  if (task.type === 'theme_edit') return runThemeEditLane(parsed, task, corsHeaders, signal);
   if (task.type === "launch_desk") {
     return runLaunchDeskLane(parsed, task, corsHeaders, signal);
   }
@@ -1066,4 +1081,14 @@ async function runNavResearch(
     console.warn('[orchestrator] Nav research failed:', e);
     return '';
   }
+}
+
+async function runThemeEditLane(parsed: AIRequest, task: ClassifiedTask, corsHeaders: Record<string, string>, signal?: AbortSignal): Promise<Response> {
+  const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
+  const providerPlan = buildProviderPlan(task, true, { ...parsed.gatewayOptions, maxTokens: 2500, timeoutMs: 45000 }, 'simple', context);
+  const result = await runProviderLoop({ providerPlan, navPageGen: false, reasoningEffort: 'none', signal, aiMessages: [
+    { role: 'system', content: 'You restyle an existing site without changing content or composition. Return ONLY JSON: {"version":"1.0","snapshotId":"exact input snapshotId","revisionId":"exact input revisionId or null","presetId":"optional preset ID","set":{},"reset":[]}. Do not include files, code, layout, text, media or backend changes. Use presetId only for an explicitly requested preset switch (modern, editorial, futuristic, minimalist, bold, organic); that clears old overrides. Otherwise omit it. set maps editable token names from the supplied contract.tokenNames to values; reset lists token names. Palette values are HSL channels such as "220 50% 12%", never hex or hsl(). Typography weights are 100..900 in steps of 100; size values use px/rem/em; durations use ms/s (0..2000ms); use no CSS declarations, URLs, selectors, expressions or arbitrary token names. Preserve contrast when changing backgrounds or accents by also setting the corresponding foreground token. Base incremental changes on effectiveValues. Preserve snapshotId and revisionId exactly.' },
+    { role: 'user', content: context },
+  ] });
+  return new Response(JSON.stringify(result.earlyError ? { error: result.earlyError.error } : { content: result.content }), { status: result.earlyError ? 502 : 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }

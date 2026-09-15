@@ -736,7 +736,7 @@ describe('VFS commit Stage 4b handoff', () => {
         vfsFiles: files,
         playground: {} as never,
         siteBundleSnapshot: {
-          meta: { themePresetId: 'organic', templateId: 'salon-minimal' },
+          meta: { themeStyleVersion: '2.0', themePresetId: 'organic', templateId: 'salon-minimal' },
           themeTokens,
         } as never,
       },

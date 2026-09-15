@@ -13,13 +13,13 @@ The protected chain is:
 ```text
 LauncherWizard
   -> runLaunchPipeline
-  -> deterministic resolution
-  -> canonical compiler
-  -> Stage 4b
-  -> canonical preflight
+  -> deterministic resolution & topology
+  -> canonical compiler (Stage 4b theme & UI Foundation)
+  -> Lane B AI Enrichment (bespoke UI Foundation composition, motion & bento layouts)
+  -> canonical preflight & validation
   -> commitMutation / VFSCommitService
   -> SiteBundleSnapshot and revision
-  -> Live Preview and Playground
+  -> Live Preview and Web Builder
 ```
 
 The following rules apply to every phase:
@@ -136,9 +136,34 @@ applicable with a reason. An unverified requirement is not a passing gate.
 | Art-direction packs | Compatibility and `--ut-*` behavior profile | Page identity or palette ownership |
 | Template Design Contract V2 | Resolved deterministic design identity | Theme CSS values |
 | Stage 4b | Semantic theme and global tokens | Topology and artifact identity |
+| Lane B AI Enrichment | High-fidelity bespoke page body candidates, motion wrappers, bento compositions, and copy referencing snapshot UI Foundation | Global theme tokens, protected paths (`/src/App.tsx`, `/src/index.css`, `/.unison/**`), bypassing preflight, or inventing unmapped imports |
 | VFSCommitService | Canonical mutation and revision boundary | Design selection |
 | SiteBundleSnapshot | Sealed runtime truth | Post-seal mutation |
 | Preview and Playground | Render and hydrate committed truth | Fallback authorship |
+
+### Lane B AI Canonical Enrichment Framework
+
+Lane B is the canonical AI enrichment engine within Unison's single web generation pipeline.
+It bridges deterministic architectural contracts and modern, Framer/Lovable-quality visual design:
+
+1. **Context-Grounded Composition & Intent Derivation**:
+   Lane B receives the sealed Stage 4b baseline, UI Foundation manifest v1.8 (`@/unison/ui/*`), Design Intervention V2 contract, and Page Registry. It optimizes registry references to author rich, modern TSX rather than generic boilerplate components.
+   - **Adaptive Page Posture & Hero Necessity**: The AI intelligently determines which pages require an evocative visual Hero (Home, About, Showcase) vs pages that demand immediate utility (Booking, Contact, Quote, Checkout). On task-first pages, giant marketing heroes are omitted in favor of clean, focused Task Headers followed immediately by interactive conversion surfaces.
+   - **Intent-Driven Form Field Specialization**: Forms are contextually derived from industry intent (e.g. hair history and stylist preferences for Salons; square footage, scope, and timeline for Contractors; team size and use cases for SaaS) framed in modern `<Panel>` cards with `<FormGrid>` and `@/unison/ui/forms`.
+   - **Bespoke Typography & Copy**: Emits industry-specific terminology and value propositions inspired by modern web benchmarks (Framer, Linear, Lovable, bespoke modern agency designs).
+
+2. **Aesthetic & Motion Directives**:
+   - Composes with Framer-tier design patterns: Bento grids (`<BentoFeatureGrid>`, `<FeaturePanel>`), marquee ticker strips (`<MarqueeBand>`), entrance reveals (`<Reveal>`, `<StaggerGroup>`), and interactive hover lift (`<HoverDepth>`).
+   - Strictly enforces section hierarchy: Hero/Page Header leading band, followed by content bands, followed by conversion/contact cards, ending in footer. Loose uncontained forms at page tops are prohibited.
+   - Enforces responsive, centered alignments; buttons and CTAs are never left-stuck.
+
+3. **Strict In-Pipeline Validation**:
+   - Proposals must pass `validateWizardLaneBProposal`: single H1 per page, valid TSX, zero forbidden protected-path edits (`/src/App.tsx`, `/src/index.css`, `/.unison/**`), 100% theme token compliance, and zero unmapped imports.
+   - All interactive triggers must preserve canonical intent attributes (`data-ut-intent="contact.submit"`, `booking.create`, `quote.request`).
+
+4. **Canonical Commit & Resilience**:
+   - Validated proposals merge into the canonical snapshot via `commitMutation` and seal into `SiteBundleSnapshot`.
+   - If Lane B is disabled, times out, or degrades, Stage 4b provides a deterministic baseline that is already modern, responsive, and fully themed.
 
 ## 4. Phase Plan
 

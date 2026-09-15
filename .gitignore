@@ -52,4 +52,5 @@ supabase.exe
 zip_extract/
 
 # Reproducible composition reports and browser fixtures
+.artifacts/
 .artifacts/composition/

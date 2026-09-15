@@ -1,3 +1,4 @@
+import { normalizeImageCompatibility } from '@/utils/imageCompatibility';
 /**
  * tsxSanitizer.ts
  *
@@ -229,30 +230,10 @@ export function sanitizeTsxFile(path: string, raw: string): SanitizeResult {
   // Strip leading "Here's…" prose lines that survived extractCleanCode
   code = code.replace(/^(?:\s*\/\/[^\n]*\n)*\s*(?:Here(?:'s| is)|Sure|Below|This is)\b[^\n]*\n/i, "");
 
-  // Generated Vite snapshots do not provide Next.js image optimization.
-  // Preserve the rendered asset while removing framework-only props.
-  try {
-    const nextImageImports = [...code.matchAll(
-      /^[ \t]*import\s+(?:type\s+)?(?:(?<component>[A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{[^}]*\}\s*)?from\s+['"]next\/image['"]\s*;?\s*$/gm,
-    )];
-    if (nextImageImports.length > 0) {
-      for (const nextImageImport of nextImageImports) {
-        const componentName = nextImageImport.groups?.component;
-        code = code.replace(nextImageImport[0], '');
-        if (!componentName) continue;
-        const escapedName = componentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        code = code
-          .replace(new RegExp(`<${escapedName}\\b`, 'g'), '<img')
-          .replace(new RegExp(`</${escapedName}>`, 'g'), '</img>');
-      }
-      code = code
-        .replace(/\s+(?:priority|fill)(?=\s|\/?>)/g, '')
-        .replace(/\s+(?:placeholder|blurDataURL)=\{?(["'`])[^"'`]*\1\}?/g, '');
-      applied.push('normalizeNextImage');
-    }
-  } catch (e) {
-    issues.push(`normalizeNextImage failed: ${(e as Error).message}`);
-  }
+  const imageCompatibility = normalizeImageCompatibility(code, path);
+  if (imageCompatibility.code !== code) applied.push('normalizeNextImage');
+  code = imageCompatibility.code;
+  issues.push(...imageCompatibility.issues);
 
   // Generated snapshots own the UI runtime facade modules. Normalize common
   // model imports here so every Lane B response uses the same executable VFS
@@ -427,7 +408,7 @@ export function sanitizeTsxFile(path: string, raw: string): SanitizeResult {
   const validation = validateTsxStructure(code);
   return {
     code,
-    valid: validation.valid,
+    valid: validation.valid && imageCompatibility.issues.length === 0,
     issues: [...issues, ...validation.issues],
     applied,
   };

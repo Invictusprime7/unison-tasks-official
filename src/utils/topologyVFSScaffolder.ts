@@ -89,6 +89,19 @@ const ROLE_SUPPLEMENT_PRIORITY: Record<PageRole, SectionType[]> = {
   custom: ['services', 'testimonials', 'faq', 'cta'],
 };
 
+const ROLE_EYEBROWS: Partial<Record<PageRole, string>> = {
+  contact: 'Get in Touch',
+  booking: 'Appointments & Scheduling',
+  services: 'Our Offerings',
+  pricing: 'Pricing & Plans',
+  about: 'About Our Team',
+  gallery: 'Portfolio & Work',
+  faq: 'Frequently Asked Questions',
+  shop: 'Curated Catalog',
+  checkout: 'Checkout',
+  blog: 'Latest Insights',
+};
+
 // ============================================================================
 // Template resolution — chip → composition
 // ============================================================================
@@ -405,9 +418,19 @@ function buildRoleComposition(
     template.sectionPool?.[role as TemplatePageRole] ??
     DEFAULT_ROLE_SECTION_POOL[role] ??
     DEFAULT_ROLE_SECTION_POOL.custom;
-  const poolList: SectionType[] = contractTypes.length > 0
+  const rawPool = contractTypes.length > 0
     ? [...contractTypes, ...rolePool.filter((type) => !contractTypes.includes(type))]
     : rolePool;
+  const hasNavbar = rawPool.includes('navbar');
+  const hasHero = rawPool.includes('hero');
+  const hasFooter = rawPool.includes('footer');
+  const bodyTypes = rawPool.filter((type) => type !== 'navbar' && type !== 'hero' && type !== 'footer');
+  const poolList: SectionType[] = [
+    ...(hasNavbar ? (['navbar'] as SectionType[]) : []),
+    ...(hasHero ? (['hero'] as SectionType[]) : []),
+    ...bodyTypes,
+    ...(hasFooter ? (['footer'] as SectionType[]) : []),
+  ];
   const allowedTypes = new Set<SectionType>(poolList);
   const alternateMedia = !page.isHome ? collectAlternateHeroMedia(template) : [];
   const alternateHeroMedia = alternateMedia[stableStringHash(page.id) % Math.max(1, alternateMedia.length)];
@@ -432,7 +455,7 @@ function buildRoleComposition(
       const roleLabel = page.title.trim() || page.role.replace(/_/g, ' ');
       props.headline = roleLabel;
       props.subheadline = `Explore ${roleLabel.toLowerCase()} from ${template.name}.`;
-      props.badge = roleLabel;
+      props.badge = ROLE_EYEBROWS[role] || roleLabel;
       if (alternateHeroMedia) {
         if (typeof props.image === 'string') props.image = alternateHeroMedia;
         else props.backgroundImage = alternateHeroMedia;
@@ -457,7 +480,6 @@ function buildRoleComposition(
   // silently dropping the industry's page contract.
   if (!definition && !page.isHome) {
     const presentTypes = new Set(filtered.map((section) => section.type));
-    let addedStarter = false;
     for (const type of poolList) {
       if (type === 'navbar' || type === 'footer' || presentTypes.has(type)) continue;
       const starter = createIndustryStarterSection(plan.industry, type, {
@@ -468,17 +490,6 @@ function buildRoleComposition(
       if (!starter) continue;
       appendSection(starter);
       presentTypes.add(type);
-      addedStarter = true;
-    }
-    if (addedStarter) {
-      const rank = (type: SectionType) => {
-        const index = poolList.indexOf(type);
-        return index === -1 ? poolList.length : index;
-      };
-      filtered.sort((left, right) => rank(left.type) - rank(right.type));
-      const footers = filtered.filter((section) => section.type === 'footer');
-      for (const footer of footers) filtered.splice(filtered.indexOf(footer), 1);
-      filtered.push(...footers);
     }
   }
 
@@ -498,6 +509,19 @@ function buildRoleComposition(
       appendSection(section);
       if (filtered.length >= MINIMUM_ROUTE_BODY_SECTIONS) break;
     }
+  }
+
+  // Canonical page hierarchy: on interior pages, enforce poolList rank so navbar is index 0,
+  // hero is index 1, content follows hero, conversion/forms precede footer, and footer is last.
+  if (!definition && !page.isHome) {
+    const rank = (type: SectionType) => {
+      const index = poolList.indexOf(type);
+      return index === -1 ? poolList.length : index;
+    };
+    filtered.sort((left, right) => rank(left.type) - rank(right.type));
+    const footers = filtered.filter((section) => section.type === 'footer');
+    for (const footer of footers) filtered.splice(filtered.indexOf(footer), 1);
+    filtered.push(...footers);
   }
 
   if (filtered.length === 0) return null;

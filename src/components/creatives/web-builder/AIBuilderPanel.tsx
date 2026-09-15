@@ -80,7 +80,8 @@ import { parseIconWireIntent, stampIconIntentInSource } from '@/utils/iconWireIn
 // Side-effect import: registers GHL skill pack with global registry
 import { wireGhlBinding } from '@/services/skills/ghlSkillPack';
 import { detectSections } from '@/utils/sectionSwapper';
-import { runBuilderTurn } from '@/services/builderBrainClient';
+import { isThemeOnlyRequest } from '@/services/theme/themeEdit';
+import { isBuilderSessionError, runBuilderTurn } from '@/services/builderBrainClient';
 import {
   envelopeRunIdFromResponse,
   recordRunOutcome,
@@ -462,6 +463,7 @@ interface AIBuilderPanelProps {
   /** Full VFS file map for component-level site analysis */
   vfsFiles?: Record<string, string> | null;
   /** Direct VFS apply callback — bypasses legacy onCodeGenerated pipeline, uses AI→VFS orchestrator */
+  onThemeEdit?: (prompt: string) => Promise<boolean>;
   onApplyToVFS?: AIBuilderApplyCallback;
   /** Preview handle ref for building component behavior maps (DOM inspection) */
   previewRef?: React.RefObject<{ getIframe?: () => HTMLIFrameElement | null } | null>;
@@ -555,6 +557,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   vfsContext,
   vfsFiles,
   onApplyToVFS,
+  onThemeEdit,
   previewRef,
   projectId,
   businessId,
@@ -806,6 +809,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     setInput('');
     setDroppedFiles([]);
     setIsLoading(true);
+    if (!isLaunchPlanningRequest && droppedFiles.length === 0 && onThemeEdit && isThemeOnlyRequest(userContent)) {
+      try {
+        if (!await onThemeEdit(userContent)) throw new Error('The theme could not be saved. Your current site is unchanged.');
+        setMessages(prev => [...prev, { id: generateId(), role: 'assistant', content: 'Updated the theme while preserving your content and composition.', timestamp: new Date() }]);
+      } catch (error) {
+        setMessages(prev => [...prev, { id: generateId(), role: 'assistant', content: error instanceof Error ? error.message : 'Theme update failed.', timestamp: new Date() }]);
+      } finally { setIsLoading(false); }
+      return;
+    }
 
     // Milestone 5 / Step 1: classification is envelope-driven. The interpreter
     // is authoritative; local hints are only used when it is unavailable.
@@ -2218,7 +2230,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
       
-      const finalErrorContent = /^Too many requests\./i.test(errorMessage)
+      const sessionExpired = isBuilderSessionError(error);
+      if (sessionExpired) {
+        errorMessage = 'Your session expired. Please sign in again, then resend your request.';
+      }
+      const finalErrorContent = sessionExpired ? errorMessage : /^Too many requests\./i.test(errorMessage)
         ? `Sorry, I encountered an error: ${errorMessage}`
         : `Sorry, I encountered an error: ${errorMessage}. Please try again or simplify your request.`;
 

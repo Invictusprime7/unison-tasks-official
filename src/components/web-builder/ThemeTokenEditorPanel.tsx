@@ -7,7 +7,7 @@
  * a `theme-change` PatchPlan.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Palette, RotateCcw, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,8 @@ import { readThemeContract } from '@/platform/core/themeContract';
 import {
   INDEX_CSS_PATH,
   buildThemeOverrideFileOps,
-  isLegalTokenValue,
+  isEditableThemeToken,
+  isLegalThemeTokenValue,
   readCompiledTokenValues,
   readThemeOverrides,
   type ThemeTokenOverrides,
@@ -40,6 +41,9 @@ export default function ThemeTokenEditorPanel({
   );
 
   const [draft, setDraft] = useState<ThemeTokenOverrides>(persisted);
+  const persistedKey = JSON.stringify(persisted);
+  useEffect(() => { setDraft(JSON.parse(persistedKey)); }, [persistedKey]);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const dirty = useMemo(
@@ -67,10 +71,13 @@ export default function ThemeTokenEditorPanel({
 
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
     try {
       const ops = buildThemeOverrideFileOps({ files: vfsFiles, overrides: draft });
       if (ops.length === 0) return;
       await onCommitTokens(ops, `Theme · ${Object.keys(draft).length} token override(s)`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not apply theme values.');
     } finally {
       setSaving(false);
     }
@@ -111,6 +118,7 @@ export default function ThemeTokenEditorPanel({
         </div>
       </div>
 
+      {error && <p role="alert" className="px-3 py-2 text-xs text-destructive">{error}</p>}
       <ScrollArea className="flex-1">
         <div className="space-y-4 p-3">
           {contract.groups.map((group) => (
@@ -118,9 +126,9 @@ export default function ThemeTokenEditorPanel({
               <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {group.label}
               </h4>
-              {group.tokens.map((token) => {
+              {group.tokens.filter(token => isEditableThemeToken(token.name)).map((token) => {
                 const value = draft[token.name] ?? '';
-                const invalid = value.length > 0 && !isLegalTokenValue(value);
+                const invalid = value.length > 0 && !isLegalThemeTokenValue(token.name, value, contract);
                 return (
                   <div key={token.name} className="grid grid-cols-[1fr_1.2fr] items-center gap-2">
                     <div className="min-w-0">

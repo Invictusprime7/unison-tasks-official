@@ -5,7 +5,7 @@
  * validation for all edge functions.
  */
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 export interface AuthenticatedUser {
   id: string;
@@ -20,9 +20,9 @@ export interface AuthResult {
 }
 
 /** Cached Supabase admin client (service role) */
-let _adminClient: ReturnType<typeof createClient> | null = null;
+let _adminClient: SupabaseClient | null = null;
 
-function getAdminClient(): ReturnType<typeof createClient> {
+function getAdminClient(): SupabaseClient {
   if (_adminClient) return _adminClient;
 
   const url = Deno.env.get("SUPABASE_URL");
@@ -45,7 +45,7 @@ function getAdminClient(): ReturnType<typeof createClient> {
  * legacy `getUser(token)` path here can reject otherwise-valid signing-key
  * sessions during key migrations or runtime credential drift.
  */
-function getClaimsClient(authHeader: string): ReturnType<typeof createClient> {
+function getClaimsClient(authHeader: string): SupabaseClient {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_ANON_KEY");
 

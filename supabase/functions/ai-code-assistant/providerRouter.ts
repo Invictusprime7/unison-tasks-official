@@ -46,16 +46,14 @@ export interface ProviderDistribution {
 export function isGeminiExclusiveProviderMode(
   readEnv: EnvReader = (name) => Deno.env.get(name),
 ): boolean {
-  const mode = (readEnv('AI_PROVIDER_MODE') || 'gemini-only').trim().toLowerCase();
+  const mode = (readEnv('AI_PROVIDER_MODE') || 'hybrid').trim().toLowerCase();
   if (mode === 'hybrid') return false;
   // Never lock to Gemini when it has no key but OpenAI does.
   if (!readEnv('GEMINI_API_KEY') && !readEnv('GOOGLE_API_KEY') && !readEnv('UNISONGEMINI_API_KEY')) return false;
   return true;
 }
 
-// Gemini is the default direct provider. OpenAI is retained as a fallback
-// but given a small share so a persistent OpenAI 429 storm doesn't eat ~half
-// the wizard generation budget before Gemini is tried.
+// Prefer configured OpenAI while retaining Gemini in the fallback chain.
 const DEFAULT_PROVIDER_DISTRIBUTION: ProviderDistribution = { gemini: 20, openai: 80 };
 
 /** Parses `gemini=50,openai=50` or `gemini:50,openai:50`. */
@@ -411,8 +409,7 @@ export function buildProviderPlan(
       : (openAiModels.length > 0 ? 'openai' : undefined);
   }
 
-  // OpenAI and managed fallbacks are intentionally opt-in while only Gemini
-  // is funded. Setting AI_PROVIDER_MODE=hybrid re-enables the existing chain.
+  // Respect an explicit Gemini-only deployment policy; otherwise use configured providers.
   if (isGeminiExclusiveProviderMode(readEnv)) {
     plan.gatewayModels = plan.gatewayModels.filter((model) => providerForModel(model.id) === 'gemini');
     plan.primaryProvider = plan.gatewayModels.length > 0 ? 'gemini' : undefined;

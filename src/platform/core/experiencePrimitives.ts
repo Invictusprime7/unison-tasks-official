@@ -387,10 +387,34 @@ export function SceneBackground({
 
     '/src/unison/ui/experience/media.tsx': `${marker}
 import * as React from 'react';
-import { Float, Image as DreiImage, ScrollControls, Scroll } from '@react-three/drei';
+import { Float, ScrollControls, Scroll } from '@react-three/drei';
+import * as THREE from 'three';
+import { Image as SiteImage } from '../media';
 import { cn } from '@/unison/ui';
 import { ExperienceCanvas } from './canvas';
 import { LightRig } from './scene';
+
+/** Callback-based loading keeps a failed texture out of React's render/throw path. */
+function ImagePlane({ url, scale, position, onFailure }: { url: string; scale: number; position?: [number, number, number]; onFailure: () => void }) {
+  const [texture, setTexture] = React.useState<THREE.Texture | null>(null);
+  React.useEffect(() => {
+    let active = true;
+    let loaded: THREE.Texture | undefined;
+    setTexture(null);
+    if (!url) { onFailure(); return; }
+    const loader = new THREE.TextureLoader();
+    loader.load(url, (asset) => {
+      if (!active) { asset.dispose(); return; }
+      loaded = asset;
+      asset.colorSpace = THREE.SRGBColorSpace;
+      setTexture(asset);
+    }, undefined, () => { if (active) onFailure(); });
+    return () => { active = false; loaded?.dispose(); };
+  }, [url, onFailure]);
+  if (!texture) return null;
+  const aspect = texture.image?.width && texture.image?.height ? texture.image.width / texture.image.height : 1;
+  return <mesh position={position} scale={[scale, scale / aspect, 1]}><planeGeometry args={[1, 1]} /><meshBasicMaterial map={texture} transparent toneMapped={false} /></mesh>;
+}
 
 export interface FloatingMediaProps {
   src: string;
@@ -401,6 +425,8 @@ export interface FloatingMediaProps {
 
 /** Single image plane with gentle parallax float and a DOM image fallback. */
 export function FloatingMedia({ src, alt, caption, className }: FloatingMediaProps) {
+  const [failedSource, setFailedSource] = React.useState<string | null>(null);
+  const onFailure = React.useCallback(() => setFailedSource(src), [src]);
   return (
     <figure
       data-ut-component="floating-media"
@@ -408,15 +434,15 @@ export function FloatingMedia({ src, alt, caption, className }: FloatingMediaPro
       className={cn('relative overflow-hidden rounded-[var(--ut-media-radius)]', className)}
     >
       <div className="relative min-h-[var(--ut-media-block)]">
-        <ExperienceCanvas
+        {failedSource === src ? <SiteImage src={src} alt={alt} className="size-full object-cover" /> : <ExperienceCanvas
           camera={{ position: [0, 0, 5], fov: 45 }}
-          fallback={<img src={src} alt={alt} loading="lazy" className="size-full object-cover" />}
+          fallback={<SiteImage src={src} alt={alt} loading="lazy" className="size-full object-cover" />}
         >
           <LightRig preset="soft" />
           <Float speed={1.1} rotationIntensity={0.25} floatIntensity={0.9}>
-            <DreiImage url={src} scale={3.2} transparent />
+            <ImagePlane url={src} scale={3.2} onFailure={onFailure} />
           </Float>
-        </ExperienceCanvas>
+        </ExperienceCanvas>}
         <span className="sr-only">{alt}</span>
       </div>
       {caption ? <figcaption className="mt-3 text-sm text-muted-foreground">{caption}</figcaption> : null}
@@ -433,6 +459,10 @@ export interface DepthGalleryItem {
 /** Depth-staggered media wall. Falls back to a responsive image grid. */
 export function DepthGallery({ items, className }: { items: DepthGalleryItem[]; className?: string }) {
   const planes = items.slice(0, 8);
+  const sourceKey = JSON.stringify(planes.map(item => item.src));
+  const [failedSources, setFailedSources] = React.useState<string | null>(null);
+  const onFailure = React.useCallback(() => setFailedSources(sourceKey), [sourceKey]);
+  const fallback = <div className="grid size-full grid-cols-2 gap-3 md:grid-cols-3">{planes.map((item, index) => <SiteImage key={item.src + index} src={item.src} alt={item.alt} className="size-full object-cover" />)}</div>;
   return (
     <div
       data-ut-component="depth-gallery"
@@ -440,32 +470,23 @@ export function DepthGallery({ items, className }: { items: DepthGalleryItem[]; 
       className={cn('relative overflow-hidden rounded-[var(--ut-media-radius)]', className)}
     >
       <div className="relative min-h-[var(--ut-media-block-lg)]">
-        <ExperienceCanvas
-          camera={{ position: [0, 0, 7], fov: 50 }}
-          fallback={
-            <div className="grid size-full grid-cols-2 gap-3 md:grid-cols-3">
-              {planes.map((item) => (
-                <img key={item.src} src={item.src} alt={item.alt} loading="lazy" className="size-full object-cover" />
-              ))}
-            </div>
-          }
-        >
+        {failedSources === sourceKey ? fallback : <ExperienceCanvas camera={{ position: [0, 0, 7], fov: 50 }} fallback={fallback}>
           <LightRig preset="soft" />
           <ScrollControls horizontal pages={Math.max(1, planes.length / 3)} damping={0.2}>
             <Scroll>
               {planes.map((item, index) => (
                 <Float key={item.src} speed={0.9} floatIntensity={0.5}>
-                  <DreiImage
+                  <ImagePlane
                     url={item.src}
                     scale={2.4}
-                    transparent
+                    onFailure={onFailure}
                     position={[index * 2.8 - 2, index % 2 === 0 ? 0.4 : -0.4, -index * 0.35]}
                   />
                 </Float>
               ))}
             </Scroll>
           </ScrollControls>
-        </ExperienceCanvas>
+        </ExperienceCanvas>}
       </div>
       <ul className="sr-only">
         {planes.map((item) => (

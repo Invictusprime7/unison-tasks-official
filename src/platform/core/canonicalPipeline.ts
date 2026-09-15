@@ -34,6 +34,7 @@ import type { SiteBundle, SiteManifest, RouteDef, NavItem } from '@/types/siteBu
 import { resolveCapabilities } from '@/services/wizardCapabilityResolver';
 import { materializePlayground } from '@/services/wizardPlaygroundMaterializer';
 import { validatePlayground, getValidationSummary } from '@/services/playgroundValidationService';
+import { applyOverridesToCss, readThemeOverrides, THEME_OVERRIDES_PATH } from '@/services/theme/themeTokenOverrides';
 import { compilePlayground } from '@/services/playgroundCompiler';
 import { createRuntimeManifest } from '@/types/runtimeManifest';
 import { validateComposition } from '@/services/componentIntelligenceRegistry';
@@ -209,6 +210,7 @@ export interface SiteBundleSnapshotMeta {
    * without re-passing wizard props (chain-of-custody after compile).
    */
   themePresetId?: string | null;
+  themeStyleVersion?: '2.0';
   /** Resolved template id from the wizard Template-card. */
   templateId?: string | null;
   /**
@@ -542,7 +544,7 @@ export function recompileFromPlayground(
   existingVfsFiles: Record<string, string> = {},
   businessName?: string,
   industry?: string,
-  options?: { selectedTemplateId?: string; selectedThemeId?: string; themePresetId?: string; themeTokens?: ThemeTokens },
+  options?: { selectedTemplateId?: string; selectedThemeId?: string; themePresetId?: string; themeTokens?: ThemeTokens; preservePageSources?: boolean },
 ): Omit<CanonicalPipelineResult, 'capabilities'> & { capabilities: null } {
   assertWithinCommit('recompileFromPlayground');
   const themePresetId = assertThemeSeed(
@@ -624,6 +626,14 @@ export function recompileFromPlayground(
     designIntervention,
   });
 
+  if (options.preservePageSources) {
+    for (const page of Object.values(playground.pageRegistry.pages)) {
+      if (page.filePath && existingVfsFiles[page.filePath]) compileResult.vfsFiles[page.filePath] = existingVfsFiles[page.filePath];
+    }
+    for (const [path, content] of Object.entries(existingVfsFiles)) {
+      if (path.startsWith('/.unison/compositions/') || path.startsWith('/src/components/')) compileResult.vfsFiles[path] = content;
+    }
+  }
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
   compileResult.vfsFiles = refreshCompositionOwnership(compileResult.vfsFiles, normalizedThemeFiles.files);
 
@@ -652,6 +662,11 @@ export function recompileFromPlayground(
       artDirectionPackId: recompileArtDirectionPackId,
       themePresetId,
     }),
+  );
+
+  if (existingVfsFiles[THEME_OVERRIDES_PATH]) compileResult.vfsFiles[THEME_OVERRIDES_PATH] = existingVfsFiles[THEME_OVERRIDES_PATH];
+  compileResult.vfsFiles['/src/index.css'] = applyOverridesToCss(
+    compileResult.vfsFiles['/src/index.css'], readThemeOverrides({ ...existingVfsFiles, ...compileResult.vfsFiles }),
   );
 
   // Stage 4b is an art-direction skin, never a re-composer. A flatten here is a
@@ -798,6 +813,7 @@ function projectToSiteBundleSnapshot(
       industry: resolvedIndustry,
       verticalContractId: resolvedSystemId,
       themePresetId: resolvedThemePresetId,
+      themeStyleVersion: '2.0',
       templateId: resolvedTemplateId,
       artDirectionPackId:
         (designIntervention || selections.designIntervention)?.artDirectionPackId ?? null,

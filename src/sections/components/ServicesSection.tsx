@@ -32,13 +32,12 @@ export const ServicesSection: React.FC<BaseSectionProps<'services'>> = ({ sectio
         )}
 
         <div
-          className="grid gap-6"
-          style={{ gridTemplateColumns: `repeat(${Math.min(columns, items.length)}, 1fr)` }}
+          className={`grid gap-6 ${columns === 2 ? 'grid-cols-1 md:grid-cols-2' : columns === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}
         >
           {items.map((item, i) => (
             <div
               key={i}
-              className="p-6 transition-all"
+              className="p-6 sm:p-7 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex flex-col justify-between group"
               style={{
                 background: hsl(theme.colors.card),
                 border: `1px solid ${hsla(theme.colors.border, 0.6)}`,

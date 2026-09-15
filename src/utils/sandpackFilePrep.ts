@@ -1,3 +1,4 @@
+import { normalizeImageCompatibility } from '@/utils/imageCompatibility';
 import { GENERATED_RUNTIME_PROFILE } from '@/platform/core/generatedRuntimeCapabilities';
 /**
  * Sandpack File Preparation Utilities
@@ -2028,7 +2029,7 @@ function findBestComponentExportName(content: string, filePath: string): string 
 }
 
 function ensureDefaultExportForReactModule(content: string, filePath: string): string {
-  if (!/\.(tsx|jsx)$/.test(filePath)) return content;
+  if (!/\.(tsx|jsx)$/.test(filePath) || /\/(?:src\/)?unison\/ui\//.test(filePath)) return content;
   if (/export\s+default\b/.test(content) || /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(content)) {
     return content;
   }
@@ -2325,6 +2326,8 @@ function autoInjectMissingJsxImports(sandpackFiles: Record<string, string>): voi
   for (const [filePath, content] of Object.entries({ ...sandpackFiles })) {
     if (!/\.(tsx|jsx)$/.test(filePath)) continue;
 
+    if (/\/(?:src\/)?unison\/ui\//.test(filePath)) continue;
+
     // Extract all PascalCase component names used in JSX: <ComponentName or <ComponentName>
     const jsxUsages = new Set<string>();
     const jsxPattern = /<([A-Z][A-Za-z0-9]+)[\s/>]/g;
@@ -2356,7 +2359,7 @@ function autoInjectMissingJsxImports(sandpackFiles: Record<string, string>): voi
     }
 
     // Also check for local function/const/class declarations
-    const localDeclPattern = /(?:function|const|class|let|var)\s+([A-Z]\w*)/g;
+    const localDeclPattern = /(?:function|const|class|let|var|interface|type)\s+([A-Z]\w*)/g;
     let ld;
     while ((ld = localDeclPattern.exec(content)) !== null) {
       importedNames.add(ld[1]);
@@ -2529,7 +2532,7 @@ function repairLocalImportContracts(sandpackFiles: Record<string, string>): void
   for (const [filePath, originalContent] of Object.entries({ ...sandpackFiles })) {
     if (!/\.(tsx?|jsx?)$/.test(filePath)) continue;
 
-    const namedImportRegex = /import\s+\{([\s\S]+?)\}\s+from\s+['"](\.\.?\/[^'"]+)['"];?/g;
+    const namedImportRegex = /import\s+\{([^}]+)\}\s+from\s+['"](\.\.?\/[^'"]+)['"];?/g;
     const defaultImportRegex = /import\s+([A-Z]\w*)(?:\s*,\s*\{([^}]*)\})?\s+from\s+['"](\.\.?\/[^'"]+)['"];?/g;
     let content = originalContent;
 
@@ -3340,7 +3343,7 @@ export function processCode(code: string, filePath: string): string {
     'Cpu','CreditCard','Database','Download','Edit','ExternalLink','Eye',
     'EyeOff','Facebook','File','FileText','Film','Filter','Flag','Folder',
     'Gift','Github','Globe','Grid','Hash','Heart','HelpCircle','Home',
-    'Image','Inbox','Info','Instagram','Key','Layers','Layout','Link',
+    'Inbox','Info','Instagram','Key','Layers','Layout','Link',
     'List','Loader','Lock','LogIn','LogOut','Mail','Map','MapPin','Menu',
     'MessageCircle','MessageSquare','Mic','Monitor','Moon','MoreHorizontal',
     'MoreVertical','Move','Music','Navigation','Package','Paperclip','Pause',
@@ -3750,6 +3753,11 @@ export function normalizeLauncherFiles(
     const normalized = normalizeLauncherPath(path);
     // Sanitize image URLs and enforce contrast in all files
     let sanitized = content;
+    if (/\.(tsx?|jsx?)$/.test(normalized) && !normalized.startsWith('/src/unison/')) {
+      const imageCompatibility = normalizeImageCompatibility(sanitized, normalized);
+      if (imageCompatibility.issues.length) throw new Error(imageCompatibility.issues.join('\n'));
+      sanitized = imageCompatibility.code;
+    }
     if (/\.(tsx?|jsx?|css)$/.test(normalized)) {
       sanitized = repairBrokenImageUrls(sanitized);
     }

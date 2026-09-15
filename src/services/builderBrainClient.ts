@@ -303,6 +303,12 @@ function isRejectedRefreshError(err: unknown): boolean {
     || /invalid refresh token|refresh token.*(?:invalid|expired|not found)/i.test(candidate?.message || '');
 }
 
+export function isBuilderSessionError(error: unknown): boolean {
+  const candidate = error as { context?: { status?: number }; message?: string } | null;
+  return candidate?.context?.status === 401
+    || /invalid or expired token|session expired|sign in again/i.test(candidate?.message || '');
+}
+
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -379,14 +385,19 @@ export async function runBuilderTurn<TResponse = any>(
         return session.access_token;
       }
     }
+    // A signed-out caller must never reuse a recently cached session.
+    if (!session) return null;
     const refreshedSession = await refreshBuilderSession(forceRefresh, rejectedToken);
-    if (!refreshedSession) return session?.access_token || null;
-    if (await isTokenAcceptedByAuth(refreshedSession.access_token)) {
+    if (refreshedSession && await isTokenAcceptedByAuth(refreshedSession.access_token)) {
       return refreshedSession.access_token;
     }
-    // Fall back to existing token before giving up, rather than immediately signing out
-    if (session?.access_token && (expiresAt - Date.now() > 0)) {
-      return session.access_token;
+    // A transient proactive refresh failure may leave a usable live session.
+    // Never replay the rejected token or resurrect the pre-refresh session.
+    const live = (await supabase.auth.getSession()).data.session;
+    if (live?.access_token && live.access_token !== rejectedToken
+      && (live.expires_at ?? 0) * 1000 - Date.now() > BUILDER_MIN_USABLE_TOKEN_MS
+      && await isTokenAcceptedByAuth(live.access_token)) {
+      return live.access_token;
     }
     recentBuilderRefresh = null;
     return null;

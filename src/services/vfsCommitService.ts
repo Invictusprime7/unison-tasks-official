@@ -22,6 +22,7 @@
  * See: mem://architecture/site-os/vfs-commit-service
  */
 
+import { prepareThemeEdit, prepareThemeCorrection } from '@/services/theme/themeEdit';
 import { supabase } from '@/integrations/supabase/client';
 import {
   commitToPipeline,
@@ -317,7 +318,7 @@ export async function commitMutation(
       if (!composition.activation) continue;
       const before = input.current.vfsFiles[composition.pageFilePath];
       const after = workingFiles[composition.pageFilePath];
-      const adapter = (source: string) => source?.match(/function enhanceSection\([\s\S]*?\n  return content;\n\}/)?.[0];
+      const adapter = (source: string) => source?.match(/function enhanceSection\([\s\S]*?\n {2}return content;\n\}/)?.[0];
       if (adapter(before) !== adapter(after) || (before.includes('enhanceSection(section, props, <C') && !after?.includes('enhanceSection(section, props, <C'))) {
         throw new Error(`[VFSCommitService] AI content edits must preserve the resolved composition on ${composition.pageFilePath}.`);
       }
@@ -326,8 +327,26 @@ export async function commitMutation(
   log('fileOps', 'info', `applied ${patch.fileOps.length} file op(s)`);
 
   // 4. Apply snapshot-owned presentation operations -------------------------
+  if (patch.themeEdit && (input.source !== 'theme-change' || patch.fileOps.length || patch.playgroundOps.length || patch.presentationOps.length || patch.bindingOps.length || patch.backendOps.length || patch.businessSystem || input.options?.restoreRevisionId || input.options?.reviewedArtifact || reviewedComposition)) {
+    throw new Error('Theme edits must be isolated from content, composition and backend changes.');
+  }
+  let themeCorrectionApplied = false;
+  let themeSnapshot = input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
+  if (themeSnapshot && !patch.themeEdit?.presetId && !restoredRevision && !reviewedComposition && !input.options?.reviewedArtifact && input.source !== 'wizard-launch') {
+    const corrected = prepareThemeCorrection(workingFiles, themeSnapshot, input.identity.revisionId || null);
+    themeCorrectionApplied = corrected.snapshot !== themeSnapshot;
+    Object.assign(workingFiles, corrected.files);
+    themeSnapshot = corrected.snapshot;
+  }
+  if (patch.themeEdit) {
+    if (!themeSnapshot) throw new Error('A saved site is required for theme edits.');
+    const prepared = prepareThemeEdit(workingFiles, themeSnapshot, patch.themeEdit, input.identity.revisionId || null);
+    Object.assign(workingFiles, prepared.files);
+    themeSnapshot = prepared.snapshot;
+  }
+  const preservePageSources = input.source === 'theme-change' || (themeCorrectionApplied && !patch.presentationOps.length && !patch.playgroundOps.length);
   const presentationSnapshot = applyPresentationOps(
-    input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined,
+    themeSnapshot,
     workingFiles,
     patch.presentationOps,
     log,
@@ -355,7 +374,7 @@ export async function commitMutation(
   } else {
     try {
       canonicalResult = input.options?.compositionUpgrade ? null : commitToPipeline(
-        buildCanonicalInput(input, workingFiles, presentationSnapshot),
+        buildCanonicalInput(input, workingFiles, presentationSnapshot, preservePageSources),
         toCanonicalSource(input.source),
       );
       if (input.source !== 'wizard-launch') {
@@ -369,6 +388,7 @@ export async function commitMutation(
         const context = presentationSnapshot?.appContext;
         finalizedArtifact = buildCanonicalLaunchArtifacts({
           generatedFiles: candidate.vfsFiles,
+          preservePageSources,
           siteBundleSnapshot: candidate,
           compileArtifact: canonicalResult ? { ...canonicalResult.compileArtifact, baseline: candidate } : undefined,
           canonicalPlayground: canonicalResult?.playground ?? input.current.playground,
@@ -786,9 +806,11 @@ function buildCanonicalInput(
   input: CommitMutationInput,
   workingFiles: Record<string, string>,
   snapshotOverride?: SiteBundleSnapshot | null,
+  preservePageSources = input.source === 'theme-change',
 ): CanonicalCommitInput {
   const snapshot = snapshotOverride ?? input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
   return {
+    preservePageSources,
     selections: input.options?.selections,
     playground: input.current.playground,
     existingVfsFiles: workingFiles,
@@ -796,8 +818,8 @@ function buildCanonicalInput(
     industry: input.options?.industry ?? snapshot?.industry,
     selectedTemplateId: input.options?.selectedTemplateId ?? snapshot?.meta?.templateId ?? undefined,
     selectedThemeId: input.options?.selectedThemeId ?? snapshot?.meta?.themePresetId ?? undefined,
-    themePresetId: input.options?.themePresetId ?? snapshot?.meta?.themePresetId ?? undefined,
-    themeTokens: input.options?.themeTokens ?? snapshot?.themeTokens,
+    themePresetId: input.patch.themeEdit ? snapshot?.meta.themePresetId ?? undefined : input.options?.themePresetId ?? snapshot?.meta?.themePresetId ?? undefined,
+    themeTokens: snapshot?.themeTokens ?? input.options?.themeTokens,
     compiledContract: input.options?.compiledContract,
   };
 }

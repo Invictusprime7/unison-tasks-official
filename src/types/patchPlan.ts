@@ -65,6 +65,7 @@ export interface PresentationOp {
 }
 
 export interface PatchPlan {
+  themeEdit?: import('@/services/theme/themeEdit').ThemeEdit;
   summary: string;
   fileOps: FileOp[];
   playgroundOps: PlaygroundOp[];

@@ -10,9 +10,8 @@ function requestUrl(input: RequestInfo | URL): string {
 }
 
 /**
- * `auth.getUser()` validates a persisted token over the network. A rejected
- * token must be removed once, otherwise independent UI consumers keep issuing
- * the same failing request on every mount or refresh.
+ * Identify access-token rejections for callers that can refresh the session.
+ * This alone is not grounds for clearing refresh credentials.
  */
 export function isRejectedAuthUserRequest(
   input: RequestInfo | URL,
@@ -51,11 +50,12 @@ export function createAuthRecoveryFetch(
 
   return async (input, init) => {
     const response = await nativeFetch(input, init);
-    const rejectedSession = isRejectedAuthUserRequest(input, response)
-      || isRejectedRefreshTokenRequest(input, response);
+    // An access-token rejection can be recovered with the refresh token.
+    // Signing out here races the caller's refresh and deletes that credential.
+    const rejectedSession = isRejectedRefreshTokenRequest(input, response);
     if (rejectedSession && !recoveryInFlight) {
       recoveryInFlight = true;
-      void clearLocalSession().finally(() => {
+      void clearLocalSession().catch(() => undefined).finally(() => {
         recoveryInFlight = false;
       });
     }

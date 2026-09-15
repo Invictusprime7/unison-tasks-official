@@ -1,3 +1,4 @@
+import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContract';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
  *
@@ -6,9 +7,9 @@
  *   → canonical compiler (Stage 4b theme tokens) → sealed SiteBundleSnapshot
  *   → canonical commit → builder handoff.
  *
- * AI page authorship is retired: nothing in this module calls a model, and no
- * page body is ever authored outside the canonical compiler. Every stage runs
- * through `launchRun` so the UI can render live pipeline awareness.
+ * Lane B proposes page designs on top of the deterministic Stage 4b base.
+ * Accepted candidates pass canonical merge, preflight and commit before
+ * Preview handoff. Every stage runs through `launchRun`.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -78,10 +79,10 @@ import {
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
 import {
+  decodeWizardLaneBProposal,
   validateWizardLaneBProposal,
   mergeLaneBProposalWithSnapshot,
   type WizardLaneBEnrichmentRequest,
-  type WizardLaneBEnrichmentProposal,
 } from "@/services/wizardLaneBEnrichment";
 import { runBuilderTurn } from "@/services/builderBrainClient";
 import { buildGeneratedUiFoundationDirective } from "@/platform/core/generatedUiFoundation";
@@ -565,7 +566,7 @@ export async function runLaunchPipeline(
   let enrichedVfsFiles = siteBundleSnapshot.vfsFiles;
 
   try {
-    await run.stage("enrich", async () => {
+    await run.stage("enrich", async (signal) => {
       // Parse UI foundation manifest from snapshot VFS
       let manifestData: any = {
         primitiveImports: [],
@@ -634,6 +635,7 @@ export async function runLaunchPipeline(
           ]),
         ),
         uiFoundationDirective,
+        themeContractDirective: buildThemeContractDirectiveFromFiles(siteBundleSnapshot.vfsFiles),
         designVocabularyReport,
         intentBindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
           industry: plan.industryOverlay,
@@ -654,6 +656,7 @@ export async function runLaunchPipeline(
       // Each batch is independently validated and merged. A failed batch leaves
       // its deterministic Stage 4b pages untouched while later batches proceed.
       for (const batchPaths of batchPlan.batches) {
+        signal.throwIfAborted();
         const batchPathSet = new Set(batchPaths);
         const batchRequest: WizardLaneBEnrichmentRequest = {
           ...enrichmentRequest,
@@ -664,14 +667,14 @@ export async function runLaunchPipeline(
           ),
         };
 
-        const enrichmentResult = await runBuilderTurn<WizardLaneBEnrichmentProposal>(
+        const enrichmentResult = await runBuilderTurn<unknown>(
           {
             mode: 'wizard-canonical-enrichment',
             messages: [{ role: 'user', content: JSON.stringify(batchRequest) }],
             wizardSeed: { id: plan.seed } as any,
             vfsFiles: buildLaneBVfsContext(enrichedVfsFiles),
           },
-          { timeoutMs: 60_000, signal: undefined },
+          { timeoutMs: 60_000, signal },
         );
 
         if (enrichmentResult.error || !enrichmentResult.data) {
@@ -682,7 +685,12 @@ export async function runLaunchPipeline(
           continue;
         }
 
-        const proposal = enrichmentResult.data;
+        signal.throwIfAborted();
+        const proposal = decodeWizardLaneBProposal(enrichmentResult.data);
+        if (!proposal) {
+          run.degrade('enrich', 'enrich.invalid_response', 'AI returned an invalid design proposal; the themed site was preserved.');
+          continue;
+        }
         const validation = validateWizardLaneBProposal({
           proposal,
           request: batchRequest,

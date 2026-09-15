@@ -137,8 +137,8 @@ function themeModule(template: TemplateComposition): string {
     typography: {
       headingFont: 'var(--font-heading)',
       bodyFont: 'var(--font-body)',
-      headingWeight: 'var(--ut-heading-weight, 700)',
-      bodyWeight: 'var(--ut-body-weight, 400)',
+      headingWeight: 'var(--ut-weight-display)',
+      bodyWeight: 'var(--ut-weight-body)',
     },
     radius: 'var(--radius)',
     sectionPadding: 'var(--ut-section-padding, 6rem 0)',
@@ -279,7 +279,7 @@ export default function Navbar({ props }: { props: any }) {
         <MobileNavigation brand={brand} links={links} cta={cta} />
         <div className={shellClass + ' hidden lg:grid min-h-20 grid-cols-[1fr_auto_1fr] items-center gap-5'}>
           <nav className="ut-nav-links flex items-center gap-5">{links.slice(0, midpoint).map((link: any, index: number) => <a key={index} href={link.href} className={linkClass}>{link.label}</a>)}</nav>
-          <a href="#" className="text-center font-heading text-2xl font-semibold text-foreground no-underline">{brand}</a>
+          <a href="#" className="text-center font-heading text-2xl font-[number:var(--ut-weight-display)] text-foreground no-underline">{brand}</a>
           <nav className="ut-nav-links flex items-center justify-end gap-5">{links.slice(midpoint).map((link: any, index: number) => <a key={index} href={link.href} className={linkClass}>{link.label}</a>)}{cta && <a href={cta.href || '#'} data-ut-intent={cta.intent} className={ctaClass}>{cta.label}</a>}</nav>
         </div>
       </header>
@@ -291,7 +291,7 @@ export default function Navbar({ props }: { props: any }) {
       <header data-ut-variant="navbar:minimal-dark" className={positionClass + ' border-b border-border bg-foreground text-background'}>
         <MobileNavigation brand={brand} links={links} cta={cta} />
         <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
-          <a href="#" className="font-heading text-xl font-semibold text-background no-underline">{brand}</a>
+          <a href="#" className="font-heading text-xl font-[number:var(--ut-weight-display)] text-background no-underline">{brand}</a>
           <nav className="ut-nav-links flex items-center gap-6">{links.map((link: any, index: number) => <a key={index} href={link.href} className="font-body text-sm text-background/75 no-underline hover:text-background">{link.label}</a>)}{cta && <a href={cta.href || '#'} data-ut-intent={cta.intent} className="rounded-[var(--radius)] bg-background px-4 py-2 font-body text-sm font-semibold text-foreground no-underline">{cta.label}</a>}</nav>
         </div>
       </header>
@@ -302,7 +302,7 @@ export default function Navbar({ props }: { props: any }) {
     <header data-ut-variant="navbar:standard" className={positionClass + ' border-b border-border/50 bg-background/85 backdrop-blur-md'}>
       <MobileNavigation brand={brand} links={links} cta={cta} />
       <div className={shellClass + ' hidden lg:flex min-h-[var(--ut-nav-block)] items-center justify-between'}>
-        <a href="#" className="font-heading text-2xl font-semibold text-primary no-underline">{brand}</a>
+        <a href="#" className="font-heading text-2xl font-[number:var(--ut-weight-display)] text-primary no-underline">{brand}</a>
         <nav className="ut-nav-links flex items-center gap-8">
           {links.map((link: any, index: number) => <a key={index} href={link.href} className={linkClass}>{link.label}</a>)}
           {cta && <a href={cta.href || '#'} data-ut-intent={cta.intent} className={ctaClass}>{cta.label}</a>}
@@ -333,7 +333,7 @@ export default function Hero({ props }: { props: any }) {
   const media = image || backgroundImage;
   const content = <>
     {badge && <span className={fullBleed ? 'mb-6 inline-block rounded-full border border-background/30 bg-background/15 px-4 py-1.5 font-body text-xs font-semibold text-background' : 'mb-6 inline-block rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 font-body text-xs font-semibold text-primary'}>{badge}</span>}
-    <h1 className={fullBleed ? 'mb-6 font-heading text-4xl font-semibold leading-tight text-background sm:text-6xl' : 'mb-6 font-heading text-4xl font-semibold leading-tight text-foreground sm:text-6xl'}>{headline}</h1>
+    <h1 className={fullBleed ? 'mb-6 font-heading text-[length:var(--ut-type-display)] font-[number:var(--ut-weight-display)] leading-[var(--ut-display-leading)] text-background' : 'mb-6 font-heading text-[length:var(--ut-type-display)] font-[number:var(--ut-weight-display)] leading-[var(--ut-display-leading)] text-foreground'}>{headline}</h1>
     {subheadline && <p className={(fullBleed ? 'text-background/85 ' : 'text-muted-foreground ') + (split ? '' : 'mx-auto max-w-2xl ') + (description ? 'mb-3 ' : 'mb-8 ') + 'font-body text-xl leading-relaxed'}>{subheadline}</p>}
     {description && <p className={(fullBleed ? 'text-background/70 ' : 'text-muted-foreground ') + (split ? '' : 'mx-auto max-w-2xl ') + 'mb-8 font-body leading-relaxed'}>{description}</p>}
     {ctas.length > 0 && <div className={(split ? 'justify-start' : 'justify-center') + ' flex flex-wrap gap-4'}>{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? (fullBleed ? outlineButtonClass + ' border-background/55 text-background hover:bg-background/10' : outlineButtonClass) : primaryButtonClass}>{cta.label}</a>)}</div>}
@@ -365,7 +365,7 @@ export default function Hero({ props }: { props: any }) {
       <div className={shellClass + ' text-center'}>
         {content}
         {media && <img src={media} alt="" className="mx-auto mt-12 block max-h-[var(--ut-hero-media-max)] w-full max-w-5xl rounded-[var(--radius)] border border-border object-cover" />}
-        {stats && stats.length > 0 && <div className="ut-hero-stats mt-12 flex flex-wrap justify-center gap-10">{stats.map((stat: any, index: number) => <div key={index} className="text-center"><div className="font-heading text-3xl font-semibold text-primary">{stat.value}</div><div className="font-body text-xs uppercase text-muted-foreground">{stat.label}</div></div>)}</div>}
+        {stats && stats.length > 0 && <div className="ut-hero-stats mt-12 flex flex-wrap justify-center gap-10">{stats.map((stat: any, index: number) => <div key={index} className="text-center"><div className="font-heading text-3xl font-[number:var(--ut-weight-display)] text-primary">{stat.value}</div><div className="font-body text-xs uppercase text-muted-foreground">{stat.label}</div></div>)}</div>}
       </div>
     </section>
   );
@@ -382,7 +382,7 @@ export default function Services({ props }: { props: any }) {
   const { headline, subheadline, items = [], layout = 'grid' } = props;
   const isAlternating = layout === 'alternating';
   const isList = layout === 'list' || layout === 'compact-list';
-  const intro = <>{headline && <div className={(isAlternating ? 'text-left' : 'text-center') + ' mb-12'}><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className={(isAlternating ? '' : 'mx-auto ') + 'max-w-2xl font-body text-lg text-muted-foreground'}>{subheadline}</p>}</div>}</>;
+  const intro = <>{headline && <div className={(isAlternating ? 'text-left' : 'text-center') + ' mb-12'}><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className={(isAlternating ? '' : 'mx-auto ') + 'max-w-2xl font-body text-lg text-muted-foreground'}>{subheadline}</p>}</div>}</>;
 
   if (isAlternating) {
     return (
@@ -394,9 +394,9 @@ export default function Services({ props }: { props: any }) {
               <article key={index} className={(item.image ? 'grid items-center gap-8 md:grid-cols-2 lg:gap-14' : 'max-w-2xl')}>
                 <div className={index % 2 === 0 ? 'md:order-1' : 'md:order-2'}>
                   {item.badge && <span className="mb-3 inline-block rounded-full bg-primary/10 px-3 py-1 font-body text-xs font-semibold text-primary">{item.badge}</span>}
-                  <h3 className="mb-3 font-heading text-2xl font-semibold text-foreground sm:text-3xl">{item.title}</h3>
+                  <h3 className="mb-3 font-heading text-2xl font-[number:var(--ut-weight-display)] text-foreground sm:text-3xl">{item.title}</h3>
                   <p className="mb-4 font-body leading-relaxed text-muted-foreground">{item.description}</p>
-                  {(item.price || item.duration) && <p className="font-heading font-semibold text-primary">{[item.price, item.duration].filter(Boolean).join(' · ')}</p>}
+                  {(item.price || item.duration) && <p className="font-heading font-[number:var(--ut-weight-display)] text-primary">{[item.price, item.duration].filter(Boolean).join(' · ')}</p>}
                   {item.cta && <a href={item.cta.href || '#'} data-ut-intent={item.cta.intent} className={buttonClass}>{item.cta.label}</a>}
                 </div>
                 {item.image && <div className={(index % 2 === 0 ? 'md:order-2' : 'md:order-1') + ' ut-media-frame min-h-[var(--ut-media-block)]'}><img src={item.image} alt={item.title || ''} className="block min-h-[var(--ut-media-block)] h-full w-full object-cover" /></div>}
@@ -417,8 +417,8 @@ export default function Services({ props }: { props: any }) {
             {items.map((item: any, index: number) => (
               <article key={index} className={cardClass + ' grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-5'}>
                 <div className="grid size-12 place-items-center rounded-full bg-primary/10 text-xl text-primary">{item.icon || '•'}</div>
-                <div><h3 className="mb-1 font-heading text-lg font-semibold">{item.title}</h3><p className="font-body text-sm leading-relaxed text-muted-foreground">{item.description}</p></div>
-                {(item.price || item.duration) && <div className="whitespace-nowrap text-right font-heading font-semibold text-primary">{[item.price, item.duration].filter(Boolean).join(' · ')}</div>}
+                <div><h3 className="mb-1 font-heading text-lg font-[number:var(--ut-weight-display)]">{item.title}</h3><p className="font-body text-sm leading-relaxed text-muted-foreground">{item.description}</p></div>
+                {(item.price || item.duration) && <div className="whitespace-nowrap text-right font-heading font-[number:var(--ut-weight-display)] text-primary">{[item.price, item.duration].filter(Boolean).join(' · ')}</div>}
               </article>
             ))}
           </div>
@@ -436,9 +436,9 @@ export default function Services({ props }: { props: any }) {
             <div key={index} className={cardClass + ' p-8'}>
               {item.image && <img src={item.image} alt={item.title || ''} className="mb-5 aspect-[4/3] w-full rounded-[var(--radius)] object-cover" />}
               {item.badge && <span className="mb-4 inline-block rounded-full bg-primary/10 px-3 py-1 font-body text-xs font-semibold text-primary">{item.badge}</span>}
-              <h3 className="mb-2 font-heading text-xl font-semibold">{item.title}</h3>
+              <h3 className="mb-2 font-heading text-xl font-[number:var(--ut-weight-display)]">{item.title}</h3>
               <p className="mb-4 font-body text-sm leading-relaxed text-muted-foreground">{item.description}</p>
-              {(item.price || item.duration) && <div className="flex items-baseline gap-2">{item.price && <span className="font-heading text-2xl font-semibold text-primary">{item.price}</span>}{item.duration && <span className="font-body text-xs text-muted-foreground">{item.duration}</span>}</div>}
+              {(item.price || item.duration) && <div className="flex items-baseline gap-2">{item.price && <span className="font-heading text-2xl font-[number:var(--ut-weight-display)] text-primary">{item.price}</span>}{item.duration && <span className="font-body text-xs text-muted-foreground">{item.duration}</span>}</div>}
               {item.cta && <a href={item.cta.href || '#'} data-ut-intent={item.cta.intent} className={buttonClass}>{item.cta.label}</a>}
             </div>
           ))}
@@ -454,8 +454,8 @@ const TESTIMONIALS_MODULE = `import React from 'react';
 export default function Testimonials({ props }: { props: any }) {
   const { headline, subheadline, items = [], layout: rawLayout = 'grid' } = props;
   const layout = rawLayout === 'rail' ? 'carousel' : rawLayout === 'spotlight' ? 'single' : rawLayout;
-  const intro = <>{headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}</>;
-  const quote = (item: any) => <><blockquote className="mb-6 border-l-4 border-primary/30 pl-4 font-body italic leading-relaxed text-muted-foreground">"{item.quote}"</blockquote><div><div className="font-heading text-sm font-semibold text-card-foreground">{item.author}</div>{item.role && <div className="font-body text-xs text-muted-foreground">{item.role}</div>}</div></>;
+  const intro = <>{headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}</>;
+  const quote = (item: any) => <><blockquote className="mb-6 border-l-4 border-primary/30 pl-4 font-body italic leading-relaxed text-muted-foreground">"{item.quote}"</blockquote><div><div className="font-heading text-sm font-[number:var(--ut-weight-display)] text-card-foreground">{item.author}</div>{item.role && <div className="font-body text-xs text-muted-foreground">{item.role}</div>}</div></>;
   const cardClass = 'ut-foundation-card bg-card text-card-foreground';
 
   if (layout === 'single' && items[0]) {
@@ -466,8 +466,8 @@ export default function Testimonials({ props }: { props: any }) {
           {intro}
           <figure className={cardClass + ' border-t-4 border-t-accent p-8 text-center sm:p-16'}>
             {featured.rating && <div className="mb-6 text-accent">{'★'.repeat(featured.rating)}</div>}
-            <blockquote className="mb-8 font-heading text-2xl font-semibold leading-relaxed sm:text-3xl">"{featured.quote}"</blockquote>
-            <figcaption><div className="font-heading text-sm font-semibold">{featured.author}</div>{featured.role && <div className="font-body text-sm text-muted-foreground">{featured.role}</div>}</figcaption>
+            <blockquote className="mb-8 font-heading text-2xl font-[number:var(--ut-weight-display)] leading-relaxed sm:text-3xl">"{featured.quote}"</blockquote>
+            <figcaption><div className="font-heading text-sm font-[number:var(--ut-weight-display)]">{featured.author}</div>{featured.role && <div className="font-body text-sm text-muted-foreground">{featured.role}</div>}</figcaption>
           </figure>
         </div>
       </section>
@@ -519,7 +519,7 @@ export default function CTA({ props }: { props: any }) {
       <section data-ut-variant="cta:split-card" className="bg-background py-24">
         <div className="relative mx-auto grid w-[var(--ut-shell-width)] items-center gap-8 overflow-hidden rounded-[var(--radius)] bg-foreground p-8 text-background sm:p-16 md:grid-cols-2">
           {backgroundImage && <img src={backgroundImage} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
-          <div className="relative"><h2 className="mb-4 font-heading text-3xl font-semibold sm:text-5xl">{headline}</h2>{description && <p className="font-body text-lg leading-relaxed text-background/75">{description}</p>}</div>
+          <div className="relative"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] sm:text-5xl">{headline}</h2>{description && <p className="font-body text-lg leading-relaxed text-background/75">{description}</p>}</div>
           <div className="relative flex flex-col gap-3">{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? outlineButtonClass + ' border-background/45 text-background hover:bg-background/10' : primaryButtonClass}>{cta.label}</a>)}</div>
         </div>
       </section>
@@ -529,14 +529,14 @@ export default function CTA({ props }: { props: any }) {
     return (
       <section data-ut-variant="cta:gradient-banner" className="relative overflow-hidden bg-primary py-24 text-center text-primary-foreground">
         {backgroundImage && <img src={backgroundImage} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
-        <div className="relative mx-auto w-full max-w-7xl px-5 sm:px-8"><h2 className="mb-4 font-heading text-3xl font-semibold sm:text-5xl">{headline}</h2>{description && <p className="mx-auto mb-8 max-w-2xl font-body text-lg text-primary-foreground/85">{description}</p>}<div className="flex flex-wrap justify-center gap-4">{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? outlineButtonClass + ' border-primary-foreground/60 text-primary-foreground hover:bg-primary-foreground/10' : primaryButtonClass + ' bg-primary-foreground text-primary'}>{cta.label}</a>)}</div></div>
+        <div className="relative mx-auto w-full max-w-7xl px-5 sm:px-8"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] sm:text-5xl">{headline}</h2>{description && <p className="mx-auto mb-8 max-w-2xl font-body text-lg text-primary-foreground/85">{description}</p>}<div className="flex flex-wrap justify-center gap-4">{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? outlineButtonClass + ' border-primary-foreground/60 text-primary-foreground hover:bg-primary-foreground/10' : primaryButtonClass + ' bg-primary-foreground text-primary'}>{cta.label}</a>)}</div></div>
       </section>
     );
   }
   return (
     <section data-ut-variant="cta:centered" className="border-y border-border bg-muted py-24 text-center">
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-        <h2 className="mb-4 font-heading text-4xl font-semibold text-foreground">{headline}</h2>
+        <h2 className="mb-4 font-heading text-4xl font-[number:var(--ut-weight-display)] text-foreground">{headline}</h2>
         {description && <p className="mx-auto mb-8 max-w-2xl font-body text-lg text-muted-foreground">{description}</p>}
         <div className="flex flex-wrap justify-center gap-4">{ctas.map((cta: any, index: number) => <a key={index} href={cta.href || '#'} data-ut-intent={cta.intent} className={cta.variant === 'outline' ? outlineButtonClass : primaryButtonClass}>{cta.label}</a>)}</div>
       </div>
@@ -567,11 +567,11 @@ export default function Contact({ props }: { props: any }) {
     return (
       <section data-ut-variant="contact:split-card" className="bg-background py-24">
         <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
-          {headline && <div className="mb-12 max-w-2xl"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{description && <p className="font-body text-lg leading-relaxed text-muted-foreground">{description}</p>}</div>}
+          {headline && <div className="mb-12 max-w-2xl"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{description && <p className="font-body text-lg leading-relaxed text-muted-foreground">{description}</p>}</div>}
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <form data-demo-form="true" data-ut-intent={submitIntent} className="flex flex-col gap-4 rounded-[var(--radius)] border border-border bg-card p-8">{controls}<button type="submit" className={buttonClass + ' w-full'}>{submitLabel}</button></form>
             <aside className="flex flex-col justify-center gap-5 rounded-[var(--radius)] border border-border bg-muted p-8">
-              <h3 className="font-heading text-xl font-semibold text-foreground">Start a conversation</h3>
+              <h3 className="font-heading text-xl font-[number:var(--ut-weight-display)] text-foreground">Start a conversation</h3>
               {address && <p className="font-body leading-relaxed text-muted-foreground">{address}</p>}
               {phone && <a href={'tel:' + phone.replace(/[^+0-9]/g, '')} className="font-body text-primary no-underline">{phone}</a>}
               {email && <a href={'mailto:' + email} className="font-body text-primary no-underline">{email}</a>}
@@ -586,7 +586,7 @@ export default function Contact({ props }: { props: any }) {
     return (
       <section data-ut-variant="contact:minimal-inline" className="bg-muted py-24 text-center">
         <div className="mx-auto w-full max-w-4xl px-5 sm:px-8">
-          {headline && <h2 className="mb-3 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>}
+          {headline && <h2 className="mb-3 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>}
           {description && <p className="mx-auto mb-8 max-w-xl font-body text-muted-foreground">{description}</p>}
           <form data-demo-form="true" data-ut-intent={submitIntent} className="flex flex-wrap justify-center gap-3">{controls.slice(0, 2)}<button type="submit" className={buttonClass + ' shrink-0'}>{submitLabel}</button></form>
         </div>
@@ -597,7 +597,7 @@ export default function Contact({ props }: { props: any }) {
   return (
     <section data-ut-variant="contact:centered" className="bg-muted py-24">
       <div className="mx-auto w-full max-w-4xl px-5 sm:px-8">
-        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{description && <p className="font-body text-lg text-muted-foreground">{description}</p>}</div>}
+        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{description && <p className="font-body text-lg text-muted-foreground">{description}</p>}</div>}
         <form data-demo-form="true" data-ut-intent={submitIntent} className="mx-auto flex max-w-lg flex-col gap-4">
           {controls}
           <button type="submit" className={buttonClass + ' w-full'}>{submitLabel}</button>
@@ -623,7 +623,7 @@ export default function Footer({ props }: { props: any }) {
   if (resolvedLayout === 'centered-minimal') {
     return (
       <footer data-ut-variant="footer:centered-minimal" className="border-t border-border bg-background py-12 text-center">
-        <div className={shellClass}><h3 className="mb-4 font-heading text-xl font-semibold text-foreground">{brand}</h3><nav className="mb-6 flex flex-wrap justify-center gap-5">{footerLinks.map((link: any, index: number) => <a key={index} href={link.href} className="font-body text-sm text-muted-foreground no-underline hover:text-foreground">{link.label}</a>)}</nav><p className="font-body text-xs text-muted-foreground">{copyright || '© ' + new Date().getFullYear() + ' ' + brand + '. All rights reserved.'}</p></div>
+        <div className={shellClass}><h3 className="mb-4 font-heading text-xl font-[number:var(--ut-weight-display)] text-foreground">{brand}</h3><nav className="mb-6 flex flex-wrap justify-center gap-5">{footerLinks.map((link: any, index: number) => <a key={index} href={link.href} className="font-body text-sm text-muted-foreground no-underline hover:text-foreground">{link.label}</a>)}</nav><p className="font-body text-xs text-muted-foreground">{copyright || '© ' + new Date().getFullYear() + ' ' + brand + '. All rights reserved.'}</p></div>
       </footer>
     );
   }
@@ -632,7 +632,7 @@ export default function Footer({ props }: { props: any }) {
     return (
       <footer data-ut-variant="footer:dark-band" className="bg-foreground pb-8 pt-16 text-background">
         <div className={shellClass}>
-          <div className="mb-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4"><div><h3 className="mb-3 font-heading text-2xl font-semibold">{brand}</h3>{newsletter && <form data-demo-form="true" data-ut-intent="newsletter.subscribe" className="flex gap-2"><input type="email" aria-label="Email address" placeholder="Email address" className={inputClass} /><button type="submit" className={buttonClass}>Subscribe</button></form>}</div>{columns.map((column: any, index: number) => <div key={index}><h4 className="mb-3 font-heading text-xs font-semibold uppercase text-background/70">{column.title}</h4><div className="flex flex-col gap-2">{column.links.map((link: any, linkIndex: number) => <a key={linkIndex} href={link.href} className="font-body text-sm text-background/70 no-underline hover:text-background">{link.label}</a>)}</div></div>)}</div>
+          <div className="mb-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4"><div><h3 className="mb-3 font-heading text-2xl font-[number:var(--ut-weight-display)]">{brand}</h3>{newsletter && <form data-demo-form="true" data-ut-intent="newsletter.subscribe" className="flex gap-2"><input type="email" aria-label="Email address" placeholder="Email address" className={inputClass} /><button type="submit" className={buttonClass}>Subscribe</button></form>}</div>{columns.map((column: any, index: number) => <div key={index}><h4 className="mb-3 font-heading text-xs font-[number:var(--ut-weight-display)] uppercase text-background/70">{column.title}</h4><div className="flex flex-col gap-2">{column.links.map((link: any, linkIndex: number) => <a key={linkIndex} href={link.href} className="font-body text-sm text-background/70 no-underline hover:text-background">{link.label}</a>)}</div></div>)}</div>
           <div className="flex flex-wrap justify-between gap-4 border-t border-background/15 pt-6"><p className="font-body text-xs text-background/60">{copyright || '© ' + new Date().getFullYear() + ' ' + brand + '. All rights reserved.'}</p>{socials.length > 0 && <div className="flex gap-3">{socials.map((social: any, index: number) => <a key={index} href={social.url || '#'} aria-label={social.platform} className="inline-flex text-background/80"><SocialIcon platform={social.platform} size={16} /></a>)}</div>}</div>
         </div>
       </footer>
@@ -644,10 +644,10 @@ export default function Footer({ props }: { props: any }) {
       <div className={shellClass}>
         <div className="ut-footer-grid mb-12 grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <h3 className="mb-4 font-heading text-xl font-semibold text-primary">{brand}</h3>
+            <h3 className="mb-4 font-heading text-xl font-[number:var(--ut-weight-display)] text-primary">{brand}</h3>
             {newsletter && <form data-demo-form="true" data-ut-intent="newsletter.subscribe" className="mt-4 flex gap-2"><input type="email" placeholder="your@email.com" className={inputClass} /><button type="submit" className={buttonClass}>Subscribe</button></form>}
           </div>
-          {columns.map((column: any, index: number) => <div key={index}><h4 className="mb-4 font-heading text-sm font-semibold uppercase">{column.title}</h4><ul className="flex list-none flex-col gap-2 p-0">{column.links.map((link: any, linkIndex: number) => <li key={linkIndex}><a href={link.href} className="font-body text-sm text-muted-foreground no-underline hover:text-foreground">{link.label}</a></li>)}</ul></div>)}
+          {columns.map((column: any, index: number) => <div key={index}><h4 className="mb-4 font-heading text-sm font-[number:var(--ut-weight-display)] uppercase">{column.title}</h4><ul className="flex list-none flex-col gap-2 p-0">{column.links.map((link: any, linkIndex: number) => <li key={linkIndex}><a href={link.href} className="font-body text-sm text-muted-foreground no-underline hover:text-foreground">{link.label}</a></li>)}</ul></div>)}
         </div>
         <div className="ut-footer-bottom flex items-center justify-between border-t border-border/50 pt-6">
           <p className="font-body text-xs text-muted-foreground">{copyright || '© ' + new Date().getFullYear() + ' ' + brand + '. All rights reserved.'}</p>
@@ -666,8 +666,8 @@ export default function Stats({ props }: { props: any }) {
   return (
     <section className="border-y border-border/50 bg-muted py-24">
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-        {headline && <h2 className="mb-12 text-center font-heading text-3xl font-semibold text-foreground">{headline}</h2>}
-        <div className="flex flex-wrap justify-center gap-16">{items.map((stat: any, index: number) => <div key={index} className="text-center"><div className="font-heading text-5xl font-semibold leading-none text-primary">{stat.value}</div><div className="mt-2 font-body text-xs uppercase text-muted-foreground">{stat.label}</div></div>)}</div>
+        {headline && <h2 className="mb-12 text-center font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground">{headline}</h2>}
+        <div className="flex flex-wrap justify-center gap-16">{items.map((stat: any, index: number) => <div key={index} className="text-center"><div className="font-heading text-5xl font-[number:var(--ut-weight-display)] leading-none text-primary">{stat.value}</div><div className="mt-2 font-body text-xs uppercase text-muted-foreground">{stat.label}</div></div>)}</div>
       </div>
     </section>
   );
@@ -681,9 +681,9 @@ export default function Team({ props }: { props: any }) {
   return (
     <section className="bg-background py-24">
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
+        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
         <div className="ut-grid grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {members.map((member: any, index: number) => <div key={index} className="rounded-[var(--radius)] border border-border bg-card p-8 text-center text-card-foreground"><h3 className="mb-1 font-heading text-lg font-semibold">{member.name}</h3><p className="font-body text-sm text-primary">{member.role}</p>{member.bio && <p className="mt-2 font-body text-sm leading-relaxed text-muted-foreground">{member.bio}</p>}</div>)}
+          {members.map((member: any, index: number) => <div key={index} className="rounded-[var(--radius)] border border-border bg-card p-8 text-center text-card-foreground"><h3 className="mb-1 font-heading text-lg font-[number:var(--ut-weight-display)]">{member.name}</h3><p className="font-body text-sm text-primary">{member.role}</p>{member.bio && <p className="mt-2 font-body text-sm leading-relaxed text-muted-foreground">{member.bio}</p>}</div>)}
         </div>
       </div>
     </section>
@@ -729,7 +729,7 @@ export default function Gallery({ props }: { props: any }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [lightbox, visible.length]);
 
-  const intro = <>{headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}</>;
+  const intro = <>{headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}</>;
   const filters = (filterable !== false && categories.length > 1) ? (
     <div className="mb-10 flex flex-wrap justify-center gap-2">
       {['all', ...categories].map((category) => (
@@ -810,7 +810,7 @@ export default function Pricing({ props }: { props: any }) {
   const list = ((Array.isArray(tiers) && tiers.length ? tiers : items) || []).map(normalizeTier).filter(Boolean) as any[];
   const columnClass = list.length >= 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : list.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3';
   const featureLabel = (feature: any) => (typeof feature === 'string' ? feature : feature?.label || '');
-  const intro = headline ? <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div> : null;
+  const intro = headline ? <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div> : null;
 
   if (layout === 'accordion') {
     return (
@@ -820,7 +820,7 @@ export default function Pricing({ props }: { props: any }) {
           <div className="mx-auto max-w-3xl">
             {list.map((tier, index) => (
               <details key={index} open={Boolean(tier.highlighted) || index === 0} className="mb-3 rounded-[var(--radius)] border border-border bg-card p-5 text-card-foreground">
-                <summary className="flex cursor-pointer items-center justify-between gap-4 font-heading text-base font-semibold">
+                <summary className="flex cursor-pointer items-center justify-between gap-4 font-heading text-base font-[number:var(--ut-weight-display)]">
                   <span>{tier.name}{tier.badge && <span className="ml-3 rounded-full bg-primary px-2 py-0.5 font-body text-xs text-primary-foreground">{tier.badge}</span>}</span>
                   <span>{tier.price}{tier.period && <span className="font-body text-xs font-normal text-muted-foreground">/{tier.period}</span>}</span>
                 </summary>
@@ -882,14 +882,14 @@ export default function Pricing({ props }: { props: any }) {
   return (
     <section data-ut-variant="pricing:tiers" className="bg-muted py-24">
       <div className={shellClass}>
-        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
+        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
         <div className={'grid items-start gap-6 ' + columnClass}>
           {list.map((tier, index) => (
             <article key={index} className={(tier.highlighted ? 'border-primary shadow-lg lg:-translate-y-2 ' : 'border-border ') + 'relative flex h-full flex-col rounded-[var(--radius)] border bg-card p-8 text-card-foreground'}>
               {(tier.badge || tier.highlighted) && <span className="absolute -top-3 left-8 rounded-full bg-primary px-3 py-1 font-body text-xs font-semibold text-primary-foreground">{tier.badge || 'Most popular'}</span>}
-              <h3 className="mb-2 font-heading text-lg font-semibold">{tier.name}</h3>
+              <h3 className="mb-2 font-heading text-lg font-[number:var(--ut-weight-display)]">{tier.name}</h3>
               <div className="mb-3 flex items-baseline gap-1">
-                <span className="font-heading text-4xl font-semibold text-primary">{tier.price}</span>
+                <span className="font-heading text-4xl font-[number:var(--ut-weight-display)] text-primary">{tier.price}</span>
                 {tier.period && <span className="font-body text-sm text-muted-foreground">/{tier.period}</span>}
               </div>
               {tier.description && <p className="mb-4 font-body text-sm leading-relaxed text-muted-foreground">{tier.description}</p>}
@@ -919,10 +919,10 @@ export default function About({ props }: { props: any }) {
   const { headline, description, image, cta, layout = 'text-left', stats } = props;
   const copy = (
     <div>
-      {headline && <h2 className="mb-5 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>}
+      {headline && <h2 className="mb-5 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>}
       {description && <p className="whitespace-pre-line font-body text-lg leading-relaxed text-muted-foreground">{description}</p>}
       {Array.isArray(stats) && stats.length > 0 && (
-        <div className="mt-8 flex flex-wrap gap-10">{stats.map((stat: any, index: number) => <div key={index}><div className="font-heading text-3xl font-semibold text-primary">{stat.value}</div><div className="font-body text-xs uppercase text-muted-foreground">{stat.label}</div></div>)}</div>
+        <div className="mt-8 flex flex-wrap gap-10">{stats.map((stat: any, index: number) => <div key={index}><div className="font-heading text-3xl font-[number:var(--ut-weight-display)] text-primary">{stat.value}</div><div className="font-body text-xs uppercase text-muted-foreground">{stat.label}</div></div>)}</div>
       )}
       {cta && <a href={cta.href || '#'} data-ut-intent={cta.intent} className={buttonClass}>{cta.label}</a>}
     </div>
@@ -961,7 +961,7 @@ export default function LogoCloud({ props }: { props: any }) {
         <div className="flex flex-wrap items-center justify-center gap-x-14 gap-y-8">
           {list.map((logo: any, index: number) => (logo?.src
             ? <img key={index} src={logo.src} alt={logo.name || ''} loading="lazy" className="h-8 w-auto opacity-60 transition-opacity hover:opacity-100" />
-            : <span key={index} className="font-heading text-lg font-semibold text-muted-foreground">{logo?.name || logo}</span>
+            : <span key={index} className="font-heading text-lg font-[number:var(--ut-weight-display)] text-muted-foreground">{logo?.name || logo}</span>
           ))}
         </div>
       </div>
@@ -978,14 +978,14 @@ export default function BlogPreview({ props }: { props: any }) {
   return (
     <section data-ut-variant="blog-preview:grid" className="bg-background py-24">
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
+        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((post: any, index: number) => (
             <article key={index} className="flex flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-card text-card-foreground">
               {post.image && <img src={post.image} alt={post.title || ''} loading="lazy" className="aspect-[16/10] w-full object-cover" />}
               <div className="flex flex-1 flex-col p-6">
                 {(post.date || post.author) && <p className="mb-2 font-body text-xs uppercase tracking-wide text-muted-foreground">{[post.date, post.author].filter(Boolean).join(' · ')}</p>}
-                <h3 className="mb-2 font-heading text-lg font-semibold">{post.title}</h3>
+                <h3 className="mb-2 font-heading text-lg font-[number:var(--ut-weight-display)]">{post.title}</h3>
                 {post.excerpt && <p className="mb-4 font-body text-sm leading-relaxed text-muted-foreground">{post.excerpt}</p>}
                 <a href={post.href || '#'} className="mt-auto font-body text-sm font-semibold text-primary no-underline">Read more →</a>
               </div>
@@ -1005,7 +1005,7 @@ export default function BeforeAfter({ props }: { props: any }) {
   return (
     <section data-ut-variant="before-after:pairs" className="bg-muted py-24">
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
+        {headline && <div className="mb-12 text-center"><h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>{subheadline && <p className="mx-auto max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}</div>}
         <div className="grid gap-8 sm:grid-cols-2">
           {items.map((item: any, index: number) => (
             <figure key={index} className="m-0 overflow-hidden rounded-[var(--radius)] border border-border bg-card">
@@ -1041,18 +1041,18 @@ export default function Features({ props }: { props: any }) {
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
         {headline && (
           <div className={centered ? 'mb-14 text-center' : 'mb-14 max-w-2xl'}>
-            <h2 className="mb-4 font-heading text-3xl font-semibold text-foreground sm:text-4xl">{headline}</h2>
+            <h2 className="mb-4 font-heading text-3xl font-[number:var(--ut-weight-display)] text-foreground sm:text-4xl">{headline}</h2>
             {subheadline && <p className="font-body text-lg text-muted-foreground">{subheadline}</p>}
           </div>
         )}
         <div className={'grid gap-10 ' + (iconLeft ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3')}>
           {items.map((item: any, index: number) => (
             <div key={index} className={iconLeft ? 'flex gap-4' : (centered ? 'text-center' : '')}>
-              <div className={'mb-4 flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 font-heading text-base font-semibold text-primary ' + (centered ? 'mx-auto' : '')}>
+              <div className={'mb-4 flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 font-heading text-base font-[number:var(--ut-weight-display)] text-primary ' + (centered ? 'mx-auto' : '')}>
                 {item.icon || String(index + 1).padStart(2, '0')}
               </div>
               <div>
-                <h3 className="mb-2 font-heading text-lg font-semibold text-foreground">{item.title}</h3>
+                <h3 className="mb-2 font-heading text-lg font-[number:var(--ut-weight-display)] text-foreground">{item.title}</h3>
                 {item.description && <p className="font-body text-sm leading-relaxed text-muted-foreground">{item.description}</p>}
               </div>
             </div>

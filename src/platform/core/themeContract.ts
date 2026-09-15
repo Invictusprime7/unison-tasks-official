@@ -15,6 +15,7 @@
  * invents.
  */
 
+import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import {
   ART_DIRECTION_PACKS,
   DEFAULT_ART_DIRECTION_PACK_ID,
@@ -38,6 +39,7 @@ export interface ThemeContractToken {
 
 export interface ThemeContractGroup {
   id:
+    | 'palette'
     | 'typography'
     | 'scale'
     | 'surface'
@@ -89,7 +91,11 @@ export interface ThemeContract {
  * derived from `buildArtDirectionTokens` — a new token in a pack shows up here
  * automatically, and an undocumented one is reported by `auditThemeContract`.
  */
+export const THEME_COLOR_TOKENS = ['--background', '--foreground', '--primary', '--primary-foreground', '--secondary', '--secondary-foreground', '--accent', '--accent-foreground', '--muted', '--muted-foreground', '--card', '--card-foreground', '--border', '--ring', '--popover', '--popover-foreground'] as const;
+
 const TOKEN_ROLES: Record<string, { group: ThemeContractGroup['id']; role: string; usage: string }> = {
+  '--font-heading': { group: 'typography', role: 'heading font family', usage: 'font-heading' },
+  '--font-body': { group: 'typography', role: 'body font family', usage: 'font-body' },
   '--ut-type-ratio': { group: 'scale', role: 'modular type-scale ratio', usage: 'informational — drives the size tokens below' },
   '--ut-type-display': { group: 'typography', role: 'hero / page-title size', usage: 'text-[length:var(--ut-type-display)]' },
   '--ut-type-title': { group: 'typography', role: 'section-heading size', usage: 'text-[length:var(--ut-type-title)]' },
@@ -163,6 +169,7 @@ const TOKEN_ROLES: Record<string, { group: ThemeContractGroup['id']; role: strin
 };
 
 const GROUP_LABELS: Record<ThemeContractGroup['id'], string> = {
+  palette: 'Palette (HSL)',
   typography: 'Typography',
   scale: 'Scale',
   surface: 'Surfaces',
@@ -175,7 +182,12 @@ const GROUP_LABELS: Record<ThemeContractGroup['id'], string> = {
   media: 'Media',
 };
 
+for (const name of THEME_COLOR_TOKENS) {
+  TOKEN_ROLES[name] = { group: 'palette', role: name.slice(2), usage: 'hsl(var(' + name + '))' };
+}
+
 const GROUP_ORDER: ThemeContractGroup['id'][] = [
+  'palette',
   'typography',
   'scale',
   'spacing',
@@ -214,12 +226,12 @@ export interface BuildThemeContractInput {
  */
 export function buildThemeContract(input: BuildThemeContractInput): ThemeContract {
   const pack = resolvePack(input.artDirectionPackId);
-  const tokens = buildArtDirectionTokens(pack);
+  const tokens = { ...buildArtDirectionTokens(pack), '--font-heading': '', '--font-body': '' };
 
   const grouped = new Map<ThemeContractGroup['id'], ThemeContractToken[]>();
   const tokenNames: string[] = [];
 
-  for (const name of Object.keys(tokens)) {
+  for (const name of [...Object.keys(tokens), ...THEME_COLOR_TOKENS]) {
     tokenNames.push(name);
     const meta = TOKEN_ROLES[name];
     if (!meta) continue;
@@ -256,7 +268,7 @@ export function buildThemeContract(input: BuildThemeContractInput): ThemeContrac
     },
     groups,
     tokenNames,
-    rules: [...CONTRACT_RULES],
+    rules: [...CONTRACT_RULES, THEME_PRESETS.find(p => p.id === input.themePresetId)?.styleDirective || 'Preserve the saved preset.'],
   };
 }
 

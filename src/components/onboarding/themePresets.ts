@@ -64,7 +64,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     styleDirective:
       "VISUAL STYLING ONLY: Oversized typography with heavy weights (900, 800), high contrast black-and-white with one vivid accent color, uppercase headings, large text sizes, raw graphic energy.",
     palette: { bg: "#000000", fg: "#FFFFFF", accent: "#FF3333", accent2: "#FF6633" },
-    typography: { headingFont: "Space Grotesk", bodyFont: "Inter", headingWeight: "900" },
+    typography: { headingFont: "Inter", bodyFont: "Inter", headingWeight: "900" },
   },
   {
     id: "organic",

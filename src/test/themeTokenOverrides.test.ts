@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildThemeContractFiles, THEME_CONTRACT_PATH, readThemeContract } from '@/platform/core/themeContract';
 import {
+  isLegalThemeTokenValue,
+  validateThemeTypography,
   INDEX_CSS_PATH,
   THEME_OVERRIDES_PATH,
   applyOverridesToCss,
@@ -58,4 +60,30 @@ describe('themeTokenOverrides', () => {
     const withOverride = applyOverridesToCss(baseCss, { '--ut-grid-gap': '3rem' });
     expect(readCompiledTokenValues(withOverride)['--ut-grid-gap']).toBe('1rem');
   });
+});
+
+describe('typed theme values', () => {
+  it('rejects invalid HSL, cross-type references, layout tokens, and incorrect time units', () => {
+    for (const value of ['#fff', '0 101% 10%', '361 20% 10%', 'var(--ut-weight-display)', 'var(--primary)', 'hsl(var(--foreground))']) {
+      expect(isLegalThemeTokenValue('--primary', value, contract), value).toBe(false);
+    }
+    expect(isLegalThemeTokenValue('--primary', 'var(--accent)', contract)).toBe(true);
+    expect(isLegalThemeTokenValue('--ut-motion-duration', '2rem', contract)).toBe(false);
+    expect(isLegalThemeTokenValue('--ut-motion-duration', '2001ms', contract)).toBe(false);
+    expect(isLegalThemeTokenValue('--ut-hero-columns', '2', contract)).toBe(false);
+  });
+  it('rejects unsupported font weights with an actionable explanation', () => {
+    expect(() => validateThemeTypography({ '--font-heading': 'Space Grotesk', '--ut-weight-display': '900' })).toThrow('does not support weight 900');
+    expect(() => validateThemeTypography({ '--font-heading': 'Inter', '--ut-weight-display': '900' })).not.toThrow();
+  });
+  it('requests the override font faces', () => {
+    const css = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap');\n:root { --font-heading: Inter; --font-body: Inter; }";
+    expect(applyOverridesToCss(css, { '--font-heading': 'Space Grotesk' })).toContain('family=Space+Grotesk:wght@300;400;500;600;700');
+  });
+});
+
+it('derives accent contrast while preserving explicit foreground overrides', () => {
+  expect(applyOverridesToCss(':root {}', { '--accent': '60 100% 50%' })).toContain('--accent-foreground: 0 0% 0%');
+  expect(applyOverridesToCss(':root {}', { '--accent': '240 100% 10%' })).toContain('--accent-foreground: 0 0% 100%');
+  expect(applyOverridesToCss(':root {}', { '--accent': '60 100% 50%', '--accent-foreground': '0 0% 15%' })).toContain('--accent-foreground: 0 0% 15%');
 });

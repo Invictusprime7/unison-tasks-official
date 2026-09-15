@@ -50,7 +50,7 @@ describe('Recovery Phase 6 — ArtDirectionPack', () => {
   it('resolves deterministically with the theme preset leading and industry narrowing', () => {
     expect(resolveArtDirectionPackId({ industry: 'portfolio' })).toBe('cinematic-portfolio');
     // Theme leads: the editorial family wins, narrowed to a saas-compatible pack.
-    expect(resolveArtDirectionPackId({ industry: 'saas', themePresetId: 'editorial' })).toBe('swiss-grid');
+    expect(resolveArtDirectionPackId({ industry: 'saas', themePresetId: 'editorial' })).toBe('editorial-noir');
     expect(resolveArtDirectionPackId({ industry: 'unknown-thing', themePresetId: 'editorial' })).toBe('editorial-noir');
     expect(resolveArtDirectionPackId({})).toBe('soft-editorial');
     // Stable across calls.

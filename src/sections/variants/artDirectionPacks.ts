@@ -1193,12 +1193,12 @@ export const DEFAULT_ART_DIRECTION_PACK_ID: ArtDirectionPackId = 'soft-editorial
  * The STYLE CARD LEADS: this is the primary axis of resolution.
  */
 const THEME_PRESET_TO_PACKS: Record<string, ArtDirectionPackId[]> = {
-  modern: ['soft-editorial', 'glass-tech', 'swiss-grid'],
-  editorial: ['editorial-noir', 'print-serif', 'swiss-grid'],
+  modern: ['glass-tech'],
+  editorial: ['editorial-noir', 'print-serif'],
   futuristic: ['glass-tech', 'neon-grid', 'mono-terminal'],
-  minimalist: ['luxury-minimal', 'swiss-grid', 'mono-terminal'],
-  bold: ['bold-commercial', 'brutalist-poster', 'commerce-editorial'],
-  organic: ['organic-studio', 'warm-craft', 'soft-editorial'],
+  minimalist: ['luxury-minimal', 'swiss-grid'],
+  bold: ['bold-commercial', 'brutalist-poster'],
+  organic: ['organic-studio', 'warm-craft'],
 };
 
 /**
@@ -1273,7 +1273,7 @@ export function resolveArtDirectionPackId(input: ArtDirectionResolutionInput): A
     const compatible = industryFamily?.length
       ? themeFamily.filter((id) => industryFamily.includes(id))
       : themeFamily;
-    candidates = compatible.length ? compatible : industryFamily || themeFamily;
+    candidates = compatible.length ? compatible : themeFamily;
   } else {
     candidates = industryFamily;
   }

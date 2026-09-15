@@ -58,9 +58,9 @@ describe('generated UI foundation', () => {
     expect(foundation.files['/src/unison/ui/index.ts']).toContain("FormField, FormFields, FormGrid, FormHint, FormError, Form, FormItem, FormControl, FormDescription, FormMessage } from './form-fields';");
     expect(foundation.files['/src/unison/ui/index.ts']).toContain("export { Slot, Slottable } from './radix/slot';");
     expect(foundation.files['/src/unison/ui/index.ts']).toContain("export { cn } from './cn';");
-    expect(foundation.files['/src/unison/ui/index.ts']).toContain("export { Image, ImageLightbox, type ImageProps } from './media';");
+    expect(foundation.files['/src/unison/ui/index.ts']).toContain("export { Image, ImageLightbox, type ImageProps, type ImageSource, type StaticImageData } from './media';");
     expect(foundation.files['/src/unison/ui/media.tsx']).toContain('export const Image = React.forwardRef');
-    expect(foundation.files['/src/unison/ui/media.tsx']).toContain("loading={priority ? 'eager' : loading}");
+    expect(foundation.files['/src/unison/ui/media.tsx']).toContain("loading={priority ? 'eager' : loading ?? 'lazy'}");
     expect(foundation.files['/src/unison/ui/media.tsx']).toContain("fetchPriority={priority ? 'high' : undefined}");
     expect(foundation.files['/src/unison/ui/media.tsx']).not.toContain('<img fill=');
     expect(foundation.files['/src/unison/ui/media.tsx']).not.toContain('<img priority=');
@@ -515,15 +515,15 @@ export default function Experience(){ const form = useForm({ resolver: zodResolv
     expect(prepared['/index.css']).toContain("@import './unison/ui/tailwind.css'");
   });
 
-  it('normalizes unsupported next/image components to native images', () => {
+  it('normalizes next/image components to the canonical media facade', () => {
     const sanitized = sanitizeTsxFile('/src/pages/About.tsx', `import Image from 'next/image';
 export default function About(){ return <main><Image src="/team.jpg" alt="Our team" width={1200} height={800} priority /></main>; }`);
 
     expect(sanitized.valid).toBe(true);
     expect(sanitized.applied).toContain('normalizeNextImage');
     expect(sanitized.code).not.toContain('next/image');
-    expect(sanitized.code).toContain('<img');
-    expect(sanitized.code).not.toContain('priority');
+    expect(sanitized.code).toContain("from '@/unison/ui/media'");
+    expect(sanitized.code).toContain('priority');
   });
 
   it('normalizes next/image imports that include named helpers', () => {
@@ -533,8 +533,8 @@ export default function Gallery(){ const image: StaticImageData | string = '/gal
     expect(sanitized.valid).toBe(true);
     expect(sanitized.applied).toContain('normalizeNextImage');
     expect(sanitized.code).not.toContain('next/image');
-    expect(sanitized.code).toContain('<img');
-    expect(sanitized.code).not.toContain(' fill');
+    expect(sanitized.code).toContain("from '@/unison/ui/media'");
+    expect(sanitized.code).toContain(' fill');
   });
 
   it('repairs Contact default and named component import mismatches before React renders', () => {

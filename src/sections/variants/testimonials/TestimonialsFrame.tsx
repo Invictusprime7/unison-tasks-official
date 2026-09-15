@@ -44,7 +44,7 @@ export const TestimonialCard: React.FC<{
   emphasis?: boolean;
 }> = ({ item, theme, className = '', emphasis }) => (
   <figure
-    className={`m-0 flex h-full flex-col justify-between p-8 ${className}`}
+    className={`m-0 flex h-full flex-col justify-between p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${className}`}
     style={{
       background: hsl(theme.colors.card),
       color: hsl(theme.colors.cardForeground),

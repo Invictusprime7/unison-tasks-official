@@ -113,6 +113,7 @@ function mapUtility(
 
 /** Normalize a single class list, resolving surface + foreground together. */
 function normalizeClassList(classList: string): string {
+  if (/\bfont-heading\b/.test(classList)) classList = classList.replace(/\bfont-(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black)\b/g, 'font-[number:var(--ut-weight-display)]');
   let surfaceRole: string | null = null;
   const backgrounds = [...classList.matchAll(COLOR_UTILITY)].filter(
     (m) => m[1].toLowerCase() === 'bg',
@@ -160,9 +161,15 @@ export function normalizeWizardThemeTokens(
     if (!/\.(?:tsx?|jsx?|css)$/i.test(path) || /\/src\/index\.css$/i.test(path)) continue;
     // Composition runtime modules already consume the immutable wizard theme
     // through THEME/hsl helpers.
-    if (isCompositionThemeModule(source)) continue;
+    const compositionThemeModule = isCompositionThemeModule(source);
 
-    let next = source.replace(CLASS_ATTR, (match, attr: string, ...groups: unknown[]) => {
+    const typography = source.replace(/<(?:h[1-6]|Heading|CardTitle)\b[^>]*>/g, tag => tag.replace(CLASS_ATTR, (match, attr: string, ...groups: unknown[]) => {
+      const raw = groups.slice(0, 6).find(g => typeof g === 'string') as string | undefined;
+      if (raw === undefined) return match;
+      const mapped = raw.replace(/\bfont-(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black)\b/g, 'font-[number:var(--ut-weight-display)]').replace(/\bfont-(?:sans|serif|mono)\b/g, 'font-heading');
+      return match.replace(raw, mapped);
+    }));
+    let next = typography.replace(CLASS_ATTR, (match, attr: string, ...groups: unknown[]) => {
       const raw = groups.slice(0, 6).find((g) => typeof g === 'string') as string | undefined;
       if (raw === undefined) return match;
       const mapped = normalizeClassList(raw);
@@ -178,7 +185,7 @@ export function normalizeWizardThemeTokens(
 
     // Raw colour values in style objects / CSS declarations. URLs, data URIs
     // and media payloads are never rewritten as tokens.
-    next = next.replace(HARD_CODED_COLOR_VALUE, (literal, offset: number, whole: string) => {
+    if (!compositionThemeModule) next = next.replace(HARD_CODED_COLOR_VALUE, (literal, offset: number, whole: string) => {
       const around = whole.slice(Math.max(0, offset - 60), offset + literal.length + 20);
       if (NON_COLOR_VALUE.test(around)) {
         residualLiterals.push({ path, literal });

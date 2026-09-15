@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  decodeWizardLaneBProposal,
+  mergeLaneBProposalWithSnapshot,
   validateWizardLaneBProposal,
   type WizardLaneBEnrichmentRequest,
 } from '@/services/wizardLaneBEnrichment';
@@ -63,5 +65,23 @@ describe('Lane B proposal validation', () => {
     }] });
     expect(result.valid).toBe(false);
     expect(result.violations.some((violation) => violation.includes('protected path'))).toBe(true);
+  });
+});
+
+ describe('Builder response to Lane B merge', () => {
+  it('decodes the production content envelope and preserves accepted page bytes', () => {
+    const proposal = decodeWizardLaneBProposal({ content: JSON.stringify(validProposal), model: 'test' });
+    expect(proposal).not.toBeNull();
+    expect(validate(proposal).valid).toBe(true);
+    const base = { '/src/pages/Home.tsx': 'original', '/src/index.css': 'stage4b', '/src/App.tsx': 'router' };
+    const merged = mergeLaneBProposalWithSnapshot(base, proposal!);
+    expect(merged['/src/pages/Home.tsx']).toBe(validProposal.fileOps[0].content);
+    expect(merged['/src/index.css']).toBe('stage4b');
+    expect(merged['/src/App.tsx']).toBe('router');
+    expect(base['/src/pages/Home.tsx']).toBe('original');
+  });
+  it('supports fenced JSON and rejects malformed envelopes', () => {
+    expect(decodeWizardLaneBProposal({ content: '```json\n' + JSON.stringify(validProposal) + '\n```' })).toEqual(validProposal);
+    for (const value of [null, { content: 'not JSON' }, { content: '{}' }, { content: null }]) expect(decodeWizardLaneBProposal(value)).toBeNull();
   });
 });

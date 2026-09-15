@@ -1,3 +1,4 @@
+import { buildThemeFontImport } from './themeFonts';
 /**
  * Build a themed /src/index.css from a wizard ThemePreset.
  *
@@ -10,7 +11,7 @@
  * placeholder pages (bg-background, text-foreground, border-border/40, etc.)
  * and Tailwind's shadcn token convention.
  */
-import type { ThemePreset } from './themePresets';
+import { type ThemePreset } from './themePresets';
 import type { ThemeTokens } from '@/sections/types';
 import { themePresetToThemeTokens } from './themePresetToTokens';
 import {
@@ -116,15 +117,10 @@ export function buildThemedIndexCssFromTokens(
 
 
   // Web-font import for the exact typography injected by the selected card.
-  const fontFamilies = Array.from(
-    new Set([
-      metadata.headingFont || tokens.typography.headingFont.split(',')[0].replace(/['"]/g, '').trim(),
-      metadata.bodyFont || tokens.typography.bodyFont.split(',')[0].replace(/['"]/g, '').trim(),
-    ].filter(Boolean)),
-  )
-    .map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;500;600;700;800`)
-    .join('&');
-  const fontsImport = `@import url('https://fonts.googleapis.com/css2?${fontFamilies}&display=swap');`;
+  const fontsImport = buildThemeFontImport([
+    metadata.headingFont || tokens.typography.headingFont,
+    metadata.bodyFont || tokens.typography.bodyFont,
+  ]);
 
   return `${fontsImport}
 @import './unison/ui/tailwind.css';
@@ -170,6 +166,13 @@ export function buildThemedIndexCssFromTokens(
 
   /* ART DIRECTION: ${artDirectionPack.name} — ${artDirectionPack.description} */
   ${artDirection}
+  /* Preset typography is authoritative over its compatible pack. */
+  --ut-weight-display: ${tokens.typography.headingWeight};
+  --ut-weight-body: ${tokens.typography.bodyWeight};
+  --ut-heading-weight: var(--ut-weight-display);
+  --ut-body-weight: var(--ut-weight-body);
+  --ut-heading-transform: ${metadata.presetId === 'bold' ? 'uppercase' : 'none'};
+  --ut-radius-base: ${tokens.radius};
   /* The pack owns radius language; the theme card owns colour + typography. */
   --radius: var(--ut-radius-base);
 
@@ -405,6 +408,7 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   font-weight: var(--ut-weight-display, ${tokens.typography.headingWeight});
   color: hsl(var(--foreground));
+  text-transform: var(--ut-heading-transform);
   letter-spacing: var(--ut-heading-tracking, -0.02em);
   line-height: var(--ut-display-leading, 1.15);
 }
@@ -426,9 +430,9 @@ h1, h2, h3, h4, h5, h6 {
 @media (min-width: 768px) { .section-spacing { padding-left: 2rem; padding-right: 2rem; } }
 
 /* Typography scale */
-.headline-xl { font-family: var(--font-heading); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 1rem; }
-.headline-lg { font-family: var(--font-heading); font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; margin: 0 0 1rem; }
-.headline-md { font-family: var(--font-heading); font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 700; line-height: 1.25; margin: 0 0 0.75rem; }
+.headline-xl { font-family: var(--font-heading); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: var(--ut-weight-display); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 1rem; }
+.headline-lg { font-family: var(--font-heading); font-size: clamp(2rem, 4vw, 3rem); font-weight: var(--ut-weight-display); line-height: 1.2; letter-spacing: -0.01em; margin: 0 0 1rem; }
+.headline-md { font-family: var(--font-heading); font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: var(--ut-weight-display); line-height: 1.25; margin: 0 0 0.75rem; }
 .body-lg     { font-family: var(--font-body); font-size: 1.125rem; line-height: 1.7; color: hsl(var(--foreground) / 0.78); }
 .body-md     { font-family: var(--font-body); font-size: 1rem; line-height: 1.6; color: hsl(var(--foreground) / 0.7); }
 .caption     { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: hsl(var(--primary)); }

@@ -17,6 +17,21 @@ import type { WizardSelections } from '@/types/playground';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { z } from 'zod';
 
+/** Decode the shared Builder response before validating its candidate proposal. */
+export function decodeWizardLaneBProposal(response: unknown): WizardLaneBEnrichmentProposal | null {
+  let candidate = response;
+  if (candidate && typeof candidate === 'object' && 'content' in candidate) {
+    candidate = (candidate as { content: unknown }).content;
+  }
+  if (typeof candidate === 'string') {
+    try {
+      candidate = JSON.parse(candidate.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
+    } catch { return null; }
+  }
+  const parsed = laneBProposalSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : null;
+}
+
 const laneBProposalSchema = z.object({
   version: z.literal('1.0'),
   wizardSeedId: z.string().min(1),
@@ -107,6 +122,7 @@ export interface WizardLaneBEnrichmentRequest {
 
   /** The manifest-derived UI foundation contract — exact imports + requirements. */
   uiFoundationDirective: string;
+  themeContractDirective?: string;
 
   /** Design vocabulary and implementation registry status. */
   designVocabularyReport: {
@@ -335,6 +351,9 @@ export function validateWizardLaneBProposal(options: {
 
   // 10. Theme token compliance
   for (const op of proposal.fileOps) {
+    if (/\b(?:bg|text|border|from|via|to)-(?:white|black|(?:red|blue|gray|slate|zinc|neutral|green|purple|orange|pink|cyan|teal|amber|rose|indigo|violet|stone|yellow|lime|emerald|sky|fuchsia)-\d{2,3})\b|\bfont-(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black|sans|serif|mono)\b|font(?:Family|Weight)\s*:\s*(?:['"](?!var\()[^'"]+['"]|\d+)/.test(op.content)) {
+      violations.push('File ' + op.path + ' overrides the selected preset with literal color or typography styles. Use semantic colors and the supplied font/weight tokens.');
+    }
     // Check for hardcoded CSS values (px, rem, vh, vw, #hex)
     const hardcodedValues = op.content.match(/\b\d+(?:px|rem|vh|vw)\b|#[0-9a-fA-F]{3,6}\b/g);
     if (hardcodedValues) {

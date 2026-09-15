@@ -36,7 +36,7 @@ describe('Supabase rejected-session recovery', () => {
     )).toBe(true);
   });
 
-  it('clears an invalid local session once while concurrent requests fail', async () => {
+  it('preserves refresh credentials when concurrent access-token probes fail', async () => {
     const clearLocalSession = vi.fn(async () => undefined);
     const fetchWithRecovery = createAuthRecoveryFetch(
       clearLocalSession,
@@ -48,7 +48,7 @@ describe('Supabase rejected-session recovery', () => {
       fetchWithRecovery('https://project.supabase.co/auth/v1/user'),
     ]);
 
-    expect(clearLocalSession).toHaveBeenCalledTimes(1);
+    expect(clearLocalSession).not.toHaveBeenCalled();
   });
 
   it('clears an invalid refresh-token session', async () => {

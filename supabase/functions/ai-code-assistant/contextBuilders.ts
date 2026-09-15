@@ -600,8 +600,16 @@ export function buildWizardSeedContext(seed: WizardSeedShape | undefined): strin
     lines.push('── RESEARCH + ROUTE PLAN (BOUNDED JUDGMENT) ──');
     lines.push(`Use ${brief.research.mode || 'connected-gateway'} research only to inform: ${(brief.research.mayInform || []).join(', ')}.`);
     lines.push(`Never invent or alter: ${(brief.research.mustNotInvent || []).join(', ')}. Canonical data bindings and capability contracts remain authoritative.`);
+    lines.push('Intelligent Section Posture: Narrative pages (home, about, portfolio) feature visual heroes with marquee badges; task pages (contact, booking, checkout) use concise task headers with immediate framed action panels.');
+    lines.push('Intent-Tailored Forms: Generate specialized form fields reflecting the industry (e.g. services/timing for salons, project scope/timeline for contractors, team/use-case for SaaS) rather than generic text fields.');
     for (const route of brief.routes || []) {
-      const hero = route.hero || {};
+      const hero = (route.hero as {
+        headline?: string;
+        contentAngle?: string;
+        mustDifferFromHome?: boolean;
+        geometry?: { layout?: string; mediaTreatment?: string; variantId?: string };
+        posture?: string;
+      }) || {};
       const geometry = hero.geometry;
       const geometryAttributes = geometry?.layout
         ? [`data-ut-layout="${geometry.layout}"`, geometry.mediaTreatment ? `data-ut-media-treatment="${geometry.mediaTreatment}"` : '', geometry.variantId ? `data-ut-variant="${geometry.variantId}"` : ''].filter(Boolean).join(' ')
@@ -609,7 +617,8 @@ export function buildWizardSeedContext(seed: WizardSeedShape | undefined): strin
       const geometryInstruction = geometry?.layout
         ? `; geometry LOCKED: ${geometry.layout}/${geometry.mediaTreatment || 'media treatment'}. Declare ${geometryAttributes} on the hero section.`
         : '';
-      lines.push(`  • ${route.title || route.role || 'Page'} (${route.path || 'path'}): hero "${hero.headline || route.title || 'route title'}"; angle: ${hero.contentAngle || 'route intent'}${hero.mustDifferFromHome ? '; MUST differ from Home hero copy.' : ''}${geometryInstruction}`);
+      const postureLabel = hero.posture ? ` [posture: ${hero.posture}]` : '';
+      lines.push(`  • ${route.title || route.role || 'Page'} (${route.path || 'path'})${postureLabel}: hero "${hero.headline || route.title || 'route title'}"; angle: ${hero.contentAngle || 'route intent'}${hero.mustDifferFromHome ? '; MUST differ from Home hero copy.' : ''}${geometryInstruction}`);
     }
     if (brief.ui) {
       lines.push(`Approved UI formats — forms: ${(brief.ui.formFormats || []).join(', ') || 'none'}; buttons: ${(brief.ui.buttonFormats || []).join(', ') || 'none'}; icons: ${(brief.ui.iconFormats || []).join(', ') || 'none'}.`);
