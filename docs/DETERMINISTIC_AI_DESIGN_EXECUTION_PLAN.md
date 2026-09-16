@@ -37,6 +37,25 @@ The following rules apply to every phase:
 9. Stop on an architectural conflict instead of adding a parallel path.
 10. Keep Launcher fully functional with AI disabled or unavailable.
 
+## 1.1 21st Design Source Policy
+
+21st.dev is Unison's sole external UI design-reference and source ecosystem.
+It is used only during development-time intake, audit, normalization, and
+certification. Customer launches never depend on 21st.dev at runtime.
+
+Unison remains the authority for topology, industry and business semantics,
+artifacts, intents, bindings, Stage 4b semantic theme tokens, generated UI
+foundation, snapshots, canonical VFS, Preview, Playground, persistence, and
+`commitMutation`. Approved source becomes a first-class internal Unison
+implementation with optional provenance; the Launcher and Lane B consume only
+that approved internal implementation.
+
+Do not introduce a 21st runtime registry, template engine, VFS writer, theme
+engine, motion engine, artifact model, or alternate Launcher. The required
+sequence is Registry -> Compiler -> canonical VFS -> sealed snapshot -> Preview
+-> Playground -> canonical recommit/reload. External intake waits until the
+currently registered visual families can prove that path.
+
 ## Recipe Acceptance Criteria
 
 These eight dimensions are required for every new or expanded generated-site
@@ -727,8 +746,16 @@ gates remain open. Phase 0 and Phase 1 are not closed.
 - Existing persisted authority format remains readable during migration.
 - Remote deployment, if performed, matches reviewed local behavior.
 
-**Removal gate:** Remove old Lane B authority writers and compatibility fields
-only after repository caller audit and persisted-snapshot restore tests pass.
+**Legacy writer retirement (2026-09-16):** Repository caller audit found no
+remaining caller for the legacy `swapSectionVariant` source injector, so it
+was removed. `renderJSX` remains deprecated registry metadata for unported
+family inventory only; it has no production writer. `commitMutation` now
+rejects non-launch replacements of compiler-owned section adapters and portable
+recipes, and rejects raw router/page-body replacements when a snapshot carries
+the canonical compiler seal. Web Builder also rejects direct external VFS
+adoption into a sealed workspace unless it carries an accepted revision hash and
+revision ID. External template conversion remains available only for unstructured
+first-time imports, where there is no canonical project to conflict with.
 
 ### Phase 1 - Compiler and Variant Registry convergence
 
@@ -743,25 +770,114 @@ build output, not another registry. The compiler emits
 `/src/components/recipes/Gallery.ts`, consumed by the existing Gallery adapter;
 explicit VariantId wins over a legacy layout. Four generic visual branches are
 retired, with reel/default compatibility retained. No new variants or artifacts
-are added. `renderJSX` remains a legacy swap adapter, not certified round-trip
-authority.
+are added. Deprecated `renderJSX` metadata is not a callable VFS writer and
+does not participate in canonical round-trip authority.
 
-Stage 4b's color normalizer was incorrectly rewriting `hsl`/`hsla` JavaScript
-theme helpers as raw CSS, causing recipe quarantine. It now matches numeric CSS
-colors and preserves semantic helper calls. Theme values still come from the
-emitted semantic THEME adapter and Stage 4b stylesheet; no palette owner changed.
+**Testimonials VFS convergence (2026-09-16):** The existing
+`testimonials:grid`, `testimonials:rail`, and `testimonials:spotlight`
+implementations now declare `vfs.mode = portable-recipe`. The compiler emits
+the already registry-derived `/src/components/recipes/Testimonials.ts` and a
+thin adapter that resolves explicit `variantId` before legacy layout aliases.
+The historical `carousel` and `single` layouts continue to resolve to
+`testimonials:rail` and `testimonials:spotlight`; an unrecognized legacy value
+falls back to the previous generic renderer. Stage 4b, resolved composition,
+snapshot sealing, and `commitMutation` were not changed.
 
-Validation: 159 tests across convergence, renderer parity, composition,
-normalization, golden launch, canonical handoff, zero-bypass and existing
-StyleX recipes pass. Type-check, recipe freshness, production build and the
-canonical-writer/pipeline/single-source guards pass. The build reports chunk
-size/circularity and Tailwind warnings. Targeted lint is clean except two
-pre-existing unnecessary escapes in the normalizer's class-string regex,
-confirmed by linting HEAD; no unrelated cleanup was applied.
-Exact recipe bytes survive the sealed
-snapshot and in-memory Playground recompilation; Sandpack preparation preserves
-the component map. All five emitted variants execute with registry-identical DOM,
-filtering, lightbox navigation/Escape, empty content and legacy layout behavior.
+Focused compiler and emitted-DOM parity tests cover the three registered
+implementations, explicit identity precedence, and legacy aliases (16 tests
+passing). Recipe freshness, canonical VFS-write, pipeline-bypass,
+single-source-of-truth, application type checks, and the 18-test topology VFS
+suite pass. A canonical launch fixture proves that the registered recipe reaches
+the Sandpack Preview overlay, while the persisted Playground integration proves
+its pre-transform recipe bytes survive `commitMutation` and revision reload.
+Do not treat this batch as full Phase 1 closure until real-browser quality
+evidence and the remaining preferred family migrations are resolved.
+
+**Hero VFS convergence (2026-09-16):** The five existing Hero entries now
+declare `vfs.mode = portable-recipe`, including the page-title and editorial
+banner forms selected by the route-role compiler. The canonical emitter writes
+`/src/components/recipes/Hero.ts` and resolves explicit `variantId` before
+legacy layout aliases. Each source implementation now carries its canonical
+`data-ut-variant` marker; the page-header source has an explicit React binding
+for portable compilation. The former generic Hero renderer is retained only as
+a fallback for unknown historical layouts. Compiler, emitted DOM parity,
+topology VFS, Sandpack handoff, and persisted `commitMutation`/reload tests
+cover this path. Stage 4b, composition topology, snapshot sealing, and commit
+authority remain unchanged.
+
+Hero source uses semantic color helpers and the existing display-weight token,
+so Stage 4b preserves the emitted recipe bytes during finalization. Theme values
+still come from the emitted semantic THEME adapter and Stage 4b stylesheet; no
+palette owner changed.
+
+**Services VFS convergence (2026-09-16):** The existing
+`services:card-grid`, `services:alternating`, and `services:compact-list`
+implementations now declare `vfs.mode = portable-recipe`. The canonical emitter
+writes `/src/components/recipes/Services.ts` and resolves explicit `variantId`
+before legacy layout values, retaining the prior generic implementation only for
+unknown historical layouts. Each implementation exposes its canonical
+`data-ut-variant` marker. Compiler and emitted-DOM parity tests cover all three
+registered implementations, explicit identity precedence, and legacy layouts.
+The canonical launch fixture confirms the recipe reaches Sandpack; the persisted
+Playground integration proves its recipe bytes survive finalization,
+`commitMutation`, and revision reload.
+
+**Features VFS convergence (2026-09-16):** The existing `features:grid`,
+`features:icon-left`, and `features:minimal-centered` implementations now
+declare `vfs.mode = portable-recipe`. The canonical emitter writes
+`/src/components/recipes/Features.ts` and resolves explicit `variantId` before
+registered layout values, retaining the previous generic Features renderer only
+for unknown historical layouts. Each implementation exposes a canonical
+`data-ut-variant` marker. Compiler and emitted-DOM parity tests cover every
+registered implementation, identity precedence, and legacy layout handling.
+The canonical launch fixture confirms Preview receives the recipe; the
+persisted Playground integration proves exact recipe bytes survive Stage 4b
+finalization, `commitMutation`, and revision reload.
+
+**Pricing VFS convergence (2026-09-16):** The existing `pricing:tiers`,
+`pricing:comparison`, and `pricing:accordion` implementations now declare
+`vfs.mode = portable-recipe`. The canonical emitter writes
+`/src/components/recipes/Pricing.ts` and resolves explicit `variantId` before
+the established layout values, retaining the prior generic implementation only
+for unknown historical layouts. The shared recipe preserves each tier CTA's
+canonical intent rather than replacing it with a generic capture intent.
+Compiler and emitted-DOM parity tests cover every registered implementation,
+identity precedence, layout compatibility, and `booking.create` CTA retention.
+The canonical launch fixture confirms Preview receives the recipe; the persisted
+Playground integration proves exact recipe bytes survive finalization,
+`commitMutation`, and revision reload.
+
+**CTA VFS convergence (2026-09-16):** The existing `cta:centered`,
+`cta:gradient-banner`, and `cta:split-card` implementations now declare
+`vfs.mode = portable-recipe`. The canonical emitter writes
+`/src/components/recipes/CTA.ts` and resolves explicit `variantId` before
+registered layout values; historical `banner` and `split` layout handling stays
+in the previous generic fallback. Each implementation now exposes a canonical
+`data-ut-variant` marker. The gradient banner uses semantic foreground tokens,
+so Stage 4b does not rewrite its recipe source. Compiler and emitted-DOM parity
+tests cover every registered implementation, explicit identity precedence, and
+the preserved CTA intent. The canonical launch fixture confirms Preview receives
+the recipe, and persisted Playground integration proves exact recipe bytes
+survive finalization, `commitMutation`, and revision reload.
+
+**Footer VFS convergence (2026-09-16):** The existing `footer:columns`,
+`footer:centered-minimal`, and `footer:dark-band` implementations now declare
+`vfs.mode = portable-recipe`. The canonical emitter writes
+`/src/components/recipes/Footer.ts` and resolves explicit `variantId` before
+registered layout values, with the prior generic Footer renderer retained for
+unknown historical layouts. Each implementation exposes `data-ut-variant`. The
+portable recipe builder remaps the shared social icon dependency to the
+canonical icon facade. Dark Band foreground values are semantic tokens, so
+Stage 4b does not alter recipe bytes. Compiler and emitted-DOM parity cover all
+three variants and identity precedence; the canonical launch and persisted
+Playground fixtures prove Preview handoff and exact-byte finalization,
+`commitMutation`, and revision reload.
+
+Recipe builds and focused Hero/Services/Features/Pricing/CTA/Footer compiler,
+renderer, topology, Preview, and canonical persistence suites pass. These
+batches do not establish full Phase 1 closure: remaining families,
+real-browser quality, accessibility, performance, and broader persisted
+edit/reload evidence are still required.
 
 Changed implementation files: `scripts/build-stylex-recipes.mjs`,
 `src/sections/recipes/stylexRecipes.generated.json`,
@@ -859,8 +975,10 @@ hidden-browser limitation for the checks above, but **Phase 1 remains open**.
 - Resolve emitted modules by `implementationId` in
   `compositionToReactFileSet`.
 - Keep `renderJSX` only as a migration adapter where necessary.
-- Migrate Gallery first, then Testimonials. Do not migrate another family until
-  each previous family passes full closure.
+- Gallery, Testimonials, Hero, Services, Features, Pricing, CTA, and Footer
+  have passed their focused portable recipe closure checks. Migrate the
+  remaining families one at a time and retain this same closure gate before
+  beginning external 21st intake.
 - Preserve page `SECTIONS`, resolved composition identity, imports, and paths.
 - Replace literal palette utilities in migrated emitters with semantic classes
   and Stage 4b / `--ut-*` tokens.
@@ -880,7 +998,7 @@ hidden-browser limitation for the checks above, but **Phase 1 remains open**.
 - Add `variantSemanticThemeCompliance.test.ts`.
 - Extend `compositionVfsVariants.test.ts` and launch-to-Sandpack coverage.
 
-**Acceptance:** For Gallery and Testimonials, selected `VariantId`, derived
+**Acceptance:** For each migrated family, selected `VariantId`, derived
 `implementationId`, emitted module identity, `data-ut-variant`, resolved
 composition, sealed snapshot, and Preview runtime output all agree.
 

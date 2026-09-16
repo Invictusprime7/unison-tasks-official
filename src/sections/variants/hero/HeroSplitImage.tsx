@@ -13,6 +13,7 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
 
   return (
     <section
+      data-ut-variant="hero:split-image"
       className="relative overflow-hidden"
       style={{
         padding: theme.sectionPadding,
@@ -48,7 +49,7 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
               fontWeight: theme.typography.headingWeight,
               color: hsl(theme.colors.foreground),
               fontSize: 'clamp(2rem, 4vw, 3.25rem)',
-              letterSpacing: '-0.02em',
+              letterSpacing: 0,
             }}
           >
             {headline}

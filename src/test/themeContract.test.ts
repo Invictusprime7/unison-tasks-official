@@ -96,6 +96,7 @@ describe('composition vocabulary', () => {
       primitiveImports: foundation.manifest.primitiveImports,
       iconLibrary: foundation.manifest.iconLibrary,
       requirements: foundation.manifest.requirements,
+      motionExports: foundation.manifest.motionExports,
     });
     expect(directive).toContain(COMPOSITION_VOCABULARY_DIRECTIVE);
     expect(directive).toContain('<SectionHeader');

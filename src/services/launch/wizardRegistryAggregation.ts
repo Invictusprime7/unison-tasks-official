@@ -22,7 +22,8 @@ import {
 import type { SectionType } from '@/sections/types';
 import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
-import { designRegistrySignature } from '@/services/designImplementationRegistry';
+import { designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
+import { GENERATED_MOTION_PRIMITIVES } from '@/platform/core/generatedUiFoundation';
 
 export const WIZARD_REGISTRY_CONTEXT_PATH = '/.unison/wizard-registry-context.json' as const;
 export const WIZARD_REGISTRY_CONTEXT_VERSION = '1.0' as const;
@@ -69,6 +70,8 @@ export interface WizardAggregatedRegistryContext {
   themePresetId: string;
   artDirectionPackId?: string;
   designRegistrySignature: string;
+  /** Additive: old persisted contexts remain valid without this fingerprint. */
+  designCapabilityFingerprint?: string;
 
   /** All registered section families and their pack-clamped variants */
   sections: WizardRegistrySectionSummary[];
@@ -86,21 +89,6 @@ export interface WizardAggregatedRegistryContext {
   motionProfile?: string;
   interactionProfile?: string;
 }
-
-const UI_FOUNDATION_MOTION_PRIMITIVES = [
-  'Reveal',
-  'RevealGroup',
-  'Stagger',
-  'StaggerGroup',
-  'StaggerItem',
-  'MarqueeBand',
-  'HorizontalRail',
-  'HoverDepth',
-  'ImageReveal',
-  'ParallaxMedia',
-  'MaskReveal',
-  'MotionImage',
-];
 
 const PLACEHOLDER_SECTIONS = new Set<SectionType>(['logo-cloud', 'blog-preview', 'before-after']);
 
@@ -171,10 +159,15 @@ export function buildWizardAggregatedRegistryContext(options: {
     themePresetId: options.themePresetId,
     artDirectionPackId: pack?.id,
     designRegistrySignature: designRegistrySignature(),
+    designCapabilityFingerprint: designCapabilityFingerprint({
+      ...options,
+      artDirectionPackId: pack?.id,
+      eligibleImplementationIds: sections.flatMap((section) => section.allowedVariantIds),
+    }),
     sections,
     artifacts,
     catalogSurfaces,
-    motionPrimitives: [...UI_FOUNDATION_MOTION_PRIMITIVES],
+    motionPrimitives: [...GENERATED_MOTION_PRIMITIVES],
     motionProfile: pack?.motionProfile,
     interactionProfile: pack?.interactionProfile,
   };

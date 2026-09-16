@@ -11,7 +11,7 @@ export const ServicesCompactList: React.FC<BaseSectionProps<'services'>> = ({ se
   const { headline, subheadline, items = [] } = section.props;
 
   return (
-    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.muted) }}>
+    <section data-ut-variant="services:compact-list" style={{ padding: theme.sectionPadding, background: hsl(theme.colors.muted) }}>
       <div className="mx-auto px-6" style={{ maxWidth: '56rem' }}>
         {headline && (
           <div className="text-center mb-12">

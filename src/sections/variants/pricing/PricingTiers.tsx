@@ -5,7 +5,7 @@
 
 import React from 'react';
 import type { BaseSectionProps } from '../../types';
-import { hsl } from '../../themeUtils';
+import { hsl, hsla } from '../../themeUtils';
 import { PricingFrame, PricingCTA, normalizePricingTiers } from './PricingFrame';
 
 export const PricingTiers: React.FC<BaseSectionProps<'pricing'>> = ({ section, theme }) => {
@@ -29,7 +29,7 @@ export const PricingTiers: React.FC<BaseSectionProps<'pricing'>> = ({ section, t
               color: hsl(theme.colors.cardForeground),
               borderRadius: theme.radius,
               border: `1px solid ${tier.highlighted ? hsl(theme.colors.primary) : hsl(theme.colors.border)}`,
-              boxShadow: tier.highlighted ? '0 24px 60px -32px rgba(0,0,0,0.45)' : undefined,
+              boxShadow: tier.highlighted ? `0 24px 60px -32px ${hsla(theme.colors.foreground, 0.45)}` : undefined,
             }}
           >
             {tier.badge && (

@@ -25,7 +25,7 @@ import type {
   VocabularyVisualDominance,
   VocabularyMotionIntensity,
 } from '@/platform/core/designVocabulary';
-import { getDesignImplementation } from '@/services/designImplementationRegistry';
+import { getDesignImplementation, getImplementationVocabularyRefs } from '@/services/designImplementationRegistry';
 
 
 
@@ -476,8 +476,10 @@ export function buildWizardDesignIntervention(
   const resolvedImplementations = [...new Set(Object.values(activeVariants))].sort();
   const resolvedPatterns = [...new Set(
     resolvedImplementations
-      .map((id) => getDesignImplementation(id)?.vocabulary?.id)
-      .filter((id): id is string => Boolean(id)),
+      .flatMap((id) => {
+        const implementation = getDesignImplementation(id);
+        return implementation ? getImplementationVocabularyRefs(implementation).map((ref) => ref.id) : [];
+      }),
   )];
   const compositionDirective = [
     resolvedImplementations.length > 0

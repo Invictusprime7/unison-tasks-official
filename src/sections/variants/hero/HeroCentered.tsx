@@ -13,6 +13,7 @@ export const HeroCentered: React.FC<BaseSectionProps<'hero'>> = ({ section, them
 
   return (
     <section
+      data-ut-variant="hero:centered"
       className="relative overflow-hidden"
       style={{
         padding: theme.sectionPadding,
@@ -41,7 +42,7 @@ export const HeroCentered: React.FC<BaseSectionProps<'hero'>> = ({ section, them
             fontWeight: theme.typography.headingWeight,
             color: hsl(theme.colors.foreground),
             fontSize: 'clamp(2.25rem, 4.5vw, 3.5rem)',
-            letterSpacing: '-0.02em',
+            letterSpacing: 0,
           }}
         >
           {headline}

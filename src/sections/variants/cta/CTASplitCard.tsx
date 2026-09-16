@@ -13,6 +13,7 @@ export const CTASplitCard: React.FC<BaseSectionProps<'cta'>> = ({ section, theme
 
   return (
     <section
+        data-ut-variant="cta:split-card"
       style={{
         padding: theme.sectionPadding,
         background: hsl(theme.colors.background),

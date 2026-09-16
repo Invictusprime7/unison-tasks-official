@@ -12,6 +12,7 @@ export const FeaturesMinimalCentered: React.FC<BaseSectionProps<'features'>> = (
 
   return (
     <section
+      data-ut-variant="features:minimal-centered"
       style={{
         padding: theme.sectionPadding,
         background: hsl(theme.colors.muted),

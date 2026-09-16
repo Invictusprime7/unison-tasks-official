@@ -37,7 +37,7 @@ export const PricingCTA: React.FC<{ tier: PricingTier; theme: ThemeTokens }> = (
   return (
     <a
       href={tier.cta?.href || '#contact'}
-      data-ut-intent="lead.capture"
+      data-ut-intent={tier.cta?.intent || 'lead.capture'}
       className="mt-6 inline-flex w-full items-center justify-center px-5 py-3 text-sm font-semibold no-underline"
       style={{
         borderRadius: theme.radius,

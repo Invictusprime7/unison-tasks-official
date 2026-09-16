@@ -262,6 +262,30 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     })).rejects.toThrow('compiler-owned');
     expect(revisionStore).toHaveLength(0);
   });
+  it('rejects legacy replacements of compiler-owned portable recipes', async () => {
+    const path = '/src/components/recipes/Features.ts';
+    await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: { [path]: 'export const REGISTERED_VARIANTS = {};' } },
+      patch: legacyFilesToPatchPlan({ [path]: 'export const REGISTERED_VARIANTS = { legacy: true };' }),
+    })).rejects.toThrow('compiler-owned');
+    expect(revisionStore).toHaveLength(0);
+  });
+  it('rejects legacy replacements of sealed router and page sources', async () => {
+    const routerPath = '/src/App.tsx';
+    const pagePath = '/src/pages/Home.tsx';
+    const before = { [routerPath]: 'export default function App(){return null}', [pagePath]: 'export default function Home(){return null}' };
+    const snapshot = {
+      vfsFiles: before,
+      routerFile: { path: routerPath, content: before[routerPath] },
+      pageRegistry: { pages: { home: { filePath: pagePath } } },
+      meta: { seal: { registeredPageBodyAuthority: 'canonical-compiler' } },
+    };
+    await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
+      patch: legacyFilesToPatchPlan({ [pagePath]: 'export default function Home(){return <main>Legacy</main>}' }),
+    })).rejects.toThrow('Sealed router and page bodies are compiler-owned');
+    expect(revisionStore).toHaveLength(0);
+  });
   it('accepts the exact scratch composition without regenerating and rejects stale reviews', async () => {
     const before = { '/src/App.tsx': 'export default function App(){return <main>Before</main>}' };
     const after = { '/src/App.tsx': 'export default function App(){return <main>Enhanced</main>}' };

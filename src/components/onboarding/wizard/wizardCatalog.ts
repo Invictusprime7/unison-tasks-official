@@ -30,10 +30,10 @@ export const STEP_META: {
   label: string;
   sublabel: string;
 }[] = [
-  { key: "industry", num: 1, label: "Industry", sublabel: "What you do" },
+  { key: "industry", num: 1, label: "Idea", sublabel: "What you do" },
   { key: "questions", num: 2, label: "Goals", sublabel: "Your needs" },
-  { key: "templates", num: 3, label: "Templates", sublabel: "Pick a base" },
-  { key: "aesthetic", num: 4, label: "Launch", sublabel: "Name & style" },
+  { key: "templates", num: 3, label: "Layout", sublabel: "Pick a base" },
+  { key: "aesthetic", num: 4, label: "Style", sublabel: "Name & style" },
 ];
 
 // ── Answer vocabulary ───────────────────────────────────────────────────────

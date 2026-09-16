@@ -190,6 +190,27 @@ const PREVIEW_ONLY_ARTIFACT_PATTERNS: RegExp[] = [
   /\b__AnimatePresenceFallback\b/,
 ];
 
+const COMPILER_OWNED_SECTION_MODULE_RE = /^\/src\/components\/(?:Navbar|Hero|About|Services|Features|Gallery|Pricing|LogoCloud|BlogPreview|BeforeAfter|Testimonials|CTA|Contact|Footer|Stats|Team|FAQ)\.tsx$/;
+const COMPILER_OWNED_RECIPE_MODULE_RE = /^\/src\/components\/recipes\/[^/]+\.ts$/;
+
+function isCompilerOwnedGeneratedModule(path: string): boolean {
+  return COMPILER_OWNED_SECTION_MODULE_RE.test(path)
+    || COMPILER_OWNED_RECIPE_MODULE_RE.test(path);
+}
+
+function sealedCompilerOwnedPaths(snapshot: SiteBundleSnapshot | null | undefined): Set<string> {
+  if (!snapshot?.meta?.seal?.registeredPageBodyAuthority) return new Set();
+  return new Set([
+    ...(snapshot.meta.seal.protectedFilePatterns ?? []),
+    ...(snapshot.meta.seal.laneAProtectedFiles ?? []),
+    ...(snapshot.meta.seal.registeredPageFiles ?? []),
+    ...Object.values(snapshot.pageRegistry?.pages ?? {})
+      .map((page) => page.filePath)
+      .filter((path): path is string => Boolean(path)),
+    snapshot.routerFile?.path ?? '/src/App.tsx',
+  ].map((path) => path.startsWith('/') ? path : `/${path}`));
+}
+
 function detectPreviewArtifacts(contents: string): string[] {
   const hits: string[] = [];
   for (const pattern of PREVIEW_ONLY_ARTIFACT_PATTERNS) {
@@ -272,10 +293,22 @@ export async function commitMutation(
   const patch = input.patch ?? emptyPatchPlan();
   assertPatchPlan(patch, 'commitMutation');
   if (input.source !== 'wizard-launch' && input.source !== 'system-restore') {
+    const sealedPaths = input.source === 'theme-change'
+      ? new Set<string>()
+      : sealedCompilerOwnedPaths(input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined);
     for (const op of patch.fileOps) {
+      const path = op.path.startsWith('/') ? op.path : `/${op.path}`;
       if (op.path.startsWith(`${RESOLVED_COMPOSITION_ROOT}/`)
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Resolved composition metadata is compiler-owned. Use a presentation operation or reviewed upgrade.');
+      }
+      if (isCompilerOwnedGeneratedModule(path)
+        && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
+        throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
+      }
+      if (sealedPaths.has(path)
+        && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
+        throw new Error('[VFSCommitService] Sealed router and page bodies are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
       }
     }
   }

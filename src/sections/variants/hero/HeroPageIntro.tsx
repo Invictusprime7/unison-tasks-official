@@ -1,3 +1,4 @@
+import React from 'react';
 import type { BaseSectionProps, SectionPropsMap } from '../../types';
 
 export function HeroPageIntro({ props }: { props: SectionPropsMap['hero'] }) {
@@ -9,7 +10,7 @@ export function HeroPageIntro({ props }: { props: SectionPropsMap['hero'] }) {
       {banner && media && <img src={media} alt="" className="aspect-[16/5] max-h-80 w-full object-cover" />}
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
         {badge && <p className="mb-3 font-body text-sm font-semibold text-primary">{badge}</p>}
-        <h1 className="max-w-4xl break-words font-heading text-3xl font-semibold leading-tight sm:text-4xl">{headline}</h1>
+        <h1 className="max-w-4xl break-words font-heading text-3xl font-[number:var(--ut-weight-display)] leading-tight sm:text-4xl">{headline}</h1>
         {subheadline && <p className="mt-4 max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}
         {description && <p className="mt-3 max-w-2xl font-body text-muted-foreground">{description}</p>}
         {ctas.length > 0 && <div className="mt-6 flex flex-wrap gap-3">{ctas.map((cta, index) => (

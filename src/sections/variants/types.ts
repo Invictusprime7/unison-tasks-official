@@ -72,9 +72,14 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   radixPrimitives?: readonly RadixPrimitiveId[];
   /** Design vocabulary pattern this variant already executes today */
   vocabulary?: VocabularyRef;
+  /** Additional executable vocabulary; the legacy shorthand remains supported. */
+  vocabularyRefs?: readonly VocabularyRef[];
   /** Experience-layer dependency this variant declares or enables */
   experience?: VariantExperienceDeclaration;
-  /** Generates JSX source string for this variant layout using extracted content */
+  /**
+   * @deprecated Legacy source metadata retained only while nonportable families
+   * migrate. It must not be invoked to write or replace canonical VFS output.
+   */
   renderJSX: (content: ExtractedSectionContent) => string;
 }
 

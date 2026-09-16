@@ -299,6 +299,68 @@ describe("launchStateToSandpackFiles", () => {
     expect(result.sandpackFiles['/App.tsx']).toContain("data-ut-variant='hero:full-bleed'");
   });
 
+  it('carries registered portable recipes from a canonical launch into the Preview overlay', () => {
+    const preset = THEME_PRESETS.find((theme) => theme.id === 'editorial')!;
+    const pipeline = commitToPipeline({ selections: {
+      businessName: 'Proof Studio', businessModel: 'appointment_service', industryOverlay: 'salon',
+      primaryGoal: 'showcase', secondaryGoals: [], requestedPages: ['home', 'services', 'pricing'],
+      templateId: 'salon-premium', themePresetId: preset.id, themeTokens: themePresetToThemeTokens(preset),
+    } }, 'wizard-launch');
+    const launched = buildCanonicalLaunchArtifacts({
+      generatedFiles: pipeline.siteBundleSnapshot.vfsFiles,
+      siteBundleSnapshot: pipeline.siteBundleSnapshot,
+      compileArtifact: pipeline.compileArtifact,
+      canonicalPlayground: pipeline.playground,
+      preferredEntryPoint: '/src/App.tsx',
+      templateId: 'salon-premium', themePresetId: preset.id,
+      businessName: 'Proof Studio', industry: 'salon',
+    });
+    const result = buildPreviewArtifacts({
+      sourceFiles: launched.files,
+    });
+
+    expect(result.sandpackFiles['/components/Testimonials.tsx']).toContain("from './recipes/Testimonials'");
+    expect(result.sandpackFiles['/components/Testimonials.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/Testimonials.ts']).toContain('TestimonialsGrid');
+    expect(result.sandpackFiles['/components/recipes/Testimonials.ts']).toContain('TestimonialsRail');
+    expect(result.sandpackFiles['/components/recipes/Testimonials.ts']).toContain('TestimonialsSpotlight');
+    expect(result.sandpackFiles['/components/recipes/Testimonials.ts']).toContain('REGISTERED_VARIANTS');
+    expect(result.sandpackFiles['/components/Hero.tsx']).toContain("from './recipes/Hero'");
+    expect(result.sandpackFiles['/components/Hero.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/Hero.ts']).toContain('HeroCentered');
+    expect(result.sandpackFiles['/components/recipes/Hero.ts']).toContain('HeroSplitImage');
+    expect(result.sandpackFiles['/components/recipes/Hero.ts']).toContain('HeroFullBleed');
+    expect(result.sandpackFiles['/components/Services.tsx']).toContain("from './recipes/Services'");
+    expect(result.sandpackFiles['/components/recipes/Services.ts']).toContain('ServicesCardGrid');
+    expect(result.sandpackFiles['/components/recipes/Services.ts']).toContain('ServicesAlternating');
+    expect(result.sandpackFiles['/components/recipes/Services.ts']).toContain('ServicesCompactList');
+    expect(result.sandpackFiles['/components/recipes/Services.ts']).toContain('REGISTERED_VARIANTS');
+    expect(result.sandpackFiles['/components/Features.tsx']).toContain("from './recipes/Features'");
+    expect(result.sandpackFiles['/components/Features.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/Features.ts']).toContain('FeaturesGrid');
+    expect(result.sandpackFiles['/components/recipes/Features.ts']).toContain('FeaturesIconLeft');
+    expect(result.sandpackFiles['/components/recipes/Features.ts']).toContain('FeaturesMinimalCentered');
+    expect(result.sandpackFiles['/components/recipes/Features.ts']).toContain('REGISTERED_VARIANTS');
+    expect(result.sandpackFiles['/components/Pricing.tsx']).toContain("from './recipes/Pricing'");
+    expect(result.sandpackFiles['/components/Pricing.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/Pricing.ts']).toContain('PricingTiers');
+    expect(result.sandpackFiles['/components/recipes/Pricing.ts']).toContain('PricingComparison');
+    expect(result.sandpackFiles['/components/recipes/Pricing.ts']).toContain('PricingAccordion');
+    expect(result.sandpackFiles['/components/recipes/Pricing.ts']).toContain('REGISTERED_VARIANTS');
+    expect(result.sandpackFiles['/components/CTA.tsx']).toContain("from './recipes/CTA'");
+    expect(result.sandpackFiles['/components/CTA.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/CTA.ts']).toContain('CTACentered');
+    expect(result.sandpackFiles['/components/recipes/CTA.ts']).toContain('CTAGradientBanner');
+    expect(result.sandpackFiles['/components/recipes/CTA.ts']).toContain('CTASplitCard');
+    expect(result.sandpackFiles['/components/recipes/CTA.ts']).toContain('REGISTERED_VARIANTS');
+    expect(result.sandpackFiles['/components/Footer.tsx']).toContain("from './recipes/Footer'");
+    expect(result.sandpackFiles['/components/Footer.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/Footer.ts']).toContain('FooterColumns');
+    expect(result.sandpackFiles['/components/recipes/Footer.ts']).toContain('FooterCenteredMinimal');
+    expect(result.sandpackFiles['/components/recipes/Footer.ts']).toContain('FooterDarkBand');
+    expect(result.sandpackFiles['/components/recipes/Footer.ts']).toContain('REGISTERED_VARIANTS');
+  });
+
   it('rejects untokenized sealed Wizard CSS instead of rebuilding it from themePresetId', () => {
     const snapshot = {
       snapshotId: 'snap_no_css_recovery',

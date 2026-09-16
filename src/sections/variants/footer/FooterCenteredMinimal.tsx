@@ -16,6 +16,7 @@ export const FooterCenteredMinimal: React.FC<BaseSectionProps<'footer'>> = ({ se
 
   return (
     <footer
+      data-ut-variant="footer:centered-minimal"
       style={{
         padding: '2.5rem 1rem',
         background: hsl(theme.colors.background),

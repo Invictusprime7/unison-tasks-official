@@ -13,6 +13,7 @@ export const CTAGradientBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, 
 
   return (
     <section
+      data-ut-variant="cta:gradient-banner"
       className="relative overflow-hidden text-center"
       style={{
         padding: '5rem 1rem',
@@ -23,7 +24,7 @@ export const CTAGradientBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, 
       <div
         className="absolute inset-0 opacity-10"
         style={{
-          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255,255,255,0.2) 0%, transparent 50%)',
+          backgroundImage: `radial-gradient(circle at 20% 50%, ${hsla(theme.colors.primaryForeground, 0.3)} 0%, transparent 50%), radial-gradient(circle at 80% 50%, ${hsla(theme.colors.primaryForeground, 0.2)} 0%, transparent 50%)`,
         }}
       />
 
@@ -33,8 +34,8 @@ export const CTAGradientBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, 
           style={{
             fontFamily: theme.typography.headingFont,
             fontWeight: theme.typography.headingWeight,
-            color: '#ffffff',
-            letterSpacing: '-0.01em',
+            color: hsl(theme.colors.primaryForeground),
+            letterSpacing: 0,
           }}
         >
           {headline}
@@ -42,7 +43,7 @@ export const CTAGradientBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, 
         {description && (
           <p
             className="text-base max-w-lg mx-auto mb-8"
-            style={{ fontFamily: theme.typography.bodyFont, color: 'rgba(255,255,255,0.85)' }}
+            style={{ fontFamily: theme.typography.bodyFont, color: hsla(theme.colors.primaryForeground, 0.85) }}
           >
             {description}
           </p>
@@ -59,12 +60,12 @@ export const CTAGradientBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, 
                 c.variant === 'outline'
                   ? {
                       background: 'transparent',
-                      color: '#ffffff',
-                      border: '1px solid rgba(255,255,255,0.4)',
+                      color: hsl(theme.colors.primaryForeground),
+                      border: `1px solid ${hsla(theme.colors.primaryForeground, 0.4)}`,
                       borderRadius: theme.radius,
                     }
                   : {
-                      background: '#ffffff',
+                      background: hsl(theme.colors.primaryForeground),
                       color: hsl(theme.colors.primary),
                       borderRadius: theme.radius,
                       fontWeight: '600',

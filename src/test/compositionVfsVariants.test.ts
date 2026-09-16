@@ -90,9 +90,12 @@ describe('composition VFS variants', () => {
     const template = {
       ...baseline,
       sections: [...baseline.sections, { ...gallery, id: `${gallery.id}-second` }],
+      pageCompositions: undefined,
       sectionPool: { gallery: ['navbar', 'hero', 'gallery', 'footer'] as SectionEntry['type'][] },
     };
-    const expected = template.sections.filter((section) => template.sectionPool.gallery.includes(section.type));
+    const expected = template.sections
+      .filter((section) => template.sectionPool.gallery.includes(section.type))
+      .sort((left, right) => Number(left.type === 'footer') - Number(right.type === 'footer'));
     const page: PageRouteNode = {
       id: 'gallery-page', name: 'Gallery', title: 'Gallery', route: '/gallery', role: 'gallery',
       filePath: '/src/pages/Gallery.tsx', visibleInNav: true, isHome: false, generatedBy: 'wizard',
@@ -181,7 +184,7 @@ describe('composition VFS variants', () => {
     if (!routeHero) throw new Error('Route page must include a hero');
 
     expect(source).toContain('"headline": "Services"');
-    expect(source).toContain('"badge": "Services"');
+  expect(source).toContain('"badge": "Our Offerings"');
     expect(source).not.toContain(`"headline": ${JSON.stringify(homeHero?.props.headline)}`);
     expect(source).not.toContain(JSON.stringify(homeHero?.props.backgroundImage));
     expect(routeHero.variantId).toBe('hero:split-image');

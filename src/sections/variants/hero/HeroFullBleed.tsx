@@ -13,11 +13,12 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
 
   return (
     <section
+      data-ut-variant="hero:full-bleed"
       className="relative overflow-hidden flex items-center justify-center"
       style={{
         minHeight: '85vh',
         background: backgroundImage
-          ? `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${backgroundImage}) center/cover no-repeat`
+          ? `linear-gradient(${hsla(theme.colors.foreground, 0.55)}, ${hsla(theme.colors.foreground, 0.55)}), url(${backgroundImage}) center/cover no-repeat`
           : `linear-gradient(135deg, ${hsl(theme.colors.primary)}, ${hsl(theme.colors.secondary)})`,
       }}
     >
@@ -26,9 +27,9 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
           <span
             className="inline-block text-xs font-medium tracking-wide uppercase mb-6 px-3 py-1 rounded-full"
             style={{
-              color: '#fff',
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.25)',
+              color: hsl(theme.colors.primaryForeground),
+              background: hsla(theme.colors.primaryForeground, 0.15),
+              border: `1px solid ${hsla(theme.colors.primaryForeground, 0.25)}`,
               backdropFilter: 'blur(4px)',
             }}
           >
@@ -41,10 +42,10 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
           style={{
             fontFamily: theme.typography.headingFont,
             fontWeight: theme.typography.headingWeight,
-            color: '#ffffff',
+            color: hsl(theme.colors.primaryForeground),
             fontSize: 'clamp(2.5rem, 5vw, 4rem)',
-            letterSpacing: '-0.02em',
-            textShadow: '0 2px 20px rgba(0,0,0,0.3)',
+            letterSpacing: 0,
+            textShadow: `0 2px 20px ${hsla(theme.colors.foreground, 0.3)}`,
           }}
         >
           {headline}
@@ -55,7 +56,7 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
             className="text-lg leading-relaxed mb-8"
             style={{
               fontFamily: theme.typography.bodyFont,
-              color: 'rgba(255,255,255,0.85)',
+              color: hsla(theme.colors.primaryForeground, 0.85),
               maxWidth: '580px',
               margin: '0 auto 2rem',
             }}
@@ -77,12 +78,12 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
                   c.variant === 'outline'
                     ? {
                         background: 'transparent',
-                        color: '#ffffff',
-                        border: '1px solid rgba(255,255,255,0.4)',
+                        color: hsl(theme.colors.primaryForeground),
+                        border: `1px solid ${hsla(theme.colors.primaryForeground, 0.4)}`,
                         borderRadius: theme.radius,
                       }
                     : {
-                        background: '#ffffff',
+                        background: hsl(theme.colors.primaryForeground),
                         color: hsl(theme.colors.primary),
                         borderRadius: theme.radius,
                         fontWeight: '600',
@@ -99,10 +100,10 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
           <div className="flex gap-10 mt-12 flex-wrap justify-center">
             {stats.map((s, i) => (
               <div key={i} className="text-center">
-                <div className="text-3xl font-bold" style={{ fontFamily: theme.typography.headingFont, color: '#ffffff' }}>
+                <div className="text-3xl font-bold" style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.primaryForeground) }}>
                   {s.value}
                 </div>
-                <div className="text-xs uppercase tracking-widest mt-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                <div className="text-xs uppercase tracking-widest mt-1" style={{ color: hsla(theme.colors.primaryForeground, 0.7) }}>
                   {s.label}
                 </div>
               </div>

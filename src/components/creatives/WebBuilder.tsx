@@ -2542,6 +2542,23 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       adoption?: { source?: string; vfsHash?: string | null; revisionId?: string | null; exemptReason?: string };
     },
   ) => {
+    const currentFiles = virtualFSRef.current.getSandpackFiles();
+    const currentSnapshot = resolveSnapshot(currentFiles, effectiveRouteState as any).snapshot
+      ?? effectiveRouteState?.siteBundleSnapshot;
+    const isSealedCanonicalWorkspace = Boolean(
+      currentSnapshot?.meta?.seal?.registeredPageBodyAuthority,
+    );
+    const isAcceptedCanonicalRevision = Boolean(
+      options?.adoption?.vfsHash && options.adoption.revisionId,
+    );
+    if (isSealedCanonicalWorkspace && !isAcceptedCanonicalRevision) {
+      const error = new Error(
+        'Direct template imports cannot replace a sealed canonical workspace. Use a canonical composition upgrade or a structured presentation edit.',
+      );
+      console.warn('[WebBuilder] Blocked legacy direct VFS import into sealed workspace');
+      toast.error('Template import blocked', { description: error.message });
+      return null;
+    }
     recordCanonicalVfsAdoption({
       source: options?.adoption?.source ?? 'webbuilder-import',
       vfsHash: options?.adoption?.vfsHash ?? null,
@@ -2573,7 +2590,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         }
       }
 
-      const existingFiles = options?.replace ? {} : virtualFSRef.current.getSandpackFiles();
+      const existingFiles = options?.replace ? {} : currentFiles;
       let candidateFiles = {
         ...existingFiles,
         ...normalizedFiles,
@@ -6637,6 +6654,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [activePagePath, activePublishedRevisionId, builderRuntimeContext?.workspaceId, hydratedRevision, runtimeProjectionRevisionId]);
 
   const hasCanonicalIdentity = Boolean((resolvedProjectId || projectId) && currentDraftId);
+  const hasRenderableLauncherHandoff = !isExplicitProjectResume
+    && hasNonEmptyVfsFiles(effectiveRouteState?.vfsFiles)
+    && Boolean(effectiveRouteState?.siteBundleSnapshot?.meta?.seal?.version);
   const canonicalRuntimeError = canonicalHydrationError
     || (hasCanonicalIdentity
       && hydratedRevision
@@ -6645,6 +6665,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       ? 'Canonical revision is missing its persisted workspace runtime identity.'
       : null);
   const canonicalHydrationPending = hasCanonicalIdentity
+    && !hasRenderableLauncherHandoff
     && !canonicalRuntimeError
     && (!hydratedRevision || runtimeProjectionRevisionId !== hydratedRevision.id);
 

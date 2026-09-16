@@ -44,6 +44,9 @@ export interface DesignImplementation {
   vfs?: SectionVariant['vfs'];
   radixPrimitives?: SectionVariant['radixPrimitives'];
   vocabulary?: SectionVariant['vocabulary'];
+  /** Deduplicated union of the legacy shorthand and additional references. */
+  vocabularyRefs?: readonly VocabularyRef[];
+  pageRoles?: SectionVariant['pageRoles'];
   experience?: SectionVariant['experience'];
 }
 
@@ -53,6 +56,16 @@ let cachedVocabularyIndex: Map<string, DesignImplementation[]> | null = null;
 /** Vocabulary ids are unique per category only, so both parts are the key. */
 export function vocabularyKey(ref: VocabularyRef): string {
   return `${ref.category}:${ref.id}`;
+}
+
+export function getImplementationVocabularyRefs(
+  declaration: Pick<SectionVariant, 'vocabulary' | 'vocabularyRefs'>,
+): VocabularyRef[] {
+  const refs = [
+    ...(declaration.vocabulary ? [declaration.vocabulary] : []),
+    ...(declaration.vocabularyRefs ?? []),
+  ];
+  return [...new Map(refs.map((ref) => [vocabularyKey(ref), { ...ref }])).values()];
 }
 
 function buildIndex(): Map<string, DesignImplementation> {
@@ -95,6 +108,8 @@ function buildIndex(): Map<string, DesignImplementation> {
         vfs: variant.vfs ? { ...variant.vfs } : undefined,
         radixPrimitives: variant.radixPrimitives ? [...variant.radixPrimitives] : undefined,
         vocabulary: variant.vocabulary ? { ...variant.vocabulary } : undefined,
+        vocabularyRefs: getImplementationVocabularyRefs(variant),
+        pageRoles: variant.pageRoles ? [...variant.pageRoles] : undefined,
         experience: variant.experience
           ? { ...variant.experience, vocabulary: { ...variant.experience.vocabulary } }
           : undefined,
@@ -137,11 +152,12 @@ function vocabularyIndex(): Map<string, DesignImplementation[]> {
   if (cachedVocabularyIndex) return cachedVocabularyIndex;
   const built = new Map<string, DesignImplementation[]>();
   for (const implementation of listDesignImplementations()) {
-    if (!implementation.vocabulary) continue;
-    const key = vocabularyKey(implementation.vocabulary);
-    const bucket = built.get(key);
-    if (bucket) bucket.push(implementation);
-    else built.set(key, [implementation]);
+    for (const ref of getImplementationVocabularyRefs(implementation)) {
+      const key = vocabularyKey(ref);
+      const bucket = built.get(key);
+      if (bucket) bucket.push(implementation);
+      else built.set(key, [implementation]);
+    }
   }
   cachedVocabularyIndex = built;
   return built;
@@ -177,6 +193,56 @@ export function vocabularyExecutabilityReport(): VocabularyExecutability {
     (vocabularyIndex().has(key) ? executable : unimplemented).push(key);
   }
   return { executable, unimplemented };
+}
+
+/** Global implementation does not imply eligibility or selection for a launch. */
+export function buildDesignVocabularyReport(options: {
+  eligibleImplementationIds: readonly string[];
+  selectedImplementationIds: readonly string[];
+}) {
+  const report = vocabularyExecutabilityReport();
+  const implemented = new Set(report.executable);
+  const project = (ids: readonly string[]) => [...new Set(ids.flatMap((id) => {
+    const implementation = getDesignImplementation(id);
+    return implementation ? getImplementationVocabularyRefs(implementation).map(vocabularyKey) : [];
+  }))].filter((key) => implemented.has(key)).sort();
+  return {
+    globalExecutableIds: [...report.executable].sort(),
+    executableIds: project(options.eligibleImplementationIds),
+    selectedIds: project(options.selectedImplementationIds),
+    unimplementedIds: [...report.unimplemented].sort(),
+  };
+}
+
+/** Versioned capability metadata hash; does not reinterpret persisted dr_* IDs. */
+export function designCapabilityFingerprint(options: {
+  eligibleImplementationIds: readonly string[];
+  industry: string;
+  templateId: string;
+  themePresetId: string;
+  artDirectionPackId?: string;
+}): string {
+  const sorted = (values: readonly string[]) => [...new Set(values)].sort();
+  const implementations = listDesignImplementations().map((implementation) => ({
+    id: implementation.implementationId,
+    vocabulary: sorted(getImplementationVocabularyRefs(implementation).map(vocabularyKey)),
+    vfsMode: implementation.vfs?.mode ?? null,
+    radix: sorted(implementation.radixPrimitives ?? []),
+    pageRoles: sorted(implementation.pageRoles ?? []),
+    tags: sorted(implementation.tags),
+    experience: implementation.experience ? {
+      status: implementation.experience.status,
+      vocabulary: vocabularyKey(implementation.experience.vocabulary),
+    } : null,
+  }));
+  return `dc_v1_${hashSeed(JSON.stringify({
+    implementations,
+    eligible: sorted(options.eligibleImplementationIds),
+    industry: options.industry,
+    templateId: options.templateId,
+    themePresetId: options.themePresetId,
+    artDirectionPackId: options.artDirectionPackId ?? null,
+  }))}`;
 }
 
 /**

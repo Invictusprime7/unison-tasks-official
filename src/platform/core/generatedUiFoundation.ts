@@ -29,8 +29,41 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.8' as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7']);
+export const GENERATED_UI_FOUNDATION_VERSION = '1.9' as const;
+/** Runtime components emitted by this owner's motion facade, not type exports. */
+export const GENERATED_MOTION_PRIMITIVES = [
+  'Reveal', 'RevealGroup', 'Stagger', 'StaggerGroup', 'StaggerItem',
+  'MarqueeBand', 'HorizontalRail', 'HoverDepth', 'ImageReveal',
+  'ParallaxMedia', 'MaskReveal', 'MotionImage',
+] as const;
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8']);
+
+export const GENERATED_MOTION_TYPES = [
+  'MotionRecipe', 'MarqueeBandProps', 'HorizontalRailProps', 'HoverDepthProps',
+  'ImageRevealProps', 'ParallaxMediaProps', 'MaskRevealProps', 'MotionImageProps',
+] as const;
+
+export interface GeneratedMotionExports {
+  components: string[];
+  types: string[];
+}
+
+/** Unversioned callers retain the original restricted import contract. */
+export function resolveGeneratedMotionExports(
+  manifest: { motionExports?: GeneratedMotionExports; primitiveImports?: readonly string[] },
+): GeneratedMotionExports {
+  if (manifest.primitiveImports && !manifest.primitiveImports.includes('@/unison/ui/motion')) {
+    return { components: [], types: [] };
+  }
+  return manifest.motionExports ? {
+    components: GENERATED_MOTION_PRIMITIVES.filter((name) => manifest.motionExports?.components?.includes(name)),
+    types: GENERATED_MOTION_TYPES.filter((name) => manifest.motionExports?.types?.includes(name)),
+  } : { components: GENERATED_MOTION_PRIMITIVES.slice(0, 5), types: ['MotionRecipe'] };
+}
+
+function motionExportRequirement(exports: GeneratedMotionExports): string {
+  return `For @/unison/ui/motion, runtime components: ${exports.components.join(', ') || 'none'}. Type-only exports: ${exports.types.join(', ') || 'none'}. Use type imports for types; never render them.`;
+}
 
 export type GeneratedUiLayoutRecipe =
   | 'floating-navbar'
@@ -52,6 +85,8 @@ export type GeneratedUiIconFormat = 'inline' | 'icon-button' | 'social';
 
 export interface GeneratedUiManifest {
   version: typeof GENERATED_UI_FOUNDATION_VERSION;
+  /** Snapshot-owned named exports; legacy readers recover these from stored source. */
+  motionExports?: GeneratedMotionExports;
   importRoot: '@/unison/ui';
   primitiveImports: string[];
   runtimeFacades: {
@@ -127,13 +162,20 @@ export interface GeneratedUiContractValidation {
  * other over time. New import mistakes get fixed here once, not per-prompt.
  */
 export function buildGeneratedUiFoundationDirective(
-  manifest: { primitiveImports: readonly string[]; iconLibrary: string; requirements: readonly string[] },
+  manifest: { primitiveImports: readonly string[]; iconLibrary: string; requirements: readonly string[]; motionExports?: GeneratedMotionExports },
 ): string {
   const importList = manifest.primitiveImports
     .filter((path) => path !== '@/unison/ui/tailwind.css')
     .map((path) => `  - "${path}"`)
     .join('\n');
-  const requirementsList = manifest.requirements.map((line) => `  - ${line}`).join('\n');
+  const motionExports = resolveGeneratedMotionExports(manifest);
+  const requirementsList = manifest.requirements
+    .filter((line) => !line.startsWith('For @/unison/ui/motion,'))
+    .map((line) => `  - ${line}`).join('\n');
+  const compositionDirective = COMPOSITION_VOCABULARY_DIRECTIVE.split('\n')
+    .filter((line) => !GENERATED_MOTION_PRIMITIVES.some((name) =>
+      new RegExp(`<${name}(?:\\s|>)`).test(line) && !motionExports.components.includes(name)))
+    .join('\n');
 
   return [
     '── UNISON UI FOUNDATION CONTRACT (AUTHORITATIVE — from the snapshot manifest) ──',
@@ -145,10 +187,10 @@ export function buildGeneratedUiFoundationDirective(
     'Two similarly-named facade pairs are easy to confuse — use exactly the right one:',
     `  - "@/unison/ui/icons" (plural) is a full ${manifest.iconLibrary} re-export: import any icon name directly from it, e.g. import { Camera, X } from "@/unison/ui/icons". Never nest a sub-path under it.`,
     '  - "@/unison/ui/icon" (singular) exports only the <Icon icon={...} /> wrapper component, not raw icon glyphs.',
-    '  - "@/unison/ui/motion" exports Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, MotionRecipe, and expanded curated motion primitives (MarqueeBand, HorizontalRail, HoverDepth, ImageReveal, ParallaxMedia, MaskReveal, MotionImage) — nothing else.',
+    motionExportRequirement(motionExports),
     '  - "@/unison/ui/animation" is the full framer-motion re-export (motion, AnimatePresence, useReducedMotion, useScroll, useInView, etc.) — use this facade for any raw framer-motion export not in the @/unison/ui/motion list above.',
   'Do not import "@/unison/ui/tailwind.css" from a page; it is already applied globally. Use the root Image facade or a plain <img alt="...">; there is no framework-specific next/image component.',
-    COMPOSITION_VOCABULARY_DIRECTIVE,
+    compositionDirective,
     EXPERIENCE_VOCABULARY_DIRECTIVE,
     requirementsList ? 'Manifest requirements for this snapshot:' : '',
     requirementsList,
@@ -186,7 +228,7 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   'Forms & Actions — "@/unison/ui/forms":',
   '  - Frame all forms inside a <Panel> with <FormGrid columns={2}>. Never leave uncontained inputs at the top of a page.',
   '  - Every submit button or interactive link MUST retain data-ut-intent="[intent.name]" (e.g. contact.submit, booking.create).',
-  'Section Hierarchy Rule: Band 1 is always Hero with exactly ONE <h1>. Content bands (features, services, bento grids) follow Hero. Form/action bands precede Footer. Footer is always the final band.',
+  'Section Hierarchy Rule: Preserve the registered page role and section order. Marketing pages may start with a Hero; internal pages may use a compact page title. Keep exactly ONE <h1> per page and Footer as the final band. Never insert a marketing hero into a page whose contract does not select one.',
   'Rules: exactly ONE <h1> per page (a single <Heading level={1}>). Use <Section> for every band and <Container> inside it. Pass className only for standard Tailwind scale utilities or var(--ut-*)/var(--radius) arbitrary values — never a raw px/rem/vh/vw/#hex literal.',
 ].join('\n');
 
@@ -272,7 +314,7 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
     'Import FormGrid/FormFields, FormField, Input, Textarea, Select, Checkbox, FieldLabel, FormHint, and FormError from @/unison/ui/form-fields or @/unison/ui; never invent flat input/textarea/select/checkbox/label modules.',
     'Use Button variants or IconButton for actions; icon-only actions require an accessible label.',
     'Use responsive Tailwind variants and preserve data-ut-intent attributes on actionable controls.',
-    'For @/unison/ui/motion, use only Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, and MotionRecipe.',
+    motionExportRequirement({ components: [...GENERATED_MOTION_PRIMITIVES], types: [...GENERATED_MOTION_TYPES] }),
     'Import `cn` only from `@/unison/ui` — never from `@/unison/lib/utils` or any other path.',
     'Never import `@/unison/ui/tailwind.css` from a page; it is already applied globally in /src/index.css.',
     'When composing raw Radix facade parts, opt into canonical state styling with data-ut-radix="overlay", "content", "control", "item", "accordion-content", or "toast" on the matching primitive part. Never author global [data-state] or [data-side] CSS.',
@@ -285,6 +327,7 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
 
   return {
     version: GENERATED_UI_FOUNDATION_VERSION,
+    motionExports: { components: [...GENERATED_MOTION_PRIMITIVES], types: [...GENERATED_MOTION_TYPES] },
     importRoot: '@/unison/ui',
     primitiveImports: [
       '@/unison/ui',
@@ -1566,6 +1609,18 @@ export function readGeneratedUiManifest(
       ? manifest.radixStyles.requiredPrimitives.filter(isRadixPrimitiveId)
       : [];
     const currentExperience = buildExperienceManifestSection();
+    // Older releases reused version numbers while expanding this module. The
+    // stored source, not today's package inventory, proves legacy availability.
+    const motionSource = files?.['/src/unison/ui/motion.tsx'] ?? '';
+    const runtimeNames = new Set([...motionSource.matchAll(/^export\s+(?:function|const)\s+(\w+)/gm)].map((match) => match[1]));
+    const typeNames = new Set([...motionSource.matchAll(/^export\s+(?:type|interface)\s+(\w+)/gm)].map((match) => match[1]));
+    const declaredMotion = manifest.motionExports ? resolveGeneratedMotionExports(manifest) : {
+      components: [...GENERATED_MOTION_PRIMITIVES], types: [...GENERATED_MOTION_TYPES],
+    };
+    const motionExports = {
+      components: declaredMotion.components.filter((name) => runtimeNames.has(name)),
+      types: declaredMotion.types.filter((name) => typeNames.has(name)),
+    };
     const experience = manifest.experience
       ? { ...currentExperience, ...manifest.experience, budget: { ...currentExperience.budget, ...(manifest.experience.budget || {}) } }
       : {
@@ -1580,6 +1635,10 @@ export function readGeneratedUiManifest(
     return {
       ...manifest,
       version: GENERATED_UI_FOUNDATION_VERSION,
+      motionExports,
+      iconLibrary: 'lucide-react',
+      requirements: Array.isArray(manifest.requirements)
+        ? manifest.requirements.filter((value): value is string => typeof value === 'string') : [],
       experience,
       runtimeProfile: manifest.runtimeProfile || 'legacy-unspecified',
       runtimeFacades,
@@ -1786,7 +1845,7 @@ export function healKnownGeneratedUiImportMistakes(
  */
 export function validateGeneratedUiContract(
   files: Record<string, string>,
-  manifest: Pick<GeneratedUiManifest, 'importRoot' | 'primitiveImports'> | null | undefined,
+  manifest: Pick<GeneratedUiManifest, 'importRoot' | 'primitiveImports' | 'motionExports'> | null | undefined,
 ): GeneratedUiContractValidation {
   if (!manifest) {
     return { valid: false, violations: ['Wizard snapshot is missing its generated UI manifest.'] };
@@ -1817,8 +1876,8 @@ export function validateGeneratedUiContract(
     );
   });
   const importPattern = /(?:\bimport\s+(?:type\s+)?(?:[\s\S]*?)\s+from\s*|\bexport\s+(?:[\s\S]*?)\s+from\s*|\bimport\s*)['"]([^'"]+)['"]/g;
-  const motionImportPattern = /\bimport\s+(?:type\s+)?\{([^}]+)\}\s+from\s*['"]@\/unison\/ui\/motion['"];?/g;
-  const supportedMotionExports = new Set(['Reveal', 'RevealGroup', 'StaggerGroup', 'Stagger', 'StaggerItem', 'MotionRecipe']);
+  const motionImportPattern = /\b(?:import|export)\s+(type\s+)?\{([^}]+)\}\s+from\s*['"]@\/unison\/ui\/motion['"];?/g;
+  const motionExports = resolveGeneratedMotionExports(manifest);
 
   for (const [path, source] of generatedSources) {
     violations.push(...normalizeImageCompatibility(source, path).issues);
@@ -1864,14 +1923,20 @@ export function validateGeneratedUiContract(
     }
 
     for (const match of source.matchAll(motionImportPattern)) {
-      const unsupported = match[1]
+      const unsupported = match[2]
         .split(',')
-        .map((part) => part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim())
-        .filter((exportName) => exportName && !supportedMotionExports.has(exportName));
+        .map((part) => ({
+          name: part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim(),
+          typeOnly: Boolean(match[1]) || /^type\s+/.test(part.trim()),
+        }))
+        .filter(({ name, typeOnly }) => name && !(typeOnly
+          ? [...motionExports.components, ...motionExports.types].includes(name)
+          : motionExports.components.includes(name)))
+        .map(({ name }) => name);
       if (unsupported.length > 0) {
         violations.push(
           `${path} imports unsupported motion facade export(s): ${unsupported.join(', ')}. ` +
-          'Use only Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, and MotionRecipe from @/unison/ui/motion.',
+          motionExportRequirement(motionExports),
         );
       }
     }

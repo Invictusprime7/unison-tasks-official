@@ -11,7 +11,7 @@ export const ServicesAlternating: React.FC<BaseSectionProps<'services'>> = ({ se
   const { headline, subheadline, items = [] } = section.props;
 
   return (
-    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+    <section data-ut-variant="services:alternating" style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
       <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-14">

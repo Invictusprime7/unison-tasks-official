@@ -36,6 +36,7 @@ export const FooterColumns: React.FC<BaseSectionProps<'footer'>> = ({ section, t
 
   return (
     <footer
+      data-ut-variant="footer:columns"
       className="px-6"
       style={{
         paddingTop: '3rem',

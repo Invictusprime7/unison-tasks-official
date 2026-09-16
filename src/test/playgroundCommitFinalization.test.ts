@@ -54,7 +54,7 @@ import { collectResolvedCompositions } from '@/platform/core/resolvedComposition
 import portableRecipes from '@/sections/recipes/stylexRecipes.generated.json';
 
 describe('Playground canonical finalization', () => {
-  it('finalizes, commits and reloads a structured Gallery edit with matching runtime bytes', async () => {
+  it('finalizes, commits and reloads Hero, Services, Features, Pricing, CTA, Footer, Gallery, and Testimonials portable recipes with matching runtime bytes', async () => {
     const identity = {
       userId: '11111111-1111-4111-8111-111111111111',
       businessId: '22222222-2222-4222-8222-222222222222',
@@ -67,15 +67,15 @@ describe('Playground canonical finalization', () => {
       businessName: 'Gallery Closure Salon', businessModel: 'appointment_service',
       industryOverlay: 'salon', systemType: 'booking', primaryGoal: 'book', secondaryGoals: ['contact'],
       needsBooking: true, wantsLeadCapture: true, primaryIntent: 'booking.create',
-      requestedPages: ['home', 'gallery', 'booking', 'contact'], scaffoldMode: 'selected-pages',
-      templateId: 'salon-premium', themePresetId: 'editorial', themeTokens: themePresetToThemeTokens(preset),
+      requestedPages: ['home', 'pricing', 'gallery', 'booking', 'contact'], scaffoldMode: 'selected-pages',
+      templateId: 'store-premium', themePresetId: 'editorial', themeTokens: themePresetToThemeTokens(preset),
     } }, 'wizard-launch');
     const launched = buildCanonicalLaunchArtifacts({
       generatedFiles: compiled.siteBundleSnapshot.vfsFiles,
       siteBundleSnapshot: compiled.siteBundleSnapshot,
       compileArtifact: compiled.compileArtifact,
       canonicalPlayground: compiled.playground,
-      themePresetId: 'editorial', templateId: 'salon-premium',
+      themePresetId: 'editorial', templateId: 'store-premium',
       systemType: 'booking', businessName: 'Gallery Closure Salon', industry: 'salon',
       businessId: identity.businessId, projectId: identity.projectId,
       organizationId: '66666666-6666-4666-8666-666666666666',
@@ -122,5 +122,19 @@ describe('Playground canonical finalization', () => {
         templateName: 'Gallery Closure Salon · Studio Portfolio',
       });
     expect(restored?.vfsFiles['/src/components/recipes/Gallery.ts']).toBe(portableRecipes.families.gallery);
+    expect(result.vfsFiles['/src/components/recipes/Testimonials.ts']).toBe(portableRecipes.families.testimonials);
+    expect(restored?.vfsFiles['/src/components/recipes/Testimonials.ts']).toBe(portableRecipes.families.testimonials);
+    expect(result.vfsFiles['/src/components/recipes/Hero.ts']).toBe(portableRecipes.families.hero);
+    expect(restored?.vfsFiles['/src/components/recipes/Hero.ts']).toBe(portableRecipes.families.hero);
+    expect(result.vfsFiles['/src/components/recipes/Services.ts']).toBe(portableRecipes.families.services);
+    expect(restored?.vfsFiles['/src/components/recipes/Services.ts']).toBe(portableRecipes.families.services);
+    expect(result.vfsFiles['/src/components/recipes/Features.ts']).toBe(portableRecipes.families.features);
+    expect(restored?.vfsFiles['/src/components/recipes/Features.ts']).toBe(portableRecipes.families.features);
+    expect(result.vfsFiles['/src/components/recipes/Pricing.ts']).toBe(portableRecipes.families.pricing);
+    expect(restored?.vfsFiles['/src/components/recipes/Pricing.ts']).toBe(portableRecipes.families.pricing);
+    expect(result.vfsFiles['/src/components/recipes/CTA.ts']).toBe(portableRecipes.families.cta);
+    expect(restored?.vfsFiles['/src/components/recipes/CTA.ts']).toBe(portableRecipes.families.cta);
+    expect(result.vfsFiles['/src/components/recipes/Footer.ts']).toBe(portableRecipes.families.footer);
+    expect(restored?.vfsFiles['/src/components/recipes/Footer.ts']).toBe(portableRecipes.families.footer);
   }, 20_000);
 });

@@ -7,6 +7,7 @@ import {
   WIZARD_LAUNCH_AUTHORITY_PATH,
 } from '@/platform/core/snapshotSeal';
 import { mergeGeneratedVfsWithCanonicalSnapshot } from '@/services/canonicalLaunchVfs';
+import { buildWizardAggregatedRegistryContext, WIZARD_REGISTRY_CONTEXT_PATH } from '@/services/launch/wizardRegistryAggregation';
 
 function createSnapshot(): SiteBundleSnapshot {
   return {
@@ -64,6 +65,24 @@ function mergedFiles(snapshot: SiteBundleSnapshot) {
 }
 
 describe('snapshot seal Wizard ownership proof', () => {
+  it.each([true, false])('preserves registry context through seal and serialized reload (fingerprint: %s)', (withFingerprint) => {
+    const snapshot = createSnapshot();
+    const registry = buildWizardAggregatedRegistryContext({ industry: 'salon', templateId: 'salon-premium', themePresetId: 'editorial' });
+    if (!withFingerprint) delete registry.designCapabilityFingerprint;
+    snapshot.meta.registryContext = registry;
+    const registryBytes = JSON.stringify(registry);
+    const sealed = sealSnapshot({
+      artifact: snapshot,
+      vfsFiles: { ...snapshot.vfsFiles, [WIZARD_REGISTRY_CONTEXT_PATH]: registryBytes },
+      appContext: appContext(), sealedBy: 'recompile',
+    });
+    const reopened = JSON.parse(JSON.stringify(sealed)) as SiteBundleSnapshot;
+    expect(reopened.meta.registryContext).toEqual(registry);
+    // Platform sidecars are intentionally excluded from the sealed runtime VFS;
+    // registry truth survives in metadata and is re-emitted by the commit owner.
+    expect(reopened.vfsFiles[WIZARD_REGISTRY_CONTEXT_PATH]).toBeUndefined();
+    expect(JSON.stringify(reopened.meta.registryContext)).toBe(registryBytes);
+  });
   it('projects the finalized router without mutating the compile candidate', () => {
     const snapshot = createSnapshot();
     const originalRouter = snapshot.routerFile.content;

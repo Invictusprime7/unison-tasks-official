@@ -79,13 +79,13 @@ import {
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
 import {
+  buildWizardLaneBRegistryContext,
   decodeWizardLaneBProposal,
   validateWizardLaneBProposal,
   mergeLaneBProposalWithSnapshot,
   type WizardLaneBEnrichmentRequest,
 } from "@/services/wizardLaneBEnrichment";
 import { runBuilderTurn } from "@/services/builderBrainClient";
-import { buildGeneratedUiFoundationDirective } from "@/platform/core/generatedUiFoundation";
 import {
   buildLaneBVfsContext,
   measurePayloadBytes,
@@ -567,39 +567,11 @@ export async function runLaunchPipeline(
 
   try {
     await run.stage("enrich", async (signal) => {
-      // Parse UI foundation manifest from snapshot VFS
-      let manifestData: any = {
-        primitiveImports: [],
-        iconLibrary: 'lucide-react',
-        requirements: [],
-      };
-      try {
-        const manifestJson = siteBundleSnapshot.vfsFiles['/.unison/ui-manifest.json'];
-        if (manifestJson) {
-          manifestData = JSON.parse(manifestJson);
-        }
-      } catch (e) {
-        console.warn('[launch] Could not parse UI foundation manifest:', e);
-      }
-
-      // Build the enrichment request context from the canonical snapshot
-      const uiFoundationDirective = buildGeneratedUiFoundationDirective({
-        primitiveImports: manifestData.primitiveImports || [],
-        iconLibrary: manifestData.iconLibrary || 'lucide-react',
-        requirements: manifestData.requirements || [],
-      });
-
-      const designVocabularyReport = {
-        executableIds: Array.from(
-          new Set(
-            Object.values(siteBundleSnapshot.meta.designIntervention?.activeVariants || {})
-              .flatMap((v: any) => v?.vocabulary)
-              .map((v: any) => v?.id)
-              .filter(Boolean),
-          ),
-        ),
-        unimplementedIds: [],
-      };
+      const {
+        uiFoundationManifest: manifestData,
+        uiFoundationDirective,
+        designVocabularyReport,
+      } = buildWizardLaneBRegistryContext(siteBundleSnapshot, wizardRegistryContext);
 
       // Build the page registry for AI visibility
       const pageRegistry = Object.entries(siteBundleSnapshot.pageRegistry.pages || {}).map(

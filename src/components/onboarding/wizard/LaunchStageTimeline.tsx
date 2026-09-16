@@ -17,8 +17,8 @@ import type {
 const STAGE_HINT: Record<string, string> = {
   plan: "Curating your pages, navigation, and customer journey",
   seed: "Setting up your visual theme, custom fonts, and palette",
-  enrich: "Writing tailored copy, lookbook imagery, and layout vibes",
-  preflight: "Checking every button, form, and animation for perfection",
+  enrich: "Adding finishing touches to your content and design",
+  preflight: "Checking that your pages are ready to open",
   commit: "Saving your project so you can edit and share it anytime",
   handoff: "Get ready to see and customize your new website!",
 };
@@ -28,7 +28,9 @@ function statusIcon(status: LaunchStageStatus) {
     case "done":
       return <Check className="h-3 w-3 stroke-[2.5]" />;
     case "active":
-      return <Loader2 className="h-3 w-3 animate-spin text-cyan-200" />;
+      return (
+        <Loader2 className="h-3 w-3 motion-safe:animate-spin text-cyan-200" />
+      );
     case "degraded":
       return <Sparkles className="h-3 w-3 text-amber-300" />;
     case "failed":
@@ -43,7 +45,7 @@ function statusRing(status: LaunchStageStatus) {
     case "done":
       return "bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.2)]";
     case "active":
-      return "bg-gradient-to-r from-cyan-500 to-blue-500 text-[#07080F] ring-2 ring-cyan-300/80 shadow-[0_0_20px_rgba(34,211,238,0.4)] animate-pulse";
+      return "bg-gradient-to-r from-cyan-500 to-blue-500 text-[#07080F] ring-2 ring-cyan-300/80 shadow-[0_0_20px_rgba(34,211,238,0.4)] motion-safe:animate-pulse";
     case "degraded":
       return "bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/30";
     case "failed":
@@ -72,6 +74,15 @@ export const LaunchStageTimeline = ({
   statusText,
   className,
 }: LaunchStageTimelineProps) => {
+  const activeStage = snapshot.stages.find(
+    (stage) => stage.status === "active",
+  );
+  const failedStage = snapshot.stages.find(
+    (stage) => stage.status === "failed",
+  );
+  const finished = snapshot.stages.every(
+    (stage) => stage.status === "done" || stage.status === "degraded",
+  );
   return (
     <div
       className={cn(
@@ -82,11 +93,17 @@ export const LaunchStageTimeline = ({
       <div className="mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-cyan-400">
-            <Sparkles className="h-3.5 w-3.5 animate-pulse text-cyan-400" />
+            <Sparkles className="h-3.5 w-3.5 motion-safe:animate-pulse text-cyan-400" />
             <span>AI Design Studio</span>
           </div>
-          <div className="text-[11px] text-white/50">
-            {statusText || "Crafting your website from your vision"}
+          <div role="status" className="mt-2 text-sm text-slate-300">
+            {failedStage
+              ? "Your build paused. Review the message and try again."
+              : finished
+                ? "Your website is ready"
+                : activeStage
+                  ? STAGE_HINT[activeStage.name]
+                  : "Getting your website ready"}
           </div>
         </div>
         {snapshot.degradations.length > 0 && (
@@ -147,23 +164,32 @@ export const LaunchStageTimeline = ({
         })}
       </ol>
 
-      {snapshot.degradations.length > 0 && (
-        <ul className="mt-3 space-y-1 border-t border-white/[0.06] pt-3">
-          {snapshot.degradations.map((degradation, index) => (
-            <li
-              key={`${degradation.code}-${index}`}
-              className="flex items-start gap-2 text-[11px] text-amber-200/70"
-            >
-              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
-              <span className="min-w-0">
-                <span className="font-mono text-[10px] text-amber-300/60">
-                  {degradation.code}
-                </span>{" "}
-                {degradation.message}
-              </span>
-            </li>
-          ))}
-        </ul>
+      {(snapshot.degradations.length > 0 || statusText) && (
+        <details className="mt-4 text-xs text-slate-400">
+          <summary className="cursor-pointer">
+            Build details
+            {snapshot.degradations.length > 0
+              ? ` (${snapshot.degradations.length} notes)`
+              : ""}
+          </summary>
+          {statusText && <p className="mt-3">{statusText}</p>}
+          <ul className="mt-3 space-y-1 border-t border-white/[0.06] pt-3">
+            {snapshot.degradations.map((degradation, index) => (
+              <li
+                key={`${degradation.code}-${index}`}
+                className="flex items-start gap-2 text-[11px] text-amber-200/70"
+              >
+                <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+                <span className="min-w-0">
+                  <span className="font-mono text-[10px] text-amber-300/60">
+                    {degradation.code}
+                  </span>{" "}
+                  {degradation.message}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );

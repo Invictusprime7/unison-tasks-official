@@ -11,7 +11,10 @@ export const FeaturesIconLeft: React.FC<BaseSectionProps<'features'>> = ({ secti
   const { headline, subheadline, items = [] } = section.props;
 
   return (
-    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+    <section
+      data-ut-variant="features:icon-left"
+      style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
+    >
       <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-12">

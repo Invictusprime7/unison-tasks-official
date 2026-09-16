@@ -3087,17 +3087,17 @@ function findSafeImportInsertionPoint(code: string): number {
 function collectTopLevelBindingNames(code: string): Set<string> {
   const bindings = new Set<string>();
 
-  const namedImportRe = /^import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+['"][^'"]+['"];?/gm;
+  const namedImportRe = /(?:^|[;\n])\s*import\s+(?:type\s+)?(?:[A-Za-z_$][\w$]*\s*,\s*)?\{([^}]*)\}\s+from\s+['"][^'"]+['"];?/g;
   let m: RegExpExecArray | null;
   while ((m = namedImportRe.exec(code)) !== null) {
     for (const spec of m[1].split(',')) {
       const parts = spec.trim().split(/\s+as\s+/);
-      const local = (parts[1] || parts[0]).trim();
+      const local = (parts[1] || parts[0]).trim().replace(/^type\s+/, '');
       if (local) bindings.add(local);
     }
   }
 
-  const defaultOrNamespaceImportRe = /^import\s+(?:\*\s+as\s+([A-Za-z_$][\w$]*)|([A-Za-z_$][\w$]*))\s*(?:,\s*\{[^}]*\})?\s+from\s+['"][^'"]+['"];?/gm;
+  const defaultOrNamespaceImportRe = /(?:^|[;\n])\s*import\s+(?:\*\s+as\s+([A-Za-z_$][\w$]*)|([A-Za-z_$][\w$]*))\s*(?:,\s*\{[^}]*\})?\s+from\s+['"][^'"]+['"];?/g;
   while ((m = defaultOrNamespaceImportRe.exec(code)) !== null) {
     const name = m[1] || m[2];
     if (name) bindings.add(name);
@@ -3134,22 +3134,12 @@ export function processCode(code: string, filePath: string): string {
     const lines = code.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (!/^\s*import\s*\{\s*$/.test(lines[i])) continue;
-      let closed = false;
-      for (let j = i + 1; j < lines.length; j++) {
-        const line = lines[j];
-        if (/^\s*\}\s*from\s*['"][^'"]+['"]\s*;?\s*$/.test(line)) {
-          closed = true;
-          break;
-        }
-        // Still looks like an import-specifier continuation line
-        // (`Name,`, `Name as Alias,`, or a blank line) — keep scanning.
-        if (line.trim() === '' || /^\s*[A-Za-z_$][\w$]*(\s+as\s+[A-Za-z_$][\w$]*)?,?\s*$/.test(line)) {
-          continue;
-        }
-        // Anything else (a new statement, JSX, etc.) means this import
-        // was never closed.
-        break;
-      }
+      // Check the whole import, allowing multiple specifiers per line and a
+      // following statement after its semicolon. A new brace-delimited
+      // statement cannot complete an earlier dangling import opener.
+      const closed = /^\s*import\s*\{[^{}]*\}\s*from\s*['"][^'"]+['"]/.test(
+        lines.slice(i).join('\n'),
+      );
       if (!closed) {
         lines[i] = '';
       }
@@ -3215,6 +3205,18 @@ export function processCode(code: string, filePath: string): string {
   let __lucideImportDone = false;
   const __allLucideIcons: Array<{ original: string; alias: string }> = [];
   const __seenLucideAliases = new Set<string>();
+  const lucideImportRe = /import\s+\{([^}]+)\}\s+from\s+['"]lucide-react['"];?/g;
+
+  // Remove only our generated lookup declarations when a real binding now
+  // supplies that name (or a prior preparation emitted the lookup twice).
+  const generatedLookup = /^[ \t]*const\s+([A-Za-z_$][\w$]*)\s*=\s*(?:__LucideIcons\[['"][^'"]+['"]\]\s*\|\|\s*)+__LucideFallback;[ \t]*$/gm;
+  const authoredBindings = collectTopLevelBindingNames(code.replace(generatedLookup, '').replace(lucideImportRe, ''));
+  const retainedLookups = new Set<string>();
+  code = code.replace(generatedLookup, (declaration, name: string) => {
+    if (authoredBindings.has(name) || retainedLookups.has(name)) return '';
+    retainedLookups.add(name);
+    return declaration;
+  });
 
   const getLucideLookupCandidates = (original: string): string[] => {
     const trimmed = original.trim();
@@ -3232,7 +3234,6 @@ export function processCode(code: string, filePath: string): string {
   };
 
   // Collect all lucide-react imports
-  const lucideImportRe = /import\s+\{([^}]+)\}\s+from\s+['"]lucide-react['"];?/g;
   let lucideMatch: RegExpExecArray | null;
   while ((lucideMatch = lucideImportRe.exec(code)) !== null) {
     // Collapse all whitespace (including newlines) before splitting
@@ -3372,11 +3373,11 @@ export function processCode(code: string, filePath: string): string {
 
   // Check which are missing declarations
   const missingIcons: string[] = [];
+  const existingIconBindings = collectTopLevelBindingNames(code);
   for (const name of usedIdentifiers) {
     if (!COMMON_LUCIDE_ICONS.has(name)) continue;
     // Check if already declared (import, const, function, class)
-    const declRe = new RegExp(`(?:import\\s+.*\\b${name}\\b|const\\s+${name}\\s*=|function\\s+${name}\\b|class\\s+${name}\\b)`, 'm');
-    if (!declRe.test(code)) {
+    if (!existingIconBindings.has(name)) {
       missingIcons.push(name);
     }
   }

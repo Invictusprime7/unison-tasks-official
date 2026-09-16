@@ -65,6 +65,8 @@ describe('Phase 3 — testimonials and pricing are first-class variant families'
     expect(pricingModule).toContain('pricing:comparison');
 
     const proof = build(['testimonial-rail'], [{ id: 't-1', type: 'testimonials', props: { items: [] } }]);
-    expect(proof['/src/components/Testimonials.tsx']).toContain("rawLayout === 'rail'");
+    expect(proof['/src/components/Testimonials.tsx']).toContain("from './recipes/Testimonials'");
+    expect(proof['/src/components/Testimonials.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(proof['/src/components/recipes/Testimonials.ts']).toBeTruthy();
   });
 });

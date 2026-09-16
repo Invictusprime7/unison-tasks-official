@@ -10,13 +10,29 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Loader2, Sparkle, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Loader2,
+  Sparkle,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { THEME_PRESETS, type ThemePreset } from "@/components/onboarding/themePresets";
+import {
+  THEME_PRESETS,
+  type ThemePreset,
+} from "@/components/onboarding/themePresets";
 import { StyleTokenCard } from "@/components/onboarding/StyleTokenCard";
 import { TemplateLivePreview } from "@/components/onboarding/TemplateLivePreview";
 import { ImportProjectZipButton } from "@/components/onboarding/ImportProjectZipButton";
@@ -71,18 +87,51 @@ export interface LauncherWizardProps {
   } | null;
 }
 
-const STEP_ORDER: WizardStep[] = ["industry", "questions", "templates", "aesthetic"];
-
-const PROMPT_PRESETS = [
-  { label: "🚀 SaaS Platform", prompt: "Developer SaaS platform named Apex with cloud APIs, tier pricing, and documentation" },
-  { label: "✂️ Salon & Spa", prompt: "Luxury boutique salon and spa named Studio Glow with online booking and lookbook gallery" },
-  { label: "🍽️ Bistro & Dining", prompt: "Farm-to-table bistro called Bella Tavola with seasonal dinner menu and reservations" },
-  { label: "🔨 Home Contractor", prompt: "Residential construction contractor named Forge Builders with project estimates and past work" },
-  { label: "🏠 Real Estate", prompt: "Modern real estate agency named Horizon Estates with luxury property listings" },
-  { label: "🛍️ E-Commerce Shop", prompt: "Streetwear fashion store with product catalog, cart, and instant checkout" },
+const STEP_ORDER: WizardStep[] = [
+  "industry",
+  "questions",
+  "templates",
+  "aesthetic",
 ];
 
-export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardProps) => {
+const PROMPT_PRESETS = [
+  {
+    label: "🚀 SaaS Platform",
+    prompt:
+      "Developer SaaS platform named Apex with cloud APIs, tier pricing, and documentation",
+  },
+  {
+    label: "✂️ Salon & Spa",
+    prompt:
+      "Luxury boutique salon and spa named Studio Glow with online booking and lookbook gallery",
+  },
+  {
+    label: "🍽️ Bistro & Dining",
+    prompt:
+      "Farm-to-table bistro called Bella Tavola with seasonal dinner menu and reservations",
+  },
+  {
+    label: "🔨 Home Contractor",
+    prompt:
+      "Residential construction contractor named Forge Builders with project estimates and past work",
+  },
+  {
+    label: "🏠 Real Estate",
+    prompt:
+      "Modern real estate agency named Horizon Estates with luxury property listings",
+  },
+  {
+    label: "🛍️ E-Commerce Shop",
+    prompt:
+      "Streetwear fashion store with product catalog, cart, and instant checkout",
+  },
+];
+
+export const LauncherWizard = ({
+  open,
+  onOpenChange,
+  prefill,
+}: LauncherWizardProps) => {
   const navigate = useNavigate();
   const { setLaunch } = useLaunch();
 
@@ -94,15 +143,20 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   const [customerNeeds, setCustomerNeeds] = useState<CustomerNeed[]>([]);
   const [selectedPages, setSelectedPages] = useState<PageChoice[]>([]);
   const [template, setTemplate] = useState<TemplateCardData | null>(null);
-  const [theme, setTheme] = useState<ThemePreset | null>(THEME_PRESETS[0] ?? null);
+  const [theme, setTheme] = useState<ThemePreset | null>(
+    THEME_PRESETS[0] ?? null,
+  );
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [visionPrompt, setVisionPrompt] = useState("");
-  const [aiAnalysis, setAiAnalysis] = useState<WizardPromptAnalysis | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<WizardPromptAnalysis | null>(
+    null,
+  );
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
   const [launchError, setLaunchError] = useState<string | null>(null);
-  const [launchFailure, setLaunchFailure] = useState<LaunchFailureReport | null>(null);
+  const [launchFailure, setLaunchFailure] =
+    useState<LaunchFailureReport | null>(null);
   const [progress, setProgress] = useState<LaunchRunSnapshot | null>(null);
   const latestProgressRef = useRef<LaunchRunSnapshot | null>(null);
 
@@ -141,7 +195,9 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
       setCustomerNeeds(analysis.customerNeeds);
       setSelectedPages(analysis.selectedPages);
       setTemplate(getDefaultTemplateCardForIndustry(analysis.industry));
-      const matchedTheme = THEME_PRESETS.find((p) => p.id === analysis.themePresetId);
+      const matchedTheme = THEME_PRESETS.find(
+        (p) => p.id === analysis.themePresetId,
+      );
       if (matchedTheme) setTheme(matchedTheme);
     }
   };
@@ -156,7 +212,8 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   }, [open, prefill?.businessName]);
 
   const templates = useMemo(
-    () => (selectedIndustry ? getCompositionCardsForIndustry(selectedIndustry) : []),
+    () =>
+      selectedIndustry ? getCompositionCardsForIndustry(selectedIndustry) : [],
     [selectedIndustry],
   );
   const effectiveTemplate =
@@ -168,7 +225,9 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
     () =>
       deriveGenerationSeed({
         businessName,
-        businessModel: systemId ? SYSTEM_TO_BUSINESS_MODEL[systemId] : "general",
+        businessModel: systemId
+          ? SYSTEM_TO_BUSINESS_MODEL[systemId]
+          : "general",
         industry: selectedIndustry || effectiveTemplate?.industry,
         templateId: effectiveTemplate?.id,
         themePresetId: theme?.id,
@@ -176,7 +235,16 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
         secondaryGoals: customerNeeds,
         requestedPages: ["home", ...selectedPages],
       }),
-    [businessName, systemId, selectedIndustry, effectiveTemplate, theme, primaryGoal, customerNeeds, selectedPages],
+    [
+      businessName,
+      systemId,
+      selectedIndustry,
+      effectiveTemplate,
+      theme,
+      primaryGoal,
+      customerNeeds,
+      selectedPages,
+    ],
   );
 
   const selectIndustry = (industry: string, id: BusinessSystemType) => {
@@ -190,7 +258,9 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
   };
 
   const toggle = <T extends string>(list: T[], value: T): T[] =>
-    list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
+    list.includes(value)
+      ? list.filter((entry) => entry !== value)
+      : [...list, value];
 
   const pageChoices = useMemo(
     () => getIndustryPageChoiceCards(selectedIndustry),
@@ -249,7 +319,10 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
         },
       });
       setLaunch(result.launchState);
-      navigate("/web-builder", { replace: true, state: result.navigationState });
+      navigate("/web-builder", {
+        replace: true,
+        state: result.navigationState,
+      });
       onOpenChange(false);
     } catch (error) {
       const report = createLaunchFailureReport(error, latestProgressRef.current);
@@ -261,7 +334,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
       );
       console.error('[LauncherWizard] Generate Site failed', report, error);
       toast.error(`Generate Site failed in ${report.stage}`, {
-        id: 'wizard-generate-site-failed',
+        id: "wizard-generate-site-failed",
         description: `${report.code}: ${report.message}`,
         duration: 30_000,
         action: {
@@ -284,30 +357,44 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
         if (!next) reset();
       }}
     >
-      <DialogContent className="h-[calc(100dvh-1rem)] w-[calc(100%-1.5rem)] max-w-[360px] content-start gap-0 overflow-y-auto border-0 bg-[#07080F] p-0 text-white shadow-[0_0_100px_rgba(0,200,255,0.06)] sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-[980px]">
+      <DialogContent className="max-h-[94dvh] w-[calc(100%-1rem)] max-w-[1080px] gap-0 overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0d14] p-0 text-white shadow-2xl sm:w-[calc(100%-3rem)]">
         <DialogHeader className="sr-only">
           <DialogTitle>Launch your website</DialogTitle>
         </DialogHeader>
 
         {/* Stepper + top action */}
-        <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] px-5 py-3">
-          <ol className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <div className="flex flex-col gap-4 border-b border-white/[0.08] px-5 py-5 pr-12 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:pr-14">
+          <ol
+            aria-label="Website setup progress"
+            className="flex min-w-0 flex-wrap items-center gap-1.5"
+          >
             {STEP_META.map((meta) => {
               const index = STEP_ORDER.indexOf(meta.key);
               const current = STEP_ORDER.indexOf(step);
-              const state = index < current ? "done" : index === current ? "active" : "todo";
+              const state =
+                index < current
+                  ? "done"
+                  : index === current
+                    ? "active"
+                    : "todo";
               return (
                 <li
                   key={meta.key}
+                  aria-current={state === "active" ? "step" : undefined}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]",
-                    state === "active" && "border-cyan-400/40 bg-cyan-400/10 text-cyan-300",
+                    "flex items-center gap-1.5 rounded-full border px-1.5 py-1 text-[10px] sm:px-2.5 sm:text-[11px]",
+                    state === "active" &&
+                      "border-cyan-400/40 bg-cyan-400/10 text-cyan-300",
                     state === "done" && "border-white/10 text-white/45",
                     state === "todo" && "border-white/[0.06] text-white/25",
                   )}
                 >
                   <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/[0.08] text-[9px] font-bold">
-                    {state === "done" ? <Check className="h-2.5 w-2.5" /> : meta.num}
+                    {state === "done" ? (
+                      <Check className="h-2.5 w-2.5" />
+                    ) : (
+                      meta.num
+                    )}
                   </span>
                   {meta.label}
                 </li>
@@ -315,206 +402,200 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
             })}
           </ol>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {step !== "industry" && !isLaunching && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={goBack}
-                className="h-8 px-2 text-white/45 hover:text-white"
-              >
-                <ArrowLeft className="mr-1 h-3.5 w-3.5" />
-                Back
-              </Button>
-            )}
-            {step === "aesthetic" ? (
-              <Button
-                size="sm"
-                disabled={!canContinue || isLaunching}
-                onClick={handleGenerate}
-                className="h-8 bg-cyan-500 font-semibold text-[#07080F] hover:bg-cyan-400"
-              >
-                {isLaunching ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkle className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                {isLaunching ? "Generating…" : "Generate site"}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                disabled={!canContinue}
-                onClick={goNext}
-                className="h-8 bg-cyan-500 font-semibold text-[#07080F] hover:bg-cyan-400"
-              >
-                Continue
-                <ArrowRight className="ml-1 h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
+          {step !== "industry" && (
+            <div className="flex shrink-0 items-center gap-2">
+              {!isLaunching && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goBack}
+                  className="h-8 px-2 text-white/45 hover:text-white"
+                >
+                  <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+                  Back
+                </Button>
+              )}
+              {step === "aesthetic" ? (
+                <Button
+                  size="sm"
+                  disabled={!canContinue || isLaunching}
+                  onClick={handleGenerate}
+                  className="h-8 bg-cyan-500 font-semibold text-[#07080F] hover:bg-cyan-400"
+                >
+                  {isLaunching ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkle className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  {isLaunching ? "Generating…" : "Generate site"}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled={!canContinue || isLaunching}
+                  onClick={goNext}
+                  className="h-8 bg-cyan-500 font-semibold text-[#07080F] hover:bg-cyan-400"
+                >
+                  Continue
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_320px]">
+        <div
+          className={cn(
+            "grid gap-8 p-5 sm:p-8",
+            step !== "industry" &&
+              !isLaunching &&
+              "lg:grid-cols-[minmax(0,1fr)_280px]",
+          )}
+        >
           {/* ── Left: selections ─────────────────────────────────────────── */}
-          <div className="min-w-0 space-y-4">
+          <fieldset
+            disabled={isLaunching}
+            aria-busy={isLaunching}
+            className={cn("min-w-0 space-y-5", isLaunching && "hidden")}
+          >
             {step === "industry" && (
               <>
-                <div className="relative overflow-hidden rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-950/30 via-slate-900/40 to-black/60 p-4 shadow-xl">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-cyan-400">
-                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-cyan-400" />
-                      <span>AI Vision & Lead-Gen Intake</span>
-                    </div>
-                    {aiAnalysis && (
-                      <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
-                        {Math.round(aiAnalysis.confidence * 100)}% Match: {aiAnalysis.industry}
-                      </span>
-                    )}
+                <div className="mx-auto max-w-2xl space-y-6 py-3 sm:py-8">
+                  <div className="space-y-3 text-center">
+                    <span className="inline-flex items-center gap-2 text-xs font-medium text-cyan-300">
+                      <Sparkles className="h-4 w-4" /> Unison AI Studio
+                    </span>
+                    <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                      What would you like to create?
+                    </h2>
+                    <p className="text-sm leading-6 text-slate-400">
+                      Start with your idea. Shape the details. Make it yours.
+                    </p>
                   </div>
-                  <p className="mb-2.5 text-[11px] text-white/50">
-                    Describe your business, offerings, or audience. AI will extract your industry, recommend pages, goals, and canonical design architecture.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
+                  <div className="rounded-2xl border border-white/15 bg-white/[0.03] p-4 shadow-lg focus-within:border-cyan-400/60">
+                    <label htmlFor="wizard-vision" className="sr-only">
+                      Describe your website
+                    </label>
+                    <Textarea
+                      id="wizard-vision"
                       value={visionPrompt}
                       onChange={(e) => handleVisionPromptChange(e.target.value)}
-                      placeholder="e.g. Developer platform named Apex with cloud APIs, tier pricing, and documentation"
-                      className="h-9 border-white/10 bg-black/40 text-xs text-white placeholder:text-white/30"
+                      placeholder="A website for Studio Glow, a boutique salon with online booking, a lookbook, and a warm, minimal feel..."
+                      className="min-h-32 resize-y border-0 bg-transparent p-1 text-base text-white shadow-none placeholder:text-slate-500 focus-visible:ring-0"
                     />
-                    {aiAnalysis && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+                      <span className="text-xs text-slate-400">
+                        Your business, your audience, your style.
+                      </span>
                       <Button
-                        size="sm"
                         onClick={applyAiAnalysisAndContinue}
-                        className="h-9 shrink-0 bg-cyan-500 px-3 text-xs font-semibold text-[#07080F] hover:bg-cyan-400"
+                        disabled={!aiAnalysis}
+                        className="rounded-xl bg-cyan-400 text-slate-950 hover:bg-cyan-300"
                       >
-                        Apply & Continue <ArrowRight className="ml-1 h-3 w-3" />
+                        Shape my idea <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
-                    )}
+                    </div>
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] text-white/30">Try:</span>
+                  <div className="flex flex-wrap justify-center gap-2">
                     {PROMPT_PRESETS.map((preset) => (
                       <button
                         key={preset.label}
                         type="button"
                         onClick={() => handleVisionPromptChange(preset.prompt)}
-                        className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] text-white/60 transition-colors hover:border-cyan-400/30 hover:text-cyan-300"
+                        className="rounded-full border border-white/10 px-3 py-2 text-xs text-slate-300 transition-colors hover:border-cyan-400/40 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
                       >
                         {preset.label}
                       </button>
                     ))}
                   </div>
-
                   {aiAnalysis && (
-                    <div className="mt-3.5 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-3.5 shadow-lg backdrop-blur-md">
-                      <div className="mb-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
-                          <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-                          <span>AI Blueprint Ready</span>
-                        </div>
-                        <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[9px] font-semibold text-cyan-300">
-                          ✨ Tap to build
-                        </span>
+                    <div
+                      className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4"
+                      role="status"
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium text-cyan-200">
+                        <Check className="h-4 w-4" /> A starting point for your
+                        idea
                       </div>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <div className="rounded-lg border border-white/[0.08] bg-black/40 p-2">
-                          <div className="text-[9px] uppercase tracking-wider text-white/40">Brand & Category</div>
-                          <div className="mt-0.5 truncate text-xs font-semibold text-white">{businessName || aiAnalysis.businessName || "Your Brand"}</div>
-                          <div className="text-[10px] capitalize text-cyan-400">{aiAnalysis.industry}</div>
-                        </div>
-                        <div className="rounded-lg border border-white/[0.08] bg-black/40 p-2">
-                          <div className="text-[9px] uppercase tracking-wider text-white/40">Pages & Flow</div>
-                          <div className="mt-0.5 flex flex-wrap gap-1">
-                            {["Home", ...aiAnalysis.selectedPages].slice(0, 3).map((p) => (
-                              <span key={p} className="rounded bg-white/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-white/80 capitalize">
-                                {p}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="rounded-lg border border-white/[0.08] bg-black/40 p-2">
-                          <div className="text-[9px] uppercase tracking-wider text-white/40">Style Vibe</div>
-                          <div className="mt-0.5 text-xs font-semibold capitalize text-white">{theme?.label || "Organic"}</div>
-                          <div className="text-[10px] text-white/40">Custom fonts & geometry</div>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/[0.06] pt-2.5">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={applyAiAnalysisAndContinue}
-                          className="h-7 text-xs text-white/60 hover:text-white"
-                        >
-                          Customize Details
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleGenerate}
-                          disabled={isLaunching || !systemId || !effectiveTemplate || !theme}
-                          className="h-7 bg-gradient-to-r from-cyan-500 to-blue-500 px-3 text-xs font-semibold text-[#07080F] shadow-md hover:from-cyan-400 hover:to-blue-400"
-                        >
-                          <Sparkles className="mr-1 h-3 w-3" />
-                          Launch Site Now
-                        </Button>
-                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">
+                        {INDUSTRY_FOCUS_CARDS.find(
+                          (card) => card.industry === selectedIndustry,
+                        )?.label ?? selectedIndustry}{" "}
+                        ? {selectedPages.length + 1} pages ? {theme?.label}{" "}
+                        style
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Review your goals, choose a layout, and adjust your
+                        style before building.
+                      </p>
                     </div>
                   )}
                 </div>
-
-                <div className="flex items-center gap-3 pt-1">
-                  <div className="h-px flex-1 bg-white/[0.06]" />
-                  <span className="text-[10px] uppercase tracking-wider text-white/30">Or choose your industry</span>
-                  <div className="h-px flex-1 bg-white/[0.06]" />
-                </div>
-
-                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {INDUSTRY_FOCUS_CARDS.map((card) => {
-                    const isAiMatch = aiAnalysis?.industry === card.industry;
-                    return (
-                      <button
-                        key={card.industry}
-                        type="button"
-                        onClick={() => selectIndustry(card.industry, card.systemId)}
-                        className={cn(
-                          "group relative overflow-hidden rounded-xl border p-4 text-left transition-all",
-                          selectedIndustry === card.industry
-                            ? "border-cyan-400/40 bg-cyan-400/[0.06]"
-                            : isAiMatch
-                              ? "border-cyan-400/60 bg-cyan-400/[0.08] shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-                              : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
-                        )}
-                      >
-                        <div className="relative">
-                          <div className="flex items-center justify-between">
-                            <div className="mb-1.5 text-xl">{card.icon}</div>
-                            {isAiMatch && (
-                              <span className="rounded-full bg-cyan-400/20 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300">
-                                ✨ AI Pick
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm font-semibold">{card.label}</div>
-                          <div className="mt-1 text-[11px] leading-4 text-white/35">{card.tagline}</div>
-                          {card.defaultTemplateId ? (
-                            <div className="mt-2 text-[9px] uppercase tracking-[0.12em] text-cyan-300/60">
-                              Registry default ready
+                <details className="rounded-xl border border-white/10 p-4">
+                  <summary className="cursor-pointer text-sm text-slate-300">
+                    Or explore by industry
+                  </summary>
+                  <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                    {INDUSTRY_FOCUS_CARDS.map((card) => {
+                      const isAiMatch = aiAnalysis?.industry === card.industry;
+                      return (
+                        <button
+                          key={card.industry}
+                          type="button"
+                          onClick={() =>
+                            selectIndustry(card.industry, card.systemId)
+                          }
+                          className={cn(
+                            "group relative overflow-hidden rounded-xl border p-4 text-left transition-all",
+                            selectedIndustry === card.industry
+                              ? "border-cyan-400/40 bg-cyan-400/[0.06]"
+                              : isAiMatch
+                                ? "border-cyan-400/60 bg-cyan-400/[0.08] shadow-[0_0_20px_rgba(34,211,238,0.15)]"
+                                : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
+                          )}
+                        >
+                          <div className="relative">
+                            <div className="flex items-center justify-between">
+                              <div className="mb-1.5 text-xl">{card.icon}</div>
+                              {isAiMatch && (
+                                <span className="rounded-full bg-cyan-400/20 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300">
+                                  ✨ AI Pick
+                                </span>
+                              )}
                             </div>
-                          ) : null}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
-                  <ImportProjectZipButton onImported={() => onOpenChange(false)} />
-                  {prefill?.businessId && (
-                    <ImportUnisonSiteZipButton
-                      businessId={prefill.businessId}
+                            <div className="text-sm font-semibold">
+                              {card.label}
+                            </div>
+                            <div className="mt-1 text-[11px] leading-4 text-white/35">
+                              {card.tagline}
+                            </div>
+                            {card.defaultTemplateId ? (
+                              <div className="mt-2 text-[9px] uppercase tracking-[0.12em] text-cyan-300/60">
+                                Ready to personalize
+                              </div>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </details>
+                <details className="rounded-xl border border-white/10 p-4">
+                  <summary className="cursor-pointer text-sm text-slate-300">
+                    Bring an existing project
+                  </summary>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <ImportProjectZipButton
                       onImported={() => onOpenChange(false)}
                     />
-                  )}
-                </div>
+                    {prefill?.businessId && (
+                      <ImportUnisonSiteZipButton
+                        businessId={prefill.businessId}
+                        onImported={() => onOpenChange(false)}
+                      />
+                    )}
+                  </div>
+                </details>
               </>
             )}
 
@@ -522,7 +603,7 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
               <>
                 <StepHeading
                   title="What should the site do for you?"
-                  subtitle="Goals and pages are contracts — they decide topology and intents."
+                  subtitle="Choose your main goal and how visitors can connect with you."
                 />
                 <FieldLabel>Primary goal</FieldLabel>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -544,7 +625,9 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                     <Chip
                       key={need.id}
                       active={customerNeeds.includes(need.id)}
-                      onClick={() => setCustomerNeeds((prev) => toggle(prev, need.id))}
+                      onClick={() =>
+                        setCustomerNeeds((prev) => toggle(prev, need.id))
+                      }
                     >
                       <span className="mr-1.5">{need.icon}</span>
                       {need.label}
@@ -552,13 +635,17 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                   ))}
                 </div>
 
-                <FieldLabel>Pages to build (Home is always included)</FieldLabel>
+                <FieldLabel>
+                  Pages to build (Home is always included)
+                </FieldLabel>
                 <div className="flex flex-wrap gap-2">
                   {pageChoices.map((page) => (
                     <Chip
                       key={page.id}
                       active={selectedPages.includes(page.id)}
-                      onClick={() => setSelectedPages((prev) => toggle(prev, page.id))}
+                      onClick={() =>
+                        setSelectedPages((prev) => toggle(prev, page.id))
+                      }
                     >
                       <span className="mr-1.5">{page.icon}</span>
                       {page.label}
@@ -571,14 +658,15 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
             {step === "templates" && (
               <>
                 <StepHeading
-                  title="Pick your base composition"
-                  subtitle="Every card is a registered composition — what you pick is what compiles."
+                  title="Choose a starting layout"
+                  subtitle="Pick the structure that fits your business. Keep refining it in the editor."
                 />
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {templates.map((card) => (
                     <button
                       key={card.id}
                       type="button"
+                      aria-pressed={effectiveTemplate?.id === card.id}
                       onClick={() => setTemplate(card)}
                       className={cn(
                         "rounded-xl border p-3 text-left transition-all",
@@ -588,18 +676,12 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                       )}
                     >
                       <div className="text-sm font-semibold">{card.label}</div>
-                      <div className="mb-2 line-clamp-2 text-[11px] text-white/35">
+                      <div className="mb-2 line-clamp-2 text-sm text-slate-400">
                         {card.description}
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {card.sectionTypes.slice(0, 6).map((section, index) => (
-                          <span
-                            key={`${card.id}-${section}-${index}`}
-                            className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[9px] text-white/40"
-                          >
-                            {section}
-                          </span>
-                        ))}
+                      <div className="text-xs text-slate-400">
+                        {card.sectionTypes.length} thoughtfully arranged
+                        sections
                       </div>
                     </button>
                   ))}
@@ -611,11 +693,12 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
               <>
                 <StepHeading
                   title="Name it and choose a style"
-                  subtitle="Style resolves to theme tokens — the same tokens the compiler writes."
+                  subtitle="Choose the look and feel for your whole site. Your selected style guides the build."
                 />
                 <div>
                   <FieldLabel>Business name</FieldLabel>
                   <Input
+                    aria-label="Business name"
                     value={businessName}
                     onChange={(event) => setBusinessName(event.target.value)}
                     placeholder="e.g. Northside Studio"
@@ -625,14 +708,18 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                 <div>
                   <FieldLabel>Social profiles</FieldLabel>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {(["instagram", "facebook", "linkedin", "youtube"] as const).map((platform) => (
+                    {(
+                      ["instagram", "facebook", "linkedin", "youtube"] as const
+                    ).map((platform) => (
                       <Input
                         key={platform}
                         value={socialLinks[platform] || ""}
-                        onChange={(event) => setSocialLinks((current) => ({
-                          ...current,
-                          [platform]: event.target.value,
-                        }))}
+                        onChange={(event) =>
+                          setSocialLinks((current) => ({
+                            ...current,
+                            [platform]: event.target.value,
+                          }))
+                        }
                         placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`}
                         aria-label={`${platform} profile URL`}
                         className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
@@ -662,7 +749,9 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                 <div>{launchError}</div>
                 {launchFailure && (
                   <details className="mt-2 text-[11px] text-rose-100/75">
-                    <summary className="cursor-pointer font-semibold">Technical details</summary>
+                    <summary className="cursor-pointer font-semibold">
+                      Technical details
+                    </summary>
                     <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-black/25 p-2 font-mono text-[10px]">
                       {JSON.stringify(launchFailure, null, 2)}
                     </pre>
@@ -670,46 +759,71 @@ export const LauncherWizard = ({ open, onOpenChange, prefill }: LauncherWizardPr
                 )}
               </div>
             )}
-          </div>
+          </fieldset>
 
-          {/* ── Right: awareness rail ────────────────────────────────────── */}
-          <aside className="min-w-0 space-y-3">
-            {progress ? (
-              <LaunchStageTimeline snapshot={progress} statusText={launchStatus} />
-            ) : (
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <div className="text-xs font-semibold text-white/80">Live preview</div>
-                <div className="mb-2 text-[10px] text-white/30">
-                  The section flow your selections compile to.
-                </div>
-                <TemplateLivePreview
-                  template={effectiveTemplate}
-                  businessName={businessName || "Your business"}
+          {/* Right: awareness rail ────────────────────────────────────── */}
+          {(step !== "industry" || progress) && (
+            <aside
+              className={cn(
+                "min-w-0 space-y-4",
+                isLaunching && "mx-auto w-full max-w-xl",
+              )}
+            >
+              {progress ? (
+                <LaunchStageTimeline
+                  snapshot={progress}
+                  statusText={launchStatus}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="text-xs font-semibold text-white/80">
+                    Layout preview
+                  </div>
+                  <div className="mb-2 text-[10px] text-white/30">
+                    A starting layout for your website.
+                  </div>
+                  <TemplateLivePreview
+                    template={effectiveTemplate}
+                    businessName={businessName || "Your business"}
+                  />
+                </div>
+              )}
 
-            <DesignContractInspector
-              templateId={effectiveTemplate?.id ?? null}
-              seed={previewSeed}
-              selectedPages={selectedPages}
-            />
-          </aside>
+              {!isLaunching && (
+                <details className="rounded-xl border border-white/10 p-4">
+                  <summary className="cursor-pointer text-xs text-slate-400">
+                    Design details
+                  </summary>
+                  <DesignContractInspector
+                    templateId={effectiveTemplate?.id ?? null}
+                    seed={previewSeed}
+                    selectedPages={selectedPages}
+                  />
+                </details>
+              )}
+            </aside>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 };
 
-const StepHeading = ({ title, subtitle }: { title: string; subtitle: string }) => (
+const StepHeading = ({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) => (
   <div>
-    <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-    <p className="text-[11px] text-white/35">{subtitle}</p>
+    <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+    <p className="mt-2 text-sm leading-6 text-slate-400">{subtitle}</p>
   </div>
 );
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="pt-1 text-[10px] uppercase tracking-wide text-white/25">{children}</div>
+  <div className="pt-2 text-xs font-medium text-slate-400">{children}</div>
 );
 
 const Chip = ({
@@ -724,11 +838,12 @@ const Chip = ({
   <button
     type="button"
     onClick={onClick}
+    aria-pressed={active}
     className={cn(
-      "rounded-full border px-3 py-1.5 text-[12px] transition-colors",
+      "rounded-xl border px-4 py-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300",
       active
         ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
-        : "border-white/[0.08] bg-white/[0.02] text-white/50 hover:border-white/20 hover:text-white/80",
+        : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:border-white/20 hover:text-white",
     )}
   >
     {children}

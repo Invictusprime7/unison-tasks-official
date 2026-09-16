@@ -316,6 +316,7 @@ export default function Navbar({ props }: { props: any }) {
 const HERO_MODULE = `import React from 'react';
 
 ${heroPageIntroSource
+  .replace("import React from 'react';", '')
   .replace("import type { BaseSectionProps, SectionPropsMap } from '../../types';", '')
   .split('export function HeroPageTitle')[0]
   .replace("SectionPropsMap['hero']", 'any')}
@@ -1104,10 +1105,40 @@ function assertSanctionedSectionTypes(template: TemplateComposition, pageFilePat
 
 const SECTION_MODULE_SOURCE: Record<keyof typeof SECTION_FILES, string> = {
   Navbar: NAVBAR_MODULE,
-  Hero: HERO_MODULE,
+  Hero: `import { REGISTERED_VARIANTS } from './recipes/Hero';
+${HERO_MODULE.replace('export default function Hero', 'function LegacyHero')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('hero').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id], ...(variant.id === 'hero:split-image' ? [['split', variant.id]] : [])])))};
+export default function Hero({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'centered'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyHero props={props} />;
+  return <Component section={{ type: 'hero', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   About: ABOUT_MODULE,
-  Services: SERVICES_MODULE,
-  Features: FEATURES_MODULE,
+  Services: `import { REGISTERED_VARIANTS } from './recipes/Services';
+${SERVICES_MODULE.replace('export default function Services', 'function LegacyServices')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('services').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Services({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'card-grid'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyServices props={props} />;
+  return <Component section={{ type: 'services', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
+  Features: `import { REGISTERED_VARIANTS } from './recipes/Features';
+${FEATURES_MODULE.replace('export default function Features', 'function LegacyFeatures')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('features').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id], ...(variant.id === 'features:minimal-centered' ? [['centered', variant.id]] : [])])))};
+export default function Features({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'grid'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyFeatures props={props} />;
+  return <Component section={{ type: 'features', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Gallery: `import { REGISTERED_VARIANTS } from './recipes/Gallery';
 ${LEGACY_GALLERY_MODULE.replace('export default function Gallery', 'function LegacyGallery')}
 import { THEME } from './theme';
@@ -1119,14 +1150,54 @@ export default function Gallery({ props, variantId }: { props: any; variantId?: 
   return <Component section={{ type: 'gallery', variantId: resolvedId, props }} theme={THEME} />;
 }
 `,
-  Pricing: PRICING_MODULE,
+  Pricing: `import { REGISTERED_VARIANTS } from './recipes/Pricing';
+${PRICING_MODULE.replace('export default function Pricing', 'function LegacyPricing')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('pricing').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Pricing({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'tiers'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyPricing props={props} />;
+  return <Component section={{ type: 'pricing', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   LogoCloud: LOGO_CLOUD_MODULE,
   BlogPreview: BLOG_PREVIEW_MODULE,
   BeforeAfter: BEFORE_AFTER_MODULE,
-  Testimonials: TESTIMONIALS_MODULE,
-  CTA: CTA_MODULE,
+  Testimonials: `import { REGISTERED_VARIANTS } from './recipes/Testimonials';
+${TESTIMONIALS_MODULE.replace('export default function Testimonials', 'function LegacyTestimonials')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('testimonials').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id], ...(variant.id === 'testimonials:rail' ? [['carousel', variant.id]] : []), ...(variant.id === 'testimonials:spotlight' ? [['single', variant.id]] : [])])))};
+export default function Testimonials({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'grid'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyTestimonials props={props} />;
+  return <Component section={{ type: 'testimonials', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
+  CTA: `import { REGISTERED_VARIANTS } from './recipes/CTA';
+${CTA_MODULE.replace('export default function CTA', 'function LegacyCTA')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('cta').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function CTA({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'centered'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyCTA props={props} />;
+  return <Component section={{ type: 'cta', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Contact: CONTACT_MODULE,
-  Footer: FOOTER_MODULE,
+  Footer: `import { REGISTERED_VARIANTS } from './recipes/Footer';
+${FOOTER_MODULE.replace('export default function Footer', 'function LegacyFooter')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('footer').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Footer({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'columns'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyFooter props={props} />;
+  return <Component section={{ type: 'footer', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Stats: STATS_MODULE,
   Team: TEAM_MODULE,
   FAQ: FAQ_MODULE,
@@ -1643,6 +1714,27 @@ export function compositionToReactFileSet(
   }
   if (sectionMap.components.has('Gallery')) {
     files['/src/components/recipes/Gallery.ts'] = stylexRecipes.families.gallery;
+  }
+  if (sectionMap.components.has('Hero')) {
+    files['/src/components/recipes/Hero.ts'] = stylexRecipes.families.hero;
+  }
+  if (sectionMap.components.has('Services')) {
+    files['/src/components/recipes/Services.ts'] = stylexRecipes.families.services;
+  }
+  if (sectionMap.components.has('Features')) {
+    files['/src/components/recipes/Features.ts'] = stylexRecipes.families.features;
+  }
+  if (sectionMap.components.has('Pricing')) {
+    files['/src/components/recipes/Pricing.ts'] = stylexRecipes.families.pricing;
+  }
+  if (sectionMap.components.has('CTA')) {
+    files['/src/components/recipes/CTA.ts'] = stylexRecipes.families.cta;
+  }
+  if (sectionMap.components.has('Footer')) {
+    files['/src/components/recipes/Footer.ts'] = stylexRecipes.families.footer;
+  }
+  if (sectionMap.components.has('Testimonials')) {
+    files['/src/components/recipes/Testimonials.ts'] = stylexRecipes.families.testimonials;
   }
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;

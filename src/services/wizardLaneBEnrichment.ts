@@ -16,6 +16,31 @@ import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import type { WizardSelections } from '@/types/playground';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { z } from 'zod';
+import {
+  buildGeneratedUiFoundationDirective,
+  readGeneratedUiManifest,
+  validateGeneratedUiContract,
+  type GeneratedMotionExports,
+} from '@/platform/core/generatedUiFoundation';
+import { buildDesignVocabularyReport } from '@/services/designImplementationRegistry';
+import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
+
+/** The exact registry projection used by the production enrichment request. */
+export function buildWizardLaneBRegistryContext(
+  snapshot: Pick<SiteBundleSnapshot, 'vfsFiles' | 'meta'>,
+  registry: Pick<WizardAggregatedRegistryContext, 'sections'>,
+) {
+  const uiFoundationManifest = readGeneratedUiManifest(snapshot.vfsFiles);
+  if (!uiFoundationManifest) throw new Error('Cannot enrich a snapshot without its UI foundation manifest.');
+  return {
+    uiFoundationManifest,
+    uiFoundationDirective: buildGeneratedUiFoundationDirective(uiFoundationManifest),
+    designVocabularyReport: buildDesignVocabularyReport({
+      eligibleImplementationIds: registry.sections.flatMap((section) => section.allowedVariantIds),
+      selectedImplementationIds: Object.values(snapshot.meta.designIntervention?.activeVariants ?? {}),
+    }),
+  };
+}
 
 /** Decode the shared Builder response before validating its candidate proposal. */
 export function decodeWizardLaneBProposal(response: unknown): WizardLaneBEnrichmentProposal | null {
@@ -128,6 +153,8 @@ export interface WizardLaneBEnrichmentRequest {
   designVocabularyReport: {
     executableIds: string[];
     unimplementedIds: string[];
+    globalExecutableIds?: string[];
+    selectedIds?: string[];
   };
 
   /** Intent and binding guidance. */
@@ -217,6 +244,7 @@ export function validateWizardLaneBProposal(options: {
   uiFoundationManifest: {
     primitiveImports: readonly string[];
     requirements: readonly string[];
+    motionExports?: GeneratedMotionExports;
   };
 }): LaneBEnrichmentValidationResult {
   const violations: string[] = [];
@@ -324,6 +352,15 @@ export function validateWizardLaneBProposal(options: {
   }
 
   // 9. Import contract check
+  const foundationCheck = validateGeneratedUiContract(
+    Object.fromEntries(proposal.fileOps.map((op) => [op.path, op.content])),
+    {
+      importRoot: '@/unison/ui',
+      primitiveImports: [...options.uiFoundationManifest.primitiveImports],
+      motionExports: options.uiFoundationManifest.motionExports,
+    },
+  );
+  violations.push(...foundationCheck.violations);
   const allowedImports = new Set(options.uiFoundationManifest.primitiveImports);
   for (const op of proposal.fileOps) {
     // Extract import statements
