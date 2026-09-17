@@ -1206,3 +1206,29 @@ ${renderLinks(c.navLinks, 'text-sm text-muted-foreground hover:opacity-80')}
         <div className="border-t border-border px-6 py-6 text-center text-xs text-muted-foreground">© ${new Date().getFullYear()} ${esc(c.brandName || 'Studio')}. All rights reserved.</div>
       </footer>`;
 }
+
+export function heroPrismaCinematicJSX(c: ExtractedSectionContent): string {
+  const words = String(c.heading || '').trim().split(/\s+/).filter(Boolean);
+  const media = c.imageSrc
+    ? `          <img src="${c.imageSrc}" alt="${esc(c.imageAlt || c.heading || 'Hero background')}" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />\n`
+    : '';
+  return `      <section className="relative w-full bg-background py-12 sm:py-16" data-variant="hero:prisma-cinematic">
+        <div className="relative mx-auto flex min-h-[70vh] max-w-6xl flex-col justify-end overflow-hidden rounded-[2rem] bg-foreground px-5 pb-6 sm:px-8 md:min-h-[80vh] md:px-10 md:pb-10">
+${media}\
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-foreground/40 via-transparent to-foreground/80" />
+          <div className="relative z-10 grid grid-cols-12 items-end gap-6">
+            <div className="col-span-12 lg:col-span-8">
+              <h1 className="flex flex-wrap font-medium leading-[0.85] tracking-[-0.06em] text-background text-[16vw] md:text-[13vw]">
+${words.map((w) => `                <span className="mr-[0.22em] inline-block">${esc(w)}</span>`).join('\n')}
+              </h1>
+            </div>
+            <div className="col-span-12 flex flex-col gap-5 lg:col-span-4 lg:pb-8">
+${c.subheading ? `              <p className="text-sm leading-snug text-background/80 md:text-base">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `              <div className="flex flex-wrap items-center gap-3">
+${renderButtons(c.ctaButtons, 'inline-flex items-center gap-2 rounded-full bg-background px-6 py-3 text-sm font-medium text-foreground', 'inline-flex items-center gap-2 rounded-full border border-background/50 px-6 py-3 text-sm font-medium text-background')}
+              </div>\n` : ''}\
+            </div>
+          </div>
+        </div>
+      </section>`;
+}
