@@ -55,7 +55,7 @@ const supabase = supabaseClient as any;
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
-import { generateLibraryPrompt } from '@/data/siteElementsLibrary';
+import { generateCanonicalDesignPrompt } from '@/sections/promptContext/canonicalDesignPrompt';
 import { analyzeReactSite, resolveEditTarget } from '@/utils/reactSiteAnalysis';
 import { buildComponentBehaviorMap, formatBehaviorMapForPrompt } from '@/services/aiVFSOrchestrator';
 import { htmlDocToReactComponent as htmlDocToReactComponentFn } from '@/utils/htmlToJsx';
