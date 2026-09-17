@@ -3,7 +3,13 @@
 ## Canonical Architecture
 
 Use `roadmap.md` and `docs/DETERMINISTIC_AI_DESIGN_EXECUTION_PLAN.md` as the
-current architecture sources. Preserve this protected chain:
+current architecture sources. Use
+`docs/UNISON_21ST_FIRST_REGISTRY_CANONICAL_LAUNCH_PLAN_V2.md` as the canonical
+design-source program: 21st.dev is the only external design-reference ecosystem
+and is consumed at intake time only. Never add a 21st runtime registry,
+template engine, VFS writer, theme engine, motion engine, artifact model, or a
+live 21st dependency in generated sites. Preserve this protected chain:
+
 
 ```text
 LauncherWizard
