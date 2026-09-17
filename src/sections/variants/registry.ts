@@ -36,7 +36,25 @@ import {
   faqAccordionJSX, faqTwoColumnJSX, faqCardsJSX,
   statsRowJSX, statsBandedGridJSX, statsHighlightJSX,
   teamPortraitGridJSX, teamRosterRailJSX, teamLeadSpotlightJSX,
+  logoCloudGridJSX, logoCloudMarqueeJSX, logoCloudBrandLockupJSX,
+  blogPreviewEditorialJSX, blogPreviewFeaturedGridJSX, blogPreviewHorizontalRailJSX,
+  beforeAfterSliderJSX, beforeAfterGridJSX, beforeAfterCaseStudyJSX,
 } from './jsxTemplates';
+
+// Logo cloud variants
+import { LogoCloudGrid } from './logoCloud/LogoCloudGrid';
+import { LogoCloudMarquee } from './logoCloud/LogoCloudMarquee';
+import { LogoCloudBrandLockup } from './logoCloud/LogoCloudBrandLockup';
+
+// Blog preview variants
+import { BlogPreviewEditorial } from './blogPreview/BlogPreviewEditorial';
+import { BlogPreviewFeaturedGrid } from './blogPreview/BlogPreviewFeaturedGrid';
+import { BlogPreviewHorizontalRail } from './blogPreview/BlogPreviewHorizontalRail';
+
+// Before / after variants
+import { BeforeAfterSlider } from './beforeAfter/BeforeAfterSlider';
+import { BeforeAfterGrid } from './beforeAfter/BeforeAfterGrid';
+import { BeforeAfterCaseStudy } from './beforeAfter/BeforeAfterCaseStudy';
 
 
 // Hero variants
@@ -732,6 +750,123 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/team-lead-spotlight.svg',
       tags: ['featured', 'premium'],
       renderJSX: teamLeadSpotlightJSX,
+    },
+  ],
+
+  'logo-cloud': [
+    {
+      id: 'logo-cloud:grid',
+      sectionType: 'logo-cloud',
+      slug: 'grid',
+      name: 'Logo Grid',
+      description: 'Evenly spaced bordered grid of partner marks',
+      component: LogoCloudGrid,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/logo-cloud-grid.svg',
+      tags: ['grid', 'classic'],
+      renderJSX: logoCloudGridJSX,
+    },
+    {
+      id: 'logo-cloud:marquee',
+      sectionType: 'logo-cloud',
+      slug: 'marquee',
+      name: 'Logo Marquee',
+      description: 'Continuous single-line rail of client logos',
+      component: LogoCloudMarquee,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/logo-cloud-marquee.svg',
+      tags: ['rail', 'motion'],
+      renderJSX: logoCloudMarqueeJSX,
+    },
+    {
+      id: 'logo-cloud:brand-lockup',
+      sectionType: 'logo-cloud',
+      slug: 'brand-lockup',
+      name: 'Brand Lockup',
+      description: 'Statement copy paired with a trust list of brands',
+      component: LogoCloudBrandLockup,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/logo-cloud-brand-lockup.svg',
+      tags: ['split', 'editorial'],
+      renderJSX: logoCloudBrandLockupJSX,
+    },
+  ],
+
+  'blog-preview': [
+    {
+      id: 'blog-preview:editorial',
+      sectionType: 'blog-preview',
+      slug: 'editorial',
+      name: 'Editorial Lead',
+      description: 'Lead story beside a stacked list of recent posts',
+      component: BlogPreviewEditorial,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/blog-preview-editorial.svg',
+      tags: ['editorial', 'featured'],
+      renderJSX: blogPreviewEditorialJSX,
+    },
+    {
+      id: 'blog-preview:featured-grid',
+      sectionType: 'blog-preview',
+      slug: 'featured-grid',
+      name: 'Featured Grid',
+      description: 'Equal-weight card grid of latest articles',
+      component: BlogPreviewFeaturedGrid,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/blog-preview-featured-grid.svg',
+      tags: ['grid', 'cards'],
+      renderJSX: blogPreviewFeaturedGridJSX,
+    },
+    {
+      id: 'blog-preview:horizontal-rail',
+      sectionType: 'blog-preview',
+      slug: 'horizontal-rail',
+      name: 'Horizontal Rail',
+      description: 'Scrollable rail of compact post cards',
+      component: BlogPreviewHorizontalRail,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/blog-preview-horizontal-rail.svg',
+      tags: ['rail', 'compact'],
+      renderJSX: blogPreviewHorizontalRailJSX,
+    },
+  ],
+
+  'before-after': [
+    {
+      id: 'before-after:slider',
+      sectionType: 'before-after',
+      slug: 'slider',
+      name: 'Reveal Slider',
+      description: 'Draggable comparison of one hero transformation',
+      component: BeforeAfterSlider,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/before-after-slider.svg',
+      tags: ['interactive', 'featured'],
+      renderJSX: beforeAfterSliderJSX,
+    },
+    {
+      id: 'before-after:grid',
+      sectionType: 'before-after',
+      slug: 'grid',
+      name: 'Paired Grid',
+      description: 'Side-by-side pairs for multiple transformations',
+      component: BeforeAfterGrid,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/before-after-grid.svg',
+      tags: ['grid', 'volume'],
+      renderJSX: beforeAfterGridJSX,
+    },
+    {
+      id: 'before-after:case-study',
+      sectionType: 'before-after',
+      slug: 'case-study',
+      name: 'Case Study',
+      description: 'Narrative blocks pairing imagery with written detail',
+      component: BeforeAfterCaseStudy,
+      vfs: { mode: 'portable-recipe' },
+      thumbnail: '/variants/before-after-case-study.svg',
+      tags: ['editorial', 'premium'],
+      renderJSX: beforeAfterCaseStudyJSX,
     },
   ],
 };

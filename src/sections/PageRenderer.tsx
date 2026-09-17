@@ -400,10 +400,75 @@ function FAQ({ props }) {
   );
 }
 
+function LogoCloud({ props }) {
+  const { headline, logos = [], items = [] } = props;
+  const list = (Array.isArray(logos) && logos.length ? logos : items) || [];
+  return (
+    <section style={{ ...sectionPad, background: hsl(THEME.colors.muted), borderTop: \`1px solid \${hsla(THEME.colors.border, 0.5)}\`, borderBottom: \`1px solid \${hsla(THEME.colors.border, 0.5)}\` }}>
+      <div style={containerStyle}>
+        {headline && <p style={{ ...bodyStyle, textAlign: 'center', marginBottom: '2.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.18em' }}>{headline}</p>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '3.5rem' }}>
+          {list.map((logo, i) => (logo && logo.src
+            ? <img key={i} src={logo.src} alt={logo.name || ''} loading="lazy" style={{ height: '2rem', width: 'auto', opacity: 0.65 }} />
+            : <span key={i} style={{ ...headingStyle, fontSize: '1.125rem', color: hsl(THEME.colors.mutedForeground) }}>{(logo && logo.name) || logo}</span>))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BlogPreview({ props }) {
+  const { headline, subheadline, posts = [], items = [] } = props;
+  const list = (Array.isArray(posts) && posts.length ? posts : items) || [];
+  return (
+    <section style={{ ...sectionPad, background: hsl(THEME.colors.background) }}>
+      <div style={containerStyle}>
+        {headline && <div style={{ textAlign: 'center', marginBottom: '3rem' }}><h2 style={{ ...headingStyle, fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>{subheadline && <p style={{ ...bodyStyle, fontSize: '1.1rem' }}>{subheadline}</p>}</div>}
+        <div className="ut-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem' }}>
+          {list.map((post, i) => (
+            <article key={i} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {post.image && <img src={post.image} alt={post.title || ''} loading="lazy" style={{ width: '100%', aspectRatio: '16 / 10', objectFit: 'cover' }} />}
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                {(post.date || post.author) && <p style={{ ...bodyStyle, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>{[post.date, post.author].filter(Boolean).join(' · ')}</p>}
+                <h3 style={{ ...headingStyle, fontSize: '1.1rem', marginBottom: '0.5rem' }}>{post.title}</h3>
+                {post.excerpt && <p style={{ ...bodyStyle, fontSize: '0.9rem', lineHeight: 1.7, marginBottom: '1rem' }}>{post.excerpt}</p>}
+                <a href={post.href || '#'} style={{ ...bodyStyle, marginTop: 'auto', fontSize: '0.85rem', fontWeight: 600, color: hsl(THEME.colors.primary), textDecoration: 'none' }}>Read more</a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BeforeAfter({ props }) {
+  const { headline, subheadline, items = [] } = props;
+  return (
+    <section style={{ ...sectionPad, background: hsl(THEME.colors.muted) }}>
+      <div style={containerStyle}>
+        {headline && <div style={{ textAlign: 'center', marginBottom: '3rem' }}><h2 style={{ ...headingStyle, fontSize: '2.25rem', marginBottom: '1rem' }}>{headline}</h2>{subheadline && <p style={{ ...bodyStyle, fontSize: '1.1rem' }}>{subheadline}</p>}</div>}
+        <div className="ut-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+          {items.map((item, i) => (
+            <figure key={i} style={{ ...cardStyle, margin: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                <div style={{ position: 'relative' }}><img src={item.before} alt={(item.label || 'Result') + ' before'} loading="lazy" style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover' }} /><span style={{ ...bodyStyle, position: 'absolute', top: '0.75rem', left: '0.75rem', padding: '0.25rem 0.625rem', borderRadius: '999px', fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', background: hsl(THEME.colors.foreground), color: hsl(THEME.colors.background) }}>Before</span></div>
+                <div style={{ position: 'relative' }}><img src={item.after} alt={(item.label || 'Result') + ' after'} loading="lazy" style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover' }} /><span style={{ ...bodyStyle, position: 'absolute', top: '0.75rem', left: '0.75rem', padding: '0.25rem 0.625rem', borderRadius: '999px', fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', background: hsl(THEME.colors.primary), color: hsl(THEME.colors.primaryForeground) }}>After</span></div>
+              </div>
+              {item.label && <figcaption style={{ ...bodyStyle, padding: '1rem', fontSize: '0.875rem' }}>{item.label}</figcaption>}
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ============================================================================
 // Section Map
 // ============================================================================
-const SECTION_MAP = { navbar: Navbar, hero: Hero, services: Services, features: Services, testimonials: Testimonials, cta: CTA, contact: Contact, footer: Footer, stats: Stats, team: Team, faq: FAQ, pricing: Services, about: Hero, gallery: Services, 'logo-cloud': Stats, 'blog-preview': Services, 'before-after': Services };
+const SECTION_MAP = { navbar: Navbar, hero: Hero, services: Services, features: Services, testimonials: Testimonials, cta: CTA, contact: Contact, footer: Footer, stats: Stats, team: Team, faq: FAQ, pricing: Services, about: Hero, gallery: Services, 'logo-cloud': LogoCloud, 'blog-preview': BlogPreview, 'before-after': BeforeAfter };
+
 
 // ============================================================================
 // App
