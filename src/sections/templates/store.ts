@@ -62,8 +62,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-hero',
         type: 'hero',
+        variantId: 'hero:commerce-gradient',
         props: {
-          layout: 'split',
+          layout: 'commerce-gradient',
           badge: '🌿 New Spring Collection',
           headline: 'Style That Speaks for Itself.',
           subheadline: 'Curated essentials for the modern home and wardrobe.',
