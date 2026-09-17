@@ -1084,3 +1084,22 @@ ${logoMarks(c, 5).map((name) => `            <span className="text-sm font-semib
           </div>`;
   return sectionShell('logo-cloud:wordmark-row', c, body);
 }
+
+export function featuresBentoGridJSX(c: ExtractedSectionContent): string {
+  const spans = [
+    'md:col-span-1 md:row-span-3',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-2 md:row-span-1',
+  ];
+  const cards = (c.cards?.length ? c.cards : (c.listItems || []).map((t) => ({ title: t, description: '' })));
+  const body = `          <div className="grid w-full auto-rows-[minmax(180px,auto)] grid-cols-1 gap-6 md:grid-cols-3 md:grid-rows-3">
+${cards.map((card, i) => `            <div className="flex flex-col justify-end rounded-2xl border border-border bg-card p-6 ${spans[i % spans.length]}">
+              <h3 className="mb-2 text-lg font-semibold text-card-foreground">${esc((card as { title?: string }).title || '')}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">${esc((card as { description?: string }).description || '')}</p>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('features:bento-grid', c, body);
+}
