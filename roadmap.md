@@ -71,17 +71,18 @@ Milestone index (status tracked against the phases below):
 	runtime implementation. The FAQ emitter was missing its React import and is
 	fixed. Remaining: capture the same evidence from a persisted publish run.
 
-- [ ] M2 Registry authority cleanup. The legacy `src/data/siteElementsLibrary/*`
-	catalogue is retired as an AI authority: the in-Builder AI now receives
+- [x] M2 Registry authority cleanup. The legacy `src/data/siteElementsLibrary/*`
+	catalogue is **deleted**. The in-Builder AI receives
 	`src/sections/promptContext/canonicalDesignPrompt.ts`, derived from
 	`VARIANT_REGISTRY` (registered variant IDs, certified portable-recipe flags,
 	defaults, tags) plus `INTENT_REGISTRY` user-action intents filtered by the
-	industry intent profile (required / primary / forbidden). `AIBuilderPanel`
-	no longer imports the legacy library, and
-	`src/test/canonicalDesignPromptAuthority.test.ts` fails the build if any
-	application source imports it again. Remaining: delete the deprecated
-	library files, demote `componentIntelligenceRegistry.ts`, and remove
-	double-authored variants.
+	industry intent profile (required / primary / forbidden).
+	`componentIntelligenceRegistry.ts` is demoted to structural validation
+	metadata only (prop schemas, composition rules, suitability hints); it is
+	never a design/variant authority and never enters AI design context.
+	`src/test/canonicalDesignPromptAuthority.test.ts` fails the build if the
+	retired library reappears or if prompt context imports component
+	intelligence. Double-authored variants are tracked under M4.
 - [ ] M3 21st intake / certification infrastructure (intake record, ten-step
 	lifecycle, portable VFS certification).
 - [ ] M4 Replace weak preferred implementations with certified families.
