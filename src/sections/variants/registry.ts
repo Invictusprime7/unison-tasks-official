@@ -30,6 +30,7 @@ import {
   footerColumnsJSX, footerCenteredMinimalJSX, footerDarkBandJSX,
   galleryEditorialMosaicJSX, galleryMasonryJSX, galleryCinematicGridJSX,
   galleryLightboxGridJSX, galleryFeatureSplitJSX, galleryHorizontalReelJSX,
+  galleryCollectionTilesJSX, heroCommerceGradientJSX,
   testimonialsGridJSX, testimonialsRailJSX, testimonialsSpotlightJSX,
   pricingTiersJSX, pricingComparisonJSX, pricingAccordionJSX,
   aboutEditorialSplitJSX, aboutStatementJSX, aboutStoryPanelJSX,
@@ -61,6 +62,7 @@ import { BeforeAfterCaseStudy } from './beforeAfter/BeforeAfterCaseStudy';
 import { HeroCentered } from './hero/HeroCentered';
 import { HeroSplitImage } from './hero/HeroSplitImage';
 import { HeroFullBleed } from './hero/HeroFullBleed';
+import { HeroCommerceGradient } from './hero/HeroCommerceGradient';
 import { HeroPageTitle, HeroEditorialBanner } from './hero/HeroPageIntro';
 import { heroPageTitleJSX, heroEditorialBannerJSX } from './hero/heroPageIntroJSX';
 
@@ -95,6 +97,7 @@ import { GalleryMasonry } from './gallery/GalleryMasonry';
 import { GalleryCinematicGrid } from './gallery/GalleryCinematicGrid';
 import { GalleryLightboxGrid } from './gallery/GalleryLightboxGrid';
 import { GalleryFeatureSplit } from './gallery/GalleryFeatureSplit';
+import { GalleryCollectionTiles } from './gallery/GalleryCollectionTiles';
 import { GalleryHorizontalReel } from './gallery/GalleryHorizontalReel';
 
 // Testimonials variants (Phase 3 — first-class proof family)
@@ -303,6 +306,29 @@ const VARIANT_REGISTRY: VariantRegistry = {
       tags: ['reel', 'filmstrip', 'sequential'],
       renderJSX: galleryHorizontalReelJSX,
     },
+    {
+      id: 'gallery:collection-tiles',
+      sectionType: 'gallery',
+      slug: 'collection-tiles',
+      name: 'Collection Tiles',
+      description: 'Commerce collection tiles with centered product art and corner arrow affordance',
+      component: GalleryCollectionTiles,
+      vfs: { mode: 'portable-recipe' },
+      radixPrimitives: ['dialog'],
+      source: {
+        origin: '21st',
+        sourceId: '21st:4927',
+        sourceUrl: 'https://21st.dev/bankkroll',
+        author: '@bankkroll',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/gallery-collection-tiles.svg',
+      tags: ['commerce', 'collections', 'tiles', 'shop'],
+      pageRoles: ['shop', 'gallery'],
+      renderJSX: galleryCollectionTilesJSX,
+    },
   ],
   hero: [
     {
@@ -359,6 +385,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
       vocabulary: { category: 'hero', id: 'oversized-editorial' },
       tags: ['editorial', 'subpage', 'image', 'premium'], pageRoles: ['booking', 'contact', 'blog', 'custom'],
       renderJSX: heroEditorialBannerJSX,
+    },
+    {
+      id: 'hero:commerce-gradient',
+      sectionType: 'hero',
+      slug: 'commerce-gradient',
+      name: 'Commerce Gradient',
+      description: 'Rounded accent band with gradient-clipped headline for storefront landings',
+      component: HeroCommerceGradient,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:4927',
+        sourceUrl: 'https://21st.dev/bankkroll',
+        author: '@bankkroll',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/hero-commerce-gradient.svg',
+      tags: ['commerce', 'gradient', 'bold', 'shop'],
+      pageRoles: ['home', 'shop'],
+      renderJSX: heroCommerceGradientJSX,
     },
   ],
 
@@ -963,6 +1011,7 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'hero:full-bleed': ['full-bleed'],
   'hero:page-title': ['page-title'],
   'hero:editorial-banner': ['editorial-banner'],
+  'hero:commerce-gradient': ['commerce-gradient'],
   'services:card-grid': ['grid', 'card-grid'],
   'services:alternating': ['alternating'],
   'services:compact-list': ['list', 'compact-list'],
@@ -975,6 +1024,7 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'footer:columns': ['columns'],
   'footer:centered-minimal': ['centered-minimal'],
   'footer:dark-band': ['dark-band'],
+  'gallery:collection-tiles': ['collection-tiles', 'tiles'],
   'gallery:editorial-mosaic': ['mosaic', 'editorial-mosaic'],
   'gallery:masonry': ['masonry'],
   'gallery:cinematic-grid': ['grid', 'cinematic-grid'],

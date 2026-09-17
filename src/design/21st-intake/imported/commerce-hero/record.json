@@ -1,0 +1,61 @@
+{
+  "sourceId": "21st:4927",
+  "name": "Commerce Hero",
+  "sourceUrl": "https://21st.dev/c/4927",
+  "sourceType": "component",
+  "dependencies": [
+    "framer-motion",
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "button",
+    "separator",
+    "sheet"
+  ],
+  "license": "MIT (21st.dev community default \u2014 verify before promotion)",
+  "attribution": "21st.dev \u2014 Commerce Hero by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "framer-motion",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      {
+        "dep": "lucide-react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      }
+    ],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:commerce-gradient",
+    "gallery:collection-tiles"
+  ]
+}
