@@ -1799,6 +1799,18 @@ export function compositionToReactFileSet(
   if (sectionMap.components.has('Testimonials')) {
     files['/src/components/recipes/Testimonials.ts'] = stylexRecipes.families.testimonials;
   }
+  if (sectionMap.components.has('About')) {
+    files['/src/components/recipes/About.ts'] = stylexRecipes.families.about;
+  }
+  if (sectionMap.components.has('FAQ')) {
+    files['/src/components/recipes/FAQ.ts'] = stylexRecipes.families.faq;
+  }
+  if (sectionMap.components.has('Stats')) {
+    files['/src/components/recipes/Stats.ts'] = stylexRecipes.families.stats;
+  }
+  if (sectionMap.components.has('Team')) {
+    files['/src/components/recipes/Team.ts'] = stylexRecipes.families.team;
+  }
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;
   }
