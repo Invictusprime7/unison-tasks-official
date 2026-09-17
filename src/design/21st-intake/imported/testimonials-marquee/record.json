@@ -1,0 +1,44 @@
+{
+  "sourceId": "21st:822",
+  "name": "Testimonials with Marquee",
+  "sourceUrl": "https://21st.dev/c/822",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "testimonial-card"
+  ],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — Testimonials with Marquee by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": true
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "testimonials:marquee"
+  ]
+}

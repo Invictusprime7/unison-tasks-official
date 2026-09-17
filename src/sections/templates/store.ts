@@ -46,8 +46,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-nav',
         type: 'navbar',
+        variantId: 'navbar:floating-pill',
         props: {
-          layout: 'centered-logo',
+          layout: 'floating-pill',
           brand: 'Vela',
           sticky: true,
           links: [
@@ -112,11 +113,12 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-services',
         type: 'services',
+        variantId: 'services:product-cards',
         props: {
           headline: 'Bestsellers',
           subheadline: 'Our most-loved products, loved for a reason.',
           columns: 4,
-          layout: 'grid',
+          layout: 'product-cards',
           items: [
             { title: 'Linen Throw Blanket', description: 'Pre-washed French linen in 12 colors. Incredibly soft, gets better with every wash.', price: '$89', icon: '🧣', badge: '⭐ 4.9', cta: { label: 'Add to Cart', intent: 'cart.add', variant: 'primary' } },
             { title: 'Ceramic Mug Set (4)', description: 'Hand-thrown stoneware mugs. Dishwasher safe. Available in 6 glaze colorways.', price: '$64', badge: 'Best Seller', icon: '☕', cta: { label: 'Add to Cart', intent: 'cart.add', variant: 'primary' } },
@@ -132,8 +134,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-stats',
         type: 'stats',
+        variantId: 'stats:metric-cards',
         props: {
-          layout: 'row',
+          layout: 'metric-cards',
           items: [
             { value: '2,000+', label: 'Products', icon: '🛍️' },
             { value: '48,000+', label: 'Happy Customers', icon: '🌟' },
@@ -163,9 +166,10 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-testimonials',
         type: 'testimonials',
+        variantId: 'testimonials:marquee',
         props: {
           headline: 'What Customers Are Saying',
-          layout: 'grid',
+          layout: 'marquee',
           items: [
             { quote: 'The linen throw blanket is the best purchase I\'ve made this year. Quality is insane for the price, and the return process was seamless.', author: 'Chloe Martin', role: 'Verified Buyer', rating: 5 },
             { quote: 'I\'ve ordered from Vela 6 times now. Every single product has exceeded my expectations. This is how online shopping should feel.', author: 'Patrick Wells', role: 'Loyal Customer', rating: 5 },
@@ -174,10 +178,26 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
         },
       },
       {
+        id: 'store-premium-pricing',
+        type: 'pricing',
+        variantId: 'pricing:feature-table',
+        props: {
+          layout: 'feature-table',
+          headline: 'Vela Membership',
+          subheadline: 'Shop more, save more — cancel any time.',
+          tiers: [
+            { name: 'Guest', price: '$0', period: 'always', description: 'Standard checkout, no commitment.', features: ['Standard 5-day shipping', '30-day returns', 'Seasonal sale access'], cta: { label: 'Keep Shopping', intent: 'nav.goto', variant: 'secondary' } },
+            { name: 'Insider', price: '$49', period: 'year', description: 'For the regulars.', features: ['Free 2-day shipping', 'Early access to drops', 'Members-only pricing', '60-day returns'], cta: { label: 'Join Insider', intent: 'cart.checkout', variant: 'primary' }, highlighted: true, badge: 'Most popular' },
+            { name: 'Atelier', price: '$129', period: 'year', description: 'Concierge service and first pick.', features: ['Everything in Insider', 'Personal styling session', 'First pick on limited runs', 'Free gift wrapping'], cta: { label: 'Join Atelier', intent: 'cart.checkout', variant: 'secondary' } },
+          ],
+        },
+      },
+      {
         id: 'store-premium-cta',
         type: 'cta',
+        variantId: 'cta:signal-banner',
         props: {
-          layout: 'split',
+          layout: 'signal-banner',
           headline: 'Join Our Community',
           description: 'Subscribe for early access to new drops, members-only discounts, and styling tips.',
           ctas: [
@@ -189,8 +209,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-footer',
         type: 'footer',
+        variantId: 'footer:brand-social',
         props: {
-          layout: 'dark-band',
+          layout: 'brand-social',
           brand: 'Vela',
           copyright: '© 2024 Vela Co. All rights reserved.',
           newsletter: true,
@@ -307,11 +328,26 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
         },
       },
       {
+        id: 'store-minimal-stats',
+        type: 'stats',
+        variantId: 'stats:metric-cards',
+        props: {
+          layout: 'metric-cards',
+          items: [
+            { value: '18 min', label: 'Dead to full charge', icon: '⚡' },
+            { value: '120k+', label: 'Units shipped', icon: '📦' },
+            { value: '4.9★', label: 'Average rating', icon: '⭐' },
+            { value: '30 days', label: 'Money-back guarantee', icon: '🛡️' },
+          ],
+        },
+      },
+      {
         id: 'store-minimal-testimonials',
         type: 'testimonials',
+        variantId: 'testimonials:marquee',
         props: {
           headline: 'What Customers Say',
-          layout: 'grid',
+          layout: 'marquee',
           items: [
             { quote: 'I charged my phone from dead to full in 18 minutes. This thing is witchcraft.', author: 'Marcus T.', role: 'Verified Buyer', rating: 5 },
             { quote: 'I travel for work every week. Bolt is the only charger I\'ll ever use. Small, insanely fast, bulletproof.', author: 'Leila K.', role: 'Business Traveler', rating: 5 },
@@ -322,8 +358,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-minimal-cta',
         type: 'cta',
+        variantId: 'cta:signal-banner',
         props: {
-          layout: 'centered',
+          layout: 'signal-banner',
           headline: '30-Day Money-Back Guarantee',
           description: 'Try Bolt risk-free. Not fast enough? Full refund, no hassle.',
           ctas: [
@@ -334,8 +371,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-minimal-footer',
         type: 'footer',
+        variantId: 'footer:brand-social',
         props: {
-          layout: 'centered-minimal',
+          layout: 'brand-social',
           brand: 'Bolt',
           copyright: '© 2024 Bolt Tech Inc.',
           newsletter: false,
@@ -436,10 +474,11 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-boutique-services',
         type: 'services',
+        variantId: 'services:product-cards',
         props: {
           headline: 'New Arrivals',
           columns: 4,
-          layout: 'grid',
+          layout: 'product-cards',
           items: [
             { title: 'Stone Vase, Ochre', description: 'Hand-thrown stoneware', price: '$84' },
             { title: 'Linen Tea Towels', description: 'Set of two, washed linen', price: '$36' },
@@ -483,8 +522,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-boutique-footer',
         type: 'footer',
+        variantId: 'footer:brand-social',
         props: {
-          layout: 'dark-band',
+          layout: 'brand-social',
           brand: 'Petal & Stone',
           copyright: '© 2024 Petal & Stone Goods.',
           newsletter: true,

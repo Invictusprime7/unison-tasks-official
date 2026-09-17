@@ -1,0 +1,24 @@
+{
+  "id": "services:product-cards",
+  "sectionType": "services",
+  "slug": "product-cards",
+  "name": "Product Cards",
+  "description": "Retail product grid with contained art, price and add-to-bag intent",
+  "componentName": "ServicesProductCards",
+  "componentPath": "./services/ServicesProductCards",
+  "jsxFn": "servicesProductCardsJSX",
+  "thumbnail": "/variants/services-product-cards.svg",
+  "tags": ["commerce", "products", "grid", "shop"],
+  "pageRoles": ["home", "shop", "services"],
+  "aliases": ["product-cards", "products"],
+  "generationStatus": "preferred",
+  "recordSlug": "product-card-grid",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:8286",
+    "sourceUrl": "https://21st.dev/c/8286",
+    "author": "21st.dev community",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  }
+}

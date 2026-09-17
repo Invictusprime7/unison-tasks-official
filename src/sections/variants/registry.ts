@@ -41,7 +41,35 @@ import {
   logoCloudGridJSX, logoCloudMarqueeJSX, logoCloudBrandLockupJSX,
   blogPreviewEditorialJSX, blogPreviewFeaturedGridJSX, blogPreviewHorizontalRailJSX,
   beforeAfterSliderJSX, beforeAfterGridJSX, beforeAfterCaseStudyJSX,
+  footerBrandSocialJSX,
+  pricingFeatureTableJSX,
+  navbarFloatingPillJSX,
+  testimonialsMarqueeJSX,
+  statsMetricCardsJSX,
+  servicesProductCardsJSX,
+  ctaSignalBannerJSX,
 } from './jsxTemplates';
+
+// 21st.dev certified variant: cta:signal-banner
+import { CTASignalBanner } from './cta/CTASignalBanner';
+
+// 21st.dev certified variant: services:product-cards
+import { ServicesProductCards } from './services/ServicesProductCards';
+
+// 21st.dev certified variant: stats:metric-cards
+import { StatsMetricCards } from './stats/StatsMetricCards';
+
+// 21st.dev certified variant: testimonials:marquee
+import { TestimonialsMarquee } from './testimonials/TestimonialsMarquee';
+
+// 21st.dev certified variant: navbar:floating-pill
+import { NavbarFloatingPill } from './navbar/NavbarFloatingPill';
+
+// 21st.dev certified variant: pricing:feature-table
+import { PricingFeatureTable } from './pricing/PricingFeatureTable';
+
+// 21st.dev certified variant: footer:brand-social
+import { FooterBrandSocial } from './footer/FooterBrandSocial';
 
 // Logo cloud variants
 import { LogoCloudGrid } from './logoCloud/LogoCloudGrid';
@@ -146,6 +174,28 @@ import { FooterDarkBand } from './footer/FooterDarkBand';
 const VARIANT_REGISTRY: VariantRegistry = {
   testimonials: [
     {
+      id: 'testimonials:marquee',
+      sectionType: 'testimonials',
+      slug: 'marquee',
+      name: 'Proof Marquee',
+      description: 'Two continuously scrolling rows of proof cards with edge fades',
+      component: TestimonialsMarquee,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:822',
+        sourceUrl: 'https://21st.dev/c/822',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/testimonials-marquee.svg',
+      tags: ['testimonials', 'marquee', 'social-proof', 'motion'],
+      pageRoles: ['home', 'about', 'services'],
+      renderJSX: testimonialsMarqueeJSX,
+    },
+    {
       id: 'testimonials:grid',
       sectionType: 'testimonials',
       slug: 'grid',
@@ -185,6 +235,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
   ],
   pricing: [
+    {
+      id: 'pricing:feature-table',
+      sectionType: 'pricing',
+      slug: 'feature-table',
+      name: 'Feature Table',
+      description: 'Plan columns over a shared feature checklist with a lifted popular tier',
+      component: PricingFeatureTable,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:8374',
+        sourceUrl: 'https://21st.dev/c/8374',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/pricing-feature-table.svg',
+      tags: ['pricing', 'table', 'plans', 'commerce'],
+      pageRoles: ['home', 'pricing', 'services'],
+      renderJSX: pricingFeatureTableJSX,
+    },
     {
       id: 'pricing:tiers',
       sectionType: 'pricing',
@@ -438,6 +510,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
 
   cta: [
     {
+      id: 'cta:signal-banner',
+      sectionType: 'cta',
+      slug: 'signal-banner',
+      name: 'Signal Banner',
+      description: 'Bracketed banner card with a sweeping accent line and uppercase CTAs',
+      component: CTASignalBanner,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:19341',
+        sourceUrl: 'https://21st.dev/c/19341',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/cta-signal-banner.svg',
+      tags: ['cta', 'banner', 'bold', 'conversion'],
+      pageRoles: ['home', 'shop', 'services', 'contact'],
+      renderJSX: ctaSignalBannerJSX,
+    },
+    {
       id: 'cta:centered',
       sectionType: 'cta',
       slug: 'centered',
@@ -477,6 +571,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   navbar: [
+    {
+      id: 'navbar:floating-pill',
+      sectionType: 'navbar',
+      slug: 'floating-pill',
+      name: 'Floating Pill',
+      description: 'Sticky blurred pill bar that detaches from the top edge on scroll',
+      component: NavbarFloatingPill,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:8137',
+        sourceUrl: 'https://21st.dev/c/8137',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/navbar-floating-pill.svg',
+      tags: ['navbar', 'sticky', 'pill', 'modern'],
+      pageRoles: ['home', 'shop', 'services', 'contact', 'about'],
+      renderJSX: navbarFloatingPillJSX,
+    },
     {
       id: 'navbar:standard',
       radixPrimitives: ['dialog'],
@@ -583,6 +699,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
 
   services: [
     {
+      id: 'services:product-cards',
+      sectionType: 'services',
+      slug: 'product-cards',
+      name: 'Product Cards',
+      description: 'Retail product grid with contained art, price and add-to-bag intent',
+      component: ServicesProductCards,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:8286',
+        sourceUrl: 'https://21st.dev/c/8286',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/services-product-cards.svg',
+      tags: ['commerce', 'products', 'grid', 'shop'],
+      pageRoles: ['home', 'shop', 'services'],
+      renderJSX: servicesProductCardsJSX,
+    },
+    {
       id: 'services:card-grid',
       sectionType: 'services',
       slug: 'card-grid',
@@ -663,6 +801,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   footer: [
+    {
+      id: 'footer:brand-social',
+      sectionType: 'footer',
+      slug: 'brand-social',
+      name: 'Brand & Social',
+      description: 'Brand block with social row beside link columns and a legal band',
+      component: FooterBrandSocial,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:646',
+        sourceUrl: 'https://21st.dev/c/646',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/footer-brand-social.svg',
+      tags: ['footer', 'social', 'columns', 'brand'],
+      pageRoles: ['home', 'shop', 'services', 'contact', 'about'],
+      renderJSX: footerBrandSocialJSX,
+    },
     {
       id: 'footer:columns',
       sectionType: 'footer',
@@ -784,6 +944,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   stats: [
+    {
+      id: 'stats:metric-cards',
+      sectionType: 'stats',
+      slug: 'metric-cards',
+      name: 'Metric Cards',
+      description: 'Bordered metric tiles with accent rules and optional glyphs',
+      component: StatsMetricCards,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:1195',
+        sourceUrl: 'https://21st.dev/c/1195',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/stats-metric-cards.svg',
+      tags: ['stats', 'metrics', 'cards', 'proof'],
+      pageRoles: ['home', 'about', 'services'],
+      renderJSX: statsMetricCardsJSX,
+    },
     {
       id: 'stats:row',
       sectionType: 'stats',
@@ -1070,6 +1252,13 @@ export const resolveExperienceRequirement = (
 };
 
 const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
+  'cta:signal-banner': ['signal-banner', 'signal'],
+  'services:product-cards': ['product-cards', 'products'],
+  'stats:metric-cards': ['metric-cards', 'cards'],
+  'testimonials:marquee': ['marquee', 'scrolling'],
+  'navbar:floating-pill': ['floating-pill', 'floating'],
+  'pricing:feature-table': ['feature-table', 'table'],
+  'footer:brand-social': ['brand-social', 'social'],
   'navbar:standard': ['standard'],
   'navbar:centered-logo': ['centered-logo'],
   'navbar:minimal-dark': ['minimal-dark'],

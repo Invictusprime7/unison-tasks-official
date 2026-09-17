@@ -173,7 +173,7 @@ export interface SectionPropsMap {
     cta?: CTAButton;
     sticky?: boolean;
     transparent?: boolean;
-    layout?: 'standard' | 'centered-logo' | 'minimal-dark';
+    layout?: 'standard' | 'centered-logo' | 'minimal-dark' | 'floating-pill';
   };
   hero: {
     headline: string;
@@ -191,7 +191,7 @@ export interface SectionPropsMap {
     subheadline?: string;
     items: ServiceItem[];
     columns?: 2 | 3 | 4;
-    layout?: 'grid' | 'list' | 'alternating';
+    layout?: 'grid' | 'list' | 'alternating' | 'product-cards';
   };
   features: {
     headline?: string;
@@ -205,12 +205,13 @@ export interface SectionPropsMap {
     subheadline?: string;
     tiers: PricingTier[];
     showToggle?: boolean;
+    layout?: 'tiers' | 'comparison' | 'accordion' | 'feature-table';
   };
   testimonials: {
     headline?: string;
     subheadline?: string;
     items: TestimonialItem[];
-    layout?: 'grid' | 'carousel' | 'single';
+    layout?: 'grid' | 'carousel' | 'single' | 'marquee';
   };
   team: {
     headline?: string;
@@ -237,7 +238,7 @@ export interface SectionPropsMap {
     headline: string;
     description?: string;
     ctas: CTAButton[];
-    layout?: 'centered' | 'split' | 'banner';
+    layout?: 'centered' | 'split' | 'banner' | 'signal-banner';
     backgroundImage?: string;
   };
   contact: {
@@ -255,7 +256,7 @@ export interface SectionPropsMap {
   footer: {
     brand: string;
     logo?: string;
-    layout?: 'columns' | 'centered-minimal' | 'dark-band';
+    layout?: 'columns' | 'centered-minimal' | 'dark-band' | 'brand-social';
     columns?: { title: string; links: NavLink[] }[];
     socials?: { platform: string; url: string; icon?: string }[];
     copyright?: string;
@@ -264,7 +265,7 @@ export interface SectionPropsMap {
   stats: {
     headline?: string;
     items: StatItem[];
-    layout?: 'row' | 'grid';
+    layout?: 'row' | 'grid' | 'metric-cards';
   };
   about: {
     headline?: string;

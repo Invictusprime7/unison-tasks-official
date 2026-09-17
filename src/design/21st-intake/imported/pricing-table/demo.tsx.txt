@@ -1,0 +1,5 @@
+import ExamplePricingTable from "@/components/ui/pricing-table";
+
+export default function DemoOne() {
+  return <ExamplePricingTable />;
+}

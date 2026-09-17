@@ -1,0 +1,52 @@
+{
+  "sourceId": "21st:1195",
+  "name": "Stats Section with Text",
+  "sourceUrl": "https://21st.dev/c/1195",
+  "sourceType": "component",
+  "dependencies": [
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "badge"
+  ],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — Stats Section with Text by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": false,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "lucide-react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      }
+    ],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "stats:metric-cards"
+  ]
+}

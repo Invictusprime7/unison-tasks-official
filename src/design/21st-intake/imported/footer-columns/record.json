@@ -1,0 +1,44 @@
+{
+  "sourceId": "21st:646",
+  "name": "Footer",
+  "sourceUrl": "https://21st.dev/c/646",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — Footer by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": false,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "footer:brand-social"
+  ]
+}

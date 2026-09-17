@@ -1,0 +1,36 @@
+{
+  "id": "stats:metric-cards",
+  "sectionType": "stats",
+  "slug": "metric-cards",
+  "name": "Metric Cards",
+  "description": "Bordered metric tiles with accent rules and optional glyphs",
+  "componentName": "StatsMetricCards",
+  "componentPath": "./stats/StatsMetricCards",
+  "jsxFn": "statsMetricCardsJSX",
+  "thumbnail": "/variants/stats-metric-cards.svg",
+  "tags": [
+    "stats",
+    "metrics",
+    "cards",
+    "proof"
+  ],
+  "pageRoles": [
+    "home",
+    "about",
+    "services"
+  ],
+  "aliases": [
+    "metric-cards",
+    "cards"
+  ],
+  "generationStatus": "preferred",
+  "recordSlug": "stats-band",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:1195",
+    "sourceUrl": "https://21st.dev/c/1195",
+    "author": "21st.dev community",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  }
+}

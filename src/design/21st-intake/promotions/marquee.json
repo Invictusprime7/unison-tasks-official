@@ -1,0 +1,36 @@
+{
+  "id": "testimonials:marquee",
+  "sectionType": "testimonials",
+  "slug": "marquee",
+  "name": "Proof Marquee",
+  "description": "Two continuously scrolling rows of proof cards with edge fades",
+  "componentName": "TestimonialsMarquee",
+  "componentPath": "./testimonials/TestimonialsMarquee",
+  "jsxFn": "testimonialsMarqueeJSX",
+  "thumbnail": "/variants/testimonials-marquee.svg",
+  "tags": [
+    "testimonials",
+    "marquee",
+    "social-proof",
+    "motion"
+  ],
+  "pageRoles": [
+    "home",
+    "about",
+    "services"
+  ],
+  "aliases": [
+    "marquee",
+    "scrolling"
+  ],
+  "generationStatus": "preferred",
+  "recordSlug": "testimonials-marquee",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:822",
+    "sourceUrl": "https://21st.dev/c/822",
+    "author": "21st.dev community",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  }
+}
