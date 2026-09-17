@@ -60,7 +60,14 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   description: string;
   /** The React component that renders this variant (used by PageRenderer) */
   component: ComponentType<BaseSectionProps<T>>;
-  vfs?: { mode: 'portable-recipe' | 'legacy-jsx' };
+  vfs?: { mode: 'portable-recipe' | 'legacy-jsx'; certification?: 'approved' };
+  /**
+   * Development-time provenance for implementations adapted from an external
+   * design source. Never consulted at runtime.
+   */
+  source?: import('@/design/21st-intake/provenance').VisualSourceMetadata;
+  /** `legacy` implementations stay resolvable but are excluded from preferred generation. */
+  generationStatus?: 'preferred' | 'supported' | 'legacy';
   /** Static thumbnail path for the variant picker grid */
   thumbnail: string;
   /** Tags for filtering (e.g., "modern", "minimal", "bold") */
