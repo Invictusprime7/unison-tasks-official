@@ -17,12 +17,19 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe('M2 — canonical design prompt authority', () => {
-  it('no application source imports the retired site elements library', () => {
+  it('the retired site elements library no longer exists', () => {
+    expect(fs.existsSync(path.join(SRC, 'data', 'siteElementsLibrary'))).toBe(false);
     const offenders = walk(SRC).filter((file) => {
-      if (file.includes(`${path.sep}data${path.sep}siteElementsLibrary${path.sep}`)) return false;
       if (file.includes(`${path.sep}test${path.sep}`)) return false;
       return /from ['"][^'"]*siteElementsLibrary['"]/.test(fs.readFileSync(file, 'utf8'));
     });
+    expect(offenders).toEqual([]);
+  });
+
+  it('component intelligence stays out of AI design context', () => {
+    const offenders = walk(path.join(SRC, 'sections', 'promptContext')).filter((file) =>
+      /componentIntelligenceRegistry/.test(fs.readFileSync(file, 'utf8')),
+    );
     expect(offenders).toEqual([]);
   });
 
