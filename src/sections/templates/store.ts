@@ -62,8 +62,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-hero',
         type: 'hero',
+        variantId: 'hero:commerce-gradient',
         props: {
-          layout: 'split',
+          layout: 'commerce-gradient',
           badge: '🌿 New Spring Collection',
           headline: 'Style That Speaks for Itself.',
           subheadline: 'Curated essentials for the modern home and wardrobe.',
@@ -76,6 +77,35 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
             { value: '2,000+', label: 'Products' },
             { value: '4.8★', label: 'Avg Review' },
             { value: 'Free', label: 'Shipping Over $75' },
+          ],
+        },
+      },
+      {
+        id: 'store-premium-collections',
+        type: 'gallery',
+        variantId: 'gallery:collection-tiles',
+        props: {
+          layout: 'collection-tiles',
+          headline: 'Shop by Collection',
+          subheadline: 'Four curated worlds, restocked every season.',
+          columns: 4,
+          items: [
+            { src: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', alt: 'Home textiles', caption: 'Home & Textiles', category: 'Home' },
+            { src: 'https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=800&q=80', alt: 'Ceramics', caption: 'Ceramics & Table', category: 'Table' },
+            { src: 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=800&q=80', alt: 'Apparel', caption: 'Apparel & Knits', category: 'Wear' },
+            { src: 'https://images.unsplash.com/photo-1602874801006-e26d3d17d0fb?w=800&q=80', alt: 'Candles', caption: 'Scent & Candles', category: 'Scent' },
+          ],
+        },
+      },
+      {
+        id: 'store-premium-logos',
+        type: 'logo-cloud',
+        variantId: 'logo-cloud:wordmark-row',
+        props: {
+          layout: 'wordmark-row',
+          headline: 'As seen in',
+          logos: [
+            { name: 'Kinfolk' }, { name: 'Dwell' }, { name: 'Domino' }, { name: 'Apartment Therapy' }, { name: 'Goop' },
           ],
         },
       },
@@ -115,10 +145,11 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-features',
         type: 'features',
+        variantId: 'features:bento-grid',
         props: {
           headline: 'Why Shop Vela',
           columns: 3,
-          layout: 'icon-left',
+          layout: 'bento-grid',
           items: [
             { title: 'Free Shipping Over $75', description: 'All domestic orders over $75 ship free. Delivered in 3–5 business days.', icon: '🚚' },
             { title: 'Hassle-Free Returns', description: '60-day returns on everything. No questions asked, no restocking fees.', icon: '🔄' },
@@ -230,8 +261,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-minimal-hero',
         type: 'hero',
+        variantId: 'hero:showcase-panel',
         props: {
-          layout: 'split',
+          layout: 'showcase-panel',
           badge: '⚡ 20,000+ Customers',
           headline: 'One Product. Zero Compromise.',
           subheadline: 'The portable charger that charges your phone in 20 minutes — guaranteed.',
@@ -248,12 +280,25 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
         },
       },
       {
+        id: 'store-minimal-logos',
+        type: 'logo-cloud',
+        variantId: 'logo-cloud:wordmark-row',
+        props: {
+          layout: 'wordmark-row',
+          headline: 'Reviewed by',
+          logos: [
+            { name: 'The Verge' }, { name: 'Wirecutter' }, { name: 'Engadget' }, { name: 'TechCrunch' }, { name: 'Gear Patrol' },
+          ],
+        },
+      },
+      {
         id: 'store-minimal-features',
         type: 'features',
+        variantId: 'features:bento-grid',
         props: {
           headline: 'Built Different',
           columns: 3,
-          layout: 'centered',
+          layout: 'bento-grid',
           items: [
             { title: '20-Min Charge', description: 'GaN III technology delivers 65W output in a package the size of a deck of cards.', icon: '⚡' },
             { title: 'Universal Compatibility', description: 'USB-C, Lightning, and Micro-USB cables included. Works with any device.', icon: '🔌' },
@@ -359,8 +404,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-boutique-hero',
         type: 'hero',
+        variantId: 'hero:commerce-gradient',
         props: {
-          layout: 'split',
+          layout: 'commerce-gradient',
           badge: 'New: Spring Edition',
           headline: 'Small things, made beautifully.',
           subheadline: 'A boutique of objects for the home and table.',
@@ -368,6 +414,22 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
           ctas: [
             { label: 'Shop the Collection', href: '#services', variant: 'primary' },
             { label: 'Read Our Story', href: '#about', variant: 'ghost' },
+          ],
+        },
+      },
+      {
+        id: 'store-boutique-collections',
+        type: 'gallery',
+        variantId: 'gallery:collection-tiles',
+        props: {
+          layout: 'collection-tiles',
+          headline: 'Browse the Shop',
+          subheadline: 'Small-batch pieces from makers we know by name.',
+          columns: 3,
+          items: [
+            { src: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&q=80', alt: 'Ceramics', caption: 'Ceramics', category: 'Table' },
+            { src: 'https://images.unsplash.com/photo-1600166898405-da9535204843?w=800&q=80', alt: 'Linens', caption: 'Linens', category: 'Home' },
+            { src: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?w=800&q=80', alt: 'Apothecary', caption: 'Apothecary', category: 'Bath' },
           ],
         },
       },

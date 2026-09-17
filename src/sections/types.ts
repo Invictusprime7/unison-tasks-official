@@ -182,7 +182,7 @@ export interface SectionPropsMap {
     ctas?: CTAButton[];
     image?: string;
     backgroundImage?: string;
-    layout?: 'centered' | 'split' | 'full-bleed' | 'page-title' | 'editorial-banner';
+    layout?: 'centered' | 'split' | 'full-bleed' | 'page-title' | 'editorial-banner' | 'commerce-gradient' | 'showcase-panel';
     badge?: string;
     stats?: StatItem[];
   };
@@ -198,7 +198,7 @@ export interface SectionPropsMap {
     subheadline?: string;
     items: ServiceItem[];
     columns?: 2 | 3 | 4;
-    layout?: 'grid' | 'icon-left' | 'centered';
+    layout?: 'grid' | 'icon-left' | 'centered' | 'bento-grid';
   };
   pricing: {
     headline?: string;
@@ -224,6 +224,8 @@ export interface SectionPropsMap {
     items: GalleryItem[];
     columns?: 2 | 3 | 4;
     filterable?: boolean;
+    /** Variant slug or legacy layout alias — resolved by the gallery renderer. */
+    layout?: string;
   };
   faq: {
     headline?: string;
@@ -274,6 +276,7 @@ export interface SectionPropsMap {
   'logo-cloud': {
     headline?: string;
     logos: { name: string; src?: string }[];
+    layout?: 'grid' | 'marquee' | 'wordmark-row';
   };
   'blog-preview': {
     headline?: string;
