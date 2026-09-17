@@ -54,10 +54,18 @@ Milestone index (status tracked against the phases below):
 	`src/sections/compositionToFileSet.ts` (FAQ falls back to `faq:accordion`
 	rather than a legacy module). `src/test/narrativeFamilyCompilerConvergence.test.ts`
 	proves registry metadata, recipe bytes and emitted identity for all twelve.
-	Remaining: logo-cloud, blog-preview and before-after still emit module-only
-	placeholders with no registered variant (Phase 3 owns their replacement), and
-	the exit condition still needs persisted Preview/publish runtime evidence for
-	the four new families.
+	logo-cloud, blog-preview and before-after are now first-class families too:
+	nine registered implementations (`logo-cloud:{grid,marquee,brand-lockup}`,
+	`blog-preview:{editorial,featured-grid,horizontal-rail}`,
+	`before-after:{slider,grid,case-study}`), portable recipes emitted as
+	`/src/components/recipes/{LogoCloud,BlogPreview,BeforeAfter}.ts`, legacy
+	modules demoted to `Legacy*` fallbacks, and the cross-semantic placeholders
+	in `src/sections/registry.ts` / `PageRenderer.tsx` replaced with dedicated
+	components. `src/test/firstClassFamilyCompilerConvergence.test.ts` proves
+	registry metadata, recipe bytes, emitted identity and no borrowed semantics.
+	Remaining: the exit condition still needs persisted Preview/publish runtime
+	evidence for all seven new families.
+
 - [ ] M2 Registry authority cleanup (retire `src/data/siteElementsLibrary/*`,
 	demote `componentIntelligenceRegistry.ts`, remove double-authored variants).
 - [ ] M3 21st intake / certification infrastructure (intake record, ten-step
