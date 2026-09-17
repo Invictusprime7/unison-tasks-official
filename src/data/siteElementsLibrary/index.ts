@@ -1,7 +1,13 @@
 /**
  * AI Site Elements Library — Public API
  *
- * Single entry point for the entire library system.
+ * @deprecated RETIRED AS AN AUTHORITY (M2).
+ * The canonical section/intent context for the AI Builder now comes from
+ * `src/sections/promptContext/canonicalDesignPrompt.ts`, which derives from the
+ * registered variant registry and the canonical intent registry. Do not import
+ * this module from application source; `src/test/canonicalDesignPromptAuthority.test.ts`
+ * enforces that rule. These files remain only for historical reference and are
+ * scheduled for deletion.
  */
 
 // Types
