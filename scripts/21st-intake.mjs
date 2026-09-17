@@ -114,7 +114,7 @@ function quarantine(id, slug) {
   const dir = path.join(IMPORTED_DIR, slug);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'source.tsx'), source, 'utf8');
-  if (component.demoCode) fs.writeFileSync(path.join(dir, 'demo.tsx'), component.demoCode, 'utf8');
+  if (component.demoCode) fs.writeFileSync(path.join(dir, 'demo.tsx.txt'), component.demoCode, 'utf8');
 
   const record = {
     sourceId: `21st:${component.id}`,
