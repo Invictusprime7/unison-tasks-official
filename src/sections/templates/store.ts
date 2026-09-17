@@ -104,7 +104,7 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
         props: {
           layout: 'wordmark-row',
           headline: 'As seen in',
-          items: [
+          logos: [
             { name: 'Kinfolk' }, { name: 'Dwell' }, { name: 'Domino' }, { name: 'Apartment Therapy' }, { name: 'Goop' },
           ],
         },
@@ -286,7 +286,7 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
         props: {
           layout: 'wordmark-row',
           headline: 'Reviewed by',
-          items: [
+          logos: [
             { name: 'The Verge' }, { name: 'Wirecutter' }, { name: 'Engadget' }, { name: 'TechCrunch' }, { name: 'Gear Patrol' },
           ],
         },
