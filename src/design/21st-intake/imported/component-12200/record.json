@@ -1,0 +1,62 @@
+{
+  "sourceId": "21st:12200",
+  "name": "PrismaHero",
+  "sourceUrl": "https://21st.dev/c/12200",
+  "sourceType": "component",
+  "dependencies": [
+    "framer-motion",
+    "lucide-react",
+    "react"
+  ],
+  "registryDependencies": [],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — PrismaHero by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "framer-motion",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      {
+        "dep": "lucide-react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      }
+    ],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:prisma-cinematic"
+  ]
+}

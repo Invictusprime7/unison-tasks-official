@@ -1,0 +1,24 @@
+{
+  "id": "hero:prisma-cinematic",
+  "sectionType": "hero",
+  "slug": "prisma-cinematic",
+  "name": "Prisma Cinematic",
+  "description": "Full-bleed cinematic hero with oversized display headline, gradient scrim and side copy",
+  "componentName": "HeroPrismaCinematic",
+  "componentPath": "./hero/HeroPrismaCinematic",
+  "jsxFn": "heroPrismaCinematicJSX",
+  "thumbnail": "/variants/hero-prisma-cinematic.svg",
+  "tags": ["hero", "cinematic", "editorial", "full-bleed", "media"],
+  "pageRoles": ["home"],
+  "aliases": ["prisma-cinematic", "cinematic"],
+  "generationStatus": "preferred",
+  "recordSlug": "component-12200",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:12200",
+    "sourceUrl": "https://21st.dev/c/12200",
+    "author": "@rahil1202",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  }
+}
