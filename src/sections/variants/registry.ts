@@ -48,7 +48,11 @@ import {
   statsMetricCardsJSX,
   servicesProductCardsJSX,
   ctaSignalBannerJSX,
+  heroPrismaCinematicJSX,
 } from './jsxTemplates';
+
+// 21st.dev certified variant: hero:prisma-cinematic
+import { HeroPrismaCinematic } from './hero/HeroPrismaCinematic';
 
 // 21st.dev certified variant: cta:signal-banner
 import { CTASignalBanner } from './cta/CTASignalBanner';
@@ -407,6 +411,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
   ],
   hero: [
+    {
+      id: 'hero:prisma-cinematic',
+      sectionType: 'hero',
+      slug: 'prisma-cinematic',
+      name: 'Prisma Cinematic',
+      description: 'Full-bleed cinematic hero with oversized display headline, gradient scrim and side copy',
+      component: HeroPrismaCinematic,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:12200',
+        sourceUrl: 'https://21st.dev/c/12200',
+        author: '@rahil1202',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/hero-prisma-cinematic.svg',
+      tags: ['hero', 'cinematic', 'editorial', 'full-bleed', 'media'],
+      pageRoles: ['home', 'about'],
+      renderJSX: heroPrismaCinematicJSX,
+    },
     {
       id: 'hero:centered',
       sectionType: 'hero',
@@ -1253,6 +1279,7 @@ export const resolveExperienceRequirement = (
 };
 
 const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
+  'hero:prisma-cinematic': ['prisma-cinematic', 'cinematic'],
   'cta:signal-banner': ['signal-banner', 'signal'],
   'services:product-cards': ['product-cards', 'products'],
   'stats:metric-cards': ['metric-cards', 'cards'],

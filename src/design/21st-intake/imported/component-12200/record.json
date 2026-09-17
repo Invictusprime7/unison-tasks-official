@@ -34,7 +34,7 @@
     "intentReady": false,
     "portableRecipeCertified": false
   },
-  "step": 3,
+  "step": 10,
   "dependencyAudit": {
     "decisions": [
       {
@@ -54,5 +54,9 @@
       }
     ],
     "approved": true
-  }
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:prisma-cinematic"
+  ]
 }
