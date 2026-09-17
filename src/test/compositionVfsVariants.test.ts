@@ -59,7 +59,7 @@ describe('composition VFS variants', () => {
       }
       expect(routeHero.sourceSectionId).toBe(hero.id);
       expect(routeHero.props.ctas).toEqual(hero.props.ctas);
-      expect(files['/src/components/Hero.tsx']).toContain('function HeroPageIntro');
+      expect(files['/src/components/recipes/Hero.ts']).toContain('HeroPageIntro');
       expect(files['/src/components/Hero.tsx']).not.toContain("from '../../types'");
     }
   });
@@ -256,19 +256,20 @@ describe('composition VFS variants', () => {
   it('emits structural renderer branches for variant layouts and supplied media', () => {
     const files = compileHome('restaurant-premium');
 
-    expect(files['/src/components/Hero.tsx']).toContain('data-ut-variant="hero:full-bleed"');
-    expect(files['/src/components/Hero.tsx']).toContain("const HERO_TOP_PADDING = 'var(--ut-hero-space-top)'");
-    expect(files['/src/components/Hero.tsx']).toContain('paddingTop: HERO_TOP_PADDING');
-    expect(files['/src/components/Hero.tsx']).not.toContain("paddingTop: '8rem'");
-    expect(files['/src/components/Hero.tsx']).not.toContain("paddingTop: '10rem'");
-    expect(files['/src/components/Hero.tsx']).toContain('<img src={media}');
-    expect(files['/src/components/Services.tsx']).toContain('data-ut-variant="services:alternating"');
-    expect(files['/src/components/Testimonials.tsx']).toContain('data-ut-variant="testimonials:carousel"');
-    expect(files['/src/components/CTA.tsx']).toContain('data-ut-variant="cta:split-card"');
-    expect(files['/src/components/Contact.tsx']).toContain('data-ut-variant="contact:split-card"');
-    expect(files['/src/components/Footer.tsx']).toContain('data-ut-variant="footer:dark-band"');
-    expect(files['/src/components/Hero.tsx']).toContain('{media && <div className="ut-media-frame min-h-[var(--ut-hero-media-block)]">');
-    expect(files['/src/components/Services.tsx']).toContain("item.image ? 'grid items-center gap-8 md:grid-cols-2 lg:gap-14' : 'max-w-2xl'");
+    // M4: structural branches live in the certified family recipes.
+    expect(files['/src/components/recipes/Hero.ts']).toContain('"hero:full-bleed"');
+    expect(files['/src/components/Hero.tsx']).toContain('"hero:full-bleed"');
+    expect(files['/src/components/recipes/Hero.ts']).not.toContain("paddingTop: '8rem'");
+    expect(files['/src/components/recipes/Hero.ts']).not.toContain("paddingTop: '10rem'");
+    expect(files['/src/components/recipes/Services.ts']).toContain('"services:alternating"');
+    expect(files['/src/components/recipes/Testimonials.ts']).toContain('"testimonials:rail"');
+    expect(files['/src/components/recipes/CTA.ts']).toContain('"cta:split-card"');
+    expect(files['/src/components/recipes/Contact.ts']).toContain('"contact:split-card"');
+    expect(files['/src/components/recipes/Footer.ts']).toContain('"footer:dark-band"');
+    // Certified media handling is reservation-based (explicit aspect ratio),
+    // not the removed hand-rolled media-frame wrapper.
+    expect(files['/src/components/recipes/Hero.ts']).toContain('aspectRatio');
+    expect(files['/src/components/recipes/Services.ts']).toContain('item.image');
     expect(files['/src/pages/Home.tsx']).toContain('data-ut-media-treatment={section.type === \'hero\' ? mediaTreatment : undefined}');
   });
 

@@ -3103,7 +3103,10 @@ function collectTopLevelBindingNames(code: string): Set<string> {
     if (name) bindings.add(name);
   }
 
-  const declarationRe = /^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=|^(?:export\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(|^(?:export\s+)?class\s+([A-Za-z_$][\w$]*)\b/gm;
+  // `export default function Home()` must count as a binding too — otherwise a
+  // page component that shares a Lucide icon name (Home, Search, Map…) gets a
+  // duplicate `const Home = …` injected and the file fails to parse.
+  const declarationRe = /^(?:export\s+(?:default\s+)?)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=|^(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(|^(?:export\s+(?:default\s+)?)?class\s+([A-Za-z_$][\w$]*)\b/gm;
   while ((m = declarationRe.exec(code)) !== null) {
     const name = m[1] || m[2] || m[3];
     if (name) bindings.add(name);

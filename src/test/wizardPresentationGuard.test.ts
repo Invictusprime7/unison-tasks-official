@@ -42,7 +42,10 @@ describe('Wizard presentation guard', () => {
     if (!composition) throw new Error('Photography composition must be registered');
     const canonicalFiles = compositionToReactFileSet(composition, '/src/pages/Home.tsx');
     // The canonical composition is the *expectation*, not a replacement body.
-    expect(canonicalFiles['/src/components/Hero.tsx']).toContain('data-ut-variant');
+    // M4: the certified family recipe is the implementation; the component
+    // file is the canonical resolver in front of it.
+    expect(canonicalFiles['/src/components/recipes/Hero.ts']).toContain('data-ut-variant');
+    expect(canonicalFiles['/src/components/Hero.tsx']).toContain('REGISTERED_VARIANTS');
     const result = assessWizardHomePresentation({
       aiFiles: { '/src/pages/Home.tsx': '<main><section>Generic photographer</section></main>' },
       homePath: '/src/pages/Home.tsx',

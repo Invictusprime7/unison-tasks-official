@@ -515,6 +515,14 @@ ${tiles.map((t) => galleryFigure(t, 'cursor-zoom-in', '1 / 1')).join('\n')}
   return galleryShell('gallery:lightbox-grid', c, grid);
 }
 
+export function galleryHorizontalReelJSX(c: ExtractedSectionContent): string {
+  const tiles = galleryTiles(c, 6);
+  const grid = `          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4">
+${tiles.map((t) => `            <div className="w-[78%] flex-none snap-start sm:w-[46%] lg:w-[32%]">\n${galleryFigure(t, '', '4 / 5')}\n            </div>`).join('\n')}
+          </div>`;
+  return galleryShell('gallery:horizontal-reel', c, grid);
+}
+
 export function galleryFeatureSplitJSX(c: ExtractedSectionContent): string {
   const [feature, ...rest] = galleryTiles(c, 5);
   const grid = `          <div className="grid gap-4 lg:grid-cols-2">

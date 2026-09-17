@@ -36,11 +36,16 @@ describe('Phase 4 — gallery premium variant family', () => {
       id: 'fixture', name: 'Fixture', industry: 'photography',
       sections: [{ id: 'gallery-1', type: 'gallery', props: { headline: 'Work', layout: 'masonry', items: [{ src: '/a.jpg', caption: 'A', category: 'weddings' }] } }],
     } as unknown as TemplateComposition;
-    const gallery = compositionToReactFileSet(composition, '/src/pages/Home.tsx')['/src/components/Gallery.tsx'];
-    for (const marker of ['gallery:editorial-mosaic', 'gallery:masonry', 'gallery:lightbox-grid', 'gallery:feature-split', 'gallery:cinematic-grid']) {
+    const files = compositionToReactFileSet(composition, '/src/pages/Home.tsx');
+    const gallery = files['/src/components/recipes/Gallery.ts'];
+    for (const marker of ['gallery:editorial-mosaic', 'gallery:masonry', 'gallery:lightbox-grid', 'gallery:feature-split', 'gallery:cinematic-grid', 'gallery:horizontal-reel']) {
       expect(gallery).toContain(marker);
+      expect(files['/src/components/Gallery.tsx']).toContain(marker);
     }
-    expect(gallery).toContain('aria-modal="true"');
-    expect(gallery).toContain("event.key === 'Escape'");
+    // The certified lightbox is a Radix dialog: modal semantics and Escape
+    // handling come from the primitive, not from hand-rolled key handlers.
+    expect(gallery).toContain('Dialog');
+    expect(gallery).toContain('Close gallery');
+    expect(gallery).toContain('ArrowRight');
   });
 });
