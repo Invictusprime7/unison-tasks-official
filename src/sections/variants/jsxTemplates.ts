@@ -1021,3 +1021,38 @@ ${pairFigure(c.imageSrc, 'After', '                ', 'aspect-[3/4] rounded-[var
           </div>`;
   return sectionShell('before-after:case-study', c, body);
 }
+
+// ============================================================================
+// 21st.dev adapted variants (provenance recorded on registry entries)
+// ============================================================================
+
+export function heroCommerceGradientJSX(c: ExtractedSectionContent): string {
+  return `      <section className="relative overflow-hidden py-16 md:py-24 bg-white" data-variant="hero:commerce-gradient">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="rounded-3xl border border-gray-200 bg-gray-50 px-6 py-20 md:py-28 text-center">
+${c.badge ? `            <span className="inline-block text-xs font-medium tracking-wide uppercase mb-6 px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">${esc(c.badge)}</span>\n` : ''}\
+${c.heading ? `            <h1 className="mx-auto max-w-[18ch] text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight leading-tight mb-6 bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `            <p className="mx-auto max-w-2xl text-base md:text-lg text-gray-600 leading-relaxed">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `            <div className="flex gap-3 flex-wrap justify-center mt-10">
+${renderButtons(c.ctaButtons, 'inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors', 'inline-flex items-center gap-2 px-6 py-3 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-medium hover:bg-gray-50 transition-colors')}
+            </div>\n` : ''}\
+          </div>
+        </div>
+      </section>`;
+}
+
+export function galleryCollectionTilesJSX(c: ExtractedSectionContent): string {
+  const tiles = galleryTiles(c, 4);
+  const grid = `          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+${tiles.map((t) => `            <a href="#" className="group relative block min-h-[18rem] overflow-hidden rounded-3xl bg-gray-100 p-6">
+              <h3 className="relative z-10 my-2 text-center text-2xl font-bold text-blue-600 sm:text-3xl">${esc(t.caption || t.alt || '')}</h3>
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <img src="${t.src}" alt="${esc(t.alt || '')}" loading="lazy" className="h-auto w-full max-w-[45%] object-contain opacity-90 transition-transform duration-500 group-hover:scale-110" />
+              </div>
+              <div className="absolute bottom-0 right-0 z-10 flex h-16 w-16 items-center justify-center rounded-tl-2xl border-l border-t border-gray-200 bg-white md:h-20 md:w-20">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-900 text-white transition-transform duration-300 group-hover:scale-110 md:h-12 md:w-12">&#8599;</span>
+              </div>
+            </a>`).join('\n')}
+          </div>`;
+  return galleryShell('gallery:collection-tiles', c, grid);
+}
