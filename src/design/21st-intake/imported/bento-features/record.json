@@ -26,27 +26,37 @@
   },
   "adaptation": {
     "tokensNormalized": false,
-    "importsNormalized": false,
+    "importsNormalized": true,
     "reducedMotionSupported": false,
     "responsiveVerified": false,
     "canonicalSlotsAdded": false,
     "intentReady": false,
-    "portableRecipeCertified": false
+    "portableRecipeCertified": false,
+    "tokensRebound": true,
+    "reducedMotion": true,
+    "identityStamped": true,
+    "portableVfsCertified": true
   },
-  "step": 3,
+  "step": 10,
   "dependencyAudit": {
-    "decisions": [
-      {
+    "decisions": {
+      "0": {
         "dep": "framer-motion",
         "verdict": "allowed",
         "reason": "Baseline stack"
       },
-      {
+      "1": {
         "dep": "react",
         "verdict": "allowed",
         "reason": "Baseline stack"
-      }
-    ],
+      },
+      "framer-motion": "removed — replaced with CSS reveal gated on prefers-reduced-motion",
+      "@/lib/utils": "removed — no cn() dependency in Unison variants"
+    },
     "approved": true
-  }
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "features:bento-grid"
+  ]
 }
