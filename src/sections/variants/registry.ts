@@ -314,6 +314,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       description: 'Commerce collection tiles with centered product art and corner arrow affordance',
       component: GalleryCollectionTiles,
       vfs: { mode: 'portable-recipe' },
+      radixPrimitives: ['dialog'],
       source: {
         origin: '21st',
         sourceId: '21st:4927',
