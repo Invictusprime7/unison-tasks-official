@@ -1,0 +1,61 @@
+{
+  "sourceId": "21st:26630",
+  "name": "Product Hero with Demo Panel",
+  "sourceUrl": "https://21st.dev/c/26630",
+  "sourceType": "component",
+  "dependencies": [
+    "motion",
+    "react",
+    "react-wrap-balancer"
+  ],
+  "registryDependencies": [
+    "hero-14-utils/block-builder-demo",
+    "hero-14-utils/cta"
+  ],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — Product Hero with Demo Panel by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 3,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "motion",
+        "verdict": "unknown",
+        "reason": "Not on the allowlist — requires manual review"
+      },
+      {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      {
+        "dep": "react-wrap-balancer",
+        "verdict": "unknown",
+        "reason": "Not on the allowlist — requires manual review"
+      }
+    ],
+    "approved": false
+  }
+}

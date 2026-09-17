@@ -31,6 +31,7 @@ import {
   galleryEditorialMosaicJSX, galleryMasonryJSX, galleryCinematicGridJSX,
   galleryLightboxGridJSX, galleryFeatureSplitJSX, galleryHorizontalReelJSX,
   galleryCollectionTilesJSX, heroCommerceGradientJSX,
+  heroShowcasePanelJSX, logoCloudWordmarkRowJSX,
   testimonialsGridJSX, testimonialsRailJSX, testimonialsSpotlightJSX,
   pricingTiersJSX, pricingComparisonJSX, pricingAccordionJSX,
   aboutEditorialSplitJSX, aboutStatementJSX, aboutStoryPanelJSX,
@@ -63,6 +64,8 @@ import { HeroCentered } from './hero/HeroCentered';
 import { HeroSplitImage } from './hero/HeroSplitImage';
 import { HeroFullBleed } from './hero/HeroFullBleed';
 import { HeroCommerceGradient } from './hero/HeroCommerceGradient';
+import { HeroShowcasePanel } from './hero/HeroShowcasePanel';
+import { LogoCloudWordmarkRow } from './logoCloud/LogoCloudWordmarkRow';
 import { HeroPageTitle, HeroEditorialBanner } from './hero/HeroPageIntro';
 import { heroPageTitleJSX, heroEditorialBannerJSX } from './hero/heroPageIntroJSX';
 
@@ -407,6 +410,28 @@ const VARIANT_REGISTRY: VariantRegistry = {
       tags: ['commerce', 'gradient', 'bold', 'shop'],
       pageRoles: ['home', 'shop'],
       renderJSX: heroCommerceGradientJSX,
+    },
+    {
+      id: 'hero:showcase-panel',
+      sectionType: 'hero',
+      slug: 'showcase-panel',
+      name: 'Showcase Panel',
+      description: 'Centered copy above a framed product panel with a trust row',
+      component: HeroShowcasePanel,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:26630',
+        sourceUrl: 'https://21st.dev',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/hero-showcase-panel.svg',
+      tags: ['product', 'showcase', 'centered', 'saas'],
+      pageRoles: ['home', 'shop', 'custom'],
+      renderJSX: heroShowcasePanelJSX,
     },
   ],
 
@@ -853,6 +878,26 @@ const VARIANT_REGISTRY: VariantRegistry = {
       tags: ['split', 'editorial'],
       renderJSX: logoCloudBrandLockupJSX,
     },
+    {
+      id: 'logo-cloud:wordmark-row',
+      sectionType: 'logo-cloud',
+      slug: 'wordmark-row',
+      name: 'Wordmark Row',
+      description: 'Quiet rule-topped band of centred client wordmarks',
+      component: LogoCloudWordmarkRow,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:26630',
+        sourceUrl: 'https://21st.dev',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      thumbnail: '/variants/logo-cloud-wordmark-row.svg',
+      tags: ['row', 'quiet', 'trust'],
+      renderJSX: logoCloudWordmarkRowJSX,
+    },
   ],
 
   'blog-preview': [
@@ -1012,6 +1057,8 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'hero:page-title': ['page-title'],
   'hero:editorial-banner': ['editorial-banner'],
   'hero:commerce-gradient': ['commerce-gradient'],
+  'hero:showcase-panel': ['showcase-panel', 'showcase'],
+  'logo-cloud:wordmark-row': ['wordmark-row', 'wordmarks'],
   'services:card-grid': ['grid', 'card-grid'],
   'services:alternating': ['alternating'],
   'services:compact-list': ['list', 'compact-list'],
