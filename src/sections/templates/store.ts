@@ -81,6 +81,35 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
         },
       },
       {
+        id: 'store-premium-collections',
+        type: 'gallery',
+        variantId: 'gallery:collection-tiles',
+        props: {
+          layout: 'collection-tiles',
+          headline: 'Shop by Collection',
+          subheadline: 'Four curated worlds, restocked every season.',
+          columns: 4,
+          items: [
+            { src: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', alt: 'Home textiles', caption: 'Home & Textiles', category: 'Home' },
+            { src: 'https://images.unsplash.com/photo-1540932239986-30128078f3c5?w=800&q=80', alt: 'Ceramics', caption: 'Ceramics & Table', category: 'Table' },
+            { src: 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=800&q=80', alt: 'Apparel', caption: 'Apparel & Knits', category: 'Wear' },
+            { src: 'https://images.unsplash.com/photo-1602874801006-e26d3d17d0fb?w=800&q=80', alt: 'Candles', caption: 'Scent & Candles', category: 'Scent' },
+          ],
+        },
+      },
+      {
+        id: 'store-premium-logos',
+        type: 'logo-cloud',
+        variantId: 'logo-cloud:wordmark-row',
+        props: {
+          layout: 'wordmark-row',
+          headline: 'As seen in',
+          items: [
+            { name: 'Kinfolk' }, { name: 'Dwell' }, { name: 'Domino' }, { name: 'Apartment Therapy' }, { name: 'Goop' },
+          ],
+        },
+      },
+      {
         id: 'store-premium-services',
         type: 'services',
         props: {
