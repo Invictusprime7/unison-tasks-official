@@ -261,8 +261,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-minimal-hero',
         type: 'hero',
+        variantId: 'hero:showcase-panel',
         props: {
-          layout: 'split',
+          layout: 'showcase-panel',
           badge: '⚡ 20,000+ Customers',
           headline: 'One Product. Zero Compromise.',
           subheadline: 'The portable charger that charges your phone in 20 minutes — guaranteed.',
@@ -279,12 +280,25 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
         },
       },
       {
+        id: 'store-minimal-logos',
+        type: 'logo-cloud',
+        variantId: 'logo-cloud:wordmark-row',
+        props: {
+          layout: 'wordmark-row',
+          headline: 'Reviewed by',
+          items: [
+            { name: 'The Verge' }, { name: 'Wirecutter' }, { name: 'Engadget' }, { name: 'TechCrunch' }, { name: 'Gear Patrol' },
+          ],
+        },
+      },
+      {
         id: 'store-minimal-features',
         type: 'features',
+        variantId: 'features:bento-grid',
         props: {
           headline: 'Built Different',
           columns: 3,
-          layout: 'centered',
+          layout: 'bento-grid',
           items: [
             { title: '20-Min Charge', description: 'GaN III technology delivers 65W output in a package the size of a deck of cards.', icon: '⚡' },
             { title: 'Universal Compatibility', description: 'USB-C, Lightning, and Micro-USB cables included. Works with any device.', icon: '🔌' },
