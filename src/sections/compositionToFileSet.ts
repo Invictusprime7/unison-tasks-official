@@ -1279,7 +1279,8 @@ export default function Team({ props, variantId }: { props: any; variantId?: str
   return <Component section={{ type: 'team', variantId: resolvedId, props }} theme={THEME} />;
 }
 `,
-  FAQ: `import { REGISTERED_VARIANTS } from './recipes/FAQ';
+  FAQ: `import React from 'react';
+import { REGISTERED_VARIANTS } from './recipes/FAQ';
 import { THEME } from './theme';
 const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('faq').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
 export default function FAQ({ props, variantId }: { props: any; variantId?: string }) {
