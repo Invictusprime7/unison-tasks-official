@@ -125,13 +125,20 @@ LauncherWizard
 
 ## Current Blockers
 
-- Edge deployment drift (2026-09-10): closing the full-lint gate edited
-	`supabase/functions/_shared/validate.ts` (inline `no-control-regex` disable)
-	and `ai-code-assistant/safetyRules.ts` (redundant regex escape removed, proved
-	semantically identical). The repository no longer byte-matches remote version
-	341; a redeploy is required before that match is re-asserted. Nothing was
-	deployed. The six Supabase edge tests were not re-run because `vitest.config.ts`
-	includes only `src/**` and no separate edge config exists yet.
+- Edge deployment drift (opened 2026-09-10, redeployed 2026-09-17): closing the
+	full-lint gate edited `supabase/functions/_shared/validate.ts` (inline
+	`no-control-regex` disable) and `ai-code-assistant/safetyRules.ts` (redundant
+	regex escape removed, proved semantically identical), so the repository stopped
+	byte-matching remote `ai-code-assistant` version 341. The follow-up build
+	corrections to `ai-builder-propose` (shared CORS import), `ghl-mcp`
+	(`mcp-lite@0.10.0` tool/transport API) and `site-runtime-read` (Supabase client
+	typing) were also repository-only. All four functions — `ai-code-assistant`,
+	`ai-builder-propose`, `ghl-mcp` and `site-runtime-read` — are now deployed from
+	the current repository state, so the drift is closed at the source level.
+	Remaining open: a fresh remote source fetch has not re-asserted byte equality,
+	authenticated model execution was not exercised, and the six Supabase edge
+	tests were still not re-run because `vitest.config.ts` includes only `src/**`
+	and no separate edge config exists yet.
 
 - Canonical recovery guard: saved snapshot hydration no longer adopts a pending
 	local journal, and canonical hydration defers autosave/forced flushes until a

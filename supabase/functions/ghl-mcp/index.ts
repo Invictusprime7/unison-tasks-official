@@ -33,8 +33,7 @@ async function callCrm(action: string, body: Record<string, unknown>) {
 
 const mcp = new McpServer({ name: "unison-ghl", version: "1.0.0" });
 
-mcp.tool({
-  name: "ghl.workflow.list",
+mcp.tool("ghl.workflow.list", {
   description: "List GHL automation workflows for a location.",
   inputSchema: {
     type: "object",
@@ -47,8 +46,7 @@ mcp.tool({
   },
 });
 
-mcp.tool({
-  name: "ghl.workflow.trigger",
+mcp.tool("ghl.workflow.trigger", {
   description: "Trigger a GHL workflow for a specific contact.",
   inputSchema: {
     type: "object",
@@ -65,8 +63,7 @@ mcp.tool({
   },
 });
 
-mcp.tool({
-  name: "ghl.contact.upsert",
+mcp.tool("ghl.contact.upsert", {
   description: "Create or update a GHL contact by email or phone.",
   inputSchema: {
     type: "object",
@@ -87,14 +84,13 @@ mcp.tool({
     },
     required: ["locationId", "contact"],
   },
-  handler: async (args) => {
+  handler: async (args: Record<string, unknown>) => {
     const data = await callCrm("upsertContact", args as Record<string, unknown>);
     return { content: [{ type: "text", text: JSON.stringify(data) }] };
   },
 });
 
-mcp.tool({
-  name: "ghl.opportunity.create",
+mcp.tool("ghl.opportunity.create", {
   description: "Create a sales opportunity in a GHL pipeline.",
   inputSchema: {
     type: "object",
@@ -114,14 +110,13 @@ mcp.tool({
     },
     required: ["locationId", "pipelineId", "stageId"],
   },
-  handler: async (args) => {
+  handler: async (args: Record<string, unknown>) => {
     const data = await callCrm("createOpportunity", args as Record<string, unknown>);
     return { content: [{ type: "text", text: JSON.stringify(data) }] };
   },
 });
 
-mcp.tool({
-  name: "ghl.contact.tag",
+mcp.tool("ghl.contact.tag", {
   description: "Add tags to an existing GHL contact.",
   inputSchema: {
     type: "object",
@@ -131,13 +126,14 @@ mcp.tool({
     },
     required: ["contactId", "tags"],
   },
-  handler: async (args) => {
+  handler: async (args: Record<string, unknown>) => {
     const data = await callCrm("addContactTag", args as Record<string, unknown>);
     return { content: [{ type: "text", text: JSON.stringify(data) }] };
   },
 });
 
 const transport = new StreamableHttpTransport();
+const httpHandler = transport.bind(mcp);
 const app = new Hono();
 
 const corsHeaders = {
@@ -149,7 +145,7 @@ const corsHeaders = {
 app.options("/*", (c) => new Response("ok", { headers: corsHeaders }));
 
 app.all("/*", async (c) => {
-  const res = await transport.handleRequest(c.req.raw, mcp);
+  const res = await httpHandler(c.req.raw);
   // Re-emit with CORS headers
   const headers = new Headers(res.headers);
   for (const [k, v] of Object.entries(corsHeaders)) headers.set(k, v);

@@ -1,4 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+
+// deno-lint-ignore no-explicit-any
+type RuntimeClient = any;
 import { publicCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { secureJsonResponse, errorResponse } from "../_shared/response.ts";
 import { safeParseBody } from "../_shared/validate.ts";
@@ -142,7 +145,7 @@ function findSurface(sectionType: string): Surface | null {
   ) ?? null;
 }
 
-async function loadRuntimeContext(supabase: ReturnType<typeof createClient>, siteId: string) {
+async function loadRuntimeContext(supabase: RuntimeClient, siteId: string) {
   const [siteResult, runtimeResult, capabilityResult] = await Promise.all([
     supabase.from("sites").select("id,business_id,status").eq("id", siteId).maybeSingle(),
     supabase.from("site_runtime_configs").select("site_id,public_runtime_enabled").eq("site_id", siteId).maybeSingle(),
@@ -167,7 +170,7 @@ async function loadRuntimeContext(supabase: ReturnType<typeof createClient>, sit
 }
 
 async function isSurfaceEnabled(
-  supabase: ReturnType<typeof createClient>,
+  supabase: RuntimeClient,
   siteId: string,
   surface: Surface,
 ): Promise<boolean> {
@@ -206,7 +209,7 @@ Deno.serve(async (req) => {
     console.error("[site-runtime-read] missing Supabase server credentials");
     return errorResponse("Runtime temporarily unavailable", 503, publicCorsHeaders);
   }
-  const supabase = createClient(supabaseUrl, secretKey);
+  const supabase: RuntimeClient = createClient(supabaseUrl, secretKey);
   const context = await loadRuntimeContext(supabase, body.siteId);
   if (!context) return errorResponse("Site runtime is unavailable", 404, publicCorsHeaders);
 
@@ -255,7 +258,8 @@ Deno.serve(async (req) => {
   const { data: directBindings, error: bindingError } = await bindingQuery.order("section_id", { ascending: true });
   if (bindingError) return errorResponse("Catalog binding is unavailable", 404, publicCorsHeaders);
 
-  let binding = directBindings?.[0] ?? null;
+  // deno-lint-ignore no-explicit-any
+  let binding: any = directBindings?.[0] ?? null;
   if (!binding && sectionType) {
     const surface = findSurface(sectionType);
     if (surface) {
@@ -305,7 +309,7 @@ Deno.serve(async (req) => {
   const { data: rows, error: rowsError } = await catalogQuery.limit(limit);
   if (rowsError) return errorResponse("Catalog data is unavailable", 404, publicCorsHeaders);
 
-  const projectedRows = ((rows ?? []) as Array<Record<string, unknown>>).map((row) => projectCard(surface, row));
+  const projectedRows = ((rows ?? []) as unknown as Array<Record<string, unknown>>).map((row) => projectCard(surface, row));
   return secureJsonResponse({
     success: true,
     rows: projectedRows,
