@@ -1,0 +1,36 @@
+{
+  "id": "pricing:feature-table",
+  "sectionType": "pricing",
+  "slug": "feature-table",
+  "name": "Feature Table",
+  "description": "Plan columns over a shared feature checklist with a lifted popular tier",
+  "componentName": "PricingFeatureTable",
+  "componentPath": "./pricing/PricingFeatureTable",
+  "jsxFn": "pricingFeatureTableJSX",
+  "thumbnail": "/variants/pricing-feature-table.svg",
+  "tags": [
+    "pricing",
+    "table",
+    "plans",
+    "commerce"
+  ],
+  "pageRoles": [
+    "home",
+    "pricing",
+    "services"
+  ],
+  "aliases": [
+    "feature-table",
+    "table"
+  ],
+  "generationStatus": "preferred",
+  "recordSlug": "pricing-table",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:8374",
+    "sourceUrl": "https://21st.dev/c/8374",
+    "author": "21st.dev community",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  }
+}

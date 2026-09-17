@@ -1,0 +1,50 @@
+{
+  "sourceId": "21st:19341",
+  "name": "CTA Banner",
+  "sourceUrl": "https://21st.dev/c/19341",
+  "sourceType": "component",
+  "dependencies": [
+    "react"
+  ],
+  "registryDependencies": [],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — CTA Banner by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      }
+    ],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "cta:signal-banner"
+  ]
+}

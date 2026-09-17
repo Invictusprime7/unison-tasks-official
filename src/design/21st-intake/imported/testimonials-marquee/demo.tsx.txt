@@ -1,0 +1,41 @@
+import { TestimonialsSection } from "@/components/blocks/testimonials-with-marquee"
+
+
+const testimonials = [
+  {
+    author: {
+      name: "Emma Thompson",
+      handle: "@emmaai",
+      avatar: "https://cdn.21st.dev/assets/mirror/72/72795790e133d8399b0ae08aa7f605ddb153b6c0e17caa9e4d3f779e366ae02a.jpg"
+    },
+    text: "Using this AI platform has transformed how we handle data analysis. The speed and accuracy are unprecedented.",
+    href: "https://twitter.com/emmaai"
+  },
+  {
+    author: {
+      name: "David Park",
+      handle: "@davidtech",
+      avatar: "https://cdn.21st.dev/assets/mirror/d8/d8e0b55ba06cb79571a9d9eec1fe7c784fe0a180438410700bbc6f24a7ff8c76.jpg"
+    },
+    text: "The API integration is flawless. We've reduced our development time by 60% since implementing this solution.",
+    href: "https://twitter.com/davidtech"
+  },
+  {
+    author: {
+      name: "Sofia Rodriguez",
+      handle: "@sofiaml",
+      avatar: "https://cdn.21st.dev/assets/mirror/b5/b5e0a51f3f066510ff95875091d4de806e305cccf601826efce880394443ab2c.jpg"
+    },
+    text: "Finally, an AI tool that actually understands context! The accuracy in natural language processing is impressive."
+  }
+]
+
+export function TestimonialsSectionDemo() {
+  return (
+    <TestimonialsSection
+      title="Trusted by developers worldwide"
+      description="Join thousands of developers who are already building the future with our AI platform"
+      testimonials={testimonials}
+    />
+  )
+}

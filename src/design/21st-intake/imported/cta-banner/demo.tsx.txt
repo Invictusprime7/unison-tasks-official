@@ -1,0 +1,16 @@
+import { CTABanner } from "@/components/ui/cta-banner"
+
+export default function Default() {
+  return (
+    <div className="flex min-h-[320px] w-full items-center justify-center bg-background p-8">
+      <CTABanner
+        className="w-full max-w-lg"
+        variant="highlight"
+        title="Enter The Grid"
+        description="Join thousands of programs already running on the network. Deploy your first sequence in seconds."
+        primaryAction={{ label: "Initialize" }}
+        secondaryAction={{ label: "Learn More" }}
+      />
+    </div>
+  )
+}

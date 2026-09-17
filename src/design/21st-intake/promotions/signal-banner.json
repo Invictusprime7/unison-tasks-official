@@ -1,0 +1,37 @@
+{
+  "id": "cta:signal-banner",
+  "sectionType": "cta",
+  "slug": "signal-banner",
+  "name": "Signal Banner",
+  "description": "Bracketed banner card with a sweeping accent line and uppercase CTAs",
+  "componentName": "CTASignalBanner",
+  "componentPath": "./cta/CTASignalBanner",
+  "jsxFn": "ctaSignalBannerJSX",
+  "thumbnail": "/variants/cta-signal-banner.svg",
+  "tags": [
+    "cta",
+    "banner",
+    "bold",
+    "conversion"
+  ],
+  "pageRoles": [
+    "home",
+    "shop",
+    "services",
+    "contact"
+  ],
+  "aliases": [
+    "signal-banner",
+    "signal"
+  ],
+  "generationStatus": "preferred",
+  "recordSlug": "cta-banner",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:19341",
+    "sourceUrl": "https://21st.dev/c/19341",
+    "author": "21st.dev community",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "navbar:floating-pill",
+  "sectionType": "navbar",
+  "slug": "floating-pill",
+  "name": "Floating Pill",
+  "description": "Sticky blurred pill bar that detaches from the top edge on scroll",
+  "componentName": "NavbarFloatingPill",
+  "componentPath": "./navbar/NavbarFloatingPill",
+  "jsxFn": "navbarFloatingPillJSX",
+  "thumbnail": "/variants/navbar-floating-pill.svg",
+  "tags": [
+    "navbar",
+    "sticky",
+    "pill",
+    "modern"
+  ],
+  "pageRoles": [
+    "home",
+    "shop",
+    "services",
+    "contact",
+    "about"
+  ],
+  "aliases": [
+    "floating-pill",
+    "floating"
+  ],
+  "generationStatus": "preferred",
+  "recordSlug": "sticky-navbar",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:8137",
+    "sourceUrl": "https://21st.dev/c/8137",
+    "author": "21st.dev community",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  },
+  "radixPrimitives": [
+    "dialog"
+  ]
+}

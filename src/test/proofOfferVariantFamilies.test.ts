@@ -13,10 +13,10 @@ function build(sectionVariants: string[], sections: unknown[]) {
 }
 
 describe('Phase 3 — testimonials and pricing are first-class variant families', () => {
-  it('registers three executable testimonials variants', () => {
+  it('registers the executable testimonials variants', () => {
     const variants = getVariantsForSection('testimonials');
     expect(variants.map((v) => v.id).sort()).toEqual([
-      'testimonials:grid', 'testimonials:rail', 'testimonials:spotlight',
+      'testimonials:grid', 'testimonials:marquee', 'testimonials:rail', 'testimonials:spotlight',
     ]);
     variants.forEach((variant) => {
       expect(variant.component).toBeTruthy();
@@ -26,10 +26,10 @@ describe('Phase 3 — testimonials and pricing are first-class variant families'
     expect(getDefaultVariant('testimonials')?.id).toBe('testimonials:grid');
   });
 
-  it('registers three executable pricing variants', () => {
+  it('registers the executable pricing variants', () => {
     const variants = getVariantsForSection('pricing');
     expect(variants.map((v) => v.id).sort()).toEqual([
-      'pricing:accordion', 'pricing:comparison', 'pricing:tiers',
+      'pricing:accordion', 'pricing:comparison', 'pricing:feature-table', 'pricing:tiers',
     ]);
     variants.forEach((variant) => {
       expect(variant.component).toBeTruthy();

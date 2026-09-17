@@ -1,0 +1,38 @@
+{
+  "id": "footer:brand-social",
+  "sectionType": "footer",
+  "slug": "brand-social",
+  "name": "Brand & Social",
+  "description": "Brand block with social row beside link columns and a legal band",
+  "componentName": "FooterBrandSocial",
+  "componentPath": "./footer/FooterBrandSocial",
+  "jsxFn": "footerBrandSocialJSX",
+  "thumbnail": "/variants/footer-brand-social.svg",
+  "tags": [
+    "footer",
+    "social",
+    "columns",
+    "brand"
+  ],
+  "pageRoles": [
+    "home",
+    "shop",
+    "services",
+    "contact",
+    "about"
+  ],
+  "aliases": [
+    "brand-social",
+    "social"
+  ],
+  "generationStatus": "preferred",
+  "recordSlug": "footer-columns",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:646",
+    "sourceUrl": "https://21st.dev/c/646",
+    "author": "21st.dev community",
+    "license": "MIT (21st.dev community default)",
+    "adaptationVersion": "1"
+  }
+}

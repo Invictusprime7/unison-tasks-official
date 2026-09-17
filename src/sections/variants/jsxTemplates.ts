@@ -1102,3 +1102,107 @@ ${items.map((item, i) => `            <div className="flex flex-col justify-end 
           </div>`;
   return sectionShell('features:bento-grid', c, body);
 }
+
+// ============================================================================
+// 21st.dev certified variants (product cards, CTA, proof, nav, footer, pricing, stats)
+// ============================================================================
+
+export function servicesProductCardsJSX(c: ExtractedSectionContent): string {
+  const items = c.listItems?.length ? c.listItems : ['Signature Piece', 'Everyday Essential', 'Limited Release', 'Studio Favourite'];
+  const body = `          <div className="grid w-full grid-cols-2 gap-6 lg:grid-cols-4">
+${items.map((item) => `            <article className="flex h-full flex-col rounded-[var(--radius)] border border-border bg-card p-5 text-center transition-transform duration-300 hover:-translate-y-1 motion-reduce:transform-none">
+              <div className="mb-4 flex h-40 items-center justify-center rounded-[var(--radius)] bg-muted" />
+              <h3 className="text-base font-semibold text-card-foreground">${esc(item)}</h3>
+              <a href="#products" data-ut-intent="cart.add" className="mt-4 inline-flex w-full items-center justify-center rounded-[var(--radius)] bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Add to Bag</a>
+            </article>`).join('\n')}
+          </div>`;
+  return sectionShell('services:product-cards', c, body);
+}
+
+export function ctaSignalBannerJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="relative w-full overflow-hidden rounded-[var(--radius)] border border-primary/30 bg-card/80 px-6 py-12 text-center">
+            <span className="pointer-events-none absolute left-0 top-0 h-5 w-5 border-l-2 border-t-2 border-primary/50" />
+            <span className="pointer-events-none absolute right-0 top-0 h-5 w-5 border-r-2 border-t-2 border-primary/50" />
+            <span className="pointer-events-none absolute bottom-0 left-0 h-5 w-5 border-b-2 border-l-2 border-primary/50" />
+            <span className="pointer-events-none absolute bottom-0 right-0 h-5 w-5 border-b-2 border-r-2 border-primary/50" />
+${c.heading ? `            <h2 className="text-2xl font-semibold tracking-wide text-foreground md:text-3xl">${esc(c.heading)}</h2>\n` : ''}\
+${c.subheading ? `            <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] border border-primary bg-primary/15 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-primary', 'inline-flex items-center rounded-[var(--radius)] border border-primary/30 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-muted-foreground')}
+            </div>\n` : ''}\
+          </div>`;
+  return sectionShell('cta:signal-banner', c, body);
+}
+
+export function testimonialsMarqueeJSX(c: ExtractedSectionContent): string {
+  const quotes = c.listItems?.length ? c.listItems : ['Exceptional from first contact to delivery.', 'The quality speaks for itself.', 'We keep coming back for every season.'];
+  const row = (marks: string[]) => marks.map((quote) => `              <figure className="m-0 w-[320px] shrink-0 rounded-[var(--radius)] border border-border bg-card p-8">
+                <blockquote className="text-base leading-relaxed text-card-foreground">${esc(quote)}</blockquote>
+              </figure>`).join('\n');
+  const body = `          <div className="flex w-full flex-col gap-6 overflow-hidden">
+            <div className="flex w-max gap-6">
+${row([...quotes, ...quotes])}
+            </div>
+          </div>`;
+  return sectionShell('testimonials:marquee', c, body, 'bg-muted');
+}
+
+export function statsMetricCardsJSX(c: ExtractedSectionContent): string {
+  const items = c.listItems?.length ? c.listItems : ['12k+ orders shipped', '4.9 average rating', '48h dispatch', '30-day returns'];
+  const body = `          <div className="grid w-full grid-cols-2 gap-5 lg:grid-cols-4">
+${items.map((item) => {
+    const [value, ...rest] = item.split(' ');
+    const label = rest.join(' ') || item;
+    return `            <div className="relative overflow-hidden rounded-[var(--radius)] border border-border bg-card p-7">
+              <span className="absolute left-0 top-0 h-full w-1 bg-primary/75" />
+              <span className="block text-4xl font-semibold text-primary">${esc(value)}</span>
+              <span className="mt-2 block text-sm text-muted-foreground">${esc(label)}</span>
+            </div>`;
+  }).join('\n')}
+          </div>`;
+  return sectionShell('stats:metric-cards', c, body);
+}
+
+export function pricingFeatureTableJSX(c: ExtractedSectionContent): string {
+  const tiers = c.listItems?.length ? c.listItems : ['Starter', 'Studio', 'Atelier'];
+  const body = `          <div className="grid w-full gap-6 md:grid-cols-3">
+${tiers.map((tier, i) => `            <div className="flex h-full flex-col rounded-[var(--radius)] border ${i === 1 ? 'border-primary' : 'border-border'} bg-card p-8">
+              <h3 className="text-lg font-semibold text-card-foreground">${esc(tier)}</h3>
+              <span className="mt-4 block text-4xl font-semibold text-card-foreground">$${(i + 1) * 49}</span>
+              <a href="#contact" data-ut-intent="lead.capture" className="mt-6 inline-flex w-full items-center justify-center rounded-[var(--radius)] bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground">Get started</a>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('pricing:feature-table', c, body, 'bg-muted');
+}
+
+export function navbarFloatingPillJSX(c: ExtractedSectionContent): string {
+  return `      <header className="fixed left-0 right-0 top-0 z-50 px-6 pt-4 backdrop-blur-md" data-variant="navbar:floating-pill">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/80 px-6">
+          <a href="#" className="text-base font-semibold tracking-tight text-foreground">${esc(c.brandName || 'Studio')}</a>
+          <nav className="hidden items-center gap-7 md:flex">
+${renderLinks(c.navLinks, 'text-sm text-muted-foreground hover:opacity-80')}
+          </nav>
+${c.ctaButtons?.length ? `          <a href="${c.ctaButtons[0].href}" className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">${esc(c.ctaButtons[0].text)}</a>` : ''}
+        </div>
+      </header>`;
+}
+
+export function footerBrandSocialJSX(c: ExtractedSectionContent): string {
+  const socials = ['Instagram', 'LinkedIn', 'YouTube'];
+  return `      <footer className="border-t border-border bg-card" data-variant="footer:brand-social">
+        <div className="mx-auto grid max-w-6xl gap-12 px-6 py-16 md:grid-cols-[1.4fr_2fr]">
+          <div>
+            <span className="block text-xl font-semibold text-foreground">${esc(c.brandName || 'Studio')}</span>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+${socials.map((s) => `              <a href="#" aria-label="${s}" className="inline-flex h-9 items-center rounded-full border border-border px-3 text-xs font-medium text-muted-foreground">${s}</a>`).join('\n')}
+            </div>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+${renderLinks(c.navLinks, 'text-sm text-muted-foreground hover:opacity-80')}
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-border px-6 py-6 text-center text-xs text-muted-foreground">© ${new Date().getFullYear()} ${esc(c.brandName || 'Studio')}. All rights reserved.</div>
+      </footer>`;
+}
