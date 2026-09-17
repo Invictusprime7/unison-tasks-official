@@ -224,6 +224,7 @@ export interface SectionPropsMap {
     items: GalleryItem[];
     columns?: 2 | 3 | 4;
     filterable?: boolean;
+    layout?: 'grid' | 'masonry' | 'lightbox-grid' | 'collection-tiles';
   };
   faq: {
     headline?: string;
