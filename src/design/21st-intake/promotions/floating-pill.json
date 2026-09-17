@@ -34,5 +34,8 @@
     "author": "21st.dev community",
     "license": "MIT (21st.dev community default)",
     "adaptationVersion": "1"
-  }
+  },
+  "radixPrimitives": [
+    "Dialog"
+  ]
 }

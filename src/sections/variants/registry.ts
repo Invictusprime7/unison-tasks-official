@@ -591,6 +591,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/navbar-floating-pill.svg',
       tags: ['navbar', 'sticky', 'pill', 'modern'],
       pageRoles: ['home', 'shop', 'services', 'contact', 'about'],
+      radixPrimitives: ['Dialog'],
       renderJSX: navbarFloatingPillJSX,
     },
     {

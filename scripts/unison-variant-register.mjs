@@ -54,7 +54,7 @@ function entrySource(spec) {
       },
       generationStatus: '${spec.generationStatus || 'preferred'}',
       thumbnail: '${spec.thumbnail}',
-      tags: [${tags}],${roles ? `\n      pageRoles: [${roles}],` : ''}
+      tags: [${tags}],${roles ? `\n      pageRoles: [${roles}],` : ''}${spec.radixPrimitives ? `\n      radixPrimitives: [${spec.radixPrimitives.map((r) => `'${r}'`).join(', ')}],` : ''}
       renderJSX: ${spec.jsxFn},
     },
 `;
