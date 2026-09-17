@@ -869,3 +869,147 @@ ${memberPortrait('              ', c.imageSrc, m.name, 'aspect-square rounded-[v
           </div>`;
   return sectionShell('team:lead-spotlight', c, body);
 }
+
+// ============================================================================
+// Logo Cloud / Blog Preview / Before-After Variants (Phase 3 first-class families)
+// ============================================================================
+
+function logoMarks(c: ExtractedSectionContent, count: number): string[] {
+  const names = c.listItems?.length ? c.listItems : ['Northwind', 'Harbor & Co', 'Atlas Group', 'Meridian', 'Fieldhouse'];
+  return Array.from({ length: Math.max(count, names.length) }, (_, i) => names[i % names.length]);
+}
+
+export function logoCloudGridJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid grid-cols-2 items-center gap-8 sm:grid-cols-3 md:grid-cols-5">
+${logoMarks(c, 5).map((name) => `            <div className="flex items-center justify-center rounded-[var(--radius)] border border-border py-4">
+              <span className="text-lg font-semibold text-muted-foreground">${esc(name)}</span>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('logo-cloud:grid', c, body, 'bg-muted');
+}
+
+export function logoCloudMarqueeJSX(c: ExtractedSectionContent): string {
+  const marks = logoMarks(c, 5);
+  const body = `          <div className="overflow-hidden">
+            <div className="flex w-max items-center gap-16 opacity-75">
+${[...marks, ...marks].map((name) => `              <span className="shrink-0 text-lg font-semibold text-muted-foreground">${esc(name)}</span>`).join('\n')}
+            </div>
+          </div>`;
+  return sectionShell('logo-cloud:marquee', c, body);
+}
+
+export function logoCloudBrandLockupJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid items-center gap-10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
+            <p className="text-2xl font-semibold text-foreground">${esc(c.heading || 'Trusted by teams who care about the details')}</p>
+            <div className="grid grid-cols-2 gap-x-10 gap-y-6 sm:grid-cols-3">
+${logoMarks(c, 6).map((name) => `              <span className="border-b border-border pb-3 text-lg font-semibold text-muted-foreground">${esc(name)}</span>`).join('\n')}
+            </div>
+          </div>`;
+  return sectionShell('logo-cloud:brand-lockup', c, body, 'bg-muted');
+}
+
+function previewPosts(c: ExtractedSectionContent, count: number): Array<{ title: string; excerpt: string }> {
+  const titles = c.listItems?.length ? c.listItems : ['What to expect from your first visit', 'Care that lasts between appointments', 'Behind the work we are proudest of'];
+  return Array.from({ length: Math.max(count, titles.length) }, (_, i) => ({
+    title: titles[i % titles.length],
+    excerpt: 'A short read on how we work and what it means for your result.',
+  }));
+}
+
+function postCard(post: { title: string; excerpt: string }, indent: string): string {
+  return `${indent}<article className="flex flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-card p-6 text-card-foreground">
+${indent}  <h3 className="mb-2 text-lg font-semibold">${esc(post.title)}</h3>
+${indent}  <p className="mb-4 text-sm leading-relaxed text-muted-foreground">${esc(post.excerpt)}</p>
+${indent}  <a href="#" className="mt-auto text-sm font-semibold text-primary no-underline">Read more</a>
+${indent}</article>`;
+}
+
+export function blogPreviewEditorialJSX(c: ExtractedSectionContent): string {
+  const [lead, ...rest] = previewPosts(c, 3);
+  const body = `          <div className="grid gap-10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <article className="flex flex-col">
+              <h3 className="mb-3 text-2xl font-semibold text-foreground">${esc(lead.title)}</h3>
+              <p className="mb-5 text-base leading-relaxed text-muted-foreground">${esc(lead.excerpt)}</p>
+              <a href="#" className="text-sm font-semibold text-primary no-underline">Read the story</a>
+            </article>
+            <div className="flex flex-col">
+${rest.map((post, i) => `              <article className="flex flex-col py-6${i === 0 ? '' : ' border-t border-border'}">
+                <h3 className="mb-2 text-lg font-semibold text-foreground">${esc(post.title)}</h3>
+                <p className="mb-3 text-sm leading-relaxed text-muted-foreground">${esc(post.excerpt)}</p>
+                <a href="#" className="text-sm font-semibold text-primary no-underline">Read more</a>
+              </article>`).join('\n')}
+            </div>
+          </div>`;
+  return sectionShell('blog-preview:editorial', c, body);
+}
+
+export function blogPreviewFeaturedGridJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+${previewPosts(c, 3).map((post) => postCard(post, '            ')).join('\n')}
+          </div>`;
+  return sectionShell('blog-preview:featured-grid', c, body, 'bg-muted');
+}
+
+export function blogPreviewHorizontalRailJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4">
+${previewPosts(c, 3).map((post) => `            <div className="w-80 shrink-0 snap-start">
+${postCard(post, '              ')}
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('blog-preview:horizontal-rail', c, body);
+}
+
+function transformationPairs(c: ExtractedSectionContent, count: number): Array<{ label: string }> {
+  const labels = c.listItems?.length ? c.listItems : ['Full restoration', 'Colour correction', 'Complete refresh'];
+  return Array.from({ length: Math.max(count, labels.length) }, (_, i) => ({ label: labels[i % labels.length] }));
+}
+
+function pairFigure(src: string | undefined, label: string, indent: string, aspect: string): string {
+  const media = src
+    ? `<img src="${src}" alt="${esc(label)}" loading="lazy" className="w-full ${aspect} object-cover" />`
+    : `<div className="w-full ${aspect} bg-muted" />`;
+  return `${indent}<div className="relative">
+${indent}  ${media}
+${indent}  <span className="absolute left-3 top-3 rounded-full bg-foreground/80 px-2.5 py-1 text-[length:var(--ut-eyebrow-size)] font-semibold uppercase text-background">${esc(label)}</span>
+${indent}</div>`;
+}
+
+export function beforeAfterSliderJSX(c: ExtractedSectionContent): string {
+  const body = `          <figure className="m-0 mx-auto max-w-3xl">
+            <div className="grid grid-cols-2 overflow-hidden rounded-[var(--radius)] border border-border">
+${pairFigure(c.imageSrc, 'Before', '              ', 'aspect-[4/3]')}
+${pairFigure(c.imageSrc, 'After', '              ', 'aspect-[4/3]')}
+            </div>
+            <figcaption className="mt-4 text-center text-sm text-muted-foreground">${esc(c.subheading || 'Drag to compare the finished result.')}</figcaption>
+          </figure>`;
+  return sectionShell('before-after:slider', c, body, 'bg-muted');
+}
+
+export function beforeAfterGridJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-8 sm:grid-cols-2">
+${transformationPairs(c, 2).map((pair) => `            <figure className="m-0 overflow-hidden rounded-[var(--radius)] border border-border bg-card">
+              <div className="grid grid-cols-2">
+${pairFigure(c.imageSrc, 'Before', '                ', 'aspect-square')}
+${pairFigure(c.imageSrc, 'After', '                ', 'aspect-square')}
+              </div>
+              <figcaption className="p-4 text-sm text-muted-foreground">${esc(pair.label)}</figcaption>
+            </figure>`).join('\n')}
+          </div>`;
+  return sectionShell('before-after:grid', c, body, 'bg-muted');
+}
+
+export function beforeAfterCaseStudyJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="flex flex-col gap-14">
+${transformationPairs(c, 2).map((pair) => `            <article className="grid items-center gap-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <div className="grid grid-cols-2 gap-3">
+${pairFigure(c.imageSrc, 'Before', '                ', 'aspect-[3/4] rounded-[var(--radius)]')}
+${pairFigure(c.imageSrc, 'After', '                ', 'aspect-[3/4] rounded-[var(--radius)]')}
+              </div>
+              <div>
+                <h3 className="mb-3 text-2xl font-semibold text-foreground">${esc(pair.label)}</h3>
+                <p className="text-base leading-relaxed text-muted-foreground">A considered plan, careful execution and a finish the client can maintain.</p>
+              </div>
+            </article>`).join('\n')}
+          </div>`;
+  return sectionShell('before-after:case-study', c, body);
+}
