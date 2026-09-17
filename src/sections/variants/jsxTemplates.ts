@@ -1045,9 +1045,9 @@ export function galleryCollectionTilesJSX(c: ExtractedSectionContent): string {
   const tiles = galleryTiles(c, 4);
   const grid = `          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
 ${tiles.map((t) => `            <a href="#" className="group relative block min-h-[18rem] overflow-hidden rounded-3xl bg-gray-100 p-6">
-              <h3 className="relative z-10 my-2 text-center text-2xl font-bold text-blue-600 sm:text-3xl">${esc(t.caption || t.alt || '')}</h3>
+              <h3 className="relative z-10 my-2 text-center text-2xl font-bold text-blue-600 sm:text-3xl">${esc(t.caption || '')}</h3>
               <div className="absolute inset-0 flex items-center justify-center p-6">
-                <img src="${t.src}" alt="${esc(t.alt || '')}" loading="lazy" className="h-auto w-full max-w-[45%] object-contain opacity-90 transition-transform duration-500 group-hover:scale-110" />
+                <img src="${t.src}" alt="${esc(t.caption || '')}" loading="lazy" className="h-auto w-full max-w-[45%] object-contain opacity-90 transition-transform duration-500 group-hover:scale-110" />
               </div>
               <div className="absolute bottom-0 right-0 z-10 flex h-16 w-16 items-center justify-center rounded-tl-2xl border-l border-t border-gray-200 bg-white md:h-20 md:w-20">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-900 text-white transition-transform duration-300 group-hover:scale-110 md:h-12 md:w-12">&#8599;</span>
