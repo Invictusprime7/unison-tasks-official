@@ -430,7 +430,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       generationStatus: 'preferred',
       thumbnail: '/variants/hero-prisma-cinematic.svg',
       tags: ['hero', 'cinematic', 'editorial', 'full-bleed', 'media'],
-      pageRoles: ['home', 'about'],
+      pageRoles: ['home'],
       renderJSX: heroPrismaCinematicJSX,
     },
     {

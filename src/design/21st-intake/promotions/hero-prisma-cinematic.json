@@ -9,7 +9,7 @@
   "jsxFn": "heroPrismaCinematicJSX",
   "thumbnail": "/variants/hero-prisma-cinematic.svg",
   "tags": ["hero", "cinematic", "editorial", "full-bleed", "media"],
-  "pageRoles": ["home", "about"],
+  "pageRoles": ["home"],
   "aliases": ["prisma-cinematic", "cinematic"],
   "generationStatus": "preferred",
   "recordSlug": "component-12200",
