@@ -27,6 +27,9 @@ import { ContactSection } from './components/ContactSection';
 import { FooterSection } from './components/FooterSection';
 import { StatsSection } from './components/StatsSection';
 import { AboutSection } from './components/AboutSection';
+import { LogoCloudGrid } from './variants/logoCloud/LogoCloudGrid';
+import { BlogPreviewEditorial } from './variants/blogPreview/BlogPreviewEditorial';
+import { BeforeAfterSlider } from './variants/beforeAfter/BeforeAfterSlider';
 
 // ============================================================================
 // Registry
@@ -118,19 +121,22 @@ const SECTION_REGISTRY: Record<SectionType, SectionRegistryEntry> = {
     description: 'About section with text and image',
   },
   'logo-cloud': {
-    component: StatsSection, // Placeholder — will build dedicated component later
+    component: LogoCloudGrid,
     label: 'Logo Cloud',
     category: 'social-proof',
+    description: 'Partner and client marks arranged as a trust grid',
   },
   'blog-preview': {
-    component: AboutSection, // Placeholder
+    component: BlogPreviewEditorial,
     label: 'Blog Preview',
     category: 'content',
+    description: 'Lead article beside a list of recent posts',
   },
   'before-after': {
-    component: GallerySection, // Placeholder
+    component: BeforeAfterSlider,
     label: 'Before & After',
     category: 'content',
+    description: 'Comparison of transformation results',
   },
 };
 
