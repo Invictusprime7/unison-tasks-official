@@ -1,0 +1,52 @@
+{
+  "sourceId": "21st:9206",
+  "name": "Bento Product Features",
+  "sourceUrl": "https://21st.dev/c/9206",
+  "sourceType": "component",
+  "dependencies": [
+    "framer-motion",
+    "react"
+  ],
+  "registryDependencies": [],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — Bento Product Features by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 3,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "framer-motion",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      }
+    ],
+    "approved": true
+  }
+}
