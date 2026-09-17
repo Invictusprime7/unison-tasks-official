@@ -31,7 +31,7 @@ import {
   galleryEditorialMosaicJSX, galleryMasonryJSX, galleryCinematicGridJSX,
   galleryLightboxGridJSX, galleryFeatureSplitJSX, galleryHorizontalReelJSX,
   galleryCollectionTilesJSX, heroCommerceGradientJSX,
-  heroShowcasePanelJSX, logoCloudWordmarkRowJSX,
+  heroShowcasePanelJSX, logoCloudWordmarkRowJSX, featuresBentoGridJSX,
   testimonialsGridJSX, testimonialsRailJSX, testimonialsSpotlightJSX,
   pricingTiersJSX, pricingComparisonJSX, pricingAccordionJSX,
   aboutEditorialSplitJSX, aboutStatementJSX, aboutStoryPanelJSX,
@@ -65,6 +65,7 @@ import { HeroSplitImage } from './hero/HeroSplitImage';
 import { HeroFullBleed } from './hero/HeroFullBleed';
 import { HeroCommerceGradient } from './hero/HeroCommerceGradient';
 import { HeroShowcasePanel } from './hero/HeroShowcasePanel';
+import { FeaturesBentoGrid } from './features/FeaturesBentoGrid';
 import { LogoCloudWordmarkRow } from './logoCloud/LogoCloudWordmarkRow';
 import { HeroPageTitle, HeroEditorialBanner } from './hero/HeroPageIntro';
 import { heroPageTitleJSX, heroEditorialBannerJSX } from './hero/heroPageIntroJSX';
