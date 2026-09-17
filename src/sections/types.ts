@@ -275,6 +275,7 @@ export interface SectionPropsMap {
   'logo-cloud': {
     headline?: string;
     logos: { name: string; src?: string }[];
+    layout?: 'grid' | 'marquee' | 'wordmark-row';
   };
   'blog-preview': {
     headline?: string;
