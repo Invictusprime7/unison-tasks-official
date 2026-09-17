@@ -224,7 +224,8 @@ export interface SectionPropsMap {
     items: GalleryItem[];
     columns?: 2 | 3 | 4;
     filterable?: boolean;
-    layout?: 'grid' | 'masonry' | 'lightbox-grid' | 'collection-tiles';
+    /** Variant slug or legacy layout alias — resolved by the gallery renderer. */
+    layout?: string;
   };
   faq: {
     headline?: string;
