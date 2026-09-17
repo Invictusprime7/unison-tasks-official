@@ -1180,9 +1180,39 @@ export default function Pricing({ props, variantId }: { props: any; variantId?: 
   return <Component section={{ type: 'pricing', variantId: resolvedId, props }} theme={THEME} />;
 }
 `,
-  LogoCloud: LOGO_CLOUD_MODULE,
-  BlogPreview: BLOG_PREVIEW_MODULE,
-  BeforeAfter: BEFORE_AFTER_MODULE,
+  LogoCloud: `import { REGISTERED_VARIANTS } from './recipes/LogoCloud';
+${LOGO_CLOUD_MODULE.replace('export default function LogoCloud', 'function LegacyLogoCloud')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('logo-cloud').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function LogoCloud({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'logo-cloud:grid';
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyLogoCloud props={props} />;
+  return <Component section={{ type: 'logo-cloud', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
+  BlogPreview: `import { REGISTERED_VARIANTS } from './recipes/BlogPreview';
+${BLOG_PREVIEW_MODULE.replace('export default function BlogPreview', 'function LegacyBlogPreview')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('blog-preview').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function BlogPreview({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'blog-preview:editorial';
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyBlogPreview props={props} />;
+  return <Component section={{ type: 'blog-preview', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
+  BeforeAfter: `import { REGISTERED_VARIANTS } from './recipes/BeforeAfter';
+${BEFORE_AFTER_MODULE.replace('export default function BeforeAfter', 'function LegacyBeforeAfter')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('before-after').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function BeforeAfter({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'before-after:slider';
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyBeforeAfter props={props} />;
+  return <Component section={{ type: 'before-after', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Testimonials: `import { REGISTERED_VARIANTS } from './recipes/Testimonials';
 ${TESTIMONIALS_MODULE.replace('export default function Testimonials', 'function LegacyTestimonials')}
 import { THEME } from './theme';
@@ -1810,6 +1840,15 @@ export function compositionToReactFileSet(
   }
   if (sectionMap.components.has('Team')) {
     files['/src/components/recipes/Team.ts'] = stylexRecipes.families.team;
+  }
+  if (sectionMap.components.has('LogoCloud')) {
+    files['/src/components/recipes/LogoCloud.ts'] = stylexRecipes.families['logo-cloud'];
+  }
+  if (sectionMap.components.has('BlogPreview')) {
+    files['/src/components/recipes/BlogPreview.ts'] = stylexRecipes.families['blog-preview'];
+  }
+  if (sectionMap.components.has('BeforeAfter')) {
+    files['/src/components/recipes/BeforeAfter.ts'] = stylexRecipes.families['before-after'];
   }
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;
