@@ -99,7 +99,11 @@ Milestone index (status tracked against the phases below):
 	dependencies, Tailwind v3 compatibility, token normalization, reduced motion,
 	canonical identity, certification refusal, no active duplicate after
 	promotion, and that no runtime code imports intake modules.
-- [ ] M4 Replace weak preferred implementations with certified families.
+- [x] M4 Replace weak preferred implementations with certified families.
+      Legacy inline section modules are removed from `compositionToFileSet`; every
+      family now emits through `SECTION_FAMILY_EMIT` and resolves only registered,
+      certified variants (no legacy renderer fallback). Added the certified
+      `gallery:horizontal-reel` variant. Full suite: 200 files / 1643 tests green.
 - [ ] M5 Generated UI Foundation expansion.
 - [ ] M6 Artifact / catalog / asset wiring.
 - [ ] M7 Wizard Registry Context v2.

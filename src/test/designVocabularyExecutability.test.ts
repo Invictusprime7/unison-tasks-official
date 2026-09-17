@@ -47,6 +47,7 @@ describe('design vocabulary executability', () => {
       'content:comparison',
       'media:masonry',
       'media:lightbox',
+      'media:filmstrip',
       'navigation:split',
     ]);
     // Phase 5 closes this by registering implementations, never by trimming

@@ -32,16 +32,19 @@ describe('canonical design implementation registry', () => {
     }
   });
 
-  it('gives variant-less families a generic identity', () => {
-    const impl = getDesignImplementation('logo-cloud:generic');
-    expect(impl?.hasVariants).toBe(false);
-    expect(impl?.isDefault).toBe(true);
+  it('M4: every sanctioned family resolves to a certified registered default', () => {
+    for (const type of Object.keys(getAllSections())) {
+      const resolved = resolveImplementationId(type as SectionType, undefined);
+      expect(isRegisteredImplementation(resolved), `${type} has no registered default`).toBe(true);
+      const impl = getDesignImplementation(resolved);
+      expect(impl?.sectionType, type).toBe(type);
+    }
   });
 
   it('resolves identities only through registered entries', () => {
     expect(resolveImplementationId('hero', 'hero:split-image')).toBe('hero:split-image');
     expect(resolveImplementationId('hero', 'hero:not-real')).toBe('hero:centered');
-    expect(resolveImplementationId('logo-cloud', undefined)).toBe('logo-cloud:generic');
+    expect(resolveImplementationId('logo-cloud', undefined)).toBe('logo-cloud:brand-lockup');
     expect(resolveImplementationId('faq', undefined)).toBe('faq:accordion');
     expect(isRegisteredImplementation('hero:not-real')).toBe(false);
   });

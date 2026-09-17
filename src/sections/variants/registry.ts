@@ -29,7 +29,7 @@ import {
   contactCenteredJSX, contactSplitCardJSX, contactMinimalInlineJSX,
   footerColumnsJSX, footerCenteredMinimalJSX, footerDarkBandJSX,
   galleryEditorialMosaicJSX, galleryMasonryJSX, galleryCinematicGridJSX,
-  galleryLightboxGridJSX, galleryFeatureSplitJSX,
+  galleryLightboxGridJSX, galleryFeatureSplitJSX, galleryHorizontalReelJSX,
   testimonialsGridJSX, testimonialsRailJSX, testimonialsSpotlightJSX,
   pricingTiersJSX, pricingComparisonJSX, pricingAccordionJSX,
   aboutEditorialSplitJSX, aboutStatementJSX, aboutStoryPanelJSX,
@@ -95,6 +95,7 @@ import { GalleryMasonry } from './gallery/GalleryMasonry';
 import { GalleryCinematicGrid } from './gallery/GalleryCinematicGrid';
 import { GalleryLightboxGrid } from './gallery/GalleryLightboxGrid';
 import { GalleryFeatureSplit } from './gallery/GalleryFeatureSplit';
+import { GalleryHorizontalReel } from './gallery/GalleryHorizontalReel';
 
 // Testimonials variants (Phase 3 — first-class proof family)
 import { TestimonialsGrid } from './testimonials/TestimonialsGrid';
@@ -287,6 +288,20 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/gallery-feature-split.svg',
       tags: ['split', 'feature'],
       renderJSX: galleryFeatureSplitJSX,
+    },
+    {
+      id: 'gallery:horizontal-reel',
+      sectionType: 'gallery',
+      slug: 'horizontal-reel',
+      name: 'Horizontal Reel',
+      description: 'Scroll-snapped filmstrip for sequential, story-led image sets',
+      component: GalleryHorizontalReel,
+      vfs: { mode: 'portable-recipe' },
+      radixPrimitives: ['dialog'],
+      vocabulary: { category: 'media', id: 'filmstrip' },
+      thumbnail: '/variants/gallery-horizontal-reel.svg',
+      tags: ['reel', 'filmstrip', 'sequential'],
+      renderJSX: galleryHorizontalReelJSX,
     },
   ],
   hero: [
@@ -965,6 +980,7 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'gallery:cinematic-grid': ['grid', 'cinematic-grid'],
   'gallery:lightbox-grid': ['lightbox', 'lightbox-grid'],
   'gallery:feature-split': ['feature-split', 'split'],
+  'gallery:horizontal-reel': ['reel', 'horizontal-reel', 'filmstrip'],
   'testimonials:grid': ['grid'],
   'testimonials:rail': ['carousel', 'rail'],
   'testimonials:spotlight': ['single', 'spotlight'],

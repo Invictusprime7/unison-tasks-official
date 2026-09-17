@@ -34,15 +34,17 @@ describe('M1 — semantic section projection', () => {
   });
 
   it('gallery renderer consumes src/alt/caption/category', () => {
-    const gallery = files['/src/components/Gallery.tsx'];
+    const gallery = files['/src/components/recipes/Gallery.ts'];
     expect(gallery).toContain('item.caption');
     expect(gallery).toContain('item.category');
-    expect(gallery).toContain('data-ut-variant="gallery:');
+    expect(gallery).toContain('data-ut-variant');
+    expect(files['/src/components/Gallery.tsx']).toContain('"gallery:');
   });
 
   it('pricing renderer consumes tiers and features', () => {
-    const pricing = files['/src/components/Pricing.tsx'];
+    const pricing = files['/src/components/recipes/Pricing.ts'];
     expect(pricing).toContain('tier.features');
-    expect(pricing).toContain('data-ut-variant="pricing:tiers"');
+    expect(pricing).toContain('"pricing:tiers"');
+    expect(files['/src/components/Pricing.tsx']).toContain('"pricing:tiers"');
   });
 });
