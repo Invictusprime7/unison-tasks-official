@@ -313,7 +313,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Collection Tiles',
       description: 'Commerce collection tiles with centered product art and corner arrow affordance',
       component: GalleryCollectionTiles,
-      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      vfs: { mode: 'portable-recipe' },
       source: {
         origin: '21st',
         sourceId: '21st:4927',
@@ -392,7 +392,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Commerce Gradient',
       description: 'Rounded accent band with gradient-clipped headline for storefront landings',
       component: HeroCommerceGradient,
-      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      vfs: { mode: 'portable-recipe' },
       source: {
         origin: '21st',
         sourceId: '21st:4927',
