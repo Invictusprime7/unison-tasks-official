@@ -692,7 +692,6 @@ export default function Team({ props }: { props: any }) {
 }
 `;
 
-const FAQ_MODULE = stylexRecipes.faqModule;
 
 const LEGACY_GALLERY_MODULE = `import React, { useEffect, useMemo, useState } from 'react';
 
@@ -1126,7 +1125,17 @@ export default function Hero({ props, variantId }: { props: any; variantId?: str
   return <Component section={{ type: 'hero', variantId: resolvedId, props }} theme={THEME} />;
 }
 `,
-  About: ABOUT_MODULE,
+  About: `import { REGISTERED_VARIANTS } from './recipes/About';
+${ABOUT_MODULE.replace('export default function About', 'function LegacyAbout')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('about').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function About({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'about:editorial-split';
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyAbout props={props} />;
+  return <Component section={{ type: 'about', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Services: `import { REGISTERED_VARIANTS } from './recipes/Services';
 ${SERVICES_MODULE.replace('export default function Services', 'function LegacyServices')}
 import { THEME } from './theme';
@@ -1218,9 +1227,37 @@ export default function Footer({ props, variantId }: { props: any; variantId?: s
   return <Component section={{ type: 'footer', variantId: resolvedId, props }} theme={THEME} />;
 }
 `,
-  Stats: STATS_MODULE,
-  Team: TEAM_MODULE,
-  FAQ: FAQ_MODULE,
+  Stats: `import { REGISTERED_VARIANTS } from './recipes/Stats';
+${STATS_MODULE.replace('export default function Stats', 'function LegacyStats')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('stats').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Stats({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'stats:row';
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyStats props={props} />;
+  return <Component section={{ type: 'stats', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
+  Team: `import { REGISTERED_VARIANTS } from './recipes/Team';
+${TEAM_MODULE.replace('export default function Team', 'function LegacyTeam')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('team').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Team({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'team:portrait-grid';
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyTeam props={props} />;
+  return <Component section={{ type: 'team', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
+  FAQ: `import { REGISTERED_VARIANTS } from './recipes/FAQ';
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('faq').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function FAQ({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'faq:accordion';
+  const Component = REGISTERED_VARIANTS[resolvedId] || REGISTERED_VARIANTS['faq:accordion'];
+  return <Component section={{ type: 'faq', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
 };
 
 
@@ -1761,6 +1798,18 @@ export function compositionToReactFileSet(
   }
   if (sectionMap.components.has('Testimonials')) {
     files['/src/components/recipes/Testimonials.ts'] = stylexRecipes.families.testimonials;
+  }
+  if (sectionMap.components.has('About')) {
+    files['/src/components/recipes/About.ts'] = stylexRecipes.families.about;
+  }
+  if (sectionMap.components.has('FAQ')) {
+    files['/src/components/recipes/FAQ.ts'] = stylexRecipes.families.faq;
+  }
+  if (sectionMap.components.has('Stats')) {
+    files['/src/components/recipes/Stats.ts'] = stylexRecipes.families.stats;
+  }
+  if (sectionMap.components.has('Team')) {
+    files['/src/components/recipes/Team.ts'] = stylexRecipes.families.team;
   }
   for (const module of sectionMap.variantModules) {
     files[module.path] = module.content;

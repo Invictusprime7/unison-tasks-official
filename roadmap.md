@@ -43,12 +43,21 @@ model may be introduced, and generated sites carry no live 21st dependency.
 
 Milestone index (status tracked against the phases below):
 
-- [ ] M1 Canonical variant -> VFS parity. Partially met: navbar, hero, services,
-	features, pricing, gallery, testimonials, CTA, contact and footer resolve
-	registered variants first, with the hard-coded modules demoted to `Legacy*`
-	fallbacks inside `src/sections/compositionToFileSet.ts`. Still emitting
-	module-only output with no registered variant: about, stats, team, faq,
-	logo-cloud, blog-preview, before-after.
+- [ ] M1 Canonical variant -> VFS parity. Fourteen families now resolve
+	registered variants first through the portable-recipe path: navbar, hero,
+	services, features, pricing, gallery, testimonials, CTA, contact, footer and
+	— new in this batch — about, faq, stats and team. Their twelve registered
+	implementations are marked `vfs: { mode: 'portable-recipe' }`, certified by
+	`scripts/build-stylex-recipes.mjs`, emitted as
+	`/src/components/recipes/{About,FAQ,Stats,Team}.ts`, and the previous
+	hard-coded modules are demoted to `Legacy*` fallbacks inside
+	`src/sections/compositionToFileSet.ts` (FAQ falls back to `faq:accordion`
+	rather than a legacy module). `src/test/narrativeFamilyCompilerConvergence.test.ts`
+	proves registry metadata, recipe bytes and emitted identity for all twelve.
+	Remaining: logo-cloud, blog-preview and before-after still emit module-only
+	placeholders with no registered variant (Phase 3 owns their replacement), and
+	the exit condition still needs persisted Preview/publish runtime evidence for
+	the four new families.
 - [ ] M2 Registry authority cleanup (retire `src/data/siteElementsLibrary/*`,
 	demote `componentIntelligenceRegistry.ts`, remove double-authored variants).
 - [ ] M3 21st intake / certification infrastructure (intake record, ten-step
