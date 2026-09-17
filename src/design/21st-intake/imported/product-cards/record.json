@@ -1,0 +1,74 @@
+{
+  "sourceId": "21st:26630",
+  "name": "Product Hero with Demo Panel",
+  "sourceUrl": "https://21st.dev/c/26630",
+  "sourceType": "component",
+  "dependencies": [
+    "motion",
+    "react",
+    "react-wrap-balancer"
+  ],
+  "registryDependencies": [
+    "hero-14-utils/block-builder-demo",
+    "hero-14-utils/cta"
+  ],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — Product Hero with Demo Panel by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": true,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false,
+    "tokensRebound": true,
+    "reducedMotion": true,
+    "identityStamped": true,
+    "portableVfsCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": {
+      "0": {
+        "dep": "motion",
+        "verdict": "unknown",
+        "reason": "Not on the allowlist — requires manual review"
+      },
+      "1": {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      "2": {
+        "dep": "react-wrap-balancer",
+        "verdict": "unknown",
+        "reason": "Not on the allowlist — requires manual review"
+      },
+      "motion": "removed — replaced with CSS reveal gated on prefers-reduced-motion",
+      "react-wrap-balancer": "removed — native text-balance",
+      "@/components/ui/hero-14-utils/cta": "replaced with canonical Unison CTA slots",
+      "@/components/ui/hero-14-utils/block-builder-demo": "replaced with Unison hero media slot"
+    },
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:showcase-panel",
+    "logo-cloud:wordmark-row"
+  ]
+}

@@ -1056,3 +1056,49 @@ ${tiles.map((t) => `            <a href="#" className="group relative block min-
           </div>`;
   return galleryShell('gallery:collection-tiles', c, grid);
 }
+
+export function heroShowcasePanelJSX(c: ExtractedSectionContent): string {
+  const media = c.imageSrc
+    ? `            <div className="relative w-full overflow-hidden rounded-2xl border border-gray-200">
+              <img src="${c.imageSrc}" alt="${esc(c.imageAlt || c.heading || '')}" loading="lazy" className="h-72 w-full object-cover sm:h-96" />
+            </div>\n`
+    : '';
+  return `      <section className="relative isolate w-full overflow-hidden py-20 sm:py-28 bg-white" data-variant="hero:showcase-panel">
+        <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-10 px-6 sm:gap-14">
+          <div className="flex w-full max-w-2xl flex-col items-center gap-5 text-center">
+${c.badge ? `            <span className="inline-block rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-blue-600">${esc(c.badge)}</span>\n` : ''}\
+${c.heading ? `            <h1 className="text-balance text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl md:text-5xl">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `            <p className="max-w-xl text-balance text-sm leading-relaxed text-gray-600 sm:text-base">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `            <div className="flex flex-wrap items-center justify-center gap-3">
+${renderButtons(c.ctaButtons, 'inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700', 'inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50')}
+            </div>\n` : ''}\
+          </div>
+${media}\
+        </div>
+      </section>`;
+}
+
+export function logoCloudWordmarkRowJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="flex w-full flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-border pt-8 sm:pt-10">
+${logoMarks(c, 5).map((name) => `            <span className="text-sm font-semibold tracking-tight text-muted-foreground/70">${esc(name)}</span>`).join('\n')}
+          </div>`;
+  return sectionShell('logo-cloud:wordmark-row', c, body);
+}
+
+export function featuresBentoGridJSX(c: ExtractedSectionContent): string {
+  const spans = [
+    'md:col-span-1 md:row-span-3',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-1 md:row-span-1',
+    'md:col-span-2 md:row-span-1',
+  ];
+  const items = c.listItems || [];
+  const body = `          <div className="grid w-full auto-rows-[minmax(180px,auto)] grid-cols-1 gap-6 md:grid-cols-3 md:grid-rows-3">
+${items.map((item, i) => `            <div className="flex flex-col justify-end rounded-2xl border border-border bg-card p-6 ${spans[i % spans.length]}">
+              <h3 className="text-lg font-semibold text-card-foreground">${esc(item)}</h3>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('features:bento-grid', c, body);
+}

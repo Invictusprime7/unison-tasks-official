@@ -1,0 +1,62 @@
+{
+  "sourceId": "21st:9206",
+  "name": "Bento Product Features",
+  "sourceUrl": "https://21st.dev/c/9206",
+  "sourceType": "component",
+  "dependencies": [
+    "framer-motion",
+    "react"
+  ],
+  "registryDependencies": [],
+  "license": "MIT (21st.dev community default — verify before promotion)",
+  "attribution": "21st.dev — Bento Product Features by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": true,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false,
+    "tokensRebound": true,
+    "reducedMotion": true,
+    "identityStamped": true,
+    "portableVfsCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": {
+      "0": {
+        "dep": "framer-motion",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      "1": {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      },
+      "framer-motion": "removed — replaced with CSS reveal gated on prefers-reduced-motion",
+      "@/lib/utils": "removed — no cn() dependency in Unison variants"
+    },
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "features:bento-grid"
+  ]
+}
