@@ -63,8 +63,13 @@ Milestone index (status tracked against the phases below):
 	in `src/sections/registry.ts` / `PageRenderer.tsx` replaced with dedicated
 	components. `src/test/firstClassFamilyCompilerConvergence.test.ts` proves
 	registry metadata, recipe bytes, emitted identity and no borrowed semantics.
-	Remaining: the exit condition still needs persisted Preview/publish runtime
-	evidence for all seven new families.
+	Runtime evidence is now recorded: `src/test/firstClassFamilyRendererParity.test.tsx`
+	renders every registered implementation of all seven new families
+	(about, faq, stats, team, logo-cloud, blog-preview, before-after) against the
+	emitted `/src/components/*.tsx` and asserts byte-identical markup, so
+	registry implementation = canonical VFS implementation = preview/published
+	runtime implementation. The FAQ emitter was missing its React import and is
+	fixed. Remaining: capture the same evidence from a persisted publish run.
 
 - [ ] M2 Registry authority cleanup (retire `src/data/siteElementsLibrary/*`,
 	demote `componentIntelligenceRegistry.ts`, remove double-authored variants).
