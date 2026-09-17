@@ -558,6 +558,27 @@ const VARIANT_REGISTRY: VariantRegistry = {
       tags: ['minimal', 'centered', 'elegant'],
       renderJSX: featuresMinimalCenteredJSX,
     },
+    {
+      id: 'features:bento-grid',
+      sectionType: 'features',
+      slug: 'bento-grid',
+      name: 'Bento Grid',
+      description: 'Asymmetric bento tiles with a tall lead card and wide closer',
+      component: FeaturesBentoGrid,
+      vfs: { mode: 'portable-recipe' },
+      source: {
+        origin: '21st',
+        sourceId: '21st:9206',
+        sourceUrl: 'https://21st.dev',
+        author: '21st.dev community',
+        license: 'MIT (21st.dev community default)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/features-bento-grid.svg',
+      tags: ['bento', 'asymmetric', 'product', 'modern'],
+      renderJSX: featuresBentoGridJSX,
+    },
   ],
 
   services: [
