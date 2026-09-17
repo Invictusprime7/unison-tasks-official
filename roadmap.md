@@ -26,6 +26,47 @@ LauncherWizard
 	author Launcher pages, write VFS directly, change topology, or create an
 	alternate snapshot or preview authority.
 
+## Design-Source Program (21st-First, V2)
+
+The canonical design-source program is
+[`docs/UNISON_21ST_FIRST_REGISTRY_CANONICAL_LAUNCH_PLAN_V2.md`](docs/UNISON_21ST_FIRST_REGISTRY_CANONICAL_LAUNCH_PLAN_V2.md).
+It supersedes
+[`docs/UNISON_REGISTRY_VISUAL_COMPOSITION_CANONICAL_LAUNCH_PLAN.md`](docs/UNISON_REGISTRY_VISUAL_COMPOSITION_CANONICAL_LAUNCH_PLAN.md),
+which is retained for provenance only. It does not replace the deterministic
+execution plan; it constrains where visual inventory may come from.
+
+Rule: **21st.dev is the sole external design-source ecosystem, used at intake
+time only. Unison keeps runtime, semantic, business, artifact, registry,
+compilation, persistence and canonical VFS authority.** No 21st runtime
+registry, template engine, VFS writer, theme engine, motion engine or artifact
+model may be introduced, and generated sites carry no live 21st dependency.
+
+Milestone index (status tracked against the phases below):
+
+- [ ] M1 Canonical variant -> VFS parity. Partially met: navbar, hero, services,
+	features, pricing, gallery, testimonials, CTA, contact and footer resolve
+	registered variants first, with the hard-coded modules demoted to `Legacy*`
+	fallbacks inside `src/sections/compositionToFileSet.ts`. Still emitting
+	module-only output with no registered variant: about, stats, team, faq,
+	logo-cloud, blog-preview, before-after.
+- [ ] M2 Registry authority cleanup (retire `src/data/siteElementsLibrary/*`,
+	demote `componentIntelligenceRegistry.ts`, remove double-authored variants).
+- [ ] M3 21st intake / certification infrastructure (intake record, ten-step
+	lifecycle, portable VFS certification).
+- [ ] M4 Replace weak preferred implementations with certified families.
+- [ ] M5 Generated UI Foundation expansion.
+- [ ] M6 Artifact / catalog / asset wiring.
+- [ ] M7 Wizard Registry Context v2.
+- [ ] M8 Lane B 21st-aware creative enrichment.
+- [ ] M9 Visual selection / property inspector.
+- [ ] M10 Immersive / 3D expansion (gated behind Phase 6A acceptance).
+
+M1 exit condition is unchanged: Wizard preview implementation = canonical VFS
+implementation = Builder Preview implementation = published runtime
+implementation. No implementation may exist only as registry metadata.
+
+
+
 ## Active Sequence
 
 - [ ] **Phase 0 - Protect and truthfully version the canonical spine.**
