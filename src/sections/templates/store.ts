@@ -404,8 +404,9 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-boutique-hero',
         type: 'hero',
+        variantId: 'hero:commerce-gradient',
         props: {
-          layout: 'split',
+          layout: 'commerce-gradient',
           badge: 'New: Spring Edition',
           headline: 'Small things, made beautifully.',
           subheadline: 'A boutique of objects for the home and table.',
@@ -413,6 +414,22 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
           ctas: [
             { label: 'Shop the Collection', href: '#services', variant: 'primary' },
             { label: 'Read Our Story', href: '#about', variant: 'ghost' },
+          ],
+        },
+      },
+      {
+        id: 'store-boutique-collections',
+        type: 'gallery',
+        variantId: 'gallery:collection-tiles',
+        props: {
+          layout: 'collection-tiles',
+          headline: 'Browse the Shop',
+          subheadline: 'Small-batch pieces from makers we know by name.',
+          columns: 3,
+          items: [
+            { src: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&q=80', alt: 'Ceramics', caption: 'Ceramics', category: 'Table' },
+            { src: 'https://images.unsplash.com/photo-1600166898405-da9535204843?w=800&q=80', alt: 'Linens', caption: 'Linens', category: 'Home' },
+            { src: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?w=800&q=80', alt: 'Apothecary', caption: 'Apothecary', category: 'Bath' },
           ],
         },
       },
