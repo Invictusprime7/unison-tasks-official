@@ -1427,18 +1427,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             ? currentCode.substring(0, MAX_CODE_LENGTH) + '\n<!-- ... truncated for AI processing -->'
             : currentCode;
 
-          // Generate AI Site Elements Library context for the request
-          // Skeletons are NEVER included — the library provides structural reference
-          // and intent wiring only. Visual design comes from the industry variation system.
-          // SKIP library context entirely for surgical edits — it pressures the AI
-          // toward full-page generation and conflicts with targeted edit instructions.
+          // Canonical design context — derived from the registered section variant
+          // registry and the canonical intent registry (M2). The legacy site
+          // elements library is retired as an AI authority.
+          // SKIP for surgical edits — broad design context pressures the AI toward
+          // full-page generation and conflicts with targeted edit instructions.
           const siteElementsLibraryContext = isSurgicalEdit
             ? undefined
-            : generateLibraryPrompt({
+            : generateCanonicalDesignPrompt({
                 systemType,
                 userPrompt: _userContent,
-                includeSkeletons: false,
-                maxElements: 10,
+                maxSections: 12,
               });
 
           // Build compact VFS files payload for ALL edit modes (not just surgical)
