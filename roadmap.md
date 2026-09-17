@@ -83,8 +83,22 @@ Milestone index (status tracked against the phases below):
 	`src/test/canonicalDesignPromptAuthority.test.ts` fails the build if the
 	retired library reappears or if prompt context imports component
 	intelligence. Double-authored variants are tracked under M4.
-- [ ] M3 21st intake / certification infrastructure (intake record, ten-step
-	lifecycle, portable VFS certification).
+- [x] M3 21st intake / certification infrastructure. `src/design/21st-intake/`
+	is the development-time quarantine and adaptation area — never a runtime
+	registry: `provenance.ts` (`TwentyFirstComponentRecord`, `VisualSourceMetadata`),
+	`dependencyResolver.ts` (baseline allowlist, Radix scope, 3D capability gate,
+	rejected Next/second-animation/second-carousel/duplicate-icon stacks),
+	`compatibilityAudit.ts` (Next-only imports, server-only APIs, Tailwind-v4-only
+	syntax, foreign color literals, reduced motion, responsive, canonical
+	identity, alt contract), `tokenAdapter.ts` (Stage 4b semantic normalization),
+	`sourceNormalizer.ts` (import normalization + canonical identity stamping),
+	`componentIntake.ts` (`runIntake` steps 3-8 and `planPromotion` steps 9-10),
+	`manifest.ts` and `imported/`. `SectionVariant` gains additive
+	`source`, `vfs.certification` and `generationStatus` fields.
+	`src/test/twentyFirstIntake.test.ts` covers provenance, disallowed
+	dependencies, Tailwind v3 compatibility, token normalization, reduced motion,
+	canonical identity, certification refusal, no active duplicate after
+	promotion, and that no runtime code imports intake modules.
 - [ ] M4 Replace weak preferred implementations with certified families.
 - [ ] M5 Generated UI Foundation expansion.
 - [ ] M6 Artifact / catalog / asset wiring.
