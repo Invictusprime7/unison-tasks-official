@@ -1080,6 +1080,7 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'hero:editorial-banner': ['editorial-banner'],
   'hero:commerce-gradient': ['commerce-gradient'],
   'hero:showcase-panel': ['showcase-panel', 'showcase'],
+  'features:bento-grid': ['bento', 'bento-grid'],
   'logo-cloud:wordmark-row': ['wordmark-row', 'wordmarks'],
   'services:card-grid': ['grid', 'card-grid'],
   'services:alternating': ['alternating'],
