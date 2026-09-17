@@ -970,7 +970,7 @@ function pairFigure(src: string | undefined, label: string, indent: string, aspe
     : `<div className="w-full ${aspect} bg-muted" />`;
   return `${indent}<div className="relative">
 ${indent}  ${media}
-${indent}  <span className="absolute left-3 top-3 rounded-full bg-foreground/80 px-2.5 py-1 text-[length:var(--ut-eyebrow-size)] font-semibold uppercase text-background">${esc(label)}</span>
+${indent}  <span className="absolute left-3 top-3 rounded-full bg-foreground/80 px-2.5 py-1 text-xs font-semibold uppercase text-background">${esc(label)}</span>
 ${indent}</div>`;
 }
 
