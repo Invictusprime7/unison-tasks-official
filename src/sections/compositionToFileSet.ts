@@ -1126,7 +1126,17 @@ export default function Hero({ props, variantId }: { props: any; variantId?: str
   return <Component section={{ type: 'hero', variantId: resolvedId, props }} theme={THEME} />;
 }
 `,
-  About: ABOUT_MODULE,
+  About: `import { REGISTERED_VARIANTS } from './recipes/About';
+${ABOUT_MODULE.replace('export default function About', 'function LegacyAbout')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('about').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function About({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout] || 'about:editorial-split';
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyAbout props={props} />;
+  return <Component section={{ type: 'about', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Services: `import { REGISTERED_VARIANTS } from './recipes/Services';
 ${SERVICES_MODULE.replace('export default function Services', 'function LegacyServices')}
 import { THEME } from './theme';
