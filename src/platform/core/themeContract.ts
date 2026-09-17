@@ -203,10 +203,10 @@ const GROUP_ORDER: ThemeContractGroup['id'][] = [
 const CONTRACT_RULES = [
   'Reference tokens by NAME. Never inline a value you read here, and never write a raw color (#hex, rgb(), hsl() with literal numbers) or a raw size (px/rem/vh/vw) inside an arbitrary Tailwind value.',
   'Semantic color classes (bg-background, text-foreground, text-muted-foreground, bg-card, bg-primary, text-primary-foreground, border-border, bg-accent) are always legal — they resolve through the same theme.',
-  'Standard Tailwind scale utilities (p-6, gap-4, text-lg, md:grid-cols-3) are legal. Arbitrary bracket values are legal ONLY when the value is var(--ut-*) or var(--radius).',
+  'Lane B owns page-local art direction: compose semantic surfaces, gradients, contrast, texture, radius/shadow language, geometry, and responsive rhythm to fit the route and industry. Standard Tailwind scale and weight utilities (p-6, gap-4, text-lg, font-bold, md:grid-cols-3) are legal. Arbitrary bracket values are legal ONLY when the value is var(--ut-*) or var(--radius).',
   'Prefer a primitive over a token: <Section> already applies section rhythm, <Container> the gutter and measure, <Grid> the grid gap, <Card>/<Panel> the surface and padding. Reach for a raw token only when no primitive expresses the need.',
   'Do not author raw CSS: no <style> element, no styled-jsx, no inline style objects for color/spacing/sizing, no document-level style injection.',
-  'Do not emit or modify /src/index.css — Stage 4b owns it. The tokens below already exist at runtime.',
+  'Do not emit or modify /src/index.css — Stage 4b owns Wizard Style-card token values, selected font families, and the global UI foundation. The tokens below already exist at runtime.',
 ];
 
 function resolvePack(packId: string | null | undefined): ArtDirectionPack {

@@ -149,15 +149,23 @@ export interface WizardThemeNormalizationResult {
   residualLiterals: Array<{ path: string; literal: string }>;
 }
 
+export interface WizardThemeNormalizationOptions {
+  /** Accepted Lane B pages already passed semantic-theme validation and must not be rewritten. */
+  excludePaths?: Iterable<string>;
+}
+
 export function normalizeWizardThemeTokens(
   files: Record<string, string>,
+  options: WizardThemeNormalizationOptions = {},
 ): WizardThemeNormalizationResult {
   const normalized: Record<string, string> = { ...files };
   const changedFiles: string[] = [];
   const residualLiterals: Array<{ path: string; literal: string }> = [];
+  const excludedPaths = new Set(options.excludePaths || []);
 
   for (const [path, source] of Object.entries(files)) {
     if (typeof source !== 'string') continue;
+    if (excludedPaths.has(path)) continue;
     if (!/\.(?:tsx?|jsx?|css)$/i.test(path) || /\/src\/index\.css$/i.test(path)) continue;
     // Composition runtime modules already consume the immutable wizard theme
     // through THEME/hsl helpers.

@@ -8,7 +8,12 @@ import type { BaseSectionProps } from '../../types';
 import { hsl, hsla } from '../../themeUtils';
 
 export const ContactCentered: React.FC<BaseSectionProps<'contact'>> = ({ section, theme }) => {
-  const { headline, description, submitLabel = 'Send Message', phone, email, address } = section.props;
+  const { headline, description, fields, submitLabel = 'Send Message', submitIntent = 'contact.submit', phone, email, address } = section.props;
+  const formFields = fields?.length ? fields : [
+    { name: 'name', type: 'text', placeholder: 'Your name' },
+    { name: 'email', type: 'email', placeholder: 'your@email.com' },
+    { name: 'message', type: 'textarea', placeholder: 'How can we help?' },
+  ];
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -23,7 +28,10 @@ export const ContactCentered: React.FC<BaseSectionProps<'contact'>> = ({ section
   };
 
   return (
-    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.muted) }}>
+    <section
+      data-ut-variant="contact:centered"
+      style={{ padding: theme.sectionPadding, background: hsl(theme.colors.muted) }}
+    >
       <div className="mx-auto px-6" style={{ maxWidth: '44rem' }}>
         {headline && (
           <div className="text-center mb-8">
@@ -53,12 +61,12 @@ export const ContactCentered: React.FC<BaseSectionProps<'contact'>> = ({ section
             border: `1px solid ${hsla(theme.colors.border, 0.6)}`,
           }}
         >
-          <form data-demo-form="true" data-ut-intent="contact.submit" className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" placeholder="Your name" style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
-              <input type="email" placeholder="your@email.com" style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
-            </div>
-            <textarea placeholder="How can we help?" rows={4} style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
+          <form data-demo-form="true" data-ut-intent={submitIntent} className="flex flex-col gap-4">
+            {formFields.map((field) => field.type === 'textarea' ? (
+              <textarea key={field.name} name={field.name} placeholder={field.placeholder || field.name} required={field.required} rows={4} style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
+            ) : (
+              <input key={field.name} name={field.name} type={field.type || 'text'} placeholder={field.placeholder || field.name} required={field.required} style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
+            ))}
             <button
               type="submit"
               className="w-full text-sm font-semibold py-3.5 transition-all hover:opacity-90 active:scale-[0.99] cursor-pointer shadow-sm"

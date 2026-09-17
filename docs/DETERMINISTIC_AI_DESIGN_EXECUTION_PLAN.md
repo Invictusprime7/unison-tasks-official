@@ -154,8 +154,8 @@ applicable with a reason. An unverified requirement is not a passing gate.
 | Design vocabulary | Executable pattern candidates and recipes | A rendering path |
 | Art-direction packs | Compatibility and `--ut-*` behavior profile | Page identity or palette ownership |
 | Template Design Contract V2 | Resolved deterministic design identity | Theme CSS values |
-| Stage 4b | Semantic theme and global tokens | Topology and artifact identity |
-| Lane B AI Enrichment | High-fidelity bespoke page body candidates, motion wrappers, bento compositions, and copy referencing snapshot UI Foundation | Global theme tokens, protected paths (`/src/App.tsx`, `/src/index.css`, `/.unison/**`), bypassing preflight, or inventing unmapped imports |
+| Stage 4b | Wizard Style-card token values, selected font families, global `/src/index.css`, theme contract, and generated UI foundation | Page-local composition, surfaces/materials, gradients, radius/shadow use, contrast, texture, or typography hierarchy |
+| Lane B AI Enrichment | High-fidelity canonical page bodies: hierarchy, route posture, media, local material language, responsive geometry, typographic hierarchy, motion wrappers, bento compositions, and industry copy using snapshot UI Foundation | Global token values or font-family replacement, protected paths (`/src/App.tsx`, `/src/index.css`, `/.unison/**`), bypassing preflight, or inventing unmapped imports |
 | VFSCommitService | Canonical mutation and revision boundary | Design selection |
 | SiteBundleSnapshot | Sealed runtime truth | Post-seal mutation |
 | Preview and Playground | Render and hydrate committed truth | Fallback authorship |
@@ -169,7 +169,7 @@ It bridges deterministic architectural contracts and modern, Framer/Lovable-qual
    Lane B receives the sealed Stage 4b baseline, UI Foundation manifest v1.8 (`@/unison/ui/*`), Design Intervention V2 contract, and Page Registry. It optimizes registry references to author rich, modern TSX rather than generic boilerplate components.
    - **Adaptive Page Posture & Hero Necessity**: The AI intelligently determines which pages require an evocative visual Hero (Home, About, Showcase) vs pages that demand immediate utility (Booking, Contact, Quote, Checkout). On task-first pages, giant marketing heroes are omitted in favor of clean, focused Task Headers followed immediately by interactive conversion surfaces.
    - **Intent-Driven Form Field Specialization**: Forms are contextually derived from industry intent (e.g. hair history and stylist preferences for Salons; square footage, scope, and timeline for Contractors; team size and use cases for SaaS) framed in modern `<Panel>` cards with `<FormGrid>` and `@/unison/ui/forms`.
-   - **Bespoke Typography & Copy**: Emits industry-specific terminology and value propositions inspired by modern web benchmarks (Framer, Linear, Lovable, bespoke modern agency designs).
+  - **Bespoke Typography & Copy**: Emits industry-specific terminology and value propositions, and chooses page-level scale, weight, measure, emphasis, casing, and alignment from the sealed semantic type system. The Wizard preset remains the authority for font families and global token values.
 
 2. **Aesthetic & Motion Directives**:
    - Composes with Framer-tier design patterns: Bento grids (`<BentoFeatureGrid>`, `<FeaturePanel>`), marquee ticker strips (`<MarqueeBand>`), entrance reveals (`<Reveal>`, `<StaggerGroup>`), and interactive hover lift (`<HoverDepth>`).
@@ -177,7 +177,7 @@ It bridges deterministic architectural contracts and modern, Framer/Lovable-qual
    - Enforces responsive, centered alignments; buttons and CTAs are never left-stuck.
 
 3. **Strict In-Pipeline Validation**:
-   - Proposals must pass `validateWizardLaneBProposal`: single H1 per page, valid TSX, zero forbidden protected-path edits (`/src/App.tsx`, `/src/index.css`, `/.unison/**`), 100% theme token compliance, and zero unmapped imports.
+  - Proposals must pass `validateWizardLaneBProposal`: single H1 per page, valid TSX, zero forbidden protected-path edits (`/src/App.tsx`, `/src/index.css`, `/.unison/**`), semantic theme compliance, and zero unmapped imports. Tailwind scale and weight utilities are valid page-level hierarchy; raw palette values and replacement font families are not.
    - All interactive triggers must preserve canonical intent attributes (`data-ut-intent="contact.submit"`, `booking.create`, `quote.request`).
 
 4. **Canonical Commit & Resilience**:
@@ -210,8 +210,10 @@ The Canonical Experience Capability Implementation Plan is adopted as an
 extension of these phases, not a replacement pipeline. Its Lane B page-authoring
 instructions are superseded by this guidebook: registered implementations and
 the canonical compiler author pages; optional AI proposes structured edits only.
-Stage 4b owns theme/material tokens, and the existing snapshot-owned
-`/src/unison/ui/experience/*` foundation remains the implementation root.
+Stage 4b owns global theme token values and the existing snapshot-owned
+`/src/unison/ui/experience/*` foundation remains the implementation root. Lane
+B owns page-local material expression by composing those tokens and primitives;
+it never replaces their global values.
 
 The repository already has a generated React 19 profile, runtime capability
 registry, experience primitives, technical preflight and UI manifest v1.6.
@@ -873,7 +875,35 @@ three variants and identity precedence; the canonical launch and persisted
 Playground fixtures prove Preview handoff and exact-byte finalization,
 `commitMutation`, and revision reload.
 
-Recipe builds and focused Hero/Services/Features/Pricing/CTA/Footer compiler,
+**Contact VFS convergence (2026-09-16):** The existing `contact:centered`,
+`contact:split-card`, and `contact:minimal-inline` implementations now declare
+`vfs.mode = portable-recipe`. The canonical emitter writes
+`/src/components/recipes/Contact.ts` and resolves explicit `variantId` before
+registered layout values, retaining the prior generic Contact renderer only for
+unknown historical layouts. Each implementation exposes `data-ut-variant` and
+preserves the declared field schema and supplied form intent, including
+`contact.submit`, instead of reconstructing a generic form. Compiler and
+emitted-DOM parity tests cover all three variants, identity precedence, layout
+compatibility, field names, and intent preservation. The canonical launch
+fixture confirms Preview receives the recipe, while a salon-template round trip
+proves exact Contact recipe bytes survive finalization, `commitMutation`, and
+revision reload.
+
+**Navbar VFS convergence (2026-09-16):** The existing `navbar:standard`,
+`navbar:centered-logo`, and `navbar:minimal-dark` implementations now declare
+`vfs.mode = portable-recipe` and their required `dialog` primitive. The
+canonical emitter writes `/src/components/recipes/Navbar.ts` and resolves
+explicit `variantId` before registered layout values, retaining the prior
+generic Navbar renderer only for unknown historical layouts. Each registered
+implementation uses the shared portable mobile navigation drawer, backed by the
+canonical Dialog and icon facades. Compiler and emitted-DOM parity tests cover
+all variants, identity precedence, link/CTA intents, and mobile drawer behavior.
+The canonical launch fixture proves Preview receives the prepared Dialog facade,
+and persisted Playground finalization proves exact Navbar recipe bytes survive
+Stage 4b, `commitMutation`, and revision reload. The dark variant uses semantic
+foreground utilities so Stage 4b does not mutate recipe source.
+
+Recipe builds and focused Navbar/Hero/Services/Features/Pricing/CTA/Footer/Contact compiler,
 renderer, topology, Preview, and canonical persistence suites pass. These
 batches do not establish full Phase 1 closure: remaining families,
 real-browser quality, accessibility, performance, and broader persisted
@@ -975,7 +1005,7 @@ hidden-browser limitation for the checks above, but **Phase 1 remains open**.
 - Resolve emitted modules by `implementationId` in
   `compositionToReactFileSet`.
 - Keep `renderJSX` only as a migration adapter where necessary.
-- Gallery, Testimonials, Hero, Services, Features, Pricing, CTA, and Footer
+- Gallery, Testimonials, Hero, Services, Features, Pricing, CTA, Footer, Contact, and Navbar
   have passed their focused portable recipe closure checks. Migrate the
   remaining families one at a time and retain this same closure gate before
   beginning external 21st intake.

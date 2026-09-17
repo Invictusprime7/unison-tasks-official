@@ -52,6 +52,17 @@ describe('normalizeWizardThemeTokens', () => {
     expect(result.files['/src/pages/Home.tsx']).toBe(source);
   });
 
+  it('does not rewrite an accepted Lane B page body during finalization', () => {
+    const source = '<section className="bg-indigo-600 text-white font-bold">Lane B expression</section>';
+    const result = normalizeWizardThemeTokens(
+      { '/src/pages/Home.tsx': source },
+      { excludePaths: ['/src/pages/Home.tsx'] },
+    );
+
+    expect(result.changedFiles).toEqual([]);
+    expect(result.files['/src/pages/Home.tsx']).toBe(source);
+  });
+
   it('keeps composition theme modules parseable through final preflight', () => {
     const composition = ALL_COMPOSITIONS[0];
     expect(composition).toBeDefined();

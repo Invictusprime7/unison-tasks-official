@@ -54,7 +54,7 @@ import { collectResolvedCompositions } from '@/platform/core/resolvedComposition
 import portableRecipes from '@/sections/recipes/stylexRecipes.generated.json';
 
 describe('Playground canonical finalization', () => {
-  it('finalizes, commits and reloads Hero, Services, Features, Pricing, CTA, Footer, Gallery, and Testimonials portable recipes with matching runtime bytes', async () => {
+  it('finalizes, commits and reloads Navbar, Hero, Services, Features, Pricing, CTA, Footer, Gallery, and Testimonials portable recipes with matching runtime bytes', async () => {
     const identity = {
       userId: '11111111-1111-4111-8111-111111111111',
       businessId: '22222222-2222-4222-8222-222222222222',
@@ -122,6 +122,8 @@ describe('Playground canonical finalization', () => {
         templateName: 'Gallery Closure Salon · Studio Portfolio',
       });
     expect(restored?.vfsFiles['/src/components/recipes/Gallery.ts']).toBe(portableRecipes.families.gallery);
+    expect(result.vfsFiles['/src/components/recipes/Navbar.ts']).toBe(portableRecipes.families.navbar);
+    expect(restored?.vfsFiles['/src/components/recipes/Navbar.ts']).toBe(portableRecipes.families.navbar);
     expect(result.vfsFiles['/src/components/recipes/Testimonials.ts']).toBe(portableRecipes.families.testimonials);
     expect(restored?.vfsFiles['/src/components/recipes/Testimonials.ts']).toBe(portableRecipes.families.testimonials);
     expect(result.vfsFiles['/src/components/recipes/Hero.ts']).toBe(portableRecipes.families.hero);

@@ -564,6 +564,7 @@ export async function runLaunchPipeline(
   status("Art-directing your site…");
 
   let enrichedVfsFiles = siteBundleSnapshot.vfsFiles;
+  const acceptedLaneBPagePaths = new Set<string>();
 
   try {
     await run.stage("enrich", async (signal) => {
@@ -678,6 +679,7 @@ export async function runLaunchPipeline(
         }
 
         enrichedVfsFiles = mergeLaneBProposalWithSnapshot(enrichedVfsFiles, proposal);
+        for (const operation of proposal.fileOps) acceptedLaneBPagePaths.add(operation.path);
         acceptedBatchCount += 1;
       }
 
@@ -698,6 +700,7 @@ export async function runLaunchPipeline(
     const built = await buildCanonicalLaunchArtifactsAsync(
       {
         generatedFiles: enrichedVfsFiles,
+        acceptedLaneBPagePaths: [...acceptedLaneBPagePaths],
         preferredEntryPoint: "/src/App.tsx",
         siteBundleSnapshot,
         compileArtifact: stage4b.pipelineResult.compileArtifact,

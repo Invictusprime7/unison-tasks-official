@@ -388,8 +388,8 @@ export function validateWizardLaneBProposal(options: {
 
   // 10. Theme token compliance
   for (const op of proposal.fileOps) {
-    if (/\b(?:bg|text|border|from|via|to)-(?:white|black|(?:red|blue|gray|slate|zinc|neutral|green|purple|orange|pink|cyan|teal|amber|rose|indigo|violet|stone|yellow|lime|emerald|sky|fuchsia)-\d{2,3})\b|\bfont-(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black|sans|serif|mono)\b|font(?:Family|Weight)\s*:\s*(?:['"](?!var\()[^'"]+['"]|\d+)/.test(op.content)) {
-      violations.push('File ' + op.path + ' overrides the selected preset with literal color or typography styles. Use semantic colors and the supplied font/weight tokens.');
+    if (/\b(?:bg|text|border|from|via|to)-(?:white|black|(?:red|blue|gray|slate|zinc|neutral|green|purple|orange|pink|cyan|teal|amber|rose|indigo|violet|stone|yellow|lime|emerald|sky|fuchsia)-\d{2,3})\b|\bfont-(?:sans|serif|mono)\b|font(?:Family|Weight)\s*:\s*(?:['"](?!var\()[^'"]+['"]|\d+)/.test(op.content)) {
+      violations.push('File ' + op.path + ' overrides the selected preset with literal color or font-family styles. Use semantic colors and the supplied font-family tokens; Tailwind weight and scale utilities remain available for page hierarchy.');
     }
     // Check for hardcoded CSS values (px, rem, vh, vw, #hex)
     const hardcodedValues = op.content.match(/\b\d+(?:px|rem|vh|vw)\b|#[0-9a-fA-F]{3,6}\b/g);

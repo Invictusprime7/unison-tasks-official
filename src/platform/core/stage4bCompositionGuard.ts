@@ -2,20 +2,24 @@
  * Stage 4b composition guard (Phase 2 — design intelligence).
  *
  * THE LINE:
- *   Lane B  = designer   — owns hierarchy, section sequence, geometry, media.
- *   Stage 4b = art-direction skin — owns colour, type, surfaces, materials,
- *              gradients, radius/shadow language, contrast, texture.
+ *   Lane B  = page art director — owns hierarchy, section sequence, geometry,
+ *              media, local surfaces/materials/gradients, radius/shadow use,
+ *              contrast, texture, and typographic hierarchy.
+ *   Stage 4b = theme foundation — owns the Wizard Style-card token values,
+ *              selected font families, global stylesheet, and UI foundation.
  *
- * Stage 4b must NEVER replace a hero, reorder a page, normalise a grid, remove
- * asymmetry, or simplify a composition. This guard makes that failure loud
- * instead of silent: it compares each page body before and after a theming
- * pass and throws when composition was reduced.
+ * Stage 4b must NEVER replace a hero, reorder a page, normalise a grid, erase
+ * local material expression, remove asymmetry, or simplify a composition.
+ * This guard makes structural loss loud instead of silent: it compares each
+ * page body before and after a theming pass and throws when composition was
+ * reduced or its declared section sequence changes.
  *
  * It deliberately only fails on REDUCTION. A theming pass that leaves the
  * structure alone (or that runs before any body exists) is always allowed.
  */
 
 const PAGE_PATH = /^\/src\/pages\/.+\.(t|j)sx$/;
+const SECTIONS_DECLARATION = /const SECTIONS = (\[[\s\S]*?\]);\r?\nconst HYDRATABLE/;
 
 export interface CompositionSignature {
   sections: number;
@@ -27,6 +31,19 @@ export interface CompositionSignature {
 
 function count(source: string, pattern: RegExp): number {
   return source.match(pattern)?.length ?? 0;
+}
+
+function sectionOrder(source: string): string[] {
+  const declaration = source.match(SECTIONS_DECLARATION)?.[1];
+  if (declaration) {
+    try {
+      const sections = JSON.parse(declaration) as Array<{ id?: unknown; type?: unknown }>;
+      return sections.map((section, index) => String(section.id || section.type || index));
+    } catch {
+      // The numeric signature below still protects source that cannot be read.
+    }
+  }
+  return [...source.matchAll(/data-ut-section-id\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]);
 }
 
 export function compositionSignature(source: string): CompositionSignature {
@@ -41,7 +58,7 @@ export function compositionSignature(source: string): CompositionSignature {
 
 export interface Stage4bCompositionViolation {
   path: string;
-  field: keyof CompositionSignature;
+  field: keyof CompositionSignature | 'sectionOrder';
   before: number;
   after: number;
 }
@@ -63,6 +80,16 @@ export function findStage4bCompositionViolations(
 
     const previous = compositionSignature(previousSource);
     const next = compositionSignature(nextSource);
+    const previousOrder = sectionOrder(previousSource);
+    const nextOrder = sectionOrder(nextSource);
+    if (previousOrder.length > 0 && previousOrder.join('|') !== nextOrder.join('|')) {
+      violations.push({
+        path,
+        field: 'sectionOrder',
+        before: previousOrder.length,
+        after: nextOrder.length,
+      });
+    }
     for (const field of Object.keys(previous) as Array<keyof CompositionSignature>) {
       if (next[field] < previous[field]) {
         violations.push({ path, field, before: previous[field], after: next[field] });
@@ -75,8 +102,8 @@ export function findStage4bCompositionViolations(
 
 /**
  * Throwing form used inside the canonical pipeline. Stage 4b reducing a
- * composition is a contract break, not a warning — a silent flatten here is
- * exactly how an art-directed page becomes a generic theme preset.
+ * composition is a contract break, not a warning — global theme finalization
+ * may not flatten a page authored by the canonical compiler or Lane B.
  */
 export function assertStage4bCompositionPreserved(
   before: Record<string, string>,
@@ -91,7 +118,7 @@ export function assertStage4bCompositionPreserved(
     .join('; ');
   throw new Error(
     `[stage4bCompositionGuard] ${label} reduced page composition. Stage 4b owns art direction only ` +
-    `(colour, typography, surfaces, materials, gradients, radius/shadow, contrast, texture) and must never ` +
-    `replace a hero, reorder a page, normalise a grid, remove asymmetry, or simplify a composition. ${detail}`,
+    `(Wizard Style-card tokens, selected font families, global stylesheet, and UI foundation) and must never ` +
+    `replace a hero, reorder a page, normalise a grid, erase Lane B material expression, remove asymmetry, or simplify a composition. ${detail}`,
   );
 }

@@ -54,6 +54,17 @@ describe('Lane B proposal validation', () => {
     expect(validate(validProposal)).toMatchObject({ valid: true, violations: [] });
   });
 
+  it('allows semantic typography hierarchy without changing the selected font family', () => {
+    const proposal = {
+      ...validProposal,
+      fileOps: [{
+        ...validProposal.fileOps[0],
+        content: 'import React from "react"; export default function Home() { return <main><h1 className="font-heading text-5xl font-bold tracking-[var(--ut-heading-tracking)]">Studio</h1><button data-ut-intent="contact.submit">Contact</button></main>; }',
+      }],
+    };
+    expect(validate(proposal)).toMatchObject({ valid: true, violations: [] });
+  });
+
   it('still rejects stale snapshot identity after schema validation', () => {
     expect(validate({ ...validProposal, snapshotId: 'stale' }).violations)
       .toContain('Snapshot mismatch: proposal has stale, expected snapshot.');

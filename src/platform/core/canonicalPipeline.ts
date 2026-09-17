@@ -637,10 +637,10 @@ export function recompileFromPlayground(
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
   compileResult.vfsFiles = refreshCompositionOwnership(compileResult.vfsFiles, normalizedThemeFiles.files);
 
-  // Snapshot the composed bodies BEFORE the art-direction skin is applied.
-  // Composition ownership belongs to the compiler above; everything below is
-  // Stage 4b (colour, typography, surfaces, materials, gradients, radius/
-  // shadow, contrast, texture) and may not touch page structure.
+  // Snapshot composed bodies before global theme finalization. The compiler
+  // owns the baseline and accepted Lane B pages own local composition and art
+  // direction; Stage 4b below owns only Wizard Style-card token values, the
+  // global stylesheet, and the generated UI foundation.
   const preStage4bFiles = { ...compileResult.vfsFiles };
 
   // Stage 4b is mandatory and idempotent: only the token payload paired with

@@ -1104,7 +1104,17 @@ function assertSanctionedSectionTypes(template: TemplateComposition, pageFilePat
 }
 
 const SECTION_MODULE_SOURCE: Record<keyof typeof SECTION_FILES, string> = {
-  Navbar: NAVBAR_MODULE,
+  Navbar: `import { REGISTERED_VARIANTS } from './recipes/Navbar';
+${NAVBAR_MODULE.replace('export default function Navbar', 'function LegacyNavbar')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('navbar').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Navbar({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'standard'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyNavbar props={props} />;
+  return <Component section={{ type: 'navbar', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Hero: `import { REGISTERED_VARIANTS } from './recipes/Hero';
 ${HERO_MODULE.replace('export default function Hero', 'function LegacyHero')}
 import { THEME } from './theme';
@@ -1186,7 +1196,17 @@ export default function CTA({ props, variantId }: { props: any; variantId?: stri
   return <Component section={{ type: 'cta', variantId: resolvedId, props }} theme={THEME} />;
 }
 `,
-  Contact: CONTACT_MODULE,
+  Contact: `import { REGISTERED_VARIANTS } from './recipes/Contact';
+${CONTACT_MODULE.replace('export default function Contact', 'function LegacyContact')}
+import { THEME } from './theme';
+const LAYOUT_VARIANTS = ${JSON.stringify(Object.fromEntries(getVariantsForSection('contact').flatMap(variant => [[getLayoutForVariantId(variant.id), variant.id], [variant.slug, variant.id]])))};
+export default function Contact({ props, variantId }: { props: any; variantId?: string }) {
+  const resolvedId = variantId || LAYOUT_VARIANTS[props.layout || 'centered'];
+  const Component = REGISTERED_VARIANTS[resolvedId];
+  if (!Component) return <LegacyContact props={props} />;
+  return <Component section={{ type: 'contact', variantId: resolvedId, props }} theme={THEME} />;
+}
+`,
   Footer: `import { REGISTERED_VARIANTS } from './recipes/Footer';
 ${FOOTER_MODULE.replace('export default function Footer', 'function LegacyFooter')}
 import { THEME } from './theme';
@@ -1723,6 +1743,12 @@ export function compositionToReactFileSet(
   }
   if (sectionMap.components.has('Features')) {
     files['/src/components/recipes/Features.ts'] = stylexRecipes.families.features;
+  }
+  if (sectionMap.components.has('Navbar')) {
+    files['/src/components/recipes/Navbar.ts'] = stylexRecipes.families.navbar;
+  }
+  if (sectionMap.components.has('Contact')) {
+    files['/src/components/recipes/Contact.ts'] = stylexRecipes.families.contact;
   }
   if (sectionMap.components.has('Pricing')) {
     files['/src/components/recipes/Pricing.ts'] = stylexRecipes.families.pricing;

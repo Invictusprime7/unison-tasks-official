@@ -325,6 +325,13 @@ describe("launchStateToSandpackFiles", () => {
     expect(result.sandpackFiles['/components/recipes/Testimonials.ts']).toContain('TestimonialsRail');
     expect(result.sandpackFiles['/components/recipes/Testimonials.ts']).toContain('TestimonialsSpotlight');
     expect(result.sandpackFiles['/components/recipes/Testimonials.ts']).toContain('REGISTERED_VARIANTS');
+    expect(result.sandpackFiles['/components/Navbar.tsx']).toContain("from './recipes/Navbar'");
+    expect(result.sandpackFiles['/components/Navbar.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/Navbar.ts']).toContain('NavbarStandard');
+    expect(result.sandpackFiles['/components/recipes/Navbar.ts']).toContain('NavbarCenteredLogo');
+    expect(result.sandpackFiles['/components/recipes/Navbar.ts']).toContain('NavbarMinimalDark');
+    expect(result.sandpackFiles['/components/recipes/Navbar.ts']).toContain('../../unison/ui/radix/dialog');
+    expect(result.sandpackFiles['/components/recipes/Navbar.ts']).toContain('REGISTERED_VARIANTS');
     expect(result.sandpackFiles['/components/Hero.tsx']).toContain("from './recipes/Hero'");
     expect(result.sandpackFiles['/components/Hero.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
     expect(result.sandpackFiles['/components/recipes/Hero.ts']).toContain('HeroCentered');
@@ -341,6 +348,12 @@ describe("launchStateToSandpackFiles", () => {
     expect(result.sandpackFiles['/components/recipes/Features.ts']).toContain('FeaturesIconLeft');
     expect(result.sandpackFiles['/components/recipes/Features.ts']).toContain('FeaturesMinimalCentered');
     expect(result.sandpackFiles['/components/recipes/Features.ts']).toContain('REGISTERED_VARIANTS');
+    expect(result.sandpackFiles['/components/Contact.tsx']).toContain("from './recipes/Contact'");
+    expect(result.sandpackFiles['/components/Contact.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
+    expect(result.sandpackFiles['/components/recipes/Contact.ts']).toContain('ContactCentered');
+    expect(result.sandpackFiles['/components/recipes/Contact.ts']).toContain('ContactSplitCard');
+    expect(result.sandpackFiles['/components/recipes/Contact.ts']).toContain('ContactMinimalInline');
+    expect(result.sandpackFiles['/components/recipes/Contact.ts']).toContain('REGISTERED_VARIANTS');
     expect(result.sandpackFiles['/components/Pricing.tsx']).toContain("from './recipes/Pricing'");
     expect(result.sandpackFiles['/components/Pricing.tsx']).toContain('REGISTERED_VARIANTS[resolvedId]');
     expect(result.sandpackFiles['/components/recipes/Pricing.ts']).toContain('PricingTiers');

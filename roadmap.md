@@ -34,9 +34,9 @@ LauncherWizard
 	legacy snapshot restoration and the browser round trip.
 - [ ] **Phase 1 - Compiler and Variant Registry convergence.**
 	Make registered variant emitters the actual source of generated VFS, starting
-	with Gallery, Testimonials, Hero, Services, Features, Pricing, CTA, and
-	Footer. Gallery, the three Testimonials variants, all five Hero variants, and
-	the three Services, Features, Pricing, CTA, and Footer variants now emit
+	with Gallery, Testimonials, Hero, Services, Features, Pricing, CTA, Footer,
+	Contact, and Navbar. Gallery, the three Testimonials variants, all five Hero variants,
+	and the three Services, Features, Pricing, CTA, Footer, Contact, and Navbar variants now emit
 	portable registry recipes; explicit IDs beat legacy layout aliases.
 	The unused legacy JSX swap writer is removed. Sealed projects reject direct
 	legacy overwrites of compiler-owned module, router, and page-body paths.

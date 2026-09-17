@@ -120,6 +120,8 @@ export interface CanonicalLaunchArtifacts {
 
 export interface BuildCanonicalLaunchArtifactsInput {
   generatedFiles: Record<string, string>;
+  /** Accepted Lane B pages have their own validated local visual composition. */
+  acceptedLaneBPagePaths?: readonly string[];
   /** Already committed page bodies are immutable during a theme-only edit. */
   preservePageSources?: boolean;
   preferredEntryPoint?: string;
@@ -939,7 +941,9 @@ function* buildCanonicalLaunchArtifactSteps(
     (preflight?.wired ?? 0) > 0 ||
     forbidden.length > 0;
   if (sourceMutatedAfterStage4b) {
-    const refinalized = normalizeWizardThemeTokens(mergedFiles);
+    const refinalized = normalizeWizardThemeTokens(mergedFiles, {
+      excludePaths: input.acceptedLaneBPagePaths,
+    });
     Object.assign(mergedFiles, refinalized.files);
     if (refinalized.changedFiles.length > 0 || refinalized.residualLiterals.length > 0) {
       console.info('[canonicalLaunchVfs] Stage 4b re-finalization after post-merge repair', {
@@ -990,7 +994,9 @@ function* buildCanonicalLaunchArtifactSteps(
   // token contract if it touched source, then prove a validation-only pass
   // would make no further edits before the snapshot can be sealed.
   if (convergedPreflight.mutated) {
-    const refinalized = normalizeWizardThemeTokens(mergedFiles);
+    const refinalized = normalizeWizardThemeTokens(mergedFiles, {
+      excludePaths: input.acceptedLaneBPagePaths,
+    });
     for (const path of Object.keys(mergedFiles)) delete mergedFiles[path];
     Object.assign(mergedFiles, refinalized.files);
     const acceptance = runFullPreflight(mergedFiles, {
