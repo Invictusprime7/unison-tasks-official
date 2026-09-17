@@ -198,7 +198,7 @@ export interface SectionPropsMap {
     subheadline?: string;
     items: ServiceItem[];
     columns?: 2 | 3 | 4;
-    layout?: 'grid' | 'icon-left' | 'centered';
+    layout?: 'grid' | 'icon-left' | 'centered' | 'bento-grid';
   };
   pricing: {
     headline?: string;
