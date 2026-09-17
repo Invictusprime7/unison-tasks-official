@@ -145,10 +145,11 @@ export const STORE_COMPOSITIONS: TemplateComposition[] = [
       {
         id: 'store-premium-features',
         type: 'features',
+        variantId: 'features:bento-grid',
         props: {
           headline: 'Why Shop Vela',
           columns: 3,
-          layout: 'icon-left',
+          layout: 'bento-grid',
           items: [
             { title: 'Free Shipping Over $75', description: 'All domestic orders over $75 ship free. Delivered in 3–5 business days.', icon: '🚚' },
             { title: 'Hassle-Free Returns', description: '60-day returns on everything. No questions asked, no restocking fees.', icon: '🔄' },
