@@ -110,9 +110,11 @@ implementation. No implementation may exist only as registry metadata.
 	Resolve seeded primitive and interaction recipes into contracts and runtime.
 - [ ] **Phase 2 - Renderer parity certification.**
 	Prove shared structure, semantic tokens, interactions and responsive behavior.
-- [ ] **Phase 3 - Close all 17 section families.**
-	Replace logo-cloud, blog-preview, and before-after placeholders with dedicated
-	components, variants, artifacts, emitters, identities, and round-trip tests.
+- [x] **Phase 3 - Close all 17 section families.**
+	logo-cloud, blog-preview, and before-after now ship dedicated components,
+	three variants each, portable recipes, compiler emitters, registry/runtime
+	identities and convergence tests. Runtime publish evidence still pending.
+
 - [ ] **Phase 3B - Certified external 21st section ingestion.**
 	After foundation closure, certify one authorized Hero through export/import
 	and canonical editing before scaling. Enforce dependency/distribution policy.
