@@ -40,7 +40,7 @@ export function parseGhlWireIntent(prompt: string): ParsedGhlWireIntent | null {
     if (quoted) workflowRef = quoted[1];
   }
   if (!workflowRef) {
-    const tail = prompt.match(/(?:workflow|automation)\s+([A-Za-z0-9 _\-]{2,60})/i);
+    const tail = prompt.match(/(?:workflow|automation)\s+([A-Za-z0-9 _-]{2,60})/i);
     if (tail) workflowRef = tail[1].trim();
   }
 

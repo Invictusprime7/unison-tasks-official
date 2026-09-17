@@ -53,13 +53,14 @@ const STEP_COLORS: Record<SetupStepId, string> = {
 interface SetupWizardPanelProps {
   wizard: UseSetupWizardReturn;
   businessId: string | null;
+  siteId: string | null;
 }
 
 // ============================================================================
 // Main Panel
 // ============================================================================
 
-export function SetupWizardPanel({ wizard, businessId }: SetupWizardPanelProps) {
+export function SetupWizardPanel({ wizard, businessId, siteId }: SetupWizardPanelProps) {
   const { steps, activeStep, setActiveStep, progressPercent, completedCount, totalCount, isLoading, isSaving } = wizard;
 
   if (isLoading) {
@@ -71,13 +72,13 @@ export function SetupWizardPanel({ wizard, businessId }: SetupWizardPanelProps) 
     );
   }
 
-  if (!businessId) {
+  if (!businessId || !siteId) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Shield className="h-10 w-10 text-muted-foreground/40 mb-4" />
-        <h3 className="text-sm font-semibold text-foreground mb-1">No Business Connected</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-1">No Confirmed Site Connected</h3>
         <p className="text-xs text-muted-foreground max-w-xs">
-          Launch a site from the System Launcher first to create a business profile and unlock the setup wizard.
+          Confirm a launch from the System Launcher first to create a durable site workspace and unlock live setup.
         </p>
       </div>
     );
@@ -473,7 +474,7 @@ function DatabaseForm({ step, wizard }: { step: SetupStep; wizard: UseSetupWizar
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-emerald-400">Connected via Lovable Cloud</p>
+              <p className="text-sm font-medium text-emerald-400">Connected via Supabase</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Your database is automatically provisioned and managed. Form submissions, bookings, and leads are stored securely.
               </p>

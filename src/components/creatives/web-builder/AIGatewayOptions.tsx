@@ -13,10 +13,9 @@ export interface GatewayModel {
 const AVAILABLE_MODELS: GatewayModel[] = [
   { id: "google/gemini-2.5-flash-lite", label: "Flash Lite", provider: "google", tier: "lite", supportsReasoning: false },
   { id: "google/gemini-2.5-flash", label: "Flash", provider: "google", tier: "fast", supportsReasoning: true },
-  { id: "google/gemini-3-flash-preview", label: "Flash 3", provider: "google", tier: "fast", supportsReasoning: true },
   { id: "google/gemini-2.5-pro", label: "Pro", provider: "google", tier: "pro", supportsReasoning: true },
-  { id: "openai/gpt-5-mini", label: "GPT-5 Mini", provider: "openai", tier: "standard", supportsReasoning: true },
-  { id: "openai/gpt-5", label: "GPT-5", provider: "openai", tier: "pro", supportsReasoning: true },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "openai", tier: "standard", supportsReasoning: true },
+  { id: "openai/gpt-4o", label: "GPT-4o", provider: "openai", tier: "pro", supportsReasoning: true },
 ];
 
 export type ReasoningEffort = "none" | "low" | "medium" | "high";
@@ -31,7 +30,7 @@ export interface GatewayConfig {
 }
 
 const DEFAULT_CONFIG: GatewayConfig = {
-  selectedModelId: "openai/gpt-5",
+  selectedModelId: "google/gemini-2.5-flash",
   reasoningEffort: "none",
   timeoutMs: 45000,
   autoModelSelection: true,
@@ -61,7 +60,8 @@ export const AIGatewayOptions = ({ config: ext, onChange, className }: AIGateway
   const update = useCallback(
     (patch: Partial<GatewayConfig>) => {
       const next = { ...cfg, ...patch };
-      onChange ? onChange(next) : setInternal(next);
+      if (onChange) onChange(next);
+      else setInternal(next);
     },
     [cfg, onChange],
   );

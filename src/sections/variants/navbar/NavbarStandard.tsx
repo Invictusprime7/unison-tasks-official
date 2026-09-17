@@ -7,20 +7,23 @@
 import React from 'react';
 import type { BaseSectionProps } from '../../types';
 import { hsl, hsla } from '../../themeUtils';
+import { MobileNavbarNavigation } from './MobileNavbarNavigation';
 
 export const NavbarStandard: React.FC<BaseSectionProps<'navbar'>> = ({ section, theme }) => {
   const { brand, links = [], cta } = section.props;
 
   return (
     <header
+      data-ut-variant="navbar:standard"
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
       style={{
         background: hsla(theme.colors.background, 0.92),
         borderBottom: `1px solid ${hsla(theme.colors.border, 0.4)}`,
       }}
     >
+      <MobileNavbarNavigation brand={brand} links={links} cta={cta} />
       <div
-        className="mx-auto flex items-center justify-between h-16 px-6"
+        className="mx-auto hidden h-16 items-center justify-between px-6 lg:flex"
         style={{ maxWidth: theme.containerWidth }}
       >
         <a

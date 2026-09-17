@@ -29,14 +29,14 @@ update_env_var() {
     echo "Setting $var_name for $environment environment..."
     
     # Try to add the variable, if it exists, remove and add again
-    if vercel env add "$var_name" "$environment" <<< "$var_value" 2>/dev/null; then
+    if printf '%s' "$var_value" | vercel env add "$var_name" "$environment" 2>/dev/null; then
         echo "✅ Added $var_name to $environment"
     else
         echo "🔄 $var_name already exists, updating..."
         # Remove existing variable first
         echo "y" | vercel env rm "$var_name" "$environment" > /dev/null 2>&1 || true
         # Add the new value
-        if vercel env add "$var_name" "$environment" <<< "$var_value"; then
+        if printf '%s' "$var_value" | vercel env add "$var_name" "$environment"; then
             echo "✅ Updated $var_name in $environment"
         else
             echo "❌ Failed to update $var_name in $environment"
@@ -62,19 +62,6 @@ for env in "${environments[@]}"; do
     
     if [ ! -z "$VITE_SUPABASE_PROJECT_ID" ]; then
         update_env_var "VITE_SUPABASE_PROJECT_ID" "$VITE_SUPABASE_PROJECT_ID" "$env"
-    fi
-    
-    if [ ! -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-        update_env_var "SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_SERVICE_ROLE_KEY" "$env"
-    fi
-    
-    # AI Service API Keys
-    if [ ! -z "$OPENAI_API_KEY" ] && [ "$OPENAI_API_KEY" != "your_openai_api_key_here" ]; then
-        update_env_var "OPENAI_API_KEY" "$OPENAI_API_KEY" "$env"
-    fi
-    
-    if [ ! -z "$LOVABLE_API_KEY" ] && [ "$LOVABLE_API_KEY" != "your_lovable_api_key_here" ]; then
-        update_env_var "LOVABLE_API_KEY" "$LOVABLE_API_KEY" "$env"
     fi
     
     # Additional application variables for all environments

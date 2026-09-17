@@ -21,6 +21,7 @@ import {
   Send, X, Loader2, AlertCircle, CheckCircle2, Link2, Eye, EyeOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { sanitizeVfsForAI } from '@/utils/sanitizeVfsForAI';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
 const supabase = supabaseClient as any;
 import { toast } from 'sonner';
@@ -34,6 +35,9 @@ import {
   type EditScopeType,
   type ScopeAncestors,
 } from '@/services/editScopeResolver';
+import { buildWebBuilderAIContext } from '@/utils/aiAssistantContext';
+import { buildCatalogContext, renderCatalogContextForPrompt, type SelectedSectionRef } from '@/utils/catalogContext';
+import runBuilderTurn from '@/services/builderBrainClient';
 
 interface SelectedElement {
   tagName?: string;
@@ -77,6 +81,15 @@ interface ElementFloatingToolbarProps {
   systemType?: BusinessSystemType | null;
   /** Full business blueprint from systems-build for richer AI context */
   systemsBuildContext?: SystemsBuildContext | null;
+  /** Builder identity — enables Lane B catalog/backend context injection. */
+  businessId?: string | null;
+  projectId?: string | null;
+  industry?: string | null;
+  templateName?: string | null;
+  /** Active page path in the VFS (e.g. `/src/pages/Home.tsx`). */
+  activePagePath?: string | null;
+  /** Snapshot of the current VFS — sent to Lane B so the AI can reason across files. */
+  getVFSFiles?: () => Record<string, string>;
   readiness?: {
     surfaceLabel?: string;
     previewStatus?: 'ready' | 'partial' | 'blocked' | 'draft' | 'stubbed';
@@ -121,6 +134,12 @@ interface InlineAIPanelProps {
   onRequestAI?: (selector: string) => void;
   systemType?: BusinessSystemType | null;
   systemsBuildContext?: SystemsBuildContext | null;
+  businessId?: string | null;
+  projectId?: string | null;
+  industry?: string | null;
+  templateName?: string | null;
+  activePagePath?: string | null;
+  getVFSFiles?: () => Record<string, string>;
 }
 
 const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
@@ -130,6 +149,12 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
   onRequestAI,
   systemType,
   systemsBuildContext,
+  businessId,
+  projectId,
+  industry,
+  templateName,
+  activePagePath,
+  getVFSFiles,
 }) => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -173,6 +198,13 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
       return;
     }
 
+    // Artifact registry contract (Stage 1): a locked artifact must never
+    // reach Lane B, regardless of DOM scope override.
+    if (!editScope.aiEditable) {
+      setError('This element is locked for AI edits. Use the manual editor or Business Center for this content.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -182,7 +214,49 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
         element.html ||
         `<${element.tagName || 'div'}>${element.textContent || ''}</${element.tagName || 'div'}>`;
 
+      // ── Build Lane B context (catalog + backend) so the floating toolbar's
+      // AI matches the AIBuilderPanel / AICodeAssistant paths end-to-end.
+      let catalogContextStr: string | null = null;
+      if (businessId || projectId) {
+        try {
+          const selectedSectionRef: SelectedSectionRef | null = ancestors.sectionId
+            ? {
+                sectionId: ancestors.sectionId,
+                surfaceId: ancestors.surfaceId ?? undefined,
+                componentType: ancestors.componentType ?? ancestors.sectionType ?? undefined,
+                pagePath: ancestors.pagePath ?? activePagePath ?? undefined,
+                slotKey: ancestors.slotId ?? null,
+              }
+            : null;
+          const ctx = await buildCatalogContext({
+            businessId: businessId ?? null,
+            projectId: projectId ?? null,
+            industry: industry ?? null,
+            selectedSection: selectedSectionRef,
+          });
+          catalogContextStr = renderCatalogContextForPrompt(ctx);
+        } catch (err) {
+          console.warn('[ElementFloatingToolbar] buildCatalogContext failed; continuing without it', err);
+        }
+      }
+
+      const backendContext = buildWebBuilderAIContext({
+        systemType: systemType ?? null,
+        templateName: templateName ?? null,
+        catalogContext: catalogContextStr,
+      });
+
       const scopedPrefix = buildScopedPromptPrefix(editScope);
+      const slotSummary = [
+        ancestors.sectionType ? `sectionType=${ancestors.sectionType}` : null,
+        ancestors.surfaceId ? `surface=${ancestors.surfaceId}` : null,
+        ancestors.slotId ? `slot=${ancestors.slotId}` : null,
+        ancestors.primaryIntent ? `intent=${ancestors.primaryIntent}` : null,
+        ancestors.bindingId ? `bindingId=${ancestors.bindingId}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
       const surgicalPrompt = [
         scopedPrefix,
         '',
@@ -193,7 +267,9 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
         elementHtml.length > 3000 ? elementHtml.slice(0, 3000) + '\n<!-- ...truncated... -->' : elementHtml,
         '```',
         `Element type: ${element.tagName || 'unknown'} · Section: "${element.section || 'unknown'}"`,
+        slotSummary ? `Slot/binding context: ${slotSummary}` : '',
         `Current styles: ${JSON.stringify(element.styles || {})}`,
+        activePagePath ? `Active page: ${activePagePath}` : '',
         '',
         `User Request: ${trimmedPrompt}`,
         '',
@@ -203,38 +279,112 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
         '3. No explanation text, no markdown fences, no extra commentary.',
         '4. Preserve existing class names, data-ut-* attributes, and locked intent bindings verbatim.',
         '5. Make ONLY the requested change — do not alter other aspects, sections, or pages.',
-      ].join('\n');
+        '6. For content/catalog changes (services, products, menu items, offers, testimonials, portfolio, pricing), DO NOT rewrite copy inline — echo the surface/binding IDs and defer to catalog operations.',
+        backendContext,
+      ]
+        .filter(Boolean)
+        .join('\n');
 
-      const { data, error: fnError } = await supabase.functions.invoke('ai-code-assistant', {
-        body: {
-          messages: [{ role: 'user', content: surgicalPrompt }],
-          mode: 'code',
-          editMode: true,
-          surgicalEdit: true, // route to leaner surgical_edit path (skipResearch, lighter context)
-          templateAction: 'modify',
-          systemType: systemType ?? undefined,
-          systemsBuildContext: systemsBuildContext ?? undefined,
-          // Tight, fast settings — toolbar edits should return in seconds, not 60s
-          gatewayOptions: {
-            reasoningEffort: 'low',
-            timeoutMs: 55000,
-          },
-          // Preview floating toolbar — explicit edit scope for reviewPass.
-          // Strip null/undefined fields so Zod `.object().optional()` doesn't reject `null`.
-          editScope: Object.fromEntries(
-            Object.entries({
-              scopeType: editScope.scopeType,
-              targetId: editScope.targetId,
-              owningSectionId: editScope.owningSectionId,
-              pageId: editScope.pageId,
-              componentPath: editScope.componentPath,
-              editableRange: editScope.editableRange ?? undefined,
-              lockedBindings: editScope.lockedBindings,
-              riskLevel: editScope.riskLevel,
-            }).filter(([, v]) => v !== null && v !== undefined)
-          ),
-        },
+      let vfsFiles: Record<string, string> | undefined;
+      try {
+        vfsFiles = getVFSFiles ? getVFSFiles() : undefined;
+      } catch (err) {
+        console.warn('[ElementFloatingToolbar] getVFSFiles threw; continuing without VFS snapshot', err);
+        vfsFiles = undefined;
+      }
+      // Strip oversized/metadata files (e.g. /.unison/site-bundle-snapshot.json)
+      // that violate the edge schema's per-file 100k limit.
+      vfsFiles = sanitizeVfsForAI(vfsFiles, { targetFile: activePagePath ?? null });
+      const vfsFileCount = vfsFiles ? Object.keys(vfsFiles).length : 0;
+      if (!vfsFiles || vfsFileCount === 0) {
+        console.warn('[ElementFloatingToolbar] VFS snapshot unavailable — Lane B will run without file context', {
+          hasGetter: Boolean(getVFSFiles),
+          activePagePath,
+        });
+        vfsFiles = undefined;
+      }
+
+      // Build selectedSlot only from resolved ancestor identity; drop the whole
+      // block if we have nothing meaningful so Lane B doesn't receive an empty
+      // shell that looks like a real selection.
+      const rawSlot: Record<string, unknown> = {
+        sectionId: ancestors.sectionId ?? undefined,
+        sectionType: ancestors.sectionType ?? undefined,
+        surfaceId: ancestors.surfaceId ?? undefined,
+        componentType: ancestors.componentType ?? undefined,
+        slotId: ancestors.slotId ?? undefined,
+        bindingId: ancestors.bindingId ?? undefined,
+        bindingKey: ancestors.bindingKey ?? undefined,
+        intent: ancestors.primaryIntent ?? undefined,
+        intents: ancestors.intents && ancestors.intents.length ? ancestors.intents : undefined,
+        selector,
+        pagePath: ancestors.pagePath ?? activePagePath ?? undefined,
+      };
+      const slotEntries = Object.entries(rawSlot).filter(([k, v]) => {
+        if (v === undefined || v === null) return false;
+        if (k === 'selector' || k === 'pagePath') return false; // don't count as "identity"
+        return true;
       });
+      const selectedSlot = slotEntries.length > 0
+        ? Object.fromEntries(Object.entries(rawSlot).filter(([, v]) => v !== undefined && v !== null))
+        : undefined;
+      if (!selectedSlot) {
+        console.warn('[ElementFloatingToolbar] selectedSlot unresolved — sending selector-only hint to Lane B', {
+          selector,
+          activePagePath,
+        });
+      }
+
+      const builderTurnPayload = {
+        messages: [{ role: 'user' as const, content: surgicalPrompt }],
+        mode: 'code' as const,
+        editMode: true,
+        surgicalEdit: true,
+        templateAction: 'modify' as const,
+        templateName: templateName ?? undefined,
+        systemType: systemType ?? undefined,
+        systemsBuildContext: (systemsBuildContext as unknown) ?? undefined,
+        vfsFiles,
+        targetFile: activePagePath ?? undefined,
+        recentChangedFiles: activePagePath ? [activePagePath] : undefined,
+        gatewayOptions: {
+          reasoningEffort: 'low' as const,
+          timeoutMs: 55000,
+        },
+        editScope: Object.fromEntries(
+          Object.entries({
+            scopeType: editScope.scopeType,
+            targetId: editScope.targetId,
+            owningSectionId: editScope.owningSectionId,
+            pageId: editScope.pageId,
+            componentPath: editScope.componentPath ?? activePagePath ?? undefined,
+            editableRange: editScope.editableRange ?? undefined,
+            lockedBindings: editScope.lockedBindings,
+            riskLevel: editScope.riskLevel,
+            artifactId: editScope.artifactId ?? undefined,
+            aiEditScope: editScope.aiEditScope ?? undefined,
+          }).filter(([, v]) => v !== null && v !== undefined),
+        ),
+        selectedSlot,
+      };
+
+      // Log the exact builder-brain payload dispatched from InlineAIPanel so
+      // regressions in context wiring are visible without a debugger.
+      console.debug('[ElementFloatingToolbar] builder-brain payload', {
+        promptChars: surgicalPrompt.length,
+        vfsFileCount,
+        targetFile: builderTurnPayload.targetFile,
+        editScope: builderTurnPayload.editScope,
+        selectedSlot: builderTurnPayload.selectedSlot ?? null,
+        hasCatalogContext: Boolean(catalogContextStr),
+        hasSystemsBuildContext: Boolean(systemsBuildContext),
+        templateName: builderTurnPayload.templateName ?? null,
+        systemType: builderTurnPayload.systemType ?? null,
+      });
+
+      const { data, error: fnError } = await runBuilderTurn<any>(builderTurnPayload as any);
+
+
 
       if (fnError) {
         // Supabase JS v2 wraps non-2xx responses in FunctionsHttpError; the parsed body
@@ -302,7 +452,7 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [prompt, loading, element, onAIEditComplete, onRequestAI, onClose, editScope, systemType, systemsBuildContext]);
+  }, [prompt, loading, element, onAIEditComplete, onRequestAI, onClose, editScope, systemType, systemsBuildContext, businessId, projectId, industry, templateName, activePagePath, getVFSFiles, ancestors]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
@@ -366,9 +516,13 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
           value={prompt}
           onChange={e => { setPrompt(e.target.value); setError(null); }}
           onKeyDown={handleKeyDown}
-          placeholder={`Describe changes to this ${element.tagName || 'element'}… (Enter to send, Shift+Enter for newline)`}
+          placeholder={
+            editScope.aiEditable
+              ? `Describe changes to this ${element.tagName || 'element'}… (Enter to send, Shift+Enter for newline)`
+              : 'This element is locked for AI edits — use the manual editor or Business Center.'
+          }
           rows={2}
-          disabled={loading || success}
+          disabled={loading || success || !editScope.aiEditable}
           className={cn(
             'flex-1 min-w-0 resize-none text-xs py-1.5 px-2.5 rounded-lg',
             'bg-white/[0.07] border-white/10 text-white placeholder:text-white/30',
@@ -378,7 +532,7 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
         />
         <Button
           onClick={handleSubmit}
-          disabled={!prompt.trim() || loading || success}
+          disabled={!prompt.trim() || loading || success || !editScope.aiEditable}
           size="sm"
           className={cn(
             'h-[54px] w-9 p-0 shrink-0 rounded-lg',
@@ -436,6 +590,12 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   className,
   systemType,
   systemsBuildContext,
+  businessId,
+  projectId,
+  industry,
+  templateName,
+  activePagePath,
+  getVFSFiles,
   readiness,
 }) => {
   const [isEditingText, setIsEditingText] = useState(false);
@@ -525,12 +685,12 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
 
   return (
     <div className={cn(
-      'bg-[#0d0d18] rounded-xl shadow-[0_0_25px_rgba(0,255,255,0.3)] p-2 flex flex-col gap-0',
-      'animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2',
+      'flex flex-col gap-0 rounded-lg border border-white/[0.08] bg-[#0d0d18]/95 p-1.5 shadow-[0_18px_44px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl',
+      'animate-in fade-in-0 slide-in-from-bottom-1 duration-150',
       className
     )}>
       {readiness && (
-        <div className="mb-2 flex items-center gap-1.5 flex-wrap rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5">
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5 border-b border-white/[0.06] px-1.5 py-1.5">
           {readiness.surfaceLabel ? (
             <span className="text-[10px] font-semibold text-cyan-300">{readiness.surfaceLabel}</span>
           ) : null}
@@ -608,9 +768,9 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
         </div>
       )}
       {/* ── Buttons row ── */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex flex-wrap items-center gap-1">
         {/* Element badge */}
-        <div className="px-2.5 py-1 bg-cyan-500 text-black rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(0,255,255,0.4)]">
+        <div className="px-2 py-1 text-[10px] font-semibold uppercase text-white/55">
           {element.tagName || 'element'}
         </div>
 
@@ -905,6 +1065,12 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
           onRequestAI={onRequestAI}
           systemType={systemType}
           systemsBuildContext={systemsBuildContext}
+          businessId={businessId}
+          projectId={projectId}
+          industry={industry}
+          templateName={templateName}
+          activePagePath={activePagePath}
+          getVFSFiles={getVFSFiles}
         />
       )}
     </div>

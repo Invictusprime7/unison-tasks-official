@@ -24,7 +24,12 @@ import type { PageRegistry } from '@/types/pageRegistry';
 import { inferPageRoleFromType } from '@/types/pageRegistry';
 import type { CreatorFormField, CreatorService } from '@/types/creatorData';
 import { createEmptyCreatorData } from '@/types/creatorData';
-import { planSiteTopology, populateRegistryFromTopology, type GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
+import {
+  planSiteTopology,
+  populateRegistryFromTopology,
+  resolvePageSpecsForRoles,
+  type GeneratedSitePlan,
+} from '@/platform/core/siteTopologyPlanner';
 import { normalizePlaygroundIntent, inferUIAction } from '@/platform/core/intentNormalizer';
 import {
   createCanonicalComponentInstance,
@@ -36,10 +41,10 @@ import {
 
 const OVERLAY_TO_INDUSTRY: Record<string, string> = {
   salon: 'salon', barber: 'salon', medspa: 'salon', wellness: 'salon',
-  dental: 'local-service', healthcare: 'local-service', contractor: 'local-service',
+  dental: 'local-service', healthcare: 'local-service', 'local-service': 'local-service', contractor: 'contractor',
   hvac: 'local-service', cleaning: 'local-service', landscaping: 'local-service',
   auto_detailing: 'local-service', moving: 'local-service', legal: 'agency',
-  real_estate: 'real-estate', realestate: 'real-estate',
+  real_estate: 'real-estate', realestate: 'real-estate', 'real-estate': 'real-estate',
   restaurant: 'restaurant', cafe: 'restaurant', bakery: 'restaurant',
   ecommerce: 'ecommerce', store: 'ecommerce', fitness: 'coaching',
   portfolio: 'portfolio', photographer: 'portfolio', photography: 'portfolio', creator: 'portfolio', creative: 'portfolio',
@@ -55,6 +60,19 @@ interface FormTemplate {
   fields: Omit<CreatorFormField, 'fieldId'>[];
   submitLabel: string;
   successMessage: string;
+}
+
+export const WIZARD_FORM_TARGET_ALIASES = {
+  booking_form: 'booking_intake',
+  booking: 'booking_intake',
+  contact_form: 'contact',
+  newsletter_form: 'newsletter',
+  newsletter_signup: 'newsletter',
+  quote_form: 'quote_request',
+} as const;
+
+function normalizeWizardFormTarget(targetRef: string): string {
+  return WIZARD_FORM_TARGET_ALIASES[targetRef as keyof typeof WIZARD_FORM_TARGET_ALIASES] ?? targetRef;
 }
 
 const FORM_TEMPLATES: Record<string, FormTemplate> = {
@@ -80,6 +98,14 @@ const FORM_TEMPLATES: Record<string, FormTemplate> = {
     ],
     submitLabel: 'Book Now',
     successMessage: 'Your booking has been submitted! We\'ll confirm shortly.',
+  },
+  newsletter: {
+    name: 'Newsletter Subscription',
+    fields: [
+      { label: 'Email', type: 'email', required: true, sortOrder: 0 },
+    ],
+    submitLabel: 'Subscribe',
+    successMessage: 'Thank you for subscribing!',
   },
   quote_request: {
     name: 'Quote Request',
@@ -427,31 +453,14 @@ export function materializePlayground(
     );
   }
 
-  // Resolve scaffold mode. Legacy home-only/minimal is intentionally ignored:
-  // every wizard route must be backed by the selected SiteBundle/template.
-  const scaffoldMode = selections.scaffoldMode === 'capability-full'
-    ? 'capability-full'
-    : 'selected-pages';
+  // Wizard-selected pages are authoritative. `capability-full` is deprecated
+  // for runtime wizard launches because it reintroduces unselected industry
+  // defaults into PageRegistry/router/VFS. Keep the variable only so older
+  // payloads normalize to selected-pages instead of expanding routes.
+  const scaffoldMode = 'selected-pages';
 
-  // Map visitor-selected page roles → PageSpec entries for the topology planner.
-  const PAGE_ROLE_TO_SPEC: Record<string, { title: string; path: string; purpose: 'landing' | 'services' | 'portfolio' | 'contact' | 'about' | 'blog' | 'shop' | 'checkout' | 'booking' | 'pricing' | 'faq' }> = {
-    about:    { title: 'About',    path: '/about',    purpose: 'about' },
-    services: { title: 'Services', path: '/services', purpose: 'services' },
-    pricing:  { title: 'Pricing',  path: '/pricing',  purpose: 'pricing' },
-    gallery:  { title: 'Gallery',  path: '/gallery',  purpose: 'portfolio' },
-    faq:      { title: 'FAQ',      path: '/faq',      purpose: 'faq' },
-    contact:  { title: 'Contact',  path: '/contact',  purpose: 'contact' },
-    booking:  { title: 'Book',     path: '/booking',  purpose: 'booking' },
-    checkout: { title: 'Checkout', path: '/checkout', purpose: 'checkout' },
-    blog:     { title: 'Blog',     path: '/blog',     purpose: 'blog' },
-    shop:     { title: 'Shop',     path: '/shop',     purpose: 'shop' },
-  };
-  const additionalPages = scaffoldMode === 'selected-pages'
-    ? (selections.requestedPages ?? [])
-        .map((role) => PAGE_ROLE_TO_SPEC[role])
-        .filter((spec): spec is NonNullable<typeof spec> => Boolean(spec))
-        .map((spec) => ({ ...spec, expectedSections: [] }))
-    : [];
+  const selectedPageRoles = new Set<string>(selections.requestedPages ?? []);
+  const additionalPages = resolvePageSpecsForRoles(selections.requestedPages ?? [], industryKey);
 
   // 1. Generate site topology plan → PageRegistry
   const sitePlan = planSiteTopology(industryKey, selections.businessName, {
@@ -459,13 +468,20 @@ export function materializePlayground(
     primaryIntent: selections.primaryIntent,
     selectedTemplateId: selections.templateId,
     selectedThemePresetId: selections.themePresetId || selections.themeId,
+    restrictToAdditionalPages: true,
   });
   const pageRegistry = populateRegistryFromTopology(sitePlan);
 
-  // 2. Ensure ALL capability-required pages exist in the registry. Minimal/home-only
-  //    topology is intentionally removed from wizard launches; every page must
-  //    flow through the selected SiteBundle/template path.
-  ensureRequiredPages(pageRegistry, sitePlan, capabilities.requiredPages, selections.businessName);
+  // 2. Never back-add capability/model pages the user did not select. Only
+  //    selected pages may enter the registry/router/VFS; capability objects can
+  //    still exist, but their bindings degrade to overlays or warnings unless
+  //    their target page was explicitly checked in the wizard.
+  ensureRequiredPages(
+    pageRegistry,
+    sitePlan,
+    capabilities.requiredPages.filter((role) => selectedPageRoles.has(role)),
+    selections.businessName,
+  );
 
   // 3. Create empty creator data
   const creatorData = createEmptyCreatorData(selections.businessName);
@@ -475,7 +491,14 @@ export function materializePlayground(
 
   // 5. Materialize forms
   const formIdMap: Record<string, string> = {};
-  for (const formKey of capabilities.requiredForms) {
+  const requiredFormKeys = new Set(capabilities.requiredForms);
+  if (capabilities.recommendedBindingsV2.some(
+    (binding) => binding.coreIntent === 'newsletter.subscribe'
+      || normalizeWizardFormTarget(binding.targetRef) === 'newsletter',
+  )) {
+    requiredFormKeys.add('newsletter');
+  }
+  for (const formKey of requiredFormKeys) {
     const template = FORM_TEMPLATES[formKey];
     if (!template) {
       warnings.push(`No form template for "${formKey}"`);
@@ -749,7 +772,7 @@ export function materializePlayground(
 
   applyNativePublishDefaults(playground, selections);
 
-  return { playground, warnings };
+  return { playground, sitePlan, warnings };
 }
 
 // ============================================================================
@@ -938,7 +961,7 @@ function resolveBindingTarget(
       return { targetId: pageId || '', targetType: 'page' };
     }
     case 'form.open': {
-      const formId = formIdMap[targetRef];
+      const formId = formIdMap[normalizeWizardFormTarget(targetRef)];
       return { targetId: formId || '', targetType: 'form' };
     }
     case 'calendar.open': {

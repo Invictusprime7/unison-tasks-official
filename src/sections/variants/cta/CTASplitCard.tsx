@@ -13,6 +13,7 @@ export const CTASplitCard: React.FC<BaseSectionProps<'cta'>> = ({ section, theme
 
   return (
     <section
+        data-ut-variant="cta:split-card"
       style={{
         padding: theme.sectionPadding,
         background: hsl(theme.colors.background),
@@ -23,9 +24,8 @@ export const CTASplitCard: React.FC<BaseSectionProps<'cta'>> = ({ section, theme
         style={{ maxWidth: theme.containerWidth }}
       >
         <div
-          className="grid items-center gap-8 rounded-2xl overflow-hidden"
+          className="grid grid-cols-1 lg:grid-cols-2 items-center gap-8 rounded-2xl overflow-hidden shadow-sm"
           style={{
-            gridTemplateColumns: '1fr 1fr',
             background: hsla(theme.colors.card, 1),
             border: `1px solid ${hsla(theme.colors.border, 0.5)}`,
           }}
@@ -81,7 +81,7 @@ export const CTASplitCard: React.FC<BaseSectionProps<'cta'>> = ({ section, theme
 
           {/* Visual Column */}
           <div
-            className="h-full min-h-[280px] flex items-center justify-center"
+            className="h-full min-h-[var(--ut-media-block)] flex items-center justify-center"
             style={{
               background: `linear-gradient(135deg, ${hsla(theme.colors.primary, 0.08)}, ${hsla(theme.colors.accent, 0.08)})`,
             }}

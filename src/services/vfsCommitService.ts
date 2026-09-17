@@ -19,15 +19,10 @@
  *      so the durable revision chain — not sessionStorage — becomes the
  *      contract that ties launcher → builder → AI panel → publish.
  *
- * Feature flag: `VITE_USE_COMMIT_SERVICE`. When unset/false, callers that
- * have been migrated fall back to their pre-existing direct paths to avoid
- * a big-bang regression. The lint rule in
- * `scripts/lint-pipeline-bypass.mjs` enforces that, once a writer migrates,
- * it cannot regress to a direct canonical-pipeline call.
- *
  * See: mem://architecture/site-os/vfs-commit-service
  */
 
+import { prepareThemeEdit, prepareThemeCorrection } from '@/services/theme/themeEdit';
 import { supabase } from '@/integrations/supabase/client';
 import {
   commitToPipeline,
@@ -36,15 +31,29 @@ import {
   type CommitSource as CanonicalCommitSource,
 } from '@/platform/core/commitToPipeline';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
+import { collectResolvedCompositions, RESOLVED_COMPOSITION_ROOT } from '@/platform/core/resolvedComposition';
+import type { RuntimeManifest } from '@/platform/core/runtimeManifest';
 import type { PlaygroundState } from '@/platform/core/playground';
 import type { CompiledContract } from '@/platform/core/contractCompiler';
+import type { ThemeTokens } from '@/sections/types';
 import { PreviewGate, PublishGate, type GateVerdict } from '@/platform/core/gates';
 import { runFullPreflight } from '@/services/runFullPreflight';
+import { resolveApprovedExperienceCapabilities } from './experienceCapabilityResolver';
+import { runExperiencePreflight } from './experiencePreflightGate';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
 import { evaluateElementReadiness, type ElementReadinessReport } from '@/services/elementReadinessEvaluator';
 import { executeBackendOps, type BackendOpExecutionReport } from '@/services/backendOpExecutor';
+import type { GeneratedSiteRuntimeManifest } from '@/services/generatedSiteRuntimeManifest';
+import {
+  buildCanonicalLaunchArtifacts,
+  type CanonicalLaunchArtifacts,
+} from '@/services/canonicalLaunchVfs';
 import type { PlaygroundControlPlaneModel } from '@/types/playground';
-import type { CapabilityId } from '@/platform/core/capabilityRegistry';
+import {
+  CAPABILITY_REGISTRY,
+  type BusinessSystemState,
+  type CapabilityId,
+} from '@/platform/core/capabilityRegistry';
 import {
   assertBuilderIdentity,
   type BuilderIdentity,
@@ -54,7 +63,11 @@ import {
   emptyPatchPlan,
   type PatchPlan,
   type PatchSource,
+  type PresentationOp,
 } from '@/types/patchPlan';
+import { getVariantById } from '@/sections/variants';
+import { recordCommitOutcome } from '@/services/mutationLedger';
+
 
 
 
@@ -69,6 +82,7 @@ export interface CommitMutationInput {
     vfsFiles: Record<string, string>;
     playground?: PlaygroundState;
     siteBundleSnapshot?: unknown;
+    activePagePath?: string;
   };
   patch: PatchPlan;
   options?: {
@@ -76,6 +90,15 @@ export interface CommitMutationInput {
     requireReadinessPass?: boolean;
     /** When true, do NOT persist a revision row (dry-run validation). */
     dryRun?: boolean;
+    /** Compiler-owned, presentation-only scratch upgrade. Never executes backend ops. */
+    compositionUpgrade?: boolean;
+    /** Restore validates the historical artifact without rebuilding template content. */
+    restoreRevisionId?: string;
+    /** Persist an exact, validated scratch composition against its original revision. */
+    reviewedComposition?: {
+      baseVfsHash: string;
+      candidate: CommitMutationResult;
+    };
     /** Optional pre-compiled contract for gate evaluation. */
     compiledContract?: CompiledContract;
     /** Hints carried through the canonical pipeline. */
@@ -84,8 +107,16 @@ export interface CommitMutationInput {
     selectedTemplateId?: string;
     selectedThemeId?: string;
     themePresetId?: string;
+    /** Exact Stage 4b token payload from the original wizard selection. */
+    themeTokens?: ThemeTokens;
     /** For wizard-launch source. */
     selections?: CanonicalCommitInput['selections'];
+    /** Exact Wizard artifact already approved by the user. */
+    reviewedArtifact?: {
+      siteBundleSnapshot: SiteBundleSnapshot;
+      runtimeManifest: RuntimeManifest;
+      playground?: PlaygroundState;
+    };
   };
 }
 
@@ -101,8 +132,8 @@ export interface CommitMutationResult {
   source: PatchSource;
   identity: BuilderIdentity;
   vfsFiles: Record<string, string>;
-  siteBundleSnapshot: unknown;
-  runtimeManifest: unknown;
+  siteBundleSnapshot: SiteBundleSnapshot | null;
+  runtimeManifest: RuntimeManifest | null;
   playground: PlaygroundState | null;
   readinessReport: Record<string, unknown>;
   diagnostics: CommitDiagnostic[];
@@ -134,16 +165,83 @@ export class CommitRejectedError extends Error {
   }
 }
 
+// ----------------------------------------------------------------------------
+// Guard 1 — Preview artifact leakage
+// ----------------------------------------------------------------------------
+//
+// `sandpackFilePrep.ts` (the ephemeral VFS → Sandpack preview compiler)
+// rewrites `import { MapPin } from 'lucide-react'` into namespace lookups
+// like `const MapPin = __LucideIcons['MapPin'] || __LucideFallback;` for
+// preview-runtime safety. That transformed source must never become
+// canonical VFS content — if it does, a later preview preparation pass can
+// reintroduce the original named import (e.g. via a catalog binding
+// regenerating a section from a template) and produce a duplicate top-level
+// declaration.
+//
+// Rollout policy (per architecture review): Phase 1 detects + logs + heals
+// known Lucide preview artifacts back to plain imports rather than hard
+// rejecting the commit, so in-flight projects aren't interrupted. A future
+// Phase 2 can upgrade this to a hard rejection once callers are audited.
+const PREVIEW_ONLY_ARTIFACT_PATTERNS: RegExp[] = [
+  /\b__LucideIcons\b/,
+  /\b__LucideFallback\b/,
+  /\b__FramerMotion\b/,
+  /\b__motionFallback\b/,
+  /\b__AnimatePresenceFallback\b/,
+];
+
+const COMPILER_OWNED_SECTION_MODULE_RE = /^\/src\/components\/(?:Navbar|Hero|About|Services|Features|Gallery|Pricing|LogoCloud|BlogPreview|BeforeAfter|Testimonials|CTA|Contact|Footer|Stats|Team|FAQ)\.tsx$/;
+const COMPILER_OWNED_RECIPE_MODULE_RE = /^\/src\/components\/recipes\/[^/]+\.ts$/;
+
+function isCompilerOwnedGeneratedModule(path: string): boolean {
+  return COMPILER_OWNED_SECTION_MODULE_RE.test(path)
+    || COMPILER_OWNED_RECIPE_MODULE_RE.test(path);
+}
+
+function sealedCompilerOwnedPaths(snapshot: SiteBundleSnapshot | null | undefined): Set<string> {
+  if (!snapshot?.meta?.seal?.registeredPageBodyAuthority) return new Set();
+  return new Set([
+    ...(snapshot.meta.seal.protectedFilePatterns ?? []),
+    ...(snapshot.meta.seal.laneAProtectedFiles ?? []),
+    ...(snapshot.meta.seal.registeredPageFiles ?? []),
+    ...Object.values(snapshot.pageRegistry?.pages ?? {})
+      .map((page) => page.filePath)
+      .filter((path): path is string => Boolean(path)),
+    snapshot.routerFile?.path ?? '/src/App.tsx',
+  ].map((path) => path.startsWith('/') ? path : `/${path}`));
+}
+
+function detectPreviewArtifacts(contents: string): string[] {
+  const hits: string[] = [];
+  for (const pattern of PREVIEW_ONLY_ARTIFACT_PATTERNS) {
+    if (pattern.test(contents)) hits.push(pattern.source);
+  }
+  return hits;
+}
+
 /**
- * Returns true if the feature flag enables the commit service.
- * Defaults to ON now that Moves 1–6 are wired end-to-end; set
- * `VITE_USE_COMMIT_SERVICE=false` to opt out for debugging.
+ * Heal known preview-only Lucide fallback declarations back into a plain
+ * `import { ... } from 'lucide-react'` statement. Non-Lucide preview
+ * artifacts (framer-motion fallbacks, etc.) are left untouched — they are
+ * only detected/logged in Phase 1, since a safe general rewrite isn't
+ * available for every fallback shape yet.
  */
-export function isCommitServiceEnabled(): boolean {
-  const v = (import.meta as { env?: Record<string, string | undefined> }).env
-    ?.VITE_USE_COMMIT_SERVICE;
-  if (v === 'false' || v === '0') return false;
-  return true;
+function sanitizePreviewArtifacts(contents: string): string {
+  const recoveredIcons: string[] = [];
+  let sanitized = contents.replace(
+    /^const\s+([A-Za-z_$][\w$]*)\s*=\s*(?:__LucideIcons\[[^\]]+\]\s*\|\|\s*)+__LucideFallback;\s*$/gm,
+    (_match, alias: string) => {
+      recoveredIcons.push(alias);
+      return '';
+    },
+  );
+
+  if (recoveredIcons.length === 0) return contents;
+
+  sanitized = sanitized.replace(/^import \* as __LucideIcons from ['"]lucide-react['"];?\s*$/gm, '');
+  sanitized = sanitized.replace(/^const __LucideFallback\s*=.*$/gm, '');
+  sanitized = `import { ${recoveredIcons.join(', ')} } from 'lucide-react';\n${sanitized.replace(/^\n+/, '')}`;
+  return sanitized.replace(/\n{3,}/g, '\n\n');
 }
 
 // ----------------------------------------------------------------------------
@@ -163,64 +261,244 @@ export async function commitMutation(
 
   // 1. Identity assertion ----------------------------------------------------
   assertBuilderIdentity(input.identity, 'commitMutation');
+  const restoredRevision = input.options?.restoreRevisionId ? await loadRevision(input.options.restoreRevisionId) : null;
+  if (input.options?.restoreRevisionId && (input.source !== 'system-restore' || !restoredRevision
+    || restoredRevision.status !== 'committed' || restoredRevision.projectId !== input.identity.projectId
+    || restoredRevision.businessId !== input.identity.businessId)) {
+    throw new Error('[VFSCommitService] Restore requires a committed revision belonging to this project.');
+  }
+  const reviewedComposition = input.options?.reviewedComposition;
+  if ([input.options?.reviewedArtifact, reviewedComposition, input.options?.compositionUpgrade, input.options?.restoreRevisionId].filter(Boolean).length > 1) {
+    throw new Error('[VFSCommitService] Reviewed artifacts, upgrades and restores must be isolated operations.');
+  }
+  if (reviewedComposition) {
+    const candidate = reviewedComposition.candidate;
+    if (input.source !== 'playground-edit' || candidate.status !== 'committed' || candidate.persistedRevisionId
+      || !candidate.siteBundleSnapshot || !candidate.runtimeManifest
+      || candidate.identity.projectId !== input.identity.projectId
+      || candidate.identity.businessId !== input.identity.businessId
+      || candidate.identity.userId !== input.identity.userId
+      || candidate.identity.draftId !== input.identity.draftId
+      || candidate.parentRevisionId !== (input.identity.revisionId || null)
+      || reviewedComposition.baseVfsHash !== await hashVfsFiles(input.current.vfsFiles)
+      || candidate.vfsHash !== await hashVfsFiles(candidate.vfsFiles)
+      || input.patch.backendOps.length > 0 || input.patch.fileOps.length > 0
+      || input.patch.presentationOps.length > 0 || input.patch.playgroundOps.length > 0
+      || input.patch.bindingOps.length > 0 || input.patch.businessSystem) {
+      throw new Error('[VFSCommitService] Composition review is stale or does not belong to this project. Generate a fresh preview.');
+    }
+  }
 
   // 2. Patch normalisation ---------------------------------------------------
   const patch = input.patch ?? emptyPatchPlan();
   assertPatchPlan(patch, 'commitMutation');
+  if (input.source !== 'wizard-launch' && input.source !== 'system-restore') {
+    const sealedPaths = input.source === 'theme-change'
+      ? new Set<string>()
+      : sealedCompilerOwnedPaths(input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined);
+    for (const op of patch.fileOps) {
+      const path = op.path.startsWith('/') ? op.path : `/${op.path}`;
+      if (op.path.startsWith(`${RESOLVED_COMPOSITION_ROOT}/`)
+        && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
+        throw new Error('[VFSCommitService] Resolved composition metadata is compiler-owned. Use a presentation operation or reviewed upgrade.');
+      }
+      if (isCompilerOwnedGeneratedModule(path)
+        && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
+        throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
+      }
+      if (sealedPaths.has(path)
+        && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
+        throw new Error('[VFSCommitService] Sealed router and page bodies are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
+      }
+    }
+  }
 
   // 3. Apply fileOps to working VFS -----------------------------------------
   const workingFiles: Record<string, string> = { ...(input.current.vfsFiles ?? {}) };
   for (const op of patch.fileOps) {
     if (op.type === 'delete') {
       delete workingFiles[op.path];
+      continue;
+    }
+
+    const artifactHits = detectPreviewArtifacts(op.contents);
+    if (artifactHits.length > 0) {
+      const sanitized = sanitizePreviewArtifacts(op.contents);
+      const healed = sanitized !== op.contents;
+      log(
+        'fileOps',
+        'warn',
+        `preview-only artifact(s) detected in ${op.path} (${artifactHits.join(', ')})${healed ? ' — sanitized before canonical commit' : ' — left as-is, no known-safe rewrite'}`,
+        { path: op.path, artifactHits, healed },
+      );
+      workingFiles[op.path] = sanitized;
     } else {
       workingFiles[op.path] = op.contents;
     }
   }
+
+  if (input.options?.compositionUpgrade) {
+    if (input.source !== 'playground-edit' || !input.options.dryRun || patch.fileOps.length || patch.backendOps.length
+      || patch.presentationOps.length || patch.playgroundOps.length || patch.bindingOps.length) {
+      throw new Error('[VFSCommitService] Composition upgrades must be isolated compiler-owned dry runs.');
+    }
+    const { planCompositionUpgrade } = await import('./compositionUpgrade');
+    const planned = planCompositionUpgrade(workingFiles, input.current.siteBundleSnapshot as SiteBundleSnapshot);
+    Object.assign(workingFiles, planned.files);
+  }
+  if (input.source === 'ai-builder') {
+    for (const composition of Object.values(collectResolvedCompositions(input.current.vfsFiles))) {
+      if (!composition.activation) continue;
+      const before = input.current.vfsFiles[composition.pageFilePath];
+      const after = workingFiles[composition.pageFilePath];
+      const adapter = (source: string) => source?.match(/function enhanceSection\([\s\S]*?\n {2}return content;\n\}/)?.[0];
+      if (adapter(before) !== adapter(after) || (before.includes('enhanceSection(section, props, <C') && !after?.includes('enhanceSection(section, props, <C'))) {
+        throw new Error(`[VFSCommitService] AI content edits must preserve the resolved composition on ${composition.pageFilePath}.`);
+      }
+    }
+  }
   log('fileOps', 'info', `applied ${patch.fileOps.length} file op(s)`);
 
-  // 4. Canonical recompile via commitToPipeline -----------------------------
-  let canonicalResult: CanonicalCommitResult;
-  try {
-    canonicalResult = commitToPipeline(
-      buildCanonicalInput(input, workingFiles),
-      toCanonicalSource(input.source),
-    );
-  } catch (err) {
-    log('canonical', 'error', 'canonical pipeline threw', String(err));
-    return finalize({
-      input,
-      status: 'rejected',
-      vfsFiles: workingFiles,
-      siteBundleSnapshot: input.current.siteBundleSnapshot ?? null,
-      runtimeManifest: null,
-      playground: input.current.playground ?? null,
-      readinessReport: {},
-      publishReady: false,
-      publishBlockers: [
-        {
+  // 4. Apply snapshot-owned presentation operations -------------------------
+  if (patch.themeEdit && (input.source !== 'theme-change' || patch.fileOps.length || patch.playgroundOps.length || patch.presentationOps.length || patch.bindingOps.length || patch.backendOps.length || patch.businessSystem || input.options?.restoreRevisionId || input.options?.reviewedArtifact || reviewedComposition)) {
+    throw new Error('Theme edits must be isolated from content, composition and backend changes.');
+  }
+  let themeCorrectionApplied = false;
+  let themeSnapshot = input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
+  if (themeSnapshot && !patch.themeEdit?.presetId && !restoredRevision && !reviewedComposition && !input.options?.reviewedArtifact && input.source !== 'wizard-launch') {
+    const corrected = prepareThemeCorrection(workingFiles, themeSnapshot, input.identity.revisionId || null);
+    themeCorrectionApplied = corrected.snapshot !== themeSnapshot;
+    Object.assign(workingFiles, corrected.files);
+    themeSnapshot = corrected.snapshot;
+  }
+  if (patch.themeEdit) {
+    if (!themeSnapshot) throw new Error('A saved site is required for theme edits.');
+    const prepared = prepareThemeEdit(workingFiles, themeSnapshot, patch.themeEdit, input.identity.revisionId || null);
+    Object.assign(workingFiles, prepared.files);
+    themeSnapshot = prepared.snapshot;
+  }
+  const preservePageSources = input.source === 'theme-change' || (themeCorrectionApplied && !patch.presentationOps.length && !patch.playgroundOps.length);
+  const presentationSnapshot = applyPresentationOps(
+    themeSnapshot,
+    workingFiles,
+    patch.presentationOps,
+    log,
+  );
+
+  // 5. Resolve the canonical projection -------------------------------------
+  // Confirmation is a persistence boundary, not another generation stage.
+  // Re-running Stage 4b here can replace the exact files the user reviewed.
+  const reviewedArtifact = input.options?.reviewedArtifact ?? (restoredRevision ? {
+    siteBundleSnapshot: restoredRevision.siteBundleSnapshot as SiteBundleSnapshot,
+    runtimeManifest: restoredRevision.runtimeManifest as RuntimeManifest,
+    playground: restoredRevision.playground ?? undefined,
+  } : reviewedComposition ? {
+    siteBundleSnapshot: reviewedComposition.candidate.siteBundleSnapshot!,
+    runtimeManifest: reviewedComposition.candidate.runtimeManifest!,
+    playground: reviewedComposition.candidate.playground ?? undefined,
+  } : undefined);
+  if (input.options?.reviewedArtifact && input.source !== 'wizard-launch') {
+    throw new Error('[VFSCommitService] reviewedArtifact is only valid for wizard-launch commits.');
+  }
+  let canonicalResult: CanonicalCommitResult | null = null;
+  let finalizedArtifact: CanonicalLaunchArtifacts | null = null;
+  if (reviewedArtifact) {
+    log('canonical', 'info', 'accepted exact user-reviewed wizard artifact; regeneration skipped');
+  } else {
+    try {
+      canonicalResult = input.options?.compositionUpgrade ? null : commitToPipeline(
+        buildCanonicalInput(input, workingFiles, presentationSnapshot, preservePageSources),
+        toCanonicalSource(input.source),
+      );
+      if (input.source !== 'wizard-launch') {
+        const candidate = stampBusinessSystemState(
+          input.options?.compositionUpgrade
+            ? { ...presentationSnapshot!, vfsFiles: workingFiles }
+            : canonicalResult!.siteBundleSnapshot,
+          presentationSnapshot,
+          input.patch.businessSystem,
+        )!;
+        const context = presentationSnapshot?.appContext;
+        finalizedArtifact = buildCanonicalLaunchArtifacts({
+          generatedFiles: candidate.vfsFiles,
+          preservePageSources,
+          siteBundleSnapshot: candidate,
+          compileArtifact: canonicalResult ? { ...canonicalResult.compileArtifact, baseline: candidate } : undefined,
+          canonicalPlayground: canonicalResult?.playground ?? input.current.playground,
+          preferredEntryPoint: candidate.routerFile.path,
+          businessId: input.identity.businessId,
+          projectId: input.identity.projectId,
+          siteId: context?.runtimeContext?.websiteId ?? context?.runtimeContext?.siteId,
+          organizationId: context?.runtimeContext?.workspaceId ?? context?.runtimeContext?.organizationId,
+          environment: context?.runtimeContext?.environment,
+          businessRuntime: context?.businessRuntime,
+          systemType: context?.systemType,
+          systemName: context?.systemName,
+          templateId: candidate.meta.templateId,
+          templateName: context?.templateName,
+          industry: candidate.industry,
+          businessName: candidate.businessName,
+          themePresetId: candidate.meta.themePresetId,
+          interactionManifest: candidate.meta.interactionManifest,
+          enabledCapabilities: readWizardEnabledCapabilities(workingFiles),
+          approvedExperienceCapabilities: input.options?.compositionUpgrade ? resolveApprovedExperienceCapabilities({
+            webgl: candidate.meta.designIntervention?.envelope?.webgl,
+            foundationCapabilities: candidate.meta.uiFoundation?.experienceCapabilities,
+            reachesExperienceLayer: runExperiencePreflight(workingFiles).manifest.totalInstances > 0,
+          }) : candidate.meta.uiFoundation?.approvedExperienceCapabilities
+            ?? presentationSnapshot?.meta.uiFoundation?.approvedExperienceCapabilities,
+        });
+      }
+    } catch (err) {
+      log('canonical', 'error', 'canonical pipeline threw', String(err));
+      return finalize({
+        input,
+        status: 'rejected',
+        vfsFiles: workingFiles,
+        siteBundleSnapshot: null,
+        runtimeManifest: null,
+        playground: input.current.playground ?? null,
+        readinessReport: {},
+        publishReady: false,
+        publishBlockers: [{
           source: 'preview',
           code: 'canonical-pipeline-threw',
           message: 'Canonical pipeline failed; nothing safe to publish',
-        },
-      ],
-      vfsHash: await hashVfsFiles(workingFiles),
-      backendOpsApplied: [],
-      diagnostics,
-      parentRevisionId: input.identity.revisionId || null,
-      rejectMessage: 'canonical pipeline threw — see diagnostics',
-    });
+        }],
+        vfsHash: await hashVfsFiles(workingFiles),
+        backendOpsApplied: [],
+        diagnostics,
+        parentRevisionId: input.identity.revisionId || null,
+        rejectMessage: 'canonical pipeline threw — see diagnostics',
+      });
+    }
   }
 
-  // 5. Full preflight --------------------------------------------------------
-  const snapshot = canonicalResult.siteBundleSnapshot ?? null;
+  // 6. Full preflight --------------------------------------------------------
+  const snapshot = finalizedArtifact?.siteBundleSnapshot ?? reviewedArtifact?.siteBundleSnapshot ?? canonicalResult?.siteBundleSnapshot ?? null;
   let files: Record<string, string> =
-    input.source === 'wizard-launch'
+    restoredRevision ? restoredRevision.vfsFiles : reviewedComposition ? reviewedComposition.candidate.vfsFiles : finalizedArtifact ? preserveWizardMetadataFiles(finalizedArtifact.files, workingFiles) : input.source === 'wizard-launch'
       ? mergeWizardLaunchFiles(workingFiles, (snapshot as SiteBundleSnapshot | null) ?? null)
       : ((snapshot as { vfsFiles?: Record<string, string> } | null)?.vfsFiles ?? workingFiles);
+  if (reviewedArtifact) {
+    assertReviewedWizardPageBodiesUnchanged(
+      reviewedArtifact.siteBundleSnapshot,
+      files,
+      'wizard commit input',
+    );
+  }
   let snapshotForPersistence = input.source === 'wizard-launch'
     ? mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files)
     : snapshot;
+  snapshotForPersistence = stampBusinessSystemState(
+    snapshotForPersistence as SiteBundleSnapshot | null,
+    presentationSnapshot,
+    input.patch.businessSystem ?? (
+      input.source === 'wizard-launch'
+        ? buildWizardBusinessSystemState(files)
+        : undefined
+    ),
+  );
 
   const requirePreview = input.options?.requirePreviewPass !== false;
   const requireReadiness = input.options?.requireReadinessPass !== false;
@@ -231,8 +509,13 @@ export async function commitMutation(
       | null,
     industry: input.options?.industry,
     brand: input.options?.businessName,
+    // The launcher hands this service an already converged and sealed artifact.
+    // Commit may verify it, but must never become a second source-writing stage.
+    mode: 'acceptance',
   });
-  files = preflight.files;
+  files = reviewedArtifact && !reviewedComposition && !restoredRevision
+    ? preserveWizardMetadataFiles(preflight.files, workingFiles)
+    : preflight.files;
   if (input.source === 'wizard-launch') {
     snapshotForPersistence = mergeWizardLaunchSnapshot(
       (snapshotForPersistence as SiteBundleSnapshot | null) ?? null,
@@ -242,10 +525,13 @@ export async function commitMutation(
 
   const previewOk =
     preflight.stages.earlyRepair !== 'failed' &&
-    preflight.stages.finalRepair !== 'failed';
+    preflight.stages.finalRepair !== 'failed' &&
+    preflight.mutated !== true &&
+    preflight.stages.runtimeCompatibility?.ok !== false &&
+    (preflight.violations?.length ?? 0) === 0;
   log('preflight', previewOk ? 'info' : 'warn', 'preflight stages', preflight.stages);
 
-  const gate = canonicalResult.gate ?? null;
+  const gate = canonicalResult?.gate ?? null;
 
   // Move 4: capability readiness adapter. When a CompiledContract is
   // supplied (or surfaced by the canonical pipeline), run PreviewGate +
@@ -253,7 +539,7 @@ export async function commitMutation(
   // donation / auth) block the commit instead of silently degrading.
   const compiled =
     input.options?.compiledContract ??
-    ((canonicalResult as { compiledContract?: CompiledContract }).compiledContract ?? null);
+    ((canonicalResult as (CanonicalCommitResult & { compiledContract?: CompiledContract }) | null)?.compiledContract ?? null);
   let previewVerdict: GateVerdict | null = null;
   let publishVerdict: GateVerdict | null = null;
   if (compiled) {
@@ -278,7 +564,7 @@ export async function commitMutation(
   let intentControlPlane: PlaygroundControlPlaneModel | null = null;
   let intentPreviewBlocked = 0;
   let intentPublishBlocked = 0;
-  const playgroundForIntents = canonicalResult.playground ?? input.current.playground ?? null;
+  const playgroundForIntents = reviewedArtifact?.playground ?? canonicalResult?.playground ?? input.current.playground ?? null;
   if (playgroundForIntents) {
     try {
       intentControlPlane = resolvePlaygroundControlPlane({
@@ -326,35 +612,19 @@ export async function commitMutation(
     log('elementReadiness', 'warn', 'element readiness evaluation threw', String(err));
   }
 
-  // Move C: execute transactional backend ops (capability provisioning +
-  // seeding) declared on the patch plan. Runs after all gates so a
-  // rejected commit never mutates the backend.
-  let backendOpsReport: BackendOpExecutionReport | null = null;
-  const backendOps = input.patch.backendOps ?? [];
-  if (backendOps.length > 0) {
-    try {
-      backendOpsReport = await executeBackendOps(backendOps, input.identity);
-      log(
-        'backendOps',
-        backendOpsReport.failedCount === 0 ? 'info' : 'warn',
-        `executed ${backendOpsReport.results.length} ops (failed=${backendOpsReport.failedCount})`,
-        backendOpsReport.results.map((r) => ({ type: r.op.type, cap: r.op.capability, status: r.status })),
-      );
-    } catch (err) {
-      log('backendOps', 'error', 'backend op execution threw', String(err));
-    }
-  }
-
   const readinessOk =
     (!gate || gate.previewReady) &&
     (!previewVerdict || previewVerdict.ok) &&
     intentPreviewBlocked === 0 &&
     elementPreviewBlocked === 0;
 
+  let backendOpsReport: BackendOpExecutionReport | null = null;
+  let runtimeReconciliationError: string | null = null;
 
 
   // 6. Auto-repair-then-hard-reject -----------------------------------------
   let status: 'committed' | 'rejected' = 'committed';
+  let preExecutionReady = previewOk && readinessOk;
   if ((requirePreview && !previewOk) || (requireReadiness && !readinessOk)) {
     log('repair', 'warn', 'running single auto-repair pass');
     try {
@@ -364,14 +634,20 @@ export async function commitMutation(
           | null,
         industry: input.options?.industry,
         brand: input.options?.businessName,
+          mode: 'acceptance',
       });
-      files = preflight.files;
+      files = reviewedArtifact && !reviewedComposition && !restoredRevision
+        ? preserveWizardMetadataFiles(preflight.files, workingFiles)
+        : preflight.files;
     } catch (err) {
       log('repair', 'error', 'auto-repair threw', String(err));
     }
     const previewOk2 =
       preflight.stages.earlyRepair !== 'failed' &&
-      preflight.stages.finalRepair !== 'failed';
+      preflight.stages.finalRepair !== 'failed' &&
+      preflight.mutated !== true &&
+      preflight.stages.runtimeCompatibility?.ok !== false &&
+      (preflight.violations?.length ?? 0) === 0;
     const readinessOk2 =
       (!gate || gate.previewReady) &&
       (!previewVerdict || previewVerdict.ok) &&
@@ -390,12 +666,80 @@ export async function commitMutation(
         backendOpsFailed: backendOpsReport?.failedCount ?? 0,
       });
     } else {
+      preExecutionReady = previewOk2 && readinessOk2;
       log('repair', 'info', 'auto-repair recovered the commit');
+    }
+  }
+
+  // Move C: execute transactional backend ops only after the candidate VFS
+  // has survived preview and readiness checks. This is intentionally after
+  // the auto-repair decision: a rejected revision must never provision or
+  // seed backend data.
+  const backendOps = input.patch.backendOps ?? [];
+  if (status === 'committed' && preExecutionReady && backendOps.length > 0) {
+    try {
+      backendOpsReport = await executeBackendOps(backendOps, input.identity);
+      log(
+        'backendOps',
+        backendOpsReport.failedCount === 0 ? 'info' : 'warn',
+        `executed ${backendOpsReport.results.length} ops (failed=${backendOpsReport.failedCount})`,
+        backendOpsReport.results.map((r) => ({ type: r.op.type, cap: r.op.capability, status: r.status })),
+      );
+      if (backendOpsReport.failedCount > 0) {
+        status = 'rejected';
+        log('backendOps', 'error', 'backend operation failure rejected the commit');
+      }
+      snapshotForPersistence = finalizeBusinessSystemState(
+        snapshotForPersistence as SiteBundleSnapshot | null,
+        backendOpsReport.failedCount === 0 ? 'provisioned' : 'failed',
+      );
+    } catch (err) {
+      status = 'rejected';
+      log('backendOps', 'error', 'backend op execution threw', String(err));
+    }
+  } else if (backendOps.length > 0) {
+    log('backendOps', 'warn', 'skipped backend operations because pre-execution gates failed');
+  }
+
+  if (
+    status === 'committed' &&
+    input.source !== 'wizard-launch' &&
+    input.options?.dryRun !== true &&
+    snapshotForPersistence
+  ) {
+    try {
+      const generatedRuntime = await reconcileGeneratedRuntime({
+        identity: input.identity,
+        manifest: finalizedArtifact?.generatedSiteRuntimeManifest,
+      });
+      log(
+        'generatedRuntime',
+        'info',
+        `reconciled ${generatedRuntime.agents.length} generated agent binding(s)`,
+      );
+    } catch (error) {
+      runtimeReconciliationError = error instanceof Error ? error.message : String(error);
+      // Reconciliation only exists for launched sites. Projects that have not been
+      // provisioned yet must still be able to save edits — the failure is recorded
+      // as a publish blocker instead of rejecting the author's work.
+      log(
+        'generatedRuntime',
+        'warn',
+        'generated runtime reconciliation deferred (publish blocked, save preserved)',
+        runtimeReconciliationError,
+      );
     }
   }
 
   // Move D — compute publish readiness + blockers aggregate.
   const publishBlockers: PublishBlockerSummary[] = [];
+  if (runtimeReconciliationError) {
+    publishBlockers.push({
+      source: 'backendOps',
+      code: 'generated-runtime-reconciliation-failed',
+      message: runtimeReconciliationError,
+    });
+  }
   if (publishVerdict && !publishVerdict.ok) {
     for (const r of publishVerdict.reasons) {
       publishBlockers.push({
@@ -435,7 +779,20 @@ export async function commitMutation(
     publishBlockers.length === 0 &&
     (!publishVerdict || publishVerdict.ok);
 
+  if (reviewedArtifact) {
+    assertReviewedWizardPageBodiesUnchanged(
+      reviewedArtifact.siteBundleSnapshot,
+      files,
+      'wizard durable revision',
+    );
+  }
   const vfsHash = await hashVfsFiles(files);
+  if (reviewedComposition && vfsHash !== reviewedComposition.candidate.vfsHash) {
+    throw new Error('[VFSCommitService] Validation changed the reviewed composition. Generate a fresh preview.');
+  }
+  if (restoredRevision && vfsHash !== await hashVfsFiles(restoredRevision.vfsFiles)) {
+    throw new Error('[VFSCommitService] Validation changed the historical revision; restore was not applied.');
+  }
 
   // 7. Persist revision + return -------------------------------------------
   return finalize({
@@ -443,8 +800,8 @@ export async function commitMutation(
     status,
     vfsFiles: files,
     siteBundleSnapshot: snapshotForPersistence,
-    runtimeManifest: canonicalResult.runtimeManifest ?? null,
-    playground: canonicalResult.playground ?? input.current.playground ?? null,
+    runtimeManifest: finalizedArtifact?.runtimeManifest ?? reviewedArtifact?.runtimeManifest ?? canonicalResult?.runtimeManifest ?? null,
+    playground: reviewedArtifact?.playground ?? canonicalResult?.playground ?? input.current.playground ?? null,
     readinessReport: {
       ...(gate ? { gate } : {}),
       ...(previewVerdict ? { previewVerdict } : {}),
@@ -469,7 +826,7 @@ export async function commitMutation(
     parentRevisionId: input.identity.revisionId || null,
     rejectMessage:
       status === 'rejected'
-        ? 'commit rejected by preview/readiness gate after auto-repair'
+        ? 'commit rejected by preview/readiness gate or backend operation failure'
         : null,
   });
 }
@@ -481,18 +838,55 @@ export async function commitMutation(
 function buildCanonicalInput(
   input: CommitMutationInput,
   workingFiles: Record<string, string>,
+  snapshotOverride?: SiteBundleSnapshot | null,
+  preservePageSources = input.source === 'theme-change',
 ): CanonicalCommitInput {
+  const snapshot = snapshotOverride ?? input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
   return {
+    preservePageSources,
     selections: input.options?.selections,
     playground: input.current.playground,
     existingVfsFiles: workingFiles,
-    businessName: input.options?.businessName,
-    industry: input.options?.industry,
-    selectedTemplateId: input.options?.selectedTemplateId,
-    selectedThemeId: input.options?.selectedThemeId,
-    themePresetId: input.options?.themePresetId,
+    businessName: input.options?.businessName ?? snapshot?.businessName,
+    industry: input.options?.industry ?? snapshot?.industry,
+    selectedTemplateId: input.options?.selectedTemplateId ?? snapshot?.meta?.templateId ?? undefined,
+    selectedThemeId: input.options?.selectedThemeId ?? snapshot?.meta?.themePresetId ?? undefined,
+    themePresetId: input.patch.themeEdit ? snapshot?.meta.themePresetId ?? undefined : input.options?.themePresetId ?? snapshot?.meta?.themePresetId ?? undefined,
+    themeTokens: snapshot?.themeTokens ?? input.options?.themeTokens,
     compiledContract: input.options?.compiledContract,
   };
+}
+
+function applyPresentationOps(
+  snapshot: SiteBundleSnapshot | null | undefined,
+  files: Record<string, string>,
+  ops: PresentationOp[] | undefined,
+  log: (stage: string, level: CommitDiagnostic['level'], message: string, detail?: unknown) => void,
+): SiteBundleSnapshot | null | undefined {
+  if (!ops?.length) return snapshot;
+  if (!snapshot?.meta.designIntervention) {
+    throw new Error('[VFSCommitService] presentation mutation requires a snapshot-owned design intervention.');
+  }
+
+  const intervention = JSON.parse(JSON.stringify(snapshot.meta.designIntervention)) as typeof snapshot.meta.designIntervention;
+  for (const op of ops) {
+    const currentVariantId = intervention.activeVariants[op.sectionId];
+    const currentVariant = currentVariantId ? getVariantById(currentVariantId) : undefined;
+    const nextVariant = getVariantById(op.variantId as import('@/sections/variants').VariantId);
+    if (!currentVariant || !nextVariant || currentVariant.sectionType !== nextVariant.sectionType) {
+      throw new Error(`[VFSCommitService] invalid presentation variant ${op.variantId} for section ${op.sectionId}.`);
+    }
+    intervention.activeVariants[op.sectionId] = nextVariant.id;
+  }
+
+  const nextSnapshot: SiteBundleSnapshot = {
+    ...snapshot,
+    meta: { ...snapshot.meta, designIntervention: intervention },
+  };
+  files['/.unison/design-intervention.json'] = JSON.stringify(intervention, null, 2);
+  files['/.unison/site-bundle-snapshot.json'] = JSON.stringify(nextSnapshot, null, 2);
+  log('presentation', 'info', `applied ${ops.length} snapshot-owned presentation operation(s)`, ops);
+  return nextSnapshot;
 }
 
 function toCanonicalSource(s: PatchSource): CanonicalCommitSource {
@@ -514,12 +908,9 @@ function toCanonicalSource(s: PatchSource): CanonicalCommitSource {
 }
 
 /**
- * Wizard launches already arrive with the full Lane B/SiteBundle handoff VFS
- * in the patch file map. The canonical wizard recompile is still required for
- * registry/snapshot/runtime derivation, but its compile output is scaffold-only
- * and intentionally drops AI-authored support modules plus metadata files. If a
- * revision persists that scaffold output, WebBuilder's revision-first hydration
- * replaces the rich launch with the minimal template site.
+ * Wizard launches arrive with the reviewed canonical handoff VFS in the patch
+ * file map. Preserve the sealed compiler output while retaining metadata
+ * sidecars that are intentionally absent from the runtime snapshot.
  */
 function mergeWizardLaunchFiles(
   launcherFiles: Record<string, string>,
@@ -531,8 +922,27 @@ function mergeWizardLaunchFiles(
     ...launcherFiles,
   };
 
+  // The launcher patch also carries metadata that is intentionally absent
+  // from the runtime snapshot. It must never replace a protected canonical
+  // source path or selected page body.
+  const reviewedPaths = new Set<string>([
+    ...(snapshot?.meta?.seal?.protectedFilePatterns ?? []),
+    ...(snapshot?.meta?.seal?.laneAProtectedFiles ?? []),
+    ...Object.values(snapshot?.pageRegistry?.pages ?? {})
+      .map((page) => page.filePath)
+      .filter((path): path is string => Boolean(path)),
+    snapshot?.routerFile?.path || '/src/App.tsx',
+  ]);
+  for (const path of reviewedPaths) {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const reviewedSource = canonicalFiles[normalizedPath] ?? canonicalFiles[path];
+    if (typeof reviewedSource !== 'string') continue;
+    merged[normalizedPath] = reviewedSource;
+    if (path !== normalizedPath) delete merged[path];
+  }
+
   const routerPath = snapshot?.routerFile?.path || '/src/App.tsx';
-  const routerContent = launcherFiles[routerPath] || launcherFiles['/src/App.tsx'] || snapshot?.routerFile?.content;
+  const routerContent = canonicalFiles[routerPath] || snapshot?.routerFile?.content;
   if (routerContent) {
     merged[routerPath] = routerContent;
     merged['/src/App.tsx'] = routerContent;
@@ -541,20 +951,147 @@ function mergeWizardLaunchFiles(
   return merged;
 }
 
+function preserveWizardMetadataFiles(
+  files: Record<string, string>,
+  launcherFiles: Record<string, string>,
+): Record<string, string> {
+  return {
+    ...Object.fromEntries(
+      Object.entries(launcherFiles).filter(([path]) => path.startsWith('/.unison/')),
+    ),
+    ...files,
+  };
+}
+
 function mergeWizardLaunchSnapshot(
   snapshot: SiteBundleSnapshot | null,
   files: Record<string, string>,
 ): SiteBundleSnapshot | null {
   if (!snapshot) return null;
   const routerPath = snapshot.routerFile?.path || '/src/App.tsx';
+  const runtimeFiles = Object.fromEntries(
+    Object.entries(files).filter(([path]) => !path.startsWith('/.unison/')),
+  );
   return {
     ...snapshot,
-    vfsFiles: files,
+    vfsFiles: runtimeFiles,
     routerFile: {
       path: routerPath,
-      content: files[routerPath] || files['/src/App.tsx'] || snapshot.routerFile?.content || '',
+      content: runtimeFiles[routerPath] || runtimeFiles['/src/App.tsx'] || snapshot.routerFile?.content || '',
     },
   };
+}
+
+function assertReviewedWizardPageBodiesUnchanged(
+  snapshot: SiteBundleSnapshot,
+  files: Record<string, string>,
+  boundary: string,
+): void {
+  const changedPages = Object.values(snapshot.pageRegistry?.pages || {})
+    .map((page) => page.filePath)
+    .filter((path): path is string => Boolean(path))
+    .map((path) => (path.startsWith('/') ? path : `/${path}`))
+    .filter((path) => snapshot.vfsFiles[path] !== files[path]);
+  if (changedPages.length > 0) {
+    throw new Error(
+      `[VFSCommitService] ${boundary} amended sealed Wizard page bodies: ${changedPages.join(', ')}.`,
+    );
+  }
+}
+
+function stampBusinessSystemState(
+  snapshot: SiteBundleSnapshot | null,
+  previousSnapshot: SiteBundleSnapshot | null | undefined,
+  requestedState: BusinessSystemState | undefined,
+): SiteBundleSnapshot | null {
+  if (!snapshot) return null;
+  const businessSystem = requestedState ?? previousSnapshot?.businessSystem;
+  return businessSystem ? { ...snapshot, businessSystem } : snapshot;
+}
+
+function finalizeBusinessSystemState(
+  snapshot: SiteBundleSnapshot | null,
+  status: 'provisioned' | 'failed',
+): SiteBundleSnapshot | null {
+  if (!snapshot?.businessSystem) return snapshot;
+  return {
+    ...snapshot,
+    businessSystem: {
+      ...snapshot.businessSystem,
+      capabilities: snapshot.businessSystem.capabilities.map((capability) => ({ ...capability, status })),
+    },
+  };
+}
+
+function readWizardEnabledCapabilities(files: Record<string, string>): CapabilityId[] {
+  try {
+    const seed = JSON.parse(files['/.unison/wizard-seed.json'] || '{}') as {
+      canonical?: { capabilities?: unknown };
+    };
+    if (!Array.isArray(seed.canonical?.capabilities)) return [];
+    return Array.from(new Set(seed.canonical.capabilities.filter(
+      (capability): capability is CapabilityId =>
+        typeof capability === 'string' && capability in CAPABILITY_REGISTRY,
+    ))).sort();
+  } catch {
+    return [];
+  }
+}
+
+function buildWizardBusinessSystemState(files: Record<string, string>): BusinessSystemState | undefined {
+  const capabilities = readWizardEnabledCapabilities(files);
+  if (capabilities.length === 0) return undefined;
+  const approvedAt = new Date().toISOString();
+  return {
+    version: '1.0',
+    requestedCapabilities: Array.from(new Set(
+      capabilities.flatMap((capability) => CAPABILITY_REGISTRY[capability].provides),
+    )),
+    capabilities: capabilities.map((capability) => ({
+      id: capability,
+      provides: [...CAPABILITY_REGISTRY[capability].provides],
+      status: 'approved',
+      approval: {
+        approvedBy: 'wizard-launch',
+        approvedAt,
+      },
+    })),
+  };
+}
+
+async function reconcileGeneratedRuntime(input: {
+  identity: BuilderIdentity;
+  manifest?: GeneratedSiteRuntimeManifest;
+}): Promise<GeneratedSiteRuntimeManifest> {
+  if (!input.manifest) {
+    throw new Error('Canonical finalization did not provide a generated runtime manifest.');
+  }
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('site_id')
+    .eq('id', input.identity.projectId)
+    .eq('business_id', input.identity.businessId)
+    .single();
+  if (projectError || !project?.site_id) {
+    throw new Error('Canonical project site identity is unavailable.');
+  }
+
+  const manifest = input.manifest;
+  if (manifest.siteId !== project.site_id) {
+    throw new Error('Sealed runtime site identity does not match the canonical project.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('reconcile-generated-runtime', {
+    body: {
+      businessId: input.identity.businessId,
+      projectId: input.identity.projectId,
+      manifest,
+    },
+  });
+  if (error || !data?.success) {
+    throw new Error(error?.message || 'Generated runtime reconciliation failed.');
+  }
+  return manifest;
 }
 
 export async function hashVfsFiles(files: Record<string, string>): Promise<string> {
@@ -587,8 +1124,8 @@ async function finalize(args: {
   input: CommitMutationInput;
   status: 'committed' | 'rejected';
   vfsFiles: Record<string, string>;
-  siteBundleSnapshot: unknown;
-  runtimeManifest: unknown;
+  siteBundleSnapshot: SiteBundleSnapshot | null;
+  runtimeManifest: RuntimeManifest | null;
   playground: PlaygroundState | null;
   readinessReport: Record<string, unknown>;
   publishReady: boolean;
@@ -620,50 +1157,46 @@ async function finalize(args: {
   const dryRun = input.options?.dryRun === true;
 
   if (!dryRun) {
-    try {
-      const row = {
-        project_id: input.identity.projectId,
-        business_id: input.identity.businessId,
-        draft_id: input.identity.draftId,
-        parent_revision_id: parentRevisionId,
-        source: input.source,
-        status,
-        patch_json: input.patch as unknown as Record<string, unknown>,
-        vfs_files: vfsFiles as unknown as Record<string, unknown>,
-        site_bundle_snapshot: (siteBundleSnapshot ?? {}) as Record<string, unknown>,
-        runtime_manifest: (runtimeManifest ?? {}) as Record<string, unknown>,
-        playground_state: (playground ?? {}) as unknown as Record<string, unknown>,
-        readiness_report: readinessReport,
-        diagnostics: diagnostics as unknown as Record<string, unknown>[],
-        publish_ready: publishReady,
-        publish_blockers: publishBlockers as unknown as Record<string, unknown>[],
-        backend_ops_applied: backendOpsApplied as unknown as Record<string, unknown>[],
-        vfs_hash: vfsHash,
-        created_by: input.identity.userId,
-      };
-      const { data, error } = await supabase
-        .from('site_revisions')
-        .insert(row)
-        .select('id')
-        .single();
-      if (error) {
-        diagnostics.push({
-          stage: 'persist',
-          level: 'warn',
-          message: 'failed to persist site_revisions row',
-          detail: error.message,
-        });
-      } else if (data) {
-        persistedRevisionId = (data as { id: string }).id;
-      }
-    } catch (err) {
+    const { data, error } = await (supabase.rpc as any)('commit_canonical_site_revision', {
+      p_project_id: input.identity.projectId,
+      p_business_id: input.identity.businessId,
+      p_draft_id: input.identity.draftId,
+      p_parent_revision_id: parentRevisionId,
+      p_source: input.source,
+      p_status: status,
+      p_patch_json: input.patch,
+      p_vfs_files: vfsFiles,
+      p_site_bundle_snapshot: siteBundleSnapshot ?? {},
+      p_runtime_manifest: runtimeManifest ?? {},
+      p_playground_state: playground ?? {},
+      p_readiness_report: readinessReport,
+      p_diagnostics: diagnostics,
+      p_publish_ready: publishReady,
+      p_publish_blockers: publishBlockers,
+      p_backend_ops_applied: backendOpsApplied,
+      p_vfs_hash: vfsHash,
+      p_active_page_path: input.current.activePagePath ?? null,
+    });
+    if (error || typeof data !== 'string' || !data) {
+      const detail = error?.message || 'atomic commit returned no revision id';
       diagnostics.push({
         stage: 'persist',
-        level: 'warn',
-        message: 'persist threw',
-        detail: String(err),
+        level: 'error',
+        message: 'canonical revision transaction failed',
+        detail,
       });
+      recordCommitOutcome({
+        source: input.source,
+        outcome: 'threw',
+        vfsHash,
+        revisionId: null,
+        draftId: input.identity.draftId || null,
+        dryRun,
+      });
+      throw new Error(`[VFSCommitService] canonical revision transaction failed: ${detail}`);
     }
+
+    persistedRevisionId = data;
 
     // Move F #1 — fire-and-forget commit telemetry. Never block on failure.
     try {
@@ -709,7 +1242,19 @@ async function finalize(args: {
     }
   }
 
+  // Phase 0B — instrumentation: every canonical outcome is provably attributed
+  // to a mutation source, so a bypass shows up as an adoption with no commit.
+  recordCommitOutcome({
+    source: input.source,
+    outcome: status === 'committed' ? 'committed' : 'rejected',
+    vfsHash,
+    revisionId: persistedRevisionId,
+    draftId: input.identity.draftId || null,
+    dryRun,
+  });
+
   const result: CommitMutationResult = {
+
     status,
     source: input.source,
     identity: {
@@ -782,6 +1327,40 @@ export async function loadLatestRevisionForProject(
     .maybeSingle();
   if (error || !data) return null;
   return mapRevisionRow(data as Record<string, unknown>);
+}
+
+/** Load only the committed revision selected by the durable draft projection. */
+export async function loadProjectedRevisionForDraft(
+  projectId: string,
+  draftId: string,
+): Promise<LoadedRevision> {
+  const { data: draft, error: draftError } = await (supabase
+    .from('builder_drafts') as any)
+    .select('last_revision_id')
+    .eq('id', draftId)
+    .eq('project_id', projectId)
+    .maybeSingle();
+  if (draftError) throw draftError;
+  if (!draft) {
+    throw new Error(`[VFSCommitService] canonical draft ${draftId} was not found for project ${projectId}`);
+  }
+  if (typeof draft.last_revision_id !== 'string' || !draft.last_revision_id) {
+    throw new Error(`[VFSCommitService] canonical draft ${draftId} has no committed revision projection`);
+  }
+
+  const { data: revision, error: revisionError } = await supabase
+    .from('site_revisions')
+    .select('*')
+    .eq('id', draft.last_revision_id)
+    .eq('project_id', projectId)
+    .eq('draft_id', draftId)
+    .eq('status', 'committed')
+    .maybeSingle();
+  if (revisionError) throw revisionError;
+  if (!revision) {
+    throw new Error(`[VFSCommitService] draft ${draftId} points to an invalid committed revision`);
+  }
+  return mapRevisionRow(revision as Record<string, unknown>);
 }
 
 /**
@@ -891,6 +1470,7 @@ export async function restoreRevision(args: {
       fileOps,
       reason: `restore:${args.targetRevisionId}`,
     } as PatchPlan,
+    options: { restoreRevisionId: args.targetRevisionId },
   });
 }
 
@@ -928,5 +1508,3 @@ export async function recordRepublishEvent(args: {
     /* telemetry is best-effort */
   }
 }
-
-

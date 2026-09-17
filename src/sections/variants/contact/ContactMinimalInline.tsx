@@ -8,7 +8,11 @@ import type { BaseSectionProps } from '../../types';
 import { hsl, hsla } from '../../themeUtils';
 
 export const ContactMinimalInline: React.FC<BaseSectionProps<'contact'>> = ({ section, theme }) => {
-  const { headline, description, submitLabel = 'Send', phone, email, address } = section.props;
+  const { headline, description, fields, submitLabel = 'Send', submitIntent = 'contact.submit', phone, email, address } = section.props;
+  const formFields = fields?.length ? fields.slice(0, 2) : [
+    { name: 'email', type: 'email', placeholder: 'your@email.com' },
+    { name: 'message', type: 'text', placeholder: 'Message' },
+  ];
 
   const inputStyle: React.CSSProperties = {
     flex: 1,
@@ -24,6 +28,7 @@ export const ContactMinimalInline: React.FC<BaseSectionProps<'contact'>> = ({ se
 
   return (
     <section
+      data-ut-variant="contact:minimal-inline"
       style={{
         padding: theme.sectionPadding,
         background: `linear-gradient(135deg, ${hsla(theme.colors.primary, 0.04)}, ${hsla(theme.colors.secondary, 0.04)})`,
@@ -50,12 +55,13 @@ export const ContactMinimalInline: React.FC<BaseSectionProps<'contact'>> = ({ se
 
         <form
           data-demo-form="true"
-          data-ut-intent="contact.submit"
+          data-ut-intent={submitIntent}
           className="flex gap-3 mb-6"
           style={{ maxWidth: '36rem', margin: '0 auto' }}
         >
-          <input type="email" placeholder="your@email.com" style={inputStyle} />
-          <input type="text" placeholder="Message" style={inputStyle} />
+          {formFields.map((field) => (
+            <input key={field.name} name={field.name} type={field.type || 'text'} placeholder={field.placeholder || field.name} required={field.required} style={inputStyle} />
+          ))}
           <button
             type="submit"
             className="text-sm font-medium px-6 py-2.5 transition-all hover:opacity-90 cursor-pointer flex-shrink-0"

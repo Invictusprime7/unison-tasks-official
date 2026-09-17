@@ -1,379 +1,166 @@
-# Copilot Instructions for Unison Tasks
+# Copilot Instructions for Unison
 
-## Project Overview
+## Canonical Architecture
 
-**Unison Tasks** is an AI-powered web builder platform that enables businesses to launch custom websites through a guided wizard system. The architecture emphasizes composability, extensibility, and type safety across three main domains:
+Use `roadmap.md` and `docs/DETERMINISTIC_AI_DESIGN_EXECUTION_PLAN.md` as the
+current architecture sources. Preserve this protected chain:
 
-1. **Launch System** — Wizard-driven site generation with business blueprint
-2. **Web Builder** — React-based visual editor with AI enhancement capabilities  
-3. **Automation Pipeline** — Intent-driven business workflows via Inngest
-
----
-
-## Core Architectural Principles
-
-### 1. Three-Layer Launch Model
-Every website configuration follows this structure:
-
-- **SystemBlueprint** — Business type (booking, agency, store, saas, portfolio, content), intents, workflows, pages, CTA contracts
-- **TemplateStructure** — Section order, layout density, nav/footer style, column arrangement
-- **ThemeSkin** — Visual identity (color palette, typography scale, corner radius, shadows, gradients, motion)
-
-**Key Contract:** `template structure → intent wiring → theme override → build`
-
-Theme ONLY controls presentation tokens, never layout structure or intent bindings.
-
-### 2. React/TSX-Only Pipeline
-TypeScript/React is the canonical format throughout:
-
-- AI generates **React/TSX**, never HTML
-- Preview pipeline expects React components via Sandpack
-- HTML documents are **rejected with error messages**, not converted
-- CSS is delivered via Tailwind CDN + CSS custom properties for theme colors
-
-### 3. Unified VFS (Virtual File System)
-Single shared VFS instance per WebBuilder instance:
-
-- Created in `VFSProvider` wrapper (WebBuilderPage.tsx)
-- Used by all consumers (VFSPreview, useSitePreview, useAIVFS, AI callbacks)
-- File paths preserve `/src/` prefix: `/src/App.tsx`, `/src/index.tsx`, `/src/index.css`
-- Sandpack rendered at ROOT level (legacy Sandpack template expects `/App.tsx`, not `/src/App.tsx`)
-
-### 4. Fixed Intent System
-Intents are a **closed enumeration** defined in `src/coreIntents.ts`:
-
-- Categories: NAV_INTENTS, PAY_INTENTS, ACTION_INTENTS, AUTOMATION_INTENTS
-- Examples: `booking.create`, `contact.submit`, `newsletter.subscribe`, `cart.add`
-- **User templates CANNOT create arbitrary intents** — only use pre-defined intents
-- Intent wiring happens at BUILD TIME (cached on button), never at runtime
-- Runtime execution uses fixed handlers in `src/runtime/actionCatalog.ts`
-
-**Universal Intent System (2-step deterministic):**
-1. **Event Delegation** — Single listener on canvas root
-2. **Intent Resolution** — AI resolves intent at build time (cached)
-3. **Action Execution** — Runtime executes from fixed handler catalog
-
-### 5. StyleX Design Tokens
-Visual identity is managed through compiled, type-safe CSS:
-
-- Token definitions in `src/themes/tokens.stylex.ts` (color, typography, shape, surface, motion, spacing)
-- Theme identities in `src/themes/identities.stylex.ts`: modern, editorial, bold, futuristic, organic
-- Each identity uses `stylex.createTheme()` for compile-time validation
-- CSS custom properties emitted at runtime (StyleX compile won't work in Sandpack)
-- **IDENTITY_TOKENS** object mirrors all identities for runtime use
-
----
-
-## Key Services & File Organization
-
-### Suite Structure
-
-```
-src/
-├── components/          # UI components
-│   ├── onboarding/     # SystemLauncher wizard (7 steps)
-│   ├── WebBuilder.tsx  # Main editor component
-│   └── VFSPreview.tsx  # Multi-backend preview (Sandpack/Docker/HTML)
-├── contexts/           # React Context providers
-│   └── VFSContext.ts   # Unified VFS provider
-├── services/           # Business logic (40+ services)
-│   ├── aiLaunchService.ts         # LaunchConfig → AI template generation
-│   ├── automationOrchestrator.ts  # Intent → recipe → Inngest bridge
-│   ├── recipeManagerService.ts    # Recipe pack management
-│   ├── buildPipelineService.ts    # 8-stage build orchestrator
-│   ├── inngestService.ts          # Frontend Inngest event sender
-│   └── [19+ others]               # Design compiler, template provisioner, etc.
-├── runtime/            # Intent execution + preview
-│   ├── intentExecutor.ts           # Main intent entry point
-│   ├── intentResolver.ts           # Rules + AI-fallback resolution
-│   ├── universalIntentRouter.ts    # Event delegation
-│   └── actionCatalog.ts            # Fixed action handlers
-├── lib/                # Library integrations
-│   ├── inngest.ts      # Event schema definitions
-│   └── inngest-workflows.ts  # Durable workflow functions
-├── themes/             # StyleX tokens and identities
-│   ├── tokens.stylex.ts
-│   └── identities.stylex.ts
-├── data/               # Configuration & data
-│   ├── industries.ts         # 20 industries × 6 system types
-│   ├── templateFamilies.ts   # 4 families (luxe, clean, editorial, bold) × 3 variants
-│   ├── blueprintBuilder.ts   # SystemBlueprint from wizard
-│   └── [other registries]
-├── types/              # TypeScript definitions
-│   └── launchConfig.ts # SystemBlueprint, TemplateStructure, ThemeSkin types
-└── utils/              # Utilities
-    ├── siteGenerator.ts       # LaunchConfig → VFS files (19 section generators)
-    └── sandpackFilePrep.ts    # File validation for preview
-
-api/                   # Backend Edge Functions (Supabase)
-├── inngest.ts
-└── cron/
-    └── [scheduled tasks]
-
-supabase/             # Supabase infrastructure
-├── functions/
-│   ├── ai-code-assistant/    # NLP → template/component/code (modes: template-react, design, web, component)
-│   ├── systems-build/        # Theme + industry → concrete HTML/React
-│   └── [other functions]
-└── migrations/        # Database schema
+```text
+LauncherWizard
+  -> runLaunchPipeline
+  -> deterministic resolution and canonical compiler
+  -> Stage 4b
+  -> canonical preflight
+  -> commitMutation / VFSCommitService
+  -> SiteBundleSnapshot and revision
+  -> Live Preview and Playground
 ```
 
-### Template Families
-- **Luxe** — Premium, spacious, image-forward
-- **Clean** — Minimal, grid-based, content-first  
-- **Editorial** — Asymmetric, type-heavy, magazine-like
-- **Bold** — Dense, high-impact, conversion-focused
+Launcher must remain deterministic and fully launchable with AI disabled,
+unavailable, or rejected. `LauncherWizard` collects authoritative selections;
+`launchOrchestrator` owns planning, compilation, Stage 4b, preflight, canonical
+commit, and committed handoff.
 
-### Theme Identities
-- **Modern** — Clean grids, medium radius, cool neutrals, crisp borders
-- **Editorial** — Serif headlines, asymmetric, large type contrast
-- **Bold** — Heavy contrast, large CTAs, color blocking
-- **Futuristic** — Dark-first, electric accents, glow edges, gradients
-- **Organic** — Warm tones, soft corners, breathable spacing
+## Authority Boundaries
 
----
+- The topology planner owns page existence and roles, not visual design.
+- Template composition owns industry structure and section-family baselines,
+  not runtime mutation policy.
+- The Section Registry owns semantic section families and defaults.
+- The Variant Registry owns concrete visual implementations.
+- The Design Implementation Registry is derived from existing registries, never
+  a second hand-maintained inventory.
+- The Artifact Registry owns business semantics, slots, intents, bindings, data
+  sources, capabilities, readiness, and edit scope, not visual layout.
+- Template Design Contract V2 and resolved composition record deterministic
+  design identity; they do not own global theme values.
+- Stage 4b is the only global theme and semantic-token authority. Compiler and
+  registry emitters consume Stage 4b and `--ut-*` tokens; they must not create
+  literal or parallel palette ownership.
+- `commitMutation` through `VFSCommitService` is the only accepted mutation and
+  revision boundary. No caller writes canonical VFS or snapshots directly.
+- `SiteBundleSnapshot` is sealed runtime truth for its revision and is not
+  mutated after sealing.
+- Live Preview and Playground render and hydrate committed canonical artifacts.
+  They may not generate fallback page source or become snapshot authorities.
 
-## Data Flow Patterns
+Route state and local storage may carry navigation or recovery hints. They do
+not own canonical project identity, VFS, revisions, or persisted project state.
 
-### Launch → WebBuilder Pipeline
+## Registry-To-Runtime Closure
 
-```
-SystemLauncher Wizard
-  ↓ (7-step form: business type → industry → family → variant → theme → build mode → generate)
-LaunchConfig { blueprint, structure, skin }
-  ↓
-[Fast Launch] → siteGenerator.generateSiteVFS() → VFS files
-[AI Enhanced] → aiLaunchService.generateAILaunchSite() → supabase:ai-code-assistant → VFS files
-  ↓
-navigate('/web-builder', { state: { launchVFS, launchSystemType, launchBusinessName } })
-  ↓
-WebBuilder.tsx { useVFS, launchVFSLoadedRef guard }
-  ↓
-VFSPreview (Sandpack/Docker/HTML with error boundary)
-```
+An asset is incomplete until one stable identity survives this round trip:
 
-### Intent Execution Flow
-
-```
-User clicks button with data-ut-intent="booking.create"
-  ↓
-universalIntentRouter (body event listener)
-  ↓
-intentResolver (rules-first, then AI-fallback for unknowns)
-  ↓
-intentExecutor (cached handler)
-  ↓
-actionCatalog (fixed runtime action)
-  ↓ (if automation recipe bound)
-automationOrchestrator (normalize industry, map intent → recipe)
-  ↓
-inngestService.sendInngestEvent()
-  ↓
-Inngest Edge Function → durable workflow
+```text
+Registry
+  -> eligibility and seeded deterministic resolution
+  -> Template Design Contract V2 / resolved composition
+  -> canonical compiler and VFS
+  -> Stage 4b semantic theme
+  -> commit and sealed snapshot revision
+  -> Live Preview execution
+  -> Playground hydration
+  -> structured edit, recommit, reload, and rehydration
 ```
 
-### AI Template Generation
+Prove registry identity, legal eligibility, seed determinism, compiler emission,
+semantic theme compliance, snapshot byte and identity preservation, Preview
+execution without fallback authorship, and Playground recovery of artifact,
+implementation, slots, intents, and bindings. Registry counts, filenames,
+source-only assertions, and static quality scores are not closure evidence.
 
-```
-User prompt in SystemLauncher or AIPanel
-  ↓
-buildLaunchConfigFromChip() → 3-layer LaunchConfig
-  ↓
-aiLaunchService.generateAILaunchSite()
-  ↓
-supabase:ai-code-assistant (mode: "template-react")
-  {
-    systemType (business context)
-    systemsBuildContext (blueprint + brand + palette)
-    design tokens + aesthetic directives
-    siteElementsLibraryContext (pre-built components)
-    userDesignProfile (learned style)
-  }
-  ↓
-AI returns React/TSX components + CSS
-  ↓
-sandpackFilePrep.ts (validate, inject theme vars, structure files)
-  ↓
-VFSPreview renders preview with error boundary
-```
+Derive cross-registry projections. Do not add duplicate registries, compiler
+branches, VFS writers, preview owners, snapshot stores, or runtime identities.
+Keep compatibility adapters only until persisted-snapshot restore and closure
+tests prove that the legacy format can be retired without data loss.
 
----
+## AI Boundary
 
-## Naming Conventions
+AI is optional downstream enrichment only, after deterministic output is
+premium, executable, committed, previewed, and editable. AI may propose a
+structured, schema-validated, registry-aware plan for content, media, SEO,
+registered variant ranking, supported layout properties, or registered
+primitive recipes.
 
-### Type Names
-- **LaunchConfig** — Top-level 3-layer config object
-- **SystemBlueprint** — Business + intent + workflow definition
-- **TemplateStructure** — Layout structure (sections, columns, density)
-- **ThemeSkin** — Visual identity (tokens, identities, overrides)
-- **IntentDefinition** — Single intent schema (namespace.action)
-- **RecipeStep** — Individual workflow step
-- **VFSContext** — Virtual file system interface
+AI must never author or replace Launcher page source, write VFS or snapshots
+directly, change topology, override Stage 4b, invent canonical identities,
+bypass compilation/preflight/commit, or become required for Launcher success.
 
-### Function Names
-- **generate\*** — Create new content (generateSiteVFS, generateApp, generateCSS)
-- **resolve\*** — Look up or compute value (resolveTokens, resolveIntentHandler)
-- **build\*** — Orchestrate multi-step creation (buildPipeline, buildContext)
-- **prepare\*** — Validate & transform input (sandpackFilePrep, prepareFiles)
-- **normalize\*** — Standardize format (normalizeIndustry, normalizeIntent)
+Apply accepted AI operations to canonical structured state, recompile, run
+preflight, and commit through `VFSCommitService`. On timeout, invalid output,
+incompatibility, compile failure, or failed preflight, discard the AI plan and
+keep the deterministic base site. `wizard-seed` remains compatibility-only and
+must not be reconnected as Launcher page authorship.
 
-### File Naming
-- Services: `*Service.ts` (aiLaunchService, automationOrchestrator, recipeManagerService)
-- Components: PascalCase + component type (SystemLauncher, VFSPreview, WebBuilder, AIBuilderPanel)
-- Utilities: camelCase with domain (siteGenerator, sandpackFilePrep)
-- Types: `launchConfig.ts`, `intentConfig.ts`, PascalCase for exported types
-- StyleX: `*.stylex.ts`
+## Primary Current Files
 
----
+- `src/services/launch/launchRun.ts` - `runLaunchPipeline` entry contract.
+- `src/services/launch/launchOrchestrator.ts` - canonical Launcher owner.
+- `src/services/canonicalLaunchVfs.ts` - deterministic canonical launch VFS.
+- `src/sections/compositionToFileSet.ts` - composition-to-React file emission.
+- `src/sections/variants/types.ts` and `src/sections/variants/registry.ts` -
+  concrete variant contracts and inventory.
+- `src/services/designImplementationRegistry.ts` - derived implementation view.
+- `src/platform/core/resolvedComposition.ts` - resolved implementation identity.
+- `src/platform/core/snapshotSeal.ts` - sealed snapshot authority metadata.
+- `src/test/launchOrchestratorCanonicalHandoff.test.ts` - handoff proof.
+- `src/test/snapshotSeal.test.ts`, `src/test/canonicalLaunchVfs.test.ts`, and
+  `src/test/goldenIndustryPipeline.test.ts` - snapshot and launch-path proofs.
 
-## Common Patterns
+Treat filenames as navigation hints, not proof. Before changing architecture,
+trace the invoked production call path and confirm the current symbol owner.
 
-### Adding a New Intent
-1. Define in `src/coreIntents.ts` with category
-2. Add handler to `src/runtime/actionCatalog.ts`
-3. Map recipe in `automationOrchestrator.INTENT_EVENT_MAP` if automation-bound
-4. Add template binding in manifest if needed
+## Implementation Workflow
 
-**Never** create arbitrary intents outside coreIntents.ts.
+1. Start from one broken behavior or unverified closure gate.
+2. Trace selection, resolution, compiler, Stage 4b, preflight, commit, snapshot,
+   Preview, and Playground as applicable.
+3. Identify the existing canonical owner and nearby duplicate authorities.
+4. Add or update a focused closure, compatibility, recovery, or bypass test.
+5. Implement one additive closure-sized batch and preserve persisted formats
+   with a read adapter or feature gate where needed.
+6. Run the focused check immediately after the first substantive edit.
+7. Validate identity and bindings through commit, reload, and rehydration.
+8. Remove legacy behavior only after parity, restore, and no-bypass proof.
 
-### Adding a New Template Section
-1. Create section generator function in `src/utils/siteGenerator.ts`
-2. Add to templateFamilies variant definition in `src/data/templateFamilies.ts`
-3. Export JSX component for wizard preview
-4. Declare requirements in template manifest (tables, workflows, intents)
+## Validation Commands
 
-### Extending Recipe Packs
-1. Define new recipe in Supabase `ai_recipe_registry`
-2. Add to `installed_recipe_packs` per business
-3. Create workflow steps in `src/services/recipeExecutor.ts`
-4. Wire through `automationOrchestrator.normalizeIndustry()`
-5. Toggle via `ai_plugin_state` per business
+Use the narrowest relevant command first, then expand with the blast radius:
 
-### AI Code Generation
-1. Call `aiLaunchService.generateAILaunchSite(config, userPrompt?)` or `ai-code-assistant` directly
-2. AI must output React/TSX (enforced in system prompt)
-3. HTML documents → reject with error + toast
-4. Use `sandpackFilePrep.ts` to validate generated files
-5. Apply theme tokens before Sandpack render
-
-### Error Handling in Preview
-- Wrap generated component with React ErrorBoundary in sandpackFilePrep
-- VFSPreview SandpackErrorBoundary retries up to 3 times
-- Show categorized error UI (🔧 Babel, 📦 missing modules, ⚠️ other)
-- Graceful degradation: show error instead of crashing
-
----
-
-## Code Examples
-
-### Generate a Site from LaunchConfig
-```typescript
-import { siteGenerator } from '@/utils/siteGenerator';
-import { aiLaunchService } from '@/services/aiLaunchService';
-
-// Fast launch (deterministic)
-const fastVFS = siteGenerator.generateSiteVFS(launchConfig);
-
-// AI enhanced (with user prompt)
-const aiVFS = await aiLaunchService.generateAILaunchSite(launchConfig, userPrompt);
-// Returns: { files, aiGenerated, businessName, error?, runtimeManifest? }
+```powershell
+npx vitest run src/test/snapshotSeal.test.ts src/test/canonicalLaunchVfs.test.ts src/test/goldenIndustryPipeline.test.ts
+npx vitest run src/test/launchOrchestratorCanonicalHandoff.test.ts
+node scripts/lint-canonical-vfs-writes.mjs
+node scripts/lint-pipeline-bypass.mjs
+node scripts/lint-single-source-of-truth.mjs
+npx tsc -p tsconfig.app.json --noEmit
+npm run lint
+npm run build
+npx vitest run
 ```
 
-### Wire an Intent Button
-```typescript
-// In generated component
-<button
-  data-ut-intent="booking.create"
-  data-intent-params={JSON.stringify({ duration: 60 })}
->
-  Book Now
-</button>
+For runtime-facing changes, also prove selected routes in Live Preview,
+refresh/reopen from the committed revision, Playground hydration, and mobile
+and desktop behavior. Run Edge-function and Supabase checks when their code,
+schema, RLS, or deployment contract changes. Local tests do not prove remote
+deployment parity.
 
-// Intent routing via universalIntentRouter → intentExecutor → actionCatalog
-```
+## Prohibited Parallel Paths
 
-### Access VFS from Component
-```typescript
-import { useVFS } from '@/contexts/VFSContext';
+Do not restore or introduce:
 
-const MyComponent = () => {
-  const vfs = useVFS(); // Single shared instance
-  const code = vfs.getFile('/src/App.tsx');
-  vfs.updateFile('/src/App.tsx', newCode);
-};
-```
+- a seven-step `SystemLauncher` architecture;
+- `aiLaunchService` or `ai-code-assistant` as Launcher generation authority;
+- deleted `siteGenerator` or `templateFamilies` generation guidance;
+- Lane B page-body authorship or Lane B authority for new snapshots;
+- direct VFS writes outside `commitMutation` / `VFSCommitService`;
+- direct snapshot mutation, alternate revision stores, or post-seal mutation;
+- Preview or Playground fallback authorship;
+- theme ownership outside Stage 4b;
+- caller-supplied identity, readiness, capability, price, or tenant authority;
+- vertical-specific generators, VFS writers, preview owners, or snapshot owners;
+- arbitrary intents or runtime actions outside canonical registries;
+- removal of compatibility behavior before persisted restore tests pass.
 
-### Create an AI Code Generation Prompt
-```typescript
-const systemPrompt = `You are an ELITE web template generator. 
-Generate ONLY valid React/TSX components.
-Use provided design tokens from IDENTITY_TOKENS.
-Apply provided layout directives from systemsBuildContext.
-Output MUST be syntactically valid React.`;
-
-const userPrompt = `Create a luxury hotel booking site hero section...`;
-```
-
----
-
-## What NOT to Do
-
-❌ **Do NOT:**
-- Create custom intents outside `coreIntents.ts`
-- Return HTML documents from AI services (reject with error)
-- Add new action handlers outside `actionCatalog.ts`
-- Use multiple VFS instances in one WebBuilder (always use VFSContext)
-- Convert HTML to React (reject instead)
-- Make layout decisions based on theme (theme is visual only)
-- Hardcode template structure (use templateFamilies registry)
-- Run intent resolution at runtime (resolve at BUILD time)
-
----
-
-## Build & Testing
-
-**Build:** `npm run build` (Vite plugin for StyleX + Babel)  
-**Lint:** ESLint config in `eslint.config.js`  
-**TypeScript:** `tsconfig.app.json` for app code, `tsconfig.node.json` for Vite
-
-**Common Build Issues:**
-- StyleX YAML syntax errors in tokens/identities → check closing braces, colons
-- Unused variable warnings → import from tree-shaking or suppress
-- Large bundle chunks → use dynamic imports for preview/builder modules
-
----
-
-## Key Dependencies
-
-- **Vite** — Build + Dev server
-- **React** — Component framework
-- **TypeScript** — Type safety
-- **StyleX** — Compiled CSS-in-JS (theme + design system)
-- **Sandpack** — Browser-based code editor + preview (npm packages bundled)
-- **Inngest** — Durable workflow orchestration (Supabase edge integration)
-- **Supabase** — Auth, DB, edge functions
-- **Tailwind CDN** — Layout utilities (CSS, not compiled)
-- **Monaco Editor** — Code editor in builder
-- **Fabric.js** — Canvas rendering (DesignStudio)
-
----
-
-## When to Ask for Help
-
-- Uncertain about intent semantics or automation recipe wiring
-- Need guidance on theme vs. blueprint separation
-- Questions about VFS consistency across components
-- Want to extend recipe system or add new industries
-- Debugging Sandpack preview failures or error boundaries
-- TypeScript type issues with LaunchConfig or intent resolution
-
----
-
-## Further Reading
-
-- `src/components/onboarding/SystemLauncher.tsx` — Entry point for wizard
-- `src/utils/siteGenerator.ts` — Complete site generation with 19 section types
-- `src/services/automationOrchestrator.ts` — Intent → recipe orchestration
-- `src/runtime/intentResolver.ts` — Deterministic vs. AI-fallback resolution
-- `supabase/functions/ai-code-assistant/index.ts` — AI generation logic
-- Memory files in `/memories/repo/` for recent architectural decisions
+When an architectural conflict appears, resolve ownership at the canonical
+boundary instead of adding another service, fallback, or registry.

@@ -2,8 +2,8 @@
  * LaunchState Type
  * 
  * Represents the complete metadata and context of a site launch operation.
- * This is the intermediate representation that SystemLauncher creates and
- * passes to WebBuilder to stabilize the preview contract.
+ * This is the intermediate representation that LauncherWizard / launchOrchestrator
+ * creates and passes to WebBuilder to stabilize the preview contract.
  * 
  * Eventually this becomes the basis for a full SiteBundle, but during
  * the launch phase, it's the source of truth for preview-and-edit.
@@ -92,7 +92,10 @@ export interface LaunchState {
 
   // Shared preview/builder handoff metadata
   businessId?: string;
+  siteId?: string;
   projectId?: string;
+  draftId?: string;
+  revisionId?: string;
   manifestId?: string;
   entryPoint?: string;
   runtimeManifest?: RuntimeManifest;

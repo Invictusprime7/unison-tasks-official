@@ -13,6 +13,7 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
 
   return (
     <section
+      data-ut-variant="hero:split-image"
       className="relative overflow-hidden"
       style={{
         padding: theme.sectionPadding,
@@ -21,10 +22,9 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
       }}
     >
       <div
-        className="mx-auto relative grid items-center gap-12"
+        className="mx-auto relative grid grid-cols-1 lg:grid-cols-2 items-center gap-12"
         style={{
           maxWidth: theme.containerWidth,
-          gridTemplateColumns: '1fr 1fr',
         }}
       >
         {/* Text Column */}
@@ -49,7 +49,7 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
               fontWeight: theme.typography.headingWeight,
               color: hsl(theme.colors.foreground),
               fontSize: 'clamp(2rem, 4vw, 3.25rem)',
-              letterSpacing: '-0.02em',
+              letterSpacing: 0,
             }}
           >
             {headline}

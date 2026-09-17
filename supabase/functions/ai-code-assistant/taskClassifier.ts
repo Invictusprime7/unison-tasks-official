@@ -2,7 +2,11 @@
 // Classifies incoming requests into task types for routing and optimization.
 
 export type AssistantTaskType =
+  | "theme_edit"
   | "wizard_seed_generation"
+  | "wizard_canonical_enrichment"
+  | "wizard_interaction_enrichment"
+  | "wizard_content_enrichment"
   | "nav_page_generation"
   | "template_json_generation"
   | "template_html_generation"
@@ -17,7 +21,7 @@ export type AssistantTaskType =
 
 export interface ClassifiedTask {
   type: AssistantTaskType;
-  /** True for wizard launches and nav-page gen — skips research, thinking, memory */
+  /** True for low-context tasks that skip learned patterns and user history. */
   fastPath: boolean;
   /** Whether to inject session memory context */
   shouldUseMemory: boolean;
@@ -64,19 +68,61 @@ export function classifyTask(opts: {
     wizardSeed,
   } = opts;
 
-  // ── Wizard seed — sole launch lane. Routes to Lane B so wizard launches
-  //    share the builder brain (memory, research, VFS, transactional patches).
-  //    The legacy `wizard_template_react` fast path has been removed; wizard
-  //    launches MUST send `mode: "wizard-seed"` with a structured `wizardSeed`.
+  if (mode === 'theme-edit') return { type: 'theme_edit', fastPath: true, shouldUseMemory: false, shouldUseCompactContext: true, prefersJsonOutput: true, skipResearch: true, skipThinking: true };
+
+  // ── Legacy wizard-seed compatibility route. The deterministic Launcher no
+  //    longer calls this mode; Stage 4b owns launch page authorship. Keep this
+  //    bounded while external-client usage is audited before removal.
   if (mode === "wizard-seed") {
     return {
       type: "wizard_seed_generation",
-      fastPath: false,
-      shouldUseMemory: true,
+      fastPath: true,
+      shouldUseMemory: false,
       shouldUseCompactContext: true,
       prefersJsonOutput: true,
-      skipResearch: false,
+      skipResearch: true,
+      skipThinking: true,
+    };
+  }
+
+  // ── Wizard Canonical Enrichment ───────────────────────────────────────
+  // Rewrite canonical page bodies with visual richness. AI receives the
+  // deterministic snapshot and current page sources, proposes enhanced
+  // candidate TSX, validates against contracts, then passes to canonical
+  // merge and commit pipeline.
+  if (mode === "wizard-canonical-enrichment") {
+    return {
+      type: "wizard_canonical_enrichment",
+      fastPath: true,
+      shouldUseMemory: false,
+      shouldUseCompactContext: true,
+      prefersJsonOutput: true,
+      skipResearch: true,
       skipThinking: false,
+    };
+  }
+
+  if (mode === "wizard-interactions") {
+    return {
+      type: "wizard_interaction_enrichment",
+      fastPath: false,
+      shouldUseMemory: false,
+      shouldUseCompactContext: true,
+      prefersJsonOutput: true,
+      skipResearch: true,
+      skipThinking: true,
+    };
+  }
+
+  if (mode === "wizard-content") {
+    return {
+      type: "wizard_content_enrichment",
+      fastPath: true,
+      shouldUseMemory: false,
+      shouldUseCompactContext: true,
+      prefersJsonOutput: true,
+      skipResearch: true,
+      skipThinking: true,
     };
   }
 

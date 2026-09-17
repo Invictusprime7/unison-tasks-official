@@ -13,6 +13,7 @@ export const CTACentered: React.FC<BaseSectionProps<'cta'>> = ({ section, theme 
 
   return (
     <section
+        data-ut-variant="cta:centered"
       className="text-center"
       style={{
         padding: theme.sectionPadding,

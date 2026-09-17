@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { runIntegrityReport, type IntegrityReport } from "@/platform/core/integrityReport";
 import type { CompiledContract } from "@/platform/core/contractCompiler";
+import type { SiteBundleSnapshot } from "@/platform/core/canonicalPipeline";
 import type { ProvisioningReport } from "@/platform/core/provisioningValidator";
 
 // ── Minimal fixtures ──────────────────────────────────────────────────
@@ -67,6 +68,30 @@ describe("runIntegrityReport", () => {
     // But contract checks should pass
     const routeChecks = report.checks.filter(c => c.category === 'route-integrity');
     expect(routeChecks.every(c => c.passed)).toBe(true);
+  });
+
+  it("validates a canonical SiteBundleSnapshot without requiring a legacy SiteBundle", () => {
+    const snapshot = {
+      snapshotId: 'snapshot-1',
+      pageRegistry: {
+        homePageId: 'home',
+        pages: {
+          home: { pageId: 'home', path: '/', filePath: '/src/pages/Home.tsx' },
+          about: { pageId: 'about', path: '/about', filePath: '/src/pages/About.tsx' },
+        },
+      },
+      vfsFiles: {
+        '/src/pages/Home.tsx': 'export default function Home() { return null; }',
+        '/src/pages/About.tsx': 'export default function About() { return null; }',
+      },
+    } as unknown as SiteBundleSnapshot;
+
+    const report = runIntegrityReport(snapshot, makeMinimalContract(), { includeInfos: true });
+
+    expect(report.passed).toBe(true);
+    expect(report.previewReady).toBe(true);
+    expect(report.checks.find(c => c.checkId === 'page-file-closure')?.passed).toBe(true);
+    expect(report.checks.find(c => c.checkId === 'pages-match')?.passed).toBe(true);
   });
 
   it("validates route integrity - has root route", () => {

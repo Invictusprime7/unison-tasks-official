@@ -3,7 +3,7 @@
  * 
  * This is the shared core logic for AI assistant functionality.
  * Can be used in:
- * - SystemsAIPanel (Homepage as inline panel)
+ * - SystemLauncher and WebBuilder AI surfaces
  * - WebBuilder (as floating code assistant widget)
  * 
  * Provides:

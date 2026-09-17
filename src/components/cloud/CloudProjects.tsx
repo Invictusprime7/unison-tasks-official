@@ -7,13 +7,13 @@
  * - Easy project management
  */
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FolderKanban, Plus, Globe, Settings, Trash2, ExternalLink,
   Sparkles, Rocket, Layout, Palette, Clock, ChevronRight,
   MoreVertical, Copy, Star, FileText, Home, Download,
   Building2, Users, Loader2, Paintbrush, ArrowLeft,
-  BarChart3, Target, Kanban, Workflow, Zap, UserCircle,
+  BarChart3, Target, Workflow, Zap,
   Search, Grid3X3, List, Edit3, Eye, ChevronDown, Database
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,14 +60,10 @@ import {
   listProjectIdsByBusinessCompat,
   listProjectsCompat,
 } from '@/services/projectSchemaCompat';
+import { mergeWorkspaceProjects } from '@/services/cloudProjectDrafts';
+import { findBuilderDraftIdForProject } from '@/services/builderDraftBridge';
 
-// CRM Components
-import { CRMContacts } from '@/components/crm/CRMContacts';
-import { CRMLeads } from '@/components/crm/CRMLeads';
-import { CRMPipeline } from '@/components/crm/CRMPipeline';
-import { CRMWorkflows } from '@/components/crm/CRMWorkflows';
-import { CRMFormSubmissions } from '@/components/crm/CRMFormSubmissions';
-import { CRMOverview } from '@/components/crm/CRMOverview';
+import CRMDashboard, { type CRMView } from '@/pages/CRMDashboard';
 import { CloudTeams } from './CloudTeams';
 import { CloudDatabase } from './CloudDatabase';
 import { BusinessAutomationSettings } from '@/components/crm/BusinessAutomationSettings';
@@ -77,6 +73,7 @@ import type { Json } from '@/integrations/supabase/types';
 
 const BUSINESS_CACHE_KEY_PREFIX = 'cloud-projects:businesses';
 const PROJECT_CACHE_KEY_PREFIX = 'cloud-projects:projects';
+const SELECTED_BUSINESS_KEY_PREFIX = 'cloud-projects:selected-business';
 
 function readSessionCache<T>(key: string): T | null {
   try {
@@ -106,8 +103,8 @@ interface Project {
   id: string;
   name: string;
   slug?: string;
-  status?: 'draft' | 'published' | 'archived';
-  publish_status?: 'draft' | 'publishing' | 'published' | 'unpublished';
+  status?: string | null;
+  publish_status?: string | null;
   template_type?: string;
   description?: string;
   created_at: string;
@@ -116,8 +113,11 @@ interface Project {
   business_id?: string;
   owner_id?: string;
   user_id?: string;
+  preview_ready?: boolean;
   custom_domain?: string;
   settings?: Record<string, any>;
+  draft_id?: string | null;
+  draft_only?: boolean;
 }
 
 interface Business {
@@ -171,32 +171,35 @@ const transformBusiness = (data: Record<string, unknown>): Business => ({
 
 type ViewMode = 'grid' | 'list';
 type BusinessSection = 'projects' | 'crm' | 'automations' | 'team' | 'settings' | 'database';
-type CRMSubTab = 'overview' | 'contacts' | 'leads' | 'pipeline' | 'workflows' | 'forms';
 
 interface CloudProjectsLocationState {
   tab?: 'overview' | 'projects' | 'assets' | 'email' | 'integrations' | 'security' | 'profile';
   workspaceSection?: BusinessSection;
   businessId?: string;
   projectId?: string;
+  crmView?: CRMView;
 }
 
 export function CloudProjects({ userId, businessId: propBusinessId, onProjectSelect }: CloudProjectsProps) {
   // Core state
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [recoveredProjects, setRecoveredProjects] = useState<Project[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [supportsBusinessMembers, setSupportsBusinessMembers] = useState(true);
   const [businessSelectionMode, setBusinessSelectionMode] = useState(false);
   const [selectedBusinessIds, setSelectedBusinessIds] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<BusinessSection>('projects');
-  const [crmSubTab, setCrmSubTab] = useState<CRMSubTab>('overview');
+  const [crmView, setCrmView] = useState<CRMView>('overview');
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [recoveredSearchQuery, setRecoveredSearchQuery] = useState('');
 
   // Dialog states
   const [createBusinessOpen, setCreateBusinessOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [recoveredProjectsOpen, setRecoveredProjectsOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'business' | 'project'; item: Business | Project } | null>(null);
@@ -223,6 +226,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   const navigate = useNavigate();
   const location = useLocation();
   const businessCacheKey = `${BUSINESS_CACHE_KEY_PREFIX}:${userId}`;
+  const selectedBusinessKey = `${SELECTED_BUSINESS_KEY_PREFIX}:${userId}`;
 
   useEffect(() => {
     if (!userId) return;
@@ -237,7 +241,10 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
       if (current) return current;
 
       const state = (location.state as CloudProjectsLocationState | null) ?? null;
-      const preferredBusinessId = state?.businessId || propBusinessId;
+      const preferredBusinessId =
+        state?.businessId ||
+        propBusinessId ||
+        window.localStorage.getItem(selectedBusinessKey);
       if (preferredBusinessId) {
         return cachedBusinesses.find((business) => business.id === preferredBusinessId) || cachedBusinesses[0] || null;
       }
@@ -245,11 +252,61 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
       return cachedBusinesses[0] || null;
     });
     setLoading(false);
-  }, [businessCacheKey, location.state, propBusinessId, userId]);
+  }, [businessCacheKey, location.state, propBusinessId, selectedBusinessKey, userId]);
 
   // Load businesses on mount
   useEffect(() => {
     if (userId) loadBusinesses();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let cancelled = false;
+    const loadRecoveredProjects = async () => {
+      const [projectResult, draftResult] = await Promise.all([
+        listProjectsCompat({ ownerId: userId }),
+        supabase
+          .from('builder_drafts')
+          .select('id, project_id, business_id, name, metadata, vfs_files, code, editor_code, created_at, updated_at')
+          .eq('user_id', userId)
+          .is('business_id', null)
+          .order('updated_at', { ascending: false }),
+      ]);
+
+      if (cancelled) return;
+      if (projectResult.error || draftResult.error) {
+        console.error('[CloudProjects] failed to load recovered projects:', projectResult.error || draftResult.error);
+        return;
+      }
+
+      const previewReadyDraftIds = new Set(
+        (draftResult.data || [])
+          .filter((draft: any) => {
+            const metadata = (draft.metadata || {}) as Record<string, any>;
+            const files = draft.vfs_files || metadata.vfsFiles || metadata.siteBundleSnapshot?.vfsFiles;
+            return (
+              (files && typeof files === 'object' && Object.keys(files).length > 0) ||
+              Boolean(String(draft.editor_code || draft.code || '').trim())
+            );
+          })
+          .map((draft: any) => draft.id),
+      );
+
+      setRecoveredProjects(
+        mergeWorkspaceProjects(projectResult.data || [], (draftResult.data || []) as any)
+          .filter((project) => !project.business_id && Boolean(project.draft_id))
+          .map((project) => ({
+            ...project,
+            preview_ready: previewReadyDraftIds.has(project.draft_id || ''),
+          })),
+      );
+    };
+
+    void loadRecoveredProjects();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -258,6 +315,10 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
 
     if (state.workspaceSection) {
       setActiveSection(state.workspaceSection);
+    }
+
+    if (state.crmView) {
+      setCrmView(state.crmView);
     }
 
     if (state.businessId) {
@@ -272,6 +333,59 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   useEffect(() => {
     if (selectedBusiness) loadProjects(selectedBusiness.id);
   }, [selectedBusiness]);
+
+  // Keep an open workspace current after autosaves in this tab and after
+  // Postgres changes from other tabs/devices. Focus refresh is the fallback
+  // when Realtime replication is unavailable or reconnecting.
+  useEffect(() => {
+    const selectedBusinessId = selectedBusiness?.id;
+    if (!selectedBusinessId || !userId) return;
+
+    let refreshTimer: number | null = null;
+    const refresh = () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => void loadProjects(selectedBusinessId), 120);
+    };
+    const onDraftSaved = (event: Event) => {
+      const detail = (event as CustomEvent<{ businessId?: string | null }>).detail;
+      if (!detail?.businessId || detail.businessId === selectedBusinessId) refresh();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    window.addEventListener('unison:project-draft-saved', onDraftSaved);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const channel = supabase
+      .channel(`cloud-projects:${userId}:${selectedBusinessId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'builder_drafts',
+        filter: `business_id=eq.${selectedBusinessId}`,
+      }, refresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'projects',
+        filter: `business_id=eq.${selectedBusinessId}`,
+      }, refresh)
+      .subscribe((status: string, error: unknown) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[CloudProjects] live workspace updates degraded:', status, error);
+        }
+      });
+
+    return () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      window.removeEventListener('unison:project-draft-saved', onDraftSaved);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisibility);
+      void supabase.removeChannel(channel);
+    };
+  }, [selectedBusiness?.id, userId]);
 
   useEffect(() => {
     const state = (location.state as CloudProjectsLocationState | null) ?? null;
@@ -347,9 +461,14 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
         setBusinesses(allBusinesses);
         writeSessionCache(businessCacheKey, allBusinesses);
         
-        // Auto-select first or provided business
-        if (propBusinessId) {
-          const found = allBusinesses.find(b => b.id === propBusinessId);
+        // Prefer explicit navigation state, then the user's last workspace.
+        const routeState = (location.state as CloudProjectsLocationState | null) ?? null;
+        const preferredBusinessId =
+          routeState?.businessId ||
+          propBusinessId ||
+          window.localStorage.getItem(selectedBusinessKey);
+        if (preferredBusinessId) {
+          const found = allBusinesses.find(b => b.id === preferredBusinessId);
           if (found) setSelectedBusiness(found);
         } else if (allBusinesses.length > 0) {
           setSelectedBusiness(allBusinesses[0]);
@@ -364,15 +483,26 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
 
   const loadProjects = async (businessId: string) => {
     try {
-      const { data, error } = await listProjectsCompat({
-        ownerId: userId,
-        businessId,
-      });
+      const [projectResult, draftResult] = await Promise.all([
+        listProjectsCompat({ ownerId: userId, businessId }),
+        supabase
+          .from('builder_drafts')
+          .select('id, project_id, business_id, name, metadata, created_at, updated_at')
+          .eq('user_id', userId)
+          .eq('business_id', businessId)
+          .order('updated_at', { ascending: false }),
+      ]);
+      const { data, error } = projectResult;
 
       if (error) {
         throw error;
+      } else if (draftResult.error) {
+        throw draftResult.error;
       } else {
-        const nextProjects = data || [];
+        const nextProjects = mergeWorkspaceProjects(
+          data || [],
+          (draftResult.data || []) as any,
+        );
         setProjects(nextProjects);
         writeSessionCache(`${PROJECT_CACHE_KEY_PREFIX}:${userId}:${businessId}`, nextProjects);
         setSelectedProjectScopeId((current) =>
@@ -580,10 +710,11 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
         await cleanupBusinessScopedArtifacts([item.id]);
       }
 
+      const deleteDraftOnly = type === 'project' && (item as Project).draft_only;
       const { error } = await supabase
-        .from(type === 'business' ? 'businesses' : 'projects')
+        .from(deleteDraftOnly ? 'builder_drafts' : type === 'business' ? 'businesses' : 'projects')
         .delete()
-        .eq('id', item.id);
+        .eq('id', deleteDraftOnly ? (item as Project).draft_id || item.id : item.id);
 
       if (error) throw error;
 
@@ -686,16 +817,16 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   const openInBuilder = async (project: Project) => {
     // Resolve the matching builder_draft (if any) so the editor opens directly
     // on the user's last saved VFS state instead of a blank canvas.
-    let draftId: string | null = null;
+    let draftId: string | null = project.draft_id || null;
     try {
-      const { data } = await supabase
-        .from('builder_drafts')
-        .select('id, updated_at')
-        .eq('project_id', project.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      draftId = data?.id || null;
+      if (!draftId) {
+        draftId = await findBuilderDraftIdForProject({
+          projectId: project.draft_only ? null : project.id,
+          projectName: project.name,
+          businessId: project.business_id || null,
+          userId,
+        });
+      }
     } catch (err) {
       console.warn('[CloudProjects] failed to resolve draft for project', project.id, err);
     }
@@ -703,16 +834,16 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
     const url = draftId ? `/web-builder?id=${draftId}` : '/web-builder';
     navigate(url, {
       state: {
-        projectId: project.id,
+        projectId: project.draft_only ? undefined : project.id,
         draftId,
-        businessId: project.business_id || selectedBusiness?.id,
+        businessId: project.business_id || null,
         projectName: project.name,
         projectSlug: project.slug,
         publishStatus: project.publish_status || project.status,
         from: 'Workspace Settings',
         returnToCloudTab: 'projects',
         returnWorkspaceSection: 'settings',
-        returnBusinessId: project.business_id || selectedBusiness?.id,
+        returnBusinessId: project.business_id || null,
         returnProjectId: project.id,
       }
     });
@@ -815,6 +946,10 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.description?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+  const filteredRecoveredProjects = recoveredProjects.filter((project) =>
+    project.name.toLowerCase().includes(recoveredSearchQuery.toLowerCase()) ||
+    (project.description?.toLowerCase().includes(recoveredSearchQuery.toLowerCase())),
+  );
   const ownedBusinesses = businesses.filter((business) => business.owner_id === userId);
   const selectedOwnedBusinesses = ownedBusinesses.filter((business) => selectedBusinessIds.includes(business.id));
   const allOwnedBusinessesSelected =
@@ -824,14 +959,13 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   const selectedScopeProject =
     projects.find((project) => project.id === selectedProjectScopeId) || null;
 
-  const crmTabs: Array<{ id: CRMSubTab; label: string; icon: React.ElementType }> = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'contacts', label: 'Contacts', icon: UserCircle },
-    { id: 'leads', label: 'Leads', icon: Target },
-    { id: 'pipeline', label: 'Pipeline', icon: Kanban },
-    { id: 'workflows', label: 'Workflows', icon: Workflow },
-    { id: 'forms', label: 'Forms', icon: FileText },
-  ];
+  // Landing on /crm or /dashboard/leads without an explicit project scope must not
+  // strand the user on an empty placeholder — fall back to the first project.
+  useEffect(() => {
+    if (!selectedScopeProject && projects.length > 0) {
+      setSelectedProjectScopeId(projects[0].id);
+    }
+  }, [selectedScopeProject, projects]);
 
   const businessSettingsSnapshot =
     selectedBusiness?.settings && typeof selectedBusiness.settings === 'object' && !Array.isArray(selectedBusiness.settings)
@@ -859,35 +993,6 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
       businessIdentityFields.length) *
       100
   );
-
-  // ==================== CRM CONTENT ====================
-
-  const renderCRMContent = () => {
-    if (!selectedScopeProject || !selectedBusiness) {
-      return null;
-    }
-
-    switch (crmSubTab) {
-      case 'contacts':
-        return <CRMContacts businessId={selectedBusiness.id} projectId={selectedScopeProject.id} />;
-      case 'leads':
-        return <CRMLeads businessId={selectedBusiness.id} projectId={selectedScopeProject.id} />;
-      case 'pipeline':
-        return <CRMPipeline businessId={selectedBusiness.id} projectId={selectedScopeProject.id} />;
-      case 'workflows':
-        return <CRMWorkflows businessId={selectedBusiness.id} projectId={selectedScopeProject.id} />;
-      case 'forms':
-        return <CRMFormSubmissions businessId={selectedBusiness.id} projectId={selectedScopeProject.id} />;
-      default:
-        return (
-          <CRMOverview
-            businessId={selectedBusiness.id}
-            projectId={selectedScopeProject.id}
-            onNavigate={(v) => setCrmSubTab(v as CRMSubTab)}
-          />
-        );
-    }
-  };
 
   // ==================== LOADING ====================
 
@@ -954,6 +1059,60 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
 
   return (
     <div className="flex h-full min-h-0 gap-6">
+      <Dialog open={recoveredProjectsOpen} onOpenChange={setRecoveredProjectsOpen}>
+        <DialogContent className="max-w-3xl border-white/10 bg-[#0d0d18]">
+          <DialogHeader>
+            <DialogTitle>Recovered projects</DialogTitle>
+            <DialogDescription>
+              {recoveredProjects.length} launcher draft{recoveredProjects.length === 1 ? '' : 's'} ready to open.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={recoveredSearchQuery}
+            onChange={(event) => setRecoveredSearchQuery(event.target.value)}
+            placeholder="Search recovered projects"
+            className="border-white/10 bg-white/[0.03]"
+          />
+          <ScrollArea className="h-[55vh] pr-4">
+            <div className="space-y-2">
+              {filteredRecoveredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-white">{project.name}</p>
+                    <p className="mt-1 text-xs text-white/40">
+                      Updated {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  {project.preview_ready ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setRecoveredProjectsOpen(false);
+                        void openInBuilder(project);
+                      }}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Open live preview
+                    </Button>
+                  ) : (
+                    <Badge variant="outline" className="border-white/10 text-white/45">
+                      Source unavailable
+                    </Badge>
+                  )}
+                </div>
+              ))}
+              {filteredRecoveredProjects.length === 0 && (
+                <p className="py-10 text-center text-sm text-white/45">No recovered projects match this search.</p>
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* Left Sidebar - Business List */}
       <aside className="flex w-64 min-h-0 flex-shrink-0 flex-col">
         <div className="flex items-center justify-between mb-4">
@@ -1030,16 +1189,32 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
         <ScrollArea className="flex-1 -mx-2">
           <div className="px-2 space-y-1">
             {businesses.map((business) => (
-              <button
+              <div
                 key={business.id}
                 onClick={() => {
                   if (businessSelectionMode && business.owner_id === userId) {
                     toggleBusinessSelection(business.id);
                     return;
                   }
+                  window.localStorage.setItem(selectedBusinessKey, business.id);
                   setSelectedBusiness(business);
                   setActiveSection('projects');
                 }}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  if (businessSelectionMode && business.owner_id === userId) {
+                    toggleBusinessSelection(business.id);
+                    return;
+                  }
+                  window.localStorage.setItem(selectedBusinessKey, business.id);
+                  setSelectedBusiness(business);
+                  setActiveSection('projects');
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${business.name}`}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group",
                   selectedBusiness?.id === business.id
@@ -1082,7 +1257,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         </ScrollArea>
@@ -1186,6 +1361,17 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                         <List className="h-4 w-4" />
                       </Button>
                     </div>
+                    {recoveredProjects.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-500/30 text-amber-200 hover:bg-amber-500/10 hover:text-amber-100"
+                        onClick={() => setRecoveredProjectsOpen(true)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Recovered {recoveredProjects.length}
+                      </Button>
+                    )}
                     <Button onClick={() => setCreateProjectOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       New Project
@@ -1464,26 +1650,12 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                   </Card>
 
                   {selectedScopeProject ? (
-                    <div className="flex gap-6">
-                      <nav className="w-44 flex-shrink-0 space-y-1">
-                        {crmTabs.map((tab) => (
-                          <Button
-                            key={tab.id}
-                            variant={crmSubTab === tab.id ? 'secondary' : 'ghost'}
-                            className={cn("w-full justify-start", crmSubTab === tab.id && "bg-white/10")}
-                            onClick={() => setCrmSubTab(tab.id)}
-                          >
-                            <tab.icon className="h-4 w-4 mr-2" />
-                            {tab.label}
-                          </Button>
-                        ))}
-                      </nav>
-                      <div className="flex-1 min-w-0">
-                        <Suspense fallback={<Loader2 className="h-8 w-8 animate-spin" />}>
-                          {renderCRMContent()}
-                        </Suspense>
-                      </div>
-                    </div>
+                    <CRMDashboard
+                      embedded
+                      businessId={selectedBusiness.id}
+                      projectId={selectedScopeProject.id}
+                      initialView={crmView}
+                    />
                   ) : (
                     <Card className="bg-white/[0.02] border-white/5">
                       <CardContent className="py-12 text-center text-white/40">

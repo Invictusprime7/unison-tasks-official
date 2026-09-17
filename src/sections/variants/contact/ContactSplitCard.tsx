@@ -8,11 +8,16 @@ import type { BaseSectionProps } from '../../types';
 import { hsl, hsla } from '../../themeUtils';
 
 export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ section, theme }) => {
-  const { headline, description, submitLabel = 'Send Message', phone, email, address } = section.props;
+  const { headline, description, fields, submitLabel = 'Send Message', submitIntent = 'contact.submit', phone, email, address } = section.props;
+  const formFields = fields?.length ? fields : [
+    { name: 'name', type: 'text', placeholder: 'Your name' },
+    { name: 'email', type: 'email', placeholder: 'your@email.com' },
+    { name: 'message', type: 'textarea', placeholder: 'Your message...' },
+  ];
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '0.65rem 0.85rem',
+    padding: '0.75rem 1rem',
     borderRadius: theme.radius,
     border: `1px solid ${hsla(theme.colors.border, 0.8)}`,
     background: hsl(theme.colors.background),
@@ -23,12 +28,15 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
   };
 
   return (
-    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+    <section
+      data-ut-variant="contact:split-card"
+      style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
+    >
       <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-12">
             <h2
-              className="text-3xl mb-3"
+              className="text-3xl sm:text-4xl mb-3 font-semibold tracking-tight"
               style={{
                 fontFamily: theme.typography.headingFont,
                 fontWeight: theme.typography.headingWeight,
@@ -45,28 +53,38 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
           </div>
         )}
 
-        <div className="grid gap-8 items-start" style={{ gridTemplateColumns: '1fr 1fr', maxWidth: '56rem', margin: '0 auto' }}>
-          <form data-demo-form="true" data-ut-intent="contact.submit" className="flex flex-col gap-3">
-            <input type="text" placeholder="Your name" style={inputStyle} />
-            <input type="email" placeholder="your@email.com" style={inputStyle} />
-            <textarea placeholder="Your message..." rows={5} style={inputStyle} />
-            <button
-              type="submit"
-              className="w-full text-sm font-medium py-3 transition-all hover:opacity-90 cursor-pointer"
-              style={{
-                background: hsl(theme.colors.primary),
-                color: hsl(theme.colors.primaryForeground),
-                borderRadius: theme.radius,
-                border: 'none',
-                fontFamily: theme.typography.bodyFont,
-              }}
-            >
-              {submitLabel}
-            </button>
-          </form>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start max-w-5xl mx-auto">
+          <div
+            className="p-6 sm:p-8 rounded-[var(--radius)] shadow-sm"
+            style={{
+              background: hsl(theme.colors.card),
+              border: `1px solid ${hsla(theme.colors.border, 0.6)}`,
+            }}
+          >
+            <form data-demo-form="true" data-ut-intent={submitIntent} className="flex flex-col gap-4">
+              {formFields.map((field) => field.type === 'textarea' ? (
+                <textarea key={field.name} name={field.name} placeholder={field.placeholder || field.name} required={field.required} rows={5} style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
+              ) : (
+                <input key={field.name} name={field.name} type={field.type || 'text'} placeholder={field.placeholder || field.name} required={field.required} style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
+              ))}
+              <button
+                type="submit"
+                className="w-full text-sm font-semibold py-3.5 transition-all hover:opacity-90 active:scale-[0.99] cursor-pointer shadow-sm"
+                style={{
+                  background: hsl(theme.colors.primary),
+                  color: hsl(theme.colors.primaryForeground),
+                  borderRadius: theme.radius,
+                  border: 'none',
+                  fontFamily: theme.typography.bodyFont,
+                }}
+              >
+                {submitLabel}
+              </button>
+            </form>
+          </div>
 
           <div
-            className="p-8 flex flex-col gap-6"
+            className="p-6 sm:p-8 flex flex-col gap-6 rounded-[var(--radius)] shadow-sm"
             style={{
               background: hsl(theme.colors.card),
               border: `1px solid ${hsla(theme.colors.border, 0.6)}`,
@@ -74,7 +92,7 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
             }}
           >
             <h3
-              className="text-lg"
+              className="text-xl font-semibold"
               style={{
                 fontFamily: theme.typography.headingFont,
                 fontWeight: theme.typography.headingWeight,
@@ -85,20 +103,20 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
             </h3>
             {email && (
               <div>
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: hsl(theme.colors.mutedForeground) }}>Email</p>
-                <p className="text-sm" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`mailto:${email}`} data-ut-cta="cta.email" style={{ color: 'inherit', textDecoration: 'none' }}>{email}</a></p>
+                <p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{ color: hsl(theme.colors.mutedForeground) }}>Email</p>
+                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`mailto:${email}`} data-ut-cta="cta.email" style={{ color: 'inherit', textDecoration: 'none' }}>{email}</a></p>
               </div>
             )}
             {phone && (
               <div>
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: hsl(theme.colors.mutedForeground) }}>Phone</p>
-                <p className="text-sm" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`tel:${phone}`} data-ut-cta="cta.phone" style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></p>
+                <p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{ color: hsl(theme.colors.mutedForeground) }}>Phone</p>
+                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`tel:${phone}`} data-ut-cta="cta.phone" style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></p>
               </div>
             )}
             {address && (
               <div>
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: hsl(theme.colors.mutedForeground) }}>Address</p>
-                <p className="text-sm" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" data-ut-cta="cta.address" style={{ color: 'inherit', textDecoration: 'none' }}>{address}</a></p>
+                <p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{ color: hsl(theme.colors.mutedForeground) }}>Address</p>
+                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" data-ut-cta="cta.address" style={{ color: 'inherit', textDecoration: 'none' }}>{address}</a></p>
               </div>
             )}
           </div>

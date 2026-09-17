@@ -67,6 +67,8 @@ export interface AIApplyResult {
   packageJson: string | null;
   /** Errors encountered */
   errors: string[];
+  /** Files quarantined by the write guard (protected paths / slot violations) */
+  skipped?: Array<{ path: string; reason: string }>;
   /** Timing info */
   timing: {
     depExtractionMs: number;
@@ -131,25 +133,61 @@ function getExistingContent(files: Record<string, string>, path: string): string
   return files[path] ?? files[normalized] ?? files[normalized.replace(/^\/src\//, '/')];
 }
 
+/**
+ * Resolve Sandpack-style aliases such as `/pages/Home.tsx` to the canonical
+ * source path already owned by the VFS (`/src/pages/Home.tsx`). AI models see
+ * both namespaces in preview context; writing the alias creates a shadow file
+ * that is never imported by the router even though the VFS write succeeds.
+ */
+export function canonicalizeAIFilePaths(
+  aiFiles: Record<string, string>,
+  currentFiles: Record<string, string>,
+): Record<string, string> {
+  const canonical: Record<string, string> = {};
+
+  for (const [rawPath, content] of Object.entries(aiFiles)) {
+    const normalized = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+    const candidates = normalized.startsWith('/src/')
+      ? [normalized, normalized.replace(/^\/src\//, '/')]
+      : [normalized, `/src${normalized}`];
+    const matchedPath = candidates.find((candidate) => (
+      Object.prototype.hasOwnProperty.call(currentFiles, candidate)
+      || Object.prototype.hasOwnProperty.call(currentFiles, candidate.slice(1))
+    ));
+
+    canonical[matchedPath || normalized] = content;
+  }
+
+  return canonical;
+}
+
 function validateAIFileEdits(
   aiFiles: Record<string, string>,
   currentFiles: Record<string, string>,
-): string[] {
-  const errors: string[] = [];
+): { appliable: Record<string, string>; skipped: Array<{ path: string; reason: string }> } {
+  // Partition, never reject wholesale. A single protected path or slot
+  // violation inside a multi-file AI response used to discard the entire
+  // batch, so legitimate rewrites never materialized in the VFS or preview.
+  const appliable: Record<string, string> = {};
+  const skipped: Array<{ path: string; reason: string }> = [];
   for (const [path, nextContent] of Object.entries(aiFiles)) {
     if (isUnisonProtectedPath(path)) {
-      errors.push(
-        `AI edit blocked for auto-generated file ${path}. ` +
-          `Edit CreatorData/Creator Playground inputs; Unison files are regenerated canonically.`,
-      );
+      skipped.push({
+        path,
+        reason:
+          'Auto-generated Unison file — edit CreatorData/Creator Playground inputs instead; this path is regenerated canonically.',
+      });
       continue;
     }
     const previousContent = getExistingContent(currentFiles, path);
-    for (const violation of detectSlotBindingViolations(previousContent, nextContent)) {
-      errors.push(`[${path}] ${violation.reason}`);
+    const violations = detectSlotBindingViolations(previousContent, nextContent);
+    if (violations.length > 0) {
+      skipped.push({ path, reason: violations.map((violation) => violation.reason).join('; ') });
+      continue;
     }
+    appliable[path] = nextContent;
   }
-  return errors;
+  return { appliable, skipped };
 }
 
 // ============================================================================
@@ -191,22 +229,25 @@ export function applyAIOutputToVFS(
   try {
     // 0. Snapshot current state for undo
     const currentFiles = preserveExisting ? vfs.getSandpackFiles() : {};
-    const validationErrors = validateAIFileEdits(aiFiles, currentFiles);
-    if (validationErrors.length > 0) {
-      errors.push(...validationErrors);
-      vfsEventBus.emit('ai:apply:error', { message: validationErrors.join('\n') });
+    aiFiles = canonicalizeAIFilePaths(aiFiles, currentFiles);
+    const { appliable, skipped } = validateAIFileEdits(aiFiles, currentFiles);
+    for (const entry of skipped) errors.push(`[${entry.path}] ${entry.reason}`);
+    if (Object.keys(appliable).length === 0) {
+      vfsEventBus.emit('ai:apply:error', { message: errors.join('\n') });
       return {
         success: false,
         filesWritten: [],
         dependencies: createEmptyDeps(),
         packageJson: null,
         errors,
+        skipped,
         timing: {
           depExtractionMs: 0,
           totalMs: performance.now() - startTime,
         },
       };
     }
+    aiFiles = appliable;
     vfsSnapshotManager.createSnapshot(currentFiles, `Before AI edit (${Object.keys(aiFiles).length} files)`, 'ai');
 
     // 1. Merge AI output with existing files (after repairing common AI typos
@@ -267,6 +308,7 @@ export function applyAIOutputToVFS(
       dependencies: depExtraction || createEmptyDeps(),
       packageJson: mergedFiles['/package.json'] || null,
       errors,
+      skipped,
       timing: {
         depExtractionMs,
         totalMs: performance.now() - startTime,
@@ -433,9 +475,16 @@ export interface ComponentBehaviorMap {
   effectsByFile: Record<string, number>;
   /** Custom hooks used: { file -> [hookName, ...] } */
   hooksByFile: Record<string, string[]>;
+  /** useContext consumers: { file -> [ContextName, ...] } (unique per file) */
+  contextsByFile: Record<string, string[]>;
+  /** useReducer dispatchers + dispatch call sites: { file -> [{ dispatcher, actions }] } */
+  reducersByFile: Record<string, Array<{ dispatcher: string; actions: string[] }>>;
+  /** Event handler declarations per file (e.g. `handleClick`, `onSubmit`). */
+  handlersByFile: Record<string, string[]>;
   /** Timestamp of snapshot */
   snapshotAt: number;
 }
+
 
 /**
  * Build a deep behavioral snapshot combining DOM inspection and VFS source parsing.
@@ -449,27 +498,65 @@ export function buildComponentBehaviorMap(
   const stateByFile: Record<string, string[]> = {};
   const effectsByFile: Record<string, number> = {};
   const hooksByFile: Record<string, string[]> = {};
+  const contextsByFile: Record<string, string[]> = {};
+  const reducersByFile: Record<string, Array<{ dispatcher: string; actions: string[] }>> = {};
+  const handlersByFile: Record<string, string[]> = {};
+  /** Reverse index: handler name -> file(s) that declare or bind it. */
+  const handlerToFiles: Record<string, Set<string>> = {};
+
 
   // ── DOM Inspection ──
-  try {
-    const iframe = previewHandle.getIframe?.();
-    const doc = iframe?.contentDocument;
-    if (doc) {
-      const interactiveSelectors = 'button, a, [onclick], [data-ut-intent], [role="button"], input, textarea, select, form, [data-editable], [contenteditable]';
-      const els = doc.querySelectorAll(interactiveSelectors);
+  // Sandpack wraps the running app in one or more nested iframes. Walk them so
+  // we inspect the actual rendered app DOM instead of the outer shell (which is
+  // why the behavior map was reporting 0 interactive elements).
+  const collectDocs = (rootIframe: HTMLIFrameElement | null): Document[] => {
+    const docs: Document[] = [];
+    const visited = new Set<HTMLIFrameElement>();
+    const walk = (frame: HTMLIFrameElement | null) => {
+      if (!frame || visited.has(frame)) return;
+      visited.add(frame);
+      let doc: Document | null = null;
+      try { doc = frame.contentDocument || frame.contentWindow?.document || null; } catch { doc = null; }
+      if (!doc) return;
+      docs.push(doc);
+      try {
+        const nested = doc.querySelectorAll('iframe');
+        nested.forEach((f) => walk(f as HTMLIFrameElement));
+      } catch { /* cross-origin nested iframe */ }
+    };
+    walk(rootIframe);
+    return docs;
+  };
 
+  try {
+    const rootIframe = previewHandle.getIframe?.() ?? null;
+    const docs = collectDocs(rootIframe);
+    const interactiveSelectors = [
+      'button', 'a[href]', '[onclick]',
+      '[data-ut-intent]', '[data-ut-cta]', '[data-ut-slot]',
+      'input:not([type="hidden"])', 'textarea', 'select', 'label', 'form',
+      '[data-editable]', '[contenteditable="true"]',
+      '[role="button"]', '[role="link"]', '[role="tab"]', '[role="menuitem"]',
+      '[role="switch"]', '[role="checkbox"]', '[role="radio"]', '[role="option"]',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ');
+    const seen = new Set<Element>();
+
+    for (const doc of docs) {
+      let els: NodeListOf<Element>;
+      try { els = doc.querySelectorAll(interactiveSelectors); } catch { continue; }
       els.forEach((el) => {
+        if (seen.has(el)) return;
+        seen.add(el);
         const htmlEl = el as HTMLElement;
         const handlers: string[] = [];
 
-        // Detect inline handlers
         for (const attr of Array.from(el.attributes)) {
           if (attr.name.startsWith('on') || attr.name === 'data-onclick') {
             handlers.push(attr.name);
           }
         }
 
-        // Check for React event props via __reactProps (React 18+)
         const reactPropsKey = Object.keys(htmlEl).find(k => k.startsWith('__reactProps'));
         if (reactPropsKey) {
           const props = (htmlEl as any)[reactPropsKey];
@@ -482,7 +569,6 @@ export function buildComponentBehaviorMap(
           }
         }
 
-        // Build selector
         let selector = htmlEl.tagName.toLowerCase();
         if (htmlEl.id) selector += `#${htmlEl.id}`;
         else if (htmlEl.className && typeof htmlEl.className === 'string') {
@@ -494,7 +580,7 @@ export function buildComponentBehaviorMap(
           selector,
           tagName: htmlEl.tagName.toLowerCase(),
           textContent: (htmlEl.textContent || '').trim().slice(0, 80),
-          sourceFile: null, // resolved below via VFS matching
+          sourceFile: null,
           handlers,
           intent: el.getAttribute('data-ut-intent'),
           ctaLabel: el.getAttribute('data-ut-cta'),
@@ -506,57 +592,164 @@ export function buildComponentBehaviorMap(
   } catch { /* DOM inspection is best-effort */ }
 
   // ── VFS Source Parsing ──
-  const stateRegex = /\buse(?:State|Reducer)\s*[<(]/g;
-  const stateNameRegex = /(?:const|let)\s+\[(\w+)/g;
-  const effectRegex = /\buseEffect\s*\(/g;
-  const hookRegex = /\buse[A-Z]\w+\s*\(/g;
-  const componentNameRegex = /(?:export\s+(?:default\s+)?)?(?:function|const)\s+([A-Z]\w+)/;
 
-  for (const [filePath, content] of Object.entries(vfsFiles)) {
-    if (!/\.(tsx|jsx)$/.test(filePath)) continue;
 
-    // Extract state variable names
+  // Precompile once outside the loop; we rebuild fresh RegExps per file so
+  // `/g` lastIndex state can never leak between iterations.
+  const REACT_BUILTIN_HOOKS = new Set([
+    'useState', 'useEffect', 'useCallback', 'useMemo', 'useRef', 'useContext',
+    'useReducer', 'useLayoutEffect', 'useImperativeHandle', 'useDebugValue',
+    'useDeferredValue', 'useTransition', 'useId', 'useSyncExternalStore',
+    'useInsertionEffect', 'useActionState', 'useOptimistic', 'useFormStatus',
+    'useFormState',
+  ]);
+
+  // Strip comments/strings before scanning so we don't count matches inside
+  // JSDoc or string literals as real hook calls.
+  const stripNoise = (src: string): string =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/\/\/[^\n]*/g, ' ')
+      .replace(/`(?:\\.|[^`\\])*`/g, '""')
+      .replace(/'(?:\\.|[^'\\])*'/g, '""')
+      .replace(/"(?:\\.|[^"\\])*"/g, '""');
+
+  // Track which component name is declared in which file so we can map DOM
+  // elements back to their source with more than one signal.
+  const componentsByFile: Record<string, string[]> = {};
+
+  for (const [filePath, rawContent] of Object.entries(vfsFiles)) {
+    if (!/\.(tsx|jsx|ts|js)$/.test(filePath)) continue;
+    const content = stripNoise(rawContent);
+
+    // State: destructured [name, setName] = useState/useReducer(...)
     const stateVars: string[] = [];
-    let match: RegExpExecArray | null;
-    const contentLines = content;
+    const stateDecl = /(?:const|let|var)\s+\[\s*(\w+)\s*(?:,\s*\w+)?\s*\]\s*=\s*(?:React\.)?(useState|useReducer)\b/g;
+    let m: RegExpExecArray | null;
+    while ((m = stateDecl.exec(content)) !== null) stateVars.push(m[1]);
 
-    while ((match = stateNameRegex.exec(contentLines)) !== null) {
-      // Only count if preceded by useState/useReducer on similar line
-      const lineStart = contentLines.lastIndexOf('\n', match.index);
-      const line = contentLines.slice(lineStart, match.index + match[0].length + 100);
-      if (/useState|useReducer/.test(line)) {
-        stateVars.push(match[1]);
-      }
+    // Also count `useState(` calls that aren't destructured (rare, but real).
+    const bareState = (content.match(/\b(?:React\.)?useState\s*[<(]/g) || []).length;
+    if (bareState > stateVars.length) {
+      for (let i = stateVars.length; i < bareState; i++) stateVars.push(`state${i + 1}`);
     }
     if (stateVars.length) stateByFile[filePath] = stateVars;
 
-    // Count effects
-    const effects = (contentLines.match(effectRegex) || []).length;
+    // Effects: useEffect / useLayoutEffect / useInsertionEffect
+    const effects = (content.match(/\b(?:React\.)?use(?:Layout|Insertion)?Effect\s*\(/g) || []).length;
     if (effects) effectsByFile[filePath] = effects;
 
-    // Detect custom hooks (use* calls that aren't built-in)
-    const builtIn = new Set(['useState', 'useEffect', 'useCallback', 'useMemo', 'useRef', 'useContext', 'useReducer', 'useLayoutEffect', 'useImperativeHandle', 'useDebugValue', 'useDeferredValue', 'useTransition', 'useId', 'useSyncExternalStore', 'useInsertionEffect']);
+    // Custom hooks: `useX(` calls, excluding builtins and declarations
+    // (`function useX`, `const useX =`, `export function useX`).
     const hooks: string[] = [];
-    while ((match = hookRegex.exec(contentLines)) !== null) {
-      const hookName = match[0].replace(/\s*\($/, '');
-      if (!builtIn.has(hookName) && !hooks.includes(hookName)) {
-        hooks.push(hookName);
-      }
+    const hookCall = /(?<![.\w])use[A-Z]\w*(?=\s*\()/g;
+    while ((m = hookCall.exec(content)) !== null) {
+      const name = m[0];
+      if (REACT_BUILTIN_HOOKS.has(name) || hooks.includes(name)) continue;
+      // Skip if this occurrence is the declaration itself.
+      const back = content.slice(Math.max(0, m.index - 40), m.index);
+      if (/\b(?:function|const|let|var|export\s+(?:default\s+)?(?:function)?)\s*$/.test(back)) continue;
+      hooks.push(name);
     }
     if (hooks.length) hooksByFile[filePath] = hooks;
 
-    // Try to map DOM elements to this file by matching text content or component names
-    const compMatch = componentNameRegex.exec(content);
-    const componentName = compMatch?.[1];
-    if (componentName) {
-      for (const entry of elements) {
-        if (!entry.sourceFile) {
-          // Match by data-component attribute or by text content presence in source
-          if (content.includes(`data-component="${componentName}"`) ||
-              (entry.textContent.length > 5 && content.includes(entry.textContent.slice(0, 30)))) {
-            entry.sourceFile = filePath;
+    // useContext consumers — capture the Context identifier passed in.
+    const ctxNames: string[] = [];
+    const ctxCall = /(?<![.\w])(?:React\.)?useContext\s*\(\s*([A-Za-z_$][\w$]*)/g;
+    while ((m = ctxCall.exec(content)) !== null) {
+      if (!ctxNames.includes(m[1])) ctxNames.push(m[1]);
+    }
+    if (ctxNames.length) contextsByFile[filePath] = ctxNames;
+
+    // useReducer dispatchers + emitted action types.
+    const reducers: Array<{ dispatcher: string; actions: string[] }> = [];
+    const reducerDecl =
+      /(?:const|let|var)\s+\[\s*\w+\s*,\s*(\w+)\s*\]\s*=\s*(?:React\.)?useReducer\b/g;
+    while ((m = reducerDecl.exec(content)) !== null) {
+      const dispatcher = m[1];
+      const actions: string[] = [];
+      const actionRe = new RegExp(
+        `\\b${dispatcher}\\s*\\(\\s*(?:\\{[^}]*?type\\s*:\\s*['"\`]([\\w.:-]+)['"\`]|['"\`]([\\w.:-]+)['"\`])`,
+        'g',
+      );
+      let a: RegExpExecArray | null;
+      while ((a = actionRe.exec(content)) !== null) {
+        const action = a[1] || a[2];
+        if (action && !actions.includes(action)) actions.push(action);
+      }
+      reducers.push({ dispatcher, actions });
+    }
+    if (reducers.length) reducersByFile[filePath] = reducers;
+
+    // Event handler declarations + inline JSX handler bindings.
+    const handlers = new Set<string>();
+    const declRe = /(?:function|const|let|var)\s+((?:handle|on)[A-Z]\w*)\b/g;
+    while ((m = declRe.exec(content)) !== null) handlers.add(m[1]);
+    const bindRe = /\bon[A-Z]\w*\s*=\s*\{\s*([A-Za-z_$][\w$]*)\s*\}/g;
+    while ((m = bindRe.exec(content)) !== null) handlers.add(m[1]);
+    if (handlers.size) {
+      const arr = Array.from(handlers);
+      handlersByFile[filePath] = arr;
+      for (const name of arr) {
+        (handlerToFiles[name] ??= new Set()).add(filePath);
+      }
+    }
+
+    // Collect all component declarations in this file (not just the first).
+    const compDecl = /(?:export\s+(?:default\s+)?)?(?:function|const|class)\s+([A-Z]\w+)/g;
+    const compNames: string[] = [];
+    while ((m = compDecl.exec(content)) !== null) {
+      if (!compNames.includes(m[1])) compNames.push(m[1]);
+    }
+    if (compNames.length) componentsByFile[filePath] = compNames;
+  }
+
+  // ── Source-file attribution for DOM elements ──
+  // Priority: explicit data-ut-intent/cta > handler-name from React fiber >
+  // component tag + text > text-content substring.
+  for (const entry of elements) {
+    if (entry.sourceFile) continue;
+
+    // (1) Intent / CTA string match.
+    if (entry.intent || entry.ctaLabel) {
+      for (const [filePath, rawContent] of Object.entries(vfsFiles)) {
+        if (!/\.(tsx|jsx)$/.test(filePath)) continue;
+        const intentHit = entry.intent && rawContent.includes(`"${entry.intent}"`);
+        const ctaHit = entry.ctaLabel && rawContent.includes(`"${entry.ctaLabel}"`);
+        if (intentHit || ctaHit) { entry.sourceFile = filePath; break; }
+      }
+      if (entry.sourceFile) continue;
+    }
+
+    // (2) Attribute event handlers to their source. React fiber gives us the
+    // prop key ("onClick"); if exactly one file declares/binds a handler whose
+    // name ends in the same suffix ("handleClick" / "onClick"), pick it.
+    const uniqueHandlerFile = (() => {
+      for (const propKey of entry.handlers) {
+        if (!/^on[A-Z]/.test(propKey)) continue;
+        const suffix = propKey.slice(2).toLowerCase();
+        const candidates = new Set<string>();
+        for (const [name, files] of Object.entries(handlerToFiles)) {
+          if (name.toLowerCase().endsWith(suffix)) {
+            for (const f of files) candidates.add(f);
           }
         }
+        if (candidates.size === 1) return Array.from(candidates)[0];
+      }
+      return null;
+    })();
+    if (uniqueHandlerFile) { entry.sourceFile = uniqueHandlerFile; continue; }
+
+    // (3-4) Component-tag + text fallback.
+    for (const [filePath, rawContent] of Object.entries(vfsFiles)) {
+      if (!/\.(tsx|jsx)$/.test(filePath)) continue;
+      const comps = componentsByFile[filePath] || [];
+      const compTagMatch = comps.some((c) => new RegExp(`<${c}\\b`).test(rawContent));
+      const textMatch = entry.textContent.length > 8 &&
+        rawContent.includes(entry.textContent.slice(0, Math.min(40, entry.textContent.length)));
+      if ((compTagMatch && textMatch) || textMatch) {
+        entry.sourceFile = filePath;
+        break;
       }
     }
   }
@@ -566,6 +759,9 @@ export function buildComponentBehaviorMap(
     stateByFile,
     effectsByFile,
     hooksByFile,
+    contextsByFile,
+    reducersByFile,
+    handlersByFile,
     snapshotAt: Date.now(),
   };
 }
@@ -599,6 +795,33 @@ export function formatBehaviorMapForPrompt(map: ComponentBehaviorMap): string {
     lines.push('State hooks:');
     for (const [file, vars] of Object.entries(map.stateByFile)) {
       lines.push(`  ${file}: ${vars.join(', ')}`);
+    }
+  }
+
+  // Context consumers
+  if (Object.keys(map.contextsByFile).length) {
+    lines.push('Context consumers:');
+    for (const [file, ctxs] of Object.entries(map.contextsByFile)) {
+      lines.push(`  ${file}: ${ctxs.join(', ')}`);
+    }
+  }
+
+  // Reducers + emitted actions
+  if (Object.keys(map.reducersByFile).length) {
+    lines.push('Reducers:');
+    for (const [file, reducers] of Object.entries(map.reducersByFile)) {
+      for (const r of reducers) {
+        const actions = r.actions.length ? ` [${r.actions.join(', ')}]` : ' (no dispatched actions detected)';
+        lines.push(`  ${file}: ${r.dispatcher}${actions}`);
+      }
+    }
+  }
+
+  // Event handlers per file
+  if (Object.keys(map.handlersByFile).length) {
+    lines.push('Event handlers:');
+    for (const [file, hs] of Object.entries(map.handlersByFile)) {
+      lines.push(`  ${file}: ${hs.slice(0, 12).join(', ')}${hs.length > 12 ? ', …' : ''}`);
     }
   }
 

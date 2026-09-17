@@ -5,6 +5,7 @@
  */
 import type { ThemePreset } from './themePresets';
 import type { ThemeTokens } from '@/sections/types';
+import { getThemeGeometryContract } from '@/services/themeGeometryContract';
 
 export function hexToHSL(hex: string): string {
   const h = hex.replace('#', '');
@@ -50,11 +51,11 @@ export function themePresetToThemeTokens(preset: ThemePreset): ThemeTokens {
   return {
     colors: {
       primary: accent,
-      primaryForeground: dark ? '0 0% 98%' : '222 47% 11%',
+      primaryForeground: contrastingForeground(preset.palette.accent),
       secondary: accent2,
-      secondaryForeground: fg,
+      secondaryForeground: contrastingForeground(preset.palette.accent2 || preset.palette.accent),
       accent: accent2,
-      accentForeground: fg,
+      accentForeground: contrastingForeground(preset.palette.accent2 || preset.palette.accent),
       background: bg,
       foreground: fg,
       muted,
@@ -69,8 +70,14 @@ export function themePresetToThemeTokens(preset: ThemePreset): ThemeTokens {
       headingWeight: preset.typography.headingWeight,
       bodyWeight: '400',
     },
-    radius: '0.75rem',
+    radius: getThemeGeometryContract(preset.id).radius,
     sectionPadding: '5rem 1rem',
     containerWidth: '1200px',
   };
+}
+
+export function contrastingForeground(hex: string): string {
+  const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) ? '0 0% 0%' : '0 0% 100%';
 }

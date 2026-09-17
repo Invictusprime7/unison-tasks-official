@@ -7,21 +7,24 @@
 import React from 'react';
 import type { BaseSectionProps } from '../../types';
 import { hsl, hsla } from '../../themeUtils';
+import { MobileNavbarNavigation } from './MobileNavbarNavigation';
 
 export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ section, theme }) => {
   const { brand, links = [], cta } = section.props;
 
   return (
     <header
+      data-ut-variant="navbar:minimal-dark"
       className="fixed top-0 left-0 right-0 z-50"
       style={{
-        background: 'rgba(10, 10, 20, 0.95)',
+        background: hsla(theme.colors.foreground, 0.95),
         backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: `1px solid ${hsla(theme.colors.background, 0.06)}`,
       }}
     >
+      <MobileNavbarNavigation brand={brand} links={links} cta={cta} tone="dark" />
       <div
-        className="mx-auto flex items-center justify-between h-14 px-6"
+        className="mx-auto hidden h-14 items-center justify-between px-6 lg:flex"
         style={{ maxWidth: theme.containerWidth }}
       >
         <a
@@ -29,7 +32,7 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
           className="text-base font-bold tracking-tight"
           style={{
             fontFamily: theme.typography.headingFont,
-            color: '#ffffff',
+            color: hsl(theme.colors.background),
           }}
         >
           {brand}
@@ -41,10 +44,10 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
               key={i}
               href={link.href}
               data-ut-intent={link.intent}
-              className="text-sm transition-colors hover:text-white"
+              className="text-sm transition-colors hover:text-background"
               style={{
                 fontFamily: theme.typography.bodyFont,
-                color: 'rgba(255,255,255,0.6)',
+                color: hsla(theme.colors.background, 0.6),
               }}
             >
               {link.label}
@@ -59,7 +62,7 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
               style={{
                 background: hsl(theme.colors.primary),
                 color: hsl(theme.colors.primaryForeground),
-                borderRadius: '9999px',
+                borderRadius: theme.radius,
                 fontFamily: theme.typography.bodyFont,
                 fontWeight: '500',
                 fontSize: '0.8125rem',

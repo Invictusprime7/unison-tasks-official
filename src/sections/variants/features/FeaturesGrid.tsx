@@ -11,7 +11,10 @@ export const FeaturesGrid: React.FC<BaseSectionProps<'features'>> = ({ section, 
   const { headline, subheadline, items = [], columns = 3 } = section.props;
 
   return (
-    <section style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
+    <section
+      data-ut-variant="features:grid"
+      style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
+    >
       <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-12">

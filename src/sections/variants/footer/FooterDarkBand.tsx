@@ -13,12 +13,13 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
 
   return (
     <footer
+      data-ut-variant="footer:dark-band"
       className="px-6"
       style={{
         paddingTop: '3.5rem',
         paddingBottom: '1.5rem',
-        background: `hsl(${theme.colors.foreground})`,
-        color: `hsl(${theme.colors.background})`,
+        background: hsl(theme.colors.foreground),
+        color: hsl(theme.colors.background),
       }}
     >
       <div className="mx-auto" style={{ maxWidth: theme.containerWidth }}>
@@ -41,9 +42,9 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
                   className="flex-1 text-sm px-3 py-2"
                   style={{
                     borderRadius: theme.radius,
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    background: 'rgba(255,255,255,0.08)',
-                    color: '#fff',
+                    border: `1px solid ${hsla(theme.colors.background, 0.15)}`,
+                    background: hsla(theme.colors.background, 0.08),
+                    color: hsl(theme.colors.background),
                     outline: 'none',
                   }}
                 />
@@ -73,7 +74,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
                       rel={hasUrl ? 'noopener noreferrer' : undefined}
                       aria-label={socialAriaLabel(s.platform)}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:opacity-80"
-                      style={{ color: 'rgba(255,255,255,0.75)', textDecoration: 'none' }}
+                      style={{ color: hsla(theme.colors.background, 0.75), textDecoration: 'none' }}
                     >
                       <SocialIcon platform={s.platform} size={16} />
                     </a>
@@ -85,7 +86,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
 
           {columns.map((col, i) => (
             <div key={i}>
-              <h4 className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              <h4 className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: hsla(theme.colors.background, 0.7) }}>
                 {col.title}
               </h4>
               <ul className="space-y-2">
@@ -94,7 +95,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
                     <a
                       href={l.href}
                       className="text-sm hover:opacity-80 transition-opacity"
-                      style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}
+                      style={{ color: hsla(theme.colors.background, 0.5), textDecoration: 'none' }}
                     >
                       {l.label}
                     </a>
@@ -107,9 +108,9 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
 
         <div
           className="flex justify-between items-center pt-4"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}
+          style={{ borderTop: `1px solid ${hsla(theme.colors.background, 0.1)}` }}
         >
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <p className="text-xs" style={{ color: hsla(theme.colors.background, 0.4) }}>
             {copyright || `© ${new Date().getFullYear()} ${brand}. All rights reserved.`}
           </p>
         </div>

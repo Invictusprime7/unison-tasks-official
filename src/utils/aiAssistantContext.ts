@@ -3,6 +3,30 @@ import { getSystemContract } from "@/data/templates/contracts";
 import { getDefaultManifestForSystem, getManifestStats } from "@/data/templates/manifest";
 import type { TemplateCtaAnalysis } from "@/utils/ctaContract";
 import { CORE_INTENTS } from "@/platform/core/coreIntents";
+import { CATALOG_SURFACES } from "@/platform/core/catalogSurfaceRegistry";
+
+function buildCatalogRegistrySummary(): string {
+  const lines: string[] = [];
+  lines.push("\nCanonical catalog registry (Supabase-backed — edit ROWS, not TSX):");
+  for (const s of Object.values(CATALOG_SURFACES)) {
+    const priceCol = s.fields.priceCents
+      ? `${s.fields.priceCents} (cents)`
+      : s.fields.price
+        ? `${s.fields.price} (dollars)`
+        : "n/a";
+    const editable = s.editableFields.map((f) => `${f.key}:${f.type}`).join(", ");
+    lines.push(
+      `- surfaceId=${s.surfaceId} kind=${s.catalogKind} table=${s.sourceTable} component=${s.componentType} route=${s.editorRoute} price=${priceCol}`,
+    );
+    lines.push(`    aliases: ${s.aliases.join(", ")}`);
+    lines.push(`    editable: ${editable}`);
+    lines.push(`    intents: ${s.supportedIntents.join(", ") || "(none)"}`);
+  }
+  lines.push(
+    "Rules: to add/edit services, products, menu items, pricing plans, offers, testimonials, or portfolio projects, propose a catalog row change (surfaceId + patch) — do NOT hand-edit component TSX with hardcoded content. Sections auto-hydrate from these tables at runtime.",
+  );
+  return lines.join("\n");
+}
 
 /**
  * Builds a compact “backend awareness” context string for the AI assistant.
@@ -15,8 +39,15 @@ export function buildWebBuilderAIContext(opts: {
   pageStructure?: string | null;
   backendState?: string | null;
   businessData?: string | null;
+  /**
+   * Pre-rendered catalogContext block (see @/utils/catalogContext).
+   * Callers that have businessId/projectId should build+render it with
+   * `renderCatalogContextForPrompt(await buildCatalogContext({...}))`
+   * so the assistant sees live row counts + active bindings.
+   */
+  catalogContext?: string | null;
 }): string {
-  const { systemType, templateName, ctaAnalysis, pageStructure, backendState, businessData } = opts;
+  const { systemType, templateName, ctaAnalysis, pageStructure, backendState, businessData, catalogContext } = opts;
 
   const lines: string[] = [];
   lines.push("\n\n=== WEB BUILDER BACKEND CONTEXT (builder-author; propose+approve) ===");
@@ -69,10 +100,19 @@ export function buildWebBuilderAIContext(opts: {
   lines.push("\nRuntime intent registry (executable):");
   lines.push(availableIntents.join(", "));
 
+  lines.push(buildCatalogRegistrySummary());
+
+  if (catalogContext) {
+    lines.push(catalogContext);
+  }
+
   lines.push("\nRules:");
   lines.push("- Prefer editing existing template HTML in-place (broad UI edits allowed).");
   lines.push("- CTAs should use data-ut-cta + data-ut-intent + data-ut-label (also keep data-intent for compatibility).");
   lines.push("- Backend changes are allowed only as a PROPOSED plan; user approves before execution.");
+  lines.push("- For catalog content (products/services/menu/pricing/offers/testimonials/portfolio) call the catalog operation tools — never hand-edit card copy or prices in TSX.");
+  lines.push("- For section data-source changes use updateSectionBinding / switchSectionCollection / changeSectionLimit / changeSectionSort / changeSectionFallback — never edit data-ut-section-type strings by hand.");
+  lines.push("- Use only canonical intents from the CoreIntents registry, and only intents allowed for the surface being edited (catalogContext.supportedIntentsBySurface).");
   lines.push("- If you propose multi-file changes, output them as <file path=\"/path\">...content...</file> blocks (no markdown).");
 
   return lines.join("\n");

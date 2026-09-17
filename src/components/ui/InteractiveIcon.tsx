@@ -214,6 +214,7 @@ export function InteractiveIcon({
       </button>
 
       {/* Interactive UI — rendered based on behavior + component type */}
+      {/* eslint-disable-next-line react-hooks/refs -- inputRef is only forwarded to a ref={} prop, never read here */}
       {isOpen && renderInteractiveUI({
         iconKey,
         behavior: binding.uiBehavior,

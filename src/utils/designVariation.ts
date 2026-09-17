@@ -20,6 +20,8 @@
  * `SiteBundleSnapshot.composition.sections[]`.
  */
 
+import { createSeededRng, hashSeed, seededPick } from '@/platform/core/generationSeed';
+
 // ============================================================================
 // Option pools — each field draws from these at random
 // ============================================================================
@@ -55,12 +57,17 @@ const FONT_PAIRINGS: Array<{ heading: string; body: string }> = [
 // Helpers
 // ============================================================================
 
-function pick<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function coinFlip(probability = 0.5): boolean {
-  return Math.random() < probability;
+/**
+ * Every choice below is derived from the canonical generation seed — never
+ * `Math.random()`. Same seed in, same website out (see
+ * `@/platform/core/generationSeed`).
+ */
+function makePickers(seed: string) {
+  const rng = createSeededRng(seed);
+  return {
+    pick: <T,>(arr: readonly T[]): T => arr[Math.floor(rng() * arr.length) % arr.length],
+    coinFlip: (probability = 0.5): boolean => rng() < probability,
+  };
 }
 
 // ============================================================================
@@ -115,10 +122,14 @@ export interface StyleVariation {
 export type DesignVariation = StyleVariation;
 
 /**
- * Generate randomized style-only parameters. Section presence is NEVER
- * decided here — see SiteBundle composition.
+ * Resolve style-only parameters from the canonical generation seed. Section
+ * presence is NEVER decided here — see SiteBundle composition.
+ *
+ * The seed is required for reproducibility: a refresh, a recompile, a preview
+ * and a publish of the same snapshot must all resolve the same variation.
  */
-export function generateStyleVariation(): StyleVariation {
+export function generateStyleVariation(seed: string): StyleVariation {
+  const { pick, coinFlip } = makePickers(seed);
   return {
     layout: {
       hero_style: pick(HERO_STYLES),
@@ -161,11 +172,50 @@ export function generateStyleVariation(): StyleVariation {
 export const generateDesignVariation = generateStyleVariation;
 
 /**
- * Pick a random font pairing different from the given current fonts.
+ * Pick a seed-stable font pairing different from the given current fonts.
  */
-export function randomFontPairing(currentHeading?: string): { heading: string; body: string } {
+export function seededFontPairing(seed: string, currentHeading?: string): { heading: string; body: string } {
   const candidates = currentHeading
     ? FONT_PAIRINGS.filter(p => p.heading !== currentHeading)
     : FONT_PAIRINGS;
-  return pick(candidates.length > 0 ? candidates : FONT_PAIRINGS);
+  return seededPick(seed, candidates.length > 0 ? candidates : FONT_PAIRINGS);
+}
+
+/** @deprecated Back-compat alias — pass the canonical generation seed. */
+export const randomFontPairing = seededFontPairing;
+
+// ============================================================================
+// Phase 1 — deterministic design-plan signature
+// ============================================================================
+
+/**
+ * Canonical, order-stable serialization of a style variation. Two variations
+ * are byte-equivalent iff their normalized plans are string-equal, regardless
+ * of key insertion order or JSON engine differences.
+ */
+export function normalizeDesignPlan(variation: StyleVariation): string {
+  const sortValue = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(sortValue);
+    if (value && typeof value === 'object') {
+      return Object.keys(value as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          acc[key] = sortValue((value as Record<string, unknown>)[key]);
+          return acc;
+        }, {});
+    }
+    return value;
+  };
+  return JSON.stringify(sortValue(variation));
+}
+
+/**
+ * Stable, short signature of the design plan a given seed produces. Persisted
+ * into `SiteBundleSnapshot.meta.designPlanSignature` so an audit can prove
+ * that a rendered site's visual plan is exactly the one the seed dictates —
+ * no wall-clock, no `Math.random()`, no drift on recompile.
+ */
+export function designPlanSignature(seed: string): string {
+  const plan = normalizeDesignPlan(generateStyleVariation(seed));
+  return `dp1_${hashSeed(plan).toString(36)}_${hashSeed(`${plan}|${seed}`).toString(36)}`;
 }

@@ -81,7 +81,7 @@ export function heroFullBleedJSX(c: ExtractedSectionContent): string {
   const bgStyle = c.imageSrc
     ? `{{ backgroundImage: "url('${c.imageSrc}')", backgroundSize: "cover", backgroundPosition: "center" }}`
     : `{{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)" }}`;
-  return `      <section className="relative min-h-[80vh] flex items-center justify-center" data-variant="hero:full-bleed" style={${bgStyle}}>
+  return `      <section className="relative min-h-[var(--ut-hero-block)] flex items-center justify-center" data-variant="hero:full-bleed" style={${bgStyle}}>
         <div className="absolute inset-0 bg-gradient-to-br from-gray-900/80 to-gray-900/60" />
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center py-20">
 ${c.badge ? `          <span className="inline-block text-xs font-medium tracking-wide uppercase mb-4 px-3 py-1 rounded-full bg-white/10 text-white/90 border border-white/20 backdrop-blur-sm">${esc(c.badge)}</span>\n` : ''}\
@@ -444,4 +444,428 @@ ${navLinks.map(link => `                <a href="${link.href}" style={{ fontFami
           </div>
         </div>
       </footer>`;
+}
+
+// ============================================================================
+// Gallery Variants (Recovery Phase 4 — premium proof family)
+// ============================================================================
+
+function galleryTiles(c: ExtractedSectionContent, count: number): Array<{ src: string; caption: string }> {
+  const captions = c.listItems?.length ? c.listItems : [];
+  const base = c.imageSrc || '/placeholder.svg';
+  return Array.from({ length: Math.max(count, captions.length || count) }, (_, i) => ({
+    src: base,
+    caption: captions[i] || '',
+  }));
+}
+
+function galleryIntro(c: ExtractedSectionContent): string {
+  if (!c.heading && !c.subheading) return '';
+  return `          <div className="mb-12 text-center">
+${c.heading ? `            <h2 className="mb-3 text-3xl font-semibold text-foreground">${esc(c.heading)}</h2>\n` : ''}\
+${c.subheading ? `            <p className="mx-auto max-w-xl text-base text-muted-foreground">${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n`;
+}
+
+function galleryFigure(tile: { src: string; caption: string }, cls: string, aspect: string): string {
+  return `            <figure className="group relative m-0 overflow-hidden rounded-[var(--radius)] border border-border bg-muted ${cls}" style={{ aspectRatio: '${aspect}' }}>
+              <img src="${tile.src}" alt="${esc(tile.caption)}" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 motion-reduce:transition-none group-hover:scale-105" />
+${tile.caption ? `              <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/80 to-transparent p-4 text-sm text-background opacity-0 transition-opacity group-hover:opacity-100">${esc(tile.caption)}</figcaption>\n` : ''}\
+            </figure>`;
+}
+
+function galleryShell(variant: string, c: ExtractedSectionContent, grid: string): string {
+  return `      <section className="bg-background py-20 md:py-24" data-variant="${variant}">
+        <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+${galleryIntro(c)}\
+${grid}
+        </div>
+      </section>`;
+}
+
+export function galleryEditorialMosaicJSX(c: ExtractedSectionContent): string {
+  const tiles = galleryTiles(c, 6);
+  const grid = `          <div className="grid auto-rows-[var(--ut-tile-block)] grid-cols-2 gap-4 lg:grid-cols-4">
+${tiles.map((t, i) => galleryFigure(t, i % 5 === 0 ? 'col-span-2 row-span-2' : i % 7 === 3 ? 'col-span-2' : '', 'auto')).join('\n')}
+          </div>`;
+  return galleryShell('gallery:editorial-mosaic', c, grid);
+}
+
+export function galleryMasonryJSX(c: ExtractedSectionContent): string {
+  const tiles = galleryTiles(c, 6);
+  const grid = `          <div style={{ columnCount: 3, columnGap: '1rem' }}>
+${tiles.map((t, i) => `            <div className="mb-4 break-inside-avoid">\n${galleryFigure(t, '', i % 3 === 0 ? '3 / 4' : i % 3 === 1 ? '1 / 1' : '4 / 5')}\n            </div>`).join('\n')}
+          </div>`;
+  return galleryShell('gallery:masonry', c, grid);
+}
+
+export function galleryCinematicGridJSX(c: ExtractedSectionContent): string {
+  const tiles = galleryTiles(c, 6);
+  const grid = `          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+${tiles.map((t) => galleryFigure(t, '', '16 / 9')).join('\n')}
+          </div>`;
+  return galleryShell('gallery:cinematic-grid', c, grid);
+}
+
+export function galleryLightboxGridJSX(c: ExtractedSectionContent): string {
+  const tiles = galleryTiles(c, 6);
+  const grid = `          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+${tiles.map((t) => galleryFigure(t, 'cursor-zoom-in', '1 / 1')).join('\n')}
+          </div>`;
+  return galleryShell('gallery:lightbox-grid', c, grid);
+}
+
+export function galleryFeatureSplitJSX(c: ExtractedSectionContent): string {
+  const [feature, ...rest] = galleryTiles(c, 5);
+  const grid = `          <div className="grid gap-4 lg:grid-cols-2">
+${galleryFigure(feature, '', '4 / 5')}
+            <div className="grid grid-cols-2 gap-4 self-start">
+${rest.map((t) => galleryFigure(t, '', '1 / 1')).join('\n')}
+            </div>
+          </div>`;
+  return galleryShell('gallery:feature-split', c, grid);
+}
+
+// ============================================================================
+// Testimonials + Pricing Variants (Recovery Phase 3 — first-class families)
+// ============================================================================
+
+function proofIntro(c: ExtractedSectionContent): string {
+  if (!c.heading && !c.subheading) return '';
+  return `          <div className="mb-12 text-center">
+${c.heading ? `            <h2 className="mb-3 text-3xl font-semibold text-foreground">${esc(c.heading)}</h2>\n` : ''}\
+${c.subheading ? `            <p className="mx-auto max-w-2xl text-base text-muted-foreground">${esc(c.subheading)}</p>\n` : ''}\
+          </div>\n`;
+}
+
+function proofShell(variant: string, c: ExtractedSectionContent, body: string, surface = 'bg-background'): string {
+  return `      <section className="${surface} py-20 md:py-24" data-variant="${variant}">
+        <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+${proofIntro(c)}\
+${body}
+        </div>
+      </section>`;
+}
+
+function proofQuotes(c: ExtractedSectionContent, count: number): string[] {
+  const quotes = c.listItems?.length ? c.listItems : [];
+  return Array.from({ length: Math.max(count, quotes.length || count) }, (_, i) => quotes[i] || 'They delivered exactly what we needed, on time.');
+}
+
+function quoteCard(text: string, cls = ''): string {
+  return `            <figure className="m-0 flex h-full flex-col justify-between rounded-[var(--radius)] border border-border bg-card p-8 text-card-foreground ${cls}">
+              <blockquote className="mb-6 text-base leading-relaxed">&ldquo;${esc(text)}&rdquo;</blockquote>
+              <figcaption className="text-sm font-semibold">Verified client</figcaption>
+            </figure>`;
+}
+
+export function testimonialsGridJSX(c: ExtractedSectionContent): string {
+  const quotes = proofQuotes(c, 3);
+  const body = `          <div className="grid gap-6 md:grid-cols-3">
+${quotes.map((q) => quoteCard(q)).join('\n')}
+          </div>`;
+  return proofShell('testimonials:grid', c, body);
+}
+
+export function testimonialsRailJSX(c: ExtractedSectionContent): string {
+  const quotes = proofQuotes(c, 4);
+  const body = `          <div className="flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4" role="group" aria-label="Customer testimonials">
+${quotes.map((q) => quoteCard(q, 'w-[var(--ut-carousel-card)] shrink-0 snap-start')).join('\n')}
+          </div>`;
+  return proofShell('testimonials:rail', c, body);
+}
+
+export function testimonialsSpotlightJSX(c: ExtractedSectionContent): string {
+  const [featured, ...rest] = proofQuotes(c, 3);
+  const body = `          <figure className="mx-auto m-0 max-w-3xl rounded-[var(--radius)] border border-border bg-card p-10 text-center text-card-foreground">
+            <blockquote className="mb-6 text-2xl font-semibold leading-relaxed">&ldquo;${esc(featured)}&rdquo;</blockquote>
+            <figcaption className="text-sm font-semibold">Verified client</figcaption>
+          </figure>
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+${rest.map((q) => quoteCard(q)).join('\n')}
+          </div>`;
+  return proofShell('testimonials:spotlight', c, body, 'bg-muted');
+}
+
+function pricingPlans(c: ExtractedSectionContent): Array<{ name: string; price: string; features: string[] }> {
+  const names = ['Starter', 'Professional', 'Premium'];
+  const features = c.listItems?.length ? c.listItems : ['Dedicated support', 'Fast turnaround', 'Transparent pricing'];
+  return names.map((name, i) => ({
+    name,
+    price: `$${(i + 1) * 99}`,
+    features: features.slice(0, 3 + i),
+  }));
+}
+
+function planCta(c: ExtractedSectionContent): { label: string; href: string } {
+  const cta = c.ctaButtons?.[0];
+  return { label: cta?.text || 'Get started', href: cta?.href || '#contact' };
+}
+
+export function pricingTiersJSX(c: ExtractedSectionContent): string {
+  const plans = pricingPlans(c);
+  const cta = planCta(c);
+  const body = `          <div className="grid items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
+${plans.map((plan, i) => `            <article className="flex h-full flex-col rounded-[var(--radius)] border ${i === 1 ? 'border-primary' : 'border-border'} bg-card p-8 text-card-foreground">
+              <h3 className="text-lg font-semibold">${esc(plan.name)}</h3>
+              <p className="mt-2 text-3xl font-semibold">${plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+              <ul className="mt-6 flex-1 list-none space-y-2 p-0 text-sm">
+${plan.features.map((f) => `                <li>✓ ${esc(f)}</li>`).join('\n')}
+              </ul>
+              <a href="${cta.href}" data-ut-intent="lead.capture" className="mt-6 inline-flex w-full items-center justify-center rounded-[var(--radius)] bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground no-underline">${esc(cta.label)}</a>
+            </article>`).join('\n')}
+          </div>`;
+  return proofShell('pricing:tiers', c, body, 'bg-muted');
+}
+
+export function pricingComparisonJSX(c: ExtractedSectionContent): string {
+  const plans = pricingPlans(c);
+  const rows = Array.from(new Set(plans.flatMap((p) => p.features)));
+  const body = `          <div className="overflow-x-auto rounded-[var(--radius)] border border-border bg-card">
+            <table className="w-full border-collapse text-left text-sm text-card-foreground">
+              <caption className="sr-only">Plan comparison</caption>
+              <thead>
+                <tr>
+                  <th scope="col" className="p-4">Features</th>
+${plans.map((p) => `                  <th scope="col" className="p-4">${esc(p.name)}<span className="block text-base font-semibold">${p.price}</span></th>`).join('\n')}
+                </tr>
+              </thead>
+              <tbody>
+${rows.map((row) => `                <tr className="border-t border-border">
+                  <th scope="row" className="p-4 font-normal">${esc(row)}</th>
+${plans.map((p) => `                  <td className="p-4">${p.features.includes(row) ? '✓' : '—'}</td>`).join('\n')}
+                </tr>`).join('\n')}
+              </tbody>
+            </table>
+          </div>`;
+  return proofShell('pricing:comparison', c, body, 'bg-muted');
+}
+
+export function pricingAccordionJSX(c: ExtractedSectionContent): string {
+  const plans = pricingPlans(c);
+  const cta = planCta(c);
+  const body = `          <div className="mx-auto max-w-3xl">
+${plans.map((plan) => `            <details className="mb-3 rounded-[var(--radius)] border border-border bg-card p-5 text-card-foreground">
+              <summary className="flex cursor-pointer items-center justify-between text-base font-semibold">${esc(plan.name)}<span>${plan.price}<span className="text-xs font-normal text-muted-foreground">/mo</span></span></summary>
+              <ul className="mt-4 list-none space-y-2 p-0 text-sm">
+${plan.features.map((f) => `                <li>✓ ${esc(f)}</li>`).join('\n')}
+              </ul>
+              <a href="${cta.href}" data-ut-intent="lead.capture" className="mt-5 inline-flex w-full items-center justify-center rounded-[var(--radius)] bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground no-underline">${esc(cta.label)}</a>
+            </details>`).join('\n')}
+          </div>`;
+  return proofShell('pricing:accordion', c, body, 'bg-muted');
+}
+
+// ============================================================================
+// About / FAQ / Stats / Team Variants (Phase 4 — premium inventory)
+// ============================================================================
+
+function sectionShell(variant: string, c: ExtractedSectionContent, body: string, surface = 'bg-background'): string {
+  return proofShell(variant, c, body, surface);
+}
+
+function aboutParagraphsFrom(c: ExtractedSectionContent): string[] {
+  const parts = [c.subheading, ...(c.listItems || [])].filter(Boolean) as string[];
+  return parts.length ? parts : ['We build every engagement around clear outcomes, honest timelines and craft you can see.'];
+}
+
+function aboutCta(c: ExtractedSectionContent): string {
+  const cta = c.ctaButtons?.[0];
+  if (!cta) return '';
+  return `\n            <a href="${cta.href}" className="mt-6 inline-block rounded-[var(--radius)] bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground">${esc(cta.text)}</a>`;
+}
+
+function aboutMedia(c: ExtractedSectionContent, aspect: string): string {
+  return c.imageSrc
+    ? `            <img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" loading="lazy" className="w-full rounded-[var(--radius)] object-cover ${aspect}" />`
+    : `            <div className="w-full rounded-[var(--radius)] border border-border bg-muted ${aspect}" />`;
+}
+
+export function aboutEditorialSplitJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid items-center gap-12 md:grid-cols-2">
+            <div>
+${c.heading ? `              <h2 className="mb-5 text-3xl font-semibold text-foreground">${esc(c.heading)}</h2>\n` : ''}\
+${aboutParagraphsFrom(c).map((p) => `              <p className="mb-4 text-base leading-relaxed text-muted-foreground">${esc(p)}</p>`).join('\n')}${aboutCta(c)}
+            </div>
+${aboutMedia(c, 'aspect-[4/5]')}
+          </div>`;
+  return `      <section className="bg-background py-20 md:py-24" data-variant="about:editorial-split">
+        <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+${body}
+        </div>
+      </section>`;
+}
+
+export function aboutStatementJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="mx-auto max-w-3xl text-center">
+${c.heading ? `            <h2 className="mb-5 text-3xl font-semibold text-foreground">${esc(c.heading)}</h2>\n` : ''}\
+${aboutParagraphsFrom(c).map((p) => `            <p className="mb-4 text-base leading-relaxed text-muted-foreground">${esc(p)}</p>`).join('\n')}${aboutCta(c)}
+          </div>`;
+  return `      <section className="bg-muted py-20 md:py-24" data-variant="about:statement">
+        <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+${body}
+        </div>
+      </section>`;
+}
+
+export function aboutStoryPanelJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-0 md:grid-cols-12">
+            <div className="md:col-span-7">
+${aboutMedia(c, 'aspect-[16/10]')}
+            </div>
+            <div className="md:col-span-5 md:-ml-12 md:mt-16">
+              <div className="rounded-[var(--radius)] border border-border bg-card p-10 text-card-foreground">
+${c.heading ? `                <h2 className="mb-5 text-3xl font-semibold">${esc(c.heading)}</h2>\n` : ''}\
+${aboutParagraphsFrom(c).map((p) => `                <p className="mb-4 text-base leading-relaxed text-muted-foreground">${esc(p)}</p>`).join('\n')}${aboutCta(c)}
+              </div>
+            </div>
+          </div>`;
+  return `      <section className="bg-muted py-20 md:py-24" data-variant="about:story-panel">
+        <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+${body}
+        </div>
+      </section>`;
+}
+
+function faqPairs(c: ExtractedSectionContent, count: number): Array<{ q: string; a: string }> {
+  const items = c.listItems?.length ? c.listItems : [];
+  const defaults = [
+    'How soon can we start?',
+    'What does the process look like?',
+    'How is pricing handled?',
+    'Do you offer ongoing support?',
+  ];
+  return Array.from({ length: Math.max(count, items.length || count) }, (_, i) => ({
+    q: items[i] || defaults[i % defaults.length],
+    a: 'Reach out and we will walk you through the details, timelines and next steps.',
+  }));
+}
+
+export function faqAccordionJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="mx-auto max-w-3xl">
+${faqPairs(c, 4).map((p) => `            <details className="mb-3 rounded-[var(--radius)] border border-border bg-card p-6 text-card-foreground">
+              <summary className="cursor-pointer list-none text-base font-semibold">${esc(p.q)}</summary>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">${esc(p.a)}</p>
+            </details>`).join('\n')}
+          </div>`;
+  return sectionShell('faq:accordion', c, body);
+}
+
+export function faqTwoColumnJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-x-12 gap-y-8 md:grid-cols-2">
+${faqPairs(c, 4).map((p) => `            <div className="border-t border-border pt-5">
+              <h3 className="mb-2 text-base font-semibold text-foreground">${esc(p.q)}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">${esc(p.a)}</p>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('faq:two-column', c, body, 'bg-muted');
+}
+
+export function faqCardsJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-6 md:grid-cols-3">
+${faqPairs(c, 3).map((p) => `            <div className="h-full rounded-[var(--radius)] border border-border bg-card p-8 text-card-foreground">
+              <h3 className="mb-3 text-base font-semibold">${esc(p.q)}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">${esc(p.a)}</p>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('faq:cards', c, body);
+}
+
+function statFigures(c: ExtractedSectionContent, count: number): Array<{ value: string; label: string }> {
+  const labels = c.listItems?.length ? c.listItems : ['Projects delivered', 'Years in practice', 'Client retention', 'Average rating'];
+  const values = ['250+', '12', '96%', '4.9'];
+  return Array.from({ length: count }, (_, i) => ({ value: values[i % values.length], label: labels[i % labels.length] }));
+}
+
+export function statsRowJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
+${statFigures(c, 4).map((s, i) => `            <div className="px-4 text-center${i === 0 ? '' : ' md:border-l md:border-border'}">
+              <span className="block text-4xl font-semibold text-primary">${esc(s.value)}</span>
+              <span className="mt-2 block text-sm text-muted-foreground">${esc(s.label)}</span>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('stats:row', c, body);
+}
+
+export function statsBandedGridJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
+${statFigures(c, 4).map((s) => `            <div className="rounded-[var(--radius)] border border-border bg-card p-8 text-center text-card-foreground">
+              <span className="block text-4xl font-semibold text-primary">${esc(s.value)}</span>
+              <span className="mt-2 block text-sm">${esc(s.label)}</span>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('stats:banded-grid', c, body, 'bg-muted');
+}
+
+export function statsHighlightJSX(c: ExtractedSectionContent): string {
+  const [lead, ...rest] = statFigures(c, 4);
+  const body = `          <div className="grid items-center gap-10 md:grid-cols-2">
+            <div className="rounded-[var(--radius)] border border-border bg-card p-10 text-card-foreground">
+              <span className="block text-5xl font-semibold text-primary">${esc(lead.value)}</span>
+              <span className="mt-3 block text-base">${esc(lead.label)}</span>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2">
+${rest.map((s) => `              <div className="border-t border-border pt-4">
+                <span className="block text-4xl font-semibold text-primary">${esc(s.value)}</span>
+                <span className="mt-1 block text-sm text-muted-foreground">${esc(s.label)}</span>
+              </div>`).join('\n')}
+            </div>
+          </div>`;
+  return sectionShell('stats:highlight', c, body);
+}
+
+function teamRoster(c: ExtractedSectionContent, count: number): Array<{ name: string; role: string }> {
+  const names = c.listItems?.length ? c.listItems : ['Alex Rivera', 'Jordan Blake', 'Sam Okafor', 'Riley Chen'];
+  const roles = ['Founder', 'Lead Specialist', 'Client Director', 'Operations'];
+  return Array.from({ length: count }, (_, i) => ({ name: names[i % names.length], role: roles[i % roles.length] }));
+}
+
+function memberPortrait(indent: string, src: string | undefined, alt: string, shape: string): string {
+  return src
+    ? `${indent}<img src="${src}" alt="${esc(alt)}" loading="lazy" className="w-full object-cover ${shape}" />`
+    : `${indent}<div className="w-full border border-border bg-muted ${shape}" />`;
+}
+
+export function teamPortraitGridJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
+${teamRoster(c, 4).map((m) => `            <div>
+${memberPortrait('              ', c.imageSrc, m.name, 'aspect-[3/4] rounded-[var(--radius)]')}
+              <span className="mt-4 block text-base font-semibold text-foreground">${esc(m.name)}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">${esc(m.role)}</span>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('team:portrait-grid', c, body);
+}
+
+export function teamRosterRailJSX(c: ExtractedSectionContent): string {
+  const body = `          <div className="flex snap-x snap-mandatory gap-8 overflow-x-auto pb-4" role="group" aria-label="Team members">
+${teamRoster(c, 4).map((m) => `            <div className="w-56 shrink-0 snap-start text-center">
+${memberPortrait('              ', c.imageSrc, m.name, 'aspect-square rounded-full')}
+              <span className="mt-4 block text-base font-semibold text-foreground">${esc(m.name)}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">${esc(m.role)}</span>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('team:roster-rail', c, body, 'bg-muted');
+}
+
+export function teamLeadSpotlightJSX(c: ExtractedSectionContent): string {
+  const [lead, ...rest] = teamRoster(c, 4);
+  const body = `          <div className="mb-12 grid items-center gap-10 md:grid-cols-12">
+            <div className="md:col-span-5">
+${memberPortrait('              ', c.imageSrc, lead.name, 'aspect-[4/5] rounded-[var(--radius)]')}
+            </div>
+            <div className="md:col-span-7">
+              <span className="block text-2xl font-semibold text-foreground">${esc(lead.name)}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">${esc(lead.role)}</span>
+              <p className="mt-4 text-base leading-relaxed text-muted-foreground">${esc(c.subheading || 'Leading every engagement personally, from first conversation to final handover.')}</p>
+            </div>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
+${rest.map((m) => `            <div>
+${memberPortrait('              ', c.imageSrc, m.name, 'aspect-square rounded-[var(--radius)]')}
+              <span className="mt-4 block text-base font-semibold text-foreground">${esc(m.name)}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">${esc(m.role)}</span>
+            </div>`).join('\n')}
+          </div>`;
+  return sectionShell('team:lead-spotlight', c, body);
 }

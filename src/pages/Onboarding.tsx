@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { SystemLauncher } from "@/components/onboarding/SystemLauncher";
+import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
+import { BusinessProfileGate } from "@/components/onboarding/BusinessProfileGate";
+import type { BusinessProfileDTO } from "@/types/businessProfile";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, CheckSquare } from "lucide-react";
 
@@ -17,7 +19,14 @@ const Onboarding = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [launcherOpen, setLauncherOpen] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [prefill, setPrefill] = useState<{
+    businessId: string;
+    businessName: string | null;
+    industry: string | null;
+    notificationEmail: string | null;
+  } | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -111,7 +120,7 @@ const Onboarding = () => {
         <Button
           size="lg"
           className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-8 py-6 text-base rounded-xl shadow-[0_0_30px_rgba(0,200,255,0.3)] transition-all hover:shadow-[0_0_40px_rgba(0,200,255,0.5)] group"
-          onClick={() => setLauncherOpen(true)}
+          onClick={() => setGateOpen(true)}
         >
           Start Building
           <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -131,7 +140,21 @@ const Onboarding = () => {
       </main>
 
       {/* SystemLauncher dialog (default path with theme aesthetic cards) */}
-      <SystemLauncher open={launcherOpen} onOpenChange={handleLauncherClose} />
+      <BusinessProfileGate
+        open={gateOpen}
+        onOpenChange={setGateOpen}
+        onReady={(businessId, profile: BusinessProfileDTO) => {
+          setPrefill({
+            businessId,
+            businessName: profile?.name ?? null,
+            industry: profile?.industry ?? null,
+            notificationEmail: profile?.notificationEmail ?? null,
+          });
+          setGateOpen(false);
+          setLauncherOpen(true);
+        }}
+      />
+      <LauncherWizard open={launcherOpen} onOpenChange={handleLauncherClose} prefill={prefill} />
     </div>
   );
 };
