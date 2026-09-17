@@ -1,8 +1,14 @@
 /**
- * Component Intelligence Registry — Concrete metadata for all section types.
- * 
- * Provides prop schemas, composition rules, industry suitability,
- * interaction affordances, and generation hints for every section component.
+ * Component Intelligence Registry — DEMOTED (M2).
+ *
+ * Structural VALIDATION metadata only: prop schemas, composition rules,
+ * industry suitability hints and interaction affordances.
+ *
+ * NOT a design authority. It must never decide which visual implementation a
+ * section uses and must never be fed to the AI as design context. The single
+ * design/variant authority is `VARIANT_REGISTRY`
+ * (`src/sections/variants/*`), surfaced to AI through
+ * `src/sections/promptContext/canonicalDesignPrompt.ts`.
  */
 
 import type {
