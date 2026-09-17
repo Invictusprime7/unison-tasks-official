@@ -692,7 +692,6 @@ export default function Team({ props }: { props: any }) {
 }
 `;
 
-const FAQ_MODULE = stylexRecipes.faqModule;
 
 const LEGACY_GALLERY_MODULE = `import React, { useEffect, useMemo, useState } from 'react';
 
