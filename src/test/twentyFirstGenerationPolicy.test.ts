@@ -30,15 +30,22 @@ describe('21st-only generation closure', () => {
     expect(validateAIPageComposition(plan,pack.id,[role]),role+':'+variant.id).not.toBeNull();
    }
   }
-  for(const id of ['hero:centered','hero:prisma-cinematic','cta:signal-banner']) {
-   expect(getVariantById(id as never)).toBeDefined();
-   const type=id.split(':')[0];
-   expect(validateAIPageComposition({version:'1.0',pages:[{role:'home',sectionOrder:[type],variants:{[type]:id}}]},pack.id,['home'])).toBeNull();
-  }
+   for(const id of ['hero:centered','cta:signal-banner']) {
+    expect(getVariantById(id as never)).toBeDefined();
+    const type=id.split(':')[0];
+    expect(validateAIPageComposition({version:'1.0',pages:[{role:'home',sectionOrder:[type],variants:{[type]:id}}]},pack.id,['home'])).toBeNull();
+   }
+   // hero:prisma-cinematic is a certified generation hero: eligible wherever a pack declares it.
+   expect(getVariantById('hero:prisma-cinematic' as never)).toBeDefined();
+   const cinematicPacks=Object.values(ART_DIRECTION_PACKS).filter(candidate=>getGenerationVariantsForSection('hero',candidate,'home').some(variant=>variant.id==='hero:prisma-cinematic'));
+   expect(cinematicPacks.length).toBeGreaterThanOrEqual(5);
+   for(const cinematic of cinematicPacks) {
+    expect(validateAIPageComposition({version:'1.0',pages:[{role:'home',sectionOrder:['hero'],variants:{hero:'hero:prisma-cinematic'}}]},cinematic.id,['home']),cinematic.id).not.toBeNull();
+   }
  });
  it('closes all original promotion findings with explicit verified or retired dispositions', () => {
   const audit=registerVariants(process.cwd(),{auditOnly:true});
-  expect(audit).toMatchObject({valid:true,specCount:8,retiredCount:5,issues:[]});
+  expect(audit).toMatchObject({valid:true,specCount:8,retiredCount:4,issues:[]});
   for(const record of TWENTY_FIRST_INTAKE_MANIFEST.filter(record=>record.implementationId)) {
    if(record.status==='retired') {
     expect(getVariantById(record.implementationId as never)?.generationStatus).toBe('legacy');

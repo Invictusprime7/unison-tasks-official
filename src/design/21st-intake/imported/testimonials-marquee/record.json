@@ -54,13 +54,13 @@
   "archivedAt": "2026-09-18T04:05:14.507Z",
   "reviewEvidence": {
     "sourceSha256": "f0e7cddd005f53c710f38cb6d29c88f5490cdeae544caeb1dab25bb2b4ff3986",
-    "componentSha256": "fd66528e0724375d99744bd64be01abbab6abb9afbb1db854969380db7c7aac5",
+    "componentSha256": "4ee5ee033d989fb40623080c9231cfb095ef688469cb77a9ff9d3c90f3ec6373",
     "checks": [
       "portable compiler and renderer parity",
       "semantic theme bindings",
       "canonical intent bindings",
       "responsive and reduced-motion review"
     ],
-    "reviewedAt": "2026-09-18T04:05:14.507Z"
+    "reviewedAt": "2026-09-18T05:37:18.980Z"
   }
 }
