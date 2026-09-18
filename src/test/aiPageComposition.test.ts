@@ -88,7 +88,12 @@ describe('structured AI page composition', () => {
     const request = vi.mocked(runBuilderTurn).mock.calls[0][0];
     expect(request.mode).toBe('wizard-site-composition');
     expect(request.vfsFiles).toBeUndefined();
-    expect(briefSchema.safeParse(JSON.parse(String(request.messages[0].content))).success).toBe(true);
+    const brief = JSON.parse(String(request.messages[0].content));
+    expect(briefSchema.safeParse(brief).success).toBe(true);
+    expect(brief.variants[0]).not.toHaveProperty('origin');
+    expect(brief.variants[0]).not.toHaveProperty('sourceUrl');
+    expect(brief.variants[0]).not.toHaveProperty('thumbnail');
+    expect(brief.variants[0]).not.toHaveProperty('generationStatus');
     expect(JSON.stringify(request)).not.toContain('21st_sk_');
   });
   it('round-trips the backend lane through client validation and canonical compilation', async () => {
@@ -102,7 +107,8 @@ describe('structured AI page composition', () => {
     });
     const plan = await requestAIPageComposition({ ...selections, requestedPages: ['home'] }, new AbortController().signal, invoke);
     expect(plan).toEqual(candidate);
-    expect(invoke.mock.calls[0][1]).toMatchObject({ timeoutMs: 110000, functionName: 'wizard-site-composer' });
+    expect(invoke.mock.calls[0][1]).toMatchObject({ functionName: 'wizard-site-composer' });
+    expect(invoke.mock.calls[0][1]).not.toHaveProperty('timeoutMs');
     const result = commitToPipeline({ selections: { ...selections, compositionPlan: plan!, themeTokens: template.theme } }, 'wizard-launch');
     expect(result.siteBundleSnapshot!.meta.designIntervention!.compositionPlan).toEqual(candidate);
   });

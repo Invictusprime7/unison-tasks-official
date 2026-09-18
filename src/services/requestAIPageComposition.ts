@@ -20,13 +20,9 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
   const variants = [...new Map(Object.keys(VARIANT_REGISTRY).flatMap(type => roles.flatMap(role =>
     getGenerationVariantsForSection(type as import('@/sections/types').SectionType, pack, role))).map(variant => [variant.id, variant])).values()]
     .map(variant => ({ id: variant.id, family: variant.sectionType, description: variant.description, tags: variant.tags,
-      pageRoles: roles.filter(role => getGenerationVariantsForSection(variant.sectionType, pack, role).some(eligible => eligible.id === variant.id)), preferredSource: true, certification: variant.vfs!.certification,
-      // Provenance travels with the advertised catalog so the composer can weigh
-      // certified 21st-derived presentation over generic local layouts.
-      origin: variant.source?.origin, author: variant.source?.author, sourceUrl: variant.source?.sourceUrl,
-      thumbnail: variant.thumbnail, generationStatus: variant.generationStatus }));
+      pageRoles: roles.filter(role => getGenerationVariantsForSection(variant.sectionType, pack, role).some(eligible => eligible.id === variant.id)), preferredSource: true, certification: variant.vfs?.certification ?? 'approved' }));
   try {
-    const response = await invoke({ mode: 'wizard-site-composition', gatewayOptions: { timeoutMs: 35000, maxTokens: 6000, reasoningEffort: 'none' }, messages: [{ role: 'user', content: JSON.stringify({
+    const response = await invoke({ mode: 'wizard-site-composition', gatewayOptions: { maxTokens: 6000, reasoningEffort: 'none' }, messages: [{ role: 'user', content: JSON.stringify({
       task: 'Compose every requested page with original business-specific copy, section order and local variants. Prefer certified 21st-derived options when suitable. Preserve page roles and all business content. No source code or new routes.',
       designGuidance: 'Compose only the listed certified 21st-derived implementations. Each variant carries its provenance (origin, author, sourceUrl) and thumbnail: favour variants with generationStatus "preferred" and 21st origin for the highest-impact sections (hero, features, gallery, testimonials) when they fit the page role. Use industry purpose, page role, existing business assets and canonical navigation to vary each site. Never copy demo URLs, branding or placeholder links.',
       launchSeed: selections.wizardSeedId, vision: selections.visionPrompt, needs: selections.secondaryGoals,
@@ -34,7 +30,7 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       roles, pack: pack.id, variants,
       output: { version: '1.0', pages: [{ role: 'home', sectionOrder: ['navbar','hero','services','testimonials','cta','footer'], variants: { services: 'choose an eligible id' }, copy: { hero: { headline: 'Original business-specific headline', subheadline: 'Useful supporting copy' } } }] },
       constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Copy is optional because canonical business content is preserved. When writing copy, use original headline, subheadline and description text by family. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
-    }) }] }, { signal, timeoutMs: 110000, functionName: 'wizard-site-composer' });
+    }) }] }, { signal, functionName: 'wizard-site-composer' });
     signal.throwIfAborted();
     if (response.error) {
       const details = describeCompositionFailure(response.error, response.data);
