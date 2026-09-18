@@ -19,6 +19,35 @@ import type {
 const ASSET_BUCKET = 'user-assets';
 const ASSET_STORAGE_KEY = 'asset_registry_cache';
 
+function checksumScope(checksum: string, businessId?: string, projectId?: string): string {
+  return `${businessId || 'legacy'}:${projectId || '*'}:${checksum}`;
+}
+
+/** Load the active business/project inventory from the canonical cloud asset table. */
+export async function loadScopedProjectAssets(options: { businessId: string; projectId?: string; limit?: number }): Promise<Asset[]> {
+  const client = supabase as any;
+  let query = client.from('project_assets').select('*').eq('business_id', options.businessId)
+    .order('created_at', { ascending: false }).limit(Math.min(options.limit ?? 40, 40));
+  if (options.projectId) query = query.or(`project_id.eq.${options.projectId},project_id.is.null`);
+  const { data, error } = await query;
+  if (error || !Array.isArray(data)) return [];
+  return (await Promise.all(data.map(async (row: any): Promise<Asset | null> => {
+    let url = row.public_url || '';
+    if (!url && row.path) {
+      const signed = await supabase.storage.from('project-assets').createSignedUrl(row.path, 3600);
+      url = signed.data?.signedUrl || '';
+    }
+    if (!url) return null;
+    return {
+      id: String(row.id), kind: String(row.mime_type || '').startsWith('image/') ? 'image' : 'document',
+      name: String(row.name || row.path || 'Asset'), mime: String(row.mime_type || 'application/octet-stream'),
+      url, checksum: String(row.id), tags: row.folder ? [String(row.folder)] : [],
+      businessId: String(row.business_id || options.businessId), projectId: row.project_id || undefined,
+      createdAt: String(row.created_at || ''), updatedAt: String(row.updated_at || row.created_at || ''),
+    };
+  }))).filter((asset): asset is Asset => asset !== null);
+}
+
 /**
  * Generate SHA-256 checksum for file deduplication
  */
@@ -172,7 +201,7 @@ export class AssetRegistry {
         const data = JSON.parse(cached) as { assets: Asset[] };
         data.assets.forEach(asset => {
           this.assets.set(asset.id, asset);
-          this.checksumIndex.set(asset.checksum, asset.id);
+          this.checksumIndex.set(checksumScope(asset.checksum, asset.businessId, asset.projectId), asset.id);
         });
       }
     } catch (e) {
@@ -200,7 +229,7 @@ export class AssetRegistry {
       const checksum = await generateChecksum(file);
 
       // Check for duplicate
-      const existingAssetId = this.checksumIndex.get(checksum);
+      const existingAssetId = this.checksumIndex.get(checksumScope(checksum, businessId, projectId));
       if (existingAssetId) {
         const existingAsset = this.assets.get(existingAssetId);
         if (existingAsset) {
@@ -272,7 +301,7 @@ export class AssetRegistry {
 
       // Register asset
       this.assets.set(assetId, asset);
-      this.checksumIndex.set(checksum, assetId);
+      this.checksumIndex.set(checksumScope(checksum, businessId, projectId), assetId);
       this.saveToCache();
 
       return { success: true, asset };
@@ -332,7 +361,7 @@ export class AssetRegistry {
     };
 
     this.assets.set(assetId, asset);
-    this.checksumIndex.set(checksum, assetId);
+    this.checksumIndex.set(checksumScope(checksum, businessId, projectId), assetId);
     this.saveToCache();
 
     return { success: true, asset };
@@ -453,7 +482,7 @@ export class AssetRegistry {
     }
 
     this.assets.delete(assetId);
-    this.checksumIndex.delete(asset.checksum);
+      this.checksumIndex.delete(checksumScope(asset.checksum, asset.businessId, asset.projectId));
     this.saveToCache();
     return true;
   }
@@ -480,7 +509,7 @@ export class AssetRegistry {
   import(assets: Asset[]): void {
     assets.forEach(asset => {
       this.assets.set(asset.id, asset);
-      this.checksumIndex.set(asset.checksum, asset.id);
+      this.checksumIndex.set(checksumScope(asset.checksum, asset.businessId, asset.projectId), asset.id);
     });
     this.saveToCache();
   }

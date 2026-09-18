@@ -1,5 +1,5 @@
 import { requestAIPageComposition } from '@/services/requestAIPageComposition';
-import { getAssetRegistry } from '@/services/assetRegistry';
+import { getAssetRegistry, loadScopedProjectAssets } from '@/services/assetRegistry';
 import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContract';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
@@ -385,13 +385,16 @@ export async function runLaunchPipeline(
     styleVariation: design,
     pageRole: "home",
   });
+  const cloudAssets = await loadScopedProjectAssets({ businessId: plan.confirmed.businessId, projectId: plan.confirmed.projectId });
+  const localAssets = getAssetRegistry().getAll({ businessId: plan.confirmed.businessId });
   const wizardRegistryContext = buildWizardAggregatedRegistryContext({
     industry: plan.industryOverlay,
     templateId: input.template.id,
     themePresetId: input.theme.id,
     seed: plan.seed,
     businessId: plan.confirmed.businessId,
-    assets: getAssetRegistry().getAll(),
+    projectId: plan.confirmed.projectId,
+    assets: [...cloudAssets, ...localAssets],
   });
 
   const wizardSeedFile = {
