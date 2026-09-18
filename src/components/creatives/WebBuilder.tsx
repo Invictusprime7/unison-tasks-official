@@ -7157,8 +7157,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   // Mirrors the System Launcher pipeline so AI Builder chat
                   // edits cannot crash preview, ship un-stamped nav links, or
                   // leak intents disallowed by the active industry profile.
-                  const snapshotForPreflight = (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null) ?? null;
                   const beforeFiles = virtualFS.getSandpackFiles();
+                  const snapshotForPreflight = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
+                    ?? (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null)
+                    ?? null;
                   const canonicalFiles = canonicalizeAIFilePaths(rawFiles, beforeFiles);
                   const preflight = runFullPreflight(canonicalFiles, {
                     siteBundleSnapshot: snapshotForPreflight,
@@ -7680,8 +7682,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               layoutOps={layoutOpsForAI}
               onApproveCapabilityPlan={approveCapabilityPlanFromPanel}
               onApplyToVFS={async (rawFiles, applyMeta) => {
-                const snapshotForPreflight = (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null) ?? null;
                 const beforeFiles = virtualFS.getSandpackFiles();
+                const snapshotForPreflight = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
+                  ?? (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null)
+                  ?? null;
                 const canonicalFiles = canonicalizeAIFilePaths(rawFiles, beforeFiles);
                 const files = runFullPreflight(canonicalFiles, {
                   siteBundleSnapshot: snapshotForPreflight,

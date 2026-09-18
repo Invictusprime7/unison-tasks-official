@@ -47,6 +47,20 @@ export interface AiCommitContext {
   activePagePath: string;
 }
 
+function canonicalSnapshot(ctx: AiCommitContext): SiteBundleSnapshot | null {
+  const raw = ctx.beforeFiles['/.unison/site-bundle-snapshot.json'];
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as SiteBundleSnapshot;
+      if (parsed?.snapshotId && parsed?.vfsFiles) return parsed;
+    } catch {
+      // Fall through to route/hydration state. The commit gate will report a
+      // malformed canonical snapshot if neither source is usable.
+    }
+  }
+  return ctx.snapshotForPreflight ?? null;
+}
+
 export interface AiCommitDryRunOutcome {
   /** True when dry-run commit accepted the patch. */
   accepted: boolean;
@@ -103,13 +117,14 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
         rejectMessage: 'Your project session is unavailable.',
       };
     }
+    const snapshot = canonicalSnapshot(ctx);
     const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
     const commit = await commitMutation({
       source: 'ai-builder',
       identity,
       current: {
         vfsFiles: ctx.beforeFiles,
-        siteBundleSnapshot: ctx.snapshotForPreflight ?? undefined,
+        siteBundleSnapshot: snapshot ?? undefined,
         playground: ctx.playground ?? undefined,
         activePagePath: ctx.activePagePath,
       },
@@ -118,7 +133,7 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
         dryRun: true,
         requirePreviewPass: true,
         requireReadinessPass: false,
-        industry: ctx.snapshotForPreflight?.industry,
+        industry: snapshot?.industry,
       },
     });
     return { accepted: true, blockers: [], commit };
@@ -151,13 +166,14 @@ export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutat
   if (!identity) {
     throw new Error('[aiApplyGate] authenticated canonical identity is unavailable');
   }
+  const snapshot = canonicalSnapshot(ctx);
   const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
   return commitMutation({
     source: 'ai-builder',
     identity,
     current: {
       vfsFiles: ctx.beforeFiles,
-      siteBundleSnapshot: ctx.snapshotForPreflight ?? undefined,
+      siteBundleSnapshot: snapshot ?? undefined,
       playground: ctx.playground ?? undefined,
       activePagePath: ctx.activePagePath,
     },
@@ -165,7 +181,7 @@ export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutat
     options: {
       requirePreviewPass: true,
       requireReadinessPass: false,
-      industry: ctx.snapshotForPreflight?.industry,
+      industry: snapshot?.industry,
     },
   });
 }

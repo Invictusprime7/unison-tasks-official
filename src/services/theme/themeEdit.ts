@@ -9,7 +9,9 @@ import { isEditableThemeToken, readCompiledTokenValues, validateThemeTypography,
 
 export const themeEditSchema = z.object({
   version: z.literal('1.0'), snapshotId: z.string().min(1), revisionId: z.string().nullable(),
-  presetId: z.enum(['modern', 'editorial', 'futuristic', 'minimalist', 'bold', 'organic']).optional(),
+  // The theme lane may explicitly return null when it is changing tokens
+  // inside the current preset rather than selecting a different preset.
+  presetId: z.enum(['modern', 'editorial', 'futuristic', 'minimalist', 'bold', 'organic']).nullable().optional(),
   set: z.record(z.string(), z.string()).default({}), reset: z.array(z.string()).default([]),
 }).strict();
 export type ThemeEdit = z.infer<typeof themeEditSchema>;

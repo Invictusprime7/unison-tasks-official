@@ -58,6 +58,7 @@ describe('Theme edit canonical closure', () => {
   it('classifies appearance requests without taking over composition requests', () => {
     for (const text of ['make it darker', 'use Bold', 'soften the typography', 'Use Bold. Keep all text, pages, images, sections and layout unchanged.']) expect(isThemeOnlyRequest(text)).toBe(true);
     for (const text of ['add a dark gallery section', 'change the grid layout']) expect(isThemeOnlyRequest(text)).toBe(false);
+    expect(decodeThemeEdit({ version: '1.0', snapshotId: 's', revisionId: null, presetId: null, set: {}, reset: [] }).presetId).toBeNull();
     expect(() => decodeThemeEdit({ version: '1.0', snapshotId: 's', revisionId: null, files: {} })).toThrow();
   });
   it('commits, reloads, incrementally edits and resets a theme without replacing pages', async () => {

@@ -270,7 +270,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     })).rejects.toThrow('compiler-owned');
     expect(revisionStore).toHaveLength(0);
   });
-  it('rejects legacy replacements of sealed router and page sources', async () => {
+  it('allows authenticated AI rewrites of sealed page source while retaining the canonical router boundary', async () => {
     const routerPath = '/src/App.tsx';
     const pagePath = '/src/pages/Home.tsx';
     const before = { [routerPath]: 'export default function App(){return null}', [pagePath]: 'export default function Home(){return null}' };
@@ -280,11 +280,20 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       pageRegistry: { pages: { home: { filePath: pagePath } } },
       meta: { seal: { registeredPageBodyAuthority: 'canonical-compiler' } },
     };
+    const afterPage = 'export default function Home(){return <main>Governed AI rewrite</main>}';
+    const files = { ...before, [pagePath]: afterPage };
+    mockPipeline(files); mockPreflight(files); mockIntents();
+    const rewritten = await commitMutation({ source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
+      patch: legacyFilesToPatchPlan({ [pagePath]: afterPage }),
+    });
+    expect(rewritten.vfsFiles[pagePath]).toBe(afterPage);
+    expect(revisionStore).toHaveLength(1);
+
     await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
       current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
-      patch: legacyFilesToPatchPlan({ [pagePath]: 'export default function Home(){return <main>Legacy</main>}' }),
-    })).rejects.toThrow('Sealed router and page bodies are compiler-owned');
-    expect(revisionStore).toHaveLength(0);
+      patch: legacyFilesToPatchPlan({ [routerPath]: 'export default function App(){return <main>Unauthorized router</main>}' }),
+    })).rejects.toThrow('Canonical router and metadata files are compiler-owned');
   });
   it('accepts the exact scratch composition without regenerating and rejects stale reviews', async () => {
     const before = { '/src/App.tsx': 'export default function App(){return <main>Before</main>}' };
