@@ -1232,3 +1232,35 @@ ${renderButtons(c.ctaButtons, 'inline-flex items-center gap-2 rounded-full bg-ba
         </div>
       </section>`;
 }
+
+export function heroImageStreamJSX(c: ExtractedSectionContent): string {
+  const media = c.imageSrc || '/placeholder.svg';
+  const cards = Array.from({ length: 9 }, (_, index) => `                <div key={${index}} className="ut-ish-card absolute overflow-hidden border border-border bg-muted" style={{ left: '50%', top: '56%', width: '18cqw', height: '25cqw', marginLeft: '-9cqw', marginTop: '-12.5cqw', borderRadius: 'max(.4cqw, var(--radius))', animation: \`ut-ish-rail-\${rail} 18s linear infinite\`, animationDelay: '-${(index * 2).toFixed(0)}s', backfaceVisibility: 'hidden' }}>
+                  <img src="${media}" alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" draggable={false} />
+                </div>`).join('\n');
+  return `      <section className="relative min-h-[clamp(34rem,82vh,56rem)] w-full overflow-hidden bg-background" style={{ containerType: 'inline-size' }} data-variant="hero:image-stream">
+        <style>{\`@keyframes ut-ish-rail-1{0%{transform:translate3d(-11cqw,0,-258.46cqw) rotateY(-6deg)}50%{transform:translate3d(38.55cqw,0,-31.38cqw) rotateY(-17deg)}100%{transform:translate3d(44cqw,0,13.70cqw) rotateY(-28deg)}}@keyframes ut-ish-rail--1{0%{transform:translate3d(11cqw,0,-258.46cqw) rotateY(6deg)}50%{transform:translate3d(-38.55cqw,0,-31.38cqw) rotateY(17deg)}100%{transform:translate3d(-44cqw,0,13.70cqw) rotateY(28deg)}}@media(prefers-reduced-motion:reduce){.ut-ish-card{animation-play-state:paused!important}}\`}</style>
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ perspective: '30cqw', perspectiveOrigin: '50% 56%' }}>
+          <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }}>
+            {[1, -1].map((rail) => (
+              <React.Fragment key={rail}>
+${cards}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background via-background/20 to-background/90" />
+        <div className="relative z-10 mx-auto flex min-h-[clamp(34rem,82vh,56rem)] max-w-6xl flex-col items-center justify-between px-6 py-12 text-center md:py-16">
+          <div className="max-w-4xl">
+${c.badge ? `            <span className="mb-5 inline-flex rounded-[var(--radius)] border border-border px-3 py-1 text-xs font-medium uppercase text-muted-foreground">${esc(c.badge)}</span>\n` : ''}\
+${c.heading ? `            <h1 className="text-balance text-5xl font-semibold leading-[0.98] text-foreground sm:text-6xl lg:text-8xl">${esc(c.heading)}</h1>\n` : ''}\
+          </div>
+          <div className="flex max-w-xl flex-col items-center gap-5">
+${c.subheading ? `            <p className="text-balance text-sm leading-relaxed text-muted-foreground md:text-base">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `            <div className="flex flex-wrap items-center justify-center gap-3">
+${renderButtons(c.ctaButtons, 'inline-flex min-h-11 items-center justify-center rounded-[calc(var(--radius)*4)] bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground', 'inline-flex min-h-11 items-center justify-center rounded-[calc(var(--radius)*4)] border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground')}
+            </div>\n` : ''}\
+          </div>
+        </div>
+      </section>`;
+}

@@ -182,7 +182,8 @@ export interface SectionPropsMap {
     ctas?: CTAButton[];
     image?: string;
     backgroundImage?: string;
-    layout?: 'centered' | 'split' | 'full-bleed' | 'page-title' | 'editorial-banner' | 'commerce-gradient' | 'showcase-panel' | 'prisma-cinematic';
+    images?: GalleryItem[];
+    layout?: 'centered' | 'split' | 'full-bleed' | 'page-title' | 'editorial-banner' | 'commerce-gradient' | 'showcase-panel' | 'prisma-cinematic' | 'image-stream';
     badge?: string;
     stats?: StatItem[];
   };

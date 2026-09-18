@@ -1,0 +1,80 @@
+{
+  "sourceId": "21st:24377",
+  "name": "Image Stream Hero",
+  "sourceUrl": "https://21st.dev/c/24377",
+  "sourceType": "component",
+  "dependencies": [
+    "react"
+  ],
+  "registryDependencies": [],
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (supplied directly for canonical use)",
+    "source": "Project owner supplied the ImageStreamHero source directly and explicitly requested canonical use across generated industry sites.",
+    "verifiedAt": "2026-09-18T06:10:25.501345+00:00",
+    "notes": "Corridor geometry is preserved; Unison binds canonical content, semantic tokens, reduced motion, identity slots, intents, and portable VFS output."
+  },
+  "attribution": "21st.dev \u2014 Image Stream Hero by @ruixen.ui",
+  "designTags": [
+    "hero",
+    "image-stream",
+    "perspective",
+    "motion",
+    "gallery"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": true,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      }
+    ],
+    "approved": true
+  },
+  "license": "Owner-authorized source adaptation (supplied directly for canonical use)",
+  "author": "ruixen.ui",
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:image-stream"
+  ],
+  "implementationId": "hero:image-stream",
+  "archivePath": "src/design/21st-intake/archive/component-24377",
+  "archivedAt": "2026-09-18T06:10:25.501360+00:00",
+  "reviewEvidence": {
+    "sourceSha256": "17ea80b26cea85eefd4c61bbbd044b041253778905918d006a3b6fffe0aed2d9",
+    "componentSha256": "83adf791de4c278a35e64a1f899473ef57cd20ffcea7eb214bc318e355721d6d",
+    "checks": [
+      "dependency-allowlist",
+      "react19-vite-tailwind3",
+      "token-normalization",
+      "reduced-motion",
+      "canonical-identity-and-intents",
+      "portable-recipe"
+    ],
+    "reviewedAt": "2026-09-18T06:10:25.501539+00:00"
+  }
+}

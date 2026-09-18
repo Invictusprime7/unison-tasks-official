@@ -446,7 +446,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:minimal-dark', 'navbar:centered-logo'],
     footerFamily: ['footer:dark-band', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:full-bleed', 'hero:centered', 'hero:prisma-cinematic'],
+      hero: ['hero:full-bleed', 'hero:centered', 'hero:prisma-cinematic', 'hero:image-stream'],
       gallery: ['gallery:editorial-mosaic', 'gallery:cinematic-grid', 'gallery:masonry', 'gallery:case-study'],
       services: ['services:alternating', 'services:card-grid', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:minimal-centered', 'features:grid', 'features:spotlight-cards'],
@@ -500,7 +500,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:minimal-dark', 'navbar:standard'],
     footerFamily: ['footer:dark-band', 'footer:centered-minimal'],
     sectionFamilies: {
-      hero: ['hero:full-bleed', 'hero:split-image', 'hero:prisma-cinematic'],
+      hero: ['hero:full-bleed', 'hero:split-image', 'hero:prisma-cinematic', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:lightbox-grid', 'gallery:editorial-mosaic', 'gallery:case-study'],
       services: ['services:alternating', 'services:compact-list', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:minimal-centered', 'features:icon-left', 'features:spotlight-cards'],
@@ -554,7 +554,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:centered-logo', 'navbar:minimal-dark'],
     footerFamily: ['footer:centered-minimal', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:centered', 'hero:split-image'],
+      hero: ['hero:centered', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:feature-split', 'gallery:editorial-mosaic', 'gallery:case-study'],
       services: ['services:compact-list', 'services:alternating', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:minimal-centered', 'features:grid', 'features:spotlight-cards'],
@@ -608,7 +608,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:standard', 'navbar:centered-logo'],
     footerFamily: ['footer:columns', 'footer:centered-minimal'],
     sectionFamilies: {
-      hero: ['hero:split-image', 'hero:centered'],
+      hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:masonry', 'gallery:lightbox-grid', 'gallery:case-study'],
       services: ['services:card-grid', 'services:alternating', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:grid', 'features:icon-left', 'features:spotlight-cards'],
@@ -662,7 +662,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:floating-pill', 'navbar:standard', 'navbar:minimal-dark'],
     footerFamily: ['footer:brand-social', 'footer:dark-band', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:prisma-cinematic', 'hero:showcase-panel', 'hero:commerce-gradient', 'hero:split-image', 'hero:full-bleed'],
+      hero: ['hero:prisma-cinematic', 'hero:showcase-panel', 'hero:commerce-gradient', 'hero:split-image', 'hero:full-bleed', 'hero:image-stream'],
       gallery: ['gallery:collection-tiles', 'gallery:lightbox-grid', 'gallery:masonry', 'gallery:case-study'],
       services: ['services:product-cards', 'services:card-grid', 'services:compact-list', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:bento-grid', 'features:icon-left', 'features:grid', 'features:spotlight-cards'],
@@ -717,7 +717,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:minimal-dark', 'navbar:standard'],
     footerFamily: ['footer:columns', 'footer:dark-band'],
     sectionFamilies: {
-      hero: ['hero:centered', 'hero:split-image'],
+      hero: ['hero:centered', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:lightbox-grid', 'gallery:case-study'],
       services: ['services:card-grid', 'services:alternating', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:grid', 'features:icon-left', 'features:spotlight-cards'],
@@ -771,7 +771,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:centered-logo', 'navbar:standard'],
     footerFamily: ['footer:centered-minimal', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:split-image', 'hero:centered'],
+      hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:masonry', 'gallery:feature-split', 'gallery:case-study'],
       services: ['services:alternating', 'services:card-grid', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:minimal-centered', 'features:grid', 'features:spotlight-cards'],
@@ -825,7 +825,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:floating-pill', 'navbar:standard', 'navbar:centered-logo'],
     footerFamily: ['footer:brand-social', 'footer:columns', 'footer:dark-band'],
     sectionFamilies: {
-      hero: ['hero:prisma-cinematic', 'hero:commerce-gradient', 'hero:showcase-panel', 'hero:full-bleed', 'hero:split-image'],
+      hero: ['hero:prisma-cinematic', 'hero:commerce-gradient', 'hero:showcase-panel', 'hero:full-bleed', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:collection-tiles', 'gallery:masonry', 'gallery:lightbox-grid', 'gallery:case-study'],
       services: ['services:product-cards', 'services:card-grid', 'services:compact-list', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:bento-grid', 'features:grid', 'features:minimal-centered', 'features:spotlight-cards'],
@@ -883,7 +883,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:standard', 'navbar:minimal-dark'],
     footerFamily: ['footer:columns', 'footer:centered-minimal'],
     sectionFamilies: {
-      hero: ['hero:split-image', 'hero:centered'],
+      hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:editorial-mosaic', 'gallery:case-study'],
       services: ['services:compact-list', 'services:card-grid', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:grid', 'features:minimal-centered', 'features:spotlight-cards'],
@@ -937,7 +937,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:centered-logo', 'navbar:standard'],
     footerFamily: ['footer:centered-minimal', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:prisma-cinematic', 'hero:centered', 'hero:full-bleed'],
+      hero: ['hero:prisma-cinematic', 'hero:centered', 'hero:full-bleed', 'hero:image-stream'],
       gallery: ['gallery:editorial-mosaic', 'gallery:feature-split', 'gallery:case-study'],
       services: ['services:alternating', 'services:compact-list', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:minimal-centered', 'features:icon-left', 'features:spotlight-cards'],
@@ -991,7 +991,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:minimal-dark', 'navbar:standard'],
     footerFamily: ['footer:dark-band', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:prisma-cinematic', 'hero:full-bleed', 'hero:centered'],
+      hero: ['hero:prisma-cinematic', 'hero:full-bleed', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:lightbox-grid', 'gallery:case-study'],
       services: ['services:card-grid', 'services:alternating', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:grid', 'features:icon-left', 'features:spotlight-cards'],
@@ -1045,7 +1045,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:minimal-dark', 'navbar:standard'],
     footerFamily: ['footer:columns', 'footer:dark-band'],
     sectionFamilies: {
-      hero: ['hero:centered', 'hero:split-image'],
+      hero: ['hero:centered', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:lightbox-grid', 'gallery:cinematic-grid', 'gallery:case-study'],
       services: ['services:compact-list', 'services:card-grid', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:icon-left', 'features:grid', 'features:spotlight-cards'],
@@ -1099,7 +1099,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:standard', 'navbar:minimal-dark'],
     footerFamily: ['footer:dark-band', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:prisma-cinematic', 'hero:full-bleed', 'hero:split-image'],
+      hero: ['hero:prisma-cinematic', 'hero:full-bleed', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:masonry', 'gallery:lightbox-grid', 'gallery:case-study'],
       services: ['services:card-grid', 'services:compact-list', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:icon-left', 'features:grid', 'features:spotlight-cards'],
@@ -1153,7 +1153,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     navbarFamily: ['navbar:centered-logo', 'navbar:standard'],
     footerFamily: ['footer:centered-minimal', 'footer:columns'],
     sectionFamilies: {
-      hero: ['hero:split-image', 'hero:centered'],
+      hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:feature-split', 'gallery:masonry', 'gallery:case-study'],
       services: ['services:alternating', 'services:compact-list', 'services:bento-spotlight', 'services:editorial-rows', 'services:expandable'],
       features: ['features:minimal-centered', 'features:icon-left', 'features:spotlight-cards'],

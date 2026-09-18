@@ -45,7 +45,7 @@ describe('21st-only generation closure', () => {
  });
  it('closes all original promotion findings with explicit verified or retired dispositions', () => {
   const audit=registerVariants(process.cwd(),{auditOnly:true});
-  expect(audit).toMatchObject({valid:true,specCount:8,retiredCount:4,issues:[]});
+   expect(audit).toMatchObject({valid:true,specCount:9,retiredCount:4,issues:[]});
   for(const record of TWENTY_FIRST_INTAKE_MANIFEST.filter(record=>record.implementationId)) {
    if(record.status==='retired') {
     expect(getVariantById(record.implementationId as never)?.generationStatus).toBe('legacy');
@@ -54,6 +54,13 @@ describe('21st-only generation closure', () => {
     expect(fs.existsSync(record.archivePath!+'/source.tsx.txt')).toBe(true);
    }
   }
+ });
+ it('offers the preferred image-stream hero in every art-direction pack', () => {
+   const variant=getVariantById('hero:image-stream' as never);
+   expect(variant).toMatchObject({generationStatus:'preferred',source:{origin:'21st',sourceId:'21st:24377'},vfs:{mode:'portable-recipe',certification:'approved'}});
+   for(const pack of Object.values(ART_DIRECTION_PACKS)) {
+     expect(getGenerationVariantsForSection('hero',pack,'home').map(candidate=>candidate.id),pack.id).toContain('hero:image-stream');
+   }
  });
  it('keeps the three active original reviews attached to the reviewed component bytes', () => {
   for(const file of fs.readdirSync('src/design/21st-intake/promotions')) {
