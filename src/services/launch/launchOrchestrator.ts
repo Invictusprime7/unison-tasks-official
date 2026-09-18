@@ -437,9 +437,15 @@ export async function runLaunchPipeline(
       if (details?.errorType) compositionFailureMessage += ' [' + details.errorType + ']';
     });
     signal.throwIfAborted();
-    if (!compositionPlan) throw new LaunchFatalError(compositionFailureMessage, { stage: 'seed', code: 'composition.' + compositionFailure });
-    plan.selections.compositionPlan = compositionPlan;
-    wizardSeedFile.compositionPlan = compositionPlan;
+    if (!compositionPlan) {
+      // Composition is an optional design enhancement. The registered industry
+      // composition already supplies the complete canonical authorship seed, so
+      // provider and contract failures must not strand the Wizard before Stage 4b.
+      run.degrade('seed', 'composition.' + compositionFailure, 'AI page composition was unavailable, so the selected industry layout was used.', compositionFailureMessage);
+    } else {
+      plan.selections.compositionPlan = compositionPlan;
+      wizardSeedFile.compositionPlan = compositionPlan;
+    }
     const result = await runWizardStage4b({
       selections: plan.selections,
       existingVfsFiles: {
