@@ -21,7 +21,9 @@ The protected chain is:
 ```text
 LauncherWizard
   -> runLaunchPipeline
-  -> deterministic resolution & topology
+  -> deterministic resolution & bounded Registry Context v2
+  -> required contextual AI composition
+  -> validated composition plan & topology
   -> canonical compiler (Stage 4b theme & UI Foundation)
   -> Lane B AI Enrichment (bespoke UI Foundation composition, motion & bento layouts)
   -> canonical preflight & validation
@@ -1417,9 +1419,14 @@ The populated-Home override regression verifies contact and checkout routes.
 The local browser fixture /tools/industry-launch-variants.html renders default
 Launcher selections for all ten visible industries without launching or saving.
 
-M7 remains open for project-asset projection and full dependency-context closure.
-Persisted published-site visual verification, full editor round trips and the
-remaining M5/M6/M8 work are not certified by these local checks.
+M7 Registry Context v2 is closed for Wizard consumers. Composition and Lane B
+receive bounded business/project asset summaries, approved dependency versions,
+primitive families, capability requirements and artifact/slot contracts derived
+from existing canonical owners. Checksums, credentials, source files and the
+global registry are excluded. Asset deduplication is ownership-scoped, and launch
+loads the existing canonical `project_assets` inventory without creating another
+registry authority. Persisted published-site visual verification, full editor
+round trips and the remaining M5/M6/M8 work are not certified by these local checks.
 
 Mobile rollout verification also exposed fixed desktop column counts in the
 existing dark/column footers and grid/centered feature variants. These now stack

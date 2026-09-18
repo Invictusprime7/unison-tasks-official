@@ -24,6 +24,10 @@ import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
 import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
 import { GENERATED_MOTION_PRIMITIVES } from '@/platform/core/generatedUiFoundation';
+import { buildGeneratedUiFoundation } from '@/platform/core/generatedUiFoundation';
+import { CAPABILITY_REGISTRY, type CapabilityId } from '@/platform/core/capabilityRegistry';
+import { WIZARD_PREVIEW_RUNTIME_DEPENDENCIES } from '@/utils/sandpackDependencies';
+import type { Asset } from '@/types/asset';
 
 export const WIZARD_REGISTRY_CONTEXT_PATH = '/.unison/wizard-registry-context.json' as const;
 export const WIZARD_REGISTRY_CONTEXT_VERSION = '2.0' as const;
@@ -71,6 +75,8 @@ export interface WizardRegistryImplementationSummary {
   pageRoles: readonly string[];
   vocabularyRefs: ReturnType<typeof getImplementationVocabularyRefs>;
   radixPrimitives: readonly string[];
+  /** Canonical generated-runtime imports needed by this implementation. */
+  runtimeDependencies?: readonly string[];
   /** Derived from the artifact owner; absent on older persisted contexts. */
   artifactContract?: {
     artifactId: string;
@@ -79,6 +85,28 @@ export interface WizardRegistryImplementationSummary {
     intentBindings: readonly string[];
     aiEditScope: string;
   };
+}
+
+export interface WizardRegistryAssetSummary {
+  id: string;
+  kind: Asset['kind'];
+  name: string;
+  url: string;
+  width?: number;
+  height?: number;
+  tags: string[];
+}
+
+export interface WizardRegistryCapabilitySummary {
+  id: CapabilityId;
+  requiredTables: string[];
+  supportedSlots: string[];
+  providedIntents: string[];
+}
+
+export interface WizardRegistryPrimitiveFamilySummary {
+  family: 'layout' | 'interaction' | 'form' | 'motion' | 'radix' | 'experience';
+  values: string[];
 }
 
 export interface WizardAggregatedRegistryContext {
@@ -111,6 +139,12 @@ export interface WizardAggregatedRegistryContext {
   /** Active motion profile & interaction profile */
   motionProfile?: string;
   interactionProfile?: string;
+
+  /** Bounded v2 projections derived from canonical owners. */
+  assets?: WizardRegistryAssetSummary[];
+  runtimeDependencies?: Record<string, string>;
+  primitiveFamilies?: WizardRegistryPrimitiveFamilySummary[];
+  capabilityRequirements?: WizardRegistryCapabilitySummary[];
 }
 
 
@@ -120,6 +154,10 @@ export function buildWizardAggregatedRegistryContext(options: {
   templateId: string;
   themePresetId: string;
   seed?: string;
+  businessId?: string;
+  projectId?: string;
+  /** Injectable for tests; callers must still provide the active ownership boundary. */
+  assets?: readonly Asset[];
 }): WizardAggregatedRegistryContext {
   const pack = resolveArtDirectionPack({
     industry: options.industry,
@@ -173,6 +211,28 @@ export function buildWizardAggregatedRegistryContext(options: {
     fallbackMode: s.fallbackMode,
   }));
 
+  const foundation = buildGeneratedUiFoundation({
+    industry: options.industry,
+    templateId: options.templateId,
+    themePresetId: options.themePresetId,
+    requiredRadixPrimitives: [...new Set(sections.flatMap(section => section.allowedVariantIds)
+      .flatMap(id => getDesignImplementation(id)?.radixPrimitives ?? []))],
+  });
+  const scopedAssets = options.businessId ? (options.assets ?? [])
+    .filter(asset => asset.businessId === options.businessId)
+    .filter(asset => !options.projectId || !asset.projectId || asset.projectId === options.projectId)
+    .slice(0, 40)
+    .map(asset => ({ id: asset.id, kind: asset.kind, name: asset.name, url: asset.url,
+      width: asset.width, height: asset.height, tags: [...(asset.tags ?? [])].slice(0, 12) })) : [];
+  const capabilityIds = [...new Set(artifacts
+    .filter(artifact => sections.some(section => section.type === artifact.sectionType && section.isFirstClass))
+    .flatMap(artifact => getArtifact(artifact.artifactId)?.capabilities ?? []))];
+  const runtimeDependencyNames = new Set([
+    'react', 'react-dom', 'react-router-dom', 'lucide-react', 'framer-motion',
+    ...foundation.manifest.experience.runtimePackages,
+    ...foundation.manifest.runtimeFacades.radixPrimitives.map(id => `@radix-ui/react-${id}`),
+  ]);
+
   return {
     version: WIZARD_REGISTRY_CONTEXT_VERSION,
     generationPolicy: '21st-only',
@@ -198,6 +258,10 @@ export function buildWizardAggregatedRegistryContext(options: {
         pageRoles: implementation.pageRoles ?? [],
         vocabularyRefs: getImplementationVocabularyRefs(implementation),
         radixPrimitives: implementation.radixPrimitives ?? [],
+        runtimeDependencies: [
+          ...(implementation.radixPrimitives ?? []).map(id => `@radix-ui/react-${id}`),
+          ...(implementation.experience?.enabled ? foundation.manifest.experience.runtimePackages : []),
+        ],
         artifactContract: artifact ? {
           artifactId: artifact.artifactId,
           dataSourceKind: artifact.dataSource.kind,
@@ -212,5 +276,22 @@ export function buildWizardAggregatedRegistryContext(options: {
     motionPrimitives: [...GENERATED_MOTION_PRIMITIVES],
     motionProfile: pack?.motionProfile,
     interactionProfile: pack?.interactionProfile,
+    assets: scopedAssets,
+    runtimeDependencies: Object.fromEntries(Object.entries(WIZARD_PREVIEW_RUNTIME_DEPENDENCIES)
+      .filter(([name]) => runtimeDependencyNames.has(name))),
+    primitiveFamilies: [
+      { family: 'layout', values: [...foundation.manifest.layoutRecipes] },
+      { family: 'interaction', values: [...foundation.manifest.interactions] },
+      { family: 'form', values: [...foundation.manifest.formFormats] },
+      { family: 'motion', values: [...(foundation.manifest.motionExports?.components ?? [])] },
+      { family: 'radix', values: [...foundation.manifest.runtimeFacades.radixPrimitives] },
+      { family: 'experience', values: [...foundation.manifest.experience.primitives] },
+    ],
+    capabilityRequirements: capabilityIds.map(id => ({
+      id,
+      requiredTables: [...CAPABILITY_REGISTRY[id].requiredTables],
+      supportedSlots: [...CAPABILITY_REGISTRY[id].frontend.supportedSlots],
+      providedIntents: [...CAPABILITY_REGISTRY[id].intents.provided],
+    })),
   };
 }

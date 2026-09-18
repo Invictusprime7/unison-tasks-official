@@ -144,4 +144,29 @@ describe('v2 resolved implementation contracts', () => {
     expect(projected.implementationContext.some(item => item.artifactContract?.supportedSlots.length)).toBe(true);
     expect(buildWizardLaneBRegistryContext(snapshot, { sections: registry.sections }).implementationContext).toEqual([]);
   });
+
+  it('derives bounded runtime, primitive, capability, and project asset context', () => {
+    const owned = { id: 'owned', kind: 'image' as const, name: 'Studio hero', mime: 'image/jpeg', url: 'https://assets.test/hero.jpg', checksum: 'a', tags: ['hero'], businessId: 'biz-1', projectId: 'project-1', createdAt: '', updatedAt: '' };
+    const registry = buildWizardAggregatedRegistryContext({ ...selection, businessId: 'biz-1', projectId: 'project-1', assets: [
+      owned,
+      { ...owned, id: 'other-business', businessId: 'biz-2' },
+      { ...owned, id: 'other-project', projectId: 'project-2' },
+    ] });
+    expect(registry.assets?.map(asset => asset.id)).toEqual(['owned']);
+    expect(registry.assets?.[0]).not.toHaveProperty('checksum');
+    expect(registry.runtimeDependencies).toMatchObject({ react: expect.any(String), 'react-dom': expect.any(String) });
+    expect(registry.primitiveFamilies?.map(item => item.family)).toEqual(expect.arrayContaining(['layout', 'motion', 'radix', 'experience']));
+    expect(registry.capabilityRequirements?.every(item => item.requiredTables && item.supportedSlots && item.providedIntents)).toBe(true);
+    expect(registry.implementations?.every(item => Array.isArray(item.runtimeDependencies))).toBe(true);
+  });
+
+  it('forwards only the bounded v2 projection into Lane B', () => {
+    const registry = buildWizardAggregatedRegistryContext(selection);
+    const snapshot = { vfsFiles: foundation.files, meta: {} } as unknown as SiteBundleSnapshot;
+    const projected = buildWizardLaneBRegistryContext(snapshot, registry);
+    expect(projected.assetContext).toEqual(registry.assets);
+    expect(projected.runtimeDependencies).toEqual(registry.runtimeDependencies);
+    expect(projected.primitiveFamilies).toEqual(registry.primitiveFamilies);
+    expect(projected.capabilityRequirements).toEqual(registry.capabilityRequirements);
+  });
 });

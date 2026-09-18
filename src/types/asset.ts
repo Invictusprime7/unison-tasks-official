@@ -17,6 +17,10 @@ export interface Asset {
   checksum: string;     // dedupe hash
   tags?: string[];      // "logo", "hero", "product", etc.
   metadata?: AssetMetadata;
+  /** Canonical ownership boundary used before projecting assets into AI context. */
+  businessId?: string;
+  /** Optional draft/project boundary. Business ownership remains required for Wizard projection. */
+  projectId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +46,8 @@ export interface AssetUploadOptions {
   file: File;
   tags?: string[];
   autoAnalyze?: boolean;
+  businessId?: string;
+  projectId?: string;
 }
 
 export interface AssetUploadResult {
@@ -89,6 +95,8 @@ export interface AssetQueryFilters {
   kinds?: AssetKind[];
   tags?: string[];
   search?: string;
+  businessId?: string;
+  projectId?: string;
 }
 
 /**

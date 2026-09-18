@@ -96,8 +96,8 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).toContain('compositionPlan: plan.selections.compositionPlan');
     expect(source).not.toContain('if (plan.selections.compositionPlan) return;');
     expect(source).toContain('if (input.ai?.laneB === false) return;');
-    expect(source).toContain("run.degrade('seed', 'composition.' + compositionFailure");
-    expect(source).not.toContain('if (!compositionPlan) throw new LaunchFatalError');
+    expect(source).not.toContain("run.degrade('seed', 'composition.' + compositionFailure");
+    expect(source).toContain('throw new LaunchFatalError(compositionFailureMessage');
     expect(source).not.toContain('ai?.composition');
     expect(stage4bResult).toBeLessThan(canonicalPages);
     expect(canonicalPages).toBeLessThan(publicProfile);

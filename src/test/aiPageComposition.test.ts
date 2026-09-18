@@ -10,6 +10,7 @@ import { getCompositionById } from '@/sections/templates';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { collectResolvedCompositions } from '@/platform/core/resolvedComposition';
 import type { WizardSelections } from '@/types/playground';
+import { buildWizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 import { classifyTask } from '../../supabase/functions/_shared/taskClassifier';
 vi.mock('@/services/builderBrainClient', () => ({ runBuilderTurn: vi.fn() }));
 const selections: WizardSelections = { businessName: 'Studio', businessModel: 'appointment_service', industryOverlay: 'salon', primaryGoal: 'book', secondaryGoals: [], requestedPages: ['home','contact'], templateId: 'salon-premium', themePresetId: 'editorial', wizardSeedId: 'composition-proof' };
@@ -83,9 +84,10 @@ describe('structured AI page composition', () => {
     expect(descriptor.sections.find(section => section.semanticType === 'services')?.variantId).toBe('services:editorial-rows');
   });
   it('accepts a valid model response without sending source files or credentials', async () => {
-    vi.mocked(runBuilderTurn).mockResolvedValue({ data:{content:JSON.stringify(candidate)}, error:null });
+    const mockedBuilderTurn = runBuilderTurn as ReturnType<typeof vi.fn>;
+    mockedBuilderTurn.mockResolvedValue({ data:{content:JSON.stringify(candidate)}, error:null });
     expect(await requestAIPageComposition({ ...selections, requestedPages: ['home'] }, new AbortController().signal)).toEqual(candidate);
-    const request = vi.mocked(runBuilderTurn).mock.calls[0][0];
+    const request = mockedBuilderTurn.mock.calls[0][0];
     expect(request.mode).toBe('wizard-site-composition');
     expect(request.vfsFiles).toBeUndefined();
     const brief = JSON.parse(String(request.messages[0].content));
@@ -95,6 +97,21 @@ describe('structured AI page composition', () => {
     expect(brief.variants[0]).not.toHaveProperty('thumbnail');
     expect(brief.variants[0]).not.toHaveProperty('generationStatus');
     expect(JSON.stringify(request)).not.toContain('21st_sk_');
+  });
+  it('sends bounded Registry Context v2 fields without the global registry', async () => {
+    const mockedBuilderTurn = runBuilderTurn as ReturnType<typeof vi.fn>;
+    mockedBuilderTurn.mockResolvedValue({ data:{content:JSON.stringify(candidate)}, error:null });
+    const registry = buildWizardAggregatedRegistryContext({ industry: 'salon', templateId: 'salon-premium', themePresetId: 'editorial', businessId: 'biz-1', assets: [
+      { id: 'asset-1', kind: 'image', name: 'Hero', mime: 'image/jpeg', url: 'https://assets.test/hero.jpg', checksum: 'secret-checksum', businessId: 'biz-1', tags: ['hero'], createdAt: '', updatedAt: '' },
+    ] });
+    await requestAIPageComposition({ ...selections, requestedPages: ['home'] }, new AbortController().signal, runBuilderTurn, undefined, registry);
+    const brief = JSON.parse(String(mockedBuilderTurn.mock.calls[0][0].messages[0].content));
+    expect(brief.assets).toEqual([expect.objectContaining({ id: 'asset-1', url: 'https://assets.test/hero.jpg' })]);
+    expect(JSON.stringify(brief)).not.toContain('secret-checksum');
+    expect(brief.runtimeDependencies.react).toEqual(expect.any(String));
+    expect(brief.primitiveFamilies).toEqual(expect.arrayContaining([expect.objectContaining({ family: 'layout' })]));
+    expect(brief.implementationContracts[0]).not.toHaveProperty('source');
+    expect(briefSchema.safeParse(brief).success).toBe(true);
   });
   it('round-trips the backend lane through client validation and canonical compilation', async () => {
     const invoke = vi.fn(async (input: Parameters<typeof runBuilderTurn>[0], _options?: Parameters<typeof runBuilderTurn>[1]) => {

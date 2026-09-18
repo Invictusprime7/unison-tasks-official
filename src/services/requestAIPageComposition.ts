@@ -5,9 +5,10 @@ import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageC
 import { VARIANT_REGISTRY, getGenerationVariantsForSection } from '@/sections/variants/registry';
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
 import type { WizardSelections } from '@/types/playground';
+import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 
 export type CompositionFailure = 'endpoint-unavailable' | 'authentication' | 'request-rejected' | 'provider' | 'invalid-response' | 'incomplete-plan' | 'transport';
-export async function requestAIPageComposition(selections: WizardSelections, signal: AbortSignal, invoke = runBuilderTurn, onFailure?: (reason: CompositionFailure, details?: CompositionFailureDetails) => void) {
+export async function requestAIPageComposition(selections: WizardSelections, signal: AbortSignal, invoke = runBuilderTurn, onFailure?: (reason: CompositionFailure, details?: CompositionFailureDetails) => void, registryContext?: WizardAggregatedRegistryContext) {
   const fail = (reason: CompositionFailure, details?: CompositionFailureDetails) => {
     console.warn('[wizard-composition] failed', { reason, ...details });
     if (details) onFailure?.(reason, details);
@@ -27,7 +28,16 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       designGuidance: 'Compose only the listed certified 21st-derived implementations. Each variant carries its provenance (origin, author, sourceUrl) and thumbnail: favour variants with generationStatus "preferred" and 21st origin for the highest-impact sections (hero, features, gallery, testimonials) when they fit the page role. Use industry purpose, page role, existing business assets and canonical navigation to vary each site. Never copy demo URLs, branding or placeholder links.',
       launchSeed: selections.wizardSeedId, vision: selections.visionPrompt, needs: selections.secondaryGoals,
       businessName: selections.businessName, industry: selections.industryOverlay, goal: selections.primaryGoal,
-      roles, pack: pack.id, variants,
+       roles, pack: pack.id, variants,
+       assets: registryContext?.assets,
+       runtimeDependencies: registryContext?.runtimeDependencies,
+       primitiveFamilies: registryContext?.primitiveFamilies,
+       capabilityRequirements: registryContext?.capabilityRequirements,
+       implementationContracts: registryContext?.implementations?.map(implementation => ({
+         id: implementation.id, sectionType: implementation.sectionType,
+         runtimeDependencies: implementation.runtimeDependencies,
+         artifactContract: implementation.artifactContract,
+       })),
       output: { version: '1.0', pages: [{ role: 'home', sectionOrder: ['navbar','hero','services','testimonials','cta','footer'], variants: { services: 'choose an eligible id' }, copy: { hero: { headline: 'Original business-specific headline', subheadline: 'Useful supporting copy' } } }] },
       constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Copy is optional because canonical business content is preserved. When writing copy, use original headline, subheadline and description text by family. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
     }) }] }, { signal, functionName: 'wizard-site-composer' });
