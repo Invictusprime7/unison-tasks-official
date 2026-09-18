@@ -1,0 +1,48 @@
+{
+  "sourceId": "21st:24377",
+  "name": "Image Stream Hero",
+  "sourceUrl": "https://21st.dev/c/24377",
+  "sourceType": "component",
+  "dependencies": [
+    "react"
+  ],
+  "registryDependencies": [],
+  "licenseReview": {
+    "status": "unverified"
+  },
+  "attribution": "21st.dev — Image Stream Hero by @unknown",
+  "designTags": [],
+  "capabilities": {
+    "motion": false,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": true
+  },
+  "adaptation": {
+    "tokensNormalized": false,
+    "importsNormalized": false,
+    "reducedMotionSupported": false,
+    "responsiveVerified": false,
+    "canonicalSlotsAdded": false,
+    "intentReady": false,
+    "portableRecipeCertified": false
+  },
+  "step": 3,
+  "dependencyAudit": {
+    "decisions": [
+      {
+        "dep": "react",
+        "verdict": "allowed",
+        "reason": "Baseline stack"
+      }
+    ],
+    "approved": true
+  }
+}
