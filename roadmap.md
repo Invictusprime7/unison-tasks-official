@@ -287,7 +287,7 @@ Review locally at /tools/section-variants.html (development only).
 	or permit skipping to another family. See the execution plan for acceptance.
 
 - Experience capability foundations are integrated into the existing guidebook
-	phases, without restoring AI page-source authorship. Explicit empty visual
+	phases, without granting AI canonical VFS ownership. Explicit empty visual
 	approval now denies 3D; Launcher approval is separate from business capabilities
 	and survives canonical sealing/recompile/reload. Legacy manifest reads no longer
 	grant undeclared 3D or invent a React 19 profile. Registered variants can now
@@ -480,7 +480,7 @@ Review locally at /tools/section-variants.html (development only).
 
 ## 2026-09-17 ? structured composition and popular-source intake
 
-Implemented the first structured AI composition pass before canonical compilation. AI selects existing section-family order and eligible local variant IDs, preferring suitable 21st sources. Strict validation checks the pack, page role, family and portable implementation. The compiler retains every business section and owns navigation, hero/footer placement, themes, intents and files. Accepted choices persist in the design intervention and snapshot; accepted plans skip subsequent source rewriting. Invalid or unavailable responses use the existing starter path.
+Implemented the first structured AI composition pass before canonical compilation. AI selects existing section-family order and eligible local variant IDs, preferring suitable 21st sources. Strict validation checks the pack, page role, family and portable implementation. The compiler retains every business section and owns navigation, hero/footer placement, themes, intents and files. Historical behavior (superseded): accepted choices skipped refinement. Accepted plans now reach validated Lane B refinement. Historical behavior (superseded): invalid or unavailable responses used a starter path. New launches now require a valid AI composition.
 
 This phase does not remove templates: they remain semantic content baselines and fallback. Arbitrary section insertion/removal and replacing the Wizard template-selection step remain follow-up work. The new wizard-composition backend mode is implemented locally and requires deployment for live use.
 
@@ -507,3 +507,66 @@ Plans cover every requested page, carry section order, variant IDs and bounded p
 Invalid generation fails visibly with retry guidance; it no longer silently hands off a starter as an AI result. Accepted layout summaries are stored per authenticated user in the existing ai_learning_sessions table; no schema migration is required. Memory/research failures are nonfatal, and research is untrusted design context, never evidence for invented business claims. Fresh seeds and recent-layout context encourage diversity without guaranteeing uniqueness.
 
 Verification: three-step browser flow and mobile review; backend brief-schema/client/compile regression tests; copy/section addition tests; full suite 1,788 passed, one skipped; TypeScript, Deno and architecture checks passed. Authenticated provider-to-live-preview verification remains pending an available signed-in session. Frontend changes still require application deployment.
+
+
+### V3 convergence: sequencing repair (user-adjusted policy)
+
+- Contextual AI composition remains required; generation failures remain explicit.
+- Accepted plans now reach Lane B with the chosen order, variants and copy as context.
+- Valid page candidates merge independently; rejected pages retain their AI-composed Stage 4b sources.
+- Enrichment timeout preserves compiled pages without a false fatal launch status; cancellation still stops the run.
+- Template cards remain removed. No extra design-source intake or business schema change in this batch.
+- Lane B now uses the existing TSX parser, accepts modern JSX and local layout dimensions, and retains palette/global-theme ownership checks.
+- Verification: 207 test files passed; 1,809 tests passed and one skipped. Type checking, production build, targeted ESLint, and all four architecture checks passed. Build retains large-chunk warnings. Authenticated provider-to-persisted-preview verification remains outstanding.
+- Next: reconcile 21st promotion records and continue registry/asset convergence.
+
+## V3 continuation: explicit source-license review
+
+Implemented the license-review prerequisite of Batch 3. Source intake now defaults to unverified; certification requires a matching recorded license, evidence source and valid verification date. Promotion planning rechecks that evidence, including stale certification results. The intake CLI no longer invents a community-default license or treats dependency approval as promotion approval.
+
+Existing source records and preferred variants have not been retroactively certified. Their license strings are not evidence of completed review. Atomic multi-file promotion, reconciliation of existing promotion manifests/records, and promotion-closure tests remain unfinished. No runtime registry eligibility changes were made in this prerequisite batch. AI composition remains required.
+
+Verification: 17 intake tests passed, including missing/rejected/incomplete review and stale-certification cases; CLI syntax check passed.
+
+### V3 continuation: guarded registration and rollback
+
+The existing unison-variant-register command now shares the intake provenance gate, validates source identity, explicit adaptation certification, component/recipe presence and output paths before writing. It stages registry, thumbnail and lifecycle changes together and restores previous file bytes after a caught write failure. Registration records implementationId and lifecycle step 9; it no longer claims archival step 10. The Windows root-path conversion is corrected.
+
+Verification: 21 focused intake/promotion tests passed, including check-only behavior, idempotency, no-write rejection and injected failure rollback. The repository check intentionally reports eight blocked existing specs with missing verified license reviews, mismatched source metadata and uncertified adaptations. Existing production registry entries were not changed or retroactively certified.
+
+Batch 3 remains incomplete: process-crash recovery, running portable/visual certification within the transaction, archival and reconciliation of existing specs still require implementation/evidence. The current transaction rolls back caught write errors; it is not crash-atomic across files.
+
+### V3 continuation: registry agreement and resolved artifact context
+
+Promotion registration now parses registry TypeScript to verify that the unique entry, component and recipe imports, source metadata, portable approval and aliases match the spec before lifecycle changes. Duplicate specs are rejected. The read-only --audit command reports evidence and registry gaps together as JSON, returning a failing exit code while gaps remain. Current audit: eight specs, 32 findings; no source reviews or certification flags were fabricated.
+
+Batch 4 has begun independently: eligible implementation summaries include artifactContract derived from the canonical artifact registry (slots, intents, data-source kind and AI edit scope). The production Lane B projection carries these contracts, and older snapshots without them remain supported. This is context for validation-aware generation, not a new contract owner or permission grant. Assets, broader dependency/primitive/capability context, composition-planner consumption and Builder migration remain open.
+
+Continuation verification: 208 test files passed, 1,831 tests passed and one skipped. TypeScript, targeted ESLint, single-source-of-truth and catalog-contract checks passed. The promotion audit remains intentionally failing for the 32 recorded evidence/registry findings.
+
+
+### 21st-only generation and promotion reconciliation (current checkpoint)
+
+This checkpoint supersedes the earlier eight-blocked / 32-findings status. The read-only promotion audit now reports eight specs, five explicitly retired records and zero findings. Three original sources (footer:brand-social, testimonials:marquee and stats:metric-cards) have verified MIT evidence, reconciled registry metadata, component review hashes and archived intake sources. The other five remain unverified and are excluded from new generation; retirement resolves their registry disposition, not their licenses. Saved documents can still resolve their historical IDs.
+
+New generation, AI plan validation, Wizard selection/context and Builder layout pickers share getGenerationVariantsForSection: only non-legacy 21st-derived implementations with approved portable recipes are eligible. Every semantic family has coverage across all art-direction packs. Seven new local variants fill coverage and quality gaps: hero:launch-showcase, navbar:catalog-bar, cta:inset-panel, team:profile-cards, blog-preview:four-columns, before-after:reveal-panel and logo-cloud:reveal-tiles. Source adaptations and original visual-reference implementations are explicitly distinguished; source receipts and archived retrievals preserve that distinction. No runtime MCP dependency or credential is added. Layout thumbnails now depict each new layout's structure.
+
+AI contextual composition remains mandatory. Optional Lane B refinement retains accepted AI-composed pages if refinement fails. Legacy implementations remain available for saved-content compatibility, not as fresh Wizard alternatives.
+
+Registration now journals original bytes before mutation and supports --recover after process interruption. Recovery refuses to overwrite edits made after the interrupted transaction. Tests terminate an actual child process between writes, recover and retry. This is crash recovery, not simultaneous multi-file visibility or a claim of power-loss durability. Step-10 source archives and the development-only intake manifest are reconciled.
+
+Verification: 209 test files passed; 1,858 tests passed, one skipped. TypeScript, production build, all four architecture checks and the promotion audit passed. The build retains its existing large-chunk warning. Local desktop/mobile industry previews rendered without horizontal overflow or reported browser errors. These fixtures do not verify authenticated AI provider, persistence or publishing.
+
+Remaining V3 scope is explicit: complete project-bounded asset projection, props/slots and dependency/primitive context, remaining Builder/context migration, launch-state and intent convergence, broader foundation work and authenticated persisted/published round trips. Promotion execution still consumes recorded adaptation reviews; portable/visual verification is performed separately rather than inside the write transaction. This checkpoint does not certify completion of every V3 batch.
+
+### Wizard composition rejection repair
+
+The composer previously described copy as optional while rejecting pages without copy under composition_catalog. Copy is now required in the prompt and example. The endpoint validates requested page coverage, unique family order, role-eligible IDs and nonempty body copy before memory writes; one bounded AI repair receives explicit validation paths. Failure remains visible after that repair, with no starter substitute. The client advertises per-role IDs using the same generation eligibility function used by its validator. The accepted composition plan is now explicitly attached to the Wizard seed before Stage 4b and retained by the contextual seed in canonical persistence and handoff.
+
+OpenAI configuration audit confirmed OPENAI_API_KEY exists in the linked project and AI_PROVIDER_MODE is hybrid. Values were not printed or copied. Secret presence does not verify current key validity, billing or a successful authenticated model call. Deployed the tested wizard-site-composer repair to nfrdomdvyrbwuokathtw. Frontend changes remain local. Focused repair, composition, failure and handoff tests: 45 passed; frontend and edge-function type checks and canonical-write/pipeline checks passed. The full run passed 208 files with one new test-scope error; correcting that test and rerunning the affected four files passed. Live authenticated provider-to-persisted-preview verification remains pending.
+
+### Canonical enrichment transport and routing repair
+
+Enrichment used a 60-second browser deadline despite a 105-second batch-planning budget. The client now allows 110 seconds; the direct enrichment dispatch bounds server work to 100 seconds. Canonical proposals bypass general Builder preprocessing/source normalization and retain their identity/fileOps envelope. The server checks registered paths, duplicate writes, source presence and request identity before returning candidates; the existing client TSX/import/intent/theme validation, preflight and commitMutation remain authoritative.
+
+Failures now retain safe HTTP/error-type diagnostics instead of the generic unavailable message. Provider availability remains distinct from invalid proposals. Verification: 210 test files, 1,874 passed and one skipped; frontend/edge type checks and canonical-write/pipeline checks passed. Live authenticated success is not established by these tests; the available verification browser remains signed out.

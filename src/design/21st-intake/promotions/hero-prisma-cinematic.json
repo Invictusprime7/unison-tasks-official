@@ -8,17 +8,33 @@
   "componentPath": "./hero/HeroPrismaCinematic",
   "jsxFn": "heroPrismaCinematicJSX",
   "thumbnail": "/variants/hero-prisma-cinematic.svg",
-  "tags": ["hero", "cinematic", "editorial", "full-bleed", "media"],
-  "pageRoles": ["home"],
-  "aliases": ["prisma-cinematic", "cinematic"],
-  "generationStatus": "preferred",
+  "tags": [
+    "hero",
+    "cinematic",
+    "editorial",
+    "full-bleed",
+    "media"
+  ],
+  "pageRoles": [
+    "home"
+  ],
+  "aliases": [
+    "prisma-cinematic",
+    "cinematic"
+  ],
+  "generationStatus": "legacy",
   "recordSlug": "component-12200",
   "source": {
     "origin": "21st",
     "sourceId": "21st:12200",
-    "sourceUrl": "https://21st.dev/c/12200",
-    "author": "@rahil1202",
-    "license": "MIT (21st.dev community default)",
-    "adaptationVersion": "1"
+    "sourceUrl": "https://21st.dev/@rahil1202/components/prisma-hero",
+    "author": "rahil1202",
+    "derivation": "source-adaptation",
+    "adaptationVersion": "2"
+  },
+  "retirement": {
+    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
+    "reviewedAt": "2026-09-18T04:05:14.502Z",
+    "evidence": "https://21st.dev/@rahil1202/components/prisma-hero"
   }
 }

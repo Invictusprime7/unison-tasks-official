@@ -8,7 +8,8 @@
 
 import type { TwentyFirstComponentRecord } from './provenance';
 
-export const TWENTY_FIRST_INTAKE_MANIFEST: TwentyFirstComponentRecord[] = [];
+const records = import.meta.glob<TwentyFirstComponentRecord>('./imported/*/record.json', { eager: true, import: 'default' });
+export const TWENTY_FIRST_INTAKE_MANIFEST: TwentyFirstComponentRecord[] = Object.values(records);
 
 export function findIntakeRecord(sourceId: string): TwentyFirstComponentRecord | undefined {
   return TWENTY_FIRST_INTAKE_MANIFEST.find((r) => r.sourceId === sourceId);
@@ -16,5 +17,5 @@ export function findIntakeRecord(sourceId: string): TwentyFirstComponentRecord |
 
 /** Promoted sources must not keep an active quarantine duplicate (Step 10). */
 export function activeDuplicates(): TwentyFirstComponentRecord[] {
-  return TWENTY_FIRST_INTAKE_MANIFEST.filter((r) => Boolean(r.implementationId) && (r.step ?? 0) < 10);
+  return TWENTY_FIRST_INTAKE_MANIFEST.filter((r) => r.status === 'promoted' && Boolean(r.implementationId) && (r.step ?? 0) < 10);
 }

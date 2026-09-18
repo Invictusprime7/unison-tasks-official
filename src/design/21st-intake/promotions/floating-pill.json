@@ -25,17 +25,22 @@
     "floating-pill",
     "floating"
   ],
-  "generationStatus": "preferred",
+  "generationStatus": "legacy",
   "recordSlug": "sticky-navbar",
   "source": {
     "origin": "21st",
     "sourceId": "21st:8137",
-    "sourceUrl": "https://21st.dev/c/8137",
-    "author": "21st.dev community",
-    "license": "MIT (21st.dev community default)",
-    "adaptationVersion": "1"
+    "sourceUrl": "https://21st.dev/@efferd/components/floating-header",
+    "author": "efferd",
+    "derivation": "source-adaptation",
+    "adaptationVersion": "2"
   },
   "radixPrimitives": [
     "dialog"
-  ]
+  ],
+  "retirement": {
+    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
+    "reviewedAt": "2026-09-18T04:05:14.498Z",
+    "evidence": "https://21st.dev/@efferd/components/floating-header"
+  }
 }

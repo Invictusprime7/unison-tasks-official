@@ -1,3 +1,4 @@
+import { runCanonicalEnrichmentLane } from './canonicalEnrichmentLane.ts';
 import { runCompositionLane } from './compositionLane.ts';
 /**
  * Orchestrator — the brain of ai-code-assistant.
@@ -194,6 +195,12 @@ export function runAssistantOrchestrator(
   userId?: string,
   signal?: AbortSignal,
 ): Promise<Response> {
+  if (task.type === 'wizard_canonical_enrichment') {
+    const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
+    const providerPlan = buildProviderPlan(task, true, { timeoutMs: 85000, maxTokens: 16000 }, 'simple', context);
+    const enrichmentSignal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(100000)]);
+    return runCanonicalEnrichmentLane(context, corsHeaders, buildWizardCanonicalEnrichmentBasePrompt(), aiMessages => runProviderLoop({ aiMessages, providerPlan, navPageGen: false, reasoningEffort: 'none', signal: enrichmentSignal }));
+  }
   if (task.type === 'wizard_composition') {
     const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
     const providerPlan = buildProviderPlan(task, true, { ...parsed.gatewayOptions, maxTokens: 6000, timeoutMs: 35000 }, 'simple', context);

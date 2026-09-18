@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:606",
+    "sourceUrl": "https://21st.dev/@shadcnblockscom/components/shadcnblocks-com-navbar1",
+    "author": "shadcnblockscom",
+    "derivation": "visual-reference",
+    "adaptationVersion": "2"
+  },
+  "componentId": 1280,
+  "demoId": 606,
+  "retrievedVia": "21st MCP get_component",
+  "retrievedAt": "2026-09-18T04:04:27.432Z",
+  "sourceSha256": "5cea12ca9be3645d8cc2f0342ed811171b2a0ee0adf9c5b6dadf0d7df0951b24",
+  "implementation": "navbar:catalog-bar",
+  "adaptation": "Brand, desktop navigation and action with an accessible mobile drawer",
+  "notes": "Original local implementation informed by the published layout. No copied-source license asserted."
+}

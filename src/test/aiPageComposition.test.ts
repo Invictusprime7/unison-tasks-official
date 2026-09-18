@@ -130,3 +130,35 @@ describe('structured AI page composition', () => {
     await expect(requestAIPageComposition(selections,controller.signal)).rejects.toThrow();
   });
 });
+
+
+describe('composer catalog repair', () => {
+  const brief = { roles: ['home'], variants: [{ id: 'hero:launch-showcase', family: 'hero', pageRoles: ['home'] }] };
+  const valid = { version: '1.0', pages: [{ role: 'home', sectionOrder: ['hero'], variants: { hero: 'hero:launch-showcase' }, copy: { hero: { headline: 'Care for your next chapter' } } }] };
+  it.each(['missing-copy', 'unknown-id', 'wrong-role', 'unknown-family', 'malformed'])('repairs %s with AI before acceptance', async failure => {
+    const bad = JSON.parse(JSON.stringify(valid));
+    if (failure === 'missing-copy') delete bad.pages[0].copy;
+    if (failure === 'unknown-id') bad.pages[0].variants.hero = 'hero:invented';
+    if (failure === 'wrong-role') bad.pages[0].role = 'checkout';
+    if (failure === 'unknown-family') bad.pages[0].sectionOrder.push('invented');
+    const generate = vi.fn().mockResolvedValueOnce({ content: failure === 'malformed' ? 'invalid JSON' : JSON.stringify(bad) }).mockResolvedValueOnce({ content: JSON.stringify(valid) });
+    const response = await runCompositionLane(JSON.stringify(brief), {}, generate, { brief });
+    expect(response.status).toBe(200);
+    expect(JSON.parse((await response.json()).content)).toEqual(valid);
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls[1][0].at(-1).content).toContain('Validation issues');
+  });
+  it('fails after one repair without returning a starter plan', async () => {
+    const generate = vi.fn().mockResolvedValue({ content: JSON.stringify({ ...valid, pages: [{ ...valid.pages[0], copy: {} }] }) });
+    const response = await runCompositionLane('{}', {}, generate, { brief });
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({ errorType: 'composition_catalog', issues: ['pages.home.copy: original nonempty copy is required'] });
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+  it('stops before repair when cancelled', async () => {
+    const controller = new AbortController();
+    const generate = vi.fn().mockImplementation(async () => { controller.abort(); return { content: '{}' }; });
+    await expect(runCompositionLane('{}', {}, generate, { brief, signal: controller.signal })).rejects.toThrow();
+    expect(generate).toHaveBeenCalledOnce();
+  });
+});

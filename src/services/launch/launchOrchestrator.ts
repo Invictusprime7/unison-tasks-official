@@ -81,14 +81,11 @@ import {
 } from "@/services/launch/launchRun";
 import {
   buildWizardLaneBRegistryContext,
-  decodeWizardLaneBProposal,
-  validateWizardLaneBProposal,
-  mergeLaneBProposalWithSnapshot,
+  enrichWizardPageBatch,
   type WizardLaneBEnrichmentRequest,
 } from "@/services/wizardLaneBEnrichment";
-import { runBuilderTurn } from "@/services/builderBrainClient";
+
 import {
-  buildLaneBVfsContext,
   measurePayloadBytes,
   planLaneBBatches,
 } from "@/services/laneBBatchPlanner";
@@ -136,6 +133,8 @@ export interface LaunchOrchestratorInput {
   template?: TemplateCardData;
   industry?: string;
   visionPrompt?: string;
+  /** Refinement policy; contextual AI composition is always required. */
+  ai?: { laneB?: boolean };
   theme: ThemePreset;
   businessName: string;
   primaryGoal: PrimaryGoal | null;
@@ -414,6 +413,7 @@ export async function runLaunchPipeline(
     },
     theme: { presetId: input.theme.id, label: input.theme.label, tokens: plan.themeTokens },
     design: { seed: plan.seed, contractSignature: designContract.contractSignature },
+    compositionPlan: undefined as WizardSelections["compositionPlan"],
     registryContext: wizardRegistryContext,
     socials: Object.entries(input.socialLinks || {})
       .map(([platform, raw]) => {
@@ -430,10 +430,16 @@ export async function runLaunchPipeline(
     status('Choosing page compositions from the local design library...');
     let compositionFailure = 'unknown';
     let compositionFailureMessage = 'AI site composition could not complete. Please retry generation.';
-    const compositionPlan = await requestAIPageComposition(plan.selections, signal, undefined, (reason, details) => { compositionFailure = reason; compositionFailureMessage = details?.message || ('AI site composition failed (' + reason + '). Please retry generation.'); if (details?.status) compositionFailureMessage += ' (HTTP ' + details.status + ')'; if (details?.errorType) compositionFailureMessage += ' [' + details.errorType + ']'; });
+    const compositionPlan = await requestAIPageComposition(plan.selections, signal, undefined, (reason, details) => {
+      compositionFailure = reason;
+      compositionFailureMessage = details?.message || ('AI site composition failed (' + reason + '). Please retry generation.');
+      if (details?.status) compositionFailureMessage += ' (HTTP ' + details.status + ')';
+      if (details?.errorType) compositionFailureMessage += ' [' + details.errorType + ']';
+    });
     signal.throwIfAborted();
-    if (compositionPlan) plan.selections.compositionPlan = compositionPlan;
-    else throw new LaunchFatalError(compositionFailureMessage, { stage: 'seed', code: 'composition.' + compositionFailure });
+    if (!compositionPlan) throw new LaunchFatalError(compositionFailureMessage, { stage: 'seed', code: 'composition.' + compositionFailure });
+    plan.selections.compositionPlan = compositionPlan;
+    wizardSeedFile.compositionPlan = compositionPlan;
     const result = await runWizardStage4b({
       selections: plan.selections,
       existingVfsFiles: {
@@ -583,9 +589,8 @@ export async function runLaunchPipeline(
   let enrichedVfsFiles = siteBundleSnapshot.vfsFiles;
   const acceptedLaneBPagePaths = new Set<string>();
 
-  try {
-    await run.stage("enrich", async (signal) => {
-      if (plan.selections.compositionPlan) return;
+  await run.stage("enrich", async (signal) => {
+      if (input.ai?.laneB === false) return;
       const {
         uiFoundationManifest: manifestData,
         uiFoundationDirective,
@@ -606,6 +611,7 @@ export async function runLaunchPipeline(
 
       const enrichmentRequest: WizardLaneBEnrichmentRequest = {
         version: '1.0',
+        compositionPlan: plan.selections.compositionPlan,
         wizardSeedId: plan.seed,
         businessName: brand,
         industryOverlay: plan.industryOverlay,
@@ -660,47 +666,14 @@ export async function runLaunchPipeline(
           ),
         };
 
-        const enrichmentResult = await runBuilderTurn<unknown>(
-          {
-            mode: 'wizard-canonical-enrichment',
-            messages: [{ role: 'user', content: JSON.stringify(batchRequest) }],
-            wizardSeed: { id: plan.seed } as any,
-            vfsFiles: buildLaneBVfsContext(enrichedVfsFiles),
-          },
-          { timeoutMs: 60_000, signal },
-        );
-
-        if (enrichmentResult.error || !enrichmentResult.data) {
-          console.warn('[launch] Lane B batch failed; retaining deterministic pages:', {
-            batchPaths,
-            error: enrichmentResult.error || 'empty proposal',
-          });
-          continue;
-        }
-
-        signal.throwIfAborted();
-        const proposal = decodeWizardLaneBProposal(enrichmentResult.data);
-        if (!proposal) {
-          run.degrade('enrich', 'enrich.invalid_response', 'AI returned an invalid design proposal; the themed site was preserved.');
-          continue;
-        }
-        const validation = validateWizardLaneBProposal({
-          proposal,
-          request: batchRequest,
-          uiFoundationManifest: manifestData,
+        const batch = await enrichWizardPageBatch({
+          request: batchRequest, files: enrichedVfsFiles, uiFoundationManifest: manifestData,
+          signal, onDegrade: (code, message) => run.degrade('enrich', code, message),
         });
-
-        if (!validation.valid) {
-          console.warn('[launch] Lane B batch validation failed; retaining deterministic pages:', {
-            batchPaths,
-            violations: validation.violations,
-          });
-          continue;
-        }
-
-        enrichedVfsFiles = mergeLaneBProposalWithSnapshot(enrichedVfsFiles, proposal);
-        for (const operation of proposal.fileOps) acceptedLaneBPagePaths.add(operation.path);
-        acceptedBatchCount += 1;
+        signal.throwIfAborted();
+        enrichedVfsFiles = batch.files;
+        for (const path of batch.acceptedPaths) acceptedLaneBPagePaths.add(path);
+        if (batch.acceptedPaths.length) acceptedBatchCount += 1;
       }
 
       console.log('[launch] Lane B enrichment complete:', {
@@ -709,10 +682,7 @@ export async function runLaunchPipeline(
         pagesPerBatch: batchPlan.pagesPerBatch,
         limitedBy: batchPlan.limitedBy,
       });
-    });
-  } catch (e) {
-    console.error('[launch] Enrichment stage error:', e);
-  }
+    }, { fallback: () => undefined, degradeCode: 'enrich.unavailable', degradeMessage: 'Optional AI enrichment did not complete; the compiled site was preserved.' });
 
   // ── Stage: preflight (merge + seal + strict import contract) ──────────────
   status("Running preview gates…");

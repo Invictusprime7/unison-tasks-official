@@ -1,13 +1,13 @@
 {
   "sourceId": "21st:822",
   "name": "Testimonials with Marquee",
-  "sourceUrl": "https://21st.dev/c/822",
+  "sourceUrl": "https://21st.dev/@serafimcloud/components/testimonials-with-marquee",
   "sourceType": "component",
   "dependencies": [],
   "registryDependencies": [
     "testimonial-card"
   ],
-  "license": "MIT (21st.dev community default — verify before promotion)",
+  "license": "MIT",
   "attribution": "21st.dev — Testimonials with Marquee by @unknown",
   "designTags": [],
   "capabilities": {
@@ -24,13 +24,13 @@
     "clientOnly": false
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
   "step": 10,
   "dependencyAudit": {
@@ -40,5 +40,27 @@
   "status": "promoted",
   "promotedVariants": [
     "testimonials:marquee"
-  ]
+  ],
+  "author": "serafimcloud",
+  "implementationId": "testimonials:marquee",
+  "licenseReview": {
+    "status": "verified",
+    "license": "MIT",
+    "source": "https://21st.dev/@serafimcloud/components/testimonials-with-marquee",
+    "verifiedAt": "2026-09-18T04:05:14.507Z",
+    "notes": "The component-specific 21st page lists MIT License; source identity checked with MCP get_component."
+  },
+  "archivePath": "src/design/21st-intake/archive/testimonials-marquee",
+  "archivedAt": "2026-09-18T04:05:14.507Z",
+  "reviewEvidence": {
+    "sourceSha256": "f0e7cddd005f53c710f38cb6d29c88f5490cdeae544caeb1dab25bb2b4ff3986",
+    "componentSha256": "fd66528e0724375d99744bd64be01abbab6abb9afbb1db854969380db7c7aac5",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-18T04:05:14.507Z"
+  }
 }

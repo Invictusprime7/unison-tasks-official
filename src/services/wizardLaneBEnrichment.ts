@@ -1,3 +1,7 @@
+import { tryParse } from './aiSitePreflightRepair';
+import { runBuilderTurn } from './builderBrainClient';
+import { buildLaneBVfsContext, LANE_B_WALL_CLOCK_BUDGET_MS } from './laneBBatchPlanner';
+import type { AIPageCompositionPlan } from '@/sections/aiPageComposition';
 import { collectResolvedCompositions } from '@/platform/core/resolvedComposition';
 /**
  * Lane B Canonical Enrichment — AI-authored candidate page-body patches.
@@ -117,6 +121,8 @@ export interface LaneBFileOp {
  * Excludes direct business logic or persistence state.
  */
 export interface WizardLaneBEnrichmentRequest {
+  /** Validated planner decisions; bounded context, never VFS authority. */
+  compositionPlan?: AIPageCompositionPlan;
   version: '1.0';
 
   /** Wizard/launch identity. */
@@ -328,36 +334,10 @@ export function validateWizardLaneBProposal(options: {
     }
   }
 
-  // 8. TSX parseability
+  // Reuse canonical preflight parsing; modern JSX does not require a React import.
   for (const op of proposal.fileOps) {
-    try {
-      // Simple heuristic: check for unbalanced braces and basic JSX structure
-      const openBraces = (op.content.match(/{/g) || []).length;
-      const closeBraces = (op.content.match(/}/g) || []).length;
-      const openAngle = (op.content.match(/</g) || []).length;
-      const closeAngle = (op.content.match(/>/g) || []).length;
-
-      if (openBraces !== closeBraces) {
-        violations.push(
-          `File ${op.path} has unbalanced braces: {${openBraces} vs }${closeBraces}.`,
-        );
-      }
-
-      if (openAngle !== closeAngle) {
-        violations.push(
-          `File ${op.path} has unbalanced angle brackets: <${openAngle} vs >${closeAngle}.`,
-        );
-      }
-
-      // Check for React import
-      if (!op.content.includes('import') || !op.content.includes('React')) {
-        violations.push(
-          `File ${op.path} must import React for JSX composition.`,
-        );
-      }
-    } catch (e) {
-      violations.push(`File ${op.path} is not valid TSX: ${e instanceof Error ? e.message : String(e)}.`);
-    }
+    const parsedSource = tryParse(op.content);
+    if (parsedSource.ok === false) violations.push('File ' + op.path + ' is not valid TSX: ' + parsedSource.error);
   }
 
   // 9. Import contract check
@@ -400,12 +380,18 @@ export function validateWizardLaneBProposal(options: {
     if (/\b(?:bg|text|border|from|via|to)-(?:white|black|(?:red|blue|gray|slate|zinc|neutral|green|purple|orange|pink|cyan|teal|amber|rose|indigo|violet|stone|yellow|lime|emerald|sky|fuchsia)-\d{2,3})\b|\bfont-(?:sans|serif|mono)\b|font(?:Family|Weight)\s*:\s*(?:['"](?!var\()[^'"]+['"]|\d+)/.test(op.content)) {
       violations.push('File ' + op.path + ' overrides the selected preset with literal color or font-family styles. Use semantic colors and the supplied font-family tokens; Tailwind weight and scale utilities remain available for page hierarchy.');
     }
-    // Check for hardcoded CSS values (px, rem, vh, vw, #hex)
-    const hardcodedValues = op.content.match(/\b\d+(?:px|rem|vh|vw)\b|#[0-9a-fA-F]{3,6}\b/g);
+    // Local geometry is permitted; palette and global theme ownership remain Stage 4b.
+    const hardcodedValues = op.content.match(/#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(\s*[\d.]/g);
     if (hardcodedValues) {
       violations.push(
-        `File ${op.path} contains hardcoded CSS values: ${hardcodedValues.join(', ')}. Use Stage 4b tokens (var(--ut-*), --radius) or Tailwind classes instead.`,
+        `File ${op.path} contains literal palette values: ${hardcodedValues.join(', ')}. Use Stage 4b tokens (var(--ut-*), --radius) or Tailwind classes instead.`,
       );
+    }
+  }
+
+  for (const op of proposal.fileOps) {
+    if (/:root\b|:global\b|@import\b|(?:^|[}\s'"`])(html|body)(?:[.#:][\w-]+)?\s*[{,]|--(?:ut-[\w-]+|primary|background|foreground|font-[\w-]+)\s*:/.test(op.content)) {
+      violations.push('File ' + op.path + ' declares global theme or document styles. Stage 4b owns these values.');
     }
   }
 
@@ -493,4 +479,49 @@ export function mergeLaneBProposalWithSnapshot(
   }
 
   return merged;
+}
+
+/** One independently accepted batch. Rejection never mutates the compiled baseline. */
+export async function enrichWizardPageBatch(options: {
+  request: WizardLaneBEnrichmentRequest;
+  files: Record<string, string>;
+  uiFoundationManifest: Parameters<typeof validateWizardLaneBProposal>[0]['uiFoundationManifest'];
+  signal: AbortSignal;
+  enabled?: boolean;
+  onDegrade?: (code: string, message: string) => void;
+}, invoke = runBuilderTurn) {
+  const unchanged = { files: options.files, acceptedPaths: [] as string[] };
+  options.signal.throwIfAborted();
+  if (options.enabled === false) return unchanged;
+  const reject = (code: string, message: string) => { options.onDegrade?.(code, message); return unchanged; };
+  try {
+    const response = await invoke({
+      mode: 'wizard-canonical-enrichment',
+      messages: [{ role: 'user', content: JSON.stringify(options.request) }],
+      wizardSeed: { id: options.request.wizardSeedId },
+      vfsFiles: buildLaneBVfsContext(options.files),
+    }, { timeoutMs: LANE_B_WALL_CLOCK_BUDGET_MS + 5000, signal: options.signal });
+    options.signal.throwIfAborted();
+    if (response.error || !response.data) {
+      const context = (response.error as { context?: { status?: number; body?: string } } | null)?.context;
+      let errorType = '';
+      try { const body = response.data ?? JSON.parse(context?.body || '{}'); const candidate = (body as { errorType?: unknown }).errorType; if (typeof candidate === 'string' && /^[a-z_]{1,80}$/.test(candidate)) errorType = candidate; } catch { /* Never expose raw response bodies. */ }
+      const status = context?.status;
+      const reason = status === 401 || status === 403 ? 'authentication' : status === 429 ? 'rate_limited' : status === 400 || status === 413 ? 'request_rejected' : errorType === 'enrichment_contract' || errorType === 'enrichment_identity' ? 'invalid_response' : 'provider';
+      return reject('enrich.' + reason, 'AI enrichment failed: ' + reason.replace(/_/g, ' ') + (status ? ' (HTTP ' + status + ')' : '') + (errorType ? ' [' + errorType + ']' : '') + '; the compiled pages were preserved.');
+    }
+    const proposal = decodeWizardLaneBProposal(response.data);
+    if (!proposal) return reject('enrich.invalid_response', 'AI returned an invalid design proposal; the compiled pages were preserved.');
+    const acceptedOps = proposal.fileOps.filter(op => {
+      if (proposal.fileOps.filter(candidate => candidate.path === op.path).length !== 1) return false;
+      return validateWizardLaneBProposal({ proposal: { ...proposal, fileOps: [op] }, request: options.request, uiFoundationManifest: options.uiFoundationManifest }).valid;
+    });
+    if (acceptedOps.length !== proposal.fileOps.length) options.onDegrade?.('enrich.rejected', 'AI design failed canonical validation; only affected compiled pages were preserved.');
+    if (!acceptedOps.length) return unchanged;
+    return { files: mergeLaneBProposalWithSnapshot(options.files, { ...proposal, fileOps: acceptedOps }), acceptedPaths: acceptedOps.map(op => op.path) };
+  } catch (error) {
+    options.signal.throwIfAborted();
+    const timedOut = error instanceof Error && (error.name === 'TimeoutError' || /timed? ?out/i.test(error.message));
+    return reject(timedOut ? 'enrich.timeout' : 'enrich.transport', 'AI enrichment ' + (timedOut ? 'timed out' : 'lost its connection') + '; the compiled pages were preserved.');
+  }
 }

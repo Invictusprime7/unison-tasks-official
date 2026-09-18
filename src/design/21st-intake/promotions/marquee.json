@@ -28,9 +28,10 @@
   "source": {
     "origin": "21st",
     "sourceId": "21st:822",
-    "sourceUrl": "https://21st.dev/c/822",
-    "author": "21st.dev community",
-    "license": "MIT (21st.dev community default)",
-    "adaptationVersion": "1"
+    "sourceUrl": "https://21st.dev/@serafimcloud/components/testimonials-with-marquee",
+    "author": "serafimcloud",
+    "derivation": "source-adaptation",
+    "license": "MIT",
+    "adaptationVersion": "2"
   }
 }

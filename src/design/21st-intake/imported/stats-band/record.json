@@ -1,7 +1,7 @@
 {
   "sourceId": "21st:1195",
   "name": "Stats Section with Text",
-  "sourceUrl": "https://21st.dev/c/1195",
+  "sourceUrl": "https://21st.dev/@tommyjepsen/components/stats-section-with-text",
   "sourceType": "component",
   "dependencies": [
     "lucide-react"
@@ -9,7 +9,7 @@
   "registryDependencies": [
     "badge"
   ],
-  "license": "MIT (21st.dev community default — verify before promotion)",
+  "license": "MIT",
   "attribution": "21st.dev — Stats Section with Text by @unknown",
   "designTags": [],
   "capabilities": {
@@ -26,13 +26,13 @@
     "clientOnly": false
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
   "step": 10,
   "dependencyAudit": {
@@ -48,5 +48,27 @@
   "status": "promoted",
   "promotedVariants": [
     "stats:metric-cards"
-  ]
+  ],
+  "author": "tommyjepsen",
+  "implementationId": "stats:metric-cards",
+  "licenseReview": {
+    "status": "verified",
+    "license": "MIT",
+    "source": "https://21st.dev/@tommyjepsen/components/stats-section-with-text",
+    "verifiedAt": "2026-09-18T04:05:14.510Z",
+    "notes": "The component-specific 21st page lists MIT License; source identity checked with MCP get_component."
+  },
+  "archivePath": "src/design/21st-intake/archive/stats-band",
+  "archivedAt": "2026-09-18T04:05:14.510Z",
+  "reviewEvidence": {
+    "sourceSha256": "e25cc9b6f1823b680a69b521ffeefc8cc31aad988deea81926ca44049281824e",
+    "componentSha256": "442bc0d381ddc62b1c6d816d3e59e3033760edf5837ee0ca9c7ca72952e7441a",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-18T04:05:14.510Z"
+  }
 }

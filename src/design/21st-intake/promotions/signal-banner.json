@@ -24,14 +24,19 @@
     "signal-banner",
     "signal"
   ],
-  "generationStatus": "preferred",
+  "generationStatus": "legacy",
   "recordSlug": "cta-banner",
   "source": {
     "origin": "21st",
     "sourceId": "21st:19341",
-    "sourceUrl": "https://21st.dev/c/19341",
-    "author": "21st.dev community",
-    "license": "MIT (21st.dev community default)",
-    "adaptationVersion": "1"
+    "sourceUrl": "https://21st.dev/@thegridcn/components/cta-banner",
+    "author": "thegridcn",
+    "derivation": "source-adaptation",
+    "adaptationVersion": "2"
+  },
+  "retirement": {
+    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
+    "reviewedAt": "2026-09-18T04:05:14.518Z",
+    "evidence": "https://21st.dev/@thegridcn/components/cta-banner"
   }
 }

@@ -28,9 +28,10 @@
   "source": {
     "origin": "21st",
     "sourceId": "21st:1195",
-    "sourceUrl": "https://21st.dev/c/1195",
-    "author": "21st.dev community",
-    "license": "MIT (21st.dev community default)",
-    "adaptationVersion": "1"
+    "sourceUrl": "https://21st.dev/@tommyjepsen/components/stats-section-with-text",
+    "author": "tommyjepsen",
+    "derivation": "source-adaptation",
+    "license": "MIT",
+    "adaptationVersion": "2"
   }
 }

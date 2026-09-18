@@ -22,7 +22,7 @@ Hard rules:
 7. Accessibility / responsive audit (`compatibilityAudit.ts`).
 8. Portable VFS certification (`componentIntake.ts` → `runIntake`).
 9. Promote to a canonical family (`planPromotion`) and register it.
-10. Delete the quarantine duplicate.
+10. Archive the reviewed raw source outside executable imports and remove the active quarantine duplicate.
 
 ## Usage
 
@@ -35,3 +35,9 @@ if (result.certified) {
 
 Certification is refused when provenance is incomplete or the compatibility
 audit reports any error.
+
+Source certification requires an explicit licenseReview with status verified, a license matching the record, an evidence source and a valid verifiedAt timestamp. New intake records start unverified. A license label from a catalog is not a completed review. planPromotion rechecks this evidence; it still returns a plan and does not perform an atomic registry write. Existing records must be reviewed before passing this gate.
+
+Registration: node scripts/unison-variant-register.mjs --check performs the same pre-write gates as registration. Missing review/certification fails without mutation. Writes are staged and journaled before mutation. Caught failures roll back prior bytes; interrupted processes require `node scripts/unison-variant-register.mjs --recover`. Recovery refuses to overwrite subsequent edits. Files are not visible atomically as a group. Registration uses step 9, leaving step 10 for archival. The eight original specs now resolve to three verified promotions and five explicit retirements, with zero audit findings. Retirement does not verify a license.
+
+Use node scripts/unison-variant-register.mjs --audit for a read-only JSON report combining provenance, certification and parsed registry-agreement findings. Exit status is nonzero when findings remain. Existing entries must match their component/recipe imports, source metadata, portable approval and aliases before registration can mark intake lifecycle state.

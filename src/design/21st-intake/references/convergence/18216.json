@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:18216",
+    "sourceUrl": "https://21st.dev/@nexus-ui/components/logo-clouds",
+    "author": "nexus-ui",
+    "derivation": "visual-reference",
+    "adaptationVersion": "2"
+  },
+  "componentId": 9123,
+  "demoId": 18216,
+  "retrievedVia": "21st MCP get_component",
+  "retrievedAt": "2026-09-18T04:04:27.440Z",
+  "sourceSha256": "77239c25f68300faeea6d58c3042752fc437ea1af7e3fd96840526ba800a2637",
+  "implementation": "logo-cloud:reveal-tiles",
+  "adaptation": "Responsive logo tiles with restrained hover emphasis",
+  "notes": "Original local implementation informed by the published layout. No copied-source license asserted."
+}

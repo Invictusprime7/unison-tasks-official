@@ -1,0 +1,19 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:1421",
+    "sourceUrl": "https://21st.dev/@tommyjepsen/components/blog-section",
+    "author": "tommyjepsen",
+    "derivation": "source-adaptation",
+    "license": "MIT",
+    "adaptationVersion": "2"
+  },
+  "componentId": 709,
+  "demoId": 1421,
+  "retrievedVia": "21st MCP get_component",
+  "retrievedAt": "2026-09-18T04:04:27.436Z",
+  "sourceSha256": "6cb6ba1c3cb6090602e6ccc06f18d1ec62e458988e76a838b195400e255e3955",
+  "implementation": "blog-preview:four-columns",
+  "adaptation": "Four-column article grid with image, metadata and linked title",
+  "notes": "Component page explicitly lists MIT. Demo media and copy excluded."
+}

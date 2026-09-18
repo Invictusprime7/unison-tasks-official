@@ -18,6 +18,7 @@ function baseRecord(overrides: Record<string, unknown> = {}) {
     sourceType: 'block',
     sourceUrl: 'https://21st.dev/kinetic-hero',
     license: 'MIT',
+    licenseReview: { status: 'verified', license: 'MIT', source: 'fixture:LICENSE', verifiedAt: '2026-09-17T00:00:00Z' },
     dependencies: ['react', 'framer-motion', 'lucide-react'],
     ...overrides,
   });
@@ -39,7 +40,22 @@ describe('M3 — 21st intake / certification infrastructure', () => {
   it('requires complete provenance', () => {
     expect(assertProvenance(baseRecord())).toEqual([]);
     const issues = assertProvenance(baseRecord({ sourceUrl: undefined, license: undefined }));
-    expect(issues).toHaveLength(2);
+    expect(issues).toContain('sourceUrl is required for 21st provenance');
+    expect(issues).toContain('license must be reviewed and recorded');
+  });
+
+  it.each([undefined, { status: 'unverified' }, { status: 'rejected' },
+    { status: 'verified', license: 'MIT' },
+    { status: 'verified', license: 'Apache-2.0', source: 'fixture:LICENSE', verifiedAt: '2026-09-17' },
+    { status: 'verified', license: 'MIT', source: 'fixture:LICENSE', verifiedAt: 'invalid' },
+  ])('blocks source certification without complete license evidence: %#', licenseReview => {
+    expect(runIntake({ record: baseRecord({ licenseReview }), source: CLEAN_SOURCE }).certified).toBe(false);
+  });
+
+  it('rechecks provenance at promotion even if a certification result is stale', () => {
+    const result = runIntake({ record: baseRecord(), source: CLEAN_SOURCE });
+    result.record.licenseReview = { status: 'rejected' };
+    expect(() => planPromotion(result, { sectionType: 'hero', slug: 'x', componentName: 'X' })).toThrow('license review');
   });
 
   it('detects disallowed dependencies and gates 3D', () => {

@@ -1,13 +1,12 @@
 {
   "sourceId": "21st:19341",
   "name": "CTA Banner",
-  "sourceUrl": "https://21st.dev/c/19341",
+  "sourceUrl": "https://21st.dev/@thegridcn/components/cta-banner",
   "sourceType": "component",
   "dependencies": [
     "react"
   ],
   "registryDependencies": [],
-  "license": "MIT (21st.dev community default — verify before promotion)",
   "attribution": "21st.dev — CTA Banner by @unknown",
   "designTags": [],
   "capabilities": {
@@ -32,7 +31,7 @@
     "intentReady": false,
     "portableRecipeCertified": false
   },
-  "step": 10,
+  "step": 3,
   "dependencyAudit": {
     "decisions": [
       {
@@ -43,8 +42,21 @@
     ],
     "approved": true
   },
-  "status": "promoted",
-  "promotedVariants": [
-    "cta:signal-banner"
-  ]
+  "status": "retired",
+  "promotedVariants": [],
+  "author": "thegridcn",
+  "implementationId": "cta:signal-banner",
+  "licenseReview": {
+    "status": "unverified",
+    "source": "https://21st.dev/@thegridcn/components/cta-banner",
+    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+  },
+  "archivePath": "src/design/21st-intake/archive/cta-banner",
+  "archivedAt": "2026-09-18T04:05:14.518Z",
+  "reviewEvidence": {
+    "sourceSha256": "221212128aeb68cba2bb085296f8eee4ed93a8c6e1b436c377f38d1c09223c7d",
+    "componentSha256": "58f50c98ec8b87853df36508edf25469417dc2ec45f6c10c2a740f3e0b09160d",
+    "checks": [],
+    "reviewedAt": "2026-09-18T04:05:14.518Z"
+  }
 }

@@ -23,14 +23,19 @@
     "feature-table",
     "table"
   ],
-  "generationStatus": "preferred",
+  "generationStatus": "legacy",
   "recordSlug": "pricing-table",
   "source": {
     "origin": "21st",
     "sourceId": "21st:8374",
-    "sourceUrl": "https://21st.dev/c/8374",
-    "author": "21st.dev community",
-    "license": "MIT (21st.dev community default)",
-    "adaptationVersion": "1"
+    "sourceUrl": "https://21st.dev/@dgearsonu1/components/pricing-table",
+    "author": "dgearsonu1",
+    "derivation": "source-adaptation",
+    "adaptationVersion": "2"
+  },
+  "retirement": {
+    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
+    "reviewedAt": "2026-09-18T04:05:14.494Z",
+    "evidence": "https://21st.dev/@dgearsonu1/components/pricing-table"
   }
 }

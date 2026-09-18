@@ -8,17 +8,34 @@
   "componentPath": "./services/ServicesProductCards",
   "jsxFn": "servicesProductCardsJSX",
   "thumbnail": "/variants/services-product-cards.svg",
-  "tags": ["commerce", "products", "grid", "shop"],
-  "pageRoles": ["home", "shop", "services"],
-  "aliases": ["product-cards", "products"],
-  "generationStatus": "preferred",
+  "tags": [
+    "commerce",
+    "products",
+    "grid",
+    "shop"
+  ],
+  "pageRoles": [
+    "home",
+    "shop",
+    "services"
+  ],
+  "aliases": [
+    "product-cards",
+    "products"
+  ],
+  "generationStatus": "legacy",
   "recordSlug": "product-card-grid",
   "source": {
     "origin": "21st",
     "sourceId": "21st:8286",
-    "sourceUrl": "https://21st.dev/c/8286",
-    "author": "21st.dev community",
-    "license": "MIT (21st.dev community default)",
-    "adaptationVersion": "1"
+    "sourceUrl": "https://21st.dev/@ravikatiyar162/components/product-card-2",
+    "author": "ravikatiyar162",
+    "derivation": "source-adaptation",
+    "adaptationVersion": "2"
+  },
+  "retirement": {
+    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
+    "reviewedAt": "2026-09-18T04:05:14.514Z",
+    "evidence": "https://21st.dev/@ravikatiyar162/components/product-card-2"
   }
 }

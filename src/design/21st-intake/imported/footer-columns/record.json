@@ -1,13 +1,13 @@
 {
   "sourceId": "21st:646",
   "name": "Footer",
-  "sourceUrl": "https://21st.dev/c/646",
+  "sourceUrl": "https://21st.dev/@nevsky118/components/footer",
   "sourceType": "component",
   "dependencies": [],
   "registryDependencies": [
     "button"
   ],
-  "license": "MIT (21st.dev community default — verify before promotion)",
+  "license": "MIT",
   "attribution": "21st.dev — Footer by @unknown",
   "designTags": [],
   "capabilities": {
@@ -24,13 +24,13 @@
     "clientOnly": false
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
   "step": 10,
   "dependencyAudit": {
@@ -40,5 +40,27 @@
   "status": "promoted",
   "promotedVariants": [
     "footer:brand-social"
-  ]
+  ],
+  "author": "nevsky118",
+  "implementationId": "footer:brand-social",
+  "licenseReview": {
+    "status": "verified",
+    "license": "MIT",
+    "source": "https://21st.dev/@nevsky118/components/footer",
+    "verifiedAt": "2026-09-18T04:05:14.483Z",
+    "notes": "The component-specific 21st page lists MIT License; source identity checked with MCP get_component."
+  },
+  "archivePath": "src/design/21st-intake/archive/footer-columns",
+  "archivedAt": "2026-09-18T04:05:14.483Z",
+  "reviewEvidence": {
+    "sourceSha256": "4849a6cf225d0eb31e24264547da5d88b6d15d6207c8df3b169fbfda1a8253dd",
+    "componentSha256": "1e8896095d8258a39ceb5ae365a428a43999331df114d966236e23a378184cb7",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-18T04:05:14.483Z"
+  }
 }

@@ -1,14 +1,13 @@
 {
   "sourceId": "21st:8374",
   "name": "Pricing table",
-  "sourceUrl": "https://21st.dev/c/8374",
+  "sourceUrl": "https://21st.dev/@dgearsonu1/components/pricing-table",
   "sourceType": "component",
   "dependencies": [
     "lucide-react",
     "react"
   ],
   "registryDependencies": [],
-  "license": "MIT (21st.dev community default — verify before promotion)",
   "attribution": "21st.dev — Pricing table by @unknown",
   "designTags": [],
   "capabilities": {
@@ -33,7 +32,7 @@
     "intentReady": false,
     "portableRecipeCertified": false
   },
-  "step": 10,
+  "step": 3,
   "dependencyAudit": {
     "decisions": [
       {
@@ -49,8 +48,21 @@
     ],
     "approved": true
   },
-  "status": "promoted",
-  "promotedVariants": [
-    "pricing:feature-table"
-  ]
+  "status": "retired",
+  "promotedVariants": [],
+  "author": "dgearsonu1",
+  "implementationId": "pricing:feature-table",
+  "licenseReview": {
+    "status": "unverified",
+    "source": "https://21st.dev/@dgearsonu1/components/pricing-table",
+    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+  },
+  "archivePath": "src/design/21st-intake/archive/pricing-table",
+  "archivedAt": "2026-09-18T04:05:14.494Z",
+  "reviewEvidence": {
+    "sourceSha256": "d259f2fb28bbe8e1fe98c29490458621f1cd0773043b023d7d994014d2a986e8",
+    "componentSha256": "82e95e4c3678c7fd78ed98137fc673c7eac5913606bc9798b3f640818f8c504d",
+    "checks": [],
+    "reviewedAt": "2026-09-18T04:05:14.494Z"
+  }
 }

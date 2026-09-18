@@ -124,7 +124,8 @@ function quarantine(id, slug) {
     sourceType: 'component',
     dependencies: external,
     registryDependencies: registry,
-    license: component.license ?? 'MIT (21st.dev community default — verify before promotion)',
+    license: component.license ?? undefined,
+    licenseReview: { status: 'unverified' },
     attribution: `21st.dev — ${component.name} by @${component.author ?? 'unknown'}`,
     designTags: [],
     capabilities: detectCapabilities(source),
@@ -148,7 +149,7 @@ function quarantine(id, slug) {
   console.log(`  registry deps    : ${registry.join(', ') || '(none)'}`);
   if (rejected.length) console.log(`  REJECTED         : ${rejected.map((d) => d.dep).join(', ')}`);
   if (unknown.length) console.log(`  NEEDS REVIEW     : ${unknown.map((d) => d.dep).join(', ')}`);
-  console.log(`  promotion allowed: ${record.dependencyAudit.approved ? 'yes' : 'NO — resolve deps first'}`);
+  console.log('  promotion allowed: NO ? license review and canonical certification required');
 }
 
 function report() {
@@ -164,7 +165,7 @@ function report() {
     const state = record.implementationId
       ? `promoted -> ${record.implementationId}`
       : record.dependencyAudit?.approved
-        ? 'ready for promotion'
+        ? 'dependency audit passed; license review and canonical certification required'
         : 'blocked on dependencies';
     console.log(`${slug.padEnd(30)} ${record.sourceId.padEnd(12)} ${state}`);
   }

@@ -21,7 +21,7 @@ export function describeCompositionFailure(error: unknown, data?: unknown): Comp
     : status === 401 || status === 403 ? 'Your session could not access the Wizard composer. Sign in again and retry.'
     : status === 400 ? `The Wizard composer rejected the launch brief${fields?.length ? ': ' + fields.join(', ') : ''}.`
     : status === 429 ? 'The AI service is rate limited. Wait briefly and retry.'
-    : errorType === 'composition_catalog' ? 'AI returned choices outside the requested pages or variant catalog. Retry generation.'
+    : errorType === 'composition_catalog' ? 'AI composition did not satisfy the requested pages, original copy, or variant catalog after repair. Retry generation.'
     : errorType === 'composition_contract' ? 'AI returned an invalid composition format. Retry generation.'
     : 'The Wizard composition request failed. Please retry generation.';
   return { status, errorType, fields, message };

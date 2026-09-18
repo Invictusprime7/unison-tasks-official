@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:8757",
+    "sourceUrl": "https://21st.dev/@ravikatiyar162/components/team-section-1",
+    "author": "ravikatiyar162",
+    "derivation": "visual-reference",
+    "adaptationVersion": "2"
+  },
+  "componentId": 5941,
+  "demoId": 8757,
+  "retrievedVia": "21st MCP get_component",
+  "retrievedAt": "2026-09-18T04:04:27.435Z",
+  "sourceSha256": "ba0d8d6b3caee40912180560b37a4a29e72dd656130332b0708c3efa6ddb71de",
+  "implementation": "team:profile-cards",
+  "adaptation": "Portrait cards with name, role and biography",
+  "notes": "Original local implementation informed by the published layout. No copied-source license asserted."
+}

@@ -112,9 +112,10 @@ export function planPromotion(
   result: IntakeResult,
   target: { sectionType: string; slug: string; componentName: string },
 ): PromotionPlan {
-  if (!result.certified || !result.visualSource) {
+  const provenanceIssues = assertProvenance(result.record);
+  if (!result.certified || !result.visualSource || provenanceIssues.length) {
     throw new Error(
-      `[21st-intake] "${result.record.sourceId}" is not certified: ${result.blockers.join('; ') || 'unknown blocker'}`,
+      `[21st-intake] "${result.record.sourceId}" is not certified: ${[...result.blockers, ...provenanceIssues].join('; ') || 'unknown blocker'}`,
     );
   }
   return {

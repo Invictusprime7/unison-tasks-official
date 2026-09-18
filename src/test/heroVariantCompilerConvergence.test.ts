@@ -8,7 +8,8 @@ import portableRecipes from '@/sections/recipes/stylexRecipes.generated.json';
 describe('registered Hero compiler convergence', () => {
   it.each(getVariantsForSection('hero'))('projects portable VFS metadata for $id', variant => {
     const implementation = getDesignImplementation(variant.id)!;
-    expect(implementation.vfs).toEqual({ mode: 'portable-recipe' });
+    expect(implementation.vfs).toEqual(variant.vfs);
+    expect(implementation.vfs).toMatchObject({ mode: 'portable-recipe' });
     expect(implementation.vfs).toEqual(variant.vfs);
   });
 

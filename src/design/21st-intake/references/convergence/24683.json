@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:24683",
+    "sourceUrl": "https://21st.dev/@motiondotdev/components/motion-image-reveal-slider",
+    "author": "motiondotdev",
+    "derivation": "visual-reference",
+    "adaptationVersion": "2"
+  },
+  "componentId": 11934,
+  "demoId": 24683,
+  "retrievedVia": "21st MCP get_component",
+  "retrievedAt": "2026-09-18T04:04:27.437Z",
+  "sourceSha256": "6261debac447bd87eac7223aca877f436ed32479f654188c5ed138e09d745163",
+  "implementation": "before-after:reveal-panel",
+  "adaptation": "Keyboard-operable image comparison with selectable results",
+  "notes": "Original local implementation informed by the published layout. No copied-source license asserted."
+}

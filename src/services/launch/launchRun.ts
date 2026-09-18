@@ -206,7 +206,6 @@ export interface LaunchRun {
  */
 const AUTHORSHIP_STAGES: ReadonlySet<LaunchStageName> = new Set<LaunchStageName>([
   'seed',
-  'enrich',
   'preflight',
 ]);
 
@@ -299,6 +298,7 @@ export function createLaunchRun(options: LaunchRunOptions = {}): LaunchRun {
           message: launchErrorMessage(error),
           error,
         });
+      if (controller.signal.aborted) { setStatus(name, 'failed'); throw stageError; }
       if (classifyLaunchError(error) === 'fatal') {
         fatal = launchErrorMessage(error);
         setStatus(name, 'failed');

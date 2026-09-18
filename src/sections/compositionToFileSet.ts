@@ -42,7 +42,7 @@ import {
   type ResolvedPageComposition,
 } from '@/platform/core/resolvedComposition';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
-import { getLayoutForVariantId, getVariantById } from '@/sections/variants';
+import { getGenerationVariantsForSection, getLayoutForVariantId, getVariantById } from '@/sections/variants';
 import type { VariantId } from '@/sections/variants';
 import heroPageIntroSource from '@/sections/variants/hero/HeroPageIntro.tsx?raw';
 import stylexRecipes from './recipes/stylexRecipes.generated.json';
@@ -618,7 +618,15 @@ function applyDesignVariants(
         routeVariant?.sectionType === section.type ? routeVariant.id :
         section.sourceSectionId && section.type !== 'hero' ? activeVariants?.[section.sourceSectionId] : undefined
       );
-      const activeVariant = activeVariantId ? getVariantById(activeVariantId) : undefined;
+      let activeVariant = activeVariantId ? getVariantById(activeVariantId) : undefined;
+      if (designIntervention?.compositionPlan && !activeVariants?.[section.id]) {
+        const roleEligible = getGenerationVariantsForSection(section.type, pack, template.pageRole || 'home');
+        // Preserved business sections may outlive a role recommendation; keep
+        // their content using a certified implementation of the same family.
+        const eligible = roleEligible.length ? roleEligible : getGenerationVariantsForSection(section.type, pack);
+        if (!eligible.length) throw new Error('No certified 21st implementation for ' + section.type);
+        if (!activeVariant || !eligible.some(candidate => candidate.id === activeVariant!.id)) activeVariant = eligible[0];
+      }
       if (!activeVariant && section.type === 'hero' && section.sourceSectionId && section.variantId) {
         const layout = getLayoutForVariantId(section.variantId);
         return { ...section, props: { ...section.props, ...(layout ? { layout } : {}) } as typeof section.props };

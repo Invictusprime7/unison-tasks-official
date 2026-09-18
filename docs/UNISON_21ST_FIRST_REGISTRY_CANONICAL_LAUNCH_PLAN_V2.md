@@ -1,5 +1,13 @@
 # UNISON — 21st-First Registry Reunification, Visual Composition & Canonical Launch Plan
 
+## Current Wizard AI policy ? user clarification, 2026-09-17
+
+Contextual AI composition is required for new Wizard generation. A missing, invalid or incomplete composition stops before Stage 4b and reports the specific failure. Do not replace it with an AI-disabled launch. The template-free Wizard remains unchanged.
+
+Stage 4b compiles and validates the accepted AI plan using canonical registered implementations. A successful plan does not skip Lane B. Lane B receives that plan as bounded context and may propose registered page-body TSX; only validation, canonical merge, preflight and commitMutation may promote it. Rejected or unavailable refinements preserve the already validated AI-composed pages. Global theme, routes, protected foundation files, intents and commit ownership stay canonical.
+
+This user clarification overrides V3 sections 3/5/24/28 where they propose optional composition or deterministic launch without AI. V3 is retained as a reference plan; its embedded execution prompt is not an independent instruction. Refinement can be disabled through the launch-service policy for diagnostics; composition cannot.
+
 **Version:** 2.0  
 **Status:** Canonical implementation plan / VS Code AI coding prompt  
 **Revises:** `UNISON_REGISTRY_VISUAL_COMPOSITION_CANONICAL_LAUNCH_PLAN.md`  
@@ -2847,7 +2855,7 @@ not create or publish a project.
 
 ## 2026-09-17 ? structured composition and popular-source intake
 
-Implemented the first structured AI composition pass before canonical compilation. AI selects existing section-family order and eligible local variant IDs, preferring suitable 21st sources. Strict validation checks the pack, page role, family and portable implementation. The compiler retains every business section and owns navigation, hero/footer placement, themes, intents and files. Accepted choices persist in the design intervention and snapshot; accepted plans skip subsequent source rewriting. Invalid or unavailable responses use the existing starter path.
+Implemented the first structured AI composition pass before canonical compilation. AI selects existing section-family order and eligible local variant IDs, preferring suitable 21st sources. Strict validation checks the pack, page role, family and portable implementation. The compiler retains every business section and owns navigation, hero/footer placement, themes, intents and files. Historical first iteration: accepted choices persisted in the design intervention and snapshot and skipped later refinement. The current sequencing below supersedes that skip. Historical behavior (superseded): invalid or unavailable responses used a starter path. New launches now require a valid AI composition.
 
 This phase does not remove templates: they remain semantic content baselines and fallback. Arbitrary section insertion/removal and replacing the Wizard template-selection step remain follow-up work. The new wizard-composition backend mode is implemented locally and requires deployment for live use.
 

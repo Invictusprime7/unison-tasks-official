@@ -1,7 +1,7 @@
 import { createIndustryStarterSection } from './templates/industryDefaultRegistry';
 import { z } from 'zod';
 import type { SectionType, TemplateComposition } from '@/sections/types';
-import { getVariantById, familyForSection } from '@/sections/variants/registry';
+import { getVariantById, getGenerationVariantsForSection } from '@/sections/variants/registry';
 import { ART_DIRECTION_PACKS, type ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
 import type { VariantId } from '@/sections/variants/types';
 
@@ -46,8 +46,8 @@ export function validateAIPageComposition(value: unknown, packId: ArtDirectionPa
       const variant = getVariantById(id as VariantId);
       if (!variant || variant.sectionType !== type || variant.vfs?.mode !== 'portable-recipe' || variant.generationStatus === 'legacy') return null;
       if (variant.pageRoles?.length && !variant.pageRoles.includes(page.role)) return null;
-      const allowed = familyForSection(ART_DIRECTION_PACKS[packId], variant.sectionType);
-      if (allowed.length && !allowed.includes(variant.id)) return null;
+      const allowed = getGenerationVariantsForSection(variant.sectionType, ART_DIRECTION_PACKS[packId], page.role).map(candidate => candidate.id);
+      if (!allowed.includes(variant.id)) return null;
     }
   }
   return plan;

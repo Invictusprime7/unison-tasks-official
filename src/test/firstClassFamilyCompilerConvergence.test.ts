@@ -41,7 +41,8 @@ describe.each(FAMILIES)('first-class $sectionType family', ({ sectionType, compo
 
   it.each(variants)('projects portable VFS metadata for $id', variant => {
     const implementation = getDesignImplementation(variant.id)!;
-    expect(implementation.vfs).toEqual({ mode: 'portable-recipe' });
+    expect(implementation.vfs).toEqual(variant.vfs);
+    expect(implementation.vfs).toMatchObject({ mode: 'portable-recipe' });
     expect(implementation.vfs).toEqual(variant.vfs);
   });
 

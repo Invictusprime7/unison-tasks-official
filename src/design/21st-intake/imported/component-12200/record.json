@@ -1,7 +1,7 @@
 {
   "sourceId": "21st:12200",
   "name": "PrismaHero",
-  "sourceUrl": "https://21st.dev/c/12200",
+  "sourceUrl": "https://21st.dev/@rahil1202/components/prisma-hero",
   "sourceType": "component",
   "dependencies": [
     "framer-motion",
@@ -9,7 +9,6 @@
     "react"
   ],
   "registryDependencies": [],
-  "license": "MIT (21st.dev community default — verify before promotion)",
   "attribution": "21st.dev — PrismaHero by @unknown",
   "designTags": [],
   "capabilities": {
@@ -34,7 +33,7 @@
     "intentReady": false,
     "portableRecipeCertified": false
   },
-  "step": 10,
+  "step": 3,
   "dependencyAudit": {
     "decisions": [
       {
@@ -55,8 +54,21 @@
     ],
     "approved": true
   },
-  "status": "promoted",
-  "promotedVariants": [
-    "hero:prisma-cinematic"
-  ]
+  "status": "retired",
+  "promotedVariants": [],
+  "author": "rahil1202",
+  "implementationId": "hero:prisma-cinematic",
+  "licenseReview": {
+    "status": "unverified",
+    "source": "https://21st.dev/@rahil1202/components/prisma-hero",
+    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+  },
+  "archivePath": "src/design/21st-intake/archive/component-12200",
+  "archivedAt": "2026-09-18T04:05:14.502Z",
+  "reviewEvidence": {
+    "sourceSha256": "0fddd24c3da4271f7b14088fee2f2ff68fa10354f8fcbeb31c96d39e18058550",
+    "componentSha256": "39ad358e642d398bef30036e68ade58b489c8d1ada6b4dc83af3b0a268b9dfdb",
+    "checks": [],
+    "reviewedAt": "2026-09-18T04:05:14.502Z"
+  }
 }

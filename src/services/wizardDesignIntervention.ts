@@ -1,7 +1,7 @@
 import { validateAIPageComposition, COMPOSITION_ROLES, type AIPageCompositionPlan } from '@/sections/aiPageComposition';
 import type { BusinessModel, IndustryOverlay } from '@/types/playground';
 import { getCompositionById } from '@/sections/templates';
-import { getVariantById, getVariantIdForLayout, getVariantsForSection, resolveExperienceRequirement, familyForSection } from '@/sections/variants';
+import { getGenerationVariantsForSection, getVariantById, getVariantIdForLayout, getVariantsForSection, resolveExperienceRequirement, familyForSection } from '@/sections/variants';
 import type { ActiveVariantMap, VariantId } from '@/sections/variants';
 import {
   childSeed,
@@ -322,17 +322,8 @@ function buildActiveVariants(templateId: string | null | undefined, seed: string
   if (!composition) return {};
 
   return Object.fromEntries(composition.sections.flatMap((section) => {
-    const compatible = packId ? familyForSection(ART_DIRECTION_PACKS[packId], section.type) : undefined;
-    const available = getVariantsForSection(section.type).filter(variant =>
-      !packId || ((!compatible?.length || compatible.includes(variant.id)) &&
-        variant.generationStatus !== 'legacy' &&
-        (!variant.pageRoles?.length || variant.pageRoles.includes('home'))));
-    // Fresh launches prefer certified 21st-derived implementations within the
-    // selected pack. Existing serialized selections remain authoritative.
-    const sourced = packId ? available.filter(variant =>
-      variant.source?.origin === '21st' && variant.vfs?.certification === 'approved' &&
-      variant.generationStatus === 'preferred') : [];
-    const candidates = sourced.length ? sourced : available;
+    const candidates = getGenerationVariantsForSection(section.type, packId ? ART_DIRECTION_PACKS[packId] : undefined, 'home');
+    if (!candidates.length) throw new Error('No certified 21st implementation for ' + section.type);
     const score = (id: string) => {
       const implementation = getDesignImplementation(id);
       return (implementation?.vfs?.mode === 'portable-recipe' ? 4 : 0)

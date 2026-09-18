@@ -1,7 +1,7 @@
 {
   "sourceId": "21st:8137",
   "name": "Floating Header",
-  "sourceUrl": "https://21st.dev/c/8137",
+  "sourceUrl": "https://21st.dev/@efferd/components/floating-header",
   "sourceType": "component",
   "dependencies": [
     "lucide-react",
@@ -11,7 +11,6 @@
     "button",
     "sheet"
   ],
-  "license": "MIT (21st.dev community default — verify before promotion)",
   "attribution": "21st.dev — Floating Header by @unknown",
   "designTags": [],
   "capabilities": {
@@ -36,7 +35,7 @@
     "intentReady": false,
     "portableRecipeCertified": false
   },
-  "step": 10,
+  "step": 3,
   "dependencyAudit": {
     "decisions": [
       {
@@ -52,8 +51,21 @@
     ],
     "approved": true
   },
-  "status": "promoted",
-  "promotedVariants": [
-    "navbar:floating-pill"
-  ]
+  "status": "retired",
+  "promotedVariants": [],
+  "author": "efferd",
+  "implementationId": "navbar:floating-pill",
+  "licenseReview": {
+    "status": "unverified",
+    "source": "https://21st.dev/@efferd/components/floating-header",
+    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+  },
+  "archivePath": "src/design/21st-intake/archive/sticky-navbar",
+  "archivedAt": "2026-09-18T04:05:14.498Z",
+  "reviewEvidence": {
+    "sourceSha256": "e86eb33c4fee861b93ed25d1701024e7405fffee17463d873f3449cef18a4436",
+    "componentSha256": "72a48a95d76beff99ee64f9e389423ccc0264854e1c2fb8eacaf01148f2fa97f",
+    "checks": [],
+    "reviewedAt": "2026-09-18T04:05:14.498Z"
+  }
 }

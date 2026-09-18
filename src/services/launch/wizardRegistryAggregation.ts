@@ -16,7 +16,7 @@
 import { getAllSections } from '@/sections/registry';
 import {
   VARIANT_REGISTRY,
-  familyForSection,
+  getGenerationVariantsForSection,
   resolveArtDirectionPack,
 } from '@/sections/variants';
 import type { SectionType } from '@/sections/types';
@@ -71,10 +71,19 @@ export interface WizardRegistryImplementationSummary {
   pageRoles: readonly string[];
   vocabularyRefs: ReturnType<typeof getImplementationVocabularyRefs>;
   radixPrimitives: readonly string[];
+  /** Derived from the artifact owner; absent on older persisted contexts. */
+  artifactContract?: {
+    artifactId: string;
+    dataSourceKind: string;
+    supportedSlots: readonly string[];
+    intentBindings: readonly string[];
+    aiEditScope: string;
+  };
 }
 
 export interface WizardAggregatedRegistryContext {
   version: typeof WIZARD_REGISTRY_CONTEXT_VERSION | '1.0';
+  generationPolicy?: '21st-only';
   generatedAt: string;
   industry: string;
   templateId: string;
@@ -123,10 +132,8 @@ export function buildWizardAggregatedRegistryContext(options: {
     Object.entries(allSections) as Array<[SectionType, (typeof allSections)[SectionType]]>
   ).map(([type, entry]) => {
     const artifact = getArtifact(type);
-    const packVariants = pack ? familyForSection(pack, type) : [];
-    const executable = (VARIANT_REGISTRY[type] ?? []).filter(variant =>
-      variant.vfs?.mode === 'portable-recipe' && variant.generationStatus !== 'legacy');
-    const allowedVariantIds = executable.filter(variant => !packVariants.length || packVariants.includes(variant.id)).map(variant => variant.id);
+    const executable = getGenerationVariantsForSection(type, pack);
+    const allowedVariantIds = executable.map(variant => variant.id);
 
     return {
       type,
@@ -168,6 +175,7 @@ export function buildWizardAggregatedRegistryContext(options: {
 
   return {
     version: WIZARD_REGISTRY_CONTEXT_VERSION,
+    generationPolicy: '21st-only',
     generatedAt: new Date().toISOString(),
     industry: options.industry,
     templateId: options.templateId,
@@ -182,6 +190,7 @@ export function buildWizardAggregatedRegistryContext(options: {
     sections,
     implementations: sections.flatMap(section => section.allowedVariantIds.map(id => {
       const implementation = getDesignImplementation(id)!;
+      const artifact = getArtifact(section.type);
       return {
         id, sectionType: section.type, name: implementation.name,
         certification: implementation.vfs?.certification === 'approved' ? 'approved' as const : 'portable' as const,
@@ -189,6 +198,13 @@ export function buildWizardAggregatedRegistryContext(options: {
         pageRoles: implementation.pageRoles ?? [],
         vocabularyRefs: getImplementationVocabularyRefs(implementation),
         radixPrimitives: implementation.radixPrimitives ?? [],
+        artifactContract: artifact ? {
+          artifactId: artifact.artifactId,
+          dataSourceKind: artifact.dataSource.kind,
+          supportedSlots: [...artifact.supportedSlots],
+          intentBindings: [...artifact.intentBindings],
+          aiEditScope: artifact.aiEditScope,
+        } : undefined,
       };
     })),
     artifacts,

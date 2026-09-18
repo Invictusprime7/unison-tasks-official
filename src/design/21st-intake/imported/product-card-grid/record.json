@@ -1,14 +1,13 @@
 {
   "sourceId": "21st:8286",
   "name": "Product Card",
-  "sourceUrl": "https://21st.dev/c/8286",
+  "sourceUrl": "https://21st.dev/@ravikatiyar162/components/product-card-2",
   "sourceType": "component",
   "dependencies": [
     "framer-motion",
     "react"
   ],
   "registryDependencies": [],
-  "license": "MIT (21st.dev community default — verify before promotion)",
   "attribution": "21st.dev — Product Card by @unknown",
   "designTags": [],
   "capabilities": {
@@ -33,7 +32,7 @@
     "intentReady": false,
     "portableRecipeCertified": false
   },
-  "step": 10,
+  "step": 3,
   "dependencyAudit": {
     "decisions": [
       {
@@ -49,8 +48,21 @@
     ],
     "approved": true
   },
-  "status": "promoted",
-  "promotedVariants": [
-    "services:product-cards"
-  ]
+  "status": "retired",
+  "promotedVariants": [],
+  "author": "ravikatiyar162",
+  "implementationId": "services:product-cards",
+  "licenseReview": {
+    "status": "unverified",
+    "source": "https://21st.dev/@ravikatiyar162/components/product-card-2",
+    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+  },
+  "archivePath": "src/design/21st-intake/archive/product-card-grid",
+  "archivedAt": "2026-09-18T04:05:14.514Z",
+  "reviewEvidence": {
+    "sourceSha256": "0ea06cd365762dcae4ad402f65eef0ae15afdaaa08346ca33681294069dcdfd4",
+    "componentSha256": "f47d2b49ea5cbe179f51a35f6fefde5640b786e232d48db4badc09d116b3d588",
+    "checks": [],
+    "reviewedAt": "2026-09-18T04:05:14.514Z"
+  }
 }

@@ -91,9 +91,13 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).toContain('requiredCapabilities: resolveExperienceRequirement(');
     expect(source).toContain('webgl: siteBundleSnapshot.meta.designIntervention?.envelope?.webgl');
     expect(source).not.toContain('enrichWizardPagesWithAI');
-    expect(source).toContain("mode: 'wizard-canonical-enrichment'");
-    expect(source).toContain('buildLaneBVfsContext(enrichedVfsFiles)');
-    expect(source).toContain('retaining deterministic pages');
+    expect(source).toContain('enrichWizardPageBatch({');
+    expect(source).toContain('request: batchRequest, files: enrichedVfsFiles');
+    expect(source).toContain('compositionPlan: plan.selections.compositionPlan');
+    expect(source).not.toContain('if (plan.selections.compositionPlan) return;');
+    expect(source).toContain('if (input.ai?.laneB === false) return;');
+    expect(source).toContain('if (!compositionPlan) throw new LaunchFatalError');
+    expect(source).not.toContain('ai?.composition');
     expect(stage4bResult).toBeLessThan(canonicalPages);
     expect(canonicalPages).toBeLessThan(publicProfile);
     expect(publicProfile).toBeLessThan(bindingGuide);
@@ -182,4 +186,12 @@ describe('launch orchestrator canonical handoff', () => {
     expect(topology).toBeLessThan(preview);
     expect(preview).toBeLessThan(playground);
   });
+});
+// The accepted AI plan must survive both initial compile and final handoff seed writes.
+it('stamps the accepted composition into the seed before Stage 4b', () => {
+  const source = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
+  expect(source.indexOf('wizardSeedFile.compositionPlan = compositionPlan')).toBeGreaterThan(source.indexOf('if (!compositionPlan) throw'));
+  expect(source.indexOf('wizardSeedFile.compositionPlan = compositionPlan')).toBeLessThan(source.indexOf('const result = await runWizardStage4b('));
+  expect(source).toContain('...wizardSeedFile,');
+  expect(source).toContain('wizardSeed: contextualWizardSeedFile');
 });

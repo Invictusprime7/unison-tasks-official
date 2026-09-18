@@ -65,6 +65,18 @@ describe('Lane B proposal validation', () => {
     expect(validate(proposal)).toMatchObject({ valid: true, violations: [] });
   });
 
+  it('accepts modern JSX, arrow functions, and local geometry', () => {
+    const proposal = { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], content: 'export default function Home(){ const label = () => "Contact"; return <main style={{minHeight:"70vh",padding:"1rem"}}><h1>Studio</h1><button data-ut-intent="contact.submit">{label()}</button></main>; }' }] };
+    expect(validate(proposal)).toMatchObject({ valid: true, violations: [] });
+  });
+  it('rejects malformed JSX even when its bracket counts balance', () => {
+    const proposal = { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], content: 'export default function Home(){ return <main><h1>Studio</h1><button data-ut-intent="contact.submit">Contact</button></section>; }' }] };
+    expect(validate(proposal).violations.some(value => value.includes('not valid TSX'))).toBe(true);
+  });
+  it.each(['#fff', 'rgb(20, 20, 20)', ':root { --primary: 0 0% 0%; }', 'body { padding: 0; }'])('rejects palette or global styles: %s', style => {
+    const proposal = { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], content: validProposal.fileOps[0].content.replace('<main>', '<main><style>{' + JSON.stringify(style) + '}</style>') }] };
+    expect(validate(proposal).valid).toBe(false);
+  });
   it('still rejects stale snapshot identity after schema validation', () => {
     expect(validate({ ...validProposal, snapshotId: 'stale' }).violations)
       .toContain('Snapshot mismatch: proposal has stale, expected snapshot.');

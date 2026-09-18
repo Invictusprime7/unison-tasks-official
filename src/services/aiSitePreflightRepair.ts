@@ -109,7 +109,7 @@ function resolveParser() {
   return cachedParser;
 }
 
-function tryParse(source: string): { ok: true } | { ok: false; error: string } {
+export function tryParse(source: string): { ok: true } | { ok: false; error: string } {
   const key = cacheKey(source);
   const cached = parseCache.get(key);
   if (cached !== undefined) {

@@ -1,0 +1,19 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:1414",
+    "sourceUrl": "https://21st.dev/@tommyjepsen/components/call-to-action",
+    "author": "tommyjepsen",
+    "derivation": "source-adaptation",
+    "license": "MIT",
+    "adaptationVersion": "2"
+  },
+  "componentId": 708,
+  "demoId": 1414,
+  "retrievedVia": "21st MCP get_component",
+  "retrievedAt": "2026-09-18T04:04:27.433Z",
+  "sourceSha256": "14bf111cd6a940e36e514e6b2ade9a7699de61c2797f5d67717b47c3c5175126",
+  "implementation": "cta:inset-panel",
+  "adaptation": "Centered conversion message and actions inside a muted inset panel",
+  "notes": "Component page explicitly lists MIT. Demo media and copy excluded."
+}

@@ -2,7 +2,7 @@ import { describeCompositionFailure, type CompositionFailureDetails } from './co
 import { runBuilderTurn } from './builderBrainClient';
 import { buildWizardDesignIntervention } from './wizardDesignIntervention';
 import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
-import { VARIANT_REGISTRY, familyForSection } from '@/sections/variants/registry';
+import { VARIANT_REGISTRY, getGenerationVariantsForSection } from '@/sections/variants/registry';
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
 import type { WizardSelections } from '@/types/playground';
 
@@ -17,16 +17,14 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
   const design = buildWizardDesignIntervention({ ...selections, themePresetId: selections.themePresetId || 'modern', projectId: selections.businessId });
   const pack = ART_DIRECTION_PACKS[design.artDirectionPackId];
   const roles = COMPOSITION_ROLES.filter(role => role === 'home' || selections.requestedPages?.includes(role));
-  const variants = Object.values(VARIANT_REGISTRY).flat().filter(variant => {
-    const family = familyForSection(pack, variant.sectionType);
-    return variant.vfs?.mode === 'portable-recipe' && variant.generationStatus !== 'legacy' &&
-      (!family.length || family.includes(variant.id)) && (!variant.pageRoles?.length || roles.some(role => variant.pageRoles!.includes(role)));
-  }).map(variant => ({ id: variant.id, family: variant.sectionType, description: variant.description, tags: variant.tags,
-    pageRoles: variant.pageRoles ?? roles, preferredSource: variant.source?.origin === '21st', certification: variant.vfs?.certification ?? 'portable' }));
+  const variants = [...new Map(Object.keys(VARIANT_REGISTRY).flatMap(type => roles.flatMap(role =>
+    getGenerationVariantsForSection(type as import('@/sections/types').SectionType, pack, role))).map(variant => [variant.id, variant])).values()]
+    .map(variant => ({ id: variant.id, family: variant.sectionType, description: variant.description, tags: variant.tags,
+      pageRoles: roles.filter(role => getGenerationVariantsForSection(variant.sectionType, pack, role).some(eligible => eligible.id === variant.id)), preferredSource: true, certification: variant.vfs!.certification }));
   try {
     const response = await invoke({ mode: 'wizard-site-composition', gatewayOptions: { timeoutMs: 35000, maxTokens: 6000, reasoningEffort: 'none' }, messages: [{ role: 'user', content: JSON.stringify({
       task: 'Compose every requested page with original business-specific copy, section order and local variants. Prefer certified 21st-derived options when suitable. Preserve page roles and all business content. No source code or new routes.',
-      designGuidance: 'For cinematic or editorial home pages, prefer hero:prisma-cinematic when listed and relevant: oversized word-reveal headline, rounded immersive media, gradient scrim and asymmetric side copy. Use existing business assets and canonical navigation; never copy demo URLs, branding or placeholder links.',
+      designGuidance: 'Compose only the listed certified 21st-derived implementations. Use industry purpose, page role, existing business assets and canonical navigation to vary each site. Never copy demo URLs, branding or placeholder links.',
       launchSeed: selections.wizardSeedId, vision: selections.visionPrompt, needs: selections.secondaryGoals,
       businessName: selections.businessName, industry: selections.industryOverlay, goal: selections.primaryGoal,
       roles, pack: pack.id, variants,

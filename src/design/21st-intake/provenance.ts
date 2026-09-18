@@ -1,3 +1,4 @@
+import { validateSourceProvenance } from './provenanceValidation.mjs';
 /**
  * 21st Intake — Provenance record (M3).
  *
@@ -41,6 +42,8 @@ export interface TwentyFirstAdaptation {
 
 export interface TwentyFirstComponentRecord {
   sourceId: string;
+  status?: 'promoted' | 'retired';
+  archivePath?: string;
 
   name: string;
   author?: string;
@@ -52,6 +55,13 @@ export interface TwentyFirstComponentRecord {
   registryDependencies: string[];
 
   license?: string;
+  licenseReview?: {
+    status: 'unverified' | 'verified' | 'rejected';
+    license?: string;
+    source?: string;
+    verifiedAt?: string;
+    notes?: string;
+  };
   attribution?: string;
 
   designTags: string[];
@@ -102,18 +112,14 @@ export function createIntakeRecord(
     compatibility: { react19: false, tailwind3: false, vite: false, clientOnly: false },
     adaptation: { ...EMPTY_ADAPTATION },
     step: 2,
+    licenseReview: { status: 'unverified' },
     ...input,
   };
 }
 
 /** A record is only usable as provenance when source identity is complete. */
 export function assertProvenance(record: TwentyFirstComponentRecord): string[] {
-  const issues: string[] = [];
-  if (!record.sourceId?.trim()) issues.push('sourceId is required');
-  if (!record.name?.trim()) issues.push('name is required');
-  if (!record.sourceUrl?.trim()) issues.push('sourceUrl is required for 21st provenance');
-  if (!record.license?.trim()) issues.push('license must be reviewed and recorded');
-  return issues;
+  return validateSourceProvenance(record);
 }
 
 export function toVisualSourceMetadata(

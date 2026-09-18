@@ -1,5 +1,13 @@
 # Deterministic AI Design Execution Plan
 
+## Current Wizard AI policy ? user clarification, 2026-09-17
+
+Contextual AI composition is required for new Wizard generation. A missing, invalid or incomplete composition stops before Stage 4b and reports the specific failure. Do not replace it with an AI-disabled launch. The template-free Wizard remains unchanged.
+
+Stage 4b compiles and validates the accepted AI plan using canonical registered implementations. A successful plan does not skip Lane B. Lane B receives that plan as bounded context and may propose registered page-body TSX; only validation, canonical merge, preflight and commitMutation may promote it. Rejected or unavailable refinements preserve the already validated AI-composed pages. Global theme, routes, protected foundation files, intents and commit ownership stay canonical.
+
+This user clarification overrides V3 sections 3/5/24/28 where they propose optional composition or deterministic launch without AI. V3 is retained as a reference plan; its embedded execution prompt is not an independent instruction. Refinement can be disabled through the launch-service policy for diagnostics; composition cannot.
+
 This plan operationalizes the Unison Deterministic AI Design Guidebook Version
 1 against the current repository. It supersedes any plan that lets AI replace
 Launcher page files, treats a registry count as implementation completion, or
@@ -35,7 +43,7 @@ The following rules apply to every phase:
    canonical round-trip evidence for every accepted design asset.
 8. Add regression and closure tests in the same change as implementation.
 9. Stop on an architectural conflict instead of adding a parallel path.
-10. Keep Launcher fully functional with AI disabled or unavailable.
+10. Require a validated contextual AI composition for new Wizard launches; preserve that compiled result when optional refinement is unavailable.
 
 ## 1.1 21st Design Source Policy
 
@@ -120,7 +128,7 @@ applicable with a reason. An unverified requirement is not a passing gate.
   registries rather than an independent visual inventory.
 - Fourteen premium section families have at least three registered variants.
 - Preview and Playground are hydrated from committed launch artifacts.
-- The local Launcher does not call AI to author or replace page VFS.
+- The Launcher accepts required AI composition plans and validated Lane B page-body candidates; AI never owns canonical VFS.
 
 ### Open gaps that control sequencing
 
@@ -209,7 +217,7 @@ Phase 0/1 and Gallery closure remain open.
 The Canonical Experience Capability Implementation Plan is adopted as an
 extension of these phases, not a replacement pipeline. Its Lane B page-authoring
 instructions are superseded by this guidebook: registered implementations and
-the canonical compiler author pages; optional AI proposes structured edits only.
+the canonical compiler emits pages from required AI composition; Lane B may propose bounded candidate page-body edits.
 Stage 4b owns global theme token values and the existing snapshot-owned
 `/src/unison/ui/experience/*` foundation remains the implementation root. Lane
 B owns page-local material expression by composing those tokens and primitives;
@@ -743,7 +751,7 @@ gates remain open. Phase 0 and Phase 1 are not closed.
 - Focused Launcher, topology, Stage 4b, snapshot, and handoff tests pass.
 - Full Vitest suite, type-check, ESLint, architecture lints, Edge tests, and
   production build pass.
-- No Launcher source calls a model or consumes AI-authored page files.
+- AI candidates reach canonical files only through validation, canonical merge, preflight and commitMutation.
 - Authority sidecars truthfully identify the canonical compiler.
 - Existing persisted authority format remains readable during migration.
 - Remote deployment, if performed, matches reviewed local behavior.
@@ -1309,8 +1317,7 @@ registry state, and recorded AI ranking. Visual swaps must preserve artifact
 identity, required slots, business bindings, and intents. Runtime/import/export
 validation must reject incompatible recipes before canonical acceptance.
 
-**Acceptance:** AI-disabled and AI-failed launches produce the complete
-deterministic site; every accepted operation survives canonical commit, reload,
+**Acceptance:** New Wizard launches require a valid AI composition. Failed refinements preserve the compiled AI-composed site; every accepted operation survives canonical commit, reload,
 Preview, Playground hydration, and selected export constraints.
 
 **Removal gate:** No compatibility AI route may be connected to Launcher until
@@ -1430,7 +1437,7 @@ not create or publish a project.
 
 ## 2026-09-17 ? structured composition and popular-source intake
 
-Implemented the first structured AI composition pass before canonical compilation. AI selects existing section-family order and eligible local variant IDs, preferring suitable 21st sources. Strict validation checks the pack, page role, family and portable implementation. The compiler retains every business section and owns navigation, hero/footer placement, themes, intents and files. Accepted choices persist in the design intervention and snapshot; accepted plans skip subsequent source rewriting. Invalid or unavailable responses use the existing starter path.
+Implemented the first structured AI composition pass before canonical compilation. AI selects existing section-family order and eligible local variant IDs, preferring suitable 21st sources. Strict validation checks the pack, page role, family and portable implementation. The compiler retains every business section and owns navigation, hero/footer placement, themes, intents and files. Historical first iteration: accepted choices persisted in the design intervention and snapshot and skipped later refinement. The current sequencing below supersedes that skip. Historical behavior (superseded): invalid or unavailable responses used a starter path. New launches now require a valid AI composition.
 
 This phase does not remove templates: they remain semantic content baselines and fallback. Arbitrary section insertion/removal and replacing the Wizard template-selection step remain follow-up work. The new wizard-composition backend mode is implemented locally and requires deployment for live use.
 

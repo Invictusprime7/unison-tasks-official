@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   createLaunchRun,
   classifyLaunchError,
@@ -50,18 +50,28 @@ describe('launchRun', () => {
     expect(report.stack).toContain('launchRun.test.ts');
   });
 
-  it('never degrades the deterministic enrichment stage', async () => {
+  it('preserves compiled pages when optional enrichment fails', async () => {
     const run = createLaunchRun();
     await expect(run.stage('enrich', async () => {
       throw new Error('deterministic design finalization failed');
     }, {
       fallback: () => 'seed-files',
-    })).rejects.toSatisfy((error: unknown) => isLaunchFatalError(error));
+    })).resolves.toBe('seed-files');
 
-    expect(run.snapshot().stages.find((stage) => stage.name === 'enrich')?.status).toBe('failed');
-    expect(run.snapshot().degradations).toHaveLength(0);
+    expect(run.snapshot().stages.find((stage) => stage.name === 'enrich')?.status).toBe('degraded');
+    expect(run.snapshot().degradations).toHaveLength(1);
+    expect(run.snapshot().fatal).toBeNull();
   });
 
+  it('does not convert user cancellation into successful refinement fallback', async () => {
+    const run = createLaunchRun();
+    const fallback = vi.fn();
+    const pending = run.stage('enrich', signal => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))), { fallback });
+    run.cancel();
+    await expect(pending).rejects.toThrow();
+    expect(fallback).not.toHaveBeenCalled();
+    expect(run.snapshot().cancelled).toBe(true);
+  });
   it('redacts secrets from persisted diagnostic fields', () => {
     const cause = Object.assign(new Error('Request failed token=top-secret'), {
       details: { authorization: 'Bearer private-value', blockedFiles: ['/src/App.tsx'] },

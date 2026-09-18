@@ -754,7 +754,8 @@ export function tryComposeTopologyPageFiles(
       enhancementCanvasBudget: pageIndex < 0 ? 0 : Math.max(0,
         Math.min(maxCanvasRootsPerPage, maxHeavyScenesPerSite - pageIndex * maxCanvasRootsPerPage)),
     });
-  } catch {
+  } catch (error) {
+    if (options?.designIntervention?.compositionPlan) throw error;
     return null;
   }
 }

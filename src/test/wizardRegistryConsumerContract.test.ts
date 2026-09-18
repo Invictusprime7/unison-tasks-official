@@ -1,3 +1,4 @@
+import { getArtifact } from '@/platform/core/artifactRegistry';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   buildGeneratedUiFoundation, buildGeneratedUiFoundationDirective,
@@ -119,5 +120,28 @@ describe('canonical registry consumers', () => {
       if (previous === undefined) delete variant.vocabularyRefs; else variant.vocabularyRefs = previous;
       resetDesignImplementationIndex();
     }
+  });
+});
+
+describe('v2 resolved implementation contracts', () => {
+  it('derives each eligible implementation contract from the artifact owner', () => {
+    const registry = buildWizardAggregatedRegistryContext(selection);
+    expect(registry.implementations?.length).toBeGreaterThan(0);
+    for (const implementation of registry.implementations ?? []) {
+      const artifact = getArtifact(implementation.sectionType);
+      expect(implementation.artifactContract).toEqual(artifact ? {
+        artifactId: artifact.artifactId, dataSourceKind: artifact.dataSource.kind,
+        supportedSlots: artifact.supportedSlots, intentBindings: artifact.intentBindings, aiEditScope: artifact.aiEditScope,
+      } : undefined);
+      if (artifact) expect(implementation.artifactContract?.supportedSlots).not.toBe(artifact.supportedSlots);
+    }
+  });
+  it('passes resolved contracts through the production Lane B projection', () => {
+    const registry = buildWizardAggregatedRegistryContext(selection);
+    const snapshot = { vfsFiles: foundation.files, meta: {} } as unknown as SiteBundleSnapshot;
+    const projected = buildWizardLaneBRegistryContext(snapshot, registry);
+    expect(projected.implementationContext).toEqual(registry.implementations);
+    expect(projected.implementationContext.some(item => item.artifactContract?.supportedSlots.length)).toBe(true);
+    expect(buildWizardLaneBRegistryContext(snapshot, { sections: registry.sections }).implementationContext).toEqual([]);
   });
 });

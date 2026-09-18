@@ -1,0 +1,19 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:1526",
+    "sourceUrl": "https://21st.dev/@mikolajdobrucki/components/hero-section",
+    "author": "mikolajdobrucki",
+    "derivation": "source-adaptation",
+    "license": "MIT",
+    "adaptationVersion": "2"
+  },
+  "componentId": 964,
+  "demoId": 1526,
+  "retrievedVia": "21st MCP get_component",
+  "retrievedAt": "2026-09-18T04:04:27.423Z",
+  "sourceSha256": "965255d2a07e17dd91e0da0948b35012a2d9c7d35e0e139285e7ff9c91be38ac",
+  "implementation": "hero:launch-showcase",
+  "adaptation": "Centered headline and actions above a framed media showcase",
+  "notes": "Component page explicitly lists MIT. Demo media and copy excluded."
+}

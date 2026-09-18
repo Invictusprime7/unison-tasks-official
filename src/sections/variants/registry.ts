@@ -1,3 +1,10 @@
+import { LogoCloudRevealTiles } from './logoCloud/LogoCloudRevealTiles';
+import { BeforeAfterRevealPanel } from './beforeAfter/BeforeAfterRevealPanel';
+import { BlogPreviewFourColumns } from './blogPreview/BlogPreviewFourColumns';
+import { TeamProfileCards } from './team/TeamProfileCards';
+import { CTAInsetPanel } from './cta/CTAInsetPanel';
+import { NavbarCatalogBar } from './navbar/NavbarCatalogBar';
+import { HeroLaunchShowcase } from './hero/HeroLaunchShowcase';
 import { FeaturesSpotlightCards } from './features/FeaturesSpotlightCards';
 import { TestimonialsColumns } from './testimonials/TestimonialsColumns';
 import { ServicesBentoSpotlight } from './services/ServicesBentoSpotlight';
@@ -206,16 +213,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Proof Marquee',
       description: 'Two continuously scrolling rows of proof cards with edge fades',
       component: TestimonialsMarquee,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:822',
-        sourceUrl: 'https://21st.dev/c/822',
-        author: '21st.dev community',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe","certification":"approved"},
+      source: {"origin":"21st","sourceId":"21st:822","sourceUrl":"https://21st.dev/@serafimcloud/components/testimonials-with-marquee","author":"serafimcloud","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"},
+      generationStatus: "preferred",
       thumbnail: '/variants/testimonials-marquee.svg',
       tags: ['testimonials', 'marquee', 'social-proof', 'motion'],
       pageRoles: ['home', 'about', 'services'],
@@ -293,16 +293,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Feature Table',
       description: 'Plan columns over a shared feature checklist with a lifted popular tier',
       component: PricingFeatureTable,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:8374',
-        sourceUrl: 'https://21st.dev/c/8374',
-        author: '21st.dev community',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe"},
+      source: {"origin":"21st","sourceId":"21st:8374","sourceUrl":"https://21st.dev/@dgearsonu1/components/pricing-table","author":"dgearsonu1","derivation":"source-adaptation","adaptationVersion":"2"},
+      generationStatus: "legacy",
       thumbnail: '/variants/pricing-feature-table.svg',
       tags: ['pricing', 'table', 'plans', 'commerce'],
       pageRoles: ['home', 'pricing', 'services'],
@@ -484,6 +477,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
   ],
   hero: [
+    { id: 'hero:launch-showcase', sectionType: 'hero', slug: 'launch-showcase', name: 'Centered headline and actions above a framed media showcase', description: 'Centered headline and actions above a framed media showcase', component: HeroLaunchShowcase, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:1526","sourceUrl":"https://21st.dev/@mikolajdobrucki/components/hero-section","author":"mikolajdobrucki","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/hero-launch-showcase.svg', renderJSX: portableRecipeOnly },
     {
       id: 'hero:prisma-cinematic',
       sectionType: 'hero',
@@ -491,16 +485,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Prisma Cinematic',
       description: 'Full-bleed cinematic hero with oversized display headline, gradient scrim and side copy',
       component: HeroPrismaCinematic,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:12200',
-        sourceUrl: 'https://21st.dev/c/12200',
-        author: '@rahil1202',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe"},
+      source: {"origin":"21st","sourceId":"21st:12200","sourceUrl":"https://21st.dev/@rahil1202/components/prisma-hero","author":"rahil1202","derivation":"source-adaptation","adaptationVersion":"2"},
+      generationStatus: "legacy",
       thumbnail: '/variants/hero-prisma-cinematic.svg',
       tags: ['hero', 'cinematic', 'editorial', 'full-bleed', 'media'],
       pageRoles: ['home'],
@@ -608,6 +595,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   cta: [
+    { id: 'cta:inset-panel', sectionType: 'cta', slug: 'inset-panel', name: 'Centered conversion message and actions inside a muted inset panel', description: 'Centered conversion message and actions inside a muted inset panel', component: CTAInsetPanel, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:1414","sourceUrl":"https://21st.dev/@tommyjepsen/components/call-to-action","author":"tommyjepsen","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/cta-inset-panel.svg', renderJSX: portableRecipeOnly },
     {
       id: 'cta:signal-banner',
       sectionType: 'cta',
@@ -615,16 +603,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Signal Banner',
       description: 'Bracketed banner card with a sweeping accent line and uppercase CTAs',
       component: CTASignalBanner,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:19341',
-        sourceUrl: 'https://21st.dev/c/19341',
-        author: '21st.dev community',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe"},
+      source: {"origin":"21st","sourceId":"21st:19341","sourceUrl":"https://21st.dev/@thegridcn/components/cta-banner","author":"thegridcn","derivation":"source-adaptation","adaptationVersion":"2"},
+      generationStatus: "legacy",
       thumbnail: '/variants/cta-signal-banner.svg',
       tags: ['cta', 'banner', 'bold', 'conversion'],
       pageRoles: ['home', 'shop', 'services', 'contact'],
@@ -670,6 +651,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   navbar: [
+    { id: 'navbar:catalog-bar', sectionType: 'navbar', slug: 'catalog-bar', name: 'Brand, desktop navigation and action with an accessible mobile drawer', description: 'Brand, desktop navigation and action with an accessible mobile drawer', component: NavbarCatalogBar, radixPrimitives: ['dialog'], vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:606","sourceUrl":"https://21st.dev/@shadcnblockscom/components/shadcnblocks-com-navbar1","author":"shadcnblockscom","derivation":"visual-reference","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/navbar-catalog-bar.svg', renderJSX: portableRecipeOnly },
     {
       id: 'navbar:floating-pill',
       sectionType: 'navbar',
@@ -677,16 +659,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Floating Pill',
       description: 'Sticky blurred pill bar that detaches from the top edge on scroll',
       component: NavbarFloatingPill,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:8137',
-        sourceUrl: 'https://21st.dev/c/8137',
-        author: '21st.dev community',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe"},
+      source: {"origin":"21st","sourceId":"21st:8137","sourceUrl":"https://21st.dev/@efferd/components/floating-header","author":"efferd","derivation":"source-adaptation","adaptationVersion":"2"},
+      generationStatus: "legacy",
       thumbnail: '/variants/navbar-floating-pill.svg',
       tags: ['navbar', 'sticky', 'pill', 'modern'],
       pageRoles: ['home', 'shop', 'services', 'contact', 'about'],
@@ -887,16 +862,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Product Cards',
       description: 'Retail product grid with contained art, price and add-to-bag intent',
       component: ServicesProductCards,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:8286',
-        sourceUrl: 'https://21st.dev/c/8286',
-        author: '21st.dev community',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe"},
+      source: {"origin":"21st","sourceId":"21st:8286","sourceUrl":"https://21st.dev/@ravikatiyar162/components/product-card-2","author":"ravikatiyar162","derivation":"source-adaptation","adaptationVersion":"2"},
+      generationStatus: "legacy",
       thumbnail: '/variants/services-product-cards.svg',
       tags: ['commerce', 'products', 'grid', 'shop'],
       pageRoles: ['home', 'shop', 'services'],
@@ -1065,16 +1033,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Brand & Social',
       description: 'Brand block with social row beside link columns and a legal band',
       component: FooterBrandSocial,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:646',
-        sourceUrl: 'https://21st.dev/c/646',
-        author: '21st.dev community',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe","certification":"approved"},
+      source: {"origin":"21st","sourceId":"21st:646","sourceUrl":"https://21st.dev/@nevsky118/components/footer","author":"nevsky118","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"},
+      generationStatus: "preferred",
       thumbnail: '/variants/footer-brand-social.svg',
       tags: ['footer', 'social', 'columns', 'brand'],
       pageRoles: ['home', 'shop', 'services', 'contact', 'about'],
@@ -1308,16 +1269,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Metric Cards',
       description: 'Bordered metric tiles with accent rules and optional glyphs',
       component: StatsMetricCards,
-      vfs: { mode: 'portable-recipe' },
-      source: {
-        origin: '21st',
-        sourceId: '21st:1195',
-        sourceUrl: 'https://21st.dev/c/1195',
-        author: '21st.dev community',
-        license: 'MIT (21st.dev community default)',
-        adaptationVersion: '1',
-      },
-      generationStatus: 'preferred',
+      vfs: {"mode":"portable-recipe","certification":"approved"},
+      source: {"origin":"21st","sourceId":"21st:1195","sourceUrl":"https://21st.dev/@tommyjepsen/components/stats-section-with-text","author":"tommyjepsen","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"},
+      generationStatus: "preferred",
       thumbnail: '/variants/stats-metric-cards.svg',
       tags: ['stats', 'metrics', 'cards', 'proof'],
       pageRoles: ['home', 'about', 'services'],
@@ -1363,6 +1317,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   team: [
+    { id: 'team:profile-cards', sectionType: 'team', slug: 'profile-cards', name: 'Portrait cards with name, role and biography', description: 'Portrait cards with name, role and biography', component: TeamProfileCards, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:8757","sourceUrl":"https://21st.dev/@ravikatiyar162/components/team-section-1","author":"ravikatiyar162","derivation":"visual-reference","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/team-profile-cards.svg', renderJSX: portableRecipeOnly },
     {
       id: 'team:portrait-grid',
       sectionType: 'team',
@@ -1403,6 +1358,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   'logo-cloud': [
+    { id: 'logo-cloud:reveal-tiles', sectionType: 'logo-cloud', slug: 'reveal-tiles', name: 'Responsive logo tiles with restrained hover emphasis', description: 'Responsive logo tiles with restrained hover emphasis', component: LogoCloudRevealTiles, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:18216","sourceUrl":"https://21st.dev/@nexus-ui/components/logo-clouds","author":"nexus-ui","derivation":"visual-reference","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/logo-cloud-reveal-tiles.svg', renderJSX: portableRecipeOnly },
     {
       id: 'logo-cloud:grid',
       sectionType: 'logo-cloud',
@@ -1462,6 +1418,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   'blog-preview': [
+    { id: 'blog-preview:four-columns', sectionType: 'blog-preview', slug: 'four-columns', name: 'Four-column article grid with image, metadata and linked title', description: 'Four-column article grid with image, metadata and linked title', component: BlogPreviewFourColumns, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:1421","sourceUrl":"https://21st.dev/@tommyjepsen/components/blog-section","author":"tommyjepsen","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/blog-preview-four-columns.svg', renderJSX: portableRecipeOnly },
     {
       id: 'blog-preview:editorial',
       sectionType: 'blog-preview',
@@ -1501,6 +1458,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   'before-after': [
+    { id: 'before-after:reveal-panel', sectionType: 'before-after', slug: 'reveal-panel', name: 'Keyboard-operable image comparison with selectable results', description: 'Keyboard-operable image comparison with selectable results', component: BeforeAfterRevealPanel, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:24683","sourceUrl":"https://21st.dev/@motiondotdev/components/motion-image-reveal-slider","author":"motiondotdev","derivation":"visual-reference","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/before-after-reveal-panel.svg', renderJSX: portableRecipeOnly },
     {
       id: 'before-after:slider',
       sectionType: 'before-after',
@@ -1799,4 +1757,15 @@ export function clampVariantToPack(
   if (!family.length) return variantId;
   if (variantId && family.includes(variantId)) return variantId;
   return family[0];
+}
+
+/** New AI compositions use only executable 21st implementations. Saved IDs remain resolvable. */
+export function getGenerationVariantsForSection(sectionType: SectionType, pack?: ArtDirectionPack, role?: string): SectionVariant[] {
+  const eligible = getVariantsForSection(sectionType).filter(variant =>
+    variant.source?.origin === '21st' && variant.vfs?.mode === 'portable-recipe' &&
+    variant.vfs.certification === 'approved' && variant.generationStatus !== 'legacy' &&
+    (!role || !variant.pageRoles?.length || variant.pageRoles.some(candidate => candidate === role)));
+  const declared = pack ? familyForSection(pack, sectionType) : [];
+  const compatible = eligible.filter(variant => declared.includes(variant.id));
+  return compatible.length ? compatible : eligible;
 }

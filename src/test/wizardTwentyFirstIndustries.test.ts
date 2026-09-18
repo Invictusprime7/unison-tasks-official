@@ -12,7 +12,7 @@ import { getCompositionById } from '@/sections/templates';
 import { getCompositionCardsForIndustry, SYSTEM_TO_BUSINESS_MODEL } from '@/components/onboarding/wizard/wizardCatalog';
 import { buildWizardDesignIntervention, readWizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
-import { familyForSection, getVariantById, getVariantsForSection } from '@/sections/variants';
+import { getGenerationVariantsForSection, familyForSection, getVariantById, getVariantsForSection } from '@/sections/variants';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { buildWizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 import { generateTopologyPlaceholderFiles } from '@/utils/topologyVFSScaffolder';
@@ -41,7 +41,9 @@ describe('21st-derived Launcher variants across every industry', () => {
           expect(selected.sectionType).toBe(section.type);
           expect(selected.generationStatus).not.toBe('legacy');
           if (selected.pageRoles?.length) expect(selected.pageRoles).toContain('home');
-          const allowed = familyForSection(resolvedPack, section.type);
+          const allowed = getGenerationVariantsForSection(section.type, resolvedPack, 'home').map(variant => variant.id);
+          expect(selected.source?.origin).toBe('21st');
+          expect(selected.vfs?.certification).toBe('approved');
           if (allowed.length) expect(allowed).toContain(selected.id);
           const sourced = getVariantsForSection(section.type).filter(variant =>
             allowed.includes(variant.id) && variant.source?.origin === '21st' &&
