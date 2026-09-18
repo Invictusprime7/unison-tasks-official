@@ -107,12 +107,13 @@ Milestone index (status tracked against the phases below):
       `gallery:horizontal-reel` variant. Full suite: 200 files / 1643 tests green.
 - [ ] M5 Generated UI Foundation expansion.
 - [ ] M6 Artifact / catalog / asset wiring.
-- [ ] M7 Wizard Registry Context v2. Executable pack-filtered implementation
+- [x] M7 Wizard Registry Context v2. Executable pack-filtered implementation
       metadata, source provenance, certification, page roles and Radix requirements
-      now reach the production Lane B request. Compiled descriptors determine
-      selected vocabulary and bound the implementation context. All 17 portable
-      families are first-class. Project-asset projection and dependency-context
-      closure remain open.
+      reach composition and Lane B. Compiled descriptors determine selected
+      vocabulary and bound implementation context. All 17 portable families are
+      first-class. Business/project-scoped assets, dependency versions, primitive
+      families, capabilities and artifact/slot contracts are bounded projections
+      of existing authorities; no parallel registry was added.
 - [ ] M8 Lane B 21st-aware creative enrichment.
 - [ ] M9 Visual selection / property inspector.
 - [ ] M10 Immersive / 3D expansion (gated behind Phase 6A acceptance).
@@ -558,7 +559,7 @@ Registration now journals original bytes before mutation and supports --recover 
 
 Verification: 209 test files passed; 1,858 tests passed, one skipped. TypeScript, production build, all four architecture checks and the promotion audit passed. The build retains its existing large-chunk warning. Local desktop/mobile industry previews rendered without horizontal overflow or reported browser errors. These fixtures do not verify authenticated AI provider, persistence or publishing.
 
-Remaining V3 scope is explicit: complete project-bounded asset projection, props/slots and dependency/primitive context, remaining Builder/context migration, launch-state and intent convergence, broader foundation work and authenticated persisted/published round trips. Promotion execution still consumes recorded adaptation reviews; portable/visual verification is performed separately rather than inside the write transaction. This checkpoint does not certify completion of every V3 batch.
+Remaining V3 scope is explicit: remaining Builder/context migration, launch-state and intent convergence, broader foundation work and authenticated persisted/published round trips. Project/business asset projection, artifact/slot contracts and bounded dependency/primitive/capability context now reach composition and Lane B through Registry Context v2. Promotion execution still consumes recorded adaptation reviews; portable/visual verification is performed separately rather than inside the write transaction. This checkpoint does not certify completion of every V3 batch.
 
 ### Wizard composition rejection repair
 
