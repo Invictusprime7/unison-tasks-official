@@ -193,7 +193,7 @@ export class AssetRegistry {
    * Upload a file and register it as an asset
    */
   async upload(options: AssetUploadOptions): Promise<AssetUploadResult> {
-    const { file, tags = [], autoAnalyze = true } = options;
+    const { file, tags = [], autoAnalyze = true, businessId, projectId } = options;
 
     try {
       // Generate checksum for deduplication
@@ -229,7 +229,7 @@ export class AssetRegistry {
       if (uploadError) {
         // If bucket doesn't exist or auth issue, fall back to local data URL
         console.warn('Storage upload failed, using local URL:', uploadError.message);
-        return this.createLocalAsset(assetId, file, checksum, tags, autoAnalyze);
+        return this.createLocalAsset(assetId, file, checksum, tags, autoAnalyze, businessId, projectId);
       }
 
       // Get public URL
@@ -257,6 +257,8 @@ export class AssetRegistry {
         height: analysis.height,
         dominantColors: analysis.dominantColors,
         tags: [...tags, ...(analysis.suggestedTags || [])],
+        businessId,
+        projectId,
         metadata: {
           originalName: file.name,
           fileSize: file.size,
@@ -290,7 +292,9 @@ export class AssetRegistry {
     file: File,
     checksum: string,
     tags: string[],
-    autoAnalyze: boolean
+    autoAnalyze: boolean,
+    businessId?: string,
+    projectId?: string,
   ): Promise<AssetUploadResult> {
     const url = await new Promise<string>((resolve) => {
       const reader = new FileReader();
@@ -314,6 +318,8 @@ export class AssetRegistry {
       height: analysis.height,
       dominantColors: analysis.dominantColors,
       tags: [...tags, ...(analysis.suggestedTags || [])],
+      businessId,
+      projectId,
       metadata: {
         originalName: file.name,
         fileSize: file.size,
@@ -382,6 +388,8 @@ export class AssetRegistry {
           a.tags?.some(t => t.toLowerCase().includes(search))
         );
       }
+      if (filters.businessId) assets = assets.filter(a => a.businessId === filters.businessId);
+      if (filters.projectId) assets = assets.filter(a => a.projectId === filters.projectId);
     }
     
     return assets;
