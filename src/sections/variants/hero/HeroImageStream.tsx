@@ -74,10 +74,9 @@ function resolveImages(
 export const HeroImageStream: React.FC<BaseSectionProps<'hero'>> = ({ section, theme }) => {
   const { headline, subheadline, description, ctas = [], badge, image, backgroundImage, images } = section.props;
   const media = resolveImages(images, image, backgroundImage, headline);
-  const id = React.useId().replace(/[^a-zA-Z0-9]/g, '');
-  const right = `ut-ish-r-${id}`;
-  const left = `ut-ish-l-${id}`;
-  const card = `ut-ish-c-${id}`;
+  const right = 'ut-ish-right';
+  const left = 'ut-ish-left';
+  const card = 'ut-ish-card';
   const cards = 9;
   const speed = 18;
   const axis = 56;

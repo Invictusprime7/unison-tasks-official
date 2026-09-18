@@ -251,11 +251,12 @@ function main() {
     if (!/^\/variants\/[a-z0-9-]+\.svg$/.test(spec.thumbnail ?? '')) issues.push(spec.id + ': invalid thumbnail path');
   }
   let registry = fs.readFileSync(REGISTRY, 'utf8');
-  let artDirections = fs.readFileSync(ART_DIRECTION_PACKS, 'utf8');
+  const hasArtDirections = fs.existsSync(ART_DIRECTION_PACKS);
+  let artDirections = hasArtDirections ? fs.readFileSync(ART_DIRECTION_PACKS, 'utf8') : '';
   if (auditOnly) {
     for (const spec of specs) {
       issues.push(...validateRegistrySpec(registry, spec));
-      if (spec.artDirection?.all) {
+      if (spec.artDirection?.all && hasArtDirections) {
         const familyCount = (artDirections.match(new RegExp(`\\b${spec.sectionType}: \\[`, 'g')) || []).length;
         const variantCount = (artDirections.match(new RegExp(`'${spec.id}'`, 'g')) || []).length;
         if (!familyCount || variantCount < familyCount) issues.push(`${spec.id}: missing from one or more art-direction packs`);
@@ -266,14 +267,14 @@ function main() {
   if (issues.length) throw new Error('Promotion blocked before writes:\n' + issues.join('\n'));
   for (const spec of specs) {
     registry = registerInRegistry(spec, registry);
-    artDirections = registerInArtDirectionPacks(spec, artDirections);
+    if (hasArtDirections) artDirections = registerInArtDirectionPacks(spec, artDirections);
     if (!registry.includes("id: '" + spec.id + "'") || !registry.includes("import { " + spec.componentName + " } from '" + spec.componentPath + "';") || !registry.includes("'" + spec.id + "': [")) throw new Error(spec.id + ': registry insertion failed before writes');
     const registryIssues = validateRegistrySpec(registry, spec);
     if (registryIssues.length) throw new Error('Promotion blocked before writes:\n' + registryIssues.join('\n'));
     if (!spec.retirement) { writeThumbnail(spec); updateRecord(spec); }
   }
   if (registry !== fs.readFileSync(REGISTRY, 'utf8')) writes.set(REGISTRY, registry);
-  if (artDirections !== fs.readFileSync(ART_DIRECTION_PACKS, 'utf8')) writes.set(ART_DIRECTION_PACKS, artDirections);
+  if (hasArtDirections && artDirections !== fs.readFileSync(ART_DIRECTION_PACKS, 'utf8')) writes.set(ART_DIRECTION_PACKS, artDirections);
   if (!checkOnly) commitPromotion(ROOT, writes, fileSystem);
 
   if (!changes.length) {
