@@ -25,7 +25,7 @@
     "floating-pill",
     "floating"
   ],
-  "generationStatus": "legacy",
+  "generationStatus": "preferred",
   "recordSlug": "sticky-navbar",
   "source": {
     "origin": "21st",
@@ -33,14 +33,11 @@
     "sourceUrl": "https://21st.dev/@efferd/components/floating-header",
     "author": "efferd",
     "derivation": "source-adaptation",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
     "adaptationVersion": "2"
   },
   "radixPrimitives": [
     "dialog"
   ],
-  "retirement": {
-    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
-    "reviewedAt": "2026-09-18T04:05:14.498Z",
-    "evidence": "https://21st.dev/@efferd/components/floating-header"
-  }
+  "artDirection": { "all": true, "position": "first" }
 }

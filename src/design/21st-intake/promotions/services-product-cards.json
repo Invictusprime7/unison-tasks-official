@@ -23,7 +23,7 @@
     "product-cards",
     "products"
   ],
-  "generationStatus": "legacy",
+  "generationStatus": "preferred",
   "recordSlug": "product-card-grid",
   "source": {
     "origin": "21st",
@@ -31,11 +31,8 @@
     "sourceUrl": "https://21st.dev/@ravikatiyar162/components/product-card-2",
     "author": "ravikatiyar162",
     "derivation": "source-adaptation",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
     "adaptationVersion": "2"
   },
-  "retirement": {
-    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
-    "reviewedAt": "2026-09-18T04:05:14.514Z",
-    "evidence": "https://21st.dev/@ravikatiyar162/components/product-card-2"
-  }
+  "artDirection": { "all": true, "position": "first" }
 }

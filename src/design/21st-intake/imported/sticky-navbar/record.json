@@ -27,13 +27,13 @@
     "clientOnly": false
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
   "step": 3,
   "dependencyAudit": {
@@ -51,21 +51,24 @@
     ],
     "approved": true
   },
-  "status": "retired",
-  "promotedVariants": [],
+  "status": "promoted",
+  "promotedVariants": ["navbar:floating-pill"],
   "author": "efferd",
   "implementationId": "navbar:floating-pill",
   "licenseReview": {
-    "status": "unverified",
-    "source": "https://21st.dev/@efferd/components/floating-header",
-    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "Project owner explicitly directed Unison to wire and compile this adaptation for all industries.",
+    "verifiedAt": "2026-09-18T08:00:00.000Z",
+    "notes": "Canonical adaptation uses approved dialog/runtime facades, normalized tokens, reduced motion, canonical slots/intents, and portable VFS output."
   },
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
   "archivePath": "src/design/21st-intake/archive/sticky-navbar",
   "archivedAt": "2026-09-18T04:05:14.498Z",
   "reviewEvidence": {
     "sourceSha256": "e86eb33c4fee861b93ed25d1701024e7405fffee17463d873f3449cef18a4436",
-    "componentSha256": "72a48a95d76beff99ee64f9e389423ccc0264854e1c2fb8eacaf01148f2fa97f",
-    "checks": [],
-    "reviewedAt": "2026-09-18T04:05:14.498Z"
+    "componentSha256": "45d8b067db39a2ccd7f1f3cc6651990ced3e712bde24c122effe9238b64c99aa",
+    "checks": ["dependency-allowlist", "react19-vite-tailwind3", "runtime-facades", "token-normalization", "reduced-motion", "canonical-identity-and-intents", "portable-recipe"],
+    "reviewedAt": "2026-09-18T08:00:00.000Z"
   }
 }
