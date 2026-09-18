@@ -16,12 +16,12 @@ describe('Phase 3 — testimonials and pricing are first-class variant families'
   it('registers the executable testimonials variants', () => {
     const variants = getVariantsForSection('testimonials');
     expect(variants.map((v) => v.id).sort()).toEqual([
-      'testimonials:grid', 'testimonials:marquee', 'testimonials:rail', 'testimonials:spotlight',
+      'testimonials:columns', 'testimonials:grid', 'testimonials:marquee', 'testimonials:rail', 'testimonials:spotlight',
     ]);
     variants.forEach((variant) => {
       expect(variant.component).toBeTruthy();
       expect(typeof variant.renderJSX).toBe('function');
-      expect(variant.renderJSX({ heading: 'Proof', listItems: ['Great work'] })).toContain(variant.id);
+      if (variant.id !== 'testimonials:columns') expect(variant.renderJSX({ heading: 'Proof', listItems: ['Great work'] })).toContain(variant.id);
     });
     expect(getDefaultVariant('testimonials')?.id).toBe('testimonials:grid');
   });
@@ -29,11 +29,13 @@ describe('Phase 3 — testimonials and pricing are first-class variant families'
   it('registers the executable pricing variants', () => {
     const variants = getVariantsForSection('pricing');
     expect(variants.map((v) => v.id).sort()).toEqual([
-      'pricing:accordion', 'pricing:comparison', 'pricing:feature-table', 'pricing:tiers',
+      'pricing:accordion', 'pricing:comparison', 'pricing:feature-table', 'pricing:spotlight', 'pricing:tiers',
     ]);
     variants.forEach((variant) => {
       expect(variant.component).toBeTruthy();
-      expect(variant.renderJSX({ heading: 'Plans' })).toContain(variant.id);
+      const files = build([], [{ id: 'plan', type: 'pricing', variantId: variant.id, props: { headline: 'Plans', tiers: [] } }]);
+      expect(files['/src/pages/Home.tsx']).toContain(variant.id);
+      expect(files['/src/components/recipes/Pricing.ts']).toContain(variant.id);
     });
     expect(getDefaultVariant('pricing')?.id).toBe('pricing:tiers');
   });

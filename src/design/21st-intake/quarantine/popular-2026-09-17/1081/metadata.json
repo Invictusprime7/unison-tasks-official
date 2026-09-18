@@ -1,0 +1,17 @@
+{
+    "id":  1081,
+    "componentId":  287,
+    "name":  "Container Scroll Animation",
+    "demoName":  "Default",
+    "description":  "A scroll animation that rotates in 3d on scroll. Perfect for hero or marketing sections.",
+    "previewUrl":  "https://cdn.21st.dev/user_aceternity/container-scroll-animation/default/preview.png",
+    "installCommand":  "npx shadcn@latest add \"https://21st.dev/r/manuarora700/container-scroll-animation?api_key=$API_KEY_21ST\"",
+    "registryDependencies":  {
+                                 "filesWithRegistry":  {
+
+                                                       },
+                                 "npmDependencies":  {
+
+                                                     }
+                             }
+}

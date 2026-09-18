@@ -1,4 +1,5 @@
 import React from 'react';
+import { normalizeReactIds } from './helpers/normalizeReactIds';
 import { transform } from '@babel/standalone';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -159,11 +160,11 @@ describe.each(FAMILIES)('$sectionType emitted renderer parity', ({ sectionType, 
 
     const section = { id: `${sectionType}-proof`, type: sectionType, variantId: variant.id, props } as SectionEntry;
     const registryView = render(<variant.component section={section} theme={theme} />);
-    const expectedMarkup = registryView.container.innerHTML;
+    const expectedMarkup = normalizeReactIds(registryView.container.innerHTML);
     registryView.unmount();
 
     const generatedView = render(<Emitted props={props} variantId={variant.id} />);
-    expect(generatedView.container.innerHTML).toBe(expectedMarkup);
+    expect(normalizeReactIds(generatedView.container.innerHTML)).toBe(expectedMarkup);
     expect(expectedMarkup.length).toBeGreaterThan(0);
   });
 });

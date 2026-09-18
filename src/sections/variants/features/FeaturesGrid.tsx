@@ -35,7 +35,7 @@ export const FeaturesGrid: React.FC<BaseSectionProps<'features'>> = ({ section, 
             )}
           </div>
         )}
-        <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[var(--ut-feature-columns)] gap-6" style={{ "--ut-feature-columns": `repeat(${columns}, minmax(0, 1fr))`, overflowWrap: 'anywhere' } as React.CSSProperties}>
           {items.map((item, i) => (
             <div
               key={i}

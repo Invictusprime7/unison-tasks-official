@@ -1,4 +1,5 @@
 import React from 'react';
+import { normalizeReactIds } from './helpers/normalizeReactIds';
 import { transform } from '@babel/standalone';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -50,11 +51,11 @@ describe('Contact registry and emitted renderer parity', () => {
     const Registered = variant.component;
     const section = { id: 'contact-proof', type: 'contact', variantId: variant.id, props } as SectionEntry;
     const registryView = render(<Registered section={section} theme={themeModule.THEME as ThemeTokens} />);
-    const expectedMarkup = registryView.container.innerHTML;
+    const expectedMarkup = normalizeReactIds(registryView.container.innerHTML);
     registryView.unmount();
 
     const generatedView = render(<Contact props={props} variantId={variant.id} />);
-    expect(generatedView.container.innerHTML).toBe(expectedMarkup);
+    expect(normalizeReactIds(generatedView.container.innerHTML)).toBe(expectedMarkup);
     expect(generatedView.container.querySelector('form')).toHaveAttribute('data-ut-intent', 'quote.request');
     expect(generatedView.getByPlaceholderText('Project details')).toHaveAttribute('name', 'project');
   });

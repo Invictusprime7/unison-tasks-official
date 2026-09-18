@@ -1,3 +1,4 @@
+import { runCompositionLane } from './compositionLane.ts';
 /**
  * Orchestrator — the brain of ai-code-assistant.
  * 
@@ -193,11 +194,18 @@ export function runAssistantOrchestrator(
   userId?: string,
   signal?: AbortSignal,
 ): Promise<Response> {
+  if (task.type === 'wizard_composition') {
+    const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
+    const providerPlan = buildProviderPlan(task, true, { ...parsed.gatewayOptions, maxTokens: 6000, timeoutMs: 35000 }, 'simple', context);
+    return runCompositionLane(context, corsHeaders, aiMessages => runProviderLoop({
+      aiMessages, providerPlan, navPageGen: false, reasoningEffort: 'none', signal,
+    }));
+  }
   if (task.type === 'theme_edit') return runThemeEditLane(parsed, task, corsHeaders, signal);
   if (task.type === "launch_desk") {
     return runLaunchDeskLane(parsed, task, corsHeaders, signal);
   }
-  // The Launcher is deterministic and never calls this builder lane.
+  // Source-generation and editing tasks use the builder lane.
   return runBuilderLane(parsed, task, corsHeaders, userId, signal);
 }
 

@@ -106,7 +106,12 @@ Milestone index (status tracked against the phases below):
       `gallery:horizontal-reel` variant. Full suite: 200 files / 1643 tests green.
 - [ ] M5 Generated UI Foundation expansion.
 - [ ] M6 Artifact / catalog / asset wiring.
-- [ ] M7 Wizard Registry Context v2.
+- [ ] M7 Wizard Registry Context v2. Executable pack-filtered implementation
+      metadata, source provenance, certification, page roles and Radix requirements
+      now reach the production Lane B request. Compiled descriptors determine
+      selected vocabulary and bound the implementation context. All 17 portable
+      families are first-class. Project-asset projection and dependency-context
+      closure remain open.
 - [ ] M8 Lane B 21st-aware creative enrichment.
 - [ ] M9 Visual selection / property inspector.
 - [ ] M10 Immersive / 3D expansion (gated behind Phase 6A acceptance).
@@ -116,6 +121,38 @@ implementation = Builder Preview implementation = published runtime
 implementation. No implementation may exist only as registry metadata.
 
 
+
+## September 17: Services, forms and route-design expansion
+
+Twelve additional portable variants are implemented in the existing Variant Registry:
+
+- Services: bento spotlight, editorial rows, expandable service details.
+- FAQ: editorial disclosures and searchable questions/answers.
+- Contact/forms: editorial inquiry, map studio, checkout support with canonical cart handoff.
+- About: image story. Stats: proof grid. Pricing: spotlight. Gallery: case-study rows.
+
+Interior routes derive editorial/showcase choices from certified registry metadata and
+an explicit seed. Home, authored page alternatives, section payloads, route presence,
+Stage 4b and canonical commit ownership remain authoritative. Maps are opt-in contact
+surfaces; stats remain section content; neither creates a new route type. Checkout
+support delegates to the existing cart runtime and does not process payments itself.
+
+21st MCP initialization and tools/list succeeded. Services (4192), searchable FAQ
+(24932), FAQ 3 (684), contact (4741), checkout (7053) and about (6289) sources were
+retrieved for inspection. Provenance distinguishes visual-reference implementations
+from source-code adaptations; no upstream license is inferred. The VS Code connection
+uses a password input, never a repository-stored key.
+
+Validation covers portable renderer parity, FAQ search, form labels/validation,
+map opt-in behavior, gallery dialog/filtering, deterministic route selection, and
+canonical recipe persistence. Browser fixtures at 1440px and 390px show no mobile
+overflow; FAQ search and reduced-motion behavior were verified. Production build
+passes. Final suite: 202 files, 1,753 tests passed, one skipped; type-check, changed-file
+ESLint, all four architecture lints and recipe source verification pass. Live
+authenticated publishing and delivery of form/payment requests are
+not claimed by these checks. M1 persisted-publish evidence remains open.
+
+Review locally at /tools/section-variants.html (development only).
 
 ## Active Sequence
 
@@ -426,3 +463,47 @@ implementation. No implementation may exist only as registry metadata.
 - The authenticated journey proves eight rendered routes and a visibility edit,
 	save/reload and clean hydration. Every-route reopen, all-variant identity,
 	full responsive/visual quality and export/import closure remain uncertified.
+
+
+## 2026-09-17 - 21st-derived variants across Launcher industries
+
+- Fresh launches prefer certified 21st-derived variants within all 14 style packs
+  and the Home role envelope, across all 10 visible Wizard industries.
+- Explicit interior-page choices survive inherited Home overrides; checkout
+  support stays confined to checkout routes. Existing stored designs are preserved.
+- Registry Context v2 now carries executable implementation provenance and
+  compatibility to Lane B. See the continuation entries in both execution plans
+  for implementation evidence and remaining milestone limits.
+- Local industry preview: /tools/industry-launch-variants.html. This is a component
+  review fixture, not evidence of a persisted or published launch.
+
+
+## 2026-09-17 ? structured composition and popular-source intake
+
+Implemented the first structured AI composition pass before canonical compilation. AI selects existing section-family order and eligible local variant IDs, preferring suitable 21st sources. Strict validation checks the pack, page role, family and portable implementation. The compiler retains every business section and owns navigation, hero/footer placement, themes, intents and files. Accepted choices persist in the design intervention and snapshot; accepted plans skip subsequent source rewriting. Invalid or unavailable responses use the existing starter path.
+
+This phase does not remove templates: they remain semantic content baselines and fallback. Arbitrary section insertion/removal and replacing the Wizard template-selection step remain follow-up work. The new wizard-composition backend mode is implemented locally and requires deployment for live use.
+
+Retrieved eight React prototypes through the 21st MCP: Scroll Expansion Hero, Container Scroll Animation, Spline Scene, Spotlight Card, Radial Orbital Timeline, Bento Grid, Scroll Morph Hero and Testimonials Columns. Popularity was observed from the public catalog and creator pages on the intake date; MCP component search is relevance-ranked, not a verified popularity sort. Original sources and metadata are quarantined under src/design/21st-intake/quarantine/popular-2026-09-17. Source licenses were not supplied by MCP and are not assumed. Local spotlight cards and testimonial columns are visual-reference implementations with portable compiler parity coverage. Unsupported heavy prototypes remain references.
+
+The user-supplied PrismaHero is preserved verbatim under src/design/21st-intake/quarantine/user-prisma-2026-09-17, mapped to the existing hero:prisma-cinematic implementation. Its oversized type, asymmetric copy, media scrim and restrained word reveal inform the composer. Demo media URLs, placeholder navigation and hardcoded colors are not generation defaults. This is durable repository context, not a claim of external/personal AI memory. No runtime 21st API calls or credentials are introduced.
+
+
+### 2026-09-17 ? Wizard composition wiring correction
+
+Production source inspection confirmed the deployed ai-code-assistant lacked wizard_composition support. The first local implementation also inherited code-generation instructions and used a 20-second client timeout against 35-second provider attempts. Composition now dispatches directly to a JSON-only lane before the general builder pipeline; malformed source/file responses receive a 502 composition_contract error. The client allows 90 seconds, requires coverage of every requested role, and records provider/transport/invalid-response/incomplete-plan fallback reasons. Regression coverage round-trips the backend response through client validation and canonical snapshot compilation.
+
+The corrected ai-code-assistant was deployed to the linked nfrdomdvyrbwuokathtw project. An unauthenticated production request returned 401, preserving the auth gate. Authenticated live generation remains unverified because the available browser session is signed out. Frontend changes remain local until published through the application deployment workflow.
+
+
+## 2026-09-17 ? Dedicated Wizard site composer
+
+The Launcher now has three steps: Idea, Goals/pages and Brand style. Removed template/layout cards, selected-template state, layout preview and template design inspector from this UI. The launch service resolves an internal industry content baseline for canonical topology and behaviors; users no longer choose it.
+
+Wizard requests use wizard-site-composer through the existing authenticated/retrying transport. The dedicated function validates the brief, researches only the public industry category, reads the authenticated user's last three layout summaries, and asks for original page copy and registered local variants with a fresh launch seed. 21st-derived portable variants are preferred when suitable. No remote component code is imported at runtime.
+
+Plans cover every requested page, carry section order, variant IDs and bounded plain-text copy (headlines, descriptions, service/feature items and FAQs). The compiler preserves existing section identities, actions, assets and business data; it can add eligible about/features/services/FAQ/contact/CTA sections with supplied copy. No arbitrary source code, routes, theme or dependencies are accepted. The baseline remains an internal semantic content source, not a selectable design preset. Full arbitrary content-model replacement is not implemented.
+
+Invalid generation fails visibly with retry guidance; it no longer silently hands off a starter as an AI result. Accepted layout summaries are stored per authenticated user in the existing ai_learning_sessions table; no schema migration is required. Memory/research failures are nonfatal, and research is untrusted design context, never evidence for invented business claims. Fresh seeds and recent-layout context encourage diversity without guaranteeing uniqueness.
+
+Verification: three-step browser flow and mobile review; backend brief-schema/client/compile regression tests; copy/section addition tests; full suite 1,788 passed, one skipped; TypeScript, Deno and architecture checks passed. Authenticated provider-to-live-preview verification remains pending an available signed-in session. Frontend changes still require application deployment.

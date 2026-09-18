@@ -8,7 +8,7 @@ import portableRecipes from '@/sections/recipes/stylexRecipes.generated.json';
 describe('registered Gallery compiler convergence', () => {
   it.each(getVariantsForSection('gallery'))('projects emitter and primitive requirements for $id', variant => {
     const implementation = getDesignImplementation(variant.id)!;
-    expect(implementation.vfs).toEqual({ mode: 'portable-recipe' });
+    expect(implementation.vfs).toMatchObject({ mode: 'portable-recipe' });
     expect(implementation.vfs).toEqual(variant.vfs);
     expect(implementation.radixPrimitives).toEqual(variant.radixPrimitives);
     expect(implementation.radixPrimitives).toContain('dialog');

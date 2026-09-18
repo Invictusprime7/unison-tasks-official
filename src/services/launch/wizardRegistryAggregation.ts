@@ -22,11 +22,11 @@ import {
 import type { SectionType } from '@/sections/types';
 import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
-import { designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
+import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
 import { GENERATED_MOTION_PRIMITIVES } from '@/platform/core/generatedUiFoundation';
 
 export const WIZARD_REGISTRY_CONTEXT_PATH = '/.unison/wizard-registry-context.json' as const;
-export const WIZARD_REGISTRY_CONTEXT_VERSION = '1.0' as const;
+export const WIZARD_REGISTRY_CONTEXT_VERSION = '2.0' as const;
 
 export interface WizardRegistrySectionSummary {
   type: SectionType;
@@ -62,8 +62,19 @@ export interface WizardRegistryCatalogSurfaceSummary {
   fallbackMode: string;
 }
 
+export interface WizardRegistryImplementationSummary {
+  id: string;
+  sectionType: SectionType;
+  name: string;
+  certification: 'approved' | 'portable';
+  source?: import('@/sections/variants/types').SectionVariant['source'];
+  pageRoles: readonly string[];
+  vocabularyRefs: ReturnType<typeof getImplementationVocabularyRefs>;
+  radixPrimitives: readonly string[];
+}
+
 export interface WizardAggregatedRegistryContext {
-  version: typeof WIZARD_REGISTRY_CONTEXT_VERSION;
+  version: typeof WIZARD_REGISTRY_CONTEXT_VERSION | '1.0';
   generatedAt: string;
   industry: string;
   templateId: string;
@@ -75,6 +86,9 @@ export interface WizardAggregatedRegistryContext {
 
   /** All registered section families and their pack-clamped variants */
   sections: WizardRegistrySectionSummary[];
+
+  /** v2 executable, pack-filtered inventory; absent on older snapshots. */
+  implementations?: WizardRegistryImplementationSummary[];
 
   /** All registered artifact surfaces (catalog, business-profile, authored, behavioral) */
   artifacts: WizardRegistryArtifactSummary[];
@@ -90,7 +104,7 @@ export interface WizardAggregatedRegistryContext {
   interactionProfile?: string;
 }
 
-const PLACEHOLDER_SECTIONS = new Set<SectionType>(['logo-cloud', 'blog-preview', 'before-after']);
+
 
 export function buildWizardAggregatedRegistryContext(options: {
   industry: string;
@@ -110,14 +124,15 @@ export function buildWizardAggregatedRegistryContext(options: {
   ).map(([type, entry]) => {
     const artifact = getArtifact(type);
     const packVariants = pack ? familyForSection(pack, type) : [];
-    const allVariants = (VARIANT_REGISTRY[type] ?? []).map((v) => v.id);
-    const allowedVariantIds = packVariants.length > 0 ? packVariants : allVariants;
+    const executable = (VARIANT_REGISTRY[type] ?? []).filter(variant =>
+      variant.vfs?.mode === 'portable-recipe' && variant.generationStatus !== 'legacy');
+    const allowedVariantIds = executable.filter(variant => !packVariants.length || packVariants.includes(variant.id)).map(variant => variant.id);
 
     return {
       type,
       label: entry.label,
       category: entry.category,
-      isFirstClass: !PLACEHOLDER_SECTIONS.has(type),
+      isFirstClass: executable.length > 0,
       artifactId: artifact?.artifactId ?? null,
       allowedVariantIds,
     };
@@ -165,6 +180,17 @@ export function buildWizardAggregatedRegistryContext(options: {
       eligibleImplementationIds: sections.flatMap((section) => section.allowedVariantIds),
     }),
     sections,
+    implementations: sections.flatMap(section => section.allowedVariantIds.map(id => {
+      const implementation = getDesignImplementation(id)!;
+      return {
+        id, sectionType: section.type, name: implementation.name,
+        certification: implementation.vfs?.certification === 'approved' ? 'approved' as const : 'portable' as const,
+        source: implementation.source,
+        pageRoles: implementation.pageRoles ?? [],
+        vocabularyRefs: getImplementationVocabularyRefs(implementation),
+        radixPrimitives: implementation.radixPrimitives ?? [],
+      };
+    })),
     artifacts,
     catalogSurfaces,
     motionPrimitives: [...GENERATED_MOTION_PRIMITIVES],

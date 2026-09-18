@@ -1,3 +1,4 @@
+import { resolveSectionLayout } from '@/sections/resolveSectionLayout';
 /**
  * Wizard Catalog — the static vocabulary of the System Launcher wizard.
  *
@@ -22,7 +23,7 @@ import {
 
 // ── Steps ───────────────────────────────────────────────────────────────────
 
-export type WizardStep = "industry" | "questions" | "templates" | "aesthetic";
+export type WizardStep = "industry" | "questions" | "aesthetic";
 
 export const STEP_META: {
   key: WizardStep;
@@ -32,8 +33,7 @@ export const STEP_META: {
 }[] = [
   { key: "industry", num: 1, label: "Idea", sublabel: "What you do" },
   { key: "questions", num: 2, label: "Goals", sublabel: "Your needs" },
-  { key: "templates", num: 3, label: "Layout", sublabel: "Pick a base" },
-  { key: "aesthetic", num: 4, label: "Style", sublabel: "Name & style" },
+  { key: "aesthetic", num: 3, label: "Style", sublabel: "Name & style" },
 ];
 
 // ── Answer vocabulary ───────────────────────────────────────────────────────
@@ -239,6 +239,7 @@ export interface TemplateCardData {
   /** Covers both IndustryTag and composition industry values. */
   industry: string;
   sectionTypes: string[];
+  sections: Array<{ id: string; type: string; label: string; description: string; thumbnail?: string; variantId?: string }>;
   traits: string[];
   themeColors?: { primary: string; secondary: string };
 }
@@ -248,17 +249,33 @@ export interface TemplateCardData {
  * TemplateComposition. No synthetic fallback cards, ever.
  */
 export function buildCompositionCards(systemId: BusinessSystemType): TemplateCardData[] {
-  return getCompositionsBySystemType(systemId).map((c) => ({
-    id: c.id,
-    label: c.name,
-    description: c.description,
-    industry: c.industry,
-    sectionTypes: c.sections.map((s) => s.type),
-    traits: c.tags && c.tags.length > 0 ? c.tags : [c.category],
-    themeColors: c.theme
-      ? { primary: c.theme.colors.primary, secondary: c.theme.colors.secondary }
-      : undefined,
-  }));
+  return getCompositionsBySystemType(systemId).map((c) => {
+    const sections = c.sections.filter(section => !section.hidden).map(section => {
+      const variant = resolveSectionLayout(section);
+      return {
+        id: section.id, type: section.type,
+        label: variant?.name || section.type,
+        description: variant?.description || section.type,
+        thumbnail: variant?.thumbnail, variantId: variant?.id,
+      };
+    });
+    const hero = sections.find(section => section.type === 'hero');
+    const content = sections.filter(section => !['navbar', 'hero', 'footer', 'cta'].includes(section.type));
+    return {
+      id: c.id,
+      label: [hero && hero.label + ' hero', content[0] && content[0].label + ' ' + content[0].type.replace(/-/g, ' ')].filter(Boolean).join(' + ') || c.name,
+      description: content.length
+        ? content.map(section => section.type.replace(/-/g, ' ') + ': ' + section.label).join(' / ') + '.'
+        : sections.map(section => section.label).join(' / ') + '.',
+      industry: c.industry,
+      sectionTypes: sections.map(section => section.type),
+      sections,
+      traits: c.tags && c.tags.length > 0 ? c.tags : [c.category],
+      themeColors: c.theme
+        ? { primary: c.theme.colors.primary, secondary: c.theme.colors.secondary }
+        : undefined,
+    };
+  });
 }
 
 export interface IndustryFocusCard {

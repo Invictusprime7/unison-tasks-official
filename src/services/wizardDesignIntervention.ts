@@ -1,6 +1,7 @@
+import { validateAIPageComposition, COMPOSITION_ROLES, type AIPageCompositionPlan } from '@/sections/aiPageComposition';
 import type { BusinessModel, IndustryOverlay } from '@/types/playground';
 import { getCompositionById } from '@/sections/templates';
-import { getVariantById, getVariantIdForLayout, getVariantsForSection, resolveExperienceRequirement } from '@/sections/variants';
+import { getVariantById, getVariantIdForLayout, getVariantsForSection, resolveExperienceRequirement, familyForSection } from '@/sections/variants';
 import type { ActiveVariantMap, VariantId } from '@/sections/variants';
 import {
   childSeed,
@@ -100,6 +101,7 @@ export interface WizardArtDirectionBrief {
 
 
 export interface WizardDesignIntervention {
+  compositionPlan?: AIPageCompositionPlan;
   version: typeof WIZARD_DESIGN_INTERVENTION_VERSION;
   source: 'deterministic-baseline';
   seed: string;
@@ -135,6 +137,7 @@ export interface WizardDesignIntervention {
 
 
 export interface WizardDesignInterventionInput {
+  compositionPlan?: AIPageCompositionPlan;
   businessName: string;
   businessModel: BusinessModel;
   industryOverlay?: IndustryOverlay | string | null;
@@ -314,19 +317,29 @@ function stableIndex(seed: string, size: number): number {
   return (hash >>> 0) % size;
 }
 
-function buildActiveVariants(templateId: string | null | undefined, seed: string): ActiveVariantMap {
+function buildActiveVariants(templateId: string | null | undefined, seed: string, packId?: ArtDirectionPackId): ActiveVariantMap {
   const composition = templateId ? getCompositionById(templateId) : null;
   if (!composition) return {};
 
   return Object.fromEntries(composition.sections.flatMap((section) => {
-    const available = getVariantsForSection(section.type);
+    const compatible = packId ? familyForSection(ART_DIRECTION_PACKS[packId], section.type) : undefined;
+    const available = getVariantsForSection(section.type).filter(variant =>
+      !packId || ((!compatible?.length || compatible.includes(variant.id)) &&
+        variant.generationStatus !== 'legacy' &&
+        (!variant.pageRoles?.length || variant.pageRoles.includes('home'))));
+    // Fresh launches prefer certified 21st-derived implementations within the
+    // selected pack. Existing serialized selections remain authoritative.
+    const sourced = packId ? available.filter(variant =>
+      variant.source?.origin === '21st' && variant.vfs?.certification === 'approved' &&
+      variant.generationStatus === 'preferred') : [];
+    const candidates = sourced.length ? sourced : available;
     const score = (id: string) => {
       const implementation = getDesignImplementation(id);
       return (implementation?.vfs?.mode === 'portable-recipe' ? 4 : 0)
         + (implementation?.radixPrimitives?.length || 0) * 2;
     };
-    const richest = Math.max(0, ...available.map(variant => score(variant.id)));
-    const variants = available.filter(variant => score(variant.id) === richest);
+    const richest = Math.max(0, ...candidates.map(variant => score(variant.id)));
+    const variants = candidates.filter(variant => score(variant.id) === richest);
     if (variants.length === 0) return [];
     const layout = (section.props as { layout?: string }).layout;
     const baselineVariantId = section.variantId ?? getVariantIdForLayout(section.type, layout);
@@ -461,7 +474,14 @@ export function buildWizardDesignIntervention(
   });
   const brief = buildArtDirectionBrief(envelope, artDirectionPackId);
 
-  const activeVariants = buildActiveVariants(input.templateId, seed);
+  const compositionPlan = input.compositionPlan
+    ? validateAIPageComposition(input.compositionPlan, artDirectionPackId, COMPOSITION_ROLES) ?? undefined : undefined;
+  const activeVariants = buildActiveVariants(input.templateId, seed, artDirectionPackId);
+  const homeChoices = compositionPlan?.pages.find(page => page.role === 'home')?.variants;
+  const home = input.templateId ? getCompositionById(input.templateId) : undefined;
+  for (const section of home?.sections ?? []) {
+    if (homeChoices?.[section.type]) activeVariants[section.id] = homeChoices[section.type] as VariantId;
+  }
   // The immersive layer is only offered when a registered implementation
   // enables it; otherwise the launch approves nothing and preflight would
   // reject any edit that followed an immersive instruction.
@@ -493,6 +513,7 @@ export function buildWizardDesignIntervention(
   return {
     version: WIZARD_DESIGN_INTERVENTION_VERSION,
     source: 'deterministic-baseline',
+    ...(compositionPlan ? { compositionPlan } : {}),
     seed,
     industry,
     businessModel: input.businessModel,

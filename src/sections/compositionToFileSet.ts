@@ -1,3 +1,5 @@
+import { applyAIPageComposition, validateAIPageComposition, COMPOSITION_ROLES } from '@/sections/aiPageComposition';
+import { SECTION_FAMILY_EMIT, layoutVariantMap, certifiedDefaultVariantId, type SectionFamilyEmit } from './resolveSectionLayout';
 const cardClass = 'ut-foundation-card bg-card text-card-foreground';
 /**
  * compositionToReactFileSet — Splits a TemplateComposition into multiple
@@ -40,7 +42,7 @@ import {
   type ResolvedPageComposition,
 } from '@/platform/core/resolvedComposition';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
-import { getLayoutForVariantId, getVariantById, getVariantsForSection } from '@/sections/variants';
+import { getLayoutForVariantId, getVariantById } from '@/sections/variants';
 import type { VariantId } from '@/sections/variants';
 import heroPageIntroSource from '@/sections/variants/hero/HeroPageIntro.tsx?raw';
 import stylexRecipes from './recipes/stylexRecipes.generated.json';
@@ -70,7 +72,7 @@ export type DesignInterventionSlice =
   & Partial<Pick<
     WizardDesignIntervention,
     'activeVariants' | 'motionRecipes' | 'industry' | 'themePresetId' | 'layoutRecipe'
-    | 'interactionRecipes' | 'artDirectionPackId' | 'seed' | 'envelope' | 'compositionPolicy'
+    | 'interactionRecipes' | 'artDirectionPackId' | 'seed' | 'envelope' | 'compositionPolicy' | 'compositionPlan'
   >>;
 
 export interface CompositionCompileOptions {
@@ -308,74 +310,6 @@ function assertSanctionedSectionTypes(template: TemplateComposition, pageFilePat
  * fall back to the family's certified default variant, never to a downgraded
  * design.
  */
-interface SectionFamilyEmit {
-  sectionType: SectionType;
-  /** Legacy layout token used when a composition carries no explicit variant. */
-  defaultLayout?: string;
-  /** Certified default variant id, preferred over the layout token. */
-  defaultVariantId?: VariantId;
-  /** Legacy aliases kept so older compositions still resolve to a certified variant. */
-  aliases?: Record<string, VariantId>;
-}
-
-const SECTION_FAMILY_EMIT: Record<keyof typeof SECTION_FILES, SectionFamilyEmit> = {
-  Navbar: { sectionType: 'navbar', defaultLayout: 'standard' },
-  Hero: { sectionType: 'hero', defaultLayout: 'centered', aliases: { split: 'hero:split-image' } },
-  About: { sectionType: 'about', defaultVariantId: 'about:editorial-split' },
-  Services: { sectionType: 'services', defaultLayout: 'card-grid' },
-  Features: { sectionType: 'features', defaultLayout: 'grid', aliases: { centered: 'features:minimal-centered' } },
-  Gallery: { sectionType: 'gallery', defaultLayout: 'grid' },
-  Pricing: { sectionType: 'pricing', defaultLayout: 'tiers' },
-  LogoCloud: { sectionType: 'logo-cloud', defaultVariantId: 'logo-cloud:grid' },
-  BlogPreview: { sectionType: 'blog-preview', defaultVariantId: 'blog-preview:editorial' },
-  BeforeAfter: { sectionType: 'before-after', defaultVariantId: 'before-after:slider' },
-  Testimonials: {
-    sectionType: 'testimonials',
-    defaultLayout: 'grid',
-    aliases: { carousel: 'testimonials:rail', single: 'testimonials:spotlight' },
-  },
-  CTA: { sectionType: 'cta', defaultLayout: 'centered' },
-  Contact: { sectionType: 'contact', defaultLayout: 'centered' },
-  Footer: { sectionType: 'footer', defaultLayout: 'columns' },
-  Stats: { sectionType: 'stats', defaultVariantId: 'stats:row' },
-  Team: { sectionType: 'team', defaultVariantId: 'team:portrait-grid' },
-  FAQ: { sectionType: 'faq', defaultVariantId: 'faq:accordion' },
-};
-
-function layoutVariantMap(family: SectionFamilyEmit): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const variant of getVariantsForSection(family.sectionType)) {
-    const layout = getLayoutForVariantId(variant.id);
-    if (layout) map[layout] = variant.id;
-    if (variant.slug) map[variant.slug] = variant.id;
-    map[variant.id] = variant.id;
-  }
-  for (const [alias, variantId] of Object.entries(family.aliases ?? {})) {
-    if (getVariantById(variantId)) map[alias] = variantId;
-  }
-  return map;
-}
-
-function certifiedDefaultVariantId(
-  componentName: string,
-  family: SectionFamilyEmit,
-  map: Record<string, string>,
-): string {
-  const candidates = [
-    family.defaultVariantId,
-    family.defaultLayout ? map[family.defaultLayout] : undefined,
-    getVariantsForSection(family.sectionType)[0]?.id,
-  ].filter(Boolean) as string[];
-  const resolved = candidates.find((id) => Boolean(getVariantById(id as VariantId)));
-  if (!resolved) {
-    throw new Error(
-      `[compositionToFileSet] section family ${componentName} (${family.sectionType}) has no certified ` +
-      'registered variant. A family may not be emitted without a canonical implementation.',
-    );
-  }
-  return resolved;
-}
-
 function certifiedSectionModule(componentName: string, family: SectionFamilyEmit): string {
   const map = layoutVariantMap(family);
   const defaultVariantId = certifiedDefaultVariantId(componentName, family, map);
@@ -640,6 +574,10 @@ function applyDesignVariants(
   template: TemplateComposition,
   designIntervention?: DesignInterventionSlice,
 ): TemplateComposition {
+  const compositionPlan = designIntervention?.compositionPlan && designIntervention.artDirectionPackId
+    ? validateAIPageComposition(designIntervention.compositionPlan, designIntervention.artDirectionPackId, COMPOSITION_ROLES) ?? undefined : undefined;
+  template = applyAIPageComposition(template, compositionPlan);
+  const pageVariants = compositionPlan?.pages.find(page => page.role === (template.pageRole || 'home'))?.variants;
   const variants = designIntervention?.sectionVariants;
   const activeVariants = designIntervention?.activeVariants;
 
@@ -674,7 +612,10 @@ function applyDesignVariants(
   return {
     ...template,
     sections: template.sections.map((section) => {
-      const activeVariantId = activeVariants?.[section.id] || (
+      const routeVariant = section.sourceSectionId && section.variantId
+        ? getVariantById(section.variantId) : undefined;
+      const activeVariantId = activeVariants?.[section.id] || (pageVariants?.[section.type] as VariantId | undefined) || (
+        routeVariant?.sectionType === section.type ? routeVariant.id :
         section.sourceSectionId && section.type !== 'hero' ? activeVariants?.[section.sourceSectionId] : undefined
       );
       const activeVariant = activeVariantId ? getVariantById(activeVariantId) : undefined;

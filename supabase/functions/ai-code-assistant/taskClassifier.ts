@@ -7,6 +7,7 @@ export type AssistantTaskType =
   | "wizard_canonical_enrichment"
   | "wizard_interaction_enrichment"
   | "wizard_content_enrichment"
+  | "wizard_composition"
   | "nav_page_generation"
   | "template_json_generation"
   | "template_html_generation"
@@ -112,6 +113,11 @@ export function classifyTask(opts: {
       skipResearch: true,
       skipThinking: true,
     };
+  }
+
+  if (mode === 'wizard-composition') {
+    return { type: 'wizard_composition', fastPath: true, shouldUseMemory: false,
+      shouldUseCompactContext: true, prefersJsonOutput: true, skipResearch: true, skipThinking: true };
   }
 
   if (mode === "wizard-content") {

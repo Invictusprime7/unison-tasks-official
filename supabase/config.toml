@@ -147,3 +147,6 @@ verify_jwt = true
 
 [functions.capability-migration-apply]
 verify_jwt = true
+
+[functions.wizard-site-composer]
+verify_jwt = false

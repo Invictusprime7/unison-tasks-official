@@ -1,0 +1,13 @@
+{
+  "origin": "user-provided",
+  "received": "2026-09-17",
+  "component": "PrismaHero",
+  "existingVariant": "hero:prisma-cinematic",
+  "status": "reference-only",
+  "license": "Not supplied with attachment; do not infer permission from community defaults.",
+  "notes": [
+    "Original preserved verbatim, never imported at runtime.",
+    "Existing local implementation uses semantic theme tokens, image props, canonical intents and reduced-motion CSS.",
+    "Demo video, placeholder navigation and hardcoded colors must not be copied into generated pages."
+  ]
+}

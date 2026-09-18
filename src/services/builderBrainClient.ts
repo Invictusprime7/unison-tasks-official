@@ -58,6 +58,7 @@ export interface BuilderTurnInput {
 }
 
 export interface BuilderTurnOptions {
+  functionName?: 'ai-code-assistant' | 'wizard-site-composer';
   /** Abort the in-flight invoke. */
   signal?: AbortSignal;
   /** Absolute budget across invocation, backoff, retries and raw fallback. */
@@ -426,7 +427,7 @@ export async function runBuilderTurn<TResponse = any>(
         ),
       };
     }
-    const response = await fetch(`${url}/functions/v1/ai-code-assistant`, {
+    const response = await fetch(`${url}/functions/v1/${options.functionName ?? 'ai-code-assistant'}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

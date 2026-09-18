@@ -27,9 +27,9 @@ describe('wizardRegistryAggregation', () => {
     expect(heroSection?.artifactId).toBe('hero');
     expect(heroSection?.allowedVariantIds.length).toBeGreaterThan(0);
 
-    // Placeholder sections are correctly flagged
+    // Promoted portable families are first-class
     const logoCloud = context.sections.find((s) => s.type === 'logo-cloud');
-    expect(logoCloud?.isFirstClass).toBe(false);
+    expect(logoCloud?.isFirstClass).toBe(true);
 
     // Artifacts cover catalog, business-profile, authored, and behavioral
     expect(context.artifacts.length).toBeGreaterThanOrEqual(17);

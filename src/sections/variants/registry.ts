@@ -1,3 +1,18 @@
+import { FeaturesSpotlightCards } from './features/FeaturesSpotlightCards';
+import { TestimonialsColumns } from './testimonials/TestimonialsColumns';
+import { ServicesBentoSpotlight } from './services/ServicesBentoSpotlight';
+import { ServicesEditorialRows } from './services/ServicesEditorialRows';
+import { ServicesExpandable } from './services/ServicesExpandable';
+import { FAQEditorial } from './faq/FAQEditorial';
+import { FAQSearchable } from './faq/FAQSearchable';
+import { ContactEditorialForm } from './contact/ContactEditorialForm';
+import { ContactMapStudio } from './contact/ContactMapStudio';
+import { ContactCheckoutPanel } from './contact/ContactCheckoutPanel';
+import { AboutImageStory } from './about/AboutImageStory';
+import { StatsProofGrid } from './stats/StatsProofGrid';
+import { PricingSpotlight } from './pricing/PricingSpotlight';
+import { GalleryCaseStudy } from './gallery/GalleryCaseStudy';
+import { portableRecipeOnly } from './portableRecipeOnly';
 /**
  * Section Variant Registry
  * 
@@ -177,6 +192,13 @@ import { FooterDarkBand } from './footer/FooterDarkBand';
 
 const VARIANT_REGISTRY: VariantRegistry = {
   testimonials: [
+    { id: 'testimonials:columns', sectionType: 'testimonials', slug: 'columns', name: 'Testimonial Columns',
+      description: 'Testimonial columns with opt-in vertical motion, pause control and accessible static proof', component: TestimonialsColumns,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      source: { origin: '21st', sourceId: '21st:1965', sourceUrl: 'https://21st.dev/@efferd/components/testimonials-columns-1', author: 'efferd', derivation: 'visual-reference', adaptationVersion: '1' },
+      generationStatus: 'preferred', thumbnail: '/variants/testimonials-columns.svg',
+      tags: ['premium', 'popular-source'], pageRoles: ['home', 'about', 'services', 'pricing', 'shop'], renderJSX: portableRecipeOnly,
+    },
     {
       id: 'testimonials:marquee',
       sectionType: 'testimonials',
@@ -240,6 +262,31 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
   pricing: [
     {
+      id: 'pricing:spotlight',
+      sectionType: 'pricing',
+      slug: 'spotlight',
+      name: 'Pricing Spotlight',
+      description: 'Highlighted plan spans the grid while every price and action remains data-owned',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:vaib215/bento-pricing-component',
+        sourceUrl: 'https://21st.dev/community/components/vaib215/bento-pricing-component',
+        author: 'Vaibhav Kumar Singh',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/pricing-spotlight.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial', 'page-design:showcase'],
+      pageRoles: ['pricing', 'services', 'home'],
+      component: PricingSpotlight,
+      renderJSX: portableRecipeOnly,
+    },
+    {
       id: 'pricing:feature-table',
       sectionType: 'pricing',
       slug: 'feature-table',
@@ -301,6 +348,32 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
   ],
   gallery: [
+    {
+      id: 'gallery:case-study',
+      radixPrimitives: ['dialog'],
+      sectionType: 'gallery',
+      slug: 'case-study',
+      name: 'Case Study Gallery',
+      description: 'Editorial project rows with category filters and accessible lightbox',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:reference/image-gallery',
+        sourceUrl: 'https://news.21st.dev/blog/react-image-gallery-components',
+        author: '21st.dev',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/gallery-case-study.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial', 'page-design:showcase'],
+      pageRoles: ['home', 'gallery', 'about', 'shop'],
+      component: GalleryCaseStudy,
+      renderJSX: portableRecipeOnly,
+    },
     {
       id: 'gallery:editorial-mosaic',
       sectionType: 'gallery',
@@ -448,7 +521,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'hero:split-image',
-      pageRoles: ['services', 'about'],
+      pageRoles: ['home', 'services', 'about'],
       sectionType: 'hero',
       slug: 'split-image',
       name: 'Split Image',
@@ -462,7 +535,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'hero:full-bleed',
-      pageRoles: ['gallery', 'shop'],
+      pageRoles: ['home', 'gallery', 'shop'],
       sectionType: 'hero',
       slug: 'full-bleed',
       name: 'Full Bleed',
@@ -664,6 +737,13 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   features: [
+    { id: 'features:spotlight-cards', sectionType: 'features', slug: 'spotlight-cards', name: 'Spotlight Cards',
+      description: 'Responsive feature cards with a pointer spotlight and static reduced-motion presentation', component: FeaturesSpotlightCards,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      source: { origin: '21st', sourceId: '21st:2220', sourceUrl: 'https://21st.dev/@preetsuthar17/components/spotlight-card', author: 'preetsuthar17', derivation: 'visual-reference', adaptationVersion: '1' },
+      generationStatus: 'preferred', thumbnail: '/variants/features-spotlight-cards.svg',
+      tags: ['premium', 'popular-source'], pageRoles: ['home', 'about', 'services', 'pricing', 'shop'], renderJSX: portableRecipeOnly,
+    },
     {
       id: 'features:grid',
       sectionType: 'features',
@@ -725,6 +805,81 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   services: [
+    {
+      id: 'services:expandable',
+      sectionType: 'services',
+      slug: 'expandable',
+      name: 'Expandable Services',
+      description: 'Keyboard-accessible service disclosures with media and actions',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:684',
+        sourceUrl: 'https://21st.dev/@shadcnblockscom/components/faq3',
+        author: 'shadcnblockscom',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/services-expandable.svg',
+      tags: ['premium', 'route-design', 'page-design:showcase'],
+      pageRoles: ['home', 'services', 'pricing', 'booking'],
+      component: ServicesExpandable,
+      renderJSX: portableRecipeOnly,
+    },
+    {
+      id: 'services:editorial-rows',
+      sectionType: 'services',
+      slug: 'editorial-rows',
+      name: 'Editorial Rows',
+      description: 'Numbered service chapters with image, description and action',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:9206',
+        sourceUrl: 'https://21st.dev/c/9206',
+        author: '21st.dev community',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/services-editorial-rows.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial'],
+      pageRoles: ['home', 'services', 'about', 'booking'],
+      component: ServicesEditorialRows,
+      renderJSX: portableRecipeOnly,
+    },
+    {
+      id: 'services:bento-spotlight',
+      sectionType: 'services',
+      slug: 'bento-spotlight',
+      name: 'Bento Spotlight',
+      description: 'Asymmetric service cards with a lead image, pricing and intent-bound actions',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:9206',
+        sourceUrl: 'https://21st.dev/c/9206',
+        author: '21st.dev community',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/services-bento-spotlight.svg',
+      tags: ['premium', 'route-design', 'page-design:showcase'],
+      pageRoles: ['home', 'services', 'booking'],
+      component: ServicesBentoSpotlight,
+      renderJSX: portableRecipeOnly,
+    },
     {
       id: 'services:product-cards',
       sectionType: 'services',
@@ -788,6 +943,81 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   contact: [
+    {
+      id: 'contact:checkout-panel',
+      sectionType: 'contact',
+      slug: 'checkout-panel',
+      name: 'Checkout Support',
+      description: 'Order inquiry form and canonical cart checkout handoff',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:7053',
+        sourceUrl: 'https://21st.dev/@ruixen.ui/components/checkout-form',
+        author: 'ruixen.ui',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/contact-checkout-panel.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial', 'page-design:showcase'],
+      pageRoles: ['checkout'],
+      component: ContactCheckoutPanel,
+      renderJSX: portableRecipeOnly,
+    },
+    {
+      id: 'contact:map-studio',
+      sectionType: 'contact',
+      slug: 'map-studio',
+      name: 'Map Studio',
+      description: 'Optional lazy map, visible directions and a labelled inquiry form',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:4741',
+        sourceUrl: 'https://21st.dev/@meschacirung/components/contact-form',
+        author: 'meschacirung',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/contact-map-studio.svg',
+      tags: ['premium', 'route-design', 'page-design:showcase'],
+      pageRoles: ['home', 'contact', 'about', 'booking'],
+      component: ContactMapStudio,
+      renderJSX: portableRecipeOnly,
+    },
+    {
+      id: 'contact:editorial-form',
+      sectionType: 'contact',
+      slug: 'editorial-form',
+      name: 'Editorial Form',
+      description: 'Labelled contact form beside a direct-contact information rail',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:4741',
+        sourceUrl: 'https://21st.dev/@meschacirung/components/contact-form',
+        author: 'meschacirung',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/contact-editorial-form.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial'],
+      pageRoles: ['home', 'contact', 'booking', 'services'],
+      component: ContactEditorialForm,
+      renderJSX: portableRecipeOnly,
+    },
     {
       id: 'contact:centered',
       sectionType: 'contact',
@@ -891,6 +1121,31 @@ const VARIANT_REGISTRY: VariantRegistry = {
 
   about: [
     {
+      id: 'about:image-story',
+      sectionType: 'about',
+      slug: 'image-story',
+      name: 'Image Story',
+      description: 'Large editorial image paired with a story panel and action',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:ruixen.ui/about-page',
+        sourceUrl: 'https://21st.dev/@ruixen.ui/components/about-page',
+        author: 'Ruixen UI',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/about-image-story.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial', 'page-design:showcase'],
+      pageRoles: ['about', 'home'],
+      component: AboutImageStory,
+      renderJSX: portableRecipeOnly,
+    },
+    {
       id: 'about:editorial-split',
       sectionType: 'about',
       slug: 'editorial-split',
@@ -930,6 +1185,56 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   faq: [
+    {
+      id: 'faq:searchable',
+      sectionType: 'faq',
+      slug: 'searchable',
+      name: 'Searchable FAQ',
+      description: 'Search questions and answers with live result counts and disclosures',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:24932',
+        sourceUrl: 'https://21st.dev/@cnippet-dev/components/v-accordion-11',
+        author: 'cnippet-dev',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/faq-searchable.svg',
+      tags: ['premium', 'route-design', 'page-design:showcase'],
+      pageRoles: ['home', 'faq', 'services', 'contact', 'checkout'],
+      component: FAQSearchable,
+      renderJSX: portableRecipeOnly,
+    },
+    {
+      id: 'faq:editorial',
+      sectionType: 'faq',
+      slug: 'editorial',
+      name: 'Editorial FAQ',
+      description: 'Numbered questions in a two-column disclosure layout',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:684',
+        sourceUrl: 'https://21st.dev/@shadcnblockscom/components/faq3',
+        author: 'shadcnblockscom',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/faq-editorial.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial'],
+      pageRoles: ['home', 'faq', 'services', 'pricing', 'contact', 'checkout'],
+      component: FAQEditorial,
+      renderJSX: portableRecipeOnly,
+    },
     {
       id: 'faq:accordion',
       sectionType: 'faq',
@@ -971,6 +1276,31 @@ const VARIANT_REGISTRY: VariantRegistry = {
   ],
 
   stats: [
+    {
+      id: 'stats:proof-grid',
+      sectionType: 'stats',
+      slug: 'proof-grid',
+      name: 'Proof Grid',
+      description: 'Oversized supplied metrics with restrained staggered entrance',
+      vfs: {
+        mode: 'portable-recipe',
+        certification: 'approved',
+      },
+      source: {
+        origin: '21st',
+        sourceId: '21st:9206',
+        sourceUrl: 'https://21st.dev/c/9206',
+        author: '21st.dev community',
+        adaptationVersion: '1',
+        derivation: 'visual-reference',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/stats-proof-grid.svg',
+      tags: ['premium', 'route-design', 'page-design:editorial', 'page-design:showcase'],
+      pageRoles: ['about', 'home', 'services', 'thank_you'],
+      component: StatsProofGrid,
+      renderJSX: portableRecipeOnly,
+    },
     {
       id: 'stats:metric-cards',
       sectionType: 'stats',
@@ -1332,12 +1662,12 @@ export const getVariantIdForLayout = (
 ): VariantId | undefined => {
   if (!layout) return undefined;
   return getVariantsForSection(sectionType).find((variant) => (
-    VARIANT_LAYOUT_ALIASES[variant.id]?.includes(layout)
+    variant.slug === layout || VARIANT_LAYOUT_ALIASES[variant.id]?.includes(layout)
   ))?.id;
 };
 
 export const getLayoutForVariantId = (variantId: VariantId): string | undefined => (
-  VARIANT_LAYOUT_ALIASES[variantId]?.[0]
+  VARIANT_LAYOUT_ALIASES[variantId]?.[0] ?? getVariantById(variantId)?.slug
 );
 
 /** Get the default variant for a section type */

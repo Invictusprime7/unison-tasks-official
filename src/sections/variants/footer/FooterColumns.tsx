@@ -39,6 +39,7 @@ export const FooterColumns: React.FC<BaseSectionProps<'footer'>> = ({ section, t
       data-ut-variant="footer:columns"
       className="px-6"
       style={{
+        overflowWrap: 'anywhere',
         paddingTop: '3rem',
         paddingBottom: '1.5rem',
         background: hsl(theme.colors.card),
@@ -47,8 +48,8 @@ export const FooterColumns: React.FC<BaseSectionProps<'footer'>> = ({ section, t
     >
       <div className="mx-auto" style={{ maxWidth: theme.containerWidth }}>
         <div
-          className="grid gap-8 mb-8"
-          style={{ gridTemplateColumns: `repeat(${columns.length + 1}, 1fr)` }}
+          className="grid grid-cols-1 gap-8 mb-8 sm:grid-cols-2 lg:grid-cols-[var(--ut-footer-columns)]"
+          style={{ "--ut-footer-columns": `repeat(${columns.length + 1}, minmax(0, 1fr))` } as React.CSSProperties}
         >
           <div>
             <h3
@@ -65,8 +66,11 @@ export const FooterColumns: React.FC<BaseSectionProps<'footer'>> = ({ section, t
               <form data-demo-form="true" data-ut-intent="newsletter.subscribe" className="flex gap-2 mt-3">
                 <input
                   type="email"
+                  aria-label="Email for newsletter"
+                  name="email"
+                  required
                   placeholder="your@email.com"
-                  className="flex-1 text-sm px-3 py-2"
+                  className="min-w-0 flex-1 text-sm px-3 py-2"
                   style={{
                     borderRadius: theme.radius,
                     border: `1px solid ${hsla(theme.colors.border, 0.6)}`,

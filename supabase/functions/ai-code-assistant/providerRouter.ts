@@ -238,6 +238,7 @@ export function buildProviderPlan(
       };
       break;
 
+    case "wizard_composition":
     case "wizard_content_enrichment":
       plan = {
         gatewayModels: [
@@ -324,6 +325,7 @@ export function buildProviderPlan(
   // wizard seed lineup is intentionally tuned for first-shot success and
   // must not be swapped out for slower advanced-tier models).
   const usesProtectedWizardPlan = task.type === "wizard_seed_generation"
+    || task.type === "wizard_composition"
     || task.type === "wizard_content_enrichment"
     || task.type === "wizard_interaction_enrichment";
   if (!usesProtectedWizardPlan) {

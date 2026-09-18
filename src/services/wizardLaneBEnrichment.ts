@@ -1,3 +1,4 @@
+import { collectResolvedCompositions } from '@/platform/core/resolvedComposition';
 /**
  * Lane B Canonical Enrichment — AI-authored candidate page-body patches.
  *
@@ -28,16 +29,23 @@ import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRe
 /** The exact registry projection used by the production enrichment request. */
 export function buildWizardLaneBRegistryContext(
   snapshot: Pick<SiteBundleSnapshot, 'vfsFiles' | 'meta'>,
-  registry: Pick<WizardAggregatedRegistryContext, 'sections'>,
+  registry: Pick<WizardAggregatedRegistryContext, 'sections' | 'implementations'>,
 ) {
   const uiFoundationManifest = readGeneratedUiManifest(snapshot.vfsFiles);
   if (!uiFoundationManifest) throw new Error('Cannot enrich a snapshot without its UI foundation manifest.');
+  const resolvedSections = Object.values(collectResolvedCompositions(snapshot.vfsFiles)).flatMap(page => page.sections);
+  const resolvedTypes = new Set(resolvedSections.map(section => section.semanticType));
+  const selectedIds = resolvedSections.length
+    ? resolvedSections.flatMap(section => section.variantId ? [section.variantId] : [])
+    : Object.values(snapshot.meta.designIntervention?.activeVariants ?? {});
   return {
+    implementationContext: (registry.implementations ?? []).filter(implementation =>
+      !resolvedTypes.size || resolvedTypes.has(implementation.sectionType)),
     uiFoundationManifest,
     uiFoundationDirective: buildGeneratedUiFoundationDirective(uiFoundationManifest),
     designVocabularyReport: buildDesignVocabularyReport({
       eligibleImplementationIds: registry.sections.flatMap((section) => section.allowedVariantIds),
-      selectedImplementationIds: Object.values(snapshot.meta.designIntervention?.activeVariants ?? {}),
+      selectedImplementationIds: selectedIds,
     }),
   };
 }
@@ -150,6 +158,7 @@ export interface WizardLaneBEnrichmentRequest {
   themeContractDirective?: string;
 
   /** Design vocabulary and implementation registry status. */
+  implementationContext?: WizardAggregatedRegistryContext['implementations'];
   designVocabularyReport: {
     executableIds: string[];
     unimplementedIds: string[];

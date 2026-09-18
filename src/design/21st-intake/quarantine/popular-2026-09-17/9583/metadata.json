@@ -1,0 +1,17 @@
+{
+    "id":  9583,
+    "componentId":  6474,
+    "name":  "Scroll Morph Hero",
+    "demoName":  "Scroll Morph Hero.tsx",
+    "description":  "A stunning hero section that morphs from a scattered layout to a circle, and finally to a scroll-driven interactive rainbow arc.",
+    "previewUrl":  "https://cdn.21st.dev/prashantsom75/scroll-morph-hero/default/preview.1765164297799.png",
+    "installCommand":  "npx shadcn@latest add \"https://21st.dev/r/prashantsom75/scroll-morph-hero?api_key=$API_KEY_21ST\"",
+    "registryDependencies":  {
+                                 "filesWithRegistry":  {
+
+                                                       },
+                                 "npmDependencies":  {
+
+                                                     }
+                             }
+}

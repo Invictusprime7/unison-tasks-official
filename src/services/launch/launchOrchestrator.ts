@@ -1,3 +1,4 @@
+import { requestAIPageComposition } from '@/services/requestAIPageComposition';
 import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContract';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
@@ -107,6 +108,8 @@ import { livePageTopology } from "@/builder/controllers/PageTopologyController";
 import { livePreviewRuntime } from "@/builder/controllers/PreviewRuntimeController";
 import { livePlaygroundSync } from "@/builder/controllers/PlaygroundSyncController";
 import {
+  getDefaultTemplateCardForIndustry,
+  getDefaultTemplateCardFor,
   GOAL_TO_NEEDS,
   LAUNCHER_PRESELECTS,
   SYSTEM_TO_BUSINESS_MODEL,
@@ -130,7 +133,9 @@ import {
 
 export interface LaunchOrchestratorInput {
   systemId: BusinessSystemType;
-  template: TemplateCardData;
+  template?: TemplateCardData;
+  industry?: string;
+  visionPrompt?: string;
   theme: ThemePreset;
   businessName: string;
   primaryGoal: PrimaryGoal | null;
@@ -206,9 +211,13 @@ function vfsFilesToVirtualNodes(vfsFiles: Record<string, string>): VirtualNode[]
  * renders the message and diagnostic context in the wizard.
  */
 export async function runLaunchPipeline(
-  input: LaunchOrchestratorInput,
+  submitted: LaunchOrchestratorInput,
   callbacks: LaunchOrchestratorCallbacks = {},
 ): Promise<LaunchOrchestratorResult> {
+  // Internal semantic content baseline; never a user-selected visual layout.
+  const baseline = submitted.template || getDefaultTemplateCardForIndustry(submitted.industry) || getDefaultTemplateCardFor(submitted.systemId);
+  if (!baseline) throw new LaunchFatalError('No content baseline is available for this industry.');
+  const input = { ...submitted, template: baseline };
   const run: LaunchRun = createLaunchRun({ onChange: callbacks.onProgress });
   const status = (message: string) => {
     callbacks.onStatus?.(message);
@@ -223,7 +232,7 @@ export async function runLaunchPipeline(
   const composition = getCompositionById(input.template.id);
   if (!composition) {
     throw new LaunchFatalError(
-      `"${input.template.label}" has no registered composition. Pick another template.`,
+      `"${input.template.label}" has no registered composition. Choose another industry.`,
     );
   }
 
@@ -307,6 +316,7 @@ export async function runLaunchPipeline(
 
     const themeTokens = themePresetToThemeTokens(input.theme);
     const selections: WizardSelections = {
+      visionPrompt: input.visionPrompt?.trim(),
       businessName: brand,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
       industryOverlay,
@@ -417,6 +427,13 @@ export async function runLaunchPipeline(
   // ── Stage: seed (canonical compile + Stage 4b theme tokens) ───────────────
   status("Compiling your themed site…");
   const stage4b = await run.stage("seed", async (signal) => {
+    status('Choosing page compositions from the local design library...');
+    let compositionFailure = 'unknown';
+    let compositionFailureMessage = 'AI site composition could not complete. Please retry generation.';
+    const compositionPlan = await requestAIPageComposition(plan.selections, signal, undefined, (reason, details) => { compositionFailure = reason; compositionFailureMessage = details?.message || ('AI site composition failed (' + reason + '). Please retry generation.'); if (details?.status) compositionFailureMessage += ' (HTTP ' + details.status + ')'; if (details?.errorType) compositionFailureMessage += ' [' + details.errorType + ']'; });
+    signal.throwIfAborted();
+    if (compositionPlan) plan.selections.compositionPlan = compositionPlan;
+    else throw new LaunchFatalError(compositionFailureMessage, { stage: 'seed', code: 'composition.' + compositionFailure });
     const result = await runWizardStage4b({
       selections: plan.selections,
       existingVfsFiles: {
@@ -568,10 +585,12 @@ export async function runLaunchPipeline(
 
   try {
     await run.stage("enrich", async (signal) => {
+      if (plan.selections.compositionPlan) return;
       const {
         uiFoundationManifest: manifestData,
         uiFoundationDirective,
         designVocabularyReport,
+        implementationContext,
       } = buildWizardLaneBRegistryContext(siteBundleSnapshot, wizardRegistryContext);
 
       // Build the page registry for AI visibility
@@ -610,6 +629,7 @@ export async function runLaunchPipeline(
         uiFoundationDirective,
         themeContractDirective: buildThemeContractDirectiveFromFiles(siteBundleSnapshot.vfsFiles),
         designVocabularyReport,
+        implementationContext,
         intentBindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
           industry: plan.industryOverlay,
         }),

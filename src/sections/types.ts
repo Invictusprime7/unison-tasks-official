@@ -346,6 +346,7 @@ export interface TemplatePageComposition {
 }
 
 export interface TemplateComposition {
+  pageRole?: TemplatePageRole;
   id: string;
   name: string;
   category: string;

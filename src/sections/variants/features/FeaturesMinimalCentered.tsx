@@ -38,7 +38,7 @@ export const FeaturesMinimalCentered: React.FC<BaseSectionProps<'features'>> = (
             )}
           </div>
         )}
-        <div className="grid gap-10 text-center" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[var(--ut-feature-columns)] gap-10 text-center" style={{ "--ut-feature-columns": `repeat(${columns}, minmax(0, 1fr))`, overflowWrap: 'anywhere' } as React.CSSProperties}>
           {items.map((item, i) => (
             <div key={i}>
               {item.icon && (

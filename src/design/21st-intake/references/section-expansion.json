@@ -1,0 +1,132 @@
+{
+  "reviewedAt": "2026-09-17",
+  "method": "MCP tools/list verified. Retrieved services 4192, searchable FAQ 24932, FAQ 684, contact 4741, checkout 7053 and about 6289 through get_component. Original Unison implementations reference inspected source; no upstream license is assumed.",
+  "variants": [
+    {
+      "id": "services:bento-spotlight",
+      "sourceUrl": "https://21st.dev/c/9206",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe"
+    },
+    {
+      "id": "services:editorial-rows",
+      "sourceUrl": "https://21st.dev/c/9206",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe"
+    },
+    {
+      "id": "services:expandable",
+      "sourceUrl": "https://21st.dev/@shadcnblockscom/components/faq3",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe",
+      "inspectedSourceId": "21st:684"
+    },
+    {
+      "id": "faq:editorial",
+      "sourceUrl": "https://21st.dev/@shadcnblockscom/components/faq3",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe",
+      "inspectedSourceId": "21st:684"
+    },
+    {
+      "id": "faq:searchable",
+      "sourceUrl": "https://21st.dev/@cnippet-dev/components/v-accordion-11",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe",
+      "inspectedSourceId": "21st:24932"
+    },
+    {
+      "id": "contact:editorial-form",
+      "sourceUrl": "https://21st.dev/@meschacirung/components/contact-form",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe",
+      "inspectedSourceId": "21st:4741"
+    },
+    {
+      "id": "contact:map-studio",
+      "sourceUrl": "https://21st.dev/@meschacirung/components/contact-form",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe",
+      "inspectedSourceId": "21st:4741"
+    },
+    {
+      "id": "contact:checkout-panel",
+      "sourceUrl": "https://21st.dev/@ruixen.ui/components/checkout-form",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe",
+      "inspectedSourceId": "21st:7053"
+    },
+    {
+      "id": "about:image-story",
+      "sourceUrl": "https://21st.dev/@ruixen.ui/components/about-page",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe"
+    },
+    {
+      "id": "stats:proof-grid",
+      "sourceUrl": "https://21st.dev/c/9206",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe"
+    },
+    {
+      "id": "pricing:spotlight",
+      "sourceUrl": "https://21st.dev/community/components/vaib215/bento-pricing-component",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe"
+    },
+    {
+      "id": "gallery:case-study",
+      "sourceUrl": "https://news.21st.dev/blog/react-image-gallery-components",
+      "derivation": "visual-reference",
+      "dependencies": [
+        "react"
+      ],
+      "motion": "CSS transform, reduced-motion opt-out; native disclosure where appropriate",
+      "runtime": "Canonical portable recipe"
+    }
+  ]
+}

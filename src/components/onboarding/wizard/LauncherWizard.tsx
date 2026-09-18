@@ -1,7 +1,7 @@
 /**
  * LauncherWizard — the Unison System Launcher.
  *
- * Selection surface only. Four steps (industry → goals → template → launch)
+ * Selection surface only. Three steps: idea, goals and brand style.
  * gather answers; `runLaunchPipeline` owns every deterministic stage. This
  * component never touches the VFS or authors a page. The orchestrator owns
  * deterministic generation and any guarded AI enrichment while this surface
@@ -34,11 +34,11 @@ import {
   type ThemePreset,
 } from "@/components/onboarding/themePresets";
 import { StyleTokenCard } from "@/components/onboarding/StyleTokenCard";
-import { TemplateLivePreview } from "@/components/onboarding/TemplateLivePreview";
+
 import { ImportProjectZipButton } from "@/components/onboarding/ImportProjectZipButton";
 import { ImportUnisonSiteZipButton } from "@/components/onboarding/ImportUnisonSiteZipButton";
 import type { BusinessSystemType } from "@/data/templates/types";
-import { deriveGenerationSeed } from "@/platform/core/generationSeed";
+
 import { useLaunch } from "@/contexts/useLaunchHooks";
 import {
   runLaunchPipeline,
@@ -51,15 +51,12 @@ import {
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
 import { LaunchStageTimeline } from "./LaunchStageTimeline";
-import { DesignContractInspector } from "./DesignContractInspector";
+
 import {
   classifyPromptForWizard,
   type WizardPromptAnalysis,
 } from "./wizardPromptClassifier";
 import {
-  getCompositionCardsForIndustry,
-  getDefaultTemplateCardFor,
-  getDefaultTemplateCardForIndustry,
   getIndustryCustomerNeeds,
   getIndustryDefaultPageChoices,
   getIndustryPageChoiceCards,
@@ -68,11 +65,9 @@ import {
   INDUSTRY_FOCUS_CARDS,
   PRIMARY_GOALS,
   STEP_META,
-  SYSTEM_TO_BUSINESS_MODEL,
   type CustomerNeed,
   type PageChoice,
   type PrimaryGoal,
-  type TemplateCardData,
   type WizardStep,
 } from "./wizardCatalog";
 
@@ -90,7 +85,6 @@ export interface LauncherWizardProps {
 const STEP_ORDER: WizardStep[] = [
   "industry",
   "questions",
-  "templates",
   "aesthetic",
 ];
 
@@ -142,7 +136,6 @@ export const LauncherWizard = ({
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal | null>(null);
   const [customerNeeds, setCustomerNeeds] = useState<CustomerNeed[]>([]);
   const [selectedPages, setSelectedPages] = useState<PageChoice[]>([]);
-  const [template, setTemplate] = useState<TemplateCardData | null>(null);
   const [theme, setTheme] = useState<ThemePreset | null>(
     THEME_PRESETS[0] ?? null,
   );
@@ -168,7 +161,6 @@ export const LauncherWizard = ({
     setPrimaryGoal(null);
     setCustomerNeeds([]);
     setSelectedPages([]);
-    setTemplate(null);
     setTheme(THEME_PRESETS[0] ?? null);
     setSocialLinks({});
     setVisionPrompt("");
@@ -194,7 +186,6 @@ export const LauncherWizard = ({
       setPrimaryGoal(analysis.primaryGoal);
       setCustomerNeeds(analysis.customerNeeds);
       setSelectedPages(analysis.selectedPages);
-      setTemplate(getDefaultTemplateCardForIndustry(analysis.industry));
       const matchedTheme = THEME_PRESETS.find(
         (p) => p.id === analysis.themePresetId,
       );
@@ -211,49 +202,12 @@ export const LauncherWizard = ({
     if (open && prefill?.businessName) setBusinessName(prefill.businessName);
   }, [open, prefill?.businessName]);
 
-  const templates = useMemo(
-    () =>
-      selectedIndustry ? getCompositionCardsForIndustry(selectedIndustry) : [],
-    [selectedIndustry],
-  );
-  const effectiveTemplate =
-    template ||
-    getDefaultTemplateCardForIndustry(selectedIndustry) ||
-    getDefaultTemplateCardFor(systemId);
-
-  const previewSeed = useMemo(
-    () =>
-      deriveGenerationSeed({
-        businessName,
-        businessModel: systemId
-          ? SYSTEM_TO_BUSINESS_MODEL[systemId]
-          : "general",
-        industry: selectedIndustry || effectiveTemplate?.industry,
-        templateId: effectiveTemplate?.id,
-        themePresetId: theme?.id,
-        primaryGoal,
-        secondaryGoals: customerNeeds,
-        requestedPages: ["home", ...selectedPages],
-      }),
-    [
-      businessName,
-      systemId,
-      selectedIndustry,
-      effectiveTemplate,
-      theme,
-      primaryGoal,
-      customerNeeds,
-      selectedPages,
-    ],
-  );
-
   const selectIndustry = (industry: string, id: BusinessSystemType) => {
     setSelectedIndustry(industry);
     setSystemId(id);
     setPrimaryGoal(getIndustryPrimaryGoal(industry));
     setCustomerNeeds(getIndustryCustomerNeeds(industry));
     setSelectedPages(getIndustryDefaultPageChoices(industry));
-    setTemplate(getDefaultTemplateCardForIndustry(industry));
     setStep("questions");
   };
 
@@ -272,9 +226,7 @@ export const LauncherWizard = ({
       ? Boolean(systemId && selectedIndustry)
       : step === "questions"
         ? Boolean(primaryGoal)
-        : step === "templates"
-          ? Boolean(effectiveTemplate)
-          : Boolean(businessName.trim() && theme && effectiveTemplate);
+        : Boolean(businessName.trim() && theme);
 
   const goBack = () => {
     const index = STEP_ORDER.indexOf(step);
@@ -287,7 +239,7 @@ export const LauncherWizard = ({
   };
 
   const handleGenerate = async () => {
-    if (isLaunching || !systemId || !effectiveTemplate || !theme) return;
+    if (isLaunching || !systemId || !theme) return;
     if (!businessName.trim()) {
       setLaunchError("Please enter your business name.");
       return;
@@ -300,7 +252,8 @@ export const LauncherWizard = ({
 
     const input: LaunchOrchestratorInput = {
       systemId,
-      template: effectiveTemplate,
+      industry: selectedIndustry || undefined,
+      visionPrompt,
       theme,
       businessName,
       primaryGoal,
@@ -525,7 +478,7 @@ export const LauncherWizard = ({
                         style
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Review your goals, choose a layout, and adjust your
+                        Review your goals, choose your pages, and adjust your
                         style before building.
                       </p>
                     </div>
@@ -655,40 +608,6 @@ export const LauncherWizard = ({
               </>
             )}
 
-            {step === "templates" && (
-              <>
-                <StepHeading
-                  title="Choose a starting layout"
-                  subtitle="Pick the structure that fits your business. Keep refining it in the editor."
-                />
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {templates.map((card) => (
-                    <button
-                      key={card.id}
-                      type="button"
-                      aria-pressed={effectiveTemplate?.id === card.id}
-                      onClick={() => setTemplate(card)}
-                      className={cn(
-                        "rounded-xl border p-3 text-left transition-all",
-                        effectiveTemplate?.id === card.id
-                          ? "border-cyan-400/40 bg-cyan-400/[0.06]"
-                          : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
-                      )}
-                    >
-                      <div className="text-sm font-semibold">{card.label}</div>
-                      <div className="mb-2 line-clamp-2 text-sm text-slate-400">
-                        {card.description}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {card.sectionTypes.length} thoughtfully arranged
-                        sections
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
             {step === "aesthetic" && (
               <>
                 <StepHeading
@@ -776,31 +695,14 @@ export const LauncherWizard = ({
                 />
               ) : (
                 <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                  <div className="text-xs font-semibold text-white/80">
-                    Layout preview
-                  </div>
-                  <div className="mb-2 text-[10px] text-white/30">
-                    A starting layout for your website.
-                  </div>
-                  <TemplateLivePreview
-                    template={effectiveTemplate}
-                    businessName={businessName || "Your business"}
-                  />
+                  <div className="text-xs font-semibold text-white/80">Your site brief</div>
+                  <p className="mt-2 text-sm text-slate-400">AI will compose your pages around your business, goals and chosen style.</p>
+                  <p className="mt-3 text-sm">{businessName || 'Your business'} ? {selectedIndustry}</p>
+                  <p className="mt-2 text-xs text-slate-400">Pages: {['home', ...selectedPages].join(', ')}</p>
                 </div>
               )}
 
-              {!isLaunching && (
-                <details className="rounded-xl border border-white/10 p-4">
-                  <summary className="cursor-pointer text-xs text-slate-400">
-                    Design details
-                  </summary>
-                  <DesignContractInspector
-                    templateId={effectiveTemplate?.id ?? null}
-                    seed={previewSeed}
-                    selectedPages={selectedPages}
-                  />
-                </details>
-              )}
+
             </aside>
           )}
         </div>

@@ -42,6 +42,8 @@ export interface DesignImplementation {
   /** True when the family exposes variant-level implementations. */
   hasVariants: boolean;
   vfs?: SectionVariant['vfs'];
+  source?: SectionVariant['source'];
+  generationStatus?: SectionVariant['generationStatus'];
   radixPrimitives?: SectionVariant['radixPrimitives'];
   vocabulary?: SectionVariant['vocabulary'];
   /** Deduplicated union of the legacy shorthand and additional references. */
@@ -105,6 +107,8 @@ function buildIndex(): Map<string, DesignImplementation> {
         isDefault: Boolean(variant.isDefault),
         thumbnail: variant.thumbnail,
         hasVariants: true,
+        source: variant.source ? { ...variant.source } : undefined,
+        generationStatus: variant.generationStatus,
         vfs: variant.vfs ? { ...variant.vfs } : undefined,
         radixPrimitives: variant.radixPrimitives ? [...variant.radixPrimitives] : undefined,
         vocabulary: variant.vocabulary ? { ...variant.vocabulary } : undefined,

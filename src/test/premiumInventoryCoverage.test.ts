@@ -2,11 +2,12 @@
  * Phase 4 — Premium React Inventory certification.
  *
  * Every design implementation the compiler can select must resolve to a real
- * React component AND a JSX source renderer, and every editorially load-bearing
+ * React component AND a certified portable recipe (or legacy JSX emitter), and every editorially load-bearing
  * section family must offer real choice (>= 2 registered implementations).
  */
 
 import { describe, it, expect } from 'vitest';
+import recipes from '@/sections/recipes/stylexRecipes.generated.json';
 import {
   listDesignImplementations,
   listImplementationsForSection,
@@ -45,10 +46,12 @@ describe('premium inventory coverage', () => {
     expect(missing.map((m) => m.implementationId)).toEqual([]);
   });
 
-  it('every variant implementation can emit JSX source for the VFS', () => {
+  it('every variant implementation has its authoritative VFS emitter', () => {
     const missing = Object.values(VARIANT_REGISTRY)
       .flatMap((variants) => variants ?? [])
-      .filter((variant) => typeof variant.renderJSX !== 'function' || variant.renderJSX({}).trim().length < 40);
+      .filter((variant) => variant.vfs?.mode === 'portable-recipe'
+        ? !recipes.families[variant.sectionType as keyof typeof recipes.families]?.includes(variant.id)
+        : typeof variant.renderJSX !== 'function' || variant.renderJSX({}).trim().length < 40);
     expect(missing.map((v) => v.id)).toEqual([]);
   });
 

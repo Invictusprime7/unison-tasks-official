@@ -1,0 +1,17 @@
+{
+    "id":  1932,
+    "componentId":  1755,
+    "name":  "Scroll media expansion hero",
+    "demoName":  "Default",
+    "description":  "A modern, interactive media component for Next.js that expands videos or images as users scroll, creating an engaging and immersive experience.",
+    "previewUrl":  "https://cdn.21st.dev/arunachalam/scroll-expansion-hero/default/preview.1788803090804-2c8fb1d2-2c97-49da-8b80-56ad608613d9.webp",
+    "installCommand":  "npx shadcn@latest add \"https://21st.dev/r/arunachalam/scroll-expansion-hero?api_key=$API_KEY_21ST\"",
+    "registryDependencies":  {
+                                 "filesWithRegistry":  {
+
+                                                       },
+                                 "npmDependencies":  {
+
+                                                     }
+                             }
+}

@@ -68,7 +68,7 @@ describe('precompiled Radix and StyleX recipes', () => {
     expect(recipes.mobileNavigationModule).not.toMatch(/from ["']@stylexjs|stylex\.create|injectStyle/);
   });
 
-  it.each(getVariantsForSection('faq'))('executes registered $id without losing identity', variant => {
+  it.each(getVariantsForSection('faq').filter(variant => ['faq:accordion', 'faq:two-column', 'faq:cards'].includes(variant.id)))('executes legacy StyleX $id without losing identity', variant => {
     const FAQ = loadFaq();
     const { container } = render(<FAQ variantId={variant.id} props={{
       headline: 'Questions', items: [{ question: 'Can I book?', answer: 'Choose a time.' }],

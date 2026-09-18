@@ -1,0 +1,17 @@
+{
+    "id":  2220,
+    "componentId":  2091,
+    "name":  "Spotlight Card",
+    "demoName":  "Default Demo",
+    "description":  "Create a spotlight effect on hover on a card component.",
+    "previewUrl":  "https://cdn.21st.dev/preetsuthar17/spotlight-card/default/preview.1747709960379.png",
+    "installCommand":  "npx shadcn@latest add \"https://21st.dev/r/preetsuthar17/spotlight-card?api_key=$API_KEY_21ST\"",
+    "registryDependencies":  {
+                                 "filesWithRegistry":  {
+
+                                                       },
+                                 "npmDependencies":  {
+
+                                                     }
+                             }
+}

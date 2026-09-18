@@ -1,0 +1,17 @@
+{
+    "id":  622,
+    "componentId":  1308,
+    "name":  "Bento Grid",
+    "demoName":  "default",
+    "description":  "A nice Bento Grid with hover items and shadow.",
+    "previewUrl":  "https://cdn.21st.dev/user_2rQ1QHrJyxpmWMHhqhANzWMc64n/bento-grid/default/preview.1788461825727.png",
+    "installCommand":  "npx shadcn@latest add \"https://21st.dev/r/kokonutd/bento-grid?api_key=$API_KEY_21ST\"",
+    "registryDependencies":  {
+                                 "filesWithRegistry":  {
+
+                                                       },
+                                 "npmDependencies":  {
+
+                                                     }
+                             }
+}

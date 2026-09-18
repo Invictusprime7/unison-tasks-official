@@ -1,0 +1,156 @@
+{
+  "retrievedAt": "2026-09-17",
+  "method": "21st MCP search + get_component",
+  "popularitySource": "https://21st.dev/community/components",
+  "bentoPopularitySource": "https://21st.dev/community/kokonutd",
+  "rankingCaveat": "MCP component search is relevance-ranked; displayed popularity counts are from the public catalog. This is a selected popular shortlist, not a complete global ranking.",
+  "prototypes": [
+    {
+      "id": 1081,
+      "name": "Container Scroll Animation",
+      "popularityDisplay": "9.4k",
+      "sourceFile": "1081/component.tsx.txt",
+      "demoFile": "1081/demo.tsx.txt",
+      "imports": [
+        "react",
+        "framer-motion"
+      ],
+      "status": "quarantined",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    },
+    {
+      "id": 1166,
+      "name": "Spline Scene",
+      "popularityDisplay": "8.7k",
+      "sourceFile": "1166/component.tsx.txt",
+      "demoFile": "1166/demo.tsx.txt",
+      "imports": [
+        "react",
+        "@splinetool/react-spline"
+      ],
+      "status": "quarantined",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    },
+    {
+      "id": 1820,
+      "name": "Radial Orbital Timeline",
+      "popularityDisplay": "6.9k",
+      "sourceFile": "1820/component.tsx.txt",
+      "demoFile": "1820/demo.tsx.txt",
+      "imports": [
+        "react",
+        "lucide-react",
+        "@/components/ui/badge",
+        "@/components/ui/button",
+        "@/components/ui/card"
+      ],
+      "status": "quarantined",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    },
+    {
+      "id": 1932,
+      "name": "Scroll media expansion hero",
+      "popularityDisplay": "9.7k",
+      "sourceFile": "1932/component.tsx.txt",
+      "demoFile": "1932/demo.tsx.txt",
+      "imports": [
+        "react",
+        "next/image",
+        "framer-motion"
+      ],
+      "status": "quarantined",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    },
+    {
+      "id": 1965,
+      "name": "Testimonials Columns",
+      "popularityDisplay": "6.4k",
+      "sourceFile": "1965/component.tsx.txt",
+      "demoFile": "1965/demo.tsx.txt",
+      "imports": [
+        "react",
+        "motion/react"
+      ],
+      "status": "local-visual-reference-implementation",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    },
+    {
+      "id": 2220,
+      "name": "Spotlight Card",
+      "popularityDisplay": "7.9k",
+      "sourceFile": "2220/component.tsx.txt",
+      "demoFile": "2220/demo.tsx.txt",
+      "imports": [
+        "react"
+      ],
+      "status": "local-visual-reference-implementation",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    },
+    {
+      "id": 622,
+      "name": "Bento Grid",
+      "popularityDisplay": "1.9k",
+      "sourceFile": "622/component.tsx.txt",
+      "demoFile": "622/demo.tsx.txt",
+      "imports": [
+        "@/lib/utils",
+        "lucide-react"
+      ],
+      "status": "quarantined",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    },
+    {
+      "id": 9583,
+      "name": "Scroll Morph Hero",
+      "popularityDisplay": "5.4k",
+      "sourceFile": "9583/component.tsx.txt",
+      "demoFile": "9583/demo.tsx.txt",
+      "imports": [
+        "react",
+        "framer-motion"
+      ],
+      "status": "quarantined",
+      "license": "Not supplied by MCP; no upstream license assumed",
+      "review": [
+        "Replace foreign tokens with Stage 4b tokens",
+        "Keep business data and canonical slots",
+        "Reduced motion and responsive verification required"
+      ]
+    }
+  ]
+}

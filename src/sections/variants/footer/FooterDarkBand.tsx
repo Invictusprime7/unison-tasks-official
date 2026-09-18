@@ -16,6 +16,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
       data-ut-variant="footer:dark-band"
       className="px-6"
       style={{
+        overflowWrap: 'anywhere',
         paddingTop: '3.5rem',
         paddingBottom: '1.5rem',
         background: hsl(theme.colors.foreground),
@@ -23,7 +24,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
       }}
     >
       <div className="mx-auto" style={{ maxWidth: theme.containerWidth }}>
-        <div className="grid gap-8 mb-10" style={{ gridTemplateColumns: `2fr ${columns.map(() => '1fr').join(' ')}` }}>
+        <div className="grid grid-cols-1 gap-8 mb-10 sm:grid-cols-2 lg:grid-cols-[var(--ut-footer-columns)]" style={{ "--ut-footer-columns": `minmax(0, 2fr) ${columns.map(() => 'minmax(0, 1fr)').join(' ')}` } as React.CSSProperties}>
           <div>
             <h3
               className="text-xl mb-2"
@@ -38,8 +39,11 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
               <form data-demo-form="true" data-ut-intent="newsletter.subscribe" className="flex gap-2 mt-4" style={{ maxWidth: '20rem' }}>
                 <input
                   type="email"
+                  aria-label="Email for newsletter"
+                  name="email"
+                  required
                   placeholder="your@email.com"
-                  className="flex-1 text-sm px-3 py-2"
+                  className="min-w-0 flex-1 text-sm px-3 py-2"
                   style={{
                     borderRadius: theme.radius,
                     border: `1px solid ${hsla(theme.colors.background, 0.15)}`,
@@ -63,7 +67,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
               </form>
             )}
             {socials.length > 0 && (
-              <div className="flex gap-3 mt-5 items-center">
+              <div className="flex flex-wrap gap-3 mt-5 items-center">
                 {socials.map((s, i) => {
                   const hasUrl = s.url && s.url !== '#';
                   return (

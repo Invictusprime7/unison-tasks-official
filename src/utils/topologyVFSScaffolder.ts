@@ -46,7 +46,7 @@ export interface ScaffoldOptions {
   /** @deprecated Strict composition is now the only supported mode. */
   strictWizardComposition?: boolean;
   /** Canonical, opt-in visual recipes projected into generated page modules. */
-  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed' | 'envelope' | 'compositionPolicy'>>;
+  designIntervention?: Pick<WizardDesignIntervention, 'motionRecipes' | 'sectionVariants' | 'activeVariants'> & Partial<Pick<WizardDesignIntervention, 'industry' | 'themePresetId' | 'layoutRecipe' | 'interactionRecipes' | 'seed' | 'envelope' | 'compositionPolicy' | 'compositionPlan' | 'artDirectionPackId'>>;
 }
 
 
@@ -439,6 +439,9 @@ function buildRoleComposition(
   // type is in the allowed set. Duplicates are preserved with unique ids so
   // React keys + intent slots stay distinct. All section payload fields
   // (items, cards, products, gallery, layout, props) are passed through.
+  const routeSeed = options?.designIntervention?.seed || 'default';
+  const routeDesign = stableStringHash(template.id + ':' + role + ':' + routeSeed) % 2 === 0 ? 'editorial' : 'showcase';
+  let routeDesignApplied = false;
   const filtered: SectionEntry[] = [];
   const typeCounters = new Map<SectionType, number>();
   const selectedSourceIds = new Set<string>();
@@ -461,8 +464,22 @@ function buildRoleComposition(
         else props.backgroundImage = alternateHeroMedia;
       }
     }
+    // Derive page design from certified variants in the existing registry.
+    // Explicit page compositions retain their authored choices and data.
+    const routeCandidates = !definition && source.type !== 'hero'
+      ? getVariantsForSection(source.type).filter(variant =>
+        variant.vfs?.certification === 'approved' &&
+        variant.tags?.includes('route-design') &&
+        variant.tags.includes('page-design:' + routeDesign) &&
+        variant.pageRoles?.includes(role as TemplatePageRole))
+      : [];
+    const routeVariant = routeCandidates.length
+      ? routeCandidates[stableStringHash(template.id + ':' + role + ':' + source.id + ':' + routeSeed) % routeCandidates.length]
+      : undefined;
+    if (routeVariant) routeDesignApplied = true;
     filtered.push({
       ...source,
+      ...(routeVariant ? { variantId: routeVariant.id } : {}),
       id: definition ? `${page.id}-${source.id}` : `${page.id}-${source.type}-${idx}`,
       sourceSectionId: source.sourceSectionId || source.id,
       ...(routeHeroVariant ? { variantId: routeHeroVariant.id } : {}),
@@ -529,8 +546,9 @@ function buildRoleComposition(
   return {
     ...template,
     id: `${template.id}--${role}`,
+    pageRole: role as TemplatePageRole,
     name: `${template.name} · ${page.title}`,
-    compositionAlternativeId: selectedAlternative?.id,
+    compositionAlternativeId: selectedAlternative?.id ?? (routeDesignApplied ? `${template.id}:${role}:${routeDesign}` : undefined),
     sections: filtered,
   };
 }

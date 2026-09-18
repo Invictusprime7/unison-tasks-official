@@ -24,8 +24,8 @@ describe("Launcher Wizard guided flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Shape my idea" }));
     expect(screen.getByRole("heading", { name: "What should the site do for you?" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    expect(screen.getByRole("heading", { name: "Choose a starting layout" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.queryByRole("heading", { name: "Choose a starting layout" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Name it and choose a style" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Generate site" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Business name"), { target: { value: "Studio Glow" } });
     expect(screen.getByRole("button", { name: "Generate site" })).toBeEnabled();

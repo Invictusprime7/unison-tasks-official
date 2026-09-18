@@ -12,6 +12,13 @@
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${input:supabaseAccessToken}"
       }
+    },
+    "21st": {
+      "type": "http",
+      "url": "https://21st.dev/api/mcp",
+      "headers": {
+        "x-api-key": "${input:twentyFirstApiKey}"
+      }
     }
   },
   "inputs": [
@@ -19,6 +26,12 @@
       "id": "supabaseAccessToken",
       "type": "promptString",
       "description": "Supabase personal access token for the UNISON-TASKS MCP server",
+      "password": true
+    },
+    {
+      "id": "twentyFirstApiKey",
+      "type": "promptString",
+      "description": "21st.dev API key",
       "password": true
     }
   ]

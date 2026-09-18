@@ -414,6 +414,7 @@ export function executeCanonicalPipeline(
   // The design brief resolves art direction ONCE (theme-led). It must be built
   // before the stylesheet so /src/index.css can emit that pack's tokens.
   const designIntervention = buildWizardDesignIntervention({
+    compositionPlan: selections.compositionPlan,
     businessName: selections.businessName,
     businessModel: selections.businessModel,
     industryOverlay: selections.industryOverlay || (selections as { industry?: string }).industry,

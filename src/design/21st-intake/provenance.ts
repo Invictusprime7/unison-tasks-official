@@ -70,6 +70,8 @@ export interface TwentyFirstComponentRecord {
 /** Visual source metadata attached to a promoted canonical implementation. */
 export interface VisualSourceMetadata {
   origin: 'unison' | '21st';
+  /** Distinguishes an original implementation informed by a preview from copied source. */
+  derivation?: 'source-adaptation' | 'visual-reference';
   sourceId?: string;
   sourceUrl?: string;
   author?: string;

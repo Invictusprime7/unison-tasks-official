@@ -63,6 +63,8 @@ export type IndustryOverlay =
 export type WizardScaffoldMode = 'selected-pages' | 'capability-full';
 
 export interface WizardSelections {
+  visionPrompt?: string;
+  compositionPlan?: import('@/sections/aiPageComposition').AIPageCompositionPlan;
   businessName: string;
   businessModel: BusinessModel;
   industryOverlay: IndustryOverlay;

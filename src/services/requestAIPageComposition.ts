@@ -1,0 +1,52 @@
+import { describeCompositionFailure, type CompositionFailureDetails } from './compositionFailure';
+import { runBuilderTurn } from './builderBrainClient';
+import { buildWizardDesignIntervention } from './wizardDesignIntervention';
+import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
+import { VARIANT_REGISTRY, familyForSection } from '@/sections/variants/registry';
+import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
+import type { WizardSelections } from '@/types/playground';
+
+export type CompositionFailure = 'endpoint-unavailable' | 'authentication' | 'request-rejected' | 'provider' | 'invalid-response' | 'incomplete-plan' | 'transport';
+export async function requestAIPageComposition(selections: WizardSelections, signal: AbortSignal, invoke = runBuilderTurn, onFailure?: (reason: CompositionFailure, details?: CompositionFailureDetails) => void) {
+  const fail = (reason: CompositionFailure, details?: CompositionFailureDetails) => {
+    console.warn('[wizard-composition] failed', { reason, ...details });
+    if (details) onFailure?.(reason, details);
+    else onFailure?.(reason);
+    return null;
+  };
+  const design = buildWizardDesignIntervention({ ...selections, themePresetId: selections.themePresetId || 'modern', projectId: selections.businessId });
+  const pack = ART_DIRECTION_PACKS[design.artDirectionPackId];
+  const roles = COMPOSITION_ROLES.filter(role => role === 'home' || selections.requestedPages?.includes(role));
+  const variants = Object.values(VARIANT_REGISTRY).flat().filter(variant => {
+    const family = familyForSection(pack, variant.sectionType);
+    return variant.vfs?.mode === 'portable-recipe' && variant.generationStatus !== 'legacy' &&
+      (!family.length || family.includes(variant.id)) && (!variant.pageRoles?.length || roles.some(role => variant.pageRoles!.includes(role)));
+  }).map(variant => ({ id: variant.id, family: variant.sectionType, description: variant.description, tags: variant.tags,
+    pageRoles: variant.pageRoles ?? roles, preferredSource: variant.source?.origin === '21st', certification: variant.vfs?.certification ?? 'portable' }));
+  try {
+    const response = await invoke({ mode: 'wizard-site-composition', gatewayOptions: { timeoutMs: 35000, maxTokens: 6000, reasoningEffort: 'none' }, messages: [{ role: 'user', content: JSON.stringify({
+      task: 'Compose every requested page with original business-specific copy, section order and local variants. Prefer certified 21st-derived options when suitable. Preserve page roles and all business content. No source code or new routes.',
+      designGuidance: 'For cinematic or editorial home pages, prefer hero:prisma-cinematic when listed and relevant: oversized word-reveal headline, rounded immersive media, gradient scrim and asymmetric side copy. Use existing business assets and canonical navigation; never copy demo URLs, branding or placeholder links.',
+      launchSeed: selections.wizardSeedId, vision: selections.visionPrompt, needs: selections.secondaryGoals,
+      businessName: selections.businessName, industry: selections.industryOverlay, goal: selections.primaryGoal,
+      roles, pack: pack.id, variants,
+      output: { version: '1.0', pages: [{ role: 'home', sectionOrder: ['navbar','hero','services','testimonials','cta','footer'], variants: { services: 'choose an eligible id' }, copy: { hero: { headline: 'Original business-specific headline', subheadline: 'Useful supporting copy' } } }] },
+      constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Write original headline, subheadline and description text by family in copy for every page. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
+    }) }] }, { signal, timeoutMs: 110000, functionName: 'wizard-site-composer' });
+    signal.throwIfAborted();
+    if (response.error) {
+      const details = describeCompositionFailure(response.error, response.data);
+      const reason = details.status === 404 ? 'endpoint-unavailable' : details.status === 401 || details.status === 403 ? 'authentication' : details.status === 400 ? 'request-rejected' : 'provider';
+      return fail(reason, details);
+    }
+    const plan = validateAIPageComposition(response.data, pack.id, roles);
+    if (!plan) return fail('invalid-response');
+    const missingRoles = roles.filter(role => !plan.pages.some(page => page.role === role && Object.keys(page.variants).length > 0 && Object.keys(page.copy ?? {}).length > 0));
+    if (missingRoles.length) return fail('incomplete-plan', { missingRoles, message: 'AI omitted composition or copy for: ' + missingRoles.join(', ') + '. Please retry generation.' });
+    console.info('[wizard-composition] accepted', { roles: plan.pages.map(page => page.role) });
+    return plan;
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return fail('transport', describeCompositionFailure(error));
+  }
+}
