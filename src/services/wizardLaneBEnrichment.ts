@@ -512,11 +512,75 @@ export async function enrichWizardPageBatch(options: {
     }
     const proposal = decodeWizardLaneBProposal(response.data);
     if (!proposal) return reject('enrich.invalid_response', 'AI returned an invalid design proposal; the compiled pages were preserved.');
-    const acceptedOps = proposal.fileOps.filter(op => {
-      if (proposal.fileOps.filter(candidate => candidate.path === op.path).length !== 1) return false;
-      return validateWizardLaneBProposal({ proposal: { ...proposal, fileOps: [op] }, request: options.request, uiFoundationManifest: options.uiFoundationManifest }).valid;
-    });
-    if (acceptedOps.length !== proposal.fileOps.length) options.onDegrade?.('enrich.rejected', 'AI design failed canonical validation; only affected compiled pages were preserved.');
+    /** Validate a single op against the canonical contract; duplicates are never acceptable. */
+    const screen = (candidateProposal: WizardLaneBEnrichmentProposal, op: WizardLaneBEnrichmentProposal['fileOps'][number]) => {
+      if (candidateProposal.fileOps.filter(other => other.path === op.path).length !== 1) {
+        return { valid: false, violations: ['Duplicate file operation for ' + op.path + '.'] };
+      }
+      return validateWizardLaneBProposal({
+        proposal: { ...candidateProposal, fileOps: [op] },
+        request: options.request,
+        uiFoundationManifest: options.uiFoundationManifest,
+      });
+    };
+
+    const acceptedOps: WizardLaneBEnrichmentProposal['fileOps'] = [];
+    const failures: { path: string; violations: string[] }[] = [];
+    for (const op of proposal.fileOps) {
+      const verdict = screen(proposal, op);
+      if (verdict.valid) acceptedOps.push(op);
+      else failures.push({ path: op.path, violations: verdict.violations.slice(0, 6) });
+    }
+
+    // One targeted repair round-trip: the model sees the exact canonical
+    // violations for the pages it lost and may re-author only those files.
+    if (failures.length) {
+      options.signal.throwIfAborted();
+      try {
+        const repairResponse = await invoke({
+          mode: 'wizard-canonical-enrichment',
+          messages: [
+            { role: 'user', content: JSON.stringify(options.request) },
+            { role: 'assistant', content: JSON.stringify(proposal) },
+            {
+              role: 'user',
+              content: JSON.stringify({
+                repair: true,
+                instruction: 'Your previous proposal failed canonical validation. Return the same proposal envelope with fileOps for ONLY the listed paths, fixing every violation. Keep identity fields (wizardSeedId, snapshotId, designRegistrySignature) unchanged.',
+                issues: failures,
+              }),
+            },
+          ],
+          wizardSeed: { id: options.request.wizardSeedId },
+          vfsFiles: buildLaneBVfsContext(options.files),
+        }, { timeoutMs: LANE_B_WALL_CLOCK_BUDGET_MS + 5000, signal: options.signal });
+        options.signal.throwIfAborted();
+        const repaired = repairResponse.data ? decodeWizardLaneBProposal(repairResponse.data) : null;
+        if (repaired) {
+          const stillFailing: typeof failures = [];
+          const failedPaths = new Set(failures.map(failure => failure.path));
+          const acceptedPaths = new Set(acceptedOps.map(op => op.path));
+          for (const failure of failures) {
+            const op = repaired.fileOps.find(candidate => candidate.path === failure.path);
+            if (!op || acceptedPaths.has(failure.path) || !failedPaths.has(failure.path)) { stillFailing.push(failure); continue; }
+            const verdict = screen(repaired, op);
+            if (verdict.valid) { acceptedOps.push(op); acceptedPaths.add(op.path); }
+            else stillFailing.push({ path: failure.path, violations: verdict.violations.slice(0, 6) });
+          }
+          failures.length = 0;
+          failures.push(...stillFailing);
+        }
+      } catch (repairError) {
+        options.signal.throwIfAborted();
+        void repairError; // A failed repair simply leaves the compiled page in place.
+      }
+    }
+
+    if (failures.length) {
+      options.onDegrade?.('enrich.rejected',
+        'AI design failed canonical validation for ' + failures.map(failure => failure.path).join(', ')
+        + ' (' + (failures[0].violations[0] || 'contract violation') + '); those compiled pages were preserved.');
+    }
     if (!acceptedOps.length) return unchanged;
     return { files: mergeLaneBProposalWithSnapshot(options.files, { ...proposal, fileOps: acceptedOps }), acceptedPaths: acceptedOps.map(op => op.path) };
   } catch (error) {
