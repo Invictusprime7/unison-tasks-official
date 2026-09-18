@@ -31,7 +31,7 @@ import {
   type CommitSource as CanonicalCommitSource,
 } from '@/platform/core/commitToPipeline';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
-import { collectResolvedCompositions, RESOLVED_COMPOSITION_ROOT } from '@/platform/core/resolvedComposition';
+import { collectResolvedCompositions, compilerOwnershipHash, resolvedCompositionPathFor, serializeResolvedComposition, RESOLVED_COMPOSITION_ROOT } from '@/platform/core/resolvedComposition';
 import type { RuntimeManifest } from '@/platform/core/runtimeManifest';
 import type { PlaygroundState } from '@/platform/core/playground';
 import type { CompiledContract } from '@/platform/core/contractCompiler';
@@ -211,6 +211,51 @@ function sealedCompilerOwnedPaths(snapshot: SiteBundleSnapshot | null | undefine
   ].map((path) => path.startsWith('/') ? path : `/${path}`));
 }
 
+function isProtectedPath(path: string, protectedPaths: Set<string>): boolean {
+  for (const protectedPath of protectedPaths) {
+    if (protectedPath.endsWith('/**')) {
+      if (path.startsWith(protectedPath.slice(0, -2))) return true;
+      continue;
+    }
+    if (path === protectedPath) return true;
+  }
+  return false;
+}
+
+/**
+ * A governed AI rewrite starts from an authenticated canonical revision and is
+ * still validated by preflight/readiness below. The immutable boundary is the
+ * registry/router/metadata contract, not the byte identity of page bodies or
+ * generated section modules after launch.
+ */
+function isGovernedAiSourceRewrite(path: string, op: PatchPlan['fileOps'][number]): boolean {
+  if (op.type === 'delete') return false;
+  return /^\/src\/(?:pages\/[^/]+|components\/[^/]+)\.(?:tsx|jsx|ts|js)$/.test(path)
+    && path !== '/src/App.tsx'
+    && !path.startsWith('/src/unison/ui/');
+}
+
+function refreshAiCompositionOwnership(
+  beforeFiles: Record<string, string>,
+  afterFiles: Record<string, string>,
+): void {
+  for (const composition of Object.values(collectResolvedCompositions(beforeFiles))) {
+    const pagePath = composition.pageFilePath.startsWith('/')
+      ? composition.pageFilePath
+      : `/${composition.pageFilePath}`;
+    const nextSource = afterFiles[pagePath];
+    if (!nextSource || nextSource === beforeFiles[pagePath]) continue;
+    const descriptorPath = resolvedCompositionPathFor(pagePath);
+    afterFiles[descriptorPath] = serializeResolvedComposition({
+      ...composition,
+      compilerOwnership: {
+        ...(composition.compilerOwnership ?? {}),
+        [pagePath]: compilerOwnershipHash(nextSource),
+      },
+    });
+  }
+}
+
 function detectPreviewArtifacts(contents: string): string[] {
   const hits: string[] = [];
   for (const pattern of PREVIEW_ONLY_ARTIFACT_PATTERNS) {
@@ -303,12 +348,14 @@ export async function commitMutation(
         throw new Error('[VFSCommitService] Resolved composition metadata is compiler-owned. Use a presentation operation or reviewed upgrade.');
       }
       if (isCompilerOwnedGeneratedModule(path)
+        && !isGovernedAiSourceRewrite(path, op)
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
       }
-      if (sealedPaths.has(path)
+      if (isProtectedPath(path, sealedPaths)
+        && !isGovernedAiSourceRewrite(path, op)
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
-        throw new Error('[VFSCommitService] Sealed router and page bodies are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
+        throw new Error('[VFSCommitService] Canonical router and metadata files are compiler-owned. Edit page or section source instead.');
       }
     }
   }
@@ -346,17 +393,7 @@ export async function commitMutation(
     const planned = planCompositionUpgrade(workingFiles, input.current.siteBundleSnapshot as SiteBundleSnapshot);
     Object.assign(workingFiles, planned.files);
   }
-  if (input.source === 'ai-builder') {
-    for (const composition of Object.values(collectResolvedCompositions(input.current.vfsFiles))) {
-      if (!composition.activation) continue;
-      const before = input.current.vfsFiles[composition.pageFilePath];
-      const after = workingFiles[composition.pageFilePath];
-      const adapter = (source: string) => source?.match(/function enhanceSection\([\s\S]*?\n {2}return content;\n\}/)?.[0];
-      if (adapter(before) !== adapter(after) || (before.includes('enhanceSection(section, props, <C') && !after?.includes('enhanceSection(section, props, <C'))) {
-        throw new Error(`[VFSCommitService] AI content edits must preserve the resolved composition on ${composition.pageFilePath}.`);
-      }
-    }
-  }
+  if (input.source === 'ai-builder') refreshAiCompositionOwnership(input.current.vfsFiles, workingFiles);
   log('fileOps', 'info', `applied ${patch.fileOps.length} file op(s)`);
 
   // 4. Apply snapshot-owned presentation operations -------------------------
@@ -377,7 +414,9 @@ export async function commitMutation(
     Object.assign(workingFiles, prepared.files);
     themeSnapshot = prepared.snapshot;
   }
-  const preservePageSources = input.source === 'theme-change' || (themeCorrectionApplied && !patch.presentationOps.length && !patch.playgroundOps.length);
+  const preservePageSources = input.source === 'theme-change'
+    || input.source === 'ai-builder'
+    || (themeCorrectionApplied && !patch.presentationOps.length && !patch.playgroundOps.length);
   const presentationSnapshot = applyPresentationOps(
     themeSnapshot,
     workingFiles,
