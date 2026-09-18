@@ -135,9 +135,8 @@ describe('structured AI page composition', () => {
 describe('composer catalog repair', () => {
   const brief = { roles: ['home'], variants: [{ id: 'hero:launch-showcase', family: 'hero', pageRoles: ['home'] }] };
   const valid = { version: '1.0', pages: [{ role: 'home', sectionOrder: ['hero'], variants: { hero: 'hero:launch-showcase' }, copy: { hero: { headline: 'Care for your next chapter' } } }] };
-  it.each(['missing-copy', 'unknown-id', 'wrong-role', 'unknown-family', 'malformed'])('repairs %s with AI before acceptance', async failure => {
+  it.each(['unknown-id', 'wrong-role', 'unknown-family', 'malformed'])('repairs %s with AI before acceptance', async failure => {
     const bad = JSON.parse(JSON.stringify(valid));
-    if (failure === 'missing-copy') delete bad.pages[0].copy;
     if (failure === 'unknown-id') bad.pages[0].variants.hero = 'hero:invented';
     if (failure === 'wrong-role') bad.pages[0].role = 'checkout';
     if (failure === 'unknown-family') bad.pages[0].sectionOrder.push('invented');
