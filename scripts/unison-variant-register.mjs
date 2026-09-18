@@ -8,6 +8,7 @@
  *      import, family entry (with 21st provenance) and layout alias
  *   2. public/variants/<thumb>.svg        — placeholder thumbnail if missing
  *   3. src/design/21st-intake/imported/<slug>/record.json — step 9 / promoted
+ *   4. src/sections/variants/artDirectionPacks.ts — declared generation packs
  *
  * Specs live in src/design/21st-intake/promotions/*.json and re-running is
  * idempotent: anything already present is left untouched. All inputs are gated
@@ -76,6 +77,7 @@ assertNoPendingPromotion(ROOT);
 const writes = new Map();
 const SPEC_DIR = path.join(ROOT, 'src/design/21st-intake/promotions');
 const REGISTRY = path.join(ROOT, 'src/sections/variants/registry.ts');
+const ART_DIRECTION_PACKS = path.join(ROOT, 'src/sections/variants/artDirectionPacks.ts');
 const IMPORTED_DIR = path.join(ROOT, 'src/design/21st-intake/imported');
 
 
@@ -158,6 +160,26 @@ function registerInRegistry(spec, text) {
   return out;
 }
 
+function registerInArtDirectionPacks(spec, text) {
+  if (!spec.artDirection?.all) return text;
+  let touched = 0;
+  const out = text.replace(/(\n\s+)([a-zA-Z'-]+): \[([^\]]*)\]/g, (match, indent, family, body) => {
+    const normalizedFamily = family.replaceAll("'", '');
+    if (normalizedFamily !== spec.sectionType) return match;
+    touched += 1;
+    if (body.includes(`'${spec.id}'`)) return match;
+    const next = spec.artDirection.position === 'first'
+      ? `'${spec.id}',${body}`
+      : `${body.trimEnd()}, '${spec.id}'`;
+    return `${indent}${family}: [${next}]`;
+  });
+  if (!touched) throw new Error(`No art-direction families found for ${spec.sectionType}`);
+  const expected = (out.match(new RegExp(`'${spec.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`, 'g')) || []).length;
+  if (expected < touched) throw new Error(`${spec.id}: art-direction registration incomplete`);
+  if (out !== text) changes.push(`${spec.id}: ${touched} art-direction packs`);
+  return out;
+}
+
 function writeThumbnail(spec) {
   const file = path.join(ROOT, 'public', spec.thumbnail.replace(/^\//, ''));
   if (fs.existsSync(file)) return;
@@ -229,19 +251,29 @@ function main() {
     if (!/^\/variants\/[a-z0-9-]+\.svg$/.test(spec.thumbnail ?? '')) issues.push(spec.id + ': invalid thumbnail path');
   }
   let registry = fs.readFileSync(REGISTRY, 'utf8');
+  let artDirections = fs.readFileSync(ART_DIRECTION_PACKS, 'utf8');
   if (auditOnly) {
-    for (const spec of specs) issues.push(...validateRegistrySpec(registry, spec));
+    for (const spec of specs) {
+      issues.push(...validateRegistrySpec(registry, spec));
+      if (spec.artDirection?.all) {
+        const familyCount = (artDirections.match(new RegExp(`\\b${spec.sectionType}: \\[`, 'g')) || []).length;
+        const variantCount = (artDirections.match(new RegExp(`'${spec.id}'`, 'g')) || []).length;
+        if (!familyCount || variantCount < familyCount) issues.push(`${spec.id}: missing from one or more art-direction packs`);
+      }
+    }
     return { valid: issues.length === 0, specCount: specs.length, retiredCount: specs.filter(spec => spec.retirement).length, issues, pending: 0, changes: [] };
   }
   if (issues.length) throw new Error('Promotion blocked before writes:\n' + issues.join('\n'));
   for (const spec of specs) {
     registry = registerInRegistry(spec, registry);
+    artDirections = registerInArtDirectionPacks(spec, artDirections);
     if (!registry.includes("id: '" + spec.id + "'") || !registry.includes("import { " + spec.componentName + " } from '" + spec.componentPath + "';") || !registry.includes("'" + spec.id + "': [")) throw new Error(spec.id + ': registry insertion failed before writes');
     const registryIssues = validateRegistrySpec(registry, spec);
     if (registryIssues.length) throw new Error('Promotion blocked before writes:\n' + registryIssues.join('\n'));
     if (!spec.retirement) { writeThumbnail(spec); updateRecord(spec); }
   }
   if (registry !== fs.readFileSync(REGISTRY, 'utf8')) writes.set(REGISTRY, registry);
+  if (artDirections !== fs.readFileSync(ART_DIRECTION_PACKS, 'utf8')) writes.set(ART_DIRECTION_PACKS, artDirections);
   if (!checkOnly) commitPromotion(ROOT, writes, fileSystem);
 
   if (!changes.length) {
