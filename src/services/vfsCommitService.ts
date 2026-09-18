@@ -348,12 +348,12 @@ export async function commitMutation(
         throw new Error('[VFSCommitService] Resolved composition metadata is compiler-owned. Use a presentation operation or reviewed upgrade.');
       }
       if (isCompilerOwnedGeneratedModule(path)
-        && !isGovernedAiSourceRewrite(path, op)
+        && !(input.source === 'ai-builder' && isGovernedAiSourceRewrite(path, op))
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
       }
       if (isProtectedPath(path, sealedPaths)
-        && !isGovernedAiSourceRewrite(path, op)
+        && !(input.source === 'ai-builder' && isGovernedAiSourceRewrite(path, op))
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Canonical router and metadata files are compiler-owned. Edit page or section source instead.');
       }
