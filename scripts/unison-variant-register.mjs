@@ -183,6 +183,19 @@ function registerInRegistry(spec, text) {
 function registerInArtDirectionPacks(spec, text) {
   if (!spec.artDirection?.all) return text;
   let touched = 0;
+  if (spec.sectionType === 'navbar') {
+    const out = text.replace(/(\n\s+)navbarFamily: \[([^\]]*)\]/g, (match, indent, body) => {
+      touched += 1;
+      if (body.includes(`'${spec.id}'`)) return match;
+      const next = spec.artDirection.position === 'first'
+        ? `'${spec.id}',${body}`
+        : `${body.trimEnd()}, '${spec.id}'`;
+      return `${indent}navbarFamily: [${next}]`;
+    });
+    if (!touched) throw new Error('No art-direction families found for navbar');
+    if (out !== text) changes.push(`${spec.id}: ${touched} art-direction packs`);
+    return out;
+  }
   const out = text.replace(/(\n\s+)([a-zA-Z'-]+): \[([^\]]*)\]/g, (match, indent, family, body) => {
     const normalizedFamily = family.replaceAll("'", '');
     if (normalizedFamily !== spec.sectionType) return match;
@@ -277,7 +290,8 @@ function main() {
     for (const spec of specs) {
       issues.push(...validateRegistrySpec(registry, spec));
       if (spec.artDirection?.all && hasArtDirections) {
-        const familyCount = (artDirections.match(new RegExp(`\\b${spec.sectionType}: \\[`, 'g')) || []).length;
+        const familyPattern = spec.sectionType === 'navbar' ? 'navbarFamily: \\[' : `\\b${spec.sectionType}: \\[`;
+        const familyCount = (artDirections.match(new RegExp(familyPattern, 'g')) || []).length;
         const variantCount = (artDirections.match(new RegExp(`'${spec.id}'`, 'g')) || []).length;
         if (!familyCount || variantCount < familyCount) issues.push(`${spec.id}: missing from one or more art-direction packs`);
       }
