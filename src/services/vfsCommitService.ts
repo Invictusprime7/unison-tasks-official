@@ -523,13 +523,46 @@ export async function commitMutation(
     );
   }
 
-  const previewOk =
+  const preflightPassed = (result: typeof preflight) =>
+    result.stages.earlyRepair !== 'failed' &&
+    result.stages.finalRepair !== 'failed' &&
+    result.stages.runtimeCompatibility?.ok !== false &&
+    (result.violations?.length ?? 0) === 0;
+
+  let previewOk =
     preflight.stages.earlyRepair !== 'failed' &&
     preflight.stages.finalRepair !== 'failed' &&
-    preflight.mutated !== true &&
     preflight.stages.runtimeCompatibility?.ok !== false &&
     (preflight.violations?.length ?? 0) === 0;
   log('preflight', previewOk ? 'info' : 'warn', 'preflight stages', preflight.stages);
+
+  // AI edits may legitimately need deterministic canonical normalization
+  // (intent closure, nav stamping, experience manifests). Apply that repair
+  // once, then validate the repaired candidate in acceptance mode. Structural,
+  // syntax and runtime blockers still fail the second pass.
+  if (!previewOk && input.source === 'ai-builder') {
+    const repair = runFullPreflight(files, {
+      siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as SiteBundleSnapshot | null,
+      industry: input.options?.industry,
+      brand: input.options?.businessName,
+      mode: 'repair',
+    });
+    if (repair.stages.earlyRepair !== 'failed' && repair.stages.finalRepair !== 'failed') {
+      files = repair.files;
+      if (snapshotForPersistence) snapshotForPersistence = mergeWizardLaunchSnapshot(snapshotForPersistence as SiteBundleSnapshot, files);
+      preflight = runFullPreflight(files, {
+        siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as SiteBundleSnapshot | null,
+        industry: input.options?.industry,
+        brand: input.options?.businessName,
+        mode: 'acceptance',
+      });
+      previewOk = preflightPassed(preflight);
+      log('preflight', previewOk ? 'info' : 'warn', 'validated deterministically normalized AI candidate', {
+        repairedFiles: repair.mutatedFiles,
+        violations: preflight.violations,
+      });
+    }
+  }
 
   const gate = canonicalResult?.gate ?? null;
 
@@ -642,12 +675,7 @@ export async function commitMutation(
     } catch (err) {
       log('repair', 'error', 'auto-repair threw', String(err));
     }
-    const previewOk2 =
-      preflight.stages.earlyRepair !== 'failed' &&
-      preflight.stages.finalRepair !== 'failed' &&
-      preflight.mutated !== true &&
-      preflight.stages.runtimeCompatibility?.ok !== false &&
-      (preflight.violations?.length ?? 0) === 0;
+    const previewOk2 = preflightPassed(preflight);
     const readinessOk2 =
       (!gate || gate.previewReady) &&
       (!previewVerdict || previewVerdict.ok) &&
