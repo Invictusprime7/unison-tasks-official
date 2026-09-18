@@ -32,6 +32,7 @@ import { PreviewPipelineError } from '@/services/previewPipelineError';
 import { isLiveEditedVfsPath, resolveSnapshot } from '@/services/snapshotProjector';
 import { UNISON_VFS_STYLE_BRIDGE } from '@/utils/unisonVfsStyleBridge';
 import { buildGeneratedUiFoundation, normalizeFoundationLocalImports } from '@/platform/core/generatedUiFoundation';
+import { repairThemeFontImportLine } from '@/components/onboarding/themeFonts';
 
 const UI_MANIFEST_PATH = '/.unison/ui-manifest.json';
 
@@ -4281,6 +4282,9 @@ export function prepareSandpackFiles(
     );
 
     if (/\.css$/i.test(normalizedPath)) {
+      // Compatibility repair for drafts persisted before the complete-line
+      // Google Fonts replacement fix. Keep all other authored CSS unchanged.
+      processedContent = repairThemeFontImportLine(processedContent);
       processedContent = processedContent.replace(
         /(@import\s+(?:url\(\s*)?['"])@\/([^'"]+)(['"]\s*\)?\s*;)/g,
         (_match, importPrefix, modulePath, importSuffix) => (
@@ -4290,7 +4294,9 @@ export function prepareSandpackFiles(
     }
 
     processedContent = processCode(processedContent, normalizedPath);
-    processedContent = repairBrokenImageUrls(processedContent);
+    if (!/\.css$/i.test(normalizedPath)) {
+      processedContent = repairBrokenImageUrls(processedContent);
+    }
     processedContent = injectPreviewNavBridge(processedContent, normalizedPath);
     sandpackFiles[normalizedPath] = processedContent;
 
