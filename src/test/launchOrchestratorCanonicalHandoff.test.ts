@@ -96,7 +96,8 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).toContain('compositionPlan: plan.selections.compositionPlan');
     expect(source).not.toContain('if (plan.selections.compositionPlan) return;');
     expect(source).toContain('if (input.ai?.laneB === false) return;');
-    expect(source).toContain('if (!compositionPlan) throw new LaunchFatalError');
+    expect(source).toContain("run.degrade('seed', 'composition.' + compositionFailure");
+    expect(source).not.toContain('if (!compositionPlan) throw new LaunchFatalError');
     expect(source).not.toContain('ai?.composition');
     expect(stage4bResult).toBeLessThan(canonicalPages);
     expect(canonicalPages).toBeLessThan(publicProfile);
@@ -190,7 +191,7 @@ describe('launch orchestrator canonical handoff', () => {
 // The accepted AI plan must survive both initial compile and final handoff seed writes.
 it('stamps the accepted composition into the seed before Stage 4b', () => {
   const source = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
-  expect(source.indexOf('wizardSeedFile.compositionPlan = compositionPlan')).toBeGreaterThan(source.indexOf('if (!compositionPlan) throw'));
+  expect(source.indexOf('wizardSeedFile.compositionPlan = compositionPlan')).toBeGreaterThan(source.indexOf('if (!compositionPlan) {'));
   expect(source.indexOf('wizardSeedFile.compositionPlan = compositionPlan')).toBeLessThan(source.indexOf('const result = await runWizardStage4b('));
   expect(source).toContain('...wizardSeedFile,');
   expect(source).toContain('wizardSeed: contextualWizardSeedFile');
