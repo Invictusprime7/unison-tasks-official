@@ -397,6 +397,51 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     expect(revisionStore).toEqual([]);
   });
 
+  it('accepts an AI edit after deterministic preflight normalization converges', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){return <main data-ut-intent="nav.goto">Safe</main>}' };
+    const normalized = { '/src/App.tsx': 'export default function App(){return <main data-ut-intent="nav.goto" data-ut-slot="primary">Safe</main>}' };
+    mockPipeline(files);
+    mockIntents();
+    vi.mocked(runFullPreflight)
+      .mockReturnValueOnce({
+        files,
+        mode: 'acceptance',
+        mutated: false,
+        mutatedFiles: [],
+        violations: ['/src/App.tsx'],
+        stages: { earlyRepair: 'ok', finalRepair: 'ok', runtimeCompatibility: { ok: true } },
+      } as unknown as ReturnType<typeof runFullPreflight>)
+      .mockReturnValueOnce({
+        files: normalized,
+        mode: 'repair',
+        mutated: true,
+        mutatedFiles: ['/src/App.tsx'],
+        violations: [],
+        stages: { earlyRepair: 'ok', finalRepair: 'ok', runtimeCompatibility: { ok: true } },
+      } as unknown as ReturnType<typeof runFullPreflight>)
+      .mockReturnValueOnce({
+        files: normalized,
+        mode: 'acceptance',
+        mutated: false,
+        mutatedFiles: [],
+        violations: [],
+        stages: { earlyRepair: 'ok', finalRepair: 'ok', runtimeCompatibility: { ok: true } },
+      } as unknown as ReturnType<typeof runFullPreflight>);
+
+    const result = await commitMutation({
+      source: 'ai-builder',
+      identity: IDENTITY,
+      current: { vfsFiles: files },
+      patch: emptyPatchPlan(),
+      options: { dryRun: true, requireReadinessPass: false },
+    });
+
+    expect(result.status).toBe('committed');
+    expect(result.vfsFiles).toEqual(normalized);
+    expect(runFullPreflight).toHaveBeenCalledTimes(3);
+    expect(revisionStore).toEqual([]);
+  });
+
   it('records Wizard capabilities without provisioning before revision persistence', async () => {
     const files = {
       '/src/App.tsx': 'export default function App(){return null}',
