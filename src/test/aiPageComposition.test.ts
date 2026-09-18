@@ -162,6 +162,32 @@ describe('composer catalog repair', () => {
     expect(JSON.parse((await response.json()).content)).toEqual(withoutCopy);
     expect(generate).toHaveBeenCalledOnce();
   });
+  it('discards compiler-owned footer selections before validating multi-page compositions', async () => {
+    const multiPageBrief = {
+      roles: ['pricing', 'faq', 'checkout'],
+      variants: [
+        { id: 'pricing:tiers', family: 'pricing', pageRoles: ['pricing'] },
+        { id: 'faq:accordion', family: 'faq', pageRoles: ['faq'] },
+        { id: 'checkout:panel', family: 'checkout', pageRoles: ['checkout'] },
+        { id: 'footer:home-only', family: 'footer', pageRoles: ['home'] },
+      ],
+    };
+    const modelPlan = {
+      version: '1.0' as const,
+      pages: [
+        { role: 'pricing', sectionOrder: ['pricing', 'footer'], variants: { pricing: 'pricing:tiers', footer: 'footer:home-only' } },
+        { role: 'faq', sectionOrder: ['faq', 'footer'], variants: { faq: 'faq:accordion', footer: 'footer:home-only' } },
+        { role: 'checkout', sectionOrder: ['checkout', 'footer'], variants: { checkout: 'checkout:panel', footer: 'footer:home-only' } },
+      ],
+    };
+    const generate = vi.fn().mockResolvedValue({ content: JSON.stringify(modelPlan) });
+    const response = await runCompositionLane('{}', {}, generate, { brief: multiPageBrief });
+    expect(response.status).toBe(200);
+    const accepted = JSON.parse((await response.json()).content);
+    expect(accepted.pages.every((page: { variants: Record<string, string> }) => !('footer' in page.variants))).toBe(true);
+    expect(compositionMatchesCatalog(modelPlan, multiPageBrief)).toBe(true);
+    expect(generate).toHaveBeenCalledOnce();
+  });
   it('stops before repair when cancelled', async () => {
     const controller = new AbortController();
     const generate = vi.fn().mockImplementation(async () => { controller.abort(); return { content: '{}' }; });
