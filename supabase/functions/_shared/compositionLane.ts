@@ -60,7 +60,7 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
     const prefix = 'pages.' + page.role;
     if (!brief.roles.includes(page.role)) issues.push(prefix + ': role was not requested');
     if (new Set(page.sectionOrder).size !== page.sectionOrder.length) issues.push(prefix + '.sectionOrder: duplicate families');
-    for (const family of page.sectionOrder) if (!brief.variants.some(v => v.family === family)) issues.push(prefix + '.sectionOrder: unknown family ' + family);
+    for (const family of page.sectionOrder) if (!COMPILER_OWNED_VARIANT_FAMILIES.has(family) && !brief.variants.some(v => v.family === family)) issues.push(prefix + '.sectionOrder: unknown family ' + family);
     if (!Object.keys(page.variants).length) issues.push(prefix + '.variants: select at least one catalog ID');
     for (const [family, id] of Object.entries(page.variants)) {
       if (!page.sectionOrder.includes(family)) issues.push(prefix + '.variants.' + family + ': family must be in sectionOrder');
@@ -86,11 +86,11 @@ export async function runCompositionLane(context: string, headers: Record<string
     if (result.earlyError) return respond({ error: result.earlyError.error, errorType: 'composition_provider' }, result.earlyError.status);
     try {
       const content = result.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-       const parsed = resultSchema.safeParse(JSON.parse(content));
-       const normalized = parsed.success ? withoutCompilerOwnedVariantSelections(parsed.data) : null;
-       issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
+      const parsed = resultSchema.safeParse(JSON.parse(content));
+      const normalized = parsed.success ? withoutCompilerOwnedVariantSelections(parsed.data) : null;
+      issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
       errorType = parsed.success ? 'composition_catalog' : 'composition_contract';
-       if (normalized && !issues.length) return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
+      if (normalized && !issues.length) return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
     } catch { issues = ['Return valid JSON matching the supplied output schema.']; errorType = 'composition_contract'; }
     if (attempt === 0 && options.brief) {
       console.warn('[wizard-composition] requesting AI repair', { issues: issues.slice(0, 20) });

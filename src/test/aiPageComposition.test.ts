@@ -169,7 +169,6 @@ describe('composer catalog repair', () => {
         { id: 'pricing:tiers', family: 'pricing', pageRoles: ['pricing'] },
         { id: 'faq:accordion', family: 'faq', pageRoles: ['faq'] },
         { id: 'checkout:panel', family: 'checkout', pageRoles: ['checkout'] },
-        { id: 'footer:home-only', family: 'footer', pageRoles: ['home'] },
       ],
     };
     const modelPlan = {

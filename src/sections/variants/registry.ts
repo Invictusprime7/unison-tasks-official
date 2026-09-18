@@ -294,7 +294,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       generationStatus: 'preferred',
       thumbnail: '/variants/pricing-spotlight.svg',
       tags: ['premium', 'route-design', 'page-design:editorial', 'page-design:showcase'],
-      pageRoles: ['pricing', 'services', 'home'],
+      pageRoles: ['pricing', 'services', 'home', 'checkout', 'faq', 'about'],
       component: PricingSpotlight,
       renderJSX: portableRecipeOnly,
     },
@@ -1121,7 +1121,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       generationStatus: 'preferred',
       thumbnail: '/variants/footer-brand-social.svg',
       tags: ['footer', 'social', 'columns', 'brand'],
-      pageRoles: ['home', 'shop', 'services', 'contact', 'about', 'pricing', 'faq', 'checkout', 'booking', 'thank_you'],
+      
       renderJSX: footerBrandSocialJSX,
     },
     {
@@ -1250,7 +1250,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       generationStatus: 'preferred',
       thumbnail: '/variants/faq-searchable.svg',
       tags: ['premium', 'route-design', 'page-design:showcase'],
-      pageRoles: ['home', 'faq', 'services', 'contact', 'checkout', 'pricing', 'booking', 'thank_you'],
+      pageRoles: ['home', 'faq', 'services', 'contact', 'checkout', 'pricing', 'booking', 'thank_you', 'about', 'team', 'stats'],
       component: FAQSearchable,
       renderJSX: portableRecipeOnly,
     },
