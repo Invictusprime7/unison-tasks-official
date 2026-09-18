@@ -18,7 +18,15 @@ export function validatePlayground(
   vfsFiles: Record<string, string> = {},
 ): PlaygroundValidation[] {
   const issues: PlaygroundValidation[] = [];
-  const { pageRegistry: registry, creatorData, bindings, calendars, popups } = state;
+  // Older persisted Builder callers could omit these maps. Validation must
+  // report their contents, not crash the entire canonical commit pipeline.
+  const {
+    pageRegistry: registry,
+    creatorData,
+    bindings = {},
+    calendars = {},
+    popups = {},
+  } = state;
   const pages = Object.values(registry.pages);
   const pageIds = new Set(Object.keys(registry.pages));
 
