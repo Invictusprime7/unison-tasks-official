@@ -196,11 +196,27 @@ export function runAssistantOrchestrator(
   signal?: AbortSignal,
 ): Promise<Response> {
   if (task.type === 'wizard_canonical_enrichment') {
-    const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
+    // Repair turns append assistant + instruction messages after the canonical
+    // context record, so the context is the LAST message that actually parses
+    // as an enrichment request — never blindly the final message.
+    const texts = parsed.messages.map(message => extractTextContent(message?.content));
+    const isEnrichmentContext = (text: string) => {
+      try { const value = JSON.parse(text); return !!value && typeof value === 'object' && Array.isArray((value as { pageRegistry?: unknown }).pageRegistry); } catch { return false; }
+    };
+    let contextIndex = -1;
+    for (let index = texts.length - 1; index >= 0; index--) { if (isEnrichmentContext(texts[index])) { contextIndex = index; break; } }
+    const context = contextIndex >= 0 ? texts[contextIndex] : texts[texts.length - 1];
+    const followUps = contextIndex >= 0
+      ? parsed.messages.slice(contextIndex + 1).map((message, offset) => ({
+          role: message?.role === 'assistant' ? 'assistant' : 'user',
+          content: texts[contextIndex + 1 + offset],
+        })).filter(message => message.content)
+      : [];
     const providerPlan = buildProviderPlan(task, true, { timeoutMs: 85000, maxTokens: 16000 }, 'simple', context);
     const enrichmentSignal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(100000)]);
-    return runCanonicalEnrichmentLane(context, corsHeaders, buildWizardCanonicalEnrichmentBasePrompt(), aiMessages => runProviderLoop({ aiMessages, providerPlan, navPageGen: false, reasoningEffort: 'none', signal: enrichmentSignal }));
+    return runCanonicalEnrichmentLane(context, corsHeaders, buildWizardCanonicalEnrichmentBasePrompt(), aiMessages => runProviderLoop({ aiMessages, providerPlan, navPageGen: false, reasoningEffort: 'none', signal: enrichmentSignal }), followUps);
   }
+
   if (task.type === 'wizard_composition') {
     const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
     const providerPlan = buildProviderPlan(task, true, { ...parsed.gatewayOptions, maxTokens: 6000, timeoutMs: 35000 }, 'simple', context);
