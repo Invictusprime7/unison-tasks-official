@@ -66,7 +66,7 @@
   "archivedAt": "2026-09-18T06:10:25.501360+00:00",
   "reviewEvidence": {
     "sourceSha256": "17ea80b26cea85eefd4c61bbbd044b041253778905918d006a3b6fffe0aed2d9",
-    "componentSha256": "3ef614a28e1323f1e43b7b2e039198f20f6c1736bff9773da8e75626f52ae8cc",
+    "componentSha256": "83adf791de4c278a35e64a1f899473ef57cd20ffcea7eb214bc318e355721d6d",
     "checks": [
       "dependency-allowlist",
       "react19-vite-tailwind3",
