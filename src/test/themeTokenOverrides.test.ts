@@ -82,7 +82,8 @@ describe('typed theme values', () => {
     const twice = applyOverridesToCss(once, { '--font-heading': 'Space Grotesk' });
     expect(once).toContain('family=Space+Grotesk:wght@300;400;500;600;700');
     expect(twice).toBe(once);
-    expect(twice.split('\n')[0]).toBe("@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');");
+    expect(twice.split('\n')[0]).toBe("@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');");
+    expect(twice.split('\n')[0]).not.toMatch(/\);\d/);
   });
 });
 
