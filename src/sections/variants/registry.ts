@@ -71,7 +71,11 @@ import {
   servicesProductCardsJSX,
   ctaSignalBannerJSX,
   heroPrismaCinematicJSX,
+  heroImageStreamJSX,
 } from './jsxTemplates';
+
+// 21st.dev certified variant: hero:image-stream
+import { HeroImageStream } from './hero/HeroImageStream';
 
 // 21st.dev certified variant: hero:prisma-cinematic
 import { HeroPrismaCinematic } from './hero/HeroPrismaCinematic';
@@ -477,6 +481,29 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
   ],
   hero: [
+    {
+      id: 'hero:image-stream',
+      sectionType: 'hero',
+      slug: 'image-stream',
+      name: 'Image Stream',
+      description: 'A perspective corridor of industry imagery framing centered headline and actions',
+      component: HeroImageStream,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      source: {
+        origin: '21st',
+        derivation: 'source-adaptation',
+        sourceId: '21st:24377',
+        sourceUrl: 'https://21st.dev/c/24377',
+        author: 'ruixen.ui',
+        license: 'Owner-authorized source adaptation (supplied directly for canonical use)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/hero-image-stream.svg',
+      tags: ['hero', 'image-stream', 'perspective', 'motion', 'gallery'],
+      pageRoles: ['home'],
+      renderJSX: heroImageStreamJSX,
+    },
     { id: 'hero:launch-showcase', sectionType: 'hero', slug: 'launch-showcase', name: 'Centered headline and actions above a framed media showcase', description: 'Centered headline and actions above a framed media showcase', component: HeroLaunchShowcase, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:1526","sourceUrl":"https://21st.dev/@mikolajdobrucki/components/hero-section","author":"mikolajdobrucki","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/hero-launch-showcase.svg', renderJSX: portableRecipeOnly },
     {
       id: 'hero:prisma-cinematic',
@@ -1567,6 +1594,7 @@ export const resolveExperienceRequirement = (
 };
 
 const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
+  'hero:image-stream': ['image-stream', 'stream', 'corridor'],
   'hero:prisma-cinematic': ['prisma-cinematic', 'cinematic'],
   'cta:signal-banner': ['signal-banner', 'signal'],
   'services:product-cards': ['product-cards', 'products'],
