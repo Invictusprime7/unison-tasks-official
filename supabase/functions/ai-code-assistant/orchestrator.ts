@@ -1,5 +1,5 @@
 import { runCanonicalEnrichmentLane } from './canonicalEnrichmentLane.ts';
-import { runCompositionLane } from './compositionLane.ts';
+import { runCompositionLane } from '../_shared/compositionLane.ts';
 /**
  * Orchestrator — the brain of ai-code-assistant.
  * 
@@ -18,12 +18,12 @@ import {
   getResearchQueries,
 } from "../_shared/industryPagePatterns.ts";
 
-import type { ClassifiedTask } from "./taskClassifier.ts";
-import type { AIRequest } from "./requestSchema.ts";
-import { buildProviderPlan, isGeminiExclusiveProviderMode } from "./providerRouter.ts";
-import { postProcessContent, buildResponseBody } from "./responseNormalizer.ts";
+import type { ClassifiedTask } from "../_shared/taskClassifier.ts";
+import type { AIRequest } from "../_shared/requestSchema.ts";
+import { buildProviderPlan, isGeminiExclusiveProviderMode } from "../_shared/providerRouter.ts";
+import { postProcessContent, buildResponseBody } from "../_shared/responseNormalizer.ts";
 import { extractTextContent } from "./utils.ts";
-import { performPromptResearch, formatResearchContext, type ResearchResult } from "./webResearch.ts";
+import { performPromptResearch, formatResearchContext, type ResearchResult } from "../_shared/webResearch.ts";
 import {
   buildSystemTypeContext,
   buildDesignProfileContext,
@@ -43,13 +43,13 @@ import { buildEditAssistantPrompt, buildDebugAssistantPrompt, buildGeneralBuilde
 import { buildDesignDirectorDirective } from "./prompts/designDirector.ts";
 
 import { generateImageIfNeeded } from "./imageGeneration.ts";
-import { runProviderLoop } from "./aiProviderLoop.ts";
+import { runProviderLoop } from "../_shared/aiProviderLoop.ts";
 import { compactMessages, buildThinkingInstruction, buildCompactBuilderContext, detectIssueHint } from "./contextCompactor.ts";
 import { buildSessionMemory, formatSessionMemoryBlock } from "./sessionMemory.ts";
 import { reviewPatch } from "./reviewPass.ts";
 import { checkEditScope } from "./reviewScope.ts";
 import { buildApplyState, type ApplyState } from "./applyState.ts";
-import { preprocessPrompt } from "./promptPreprocessor.ts";
+import { preprocessPrompt } from "../_shared/promptPreprocessor.ts";
 import { buildLaunchDeskSystemPrompt, buildLaunchDeskUserMessage } from "./prompts/launchDeskPrompt.ts";
 import { CATALOG_CHAT_TOOLS, renderCatalogToolDirective } from "../_shared/catalogTools.ts";
 import { buildEnvelopeDirective, type EnvelopeShape } from "./envelopeContext.ts";

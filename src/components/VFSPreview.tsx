@@ -367,6 +367,10 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const startAttemptedRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  // Last route requested from the Builder page router, replayed until the
+  // preview nav bridge acknowledges it by actually moving.
+  const pendingRouteRef = useRef<string | null>(null);
+  const navRetryTimerRef = useRef<number | null>(null);
   const timeoutRecoveryCountRef = useRef(0);
   const timeoutRecoveryTimerRef = useRef<number | null>(null);
   
@@ -1173,25 +1177,49 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     }
   }, [backend, dockerService.session, files, onError]);
 
-  // Navigate preview to a hash route via postMessage
+  // Navigate preview to a hash route via postMessage.
+  //
+  // The Sandpack iframe is mounted by <SandpackPreview>, so iframeRef is null
+  // for that backend and the frame may not exist yet (or may be remounted by a
+  // rebuild) at the moment a page tab is clicked. The requested route is
+  // therefore retried until the nav bridge is reachable, and remembered so a
+  // later reload lands on the same page instead of falling back to home.
+  const resolvePreviewIframe = useCallback((): HTMLIFrameElement | null => {
+    if (iframeRef.current?.contentWindow) return iframeRef.current;
+    const root: ParentNode = previewContainerRef.current ?? document;
+    const sp = root.querySelector(
+      'iframe.sp-preview-iframe, .sp-preview iframe, iframe[title*="Sandpack"]'
+    ) as HTMLIFrameElement | null;
+    return sp?.contentWindow ? sp : null;
+  }, []);
+
   const handleNavigateToRoute = useCallback((route: string) => {
-    const iframe = iframeRef.current;
-    if (!iframe?.contentWindow) {
-      // Try to find Sandpack iframe
-      const container = iframe?.closest?.('.sp-layout') || document.querySelector('.sp-preview-iframe');
-      const spIframe = container as HTMLIFrameElement;
-      if (spIframe?.contentWindow) {
-        spIframe.contentWindow.postMessage({ type: 'NAV_ROUTE', route }, '*');
-        return;
-      }
-      // Broadcast to all iframes as fallback
-      const allIframes = document.querySelectorAll('iframe');
-      allIframes.forEach(f => {
-        try { f.contentWindow?.postMessage({ type: 'NAV_ROUTE', route }, '*'); } catch (_e) { /* cross-origin iframe */ }
-      });
-      return;
+    pendingRouteRef.current = route;
+    if (navRetryTimerRef.current) {
+      window.clearTimeout(navRetryTimerRef.current);
+      navRetryTimerRef.current = null;
     }
-    iframe.contentWindow.postMessage({ type: 'NAV_ROUTE', route }, '*');
+
+    let attempts = 0;
+    const send = () => {
+      navRetryTimerRef.current = null;
+      if (pendingRouteRef.current !== route) return; // superseded by a newer request
+      attempts += 1;
+      const iframe = resolvePreviewIframe();
+      try {
+        iframe?.contentWindow?.postMessage({ type: 'NAV_ROUTE', route }, '*');
+      } catch (_e) { /* cross-origin frame */ }
+
+      // Keep re-sending briefly: the bridge listener mounts after the frame.
+      if (attempts < 12) {
+        navRetryTimerRef.current = window.setTimeout(send, iframe ? 300 : 200);
+      }
+    };
+    send();
+  }, [resolvePreviewIframe]);
+
+  useEffect(() => () => {
+    if (navRetryTimerRef.current) window.clearTimeout(navRetryTimerRef.current);
   }, []);
 
   // Expose methods via ref

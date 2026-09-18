@@ -1,4 +1,4 @@
-import { classifyTask } from "./taskClassifier.ts";
+import { classifyTask } from "../_shared/taskClassifier.ts";
 
 function assertEquals(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {

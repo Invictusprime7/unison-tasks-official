@@ -7,8 +7,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-import { AIRequestSchema } from "./requestSchema.ts";
-import { classifyTask } from "./taskClassifier.ts";
+import { AIRequestSchema } from "../_shared/requestSchema.ts";
+import { classifyTask } from "../_shared/taskClassifier.ts";
 import { runAssistantOrchestrator } from "./orchestrator.ts";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { verifyAuth, authError } from "../_shared/auth.ts";

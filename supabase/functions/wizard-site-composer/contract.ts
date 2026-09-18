@@ -8,6 +8,11 @@ export const briefSchema = z.object({
     description: z.string().max(1200), pageRoles: z.array(z.string().max(40)).max(13),
     preferredSource: z.boolean(), certification: z.string().max(40),
     tags: z.array(z.string().max(80)).max(30).optional(),
+    // Provenance of the certified implementation (origin registry + author) and
+    // its thumbnail, so the composer can reason about presentation quality.
+    origin: z.string().max(40).optional(), author: z.string().max(120).optional(),
+    sourceUrl: z.string().max(400).optional(), thumbnail: z.string().max(300).optional(),
+    generationStatus: z.string().max(40).optional(),
   }).strict()).min(1).max(300),
   task: z.string().max(1000).optional(), designGuidance: z.string().max(2000).optional(),
   constraints: z.string().max(3000).optional(), output: z.unknown().optional(),

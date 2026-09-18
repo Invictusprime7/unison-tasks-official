@@ -1,5 +1,5 @@
 import { briefSchema } from '../../supabase/functions/wizard-site-composer/contract';
-import { runCompositionLane, COMPOSITION_SYSTEM_PROMPT, compositionMatchesCatalog } from '../../supabase/functions/ai-code-assistant/compositionLane';
+import { runCompositionLane, COMPOSITION_SYSTEM_PROMPT, compositionMatchesCatalog } from '../../supabase/functions/_shared/compositionLane';
 import { commitToPipeline } from '@/platform/core/commitToPipeline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { validateAIPageComposition, applyAIPageComposition } from '@/sections/aiPageComposition';
@@ -10,7 +10,7 @@ import { getCompositionById } from '@/sections/templates';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { collectResolvedCompositions } from '@/platform/core/resolvedComposition';
 import type { WizardSelections } from '@/types/playground';
-import { classifyTask } from '../../supabase/functions/ai-code-assistant/taskClassifier';
+import { classifyTask } from '../../supabase/functions/_shared/taskClassifier';
 vi.mock('@/services/builderBrainClient', () => ({ runBuilderTurn: vi.fn() }));
 const selections: WizardSelections = { businessName: 'Studio', businessModel: 'appointment_service', industryOverlay: 'salon', primaryGoal: 'book', secondaryGoals: [], requestedPages: ['home','contact'], templateId: 'salon-premium', themePresetId: 'editorial', wizardSeedId: 'composition-proof' };
 const candidate = { version: '1.0' as const, pages: [{ role: 'home', sectionOrder: ['navbar','hero','gallery','services','footer'], variants: { services: 'services:editorial-rows' }, copy: { hero: { headline: 'Care shaped around you' } } }] };
