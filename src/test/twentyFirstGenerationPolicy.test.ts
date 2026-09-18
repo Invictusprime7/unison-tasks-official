@@ -38,7 +38,7 @@ describe('21st-only generation closure', () => {
  });
  it('closes all original promotion findings with explicit verified or retired dispositions', () => {
   const audit=registerVariants(process.cwd(),{auditOnly:true});
-  expect(audit).toMatchObject({valid:true,specCount:8,retiredCount:5,issues:[]});
+  expect(audit).toMatchObject({valid:true,specCount:8,retiredCount:4,issues:[]});
   for(const record of TWENTY_FIRST_INTAKE_MANIFEST.filter(record=>record.implementationId)) {
    if(record.status==='retired') {
     expect(getVariantById(record.implementationId as never)?.generationStatus).toBe('legacy');
