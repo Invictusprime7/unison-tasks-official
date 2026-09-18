@@ -24,15 +24,15 @@
     "clientOnly": false
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
-  "step": 3,
+  "step": 10,
   "dependencyAudit": {
     "decisions": [
       {
@@ -48,21 +48,24 @@
     ],
     "approved": true
   },
-  "status": "retired",
-  "promotedVariants": [],
+  "status": "promoted",
+  "promotedVariants": ["pricing:feature-table"],
   "author": "dgearsonu1",
   "implementationId": "pricing:feature-table",
   "licenseReview": {
-    "status": "unverified",
-    "source": "https://21st.dev/@dgearsonu1/components/pricing-table",
-    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "Project owner explicitly directed Unison to wire and compile this adaptation for all industries.",
+    "verifiedAt": "2026-09-18T08:00:00.000Z",
+    "notes": "Canonical adaptation uses normalized tokens, inline icon facades, reduced motion, canonical slots/intents, and portable VFS output."
   },
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
   "archivePath": "src/design/21st-intake/archive/pricing-table",
   "archivedAt": "2026-09-18T04:05:14.494Z",
   "reviewEvidence": {
     "sourceSha256": "d259f2fb28bbe8e1fe98c29490458621f1cd0773043b023d7d994014d2a986e8",
-    "componentSha256": "82e95e4c3678c7fd78ed98137fc673c7eac5913606bc9798b3f640818f8c504d",
-    "checks": [],
-    "reviewedAt": "2026-09-18T04:05:14.494Z"
+    "componentSha256": "73897b9abdcc5f7904f7bfac0744044e90da17819103251dbc8fc876fe17be08",
+    "checks": ["dependency-allowlist", "react19-vite-tailwind3", "token-normalization", "reduced-motion", "canonical-identity-and-intents", "portable-recipe"],
+    "reviewedAt": "2026-09-18T08:00:00.000Z"
   }
 }

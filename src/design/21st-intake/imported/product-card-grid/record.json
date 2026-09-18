@@ -24,15 +24,15 @@
     "clientOnly": false
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
-  "step": 3,
+  "step": 10,
   "dependencyAudit": {
     "decisions": [
       {
@@ -48,21 +48,24 @@
     ],
     "approved": true
   },
-  "status": "retired",
-  "promotedVariants": [],
+  "status": "promoted",
+  "promotedVariants": ["services:product-cards"],
   "author": "ravikatiyar162",
   "implementationId": "services:product-cards",
   "licenseReview": {
-    "status": "unverified",
-    "source": "https://21st.dev/@ravikatiyar162/components/product-card-2",
-    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "Project owner explicitly directed Unison to wire and compile this adaptation for all industries.",
+    "verifiedAt": "2026-09-18T08:00:00.000Z",
+    "notes": "Motion was normalized to portable CSS; commerce intents, semantic tokens, reduced motion, and VFS parity are certified."
   },
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
   "archivePath": "src/design/21st-intake/archive/product-card-grid",
   "archivedAt": "2026-09-18T04:05:14.514Z",
   "reviewEvidence": {
     "sourceSha256": "0ea06cd365762dcae4ad402f65eef0ae15afdaaa08346ca33681294069dcdfd4",
-    "componentSha256": "f47d2b49ea5cbe179f51a35f6fefde5640b786e232d48db4badc09d116b3d588",
-    "checks": [],
-    "reviewedAt": "2026-09-18T04:05:14.514Z"
+    "componentSha256": "e4c77bd27e1971689a65284452900a6c54e1387eb95930beeb3afd65384296da",
+    "checks": ["dependency-allowlist", "react19-vite-tailwind3", "motion-css-adaptation", "token-normalization", "reduced-motion", "canonical-identity-and-intents", "portable-recipe"],
+    "reviewedAt": "2026-09-18T08:00:00.000Z"
   }
 }

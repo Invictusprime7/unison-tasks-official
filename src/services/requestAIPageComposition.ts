@@ -33,7 +33,7 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       businessName: selections.businessName, industry: selections.industryOverlay, goal: selections.primaryGoal,
       roles, pack: pack.id, variants,
       output: { version: '1.0', pages: [{ role: 'home', sectionOrder: ['navbar','hero','services','testimonials','cta','footer'], variants: { services: 'choose an eligible id' }, copy: { hero: { headline: 'Original business-specific headline', subheadline: 'Useful supporting copy' } } }] },
-      constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Write original headline, subheadline and description text by family in copy for every page. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
+      constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Copy is optional because canonical business content is preserved. When writing copy, use original headline, subheadline and description text by family. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
     }) }] }, { signal, timeoutMs: 110000, functionName: 'wizard-site-composer' });
     signal.throwIfAborted();
     if (response.error) {
@@ -43,8 +43,8 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
     }
     const plan = validateAIPageComposition(response.data, pack.id, roles);
     if (!plan) return fail('invalid-response');
-    const missingRoles = roles.filter(role => !plan.pages.some(page => page.role === role && Object.keys(page.variants).length > 0 && Object.keys(page.copy ?? {}).length > 0));
-    if (missingRoles.length) return fail('incomplete-plan', { missingRoles, message: 'AI omitted composition or copy for: ' + missingRoles.join(', ') + '. Please retry generation.' });
+    const missingRoles = roles.filter(role => !plan.pages.some(page => page.role === role && Object.keys(page.variants).length > 0));
+    if (missingRoles.length) return fail('incomplete-plan', { missingRoles, message: 'AI omitted a valid composition for: ' + missingRoles.join(', ') + '. Please retry generation.' });
     console.info('[wizard-composition] accepted', { roles: plan.pages.map(page => page.role) });
     return plan;
   } catch (error) {

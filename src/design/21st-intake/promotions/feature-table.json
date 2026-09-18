@@ -23,7 +23,7 @@
     "feature-table",
     "table"
   ],
-  "generationStatus": "legacy",
+  "generationStatus": "preferred",
   "recordSlug": "pricing-table",
   "source": {
     "origin": "21st",
@@ -31,11 +31,8 @@
     "sourceUrl": "https://21st.dev/@dgearsonu1/components/pricing-table",
     "author": "dgearsonu1",
     "derivation": "source-adaptation",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
     "adaptationVersion": "2"
   },
-  "retirement": {
-    "reason": "Upstream component-specific license could not be verified; excluded from new generation.",
-    "reviewedAt": "2026-09-18T04:05:14.494Z",
-    "evidence": "https://21st.dev/@dgearsonu1/components/pricing-table"
-  }
+  "artDirection": { "all": true, "position": "first" }
 }

@@ -30,7 +30,7 @@ describe('21st-only generation closure', () => {
     expect(validateAIPageComposition(plan,pack.id,[role]),role+':'+variant.id).not.toBeNull();
    }
   }
-   for(const id of ['hero:centered','cta:signal-banner']) {
+   for(const id of ['hero:centered']) {
     expect(getVariantById(id as never)).toBeDefined();
     const type=id.split(':')[0];
     expect(validateAIPageComposition({version:'1.0',pages:[{role:'home',sectionOrder:[type],variants:{[type]:id}}]},pack.id,['home'])).toBeNull();
@@ -45,7 +45,7 @@ describe('21st-only generation closure', () => {
  });
  it('closes all original promotion findings with explicit verified or retired dispositions', () => {
   const audit=registerVariants(process.cwd(),{auditOnly:true});
-   expect(audit).toMatchObject({valid:true,specCount:9,retiredCount:4,issues:[]});
+    expect(audit).toMatchObject({valid:true,specCount:9,retiredCount:0,issues:[]});
   for(const record of TWENTY_FIRST_INTAKE_MANIFEST.filter(record=>record.implementationId)) {
    if(record.status==='retired') {
     expect(getVariantById(record.implementationId as never)?.generationStatus).toBe('legacy');
@@ -55,6 +55,20 @@ describe('21st-only generation closure', () => {
    }
   }
  });
+  it('offers every owner-authorized design in every related art-direction family', () => {
+    const promoted = [
+      ['pricing', 'pricing:feature-table', ['home', 'pricing', 'services']],
+      ['navbar', 'navbar:floating-pill', ['home', 'shop', 'services', 'contact', 'about']],
+      ['services', 'services:product-cards', ['home', 'shop', 'services']],
+      ['cta', 'cta:signal-banner', ['home', 'shop', 'services', 'contact']],
+    ] as const;
+    for (const pack of Object.values(ART_DIRECTION_PACKS)) for (const [family, id, roles] of promoted) {
+      expect(getVariantById(id as never)).toMatchObject({ generationStatus: 'preferred', vfs: { certification: 'approved' } });
+      for (const role of roles) {
+        expect(getGenerationVariantsForSection(family, pack, role).map(candidate => candidate.id), `${pack.id}:${role}:${id}`).toContain(id);
+      }
+    }
+  });
  it('offers the preferred image-stream hero in every art-direction pack', () => {
    const variant=getVariantById('hero:image-stream' as never);
    expect(variant).toMatchObject({generationStatus:'preferred',source:{origin:'21st',sourceId:'21st:24377'},vfs:{mode:'portable-recipe',certification:'approved'}});

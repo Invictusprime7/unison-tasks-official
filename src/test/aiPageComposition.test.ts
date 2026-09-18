@@ -148,12 +148,14 @@ describe('composer catalog repair', () => {
     expect(generate).toHaveBeenCalledTimes(2);
     expect(generate.mock.calls[1][0].at(-1).content).toContain('Validation issues');
   });
-  it('fails after one repair without returning a starter plan', async () => {
-    const generate = vi.fn().mockResolvedValue({ content: JSON.stringify({ ...valid, pages: [{ ...valid.pages[0], copy: {} }] }) });
+  it('accepts a catalog-valid plan without forcing AI-authored replacement copy', async () => {
+    const withoutCopy = { ...valid, pages: [{ ...valid.pages[0], copy: undefined }] };
+    delete withoutCopy.pages[0].copy;
+    const generate = vi.fn().mockResolvedValue({ content: JSON.stringify(withoutCopy) });
     const response = await runCompositionLane('{}', {}, generate, { brief });
-    expect(response.status).toBe(502);
-    expect(await response.json()).toMatchObject({ errorType: 'composition_catalog', issues: ['pages.home.copy: original nonempty copy is required'] });
-    expect(generate).toHaveBeenCalledTimes(2);
+    expect(response.status).toBe(200);
+    expect(JSON.parse((await response.json()).content)).toEqual(withoutCopy);
+    expect(generate).toHaveBeenCalledOnce();
   });
   it('stops before repair when cancelled', async () => {
     const controller = new AbortController();
