@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 const digest = value => value === null ? null : createHash('sha256').update(value).digest('hex');
 const journalName = '.unison-promotion-transaction.json';
 function target(root, relative) {
-  if (!/^(src\/sections\/variants\/registry\.ts|public\/variants\/[a-z0-9-]+\.svg|src\/design\/21st-intake\/imported\/[a-z0-9-]+\/record\.json)$/.test(relative)) throw new Error('Invalid promotion transaction path');
+  if (!/^(src\/sections\/variants\/(registry|artDirectionPacks)\.ts|public\/variants\/[a-z0-9-]+\.svg|src\/design\/21st-intake\/imported\/[a-z0-9-]+\/record\.json)$/.test(relative)) throw new Error('Invalid promotion transaction path');
   const file = path.resolve(root, relative);
   if (!file.startsWith(path.resolve(root) + path.sep)) throw new Error('Promotion transaction escapes workspace');
   return file;
