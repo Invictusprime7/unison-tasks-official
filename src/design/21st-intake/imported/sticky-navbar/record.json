@@ -35,7 +35,7 @@
     "intentReady": true,
     "portableRecipeCertified": true
   },
-  "step": 3,
+  "step": 10,
   "dependencyAudit": {
     "decisions": [
       {

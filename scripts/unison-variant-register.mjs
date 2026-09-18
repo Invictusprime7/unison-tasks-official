@@ -138,8 +138,28 @@ function registerInRegistry(spec, text) {
     changes.push(`${spec.id}: component import`);
   }
 
-  // 3. family entry
-  if (!out.includes(`id: '${spec.id}'`)) {
+  // 3. family entry. Existing entries are synchronized from the promotion
+  // spec as well as inserted, so re-certification cannot leave stale legacy
+  // status or provenance behind in the canonical registry.
+  if (out.includes(`id: '${spec.id}'`)) {
+    const file = ts.createSourceFile('registry.ts', out, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    let existing;
+    const property = (node, key) => node && ts.isObjectLiteralExpression(node)
+      ? node.properties.find(p => ts.isPropertyAssignment(p) && p.name?.text === key)?.initializer : undefined;
+    const visit = node => {
+      const id = property(node, 'id');
+      if (ts.isObjectLiteralExpression(node) && id && ts.isStringLiteral(id) && id.text === spec.id) existing = node;
+      ts.forEachChild(node, visit);
+    };
+    visit(file);
+    if (!existing) throw new Error(`${spec.id}: registry entry could not be located for synchronization`);
+    const desired = entrySource(spec).trim().replace(/,$/, '');
+    const current = out.slice(existing.getStart(file), existing.end);
+    if (current !== desired) {
+      out = out.slice(0, existing.getStart(file)) + desired + out.slice(existing.end);
+      changes.push(`${spec.id}: synchronized registry entry`);
+    }
+  } else {
     const key = familyKey(spec.sectionType);
     const marker = new RegExp(`\\n  ${key.replace(/[.*+?^$()|[\\]\\\\]/g, '\\\\$&')}: \\[\\n`);
     if (!marker.test(out)) throw new Error(`Family array not found for ${spec.sectionType}`);
