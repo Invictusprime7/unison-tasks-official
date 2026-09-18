@@ -17,7 +17,7 @@ LauncherWizard
 	-> Live Preview and Playground
 ```
 
-- Launcher is deterministic and must remain fully launchable without AI.
+- Launcher compilation is deterministic after a valid, bounded AI composition plan; missing or invalid composition stops before Stage 4b.
 - Stage 4b is the only global theme authority.
 - `commitMutation` is the only accepted mutation boundary.
 - Preview and Playground consume committed canonical artifacts.

@@ -280,7 +280,7 @@ export function buildWizardAggregatedRegistryContext(options: {
     runtimeDependencies: Object.fromEntries(Object.entries(WIZARD_PREVIEW_RUNTIME_DEPENDENCIES)
       .filter(([name]) => runtimeDependencyNames.has(name))),
     primitiveFamilies: [
-      { family: 'layout', values: foundation.manifest.layoutRecipes.map(item => item.id) },
+      { family: 'layout', values: [...foundation.manifest.layoutRecipes] },
       { family: 'interaction', values: [...foundation.manifest.interactions] },
       { family: 'form', values: [...foundation.manifest.formFormats] },
       { family: 'motion', values: [...(foundation.manifest.motionExports?.components ?? [])] },

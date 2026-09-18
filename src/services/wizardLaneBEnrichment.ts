@@ -33,7 +33,7 @@ import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRe
 /** The exact registry projection used by the production enrichment request. */
 export function buildWizardLaneBRegistryContext(
   snapshot: Pick<SiteBundleSnapshot, 'vfsFiles' | 'meta'>,
-  registry: Pick<WizardAggregatedRegistryContext, 'sections' | 'implementations'>,
+  registry: Pick<WizardAggregatedRegistryContext, 'sections' | 'implementations' | 'assets' | 'runtimeDependencies' | 'primitiveFamilies' | 'capabilityRequirements'>,
 ) {
   const uiFoundationManifest = readGeneratedUiManifest(snapshot.vfsFiles);
   if (!uiFoundationManifest) throw new Error('Cannot enrich a snapshot without its UI foundation manifest.');
@@ -45,6 +45,10 @@ export function buildWizardLaneBRegistryContext(
   return {
     implementationContext: (registry.implementations ?? []).filter(implementation =>
       !resolvedTypes.size || resolvedTypes.has(implementation.sectionType)),
+    assetContext: registry.assets ?? [],
+    runtimeDependencies: registry.runtimeDependencies ?? {},
+    primitiveFamilies: registry.primitiveFamilies ?? [],
+    capabilityRequirements: registry.capabilityRequirements ?? [],
     uiFoundationManifest,
     uiFoundationDirective: buildGeneratedUiFoundationDirective(uiFoundationManifest),
     designVocabularyReport: buildDesignVocabularyReport({
@@ -165,6 +169,10 @@ export interface WizardLaneBEnrichmentRequest {
 
   /** Design vocabulary and implementation registry status. */
   implementationContext?: WizardAggregatedRegistryContext['implementations'];
+  assetContext?: WizardAggregatedRegistryContext['assets'];
+  runtimeDependencies?: WizardAggregatedRegistryContext['runtimeDependencies'];
+  primitiveFamilies?: WizardAggregatedRegistryContext['primitiveFamilies'];
+  capabilityRequirements?: WizardAggregatedRegistryContext['capabilityRequirements'];
   designVocabularyReport: {
     executableIds: string[];
     unimplementedIds: string[];

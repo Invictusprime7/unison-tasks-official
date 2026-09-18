@@ -1,4 +1,5 @@
 import { requestAIPageComposition } from '@/services/requestAIPageComposition';
+import { getAssetRegistry } from '@/services/assetRegistry';
 import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContract';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
@@ -389,6 +390,8 @@ export async function runLaunchPipeline(
     templateId: input.template.id,
     themePresetId: input.theme.id,
     seed: plan.seed,
+    businessId: plan.confirmed.businessId,
+    assets: getAssetRegistry().getAll(),
   });
 
   const wizardSeedFile = {
@@ -435,13 +438,10 @@ export async function runLaunchPipeline(
       compositionFailureMessage = details?.message || ('AI site composition failed (' + reason + '). Please retry generation.');
       if (details?.status) compositionFailureMessage += ' (HTTP ' + details.status + ')';
       if (details?.errorType) compositionFailureMessage += ' [' + details.errorType + ']';
-    });
+    }, wizardRegistryContext);
     signal.throwIfAborted();
     if (!compositionPlan) {
-      // Composition is an optional design enhancement. The registered industry
-      // composition already supplies the complete canonical authorship seed, so
-      // provider and contract failures must not strand the Wizard before Stage 4b.
-      run.degrade('seed', 'composition.' + compositionFailure, 'AI page composition was unavailable, so the selected industry layout was used.', compositionFailureMessage);
+      throw new LaunchFatalError(compositionFailureMessage, { stage: 'seed', code: 'composition.' + compositionFailure });
     } else {
       plan.selections.compositionPlan = compositionPlan;
       wizardSeedFile.compositionPlan = compositionPlan;
@@ -602,6 +602,10 @@ export async function runLaunchPipeline(
         uiFoundationDirective,
         designVocabularyReport,
         implementationContext,
+        assetContext,
+        runtimeDependencies,
+        primitiveFamilies,
+        capabilityRequirements,
       } = buildWizardLaneBRegistryContext(siteBundleSnapshot, wizardRegistryContext);
 
       // Build the page registry for AI visibility
@@ -642,6 +646,10 @@ export async function runLaunchPipeline(
         themeContractDirective: buildThemeContractDirectiveFromFiles(siteBundleSnapshot.vfsFiles),
         designVocabularyReport,
         implementationContext,
+        assetContext,
+        runtimeDependencies,
+        primitiveFamilies,
+        capabilityRequirements,
         intentBindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
           industry: plan.industryOverlay,
         }),
