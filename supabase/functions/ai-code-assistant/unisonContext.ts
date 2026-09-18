@@ -1,5 +1,5 @@
-import type { AIRequest } from './requestSchema.ts';
-import type { PromptComplexity } from './promptPreprocessor.ts';
+import type { AIRequest } from '../_shared/requestSchema.ts';
+import type { PromptComplexity } from '../_shared/promptPreprocessor.ts';
 
 type UnisonContext = NonNullable<AIRequest['unisonContext']>;
 type ReasoningEffort = 'none' | 'low' | 'medium' | 'high';

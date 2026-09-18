@@ -3,7 +3,7 @@ import {
   resolveReasoningEffort,
   resolveUnisonComplexity,
 } from './unisonContext.ts';
-import { buildPlannedChatCompletionRequest } from './aiProviderLoop.ts';
+import { buildPlannedChatCompletionRequest } from '../_shared/aiProviderLoop.ts';
 
 function assertEquals(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {

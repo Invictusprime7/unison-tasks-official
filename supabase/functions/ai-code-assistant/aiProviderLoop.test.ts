@@ -2,7 +2,7 @@ import {
   buildPlannedChatCompletionRequest,
   PROVIDER_LOOP_TOTAL_BUDGET_MS,
   runProviderLoop,
-} from './aiProviderLoop.ts';
+} from '../_shared/aiProviderLoop.ts';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(message);

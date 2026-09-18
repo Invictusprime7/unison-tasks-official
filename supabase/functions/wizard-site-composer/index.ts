@@ -4,12 +4,12 @@ import { briefSchema } from './contract.ts';
 import { verifyAuth, authError } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { safeParseBody } from '../_shared/validate.ts';
-import { AIRequestSchema } from '../ai-code-assistant/requestSchema.ts';
-import { runCompositionLane } from '../ai-code-assistant/compositionLane.ts';
-import { buildProviderPlan } from '../ai-code-assistant/providerRouter.ts';
-import { classifyTask } from '../ai-code-assistant/taskClassifier.ts';
-import { runProviderLoop } from '../ai-code-assistant/aiProviderLoop.ts';
-import { performPromptResearch } from '../ai-code-assistant/webResearch.ts';
+import { AIRequestSchema } from '../_shared/requestSchema.ts';
+import { runCompositionLane } from '../_shared/compositionLane.ts';
+import { buildProviderPlan } from '../_shared/providerRouter.ts';
+import { classifyTask } from '../_shared/taskClassifier.ts';
+import { runProviderLoop } from '../_shared/aiProviderLoop.ts';
+import { performPromptResearch } from '../_shared/webResearch.ts';
 
 
 

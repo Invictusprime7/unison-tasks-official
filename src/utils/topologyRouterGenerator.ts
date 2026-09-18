@@ -53,21 +53,29 @@ export function generateCanonicalRouterForFiles(
   existingFiles: Record<string, string>,
   businessName?: string,
 ): string {
-  const pages = Object.values(registry.pages)
-    .filter((page) => {
-      const filePath = page.filePath || derivePageFilePath(page);
-      return Boolean(filePath && existingFiles[filePath]);
-    })
-    .sort((a, b) => a.navOrder - b.navOrder);
+  const ordered = Object.values(registry.pages).sort((a, b) => a.navOrder - b.navOrder);
+  const hasBody = (page: BuilderPage) => {
+    const filePath = page.filePath || derivePageFilePath(page);
+    return Boolean(filePath && existingFiles[filePath]);
+  };
 
+  const pages = ordered.filter(hasBody);
   if (pages.length === 0) return '';
+
+  // Registered pages whose body has not been authored yet still get a route,
+  // rendering an explicit pending notice. Without it the catch-all silently
+  // redirected every selected page back to home, which reads as a dead tab
+  // in the Builder page router.
+  const pendingRoutes = ordered
+    .filter((page) => !hasBody(page) && !page.isHome)
+    .map((page) => ({ route: page.path, title: page.title }));
 
   const routes = pagesToRoutes(pages);
   // Chrome authority lives in the page body: navigation and footer are
   // deterministic composition sections derived from the wizard selections.
   // The router therefore never renders its own navbar/footer, which is what
   // used to produce two competing navbars and two footers per page.
-  return buildRouterCode(routes, businessName);
+  return buildRouterCode(routes, businessName, pendingRoutes);
 }
 
 /**
@@ -153,6 +161,7 @@ function vfsPathToImport(filePath: string): string {
 function buildRouterCode(
   routes: RouteEntry[],
   businessName?: string,
+  pendingRoutes: Array<{ route: string; title: string }> = [],
 ): string {
   if (routes.length === 0) return '';
 
@@ -180,13 +189,32 @@ function buildRouterCode(
     routeElements.push(`        <Route path="${r.route}" element={<${r.componentName} />} />`);
   }
 
+  const knownRoutes = new Set(uniqueRoutes.map(r => r.route));
+  const pending = pendingRoutes.filter(p => p.route && p.route !== '/' && !knownRoutes.has(p.route));
+  for (const p of pending) {
+    routeElements.push(`        <Route path="${p.route}" element={<UnisonPendingPage title=${JSON.stringify(p.title)} route=${JSON.stringify(p.route)} />} />`);
+  }
+
   // Add catch-all
   routeElements.push(`        <Route path="*" element={<Navigate to="/" replace />} />`);
+
+  const pendingComponent = pending.length
+    ? `
+function UnisonPendingPage({ title, route }) {
+  return (
+    <main data-ut-pending-route={route} style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '4rem 1.5rem', textAlign: 'center' }}>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{title}</h1>
+      <p style={{ opacity: 0.7, maxWidth: '32rem' }}>This page is part of your site but its content has not been generated yet.</p>
+    </main>
+  );
+}
+`
+    : '';
 
   return `import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 ${imports}
-
+${pendingComponent}
 export default function App() {
   return (
     <HashRouter>

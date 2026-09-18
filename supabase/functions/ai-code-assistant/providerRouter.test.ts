@@ -2,8 +2,8 @@ import {
   buildProviderPlan,
   parseProviderDistribution,
   selectParallelProvider,
-} from "./providerRouter.ts";
-import type { ClassifiedTask } from "./taskClassifier.ts";
+} from "../_shared/providerRouter.ts";
+import type { ClassifiedTask } from "../_shared/taskClassifier.ts";
 
 function assertEquals(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
