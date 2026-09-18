@@ -6,7 +6,7 @@ Contextual AI composition is required for new Wizard generation. A missing, inva
 
 Stage 4b compiles and validates the accepted AI plan using canonical registered implementations. A successful plan does not skip Lane B. Lane B receives that plan as bounded context and may propose registered page-body TSX; only validation, canonical merge, preflight and commitMutation may promote it. Rejected or unavailable refinements preserve the already validated AI-composed pages. Global theme, routes, protected foundation files, intents and commit ownership stay canonical.
 
-This user clarification overrides V3 sections 3/5/24/28 where they propose optional composition or deterministic launch without AI. V3 is retained as a reference plan; its embedded execution prompt is not an independent instruction. Refinement can be disabled through the launch-service policy for diagnostics; composition cannot.
+This user clarification overrides V3 sections 3/5/24/28 where they propose optional composition or deterministic launch without AI. V3 is retained as a reference plan; its embedded execution prompt is not an independent instruction. Refinement can be disabled through the launch-service policy for diagnostics; composition cannot. Both composition and refinement consume bounded projections derived from Unison's canonical registries; neither receives an unfiltered global registry.
 
 **Version:** 2.0  
 **Status:** Canonical implementation plan / VS Code AI coding prompt  

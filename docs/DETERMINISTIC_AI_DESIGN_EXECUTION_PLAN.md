@@ -21,7 +21,9 @@ The protected chain is:
 ```text
 LauncherWizard
   -> runLaunchPipeline
-  -> deterministic resolution & topology
+  -> deterministic resolution & bounded Registry Context v2
+  -> required contextual AI composition
+  -> validated composition plan & topology
   -> canonical compiler (Stage 4b theme & UI Foundation)
   -> Lane B AI Enrichment (bespoke UI Foundation composition, motion & bento layouts)
   -> canonical preflight & validation

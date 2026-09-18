@@ -10,6 +10,7 @@ its registry-to-runtime closure tests and required runtime evidence pass.
 ```text
 LauncherWizard
 	-> runLaunchPipeline
+	-> bounded contextual AI composition
 	-> deterministic resolution and canonical compiler
 	-> Stage 4b
 	-> commitMutation / VFSCommitService
