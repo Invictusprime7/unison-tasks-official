@@ -290,7 +290,7 @@ return main() ?? { pending: 0, changes };
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const root = fileURLToPath(new URL('..', import.meta.url));
+    const root = fileURLToPath(new URL('../', import.meta.url));
     if (process.argv.includes('--recover')) { console.log(recoverPromotion(root) ? 'Interrupted promotion restored.' : 'No interrupted promotion.'); process.exit(0); }
     const result = registerVariants(root, { checkOnly: process.argv.includes('--check'), auditOnly: process.argv.includes('--audit') });
     if (process.argv.includes('--audit')) {
