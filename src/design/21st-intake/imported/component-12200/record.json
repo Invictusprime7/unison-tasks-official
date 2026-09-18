@@ -9,7 +9,8 @@
     "react"
   ],
   "registryDependencies": [],
-  "attribution": "21st.dev — PrismaHero by @unknown",
+  "license": "Owner-authorized adaptation (21st.dev publication by @rahil1202 declares no upstream license)",
+  "attribution": "21st.dev — PrismaHero by @rahil1202",
   "designTags": [],
   "capabilities": {
     "motion": true,
@@ -25,15 +26,15 @@
     "clientOnly": false
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
-  "step": 3,
+  "step": 10,
   "dependencyAudit": {
     "decisions": [
       {
@@ -54,21 +55,30 @@
     ],
     "approved": true
   },
-  "status": "retired",
-  "promotedVariants": [],
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:prisma-cinematic"
+  ],
   "author": "rahil1202",
   "implementationId": "hero:prisma-cinematic",
   "licenseReview": {
-    "status": "unverified",
-    "source": "https://21st.dev/@rahil1202/components/prisma-hero",
-    "notes": "Upstream component-specific license could not be verified; excluded from new generation."
+    "status": "verified",
+    "license": "Owner-authorized adaptation (21st.dev publication by @rahil1202 declares no upstream license)",
+    "source": "Project owner supplied the PrismaHero source directly (quarantine/user-prisma-2026-09-17) and authorized canonical use; upstream 21st.dev record declares an empty license field.",
+    "verifiedAt": "2026-09-18T05:40:00.000Z",
+    "notes": "Unison ships an independent adaptation: framer-motion removed, tokens/imports normalized, canonical data-ut-* identity added. No upstream bytes are shipped to generated sites."
   },
   "archivePath": "src/design/21st-intake/archive/component-12200",
   "archivedAt": "2026-09-18T04:05:14.502Z",
   "reviewEvidence": {
     "sourceSha256": "0fddd24c3da4271f7b14088fee2f2ff68fa10354f8fcbeb31c96d39e18058550",
-    "componentSha256": "39ad358e642d398bef30036e68ade58b489c8d1ada6b4dc83af3b0a268b9dfdb",
-    "checks": [],
-    "reviewedAt": "2026-09-18T04:05:14.502Z"
+    "componentSha256": "0c336ad61192d573a041b8402cee0d911e1bc57dca78586c2644539a458d839b",
+    "checks": [
+      "dependency-allowlist",
+      "token-normalization",
+      "reduced-motion",
+      "portable-recipe"
+    ],
+    "reviewedAt": "2026-09-18T05:40:00.000Z"
   }
 }
