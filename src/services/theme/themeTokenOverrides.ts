@@ -1,4 +1,4 @@
-import { buildThemeFontImport, primaryFont, THEME_FONT_WEIGHTS } from '@/components/onboarding/themeFonts';
+import { primaryFont, replaceThemeFontImport, THEME_FONT_WEIGHTS } from '@/components/onboarding/themeFonts';
 /**
  * THEME TOKEN OVERRIDES — the builder-side, persisted form of a token edit.
  *
@@ -100,7 +100,7 @@ export function applyOverridesToCss(css: string, overrides: ThemeTokenOverrides)
   let base = stripOverrideBlock(css || '');
   const values = { ...readCompiledTokenValues(base), ...overrides };
   if (values['--font-heading'] && values['--font-body']) {
-    base = base.replace(/@import url\(['"]https:\/\/fonts\.googleapis\.com[^;]+;/, buildThemeFontImport([values['--font-heading'], values['--font-body']]));
+    base = replaceThemeFontImport(base, [values['--font-heading'], values['--font-body']]);
   }
   const effective = { ...overrides };
   for (const color of ['primary', 'secondary', 'accent']) {

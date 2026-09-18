@@ -2,6 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
 
 describe('wizard VFS integrity', () => {
+  it('repairs the legacy duplicated Google Fonts suffix without changing the themed stylesheet', () => {
+    const malformedCss = [
+      "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');200;300;400;500;600;700;800;900&display=swap');",
+      "@import './unison/ui/tailwind.css';",
+      '/* WIZARD THEME: minimalist (Stage 4b HSL token injection) */',
+      '@tailwind base;',
+      ':root { --primary: 221 83% 53%; }',
+    ].join('\n');
+    const files = {
+      '/src/App.tsx': 'export default function App() { return <main>Recovered preview</main>; }',
+      '/src/index.css': malformedCss,
+      '/src/unison/ui/tailwind.css': ':root { --ut-shell-width: 72rem; }',
+      '/.unison/wizard-seed.json': JSON.stringify({ source: 'system-launcher' }),
+      '/.unison/site-bundle-snapshot.json': JSON.stringify({
+        snapshotId: 'snap_css_repair',
+        pageRegistry: { pages: {} },
+        vfsFiles: {},
+        meta: { source: 'wizard' },
+      }),
+    };
+
+    const prepared = prepareSandpackFiles(files);
+
+    expect(prepared['/index.css'].split('\n')[0]).toBe("@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');");
+    expect(prepared['/index.css']).toContain('WIZARD THEME: minimalist');
+    expect(prepared['/index.css']).not.toContain("');200;300");
+  });
+
   it('refuses to synthesize a missing chrome module — pages must author chrome inline', () => {
     const files = {
       '/src/App.tsx': [
