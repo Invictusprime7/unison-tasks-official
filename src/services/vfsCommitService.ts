@@ -489,7 +489,11 @@ export async function commitMutation(
         });
       }
     } catch (err) {
-      log('canonical', 'error', 'canonical pipeline threw', String(err));
+      const canonicalError = err instanceof Error ? err.message : String(err);
+      log('canonical', 'error', 'canonical pipeline threw', err instanceof Error ? {
+        message: err.message,
+        stack: err.stack,
+      } : String(err));
       return finalize({
         input,
         status: 'rejected',
@@ -508,7 +512,7 @@ export async function commitMutation(
         backendOpsApplied: [],
         diagnostics,
         parentRevisionId: input.identity.revisionId || null,
-        rejectMessage: 'canonical pipeline threw — see diagnostics',
+        rejectMessage: `canonical pipeline threw: ${canonicalError}`,
       });
     }
   }

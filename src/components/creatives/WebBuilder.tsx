@@ -1772,9 +1772,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         playground: {
                           pageRegistry: creatorPlayground.pageRegistry,
                           creatorData: creatorPlayground.creatorData,
-                          calendars: snapshot?.calendars ?? {},
-                          popups: snapshot?.popups ?? {},
-                        } as never,
+                          bindings: playgroundBindings,
+                          calendars: playgroundCalendars,
+                          popups: playgroundPopups,
+                        },
                       },
                       patch,
                       options: {
@@ -2875,10 +2876,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     playground: {
       pageRegistry: creatorPlayground.pageRegistry,
       creatorData: creatorPlayground.creatorData,
-      calendars: snapshot?.calendars ?? {},
-      popups: snapshot?.popups ?? {},
-    } as never,
-  }), [activePagePath, creatorPlayground.pageRegistry, creatorPlayground.creatorData]);
+      bindings: playgroundBindings,
+      calendars: playgroundCalendars,
+      popups: playgroundPopups,
+    },
+  }), [
+    activePagePath,
+    creatorPlayground.pageRegistry,
+    creatorPlayground.creatorData,
+    playgroundBindings,
+    playgroundCalendars,
+    playgroundPopups,
+  ]);
 
   // ── Move 2: layout fast-path → VFSCommitService bridge ───────────────────
   // Each deterministic layout edit additively chains through commitMutation so
@@ -3006,9 +3015,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           playground: {
             pageRegistry: creatorPlayground.pageRegistry,
             creatorData: creatorPlayground.creatorData,
-            calendars: snapshot.calendars ?? {},
-            popups: snapshot.popups ?? {},
-          } as never,
+            bindings: playgroundBindings,
+            calendars: playgroundCalendars,
+            popups: playgroundPopups,
+          },
         },
         patch,
         options: {
@@ -3198,9 +3208,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           playground: {
             pageRegistry: creatorPlayground.pageRegistry,
             creatorData: creatorPlayground.creatorData,
-            calendars: snapshot.calendars ?? {},
-            popups: snapshot.popups ?? {},
-          } as never,
+            bindings: playgroundBindings,
+            calendars: playgroundCalendars,
+            popups: playgroundPopups,
+          },
         },
         patch,
         options: {
@@ -7186,9 +7197,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         playground: {
                           pageRegistry: creatorPlayground.pageRegistry,
                           creatorData: creatorPlayground.creatorData,
-                          calendars: snapshotForPreflight?.calendars ?? {},
-                          popups: snapshotForPreflight?.popups ?? {},
-                        } as never,
+                          bindings: playgroundBindings,
+                          calendars: playgroundCalendars,
+                          popups: playgroundPopups,
+                        },
                         activePagePath,
                       }
                     : null;
@@ -7707,9 +7719,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       playground: {
                         pageRegistry: creatorPlayground.pageRegistry,
                         creatorData: creatorPlayground.creatorData,
-                        calendars: snapshotForPreflight?.calendars ?? {},
-                        popups: snapshotForPreflight?.popups ?? {},
-                      } as never,
+                        bindings: playgroundBindings,
+                        calendars: playgroundCalendars,
+                        popups: playgroundPopups,
+                      },
                       activePagePath,
                     }
                   : null;
