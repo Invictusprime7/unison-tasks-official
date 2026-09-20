@@ -81,7 +81,8 @@ function identityTokens(files: Record<string, string>) {
 
 
 function publishedPayload(): Record<string, string> {
-  const call = mocks.invoke.mock.calls.at(-1);
+  const calls = mocks.invoke.mock.calls;
+  const call = calls[calls.length - 1];
   expect(call?.[0]).toBe('publish-site');
   return (call?.[1] as { body: { files: Record<string, string> } }).body.files;
 }
