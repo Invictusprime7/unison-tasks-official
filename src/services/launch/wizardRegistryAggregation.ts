@@ -20,6 +20,7 @@ import {
   resolveArtDirectionPack,
 } from '@/sections/variants';
 import type { SectionType } from '@/sections/types';
+import { resolveComponentStateContract } from '@/sections/variants/componentStates';
 import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
 import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
