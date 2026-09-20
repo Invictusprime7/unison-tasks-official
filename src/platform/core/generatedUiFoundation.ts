@@ -367,6 +367,7 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
       '@/unison/ui/zod',
       '@/unison/ui/radix',
       ...RADIX_VFS_PRIMITIVES.map((primitive) => `@/unison/ui/radix/${primitive}`),
+      ...GENERATED_UI_CATALOG_IMPORTS,
       ...EXPERIENCE_IMPORT_PATHS,
     ],
     runtimeFacades: buildRuntimeFacades(),
@@ -1633,6 +1634,7 @@ export function FeatureCard({ title, description, media, className }: { title: s
 }
 `,
     '/.unison/ui-manifest.json': JSON.stringify(manifest, null, 2),
+    ...buildGeneratedUiCatalogFiles(marker),
     ...buildExperienceFoundationFiles(marker),
   };
 }
