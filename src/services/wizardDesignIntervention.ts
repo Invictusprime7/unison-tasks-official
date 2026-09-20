@@ -27,6 +27,8 @@ import type {
   VocabularyMotionIntensity,
 } from '@/platform/core/designVocabulary';
 import { getDesignImplementation, getImplementationVocabularyRefs } from '@/services/designImplementationRegistry';
+import { resolveAvailableAutoArtDirectionPackId } from '@/services/wizardDesignAvailability';
+
 
 
 
