@@ -71,7 +71,7 @@ describe('Lane B canonical contract', () => {
     expect(contract).toContain('hero:image-stream');
     expect(contract).toContain('hero-1');
     expect(contract).toContain('booking.start');
-    expect(contract).toContain('exactly one <h1>');
+    expect(contract).toContain('Exactly one <h1>');
   });
 
   it('states the exact forbidden patterns the validator asserts', () => {
