@@ -28,7 +28,16 @@ import {
   type GeneratedMotionExports,
 } from '@/platform/core/generatedUiFoundation';
 import { buildDesignVocabularyReport } from '@/services/designImplementationRegistry';
+import {
+  LANE_B_ALWAYS_ALLOWED_PACKAGES,
+  LANE_B_GLOBAL_STYLE_PATTERN,
+  LANE_B_LITERAL_STYLE_PATTERN,
+  LANE_B_PALETTE_LITERAL_PATTERN,
+  normalizeLaneBProposal,
+  renderLaneBCanonicalContract,
+} from '@/services/launch/laneBCanonicalContract';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
+
 
 /** The exact registry projection used by the production enrichment request. */
 export function buildWizardLaneBRegistryContext(
