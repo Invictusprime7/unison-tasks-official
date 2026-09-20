@@ -643,3 +643,4 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 - [x] Homepage authored alone in the first design turn; every later page inherits its established language (homepageFirstContract.ts, laneBBatchPlanner home-first batching, launchOrchestrator stamping).
 - [x] Page registry + topology validator carry and check the established language (visualLanguage / visualLanguageSignature, HOMEPAGE_NOT_FIRST, VISUAL_LANGUAGE_DRIFT).
 - [x] Composition lane home-first rule mirrored client-side and in the deployed edge normalizer.
+- [ ] Preserve Wizard-selected topology and page needs: generate only selected routes, derive each unique page body contextually from the homepage's holistic language/content, and never substitute static pre-made bodies.
