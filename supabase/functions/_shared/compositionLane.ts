@@ -22,14 +22,37 @@ type Generate = (messages: Array<{ role: string; content: string }>) => Promise<
 
 const COMPILER_OWNED_VARIANT_FAMILIES = new Set(['navbar', 'footer']);
 
-function withoutCompilerOwnedVariantSelections(plan: z.infer<typeof resultSchema>): z.infer<typeof resultSchema> {
+/**
+ * Deterministic repair of mechanical envelope defects — the exact mirror of the
+ * client `normalizeCompositionResponse`. Only non-design defects are repaired:
+ * pages for roles that were never requested, duplicate pages for one role,
+ * duplicate families inside a section order, compiler-owned (navbar/footer)
+ * variant selections, and copy or variant entries aimed at a family outside the
+ * page's section order. Variant choices and copy text are never rewritten.
+ */
+function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: CompositionBrief): z.infer<typeof resultSchema> {
+  const seenRoles = new Set<string>();
   return {
     ...plan,
-    pages: plan.pages.map(page => ({
-      ...page,
-      variants: Object.fromEntries(Object.entries(page.variants)
-        .filter(([family]) => !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
-    })),
+    pages: plan.pages.filter(page => {
+      if (brief && !brief.roles.includes(page.role)) return false;
+      if (seenRoles.has(page.role)) return false;
+      seenRoles.add(page.role);
+      return true;
+    }).map(page => {
+      const sectionOrder = page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index);
+      const inOrder = new Set(sectionOrder);
+      return {
+        ...page,
+        sectionOrder,
+        variants: Object.fromEntries(Object.entries(page.variants)
+          .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
+        ...(page.copy ? {
+          copy: Object.fromEntries(Object.entries(page.copy)
+            .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_FAMILIES.has(family))),
+        } : {}),
+      };
+    }),
   };
 }
 
