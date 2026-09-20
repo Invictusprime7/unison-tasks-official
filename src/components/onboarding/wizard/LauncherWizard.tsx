@@ -35,13 +35,18 @@ import {
 } from "@/components/onboarding/themePresets";
 import { StyleTokenCard } from "@/components/onboarding/StyleTokenCard";
 import {
-  ART_DIRECTION_PACKS,
   type ArtDirectionPackId,
 } from "@/sections/variants/artDirectionPacks";
+import {
+  getWizardSectionPickers,
+  getWizardVisualDirections,
+} from "@/services/wizardDesignAvailability";
 import {
   createWizardDesignSelection,
   type WizardExperiencePreference,
 } from "@/services/wizardDesignSelection";
+import type { VariantId } from "@/sections/variants/types";
+
 
 import { ImportProjectZipButton } from "@/components/onboarding/ImportProjectZipButton";
 import { ImportUnisonSiteZipButton } from "@/components/onboarding/ImportUnisonSiteZipButton";
@@ -149,6 +154,8 @@ export const LauncherWizard = ({
   );
   const [artDirectionPackId, setArtDirectionPackId] = useState<ArtDirectionPackId | null>(null);
   const [experience, setExperience] = useState<WizardExperiencePreference>("standard");
+  const [sectionPins, setSectionPins] = useState<Record<string, VariantId>>({});
+
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [visionPrompt, setVisionPrompt] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<WizardPromptAnalysis | null>(
@@ -174,6 +181,8 @@ export const LauncherWizard = ({
     setTheme(THEME_PRESETS[0] ?? null);
     setArtDirectionPackId(null);
     setExperience("standard");
+    setSectionPins({});
+
     setSocialLinks({});
     setVisionPrompt("");
     setAiAnalysis(null);
@@ -233,6 +242,43 @@ export const LauncherWizard = ({
     [selectedIndustry],
   );
 
+  // Design availability is a registry projection: directions and section
+  // choices are derived from the certified registry, the coverage gate, the
+  // selected pages and the experience preference — never hard-coded here.
+  const visualDirections = useMemo(
+    () => getWizardVisualDirections({ selectedPages, experience }),
+    [selectedPages, experience],
+  );
+  const sectionPickers = useMemo(
+    () => getWizardSectionPickers(artDirectionPackId, experience),
+    [artDirectionPackId, experience],
+  );
+
+  // A direction or pin that stops being eligible after another change must not
+  // survive silently into the launch brief.
+  useEffect(() => {
+    if (
+      artDirectionPackId &&
+      !visualDirections.some((option) => option.id === artDirectionPackId && option.available)
+    ) {
+      setArtDirectionPackId(null);
+    }
+  }, [artDirectionPackId, visualDirections]);
+
+  useEffect(() => {
+    setSectionPins((current) => {
+      const allowed = new Set(
+        sectionPickers.flatMap((picker) => picker.options.map((option) => option.variantId)),
+      );
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([, variantId]) => allowed.has(variantId)),
+      );
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
+  }, [sectionPickers]);
+
+
+
   const canContinue =
     step === "industry"
       ? Boolean(systemId && selectedIndustry)
@@ -271,7 +317,7 @@ export const LauncherWizard = ({
         mode: artDirectionPackId ? "guided" : "auto",
         artDirectionPackId: artDirectionPackId ?? undefined,
         experience,
-        sectionPins: {},
+        sectionPins,
       }),
       businessName,
       primaryGoal,
@@ -684,15 +730,22 @@ export const LauncherWizard = ({
                     <Chip active={artDirectionPackId === null} onClick={() => setArtDirectionPackId(null)}>
                       Auto match
                     </Chip>
-                    {Object.values(ART_DIRECTION_PACKS).map((pack) => (
+                    {visualDirections.map((option) => (
                       <Chip
-                        key={pack.id}
-                        active={artDirectionPackId === pack.id}
-                        onClick={() => setArtDirectionPackId(pack.id)}
+                        key={option.id}
+                        active={artDirectionPackId === option.id}
+                        disabled={!option.available}
+                        title={option.unavailableReason}
+                        onClick={() => option.available && setArtDirectionPackId(option.id)}
                       >
                         <span className="flex flex-col items-start">
-                          <span>{pack.name}</span>
-                          <span className="text-[10px] font-normal text-muted-foreground">{pack.description}</span>
+                          <span>
+                            {option.name}
+                            {!option.available && " — unavailable"}
+                          </span>
+                          <span className="text-[10px] font-normal text-muted-foreground">
+                            {option.available ? option.description : option.unavailableReason}
+                          </span>
                         </span>
                       </Chip>
                     ))}
@@ -712,6 +765,38 @@ export const LauncherWizard = ({
                     ))}
                   </div>
                 </div>
+                {sectionPickers.length > 0 && (
+                  <div>
+                    <FieldLabel>Customize sections</FieldLabel>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {sectionPickers.map((picker) => (
+                        <label key={picker.sectionType} className="flex flex-col gap-1 text-[11px] text-white/60">
+                          <span className="capitalize">{picker.sectionType.replace(/-/g, " ")}</span>
+                          <select
+                            value={sectionPins[picker.sectionType] ?? ""}
+                            onChange={(event) =>
+                              setSectionPins((current) => {
+                                const next = { ...current };
+                                if (!event.target.value) delete next[picker.sectionType];
+                                else next[picker.sectionType] = event.target.value as VariantId;
+                                return next;
+                              })
+                            }
+                            className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[12px] text-white"
+                          >
+                            <option value="">Auto</option>
+                            {picker.options.map((option) => (
+                              <option key={option.variantId} value={option.variantId}>
+                                {option.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               </>
             )}
 
@@ -784,24 +869,32 @@ const Chip = ({
   active,
   onClick,
   children,
+  disabled = false,
+  title,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  disabled?: boolean;
+  title?: string;
 }) => (
   <button
     type="button"
     onClick={onClick}
+    disabled={disabled}
+    title={title}
     aria-pressed={active}
     className={cn(
       "rounded-xl border px-4 py-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300",
       active
         ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
         : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:border-white/20 hover:text-white",
+      disabled && "cursor-not-allowed opacity-40 hover:border-white/[0.08] hover:text-slate-300",
     )}
   >
     {children}
   </button>
 );
+
 
 export default LauncherWizard;

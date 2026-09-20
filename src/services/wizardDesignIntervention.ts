@@ -477,9 +477,19 @@ export function buildWizardDesignIntervention(
   // Explicit user pins are the final authority: user pin > accepted AI choice
   // > deterministic seeded choice. Eligibility is already constrained by the
   // Wizard's registry-derived picker and is revalidated at compile time.
-  for (const [sectionId, variantId] of Object.entries(input.designSelection?.sectionPins ?? {})) {
-    activeVariants[sectionId] = variantId;
+  // A pin key is either a section instance id or a section type; the Wizard
+  // pins by type because instance ids only exist after composition.
+  for (const [pinKey, variantId] of Object.entries(input.designSelection?.sectionPins ?? {})) {
+    const sectionType = String(variantId).split(':')[0];
+    if (pinKey === sectionType) {
+      for (const [sectionId, current] of Object.entries(activeVariants)) {
+        if (String(current).split(':')[0] === sectionType) activeVariants[sectionId] = variantId;
+      }
+      continue;
+    }
+    activeVariants[pinKey] = variantId;
   }
+
   // The immersive layer is only offered when a registered implementation
   // enables it; otherwise the launch approves nothing and preflight would
   // reject any edit that followed an immersive instruction.
