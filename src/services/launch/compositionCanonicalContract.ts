@@ -50,7 +50,11 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
     const eligible = brief.variants.filter(variant => !variant.pageRoles.length || variant.pageRoles.includes(role));
     const byFamily = families
       .map(family => {
-        const ids = eligible.filter(variant => variant.family === family).map(variant => variant.id);
+        const inFamily = brief.variants.filter(variant => variant.family === family);
+        // pageRoles is a preference: when no certified variant of this family
+        // declares the role, the whole certified family stays advertised.
+        const matched = eligible.filter(variant => variant.family === family);
+        const ids = (matched.length ? matched : inFamily).map(variant => variant.id);
         return ids.length ? `    ${family}: ${list(ids)}` : null;
       })
       .filter((line): line is string => Boolean(line))

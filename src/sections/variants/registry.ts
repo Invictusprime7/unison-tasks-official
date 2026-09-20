@@ -1853,10 +1853,18 @@ export function clampVariantToPack(
 
 /** New AI compositions use only executable 21st implementations. Saved IDs remain resolvable. */
 export function getGenerationVariantsForSection(sectionType: SectionType, pack?: ArtDirectionPack, role?: string): SectionVariant[] {
-  const eligible = getVariantsForSection(sectionType).filter(variant =>
+  // Certification is the hard gate. `pageRoles` and the pack family are
+  // *preferences*: a section that is legal to compile must never resolve to an
+  // empty set just because no certified variant happens to declare this page
+  // role — that produced spurious "no certified 21st implementation" coverage
+  // gaps for roles like gallery:services.
+  const certified = getVariantsForSection(sectionType).filter(variant =>
     variant.source?.origin === '21st' && variant.vfs?.mode === 'portable-recipe' &&
-    variant.vfs.certification === 'approved' && variant.generationStatus !== 'legacy' &&
-    (!role || !variant.pageRoles?.length || variant.pageRoles.some(candidate => candidate === role)));
+    variant.vfs.certification === 'approved' && variant.generationStatus !== 'legacy');
+  const roleMatched = role
+    ? certified.filter(variant => !variant.pageRoles?.length || variant.pageRoles.some(candidate => candidate === role))
+    : certified;
+  const eligible = roleMatched.length ? roleMatched : certified;
   const declared = pack ? familyForSection(pack, sectionType) : [];
   const compatible = eligible.filter(variant => declared.includes(variant.id));
   return compatible.length ? compatible : eligible;
