@@ -143,7 +143,7 @@ Milestone index (status tracked against the phases below):
       canonical `data-ut-section-id` values Stage 4b compiled. Legacy requests
       without vocabulary or current sources remain unaffected
       (`src/test/wizardLaneBEnrichment.test.ts`).
-- [ ] M9 Visual selection / property inspector.
+- [x] M9 Visual selection / property inspector — propertyInspectorModel projection + PropertyInspectorPanel mounted in WebBuilder (canonical patch plans + grounded AI requests).
 - [ ] M10 Immersive / 3D expansion (gated behind Phase 6A acceptance).
 
 M1 exit condition is unchanged: Wizard preview implementation = canonical VFS

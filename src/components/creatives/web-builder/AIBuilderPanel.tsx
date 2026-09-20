@@ -608,6 +608,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     }
   }, [input]);
 
+  // Grounded prompts handed over by the Property Inspector — prefilled for review.
+  useEffect(() => {
+    const onBuilderPrompt = (event: Event) => {
+      const prompt = (event as CustomEvent<{ prompt?: string }>).detail?.prompt;
+      if (typeof prompt === 'string' && prompt.trim()) setInput(prompt);
+    };
+    window.addEventListener('unison:builder-prompt', onBuilderPrompt);
+    return () => window.removeEventListener('unison:builder-prompt', onBuilderPrompt);
+  }, []);
+
+
   // ── File processing helpers ───────────────────────────────────────────────
   const classifyFile = (file: File): DroppedFile['type'] => {
     if (file.type.startsWith('image/')) return 'image';

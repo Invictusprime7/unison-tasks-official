@@ -137,6 +137,8 @@ import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { ElementIntentInspector } from "./web-builder/ElementIntentInspector";
+import { PropertyInspectorPanel } from "./web-builder/PropertyInspectorPanel";
+
 import { CatalogInspectorPanel } from "@/components/business-center/CatalogInspectorPanel";
 import { buildSectionTypeMap } from "@/services/autoEmitSectionBindings";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
@@ -324,7 +326,7 @@ import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { useCodeHistory } from "@/hooks/useCodeHistory";
 import { useWebBuilderState } from "@/hooks/useWebBuilderState";
 import { useLaunch } from "@/contexts/useLaunchHooks";
-import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose, ArrowLeft, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose, ArrowLeft, Download, SlidersHorizontal } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
 import {
@@ -592,6 +594,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [catalogPanelOpen, setCatalogPanelOpen] = useState(false);
+  const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
+  /** Hands a grounded, canonical instruction to the in-Builder AI lane. */
+  const dispatchBuilderPrompt = useCallback((prompt: string) => {
+    window.dispatchEvent(new CustomEvent('unison:builder-prompt', { detail: { prompt } }));
+  }, []);
+
+
   const [playgroundModalOpen, setPlaygroundModalOpen] = useState(false);
   const [playgroundInitialSection, setPlaygroundInitialSection] = useState<"launch" | "pages" | "funnels" | "overview" | "intent_registry" | "readiness" | "business" | "components" | undefined>(undefined);
   const [playgroundInitialBindingId, setPlaygroundInitialBindingId] = useState<string | undefined>(undefined);
@@ -8342,6 +8351,58 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             )}
           </>
         )}
+
+        {/* Property Inspector — canonical section/slot/variant controls (M9) */}
+        {selectedHTMLElement && viewMode === 'canvas' && builderMode === 'select' && (
+          <>
+            <button
+              onClick={() => setPropertyPanelOpen((v) => !v)}
+              className={cn(
+                "fixed right-[5.25rem] top-16 z-50 hidden h-8 w-8 items-center justify-center rounded-md border border-white/[0.06] text-xs transition-colors lg:flex",
+                propertyPanelOpen
+                  ? "bg-white/10 text-white"
+                  : "bg-[#0d0d18]/90 text-white/45 hover:bg-white/[0.06] hover:text-white"
+              )}
+              title="Property Inspector"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+            </button>
+            {propertyPanelOpen && (
+              <div className="fixed right-3 top-28 z-50">
+                <PropertyInspectorPanel
+                  selection={{
+                    tagName: selectedHTMLElement.tagName,
+                    textContent: selectedHTMLElement.textContent,
+                    selector: selectedHTMLElement.selector,
+                    attributes: selectedHTMLElement.attributes as Record<string, string> | undefined,
+                    scopeAncestors: {
+                      ...(selectedHTMLElement.scopeAncestors ?? {}),
+                      pagePath:
+                        (selectedHTMLElement.scopeAncestors as { pagePath?: string | null } | undefined)?.pagePath
+                        ?? activePagePath,
+                    },
+                    imageTarget: selectedHTMLElement.imageTarget,
+                  }}
+                  onClose={() => setPropertyPanelOpen(false)}
+                  onApplyPatchPlan={(plan) => {
+                    // Canonical patch plans are executed through the governed
+                    // AI Builder lane (VFSCommitService), never by ad-hoc DOM writes.
+                    dispatchBuilderPrompt(
+                      `${plan.description}.\nApply this canonical patch plan exactly:\n${JSON.stringify(plan.op, null, 2)}`,
+                    );
+                    setPropertyPanelOpen(false);
+                  }}
+                  onContextualAIRequest={(prompt) => {
+                    dispatchBuilderPrompt(prompt);
+                    setPropertyPanelOpen(false);
+                  }}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+
 
         {/* Catalog Inspector — toggle button + floating panel (Track B) */}
         {viewMode === 'canvas' && (
