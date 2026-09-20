@@ -3,6 +3,7 @@ import {
   LANE_B_GLOBAL_STYLE_PATTERN,
   LANE_B_LITERAL_STYLE_PATTERN,
   LANE_B_PALETTE_LITERAL_PATTERN,
+  normalizeHeadingStructure,
   normalizeLaneBProposal,
   renderLaneBCanonicalContract,
 } from '@/services/launch/laneBCanonicalContract';
@@ -127,5 +128,28 @@ describe('Lane B canonical contract', () => {
     });
     expect(verdict.valid).toBe(false);
     expect(verdict.violations.join(' ')).toMatch(/literal color|<h1>/);
+  });
+
+  it('promotes the first h2 to h1 when a page has no h1', () => {
+    const noH1 = currentSource.replace('<h1>Welcome</h1>', '<h2 className="ut-display">Welcome</h2>');
+    expect(normalizeHeadingStructure(noH1)).toContain('<h1 className="ut-display">Welcome</h1>');
+    const normalized = normalizeLaneBProposal(
+      proposal([{ type: 'replace', path: PAGE, content: noH1 }]),
+      request,
+      WIZARD_LANE_B_PROTECTED_PATHS,
+    );
+    const verdict = validateWizardLaneBProposal({ proposal: normalized, request, uiFoundationManifest: manifest });
+    expect(verdict.violations).toEqual([]);
+  });
+
+  it('demotes extra h1 elements to h2, keeping the first', () => {
+    const twoH1 = currentSource.replace('</main>', '<h1>Second</h1></main>');
+    const fixed = normalizeHeadingStructure(twoH1);
+    expect((fixed.match(/<h1(?=[\s>])/g) || [])).toHaveLength(1);
+    expect(fixed).toContain('<h2>Second</h2>');
+  });
+
+  it('leaves a page with exactly one h1 untouched', () => {
+    expect(normalizeHeadingStructure(currentSource)).toBe(currentSource);
   });
 });
