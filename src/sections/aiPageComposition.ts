@@ -45,7 +45,8 @@ export function validateAIPageComposition(value: unknown, packId: ArtDirectionPa
       if (!page.sectionOrder.includes(type as SectionType)) return null;
       const variant = getVariantById(id as VariantId);
       if (!variant || variant.sectionType !== type || variant.vfs?.mode !== 'portable-recipe' || variant.generationStatus === 'legacy') return null;
-      if (variant.pageRoles?.length && !variant.pageRoles.includes(page.role)) return null;
+      // Role eligibility is owned by getGenerationVariantsForSection below, which
+      // treats pageRoles as a preference and falls back to the certified set.
       const allowed = getGenerationVariantsForSection(variant.sectionType, ART_DIRECTION_PACKS[packId], page.role).map(candidate => candidate.id);
       if (!allowed.includes(variant.id)) return null;
     }
