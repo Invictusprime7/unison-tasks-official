@@ -18,5 +18,12 @@ it('repro', () => {
       selectedTemplateId: 'real-estate-premium', stage4bCss: launched.siteBundleSnapshot.vfsFiles['/src/index.css'],
     });
     console.log('OK');
-  } catch (e: any) { console.log('STACK:\n' + e.stack); }
+    const di = JSON.parse(launched.siteBundleSnapshot.vfsFiles['/.unison/design-intervention.json'] || '{}');
+    const bad = Object.entries(di.activeVariants || {}).filter(([k,v]) => v === undefined || v === null || typeof v !== 'string');
+    console.log('BAD VARIANTS', bad);
+  } catch (e: any) {
+    const di = JSON.parse(launched.siteBundleSnapshot.vfsFiles['/.unison/design-intervention.json'] || '{}');
+    console.log('ACTIVE VARIANT KEYS', Object.entries(di.activeVariants || {}).map(([k,v])=>k+'='+String(v)).slice(0,60).join(', '));
+    console.log('STACK:\n' + e.stack);
+  }
 });
