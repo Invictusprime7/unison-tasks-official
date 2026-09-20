@@ -15,7 +15,7 @@ Yes, this is clear. I agree with the direction, with three corrections below.
 
 ## My objections / corrections
 1. **Do not delete legacy before coverage is proven per family and per visual direction.** Every one of the 14 visual directions must resolve a certified design for every section family it declares. We hit exactly this failure recently ("no certified implementation for logo-cloud"). Removal must be gated by a passing coverage test, not by a date.
-2. **"21st equivalence" cannot mean fabricating 21st provenance.** For the ~56 generic designs there are three honest outcomes, and each must be recorded: genuine 21st source adaptation; owner-authorised adaptation informed by a 21st reference; or retire the design entirely. Free-tier 21st retrieval is limited to two pulls per day, so genuine-source migration is inherently paced — most equivalence work will be authorised adaptation plus certification.
+2. **"21st equivalence" cannot mean fabricating provenance.** With your paid yearly 21st.dev plan there is no retrieval limit, so the default for all ~56 generic designs is a genuine 21st source adaptation with real source id, author, and licence recorded. Owner-authorised adaptation stays the exception, used only where no suitable 21st source exists, and each one is recorded as such.
 3. **Expansion from `design.json` is composition, not installation.** The 50 primitives already pinned and wired become the building blocks for new certified section designs; they do not themselves become section designs.
 
 ## Plan
