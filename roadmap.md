@@ -651,4 +651,7 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 - [x] P0 renderable component import gate
 - [x] P1 canonical design selection persistence and Wizard controls
 - [x] P2 visual signatures and AI constraint parity — certified implementation metadata derives structured geometry/media/type/density/motion/experience signatures; compatibility filters Wizard candidates by experience; user pins and experience constraints are shared by client validation, the Wizard composer edge contract, Lane B context, and persisted registry projections.
-- [ ] Verification: focused suites, full tests, preview diagnostics, authenticated journey
+- [x] Verification: full suite green (228 files / 2021 tests), `tsgo` clean, preview build OK. Two real defects were found and fixed during verification:
+	- `getGenerationVariantsForSection` hard-filtered by page role, so roles with no role-declared variants resolved empty (the spurious "21st coverage incomplete" class of launch note). Role is now a preference with certified fallback (`src/sections/variants/registry.ts`).
+	- The renderable-import gate's blanket `@/` allowance made the UI foundation vocabulary check dead, so Lane B could import any invented `@/unison/ui/*` facade. The foundation root is now checked as a closed vocabulary before the alias allowance (`src/platform/core/generatedUiFoundation.ts`).
+

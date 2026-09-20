@@ -2053,6 +2053,16 @@ export function validateGeneratedUiContract(
         );
         continue;
       }
+      if (approvedLocalImports.has(specifier)) {
+        continue;
+      }
+      // The UI foundation root is a closed vocabulary: an "@/unison/ui/..."
+      // specifier must be a declared facade, so it is checked before the
+      // general alias-local allowance.
+      if (specifier === manifest.importRoot || specifier.startsWith(`${manifest.importRoot}/`)) {
+        violations.push(`${path} imports unapproved UI module "${specifier}".`);
+        continue;
+      }
       if (
         isSandpackAllowedImport(specifier) ||
         specifier.startsWith('.') ||
@@ -2060,13 +2070,7 @@ export function validateGeneratedUiContract(
       ) {
         continue;
       }
-      if (approvedLocalImports.has(specifier)) {
-        continue;
-      }
-      if (specifier.startsWith(`${manifest.importRoot}/`)) {
-        violations.push(`${path} imports unapproved UI module "${specifier}".`);
-        continue;
-      }
+
       violations.push(`${path} imports unsupported module "${specifier}".`);
     }
 
