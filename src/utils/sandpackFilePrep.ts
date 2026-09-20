@@ -23,7 +23,10 @@ import { GENERATED_RUNTIME_PROFILE } from '@/platform/core/generatedRuntimeCapab
 
 import { ensureReactImports, sanitizeSvgElements } from '@/utils/aiCodeCleaner';
 import { LAUNCHER_BASE_THEME } from '@/sections/themes';
-import { isSandpackAllowedImport } from '@/utils/sandpackDependencies';
+import {
+  isSandpackAllowedImport,
+  resolvePinnedRuntimeVersion,
+} from '@/utils/sandpackDependencies';
 import { isValidAesthetic } from '@/utils/aestheticToCSS';
 import { buildThemedIndexCss } from '@/components/onboarding/themePresetToIndexCss';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
@@ -3850,7 +3853,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     for (const m of importMatches) {
       const pkg = m[1].startsWith('@') ? m[1].split('/').slice(0, 2).join('/') : m[1].split('/')[0];
       if (pkg && !pkg.startsWith('.') && !pkg.startsWith('/') && !detectedDeps[pkg]) {
-        detectedDeps[pkg] = 'latest';
+        // Runtime-critical packages (Radix facade graph, framer-motion, the
+        // three.js experience capability) must resolve to their pinned
+        // versions — `latest` can install a major incompatible with the
+        // generated React runtime profile and crash the preview.
+        detectedDeps[pkg] = resolvePinnedRuntimeVersion(pkg) ?? 'latest';
       }
     }
     out['/package.json'] = JSON.stringify({
@@ -3873,6 +3880,26 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         postcss: '^8.4.0',
       },
     }, null, 2);
+  } else {
+    // Heal persisted package.json files that recorded `latest` (or an older
+    // floating range) for runtime-critical packages. A stale snapshot must
+    // not keep installing an incompatible three/fiber or Radix major.
+    try {
+      const existing = JSON.parse(out['/package.json']) as {
+        dependencies?: Record<string, string>;
+      };
+      if (existing && typeof existing === 'object' && existing.dependencies) {
+        let healed = false;
+        for (const [name, version] of Object.entries(existing.dependencies)) {
+          const pinned = resolvePinnedRuntimeVersion(name);
+          if (pinned && pinned !== version) {
+            existing.dependencies[name] = pinned;
+            healed = true;
+          }
+        }
+        if (healed) out['/package.json'] = JSON.stringify(existing, null, 2);
+      }
+    } catch { /* leave malformed package.json untouched */ }
   }
 
   if (!out['/tsconfig.json']) {

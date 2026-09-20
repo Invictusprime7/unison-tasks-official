@@ -120,7 +120,7 @@ export const SANDPACK_PREVIEW_CORE_DEPENDENCIES: Record<string, string> = {
 // These versions mirror the compatible Radix/Motion graph installed by the
 // builder. Sandpack cannot safely resolve a generated facade against `latest`
 // because the Radix internals are separately published packages.
-const SANDPACK_RUNTIME_PACKAGE_VERSIONS: Record<string, string> = {
+export const SANDPACK_RUNTIME_PACKAGE_VERSIONS: Record<string, string> = {
   '@radix-ui/react-accordion': '1.2.12',
   '@radix-ui/react-alert-dialog': '1.1.15',
   '@radix-ui/react-aspect-ratio': '1.1.8',
@@ -207,6 +207,22 @@ export const SANDPACK_EXPERIENCE_RUNTIME_DEPENDENCIES: Record<string, string> = 
   ...THREE_D_CAPABILITY.transitiveDependencies,
 };
 
+/**
+ * Versions that must never float to `latest`: the Radix/Motion facade graph
+ * and the experience (three.js) capability are pinned against the generated
+ * React runtime profile. Every dependency injector and extractor must route
+ * through this map instead of writing `latest` for these packages.
+ */
+export const PINNED_RUNTIME_PACKAGE_VERSIONS: Readonly<Record<string, string>> = {
+  ...SANDPACK_RUNTIME_PACKAGE_VERSIONS,
+  ...GENERATED_RUNTIME_CAPABILITY_DEPENDENCIES,
+};
+
+/** Pinned version for a runtime package, or null when it may float. */
+export function resolvePinnedRuntimeVersion(packageName: string): string | null {
+  return PINNED_RUNTIME_PACKAGE_VERSIONS[packageName] ?? null;
+}
+
 /** Add nested package requirements only when the active preview reaches them. */
 export function expandSandpackRuntimeDependencies(
   dependencies: Record<string, string>,
@@ -214,7 +230,7 @@ export function expandSandpackRuntimeDependencies(
   const compatibleDependencies = Object.fromEntries(
     Object.entries(dependencies).map(([name, version]) => [
       name,
-      SANDPACK_RUNTIME_PACKAGE_VERSIONS[name] || version,
+      PINNED_RUNTIME_PACKAGE_VERSIONS[name] || version,
     ]),
   );
   const importsRadix = Object.keys(compatibleDependencies).some((name) => name.startsWith('@radix-ui/react-'));

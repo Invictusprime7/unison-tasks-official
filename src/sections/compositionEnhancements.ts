@@ -74,15 +74,17 @@ export function emitCompositionEnhancements(activation?: CompositionActivation):
     const condition = `section.id === ${JSON.stringify(decision.sectionId)}`;
     switch (decision.recipeId) {
       case 'editorial-reveal':
-        return `if (${condition}) content = <Reveal>{content}</Reveal>;`;
+        // Guard every experience primitive: a failed optional module must
+        // degrade to the canonical content instead of crashing the page.
+        return `if (${condition} && typeof Reveal === 'function') content = <Reveal>{content}</Reveal>;`;
       case 'scene-backdrop':
         // Keep the canonical hero, its media and actions intact. The scene is decorative.
-        return `if (${condition}) content = <div className="relative isolate"><div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-20"><SceneBackground className="z-0" /></div>{content}</div>;`;
+        return `if (${condition} && typeof SceneBackground === 'function') content = <div className="relative isolate"><div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-20"><SceneBackground className="z-0" /></div>{content}</div>;`;
       case 'immersive-hero':
-        return `if (${condition}) content = <div data-ut-enhancement="immersive-hero"><ImmersiveHero intensity="cinematic" className="rounded-none">{content}</ImmersiveHero></div>;`;
+        return `if (${condition} && typeof ImmersiveHero === 'function') content = <div data-ut-enhancement="immersive-hero"><ImmersiveHero intensity="cinematic" className="rounded-none">{content}</ImmersiveHero></div>;`;
       case 'depth-gallery':
         // Hydrated props, not frozen sample items. Grid retains the existing lightbox.
-        return `if (${condition} && Array.isArray(props.items) && props.items.length) content = <ExperienceTabs.Root defaultValue="depth" className="ut-block" data-ut-enhancement="depth-gallery">
+        return `if (${condition} && typeof DepthGallery === 'function' && ExperienceTabs && ExperienceTabs.Root && ExperienceTabs.List && ExperienceTabs.Trigger && ExperienceTabs.Content && Array.isArray(props.items) && props.items.length) content = <ExperienceTabs.Root defaultValue="depth" className="ut-block" data-ut-enhancement="depth-gallery">
           <Container><ExperienceTabs.List aria-label="Gallery view" className="flex gap-2">
             <ExperienceTabs.Trigger value="depth" className="ut-shadcn-button" data-ut-radix="control">Immersive view</ExperienceTabs.Trigger>
             <ExperienceTabs.Trigger value="grid" className="ut-shadcn-button" data-ut-radix="control">Photo gallery</ExperienceTabs.Trigger>
