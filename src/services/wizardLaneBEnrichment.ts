@@ -383,6 +383,28 @@ export function validateWizardLaneBProposal(options: {
     }
   }
 
+  // 9b. Runtime dependency contract (V4 M9): bare package imports must appear in
+  // the canonical registry's allowed runtime dependency list. Generated sites
+  // never carry a dependency the launcher did not certify and install.
+  const allowedPackages = new Set(Object.keys(options.request.runtimeDependencies ?? {}));
+  if (allowedPackages.size) {
+    for (const op of proposal.fileOps) {
+      for (const match of op.content.matchAll(/(?:^|\n)\s*import\s+(?:[^'"\n]*from\s*)?['"]([^'"]+)['"]/g)) {
+        const specifier = match[1];
+        if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('@/')) continue;
+        const packageName = specifier.startsWith('@')
+          ? specifier.split('/').slice(0, 2).join('/')
+          : specifier.split('/')[0];
+        if (packageName === 'react' || packageName === 'react-dom' || allowedPackages.has(packageName)) continue;
+        violations.push(
+          `File ${op.path} imports runtime dependency "${packageName}", which is not in the canonical allow-list: ${Array.from(allowedPackages).join(', ')}.`,
+        );
+      }
+    }
+  }
+
+
+
   // 10. Theme token compliance
   for (const op of proposal.fileOps) {
     if (/\b(?:bg|text|border|from|via|to)-(?:white|black|(?:red|blue|gray|slate|zinc|neutral|green|purple|orange|pink|cyan|teal|amber|rose|indigo|violet|stone|yellow|lime|emerald|sky|fuchsia)-\d{2,3})\b|\bfont-(?:sans|serif|mono)\b|font(?:Family|Weight)\s*:\s*(?:['"](?!var\()[^'"]+['"]|\d+)/.test(op.content)) {

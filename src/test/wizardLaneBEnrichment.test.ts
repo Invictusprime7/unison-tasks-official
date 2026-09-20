@@ -108,3 +108,41 @@ describe('Lane B proposal validation', () => {
     for (const value of [null, { content: 'not JSON' }, { content: '{}' }, { content: null }]) expect(decodeWizardLaneBProposal(value)).toBeNull();
   });
 });
+
+describe('V4 M9: Lane B runtime dependency allow-list', () => {
+  const scopedRequest = {
+    ...request,
+    runtimeDependencies: { 'framer-motion': '^11.0.0', 'lucide-react': '^0.462.0' },
+  } as WizardLaneBEnrichmentRequest;
+  const validateScoped = (proposal: unknown) => validateWizardLaneBProposal({
+    proposal, request: scopedRequest,
+    uiFoundationManifest: { primitiveImports: [], requirements: [] },
+  });
+  const withImports = (imports: string) => ({
+    ...validProposal,
+    fileOps: [{ ...validProposal.fileOps[0], content: imports + validProposal.fileOps[0].content }],
+  });
+
+  it('accepts certified packages, react, and relative or alias paths', () => {
+    const result = validateScoped(withImports(
+      'import { motion } from "framer-motion"; import { Star } from "lucide-react"; import { cn } from "@/lib/utils"; import x from "./local";',
+    ));
+    expect(result.violations.filter(v => v.includes('runtime dependency'))).toEqual([]);
+  });
+
+  it('rejects an uncertified package the launcher never installed', () => {
+    const result = validateScoped(withImports('import gsap from "gsap";'));
+    expect(result.valid).toBe(false);
+    expect(result.violations.some(v => v.includes('"gsap"'))).toBe(true);
+  });
+
+  it('resolves scoped package names to their package root', () => {
+    expect(validateScoped(withImports('import * as Dialog from "@radix-ui/react-dialog";')).violations
+      .some(v => v.includes('"@radix-ui/react-dialog"'))).toBe(true);
+  });
+
+  it('stays silent when no allow-list is supplied (legacy contexts)', () => {
+    expect(validate(withImports('import gsap from "gsap";')).violations
+      .some(v => v.includes('runtime dependency'))).toBe(false);
+  });
+});
