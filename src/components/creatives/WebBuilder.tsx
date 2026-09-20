@@ -594,6 +594,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [catalogPanelOpen, setCatalogPanelOpen] = useState(false);
+  const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
+
   const [playgroundModalOpen, setPlaygroundModalOpen] = useState(false);
   const [playgroundInitialSection, setPlaygroundInitialSection] = useState<"launch" | "pages" | "funnels" | "overview" | "intent_registry" | "readiness" | "business" | "components" | undefined>(undefined);
   const [playgroundInitialBindingId, setPlaygroundInitialBindingId] = useState<string | undefined>(undefined);
