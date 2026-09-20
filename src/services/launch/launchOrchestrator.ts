@@ -489,7 +489,10 @@ export async function runLaunchPipeline(
 
     // V4 M5: 21st generation coverage gate — runs before Stage 4b so a launch
     // can never silently substitute generic UI for a certified implementation.
-    const coveragePack = resolveArtDirectionPack({
+    // The gate must validate the pack the compiler will actually use: when the
+    // Wizard sealed an explicit visual direction, coverage is measured against
+    // that pack, not the auto-resolved one.
+    const coveragePack = getArtDirectionPack(input.designSelection?.artDirectionPackId) ?? resolveArtDirectionPack({
       industry: plan.industryOverlay,
       themePresetId: input.theme.id,
       seed: plan.seed,
