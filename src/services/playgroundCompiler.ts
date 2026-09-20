@@ -144,11 +144,13 @@ export function compilePlayground(
   // /experience => immersive). Re-inferring here makes the fix retroactive
   // for every industry and every saved draft, not only new launches.
   for (const page of pages) {
-    if (page.pageRole && page.pageRole !== 'custom') continue;
+    const roleUnclassified = !page.pageRole || page.pageRole === 'custom';
+    const typeUnclassified = !page.pageType || page.pageType === 'custom';
+    if (!roleUnclassified && !typeUnclassified) continue;
     const inferred = inferTopologyRole(page);
-    if (inferred !== 'custom') {
-      page.pageRole = inferred as BuilderPage['pageRole'];
-    }
+    if (inferred === 'custom') continue;
+    if (roleUnclassified) page.pageRole = inferred as BuilderPage['pageRole'];
+    if (typeUnclassified) page.pageType = roleToPageType(inferred);
   }
 
   const wizardSeed = parseWizardSeed(existingVfsFiles);
