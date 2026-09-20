@@ -306,9 +306,10 @@ export async function runLaunchPipeline(
     const primaryGoal: PrimaryGoal =
       input.primaryGoal || preselect?.primaryGoal || "collect_leads";
     const customerNeeds = uniqueValues<CustomerNeed>(input.customerNeeds);
+    const wizardSeedId = newId("ws");
     const immersiveRequested = customerNeeds.includes("explore_immersive");
     const experienceEnvelope = resolveExperienceEnvelope({
-      seed: wizardSeedId,
+      seed: `${plannedBusinessId}:${input.template.id}:${wizardSeedId}`,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
       industry: industryOverlay,
       templateId: input.template.id,
@@ -323,7 +324,6 @@ export async function runLaunchPipeline(
     const requestedPages = uniqueValues<string>(["home", ...input.selectedPages, ...(needsImmersive ? ['immersive'] : [])]);
     const goalNeeds = GOAL_TO_NEEDS[primaryGoal] || {};
 
-    const wizardSeedId = newId("ws");
     const seed = deriveGenerationSeed({
       businessName: brand,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",

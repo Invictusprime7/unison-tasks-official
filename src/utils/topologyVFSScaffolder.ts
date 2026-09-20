@@ -69,6 +69,7 @@ const DEFAULT_ROLE_SECTION_POOL: Record<PageRole, SectionType[]> = {
   checkout:  ['navbar', 'hero', 'services', 'contact', 'faq', 'cta', 'footer'],
   thank_you: ['navbar', 'hero', 'stats', 'testimonials', 'cta', 'footer'],
   blog:      ['navbar', 'hero', 'blog-preview', 'testimonials', 'cta', 'footer'],
+  immersive: ['navbar', 'hero', 'gallery', 'features', 'stats', 'cta', 'footer'],
   custom:    ['navbar', 'hero', 'services', 'testimonials', 'faq', 'cta', 'footer'],
 };
 
@@ -87,6 +88,7 @@ const ROLE_SUPPLEMENT_PRIORITY: Record<PageRole, SectionType[]> = {
   checkout: ['services', 'contact', 'faq', 'cta'],
   thank_you: ['stats', 'testimonials', 'cta', 'services'],
   blog: ['blog-preview', 'testimonials', 'services', 'cta'],
+  immersive: ['gallery', 'features', 'stats', 'testimonials', 'cta'],
   custom: ['services', 'testimonials', 'faq', 'cta'],
 };
 
@@ -101,6 +103,7 @@ const ROLE_EYEBROWS: Partial<Record<PageRole, string>> = {
   shop: 'Curated Catalog',
   checkout: 'Checkout',
   blog: 'Latest Insights',
+  immersive: 'Interactive Experience',
 };
 
 // ============================================================================

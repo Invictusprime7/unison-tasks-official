@@ -252,6 +252,7 @@ export function buildWizardGenerationBrief(input: {
     .map((page) => {
       const role = normalizeWizardPageRole(page.pageRole || page.pageType || (page.isHome ? 'home' : 'custom'));
       const title = generationTitle(role, page.title);
+      const pageSource = input.vfsFiles[page.filePath] || input.vfsFiles[page.filePath.replace(/^\//, '')] || '';
       const depth = routeDepth(role);
       const isTaskPage = ['contact', 'booking', 'checkout'].includes(role);
       const posture = page.isHome
@@ -267,7 +268,9 @@ export function buildWizardGenerationBrief(input: {
         pageNeed: {
           purpose: generationAngle(role, title),
           customerGoals: [...(input.customerGoals ?? [])],
-          requiredIntents: [],
+          requiredIntents: Array.from(new Set(
+            Array.from(pageSource.matchAll(/data-ut-intent=["']([^"']+)["']/g), match => match[1]),
+          )).slice(0, 20),
         },
         hero: {
           required: true as const,

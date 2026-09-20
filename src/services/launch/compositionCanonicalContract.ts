@@ -65,7 +65,7 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
   return [
     'CANONICAL VALIDATION CONTRACT (generated from the validator — every rule below is machine-checked; a violation discards the composition):',
     '1. Return ONLY JSON: {"version":"1.0","pages":[{"role","sectionOrder","variants","copy"?}]}. No markdown, comments, React, TSX, files, props, CSS, imports, routes or explanations.',
-    `2. Include each requested role exactly once, at most 13 pages: ${list(brief.roles)}. Never return a role that was not requested.`,
+    `2. Include each requested role exactly once, at most 14 pages: ${list(brief.roles)}. Never return a role that was not requested.`,
     `3. sectionOrder lists section families in desired order, 1-17 entries, no duplicates. Known families: ${list(families)}.`,
     '4. variants maps a family to one eligible catalog ID listed below for that page role. Every variants family must appear in sectionOrder. Provide at least one variant selection per page.',
     '5. navbar and footer are compiler-owned: never select a variant ID for them and never target them with copy.',

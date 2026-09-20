@@ -254,10 +254,14 @@ export function LightRig({ preset = 'studio' }: { preset?: LightRigPreset }) {
 function DriftingShape({ intensity }: { intensity: number }) {
   const mesh = React.useRef<THREE.Mesh>(null);
   const material = useExperienceMaterial();
-  useFrame((_state, delta) => {
+  useFrame((state, delta) => {
     if (!mesh.current) return;
+    const responsiveness = Math.min(1, delta * 3.5);
     mesh.current.rotation.y += delta * 0.12 * intensity;
-    mesh.current.rotation.x += delta * 0.05 * intensity;
+    mesh.current.rotation.y += (state.pointer.x * 0.55 - mesh.current.rotation.y * 0.08) * responsiveness;
+    mesh.current.rotation.x += (state.pointer.y * 0.35 - mesh.current.rotation.x) * responsiveness;
+    mesh.current.position.x += (state.pointer.x * 0.45 + 1.6 - mesh.current.position.x) * responsiveness;
+    mesh.current.position.y += (state.pointer.y * 0.28 - mesh.current.position.y) * responsiveness;
   });
   return (
     <Float speed={intensity} rotationIntensity={0.4 * intensity} floatIntensity={0.6 * intensity}>
