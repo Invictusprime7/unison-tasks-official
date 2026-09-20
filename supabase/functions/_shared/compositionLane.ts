@@ -59,8 +59,8 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
 export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, brief: {
   roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[] }>;
 }) {
-  const normalized = withoutCompilerOwnedVariantSelections(plan);
-  if (normalized.pages.length !== brief.roles.length || new Set(normalized.pages.map(page => page.role)).size !== normalized.pages.length) return false;
+  const normalized = normalizeCompositionPlan(plan, brief);
+  if (normalized.pages.length !== brief.roles.length) return false;
   return normalized.pages.every(page => brief.roles.includes(page.role) &&
     new Set(page.sectionOrder).size === page.sectionOrder.length && Object.keys(page.variants).length > 0 &&
     Object.keys(page.copy ?? {}).every(type => page.sectionOrder.includes(type) && type !== 'navbar' && type !== 'footer') &&
@@ -72,11 +72,12 @@ export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, br
 export interface CompositionBrief {
   roles: string[];
   variants: Array<{ id: string; family: string; pageRoles: string[] }>;
+  canonicalContract?: string;
 }
 
 /** Actionable paths only: do not log business copy or entire model responses. */
 export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
-  const normalized = withoutCompilerOwnedVariantSelections(plan);
+  const normalized = normalizeCompositionPlan(plan, brief);
   const issues: string[] = [];
   for (const role of brief.roles) if (normalized.pages.filter(page => page.role === role).length !== 1) issues.push('pages: include requested role exactly once: ' + role);
   for (const page of normalized.pages) {
