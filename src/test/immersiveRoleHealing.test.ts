@@ -5,7 +5,7 @@ import { getCompositionById } from '@/sections/templates';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
 
-function launch(industryOverlay: string, templateId: string) {
+function launch(industryOverlay: 'real_estate', templateId: string) {
   const template = getCompositionById(templateId)!;
   const preset = THEME_PRESETS[0];
   return commitToPipeline({
