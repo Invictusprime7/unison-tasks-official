@@ -217,7 +217,7 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   '  - <Split reverse?={boolean} align="start|center"> — two-column editorial/media split on the pack\'s hero column ratio.',
   '  - <Divider /> — token gradient rule. <Bleed> — full-width band.',
   'Content — "@/unison/ui/content":',
-  '  - <Eyebrow>, <Heading level={1|2|3|4} size="display|title|subtitle" gradient?={boolean}>, <Lead>, <Body>, <Badge>',
+  '  - <Eyebrow>, <Heading level={1|2|3|4} size="hero|display|title|subtitle" gradient?={boolean}> — hero is the home-headline tier, one step above display — <Lead>, <Body>, <Badge>',
   '  - <Stat value label hint?>, <Quote attribution? role? media?>, <CTAGroup>',
   '  - <SectionHeader eyebrow? title lead? align="start|center" level? size?> — the standard section intro cluster.',
   'Surfaces — "@/unison/ui/surface":',
@@ -855,9 +855,10 @@ export function Eyebrow({ className, ...props }: React.HTMLAttributes<HTMLParagr
 }
 
 export type HeadingLevel = 1 | 2 | 3 | 4;
-export type HeadingSize = 'display' | 'title' | 'subtitle';
+export type HeadingSize = 'hero' | 'display' | 'title' | 'subtitle';
 
 const headingSize: Record<HeadingSize, string> = {
+  hero: 'text-[length:var(--ut-type-hero)] leading-none font-[number:var(--ut-weight-display)]',
   display: 'text-[length:var(--ut-type-display)] leading-[var(--ut-display-leading)] font-[number:var(--ut-weight-display)]',
   title: 'text-[length:var(--ut-type-title)] leading-tight font-[number:var(--ut-weight-display)]',
   subtitle: 'text-xl font-[number:var(--ut-weight-display)] leading-snug',
