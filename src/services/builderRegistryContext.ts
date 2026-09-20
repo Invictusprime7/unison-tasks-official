@@ -21,6 +21,7 @@ import {
   WIZARD_REGISTRY_CONTEXT_PATH,
   type WizardAggregatedRegistryContext,
 } from '@/services/launch/wizardRegistryAggregation';
+import type { ComponentStateContract } from '@/sections/variants/componentStates';
 
 /** Bounded projection handed to the in-Builder AI lane. */
 export interface BuilderRegistryContext {
@@ -43,8 +44,7 @@ export interface BuilderRegistryContext {
     name: string;
     certification: string;
     runtimeDependencies?: readonly string[];
-    componentStates?: WizardAggregatedRegistryContext['implementations'] extends
-      Array<infer T> ? T extends { componentStates?: infer S } ? S : never : never;
+    componentStates?: ComponentStateContract;
     artifactContract?: {
       artifactId: string;
       dataSourceKind: string;
