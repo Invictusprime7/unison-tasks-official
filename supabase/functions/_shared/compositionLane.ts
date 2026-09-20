@@ -22,22 +22,45 @@ type Generate = (messages: Array<{ role: string; content: string }>) => Promise<
 
 const COMPILER_OWNED_VARIANT_FAMILIES = new Set(['navbar', 'footer']);
 
-function withoutCompilerOwnedVariantSelections(plan: z.infer<typeof resultSchema>): z.infer<typeof resultSchema> {
+/**
+ * Deterministic repair of mechanical envelope defects — the exact mirror of the
+ * client `normalizeCompositionResponse`. Only non-design defects are repaired:
+ * pages for roles that were never requested, duplicate pages for one role,
+ * duplicate families inside a section order, compiler-owned (navbar/footer)
+ * variant selections, and copy or variant entries aimed at a family outside the
+ * page's section order. Variant choices and copy text are never rewritten.
+ */
+function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: CompositionBrief): z.infer<typeof resultSchema> {
+  const seenRoles = new Set<string>();
   return {
     ...plan,
-    pages: plan.pages.map(page => ({
-      ...page,
-      variants: Object.fromEntries(Object.entries(page.variants)
-        .filter(([family]) => !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
-    })),
+    pages: plan.pages.filter(page => {
+      if (brief && !brief.roles.includes(page.role)) return false;
+      if (seenRoles.has(page.role)) return false;
+      seenRoles.add(page.role);
+      return true;
+    }).map(page => {
+      const sectionOrder = page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index);
+      const inOrder = new Set(sectionOrder);
+      return {
+        ...page,
+        sectionOrder,
+        variants: Object.fromEntries(Object.entries(page.variants)
+          .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
+        ...(page.copy ? {
+          copy: Object.fromEntries(Object.entries(page.copy)
+            .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
+        } : {}),
+      };
+    }),
   };
 }
 
 export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, brief: {
   roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[] }>;
 }) {
-  const normalized = withoutCompilerOwnedVariantSelections(plan);
-  if (normalized.pages.length !== brief.roles.length || new Set(normalized.pages.map(page => page.role)).size !== normalized.pages.length) return false;
+  const normalized = normalizeCompositionPlan(plan, brief);
+  if (normalized.pages.length !== brief.roles.length) return false;
   return normalized.pages.every(page => brief.roles.includes(page.role) &&
     new Set(page.sectionOrder).size === page.sectionOrder.length && Object.keys(page.variants).length > 0 &&
     Object.keys(page.copy ?? {}).every(type => page.sectionOrder.includes(type) && type !== 'navbar' && type !== 'footer') &&
@@ -49,11 +72,12 @@ export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, br
 export interface CompositionBrief {
   roles: string[];
   variants: Array<{ id: string; family: string; pageRoles: string[] }>;
+  canonicalContract?: string;
 }
 
 /** Actionable paths only: do not log business copy or entire model responses. */
 export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
-  const normalized = withoutCompilerOwnedVariantSelections(plan);
+  const normalized = normalizeCompositionPlan(plan, brief);
   const issues: string[] = [];
   for (const role of brief.roles) if (normalized.pages.filter(page => page.role === role).length !== 1) issues.push('pages: include requested role exactly once: ' + role);
   for (const page of normalized.pages) {
@@ -76,7 +100,11 @@ export async function runCompositionLane(context: string, headers: Record<string
   const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
     status, headers: { ...headers, 'Content-Type': 'application/json' },
   });
-  const messages = [{ role: 'system', content: COMPOSITION_SYSTEM_PROMPT }, { role: 'user', content: context }];
+  const canonicalContract = typeof options.brief?.canonicalContract === 'string' ? options.brief.canonicalContract : '';
+  const systemPrompt = COMPOSITION_SYSTEM_PROMPT + (canonicalContract
+    ? '\n\n' + canonicalContract + '\nThese machine-checked rules override any general guidance above. Satisfy every one of them.'
+    : '');
+  const messages = [{ role: 'system', content: systemPrompt }, { role: 'user', content: context }];
   let issues: string[] = [];
   let errorType = 'composition_contract';
   for (let attempt = 0; attempt < (options.brief ? 2 : 1); attempt++) {
@@ -87,7 +115,7 @@ export async function runCompositionLane(context: string, headers: Record<string
     try {
       const content = result.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
       const parsed = resultSchema.safeParse(JSON.parse(content));
-      const normalized = parsed.success ? withoutCompilerOwnedVariantSelections(parsed.data) : null;
+      const normalized = parsed.success ? normalizeCompositionPlan(parsed.data, options.brief) : null;
       issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
       errorType = parsed.success ? 'composition_catalog' : 'composition_contract';
       if (normalized && !issues.length) return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });

@@ -23,6 +23,7 @@ export const briefSchema = z.object({
     supportedSlots: z.array(z.string().max(150)).max(60), providedIntents: z.array(z.string().max(150)).max(60) }).strict()).max(20).optional(),
   implementationContracts: z.array(z.object({ id: z.string().max(100), sectionType: z.string().max(50),
     runtimeDependencies: z.array(z.string().max(150)).max(40).optional(), artifactContract: z.unknown().optional() }).strict()).max(300).optional(),
+  canonicalContract: z.string().max(40000).optional(),
   task: z.string().max(1000).optional(), designGuidance: z.string().max(2000).optional(),
   constraints: z.string().max(3000).optional(), output: z.unknown().optional(),
 }).strict();
