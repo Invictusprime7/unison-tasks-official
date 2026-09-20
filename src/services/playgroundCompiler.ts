@@ -19,6 +19,7 @@ import { getCompositionById } from '@/sections/templates';
 import type { LayoutCategory } from '@/data/templates/types';
 import type { BuilderPage } from '@/types/pageRegistry';
 import type { GeneratedSitePlan, PageRole, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
+import { roleToPageType } from '@/platform/core/siteTopologyPlanner';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { collectResolvedCompositions, resolvedCompositionPathFor } from '@/platform/core/resolvedComposition';
 import { collectReachableFiles } from '@/utils/dependencyExtractor';
