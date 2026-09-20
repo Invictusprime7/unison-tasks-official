@@ -202,6 +202,7 @@ export function buildGeneratedUiFoundationDirective(
     '  - "@/unison/ui/animation" is the full framer-motion re-export (motion, AnimatePresence, useReducedMotion, useScroll, useInView, etc.) — use this facade for any raw framer-motion export not in the @/unison/ui/motion list above.',
   'Do not import "@/unison/ui/tailwind.css" from a page; it is already applied globally. Use the root Image facade or a plain <img alt="...">; there is no framework-specific next/image component.',
     compositionDirective,
+    ...GENERATED_UI_CATALOG_PROMPT_LINES,
     EXPERIENCE_VOCABULARY_DIRECTIVE,
     requirementsList ? 'Manifest requirements for this snapshot:' : '',
     requirementsList,
@@ -260,6 +261,7 @@ const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
   '/src/unison/ui/recipes.tsx',
   '/src/unison/ui/surface.tsx',
   '/src/unison/ui/tailwind.css',
+  ...GENERATED_UI_CATALOG_PATHS,
   ...EXPERIENCE_FOUNDATION_PATHS,
 ] as const;
 
