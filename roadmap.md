@@ -650,5 +650,5 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 - [x] P0 deterministic diversity selection
 - [x] P0 renderable component import gate
 - [x] P1 canonical design selection persistence and Wizard controls
-- [ ] P2 visual signatures and AI constraint parity
+- [x] P2 visual signatures and AI constraint parity — certified implementation metadata derives structured geometry/media/type/density/motion/experience signatures; compatibility filters Wizard candidates by experience; user pins and experience constraints are shared by client validation, the Wizard composer edge contract, Lane B context, and persisted registry projections.
 - [ ] Verification: focused suites, full tests, preview diagnostics, authenticated journey

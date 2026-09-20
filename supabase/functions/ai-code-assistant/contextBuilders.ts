@@ -169,6 +169,8 @@ export function buildRegistryContextBlock(registryContext: unknown): string {
       sectionType?: string;
       certification?: string;
       componentStates?: { supported?: string[]; responsive?: string[] };
+      visualSignature?: { geometry?: string; mediaDominance?: string; typographyScale?: string; density?: string; motion?: string[]; composition?: string; experienceLevel?: string };
+      compatibleExperiencePreferences?: string[];
       artifactContract?: { supportedSlots?: readonly string[]; intentBindings?: readonly string[] };
     }>;
     capabilityRequirements?: Array<{ id?: string; providedIntents?: string[] }>;
@@ -183,6 +185,11 @@ export function buildRegistryContextBlock(registryContext: unknown): string {
     .slice(0, 40)
     .map((implementation) => `- ${implementation.id}: states ${(implementation.componentStates?.supported ?? []).join('/')}; responsive ${(implementation.componentStates?.responsive ?? []).join('/')}`)
     .join('\n');
+  const signatures = (ctx.implementations ?? [])
+    .filter((implementation) => implementation.visualSignature)
+    .slice(0, 40)
+    .map((implementation) => `- ${implementation.id}: ${implementation.visualSignature?.geometry}, media=${implementation.visualSignature?.mediaDominance}, type=${implementation.visualSignature?.typographyScale}, density=${implementation.visualSignature?.density}, experience=${implementation.visualSignature?.experienceLevel}; motion ${(implementation.visualSignature?.motion ?? []).join('/') || 'none'}; compatible ${(implementation.compatibleExperiencePreferences ?? []).join('/') || 'unspecified'}`)
+    .join('\n');
   const capabilities = (ctx.capabilityRequirements ?? [])
     .map((capability) => `${capability.id}${capability.providedIntents?.length ? ` (${capability.providedIntents.join(', ')})` : ''}`)
     .join('; ');
@@ -192,12 +199,14 @@ export function buildRegistryContextBlock(registryContext: unknown): string {
 Industry: ${ctx.industry ?? 'unknown'} | Template: ${ctx.templateId ?? 'unknown'} | Theme: ${ctx.themePresetId ?? 'unknown'}${ctx.artDirectionPackId ? ` | Art direction: ${ctx.artDirectionPackId}` : ''}${ctx.generationPolicy ? ` | Policy: ${ctx.generationPolicy}` : ''}
 ${sections ? `\nCertified variants eligible per section family:\n${sections}` : ''}
 ${states ? `\nComponent-state contracts to honour:\n${states}` : ''}
+${signatures ? `\nCertified visual signatures and compatibility:\n${signatures}` : ''}
 ${capabilities ? `\nCapability requirements: ${capabilities}` : ''}
 ${deps ? `\nAllowed runtime dependencies: ${deps}` : ''}
 
 RULES:
 - Only reference variant IDs listed above; never invent a design ID.
 - Preserve the declared component states (hover/focus/expanded/loading/reduced-motion) when rewriting a section.
+- Preserve certified visual signatures and never replace a certified implementation with generic section architecture.
 - Do not add runtime dependencies outside the allowed list.
 `;
 }

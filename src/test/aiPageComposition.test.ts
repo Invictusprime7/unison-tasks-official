@@ -111,7 +111,17 @@ describe('structured AI page composition', () => {
     expect(brief.runtimeDependencies.react).toEqual(expect.any(String));
     expect(brief.primitiveFamilies).toEqual(expect.arrayContaining([expect.objectContaining({ family: 'layout' })]));
     expect(brief.implementationContracts[0]).not.toHaveProperty('source');
+    expect(brief.variants[0].visualSignature).toEqual(expect.objectContaining({ geometry: expect.any(String), experienceLevel: expect.any(String) }));
+    expect(brief.implementationContracts[0].componentStates.supported).toContain('default');
+    expect(brief.implementationContracts[0].visualSignature).toEqual(expect.objectContaining({ density: expect.any(String) }));
     expect(briefSchema.safeParse(brief).success).toBe(true);
+  });
+  it('enforces user pins in client and edge composition validation', () => {
+    const pinned = { services: 'services:card-grid' };
+    expect(validateAIPageComposition(candidate, 'soft-editorial', ['home'], { pinnedVariants: pinned })).toBeNull();
+    const matching = { ...candidate, pages: [{ ...candidate.pages[0], variants: { services: 'services:card-grid' } }] };
+    expect(validateAIPageComposition(matching, 'soft-editorial', ['home'], { pinnedVariants: pinned })).not.toBeNull();
+    expect(compositionMatchesCatalog(candidate, { roles: ['home'], variants: [{ id: 'services:editorial-rows', family: 'services', pageRoles: ['home'] }], designSelection: { pinnedVariants: pinned } })).toBe(false);
   });
   it('round-trips the backend lane through client validation and canonical compilation', async () => {
     const invoke = vi.fn(async (input: Parameters<typeof runBuilderTurn>[0], _options?: Parameters<typeof runBuilderTurn>[1]) => {
