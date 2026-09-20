@@ -427,6 +427,7 @@ export async function runLaunchPipeline(
     design: { seed: plan.seed, contractSignature: designContract.contractSignature },
     compositionPlan: undefined as WizardSelections["compositionPlan"],
     registryContext: wizardRegistryContext,
+    media: { version: '1.0', assets: seedMediaLibrary },
     socials: Object.entries(input.socialLinks || {})
       .map(([platform, raw]) => {
         const value = (raw || "").trim();
