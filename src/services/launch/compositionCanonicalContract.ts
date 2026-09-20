@@ -22,6 +22,8 @@
 export interface CompositionContractBrief {
   roles: readonly string[];
   variants: ReadonlyArray<{ id: string; family: string; pageRoles: readonly string[] }>;
+  experiencePreference?: string;
+  pinnedVariants?: Readonly<Record<string, string>>;
 }
 
 const COMPILER_OWNED_FAMILIES = new Set(['navbar', 'footer']);
@@ -71,6 +73,8 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
     '5. navbar and footer are compiler-owned: never select a variant ID for them and never target them with copy.',
     '6. copy is optional and may only target a body family present in sectionOrder. Keys: headline (max 240 chars), subheadline (max 700), description (max 1600). copy.items (1-8 entries) is allowed only for services/features (each item: title max 140, description max 600) and faq (each item: question max 240, answer max 1000). Never invent prices, credentials, metrics, reviews or business facts.',
     '7. Homepage-first: the "home" page establishes shared architecture and visual language, not a reusable body composition. Every non-home page must choose a role-appropriate section order and may choose different certified body variants. Navbar and footer remain compiler-owned and identical.',
+    `8. Experience preference is "${brief.experiencePreference ?? 'standard'}". Every advertised ID is already compatibility-filtered; never invent or import a stronger runtime experience.`,
+    `9. User-pinned family choices are final and override AI selection: ${Object.entries(brief.pinnedVariants ?? {}).map(([family, id]) => `${family}=${id}`).join(', ') || 'none'}. If selecting a pinned family, use exactly its pinned ID.`,
     'ELIGIBLE VARIANT IDS PER ROLE (choose only from these):',
     perRole || '  (none)',
   ].join('\n');
