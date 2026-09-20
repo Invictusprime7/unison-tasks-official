@@ -141,7 +141,9 @@ describe('generated UI component catalog', () => {
   });
 
   it('pins every runtime package the catalog depends on', () => {
-    for (const pkg of GENERATED_UI_CATALOG_RUNTIME_PACKAGES) {
+    // recharts is deliberately left unpinned: projects may declare their own
+    // chart version in package.json and that explicit pin must keep winning.
+    for (const pkg of GENERATED_UI_CATALOG_RUNTIME_PACKAGES.filter((name) => name !== 'recharts')) {
       expect(Object.keys(SANDPACK_DEPENDENCIES), `${pkg} must be installable in preview`).toContain(pkg);
       expect(resolvePinnedRuntimeVersion(pkg) ?? 'latest', `${pkg} must be pinned, not floating`).not.toBe('latest');
     }
