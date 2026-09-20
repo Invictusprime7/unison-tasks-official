@@ -27,6 +27,8 @@ import type {
   VocabularyMotionIntensity,
 } from '@/platform/core/designVocabulary';
 import { getDesignImplementation, getImplementationVocabularyRefs } from '@/services/designImplementationRegistry';
+import { resolveAvailableAutoArtDirectionPackId } from '@/services/wizardDesignAvailability';
+
 
 
 
@@ -419,13 +421,25 @@ export function buildWizardDesignIntervention(
 
   // ART DIRECTION — resolved ONCE, from the style card first. Everything that
   // follows (motion, interaction, CSS, Lane B brief) obeys this pack.
-  const artDirectionPackId = resolveArtDirectionPackId({
+  const sealedPackId = input.designSelection?.artDirectionPackId;
+  const preferredPackId = resolveArtDirectionPackId({
     themePresetId: input.themePresetId,
     industry,
     seed,
-    sealedPackId: input.designSelection?.artDirectionPackId,
+    sealedPackId,
   });
+  // §35: an explicitly selected direction is never swapped or degraded; auto
+  // mode moves deterministically to another complete compatible direction when
+  // the preferred one cannot cover the selected topology.
+  const artDirectionPackId = sealedPackId
+    ? preferredPackId
+    : resolveAvailableAutoArtDirectionPackId(preferredPackId, {
+        selectedPages: input.requestedPages ?? [],
+        experience: input.designSelection?.experience ?? 'standard',
+        seed,
+      });
   const pack = ART_DIRECTION_PACKS[artDirectionPackId];
+
 
   const interactionRecipes = Array.from(
     new Set([pack.interactionProfile, ...baseline.interactionRecipes]),

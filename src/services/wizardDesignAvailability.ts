@@ -164,3 +164,26 @@ export function isWizardVisualDirectionAvailable(
 ): boolean {
   return getWizardVisualDirections(input).some(option => option.id === packId && option.available);
 }
+
+/**
+ * V5 §35 auto-mode resolution. When the deterministically preferred pack cannot
+ * fully cover the selected topology under the selected experience, auto mode
+ * moves to another complete compatible pack — chosen deterministically from the
+ * same seed, never at random and never by degrading into the global pool. When
+ * no pack is complete the preferred pack is returned unchanged so the launch
+ * stays deterministic and the coverage gate reports the real gap.
+ */
+export function resolveAvailableAutoArtDirectionPackId(
+  preferred: ArtDirectionPackId,
+  input: WizardDesignAvailabilityInput & { seed?: string },
+): ArtDirectionPackId {
+  const options = getWizardVisualDirections(input);
+  if (options.some(option => option.id === preferred && option.available)) return preferred;
+  const available = options.filter(option => option.available).map(option => option.id);
+  if (!available.length) return preferred;
+  const seed = `${input.seed ?? ''}:${preferred}`;
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  return available[hash % available.length];
+}
+
