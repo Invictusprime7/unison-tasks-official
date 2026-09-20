@@ -725,6 +725,7 @@ export async function runLaunchPipeline(
         const batchPathSet = new Set(batchPaths);
         const batchRequest: WizardLaneBEnrichmentRequest = {
           ...enrichmentRequest,
+          homepageVisualLanguage,
           pageRegistry: pageRegistry.filter((page) => batchPathSet.has(page.filePath)),
           currentPageSources: Object.fromEntries(
             Object.entries(enrichmentRequest.currentPageSources)
