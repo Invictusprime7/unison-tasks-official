@@ -47,11 +47,11 @@
   "author": "karthikmudunuri",
   "implementationId": "navbar:standard",
   "licenseReview": {
-    "status": "owner-authorized",
+    "status": "verified",
     "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
     "source": "https://21st.dev/karthikmudunuri/header-02",
     "verifiedAt": "2026-09-20T23:50:10.746048Z",
-    "notes": "Retrieved with the workspace 21st.dev paid subscription via MCP get_component; adapted under owner authorization."
+    "notes": "Retrieved through the workspace 21st.dev paid subscription via MCP get_component; the 21st record declares no upstream license, so the project owner authorized canonical adaptation. Unison ships an independent adaptation: Next.js/Headless UI/Heroicons dependencies removed, tokens and imports normalized, canonical data-ut-* identity added. No upstream bytes are shipped to generated sites."
   },
   "archivePath": "src/design/21st-intake/archive/navbar-standard",
   "archivedAt": "2026-09-20T23:50:10.746048Z",
