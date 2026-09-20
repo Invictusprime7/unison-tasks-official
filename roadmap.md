@@ -646,9 +646,9 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 - [ ] Preserve Wizard-selected topology and page needs: generate only selected routes, derive each unique page body contextually from the homepage's holistic language/content, and never substitute static pre-made bodies.
 
 ## Active: V5 Wizard Design Selection and Render Integrity
-- [ ] P0 strict certified pack resolution and coverage
-- [ ] P0 deterministic diversity selection
-- [ ] P0 renderable component import gate
+- [x] P0 strict certified pack resolution and coverage
+- [x] P0 deterministic diversity selection
+- [x] P0 renderable component import gate
 - [ ] P1 canonical design selection persistence and Wizard controls
 - [ ] P2 visual signatures and AI constraint parity
 - [ ] Verification: focused suites, full tests, preview diagnostics, authenticated journey
