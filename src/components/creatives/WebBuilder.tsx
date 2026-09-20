@@ -595,6 +595,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [catalogPanelOpen, setCatalogPanelOpen] = useState(false);
   const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
+  /** Hands a grounded, canonical instruction to the in-Builder AI lane. */
+  const dispatchBuilderPrompt = useCallback((prompt: string) => {
+    window.dispatchEvent(new CustomEvent('unison:builder-prompt', { detail: { prompt } }));
+  }, []);
+
 
   const [playgroundModalOpen, setPlaygroundModalOpen] = useState(false);
   const [playgroundInitialSection, setPlaygroundInitialSection] = useState<"launch" | "pages" | "funnels" | "overview" | "intent_registry" | "readiness" | "business" | "components" | undefined>(undefined);
