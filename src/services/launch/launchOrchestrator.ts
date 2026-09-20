@@ -99,7 +99,7 @@ import {
 } from "@/services/launch/homepageFirstContract";
 import { designRegistrySignature } from "@/services/designImplementationRegistry";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
-import { resolveExperienceRequirement, resolveArtDirectionPack } from "@/sections/variants";
+import { resolveExperienceRequirement, resolveArtDirectionPack, getArtDirectionPack } from "@/sections/variants";
 import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from "@/services/launch/twentyFirstCoverageGate";
 import type { VariantId } from "@/sections/variants/types";
 import { resolveApprovedExperienceCapabilities, resolveExperienceEnvelope } from "@/services/experienceCapabilityResolver";
