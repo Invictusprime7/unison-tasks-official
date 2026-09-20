@@ -146,6 +146,8 @@ describe('persisted publish parity (M1 exit condition)', () => {
     await deployToProvider({ provider: 'vercel', projectId: 'project-1', files: {} });
 
     const expected = identityTokens(canonical);
+    expect(expected.sectionIds.size, 'canonical output must carry section identity').toBeGreaterThan(0);
+    expect(expected.variantIds.size, 'canonical output must carry variant identity').toBeGreaterThan(0);
     const actual = identityTokens(publishedPayload());
     expect([...actual.sectionIds].sort()).toEqual([...expected.sectionIds].sort());
     expect([...actual.variantIds].sort()).toEqual([...expected.variantIds].sort());
