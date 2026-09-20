@@ -137,6 +137,8 @@ import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { ElementIntentInspector } from "./web-builder/ElementIntentInspector";
+import { PropertyInspectorPanel } from "./web-builder/PropertyInspectorPanel";
+
 import { CatalogInspectorPanel } from "@/components/business-center/CatalogInspectorPanel";
 import { buildSectionTypeMap } from "@/services/autoEmitSectionBindings";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
