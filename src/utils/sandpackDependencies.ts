@@ -120,7 +120,7 @@ export const SANDPACK_PREVIEW_CORE_DEPENDENCIES: Record<string, string> = {
 // These versions mirror the compatible Radix/Motion graph installed by the
 // builder. Sandpack cannot safely resolve a generated facade against `latest`
 // because the Radix internals are separately published packages.
-const SANDPACK_RUNTIME_PACKAGE_VERSIONS: Record<string, string> = {
+export const SANDPACK_RUNTIME_PACKAGE_VERSIONS: Record<string, string> = {
   '@radix-ui/react-accordion': '1.2.12',
   '@radix-ui/react-alert-dialog': '1.1.15',
   '@radix-ui/react-aspect-ratio': '1.1.8',
