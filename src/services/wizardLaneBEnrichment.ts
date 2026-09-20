@@ -395,7 +395,7 @@ export function validateWizardLaneBProposal(options: {
         const packageName = specifier.startsWith('@')
           ? specifier.split('/').slice(0, 2).join('/')
           : specifier.split('/')[0];
-        if (packageName === 'react' || packageName === 'react-dom' || allowedPackages.has(packageName)) continue;
+        if ((LANE_B_ALWAYS_ALLOWED_PACKAGES as readonly string[]).includes(packageName) || allowedPackages.has(packageName)) continue;
         violations.push(
           `File ${op.path} imports runtime dependency "${packageName}", which is not in the canonical allow-list: ${Array.from(allowedPackages).join(', ')}.`,
         );
