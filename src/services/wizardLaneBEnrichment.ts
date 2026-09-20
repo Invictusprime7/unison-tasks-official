@@ -426,7 +426,8 @@ export function validateWizardLaneBProposal(options: {
         }
       }
     }
-    const currentSource = options.request.currentPageSources?.[op.path]?.content;
+    const currentSource = Object.values(options.request.currentPageSources ?? {})
+      .find(entry => entry?.filePath === op.path)?.content;
     if (currentSource) {
       const proposedSectionIds = readAttribute(op.content, 'data-ut-section-id');
       for (const sectionId of readAttribute(currentSource, 'data-ut-section-id')) {
