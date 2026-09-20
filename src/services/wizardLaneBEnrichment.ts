@@ -441,13 +441,14 @@ export function validateWizardLaneBProposal(options: {
   }
 
 
-  // 10. Theme token compliance
+  // 10. Theme token compliance — the exact patterns published to the model in
+  // the canonical contract block (single source of truth, never a prose copy).
   for (const op of proposal.fileOps) {
-    if (/\b(?:bg|text|border|from|via|to)-(?:white|black|(?:red|blue|gray|slate|zinc|neutral|green|purple|orange|pink|cyan|teal|amber|rose|indigo|violet|stone|yellow|lime|emerald|sky|fuchsia)-\d{2,3})\b|\bfont-(?:sans|serif|mono)\b|font(?:Family|Weight)\s*:\s*(?:['"](?!var\()[^'"]+['"]|\d+)/.test(op.content)) {
+    if (LANE_B_LITERAL_STYLE_PATTERN.test(op.content)) {
       violations.push('File ' + op.path + ' overrides the selected preset with literal color or font-family styles. Use semantic colors and the supplied font-family tokens; Tailwind weight and scale utilities remain available for page hierarchy.');
     }
     // Local geometry is permitted; palette and global theme ownership remain Stage 4b.
-    const hardcodedValues = op.content.match(/#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(\s*[\d.]/g);
+    const hardcodedValues = op.content.match(new RegExp(LANE_B_PALETTE_LITERAL_PATTERN.source, 'g'));
     if (hardcodedValues) {
       violations.push(
         `File ${op.path} contains literal palette values: ${hardcodedValues.join(', ')}. Use Stage 4b tokens (var(--ut-*), --radius) or Tailwind classes instead.`,
@@ -456,10 +457,11 @@ export function validateWizardLaneBProposal(options: {
   }
 
   for (const op of proposal.fileOps) {
-    if (/:root\b|:global\b|@import\b|(?:^|[}\s'"`])(html|body)(?:[.#:][\w-]+)?\s*[{,]|--(?:ut-[\w-]+|primary|background|foreground|font-[\w-]+)\s*:/.test(op.content)) {
+    if (LANE_B_GLOBAL_STYLE_PATTERN.test(op.content)) {
       violations.push('File ' + op.path + ' declares global theme or document styles. Stage 4b owns these values.');
     }
   }
+
 
   // 11. Page identity check
   for (const op of proposal.fileOps) {
