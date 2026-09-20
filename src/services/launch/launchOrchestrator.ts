@@ -92,7 +92,8 @@ import {
 } from "@/services/laneBBatchPlanner";
 import { designRegistrySignature } from "@/services/designImplementationRegistry";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
-import { resolveExperienceRequirement } from "@/sections/variants";
+import { resolveExperienceRequirement, resolveArtDirectionPack } from "@/sections/variants";
+import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from "@/services/launch/twentyFirstCoverageGate";
 import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
 import { runExperiencePreflight } from "@/services/experiencePreflightGate";
 import type { BuilderIdentity } from "@/types/builderIdentity";
