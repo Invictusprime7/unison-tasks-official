@@ -23,6 +23,7 @@ import type { SectionType } from '@/sections/types';
 import { resolveComponentStateContract } from '@/sections/variants/componentStates';
 import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
+import { resolveImplementationContract } from '@/platform/core/resolvedImplementationContract';
 import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
 import { GENERATED_MOTION_PRIMITIVES } from '@/platform/core/generatedUiFoundation';
 import { buildGeneratedUiFoundation } from '@/platform/core/generatedUiFoundation';
@@ -87,6 +88,10 @@ export interface WizardRegistryImplementationSummary {
     supportedSlots: readonly string[];
     intentBindings: readonly string[];
     aiEditScope: string;
+    /** Typed slot projection from the M6 crosswalk; absent on older contexts. */
+    slots?: readonly import('@/platform/core/resolvedImplementationContract').ResolvedImplementationSlot[];
+    /** Present when the owning artifact hydrates from a catalog surface. */
+    catalogSurfaceId?: string;
   };
 }
 
@@ -254,6 +259,7 @@ export function buildWizardAggregatedRegistryContext(options: {
     implementations: sections.flatMap(section => section.allowedVariantIds.map(id => {
       const implementation = getDesignImplementation(id)!;
       const artifact = getArtifact(section.type);
+      const contract = resolveImplementationContract(id);
       return {
         id, sectionType: section.type, name: implementation.name,
         certification: implementation.vfs?.certification === 'approved' ? 'approved' as const : 'portable' as const,
@@ -272,6 +278,8 @@ export function buildWizardAggregatedRegistryContext(options: {
           supportedSlots: [...artifact.supportedSlots],
           intentBindings: [...artifact.intentBindings],
           aiEditScope: artifact.aiEditScope,
+          slots: contract?.slots,
+          catalogSurfaceId: contract?.catalogSurfaceId,
         } : undefined,
       };
     })),
