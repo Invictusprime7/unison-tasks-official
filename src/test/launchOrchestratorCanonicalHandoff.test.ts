@@ -188,6 +188,25 @@ describe('launch orchestrator canonical handoff', () => {
     expect(preview).toBeLessThan(playground);
   });
 });
+// V4 M1: AI composition and Lane B are both optional. Every on/off combination
+// must launch successfully; only Stage 4b is mandatory.
+it('launches deterministically in all four composition/Lane B modes', () => {
+  const source = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
+  // Composition failure degrades instead of throwing — launch continues.
+  const degrade = source.indexOf("run.degrade('seed', 'composition.' + compositionFailure");
+  const stage4b = source.indexOf('const result = await runWizardStage4b(');
+  expect(degrade).toBeGreaterThan(-1);
+  expect(degrade).toBeLessThan(stage4b);
+  expect(source).not.toContain('throw new LaunchFatalError(compositionFailureMessage');
+  // Stage 4b runs unconditionally — not gated on a composition plan.
+  expect(source).not.toContain('if (plan.selections.compositionPlan) return;');
+  // Lane B is optional and independently degradable per batch.
+  expect(source).toContain('if (input.ai?.laneB === false) return;');
+  expect(source).toContain("onDegrade: (code, message) => run.degrade('enrich', code, message)");
+  // The composition plan is forwarded to Lane B as context when present.
+  expect(source).toContain('compositionPlan: plan.selections.compositionPlan');
+});
+
 // The accepted AI plan must survive both initial compile and final handoff seed writes.
 it('stamps the accepted composition into the seed before Stage 4b', () => {
   const source = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
