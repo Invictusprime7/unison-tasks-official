@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { Check, LayoutGrid } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getGenerationVariantsForSection as getVariantsForSection, hasVariants } from '@/sections/variants';
+import { getBuilderVariantsForSection as getVariantsForSection, hasVariants } from '@/sections/variants';
 import type { SectionVariant, VariantId } from '@/sections/variants';
 import type { SectionType } from '@/sections/types';
 
