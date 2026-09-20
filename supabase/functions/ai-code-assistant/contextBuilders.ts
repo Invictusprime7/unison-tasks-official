@@ -168,7 +168,7 @@ export function buildRegistryContextBlock(registryContext: unknown): string {
       id?: string;
       sectionType?: string;
       certification?: string;
-      componentStates?: { states?: string[]; responsive?: string[] };
+      componentStates?: { supported?: string[]; responsive?: string[] };
       artifactContract?: { supportedSlots?: readonly string[]; intentBindings?: readonly string[] };
     }>;
     capabilityRequirements?: Array<{ id?: string; providedIntents?: string[] }>;
@@ -179,9 +179,9 @@ export function buildRegistryContextBlock(registryContext: unknown): string {
     .map((section) => `- ${section.type}: ${(section.allowedVariantIds ?? []).join(', ')}${section.artifactId ? ` (artifact ${section.artifactId})` : ''}`)
     .join('\n');
   const states = (ctx.implementations ?? [])
-    .filter((implementation) => implementation.componentStates?.states?.length)
+    .filter((implementation) => implementation.componentStates?.supported?.length)
     .slice(0, 40)
-    .map((implementation) => `- ${implementation.id}: states ${(implementation.componentStates?.states ?? []).join('/')}; responsive ${(implementation.componentStates?.responsive ?? []).join('/')}`)
+    .map((implementation) => `- ${implementation.id}: states ${(implementation.componentStates?.supported ?? []).join('/')}; responsive ${(implementation.componentStates?.responsive ?? []).join('/')}`)
     .join('\n');
   const capabilities = (ctx.capabilityRequirements ?? [])
     .map((capability) => `${capability.id}${capability.providedIntents?.length ? ` (${capability.providedIntents.join(', ')})` : ''}`)
