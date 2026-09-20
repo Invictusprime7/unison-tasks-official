@@ -6,6 +6,7 @@ import {
   resolvePinnedRuntimeVersion,
 } from '@/utils/sandpackDependencies';
 import { emitCompositionEnhancements } from '@/sections/compositionEnhancements';
+import type { CompositionActivation } from '@/sections/compositionEnhancements';
 
 const EXPERIENCE_PINS = ['three', '@react-three/fiber', '@react-three/drei'] as const;
 
@@ -49,15 +50,15 @@ describe('pinned runtime package versions', () => {
 });
 
 describe('composition enhancement guards', () => {
-  const activation = {
+  const activation: CompositionActivation = {
     policy: 'maximum-compatible' as const,
     version: '1.0' as const,
     canvasRoots: 1,
     decisions: [
-      { recipeId: 'immersive-hero', sectionId: 's-hero', implementationId: 'impl-hero', reason: 'selected' as const },
-      { recipeId: 'scene-backdrop', sectionId: 's-feature', implementationId: 'impl-scene', reason: 'selected' as const },
-      { recipeId: 'depth-gallery', sectionId: 's-gallery', implementationId: 'impl-depth', reason: 'selected' as const },
-      { recipeId: 'editorial-reveal', sectionId: 's-about', implementationId: 'impl-reveal', reason: 'selected' as const },
+      { recipeId: 'immersive-hero' as const, sectionId: 's-hero', implementationId: 'impl-hero', reason: 'selected' as const },
+      { recipeId: 'scene-backdrop' as const, sectionId: 's-feature', implementationId: 'impl-scene', reason: 'selected' as const },
+      { recipeId: 'depth-gallery' as const, sectionId: 's-gallery', implementationId: 'impl-depth', reason: 'selected' as const },
+      { recipeId: 'editorial-reveal' as const, sectionId: 's-about', implementationId: 'impl-reveal', reason: 'selected' as const },
     ],
   };
 
