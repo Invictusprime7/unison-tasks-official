@@ -75,7 +75,7 @@ export function validateTwentyFirstGenerationCoverage(
         }
       }
 
-      if (artifact && artifact.dataSource.kind !== 'static' && !artifact.dataSource.surfaceId) {
+      if (artifact && artifact.dataSource.kind === 'catalog' && !artifact.dataSource.surfaceId) {
         issues.push(`${key}: artifact ${artifact.artifactId} declares no bindable data surface`);
       }
 
