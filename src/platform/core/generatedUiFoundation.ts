@@ -20,6 +20,12 @@ import {
   GENERATED_RUNTIME_PROFILE,
   THREE_D_CAPABILITY,
 } from '@/platform/core/generatedRuntimeCapabilities';
+import {
+  GENERATED_UI_CATALOG_IMPORTS,
+  GENERATED_UI_CATALOG_PATHS,
+  GENERATED_UI_CATALOG_PROMPT_LINES,
+  buildGeneratedUiCatalogFiles,
+} from '@/platform/core/generatedUiCatalog';
 
 /**
  * Canonical generated UI foundation.
@@ -29,7 +35,7 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.10' as const;
+export const GENERATED_UI_FOUNDATION_VERSION = '1.11' as const;
 /** Runtime components emitted by this owner's motion facade, not type exports. */
 export const GENERATED_MOTION_PRIMITIVES = [
   'Reveal', 'RevealGroup', 'Stagger', 'StaggerGroup', 'StaggerItem',
@@ -41,7 +47,7 @@ export const GENERATED_BACKGROUND_PRIMITIVES = [
   'OrbitalBackdrop', 'GlowField', 'AnimatedGrid',
   'NoiseField', 'GradientOrbs', 'MediaCanvas',
 ] as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9']);
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '1.10']);
 
 export const GENERATED_MOTION_TYPES = [
   'MotionRecipe', 'MarqueeBandProps', 'HorizontalRailProps', 'HoverDepthProps',
