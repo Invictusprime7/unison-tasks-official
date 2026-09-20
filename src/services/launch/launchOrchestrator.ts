@@ -1,5 +1,6 @@
 import { requestAIPageComposition } from '@/services/requestAIPageComposition';
 import { getAssetRegistry, loadScopedProjectAssets } from '@/services/assetRegistry';
+import { buildSeedMediaLibrary } from '@/services/launch/assetSlotBinding';
 import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContract';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
