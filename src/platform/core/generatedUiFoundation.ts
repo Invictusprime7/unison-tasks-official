@@ -1521,6 +1521,7 @@ export const GENERATED_UI_BARREL_EXPORTS: ReadonlySet<string> = new Set([
   'Icon', 'Image', 'ImageLightbox',
   'Reveal', 'RevealGroup', 'StaggerGroup', 'Stagger', 'StaggerItem',
   'FloatingNavbar', 'BentoFeatureGrid', 'FeatureCard',
+  'OrbitalBackdrop', 'GlowField', 'AnimatedGrid', 'NoiseField', 'GradientOrbs', 'MediaCanvas',
   'Slot', 'Slottable',
   ...EXPERIENCE_BARREL_EXPORTS,
 ]);
