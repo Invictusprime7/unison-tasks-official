@@ -535,6 +535,17 @@ export function validateWizardLaneBProposal(options: {
     }
   }
 
+  // 13b. Homepage-first visual language inheritance. The homepage is authored
+  // first and establishes the site's design language; later pages inherit its
+  // site chrome exactly instead of introducing a second visual system.
+  for (const op of proposal.fileOps) {
+    violations.push(...validateHomepageInheritance({
+      path: op.path,
+      content: op.content,
+      language: options.request.homepageVisualLanguage,
+    }));
+  }
+
   // 14, 15: Merge and preflight safety is handled by canonical merge + preflight
   // gates. This validator confirms structural readiness; final approval happens
   // during canonical merge and strict preflight in buildCanonicalLaunchArtifactsAsync.
@@ -599,6 +610,7 @@ export async function enrichWizardPageBatch(options: {
       request: options.request,
       uiFoundationManifest: options.uiFoundationManifest,
       protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS,
+      homepageVisualLanguage: options.request.homepageVisualLanguage,
     }),
   };
   /** Mechanical envelope defects are repaired deterministically, never rejected. */
