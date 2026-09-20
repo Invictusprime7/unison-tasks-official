@@ -146,9 +146,10 @@ export const SectionVariantSelector: React.FC<SectionVariantSelectorProps> = ({
       .filter(s => hasVariants(s.type))
       .map(s => ({
         section: s,
-        variants: getVariantsForSection(s.type),
+        variants: getVariantsForSection(s.type, activeVariants[s.id]),
       }));
-  }, [sections]);
+  }, [sections, activeVariants]);
+
 
   const handleVariantSelect = useCallback((sectionId: string, variantId: VariantId) => {
     onVariantSelect(sectionId, variantId);
