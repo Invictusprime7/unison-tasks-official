@@ -243,6 +243,8 @@ interface NormalizedSeed {
   phone?: string;
   address?: string;
   socials?: Array<{ platform?: string; href?: string }>;
+  /** Real business media projected into the seed (M6 asset → slot binding). */
+  media?: SeedMediaAsset[];
 }
 
 function normalizeWizardSeed(seed: Record<string, unknown> | undefined): NormalizedSeed {
