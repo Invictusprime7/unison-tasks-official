@@ -11,7 +11,7 @@ function launch(industryOverlay: string, templateId: string) {
   return commitToPipeline({
     selections: {
       businessName: 'Role Healing Co',
-      businessModel: 'local_service',
+      businessModel: 'appointment_service',
       industryOverlay,
       primaryGoal: 'showcase',
       secondaryGoals: [],
