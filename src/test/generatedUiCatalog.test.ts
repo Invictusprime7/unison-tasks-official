@@ -31,11 +31,9 @@ const MARKER = 'UNISON GENERATED UI FOUNDATION';
  */
 function installedComponentIds(): string[] {
   const raw = readFileSync(resolve(process.cwd(), '.21st/design.json'), 'utf8');
-  const parsed = JSON.parse(raw) as { components?: unknown };
-  const components = parsed.components;
-  const ids = Array.isArray(components)
-    ? components.map((entry) => (typeof entry === 'string' ? entry : (entry as { name?: string; id?: string })?.name ?? (entry as { id?: string })?.id ?? ''))
-    : Object.keys((components ?? {}) as Record<string, unknown>);
+  const parsed = JSON.parse(raw) as { components?: { installed?: unknown } };
+  const installed = parsed.components?.installed;
+  const ids = Array.isArray(installed) ? installed : [];
   return ids.filter((id): id is string => typeof id === 'string' && id.length > 0);
 }
 

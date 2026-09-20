@@ -158,6 +158,7 @@ export const SANDPACK_RUNTIME_PACKAGE_VERSIONS: Record<string, string> = {
   'input-otp': '1.4.2',
   'react-resizable-panels': '3.0.6',
   'sonner': '2.0.7',
+  'recharts': '2.15.4',
 };
 
 /**

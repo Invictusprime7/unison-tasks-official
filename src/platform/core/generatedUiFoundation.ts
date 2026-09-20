@@ -246,7 +246,7 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   'Rules: exactly ONE <h1> per page (a single <Heading level={1}>). Use <Section> for every band and <Container> inside it. Pass className only for standard Tailwind scale utilities or var(--ut-*)/var(--radius) arbitrary values — never a raw px/rem/vh/vw/#hex literal.',
 ].join('\n');
 
-const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
+export const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
   '/.unison/ui-manifest.json',
   '/src/unison/ui/index.ts',
   '/src/unison/ui/backgrounds.tsx',
