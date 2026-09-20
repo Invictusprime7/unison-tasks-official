@@ -176,16 +176,16 @@ export function resolveImplementationContract(
       : undefined;
 
   return {
-    implementationId: variant.id,
-    sectionType: variant.sectionType,
+    implementationId,
+    sectionType,
     artifactId: artifact?.artifactId ?? null,
     slots,
     intents,
     catalogSurfaceId,
     primitiveDependencies,
     runtimeDependencies,
-    generationStatus: variant.generationStatus ?? 'preferred',
-    source: variant.source,
+    generationStatus,
+    source,
   };
 }
 
@@ -199,7 +199,7 @@ export function listImplementationContracts(options?: {
     if (options?.preferredOnly && (variant.generationStatus ?? 'preferred') !== 'preferred') {
       continue;
     }
-    const contract = resolveImplementationContract(variant.id);
+    const contract = resolveImplementationContract(variant.implementationId);
     if (contract) contracts.push(contract);
   }
   return contracts;
