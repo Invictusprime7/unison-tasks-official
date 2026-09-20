@@ -375,6 +375,8 @@ export function inferPageRoleFromType(pageType: BuilderPageType): BuilderPageRol
       return "about";
     case "pricing":
       return "pricing";
+    case "immersive":
+      return "immersive";
     case "legal":
       return "legal";
     case "custom":
