@@ -1508,8 +1508,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           // Append the current user prompt as the final message
           conversationHistory.push({ role: 'user', content: promptForAI });
 
+          // V4 M8: the in-Builder lane receives the SAME bounded canonical
+          // registry projection the Wizard composer and Lane B already get.
+          const builderRegistryContext = resolveBuilderRegistryContext({
+            vfsFiles: vfsFiles ?? undefined,
+            industry: systemType ?? null,
+            templateId: templateName ?? null,
+            themePresetId: (wizardSeed as { themePresetId?: string } | null)?.themePresetId ?? null,
+            businessId: businessId ?? null,
+            projectId: projectId ?? null,
+          });
+
           response = await runBuilderTurn<any>({
             messages: conversationHistory,
+            registryContext: builderRegistryContext ?? undefined,
             // Milestone 4: durable envelope + verdict log, scoped to this draft.
             runContext: {
               draftId: projectId ?? null,
