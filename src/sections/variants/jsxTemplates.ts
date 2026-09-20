@@ -1175,6 +1175,61 @@ ${tiers.map((tier, i) => `            <div className="flex h-full flex-col round
   return sectionShell('pricing:feature-table', c, body, 'bg-muted');
 }
 
+/**
+ * pricing:billing-toggle — owner-authorized adaptation of 21st.dev "Pricing Section"
+ * (21st:6247). The odometer price roll and switch spring are reproduced with a
+ * CSS-only peer toggle so the recipe needs no runtime packages or hooks.
+ */
+export function pricingBillingToggleJSX(c: ExtractedSectionContent): string {
+  const plans = pricingPlans(c);
+  const cta = planCta(c);
+  const monthlyOf = (price: string) => Number((/(\d[\d,.]*)/.exec(price)?.[1] || '0').replace(/,/g, '')) || 0;
+  const body = `          <input type="checkbox" id="pricing-billing-yearly" className="peer sr-only" aria-label="Show yearly pricing" />
+          <div className="mb-10 flex w-full justify-center peer-checked:[&_[data-pill=monthly]]:bg-transparent peer-checked:[&_[data-pill=monthly]]:text-muted-foreground peer-checked:[&_[data-pill=yearly]]:bg-primary peer-checked:[&_[data-pill=yearly]]:text-primary-foreground">
+            <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card p-1">
+              <label data-pill="monthly" htmlFor="pricing-billing-yearly" className="cursor-pointer rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors duration-300 motion-reduce:transition-none">Monthly</label>
+              <label data-pill="yearly" htmlFor="pricing-billing-yearly" className="flex cursor-pointer items-center gap-2 rounded-full px-6 py-2 text-sm font-medium text-muted-foreground transition-colors duration-300 motion-reduce:transition-none">
+                Yearly
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">Save 20%</span>
+              </label>
+            </div>
+          </div>
+          <div className="grid w-full items-start gap-6 sm:grid-cols-2 lg:grid-cols-3 peer-checked:[&_[data-roll]]:-translate-y-1/2">
+
+${plans.map((plan, i) => {
+    const monthly = monthlyOf(plan.price);
+    return `            <article className="flex h-full flex-col rounded-[var(--radius)] border ${i === 1 ? 'border-primary' : 'border-border'} bg-card p-8 text-card-foreground transition-transform duration-300 hover:-translate-y-1 motion-reduce:transform-none motion-reduce:transition-none" data-ut-slot="plan-${i + 1}">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-2xl font-semibold">${esc(plan.name)}</h3>
+${i === 1 ? '                <span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">Popular</span>\n' : ''}\
+              </div>
+              <div className="mt-5 flex items-baseline gap-1">
+                <span className="relative inline-flex h-[1.1em] overflow-hidden text-4xl font-semibold">
+                  <span data-roll="price" className="flex flex-col transition-transform duration-500 ease-out motion-reduce:transition-none">
+                    <span className="leading-[1.1em]">$${monthly}</span>
+                    <span className="leading-[1.1em]">$${monthly * 10}</span>
+                  </span>
+                </span>
+                <span className="relative inline-flex h-[1.4em] overflow-hidden text-sm text-muted-foreground">
+                  <span data-roll="period" className="flex flex-col transition-transform duration-500 ease-out motion-reduce:transition-none">
+
+                    <span className="leading-[1.4em]">/month</span>
+                    <span className="leading-[1.4em]">/year</span>
+                  </span>
+                </span>
+              </div>
+              <a href="${cta.href}" data-ut-intent="lead.capture" className="mt-6 inline-flex w-full items-center justify-center rounded-[var(--radius)] bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground no-underline">${esc(cta.label)}</a>
+              <ul className="mt-6 flex-1 list-none space-y-2 p-0 text-sm text-muted-foreground">
+${plan.features.map((f) => `                <li>✓ ${esc(f)}</li>`).join('\n')}
+              </ul>
+            </article>`;
+  }).join('\n')}
+          </div>`;
+  return sectionShell('pricing:billing-toggle', c, body, 'bg-muted');
+}
+
+
+
 export function navbarFloatingPillJSX(c: ExtractedSectionContent): string {
   return `      <header className="fixed left-0 right-0 top-0 z-50 px-6 pt-4 backdrop-blur-md" data-variant="navbar:floating-pill">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/80 px-6">

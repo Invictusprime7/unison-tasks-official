@@ -65,6 +65,7 @@ import {
   beforeAfterSliderJSX, beforeAfterGridJSX, beforeAfterCaseStudyJSX,
   footerBrandSocialJSX,
   pricingFeatureTableJSX,
+  pricingBillingToggleJSX,
   navbarFloatingPillJSX,
   testimonialsMarqueeJSX,
   statsMetricCardsJSX,
@@ -97,6 +98,9 @@ import { NavbarFloatingPill } from './navbar/NavbarFloatingPill';
 
 // 21st.dev certified variant: pricing:feature-table
 import { PricingFeatureTable } from './pricing/PricingFeatureTable';
+
+// 21st.dev certified variant: pricing:billing-toggle
+import { PricingBillingToggle } from './pricing/PricingBillingToggle';
 
 // 21st.dev certified variant: footer:brand-social
 import { FooterBrandSocial } from './footer/FooterBrandSocial';
@@ -320,6 +324,29 @@ const VARIANT_REGISTRY: VariantRegistry = {
       tags: ['pricing', 'table', 'plans', 'commerce'],
       pageRoles: ['pricing', 'services', 'home', 'checkout', 'faq', 'about'],
       renderJSX: pricingFeatureTableJSX,
+    },
+    {
+      id: 'pricing:billing-toggle',
+      sectionType: 'pricing',
+      slug: 'billing-toggle',
+      name: 'Billing Toggle',
+      description: 'Monthly/yearly switch with rolling price digits and lifted popular plan',
+      component: PricingBillingToggle,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      source: {
+        origin: '21st',
+        derivation: 'source-adaptation',
+        sourceId: '21st:6247',
+        sourceUrl: 'https://21st.dev/c/6247',
+        author: 'unknown',
+        license: 'Owner-authorized source adaptation (approved for canonical Unison generation)',
+        adaptationVersion: '1',
+      },
+      generationStatus: 'preferred',
+      thumbnail: '/variants/pricing-billing-toggle.svg',
+      tags: ['pricing', 'toggle', 'plans', 'premium', 'commerce'],
+      pageRoles: ['pricing', 'services', 'home', 'checkout', 'faq', 'about'],
+      renderJSX: pricingBillingToggleJSX,
     },
     {
       id: 'pricing:tiers',
@@ -1668,6 +1695,7 @@ const VARIANT_LAYOUT_ALIASES: Partial<Record<VariantId, readonly string[]>> = {
   'testimonials:marquee': ['marquee', 'scrolling'],
   'navbar:floating-pill': ['floating-pill', 'floating'],
   'pricing:feature-table': ['feature-table', 'table'],
+  'pricing:billing-toggle': ['billing-toggle', 'toggle', 'monthly-yearly'],
   'footer:brand-social': ['brand-social', 'social'],
   'navbar:standard': ['standard'],
   'navbar:centered-logo': ['centered-logo'],

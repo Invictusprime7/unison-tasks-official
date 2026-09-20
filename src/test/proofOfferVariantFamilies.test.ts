@@ -29,7 +29,7 @@ describe('Phase 3 — testimonials and pricing are first-class variant families'
   it('registers the executable pricing variants', () => {
     const variants = getVariantsForSection('pricing');
     expect(variants.map((v) => v.id).sort()).toEqual([
-      'pricing:accordion', 'pricing:comparison', 'pricing:feature-table', 'pricing:spotlight', 'pricing:tiers',
+      'pricing:accordion', 'pricing:billing-toggle', 'pricing:comparison', 'pricing:feature-table', 'pricing:spotlight', 'pricing:tiers',
     ]);
     variants.forEach((variant) => {
       expect(variant.component).toBeTruthy();
