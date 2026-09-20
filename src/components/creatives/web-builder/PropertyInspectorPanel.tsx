@@ -49,14 +49,15 @@ export const PropertyInspectorPanel: React.FC<PropertyInspectorPanelProps> = ({
   const [aiRequest, setAiRequest] = useState('');
 
   const dispatch = (mutation: Parameters<typeof buildInspectorPatchPlan>[1]) => {
-    const plan = buildInspectorPatchPlan(model, mutation);
-    if (!plan.ok) {
+    const plan: InspectorPatchPlan = buildInspectorPatchPlan(model, mutation);
+    if (plan.ok === false) {
       setRejection(plan.reason);
       return;
     }
     setRejection(null);
     onApplyPatchPlan?.(plan);
   };
+
 
   return (
     <div
