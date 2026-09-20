@@ -200,6 +200,9 @@ export function applyTopologyChange(
     }
   }
 
+  // Homepage authority first, then the router derived from it.
+  stampVisualLanguage();
+
   // Regenerate canonical router for file-backed pages only. Newly added pages
   // become routable after the AI Builder writes their component file.
   const routerCode = generateCanonicalRouterForFiles(
