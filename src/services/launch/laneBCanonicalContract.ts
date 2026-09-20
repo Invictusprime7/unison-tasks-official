@@ -89,13 +89,41 @@ export function renderLaneBCanonicalContract(options: {
 }
 
 /**
+ * Repair heading structure so rule 12 (exactly one <h1> per page) is met.
+ * Heading level is document mechanics, not a design decision: with zero h1s
+ * the first <h2> is promoted; with several, all but the first are demoted.
+ * Copy, classes and identity attributes are untouched.
+ */
+export function normalizeHeadingStructure(content: string): string {
+  const opening = /<h1(?=[\s>])/gi;
+  const count = (content.match(opening) || []).length;
+  if (count === 1) return content;
+  if (count === 0) {
+    const openMatch = /<h2(?=[\s>])/i.exec(content);
+    if (!openMatch) return content;
+    let out = content.slice(0, openMatch.index) + '<h1' + content.slice(openMatch.index + 3);
+    const closeMatch = /<\/h2>/i.exec(out.slice(openMatch.index));
+    if (!closeMatch) return content;
+    const closeIndex = openMatch.index + closeMatch.index;
+    out = out.slice(0, closeIndex) + '</h1>' + out.slice(closeIndex + 5);
+    return out;
+  }
+  // More than one: keep the first <h1>, demote the rest to <h2> in order.
+  let seen = 0;
+  let out = content.replace(/<h1(?=[\s>])/gi, (match) => (++seen === 1 ? match : '<h2'));
+  seen = 0;
+  out = out.replace(/<\/h1>/gi, (match) => (++seen === 1 ? match : '</h2>'));
+  return out;
+}
+
+/**
  * Deterministically repair mechanical envelope defects before validation.
  *
  * Only non-design defects are repaired: code fences around content, echoed
- * identity fields, duplicate operations for one path, and operations aimed at a
- * path the model was never allowed to touch. Design and identity content inside
- * the TSX is never rewritten here — that remains the model's responsibility and
- * the validator's judgement.
+ * identity fields, duplicate operations for one path, operations aimed at a
+ * path the model was never allowed to touch, and heading structure (exactly
+ * one <h1>). Design and identity content inside the TSX is never rewritten
+ * here — that remains the model's responsibility and the validator's judgement.
  */
 export function normalizeLaneBProposal(
   proposal: WizardLaneBEnrichmentProposal,
