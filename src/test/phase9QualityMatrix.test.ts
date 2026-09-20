@@ -59,4 +59,17 @@ describe('Phase 9 quality matrix contracts', () => {
     expect(report.pages.find((page) => page.path.endsWith('Home.tsx'))?.findings)
       .not.toContain('MOBILE_OVERFLOW_RISK');
   });
+
+  it('flags spacing, contrast, and heading drift across generated pages', () => {
+    const report = evaluateVisualQuality({
+      '/src/pages/About.tsx': '<main><section className="p-[19px] bg-[#000] text-white"><h1>About</h1><h1>Again</h1></section></main>',
+    });
+
+    expect(report.findings).toEqual(expect.arrayContaining([
+      'SPACING_SYSTEM_DRIFT',
+      'CONTRAST_ROLE_DRIFT',
+      'INVALID_H1_COUNT',
+    ]));
+    expect(report.refinementDirective).toContain('shared spacing rhythm');
+  });
 });

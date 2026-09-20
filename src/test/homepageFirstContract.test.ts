@@ -47,7 +47,8 @@ describe('homepage-first visual language', () => {
     expect(contract).toContain('navbar: navbar:floating-pill');
     expect(contract).toContain('footer: footer:dark-band');
     expect(contract).toContain('--ut-type-hero');
-    expect(contract).toContain('hero=hero:prisma-cinematic');
+    expect(contract).toContain('Homepage headings: Welcome');
+    expect(contract).toContain('distinct role-appropriate body section order');
   });
 
   it('rejects drifting site chrome but allows a different body design', () => {
@@ -80,7 +81,7 @@ describe('homepage-first visual language', () => {
     expect(plan.batches.slice(1).flat()).not.toContain('/src/pages/Home.tsx');
   });
 
-  it('aligns secondary composition pages with the homepage when eligible', () => {
+  it('keeps secondary body compositions distinct from the homepage', () => {
     const brief = {
       roles: ['home', 'about'],
       variants: [
@@ -98,9 +99,8 @@ describe('homepage-first visual language', () => {
       ],
     }, brief) as { pages: Array<{ role: string; variants: Record<string, string> }> };
 
-    const about = normalized.pages.find(page => page.role === 'about')!;
-    expect(about.variants.hero).toBe('hero:prisma-cinematic');
-    // The home gallery choice is not eligible for about, so it legitimately differs.
-    expect(about.variants.gallery).toBe('gallery:lightbox-grid');
+    const about = normalized.pages.find(page => page.role === 'about');
+    expect(about?.variants.hero).toBe('hero:centered');
+    expect(about?.variants.gallery).toBe('gallery:lightbox-grid');
   });
 });

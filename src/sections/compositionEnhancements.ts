@@ -79,7 +79,7 @@ export function emitCompositionEnhancements(activation?: CompositionActivation):
         // Keep the canonical hero, its media and actions intact. The scene is decorative.
         return `if (${condition}) content = <div className="relative isolate"><div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-20"><SceneBackground className="z-0" /></div>{content}</div>;`;
       case 'immersive-hero':
-        return `if (${condition}) content = <ImmersiveHero intensity="cinematic" className="rounded-none" data-ut-enhancement="immersive-hero">{content}</ImmersiveHero>;`;
+        return `if (${condition}) content = <div data-ut-enhancement="immersive-hero"><ImmersiveHero intensity="cinematic" className="rounded-none">{content}</ImmersiveHero></div>;`;
       case 'depth-gallery':
         // Hydrated props, not frozen sample items. Grid retains the existing lightbox.
         return `if (${condition} && Array.isArray(props.items) && props.items.length) content = <ExperienceTabs.Root defaultValue="depth" className="ut-block" data-ut-enhancement="depth-gallery">
