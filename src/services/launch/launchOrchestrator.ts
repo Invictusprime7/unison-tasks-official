@@ -469,12 +469,10 @@ export async function runLaunchPipeline(
         sectionTypes: composition.sections.filter((section) => !section.hidden).map((section) => section.type),
       })),
       artDirectionPack: coveragePack,
-      selectedVariants: compositionPlan?.pages?.reduce<Record<string, VariantId>>((acc, page) => {
-        for (const [sectionType, variantId] of Object.entries(page.variants || {})) {
-          acc[`${page.role}:${sectionType}`] = variantId as VariantId;
-        }
-        return acc;
-      }, {}),
+      selectedVariants: Object.fromEntries((compositionPlan?.pages ?? []).flatMap((page) =>
+        Object.entries(page.variants || {}).map(([sectionType, variantId]) =>
+          [`${page.role}:${sectionType}`, variantId as VariantId] as const),
+      )),
     });
     if (!coverage.ok) {
       run.degrade('seed', 'coverage.21st-incomplete', summarizeCoverageReport(coverage));

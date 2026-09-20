@@ -119,8 +119,14 @@ const FAMILY_STATES: Partial<Record<SectionType, Partial<ComponentStateContract>
   },
 };
 
+/** Minimal shape needed to derive a state contract (registry entry or projection). */
+export type ComponentStateSubject = Pick<SectionVariant, 'sectionType'> & {
+  id?: string;
+  states?: Partial<ComponentStateContract>;
+};
+
 /** Derive the canonical state contract for a certified implementation. */
-export function resolveComponentStateContract(variant: SectionVariant): ComponentStateContract {
+export function resolveComponentStateContract(variant: ComponentStateSubject): ComponentStateContract {
   const family = FAMILY_STATES[variant.sectionType] ?? {};
   const declared = variant.states ?? {};
   const supported = new Set<ComponentState>([
@@ -138,17 +144,17 @@ export function resolveComponentStateContract(variant: SectionVariant): Componen
 }
 
 /** Structural check used by the generation coverage gate. */
-export function componentStateContractIssues(variant: SectionVariant): string[] {
+export function componentStateContractIssues(variant: ComponentStateSubject): string[] {
   const contract = resolveComponentStateContract(variant);
   const issues: string[] = [];
   for (const state of BASELINE_COMPONENT_STATES) {
-    if (!contract.supported.includes(state)) issues.push(`${variant.id}: missing required state "${state}"`);
+    if (!contract.supported.includes(state)) issues.push(`${variant.id ?? variant.sectionType}: missing required state "${state}"`);
   }
   if (!contract.responsive.includes('reduced-motion')) {
-    issues.push(`${variant.id}: no reduced-motion state recorded`);
+    issues.push(`${variant.id ?? variant.sectionType}: no reduced-motion state recorded`);
   }
   for (const key of ['hover', 'focus', 'active', 'reducedMotion'] as const) {
-    if (!contract.interaction[key]) issues.push(`${variant.id}: interaction contract missing "${key}"`);
+    if (!contract.interaction[key]) issues.push(`${variant.id ?? variant.sectionType}: interaction contract missing "${key}"`);
   }
   return issues;
 }
