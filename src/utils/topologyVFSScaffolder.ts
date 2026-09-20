@@ -28,6 +28,7 @@ import { EXPERIENCE_PERFORMANCE_BUDGET } from '@/platform/core/generatedRuntimeC
 import { getVariantsForSection } from '@/sections/variants/registry';
 import { getIndustryProfile } from '@/platform/core/industryMatrix';
 import { getDefaultTemplateIdForIndustry, createIndustryStarterSection } from '@/sections/templates/industryDefaultRegistry';
+import { bindMediaToComposition, buildSeedMediaLibrary, type SeedMediaAsset } from '@/services/launch/assetSlotBinding';
 
 /**
  * Options shared by the scaffolding entry points.
@@ -243,6 +244,8 @@ interface NormalizedSeed {
   phone?: string;
   address?: string;
   socials?: Array<{ platform?: string; href?: string }>;
+  /** Real business media projected into the seed (M6 asset → slot binding). */
+  media?: SeedMediaAsset[];
 }
 
 function normalizeWizardSeed(seed: Record<string, unknown> | undefined): NormalizedSeed {
@@ -267,6 +270,11 @@ function normalizeWizardSeed(seed: Record<string, unknown> | undefined): Normali
     phone: findSocial('phone') || (socials.find((s) => s.phone)?.phone as string | undefined),
     address: findSocial('address'),
     socials,
+    media: buildSeedMediaLibrary(
+      (Array.isArray((seed.media as { assets?: unknown })?.assets)
+        ? ((seed.media as { assets: unknown[] }).assets)
+        : []) as Array<Record<string, unknown>>,
+    ),
   };
 }
 
@@ -278,7 +286,11 @@ function applyWizardSeedToComposition(
     (plan as GeneratedSitePlan & { wizardSeed?: Record<string, unknown> }).wizardSeed,
   );
   const brand = seed.brand?.trim() || plan.businessName.trim();
-  if (!brand && !seed.tagline && !seed.email && !seed.phone) return composition;
+  const mediaLibrary = seed.media || [];
+  const mediaSeedKey = `${composition.id}:${plan.selectedThemePresetId || ''}:${plan.industry || ''}`;
+  const withMedia = (result: TemplateComposition) =>
+    bindMediaToComposition(result, mediaLibrary, mediaSeedKey).composition;
+  if (!brand && !seed.tagline && !seed.email && !seed.phone) return withMedia(composition);
 
   // Template brand copy is sample data. Replace it across the full composition
   // before deriving route-specific pages so Wizard identity remains canonical.
@@ -346,7 +358,7 @@ function applyWizardSeedToComposition(
     return { ...section, props } as SectionEntry;
   });
 
-  return { ...composition, name: brand || composition.name, sections: nextSections };
+  return withMedia({ ...composition, name: brand || composition.name, sections: nextSections });
 }
 
 

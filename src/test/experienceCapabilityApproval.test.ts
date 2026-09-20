@@ -13,14 +13,14 @@ const declaredVariants = allVariants.filter((variant) => variant.experience);
 const foundation = [EXPERIENCE_CAPABILITY_ID];
 
 describe('registered experience declarations', () => {
-  it('declares future dependencies without enabling live 3D anywhere in the registry', () => {
+  it('resolves the owner-authorized live 3D requirement (M10)', () => {
     const enabled = allVariants.filter((variant) => variant.experience?.status === 'enabled');
-    expect(enabled).toEqual([]);
+    expect(enabled.map((variant) => variant.id)).toContain('gallery:cinematic-grid');
 
     const requirement = resolveExperienceRequirement(allVariantIds);
-    expect(requirement.enabledPrimitives).toEqual([]);
-    expect(requirement.capabilities).toEqual([]);
-    expect(requirement.declaredPrimitives).toContain('DepthGallery');
+    expect(requirement.enabledPrimitives).toContain('DepthGallery');
+    expect(requirement.capabilities).toEqual([EXPERIENCE_CAPABILITY_ID]);
+    expect(requirement.declaredPrimitives).not.toContain('DepthGallery');
   });
 
   it.each(declaredVariants)(
@@ -31,8 +31,11 @@ describe('registered experience declarations', () => {
       expect(entry, `unknown vocabulary entry ${category}:${id}`).toBeDefined();
       expect(entry!.experience).not.toBe('none');
       expect(entry!.primitives.length).toBeGreaterThan(0);
-      expect(resolveExperienceRequirement([variant.id]).declaredPrimitives)
-        .toEqual(expect.arrayContaining([...entry!.primitives]));
+      const requirement = resolveExperienceRequirement([variant.id]);
+      const resolved = variant.experience!.status === 'enabled'
+        ? requirement.enabledPrimitives
+        : requirement.declaredPrimitives;
+      expect(resolved).toEqual(expect.arrayContaining([...entry!.primitives]));
     },
   );
 

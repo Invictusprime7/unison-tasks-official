@@ -1,5 +1,6 @@
 import { requestAIPageComposition } from '@/services/requestAIPageComposition';
 import { getAssetRegistry, loadScopedProjectAssets } from '@/services/assetRegistry';
+import { buildSeedMediaLibrary } from '@/services/launch/assetSlotBinding';
 import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContract';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
@@ -399,6 +400,10 @@ export async function runLaunchPipeline(
     assets: [...cloudAssets, ...localAssets],
   });
 
+  // M6 — real business media is projected into the seed so the compiler can
+  // bind it into the media slots the composition already declares.
+  const seedMediaLibrary = buildSeedMediaLibrary([...cloudAssets, ...localAssets] as unknown as Array<Record<string, unknown>>);
+
   const wizardSeedFile = {
     version: "2.0",
     id: plan.wizardSeedId,
@@ -423,6 +428,7 @@ export async function runLaunchPipeline(
     design: { seed: plan.seed, contractSignature: designContract.contractSignature },
     compositionPlan: undefined as WizardSelections["compositionPlan"],
     registryContext: wizardRegistryContext,
+    media: { version: '1.0', assets: seedMediaLibrary },
     socials: Object.entries(input.socialLinks || {})
       .map(([platform, raw]) => {
         const value = (raw || "").trim();
