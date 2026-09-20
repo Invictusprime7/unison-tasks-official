@@ -8,7 +8,7 @@
 import React, { useMemo } from 'react';
 import { Layout, Layers, ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getGenerationVariantsForSection as getVariantsForSection, getSectionTypesWithVariants } from '@/sections/variants/registry';
+import { getBuilderVariantsForSection as getVariantsForSection, getSectionTypesWithVariants } from '@/sections/variants/registry';
 import { detectSections, type DetectedSection } from '@/utils/sectionSwapper';
 import type { SectionVariant } from '@/sections/variants/types';
 import type { SectionType } from '@/sections/types';
@@ -110,7 +110,10 @@ export const SectionLayoutPicker: React.FC<SectionLayoutPickerProps> = ({
 
       {/* Variant groups */}
       {swappableSections.map(section => {
-        const variants = getVariantsForSection(section.type);
+        const currentVariantId =
+          (section.props?.variantId as string | undefined) ?? (section.props?.variant as string | undefined) ?? null;
+        const variants = getVariantsForSection(section.type, currentVariantId);
+
         if (variants.length < 2) return null;
         const meta = sectionTypeLabels[section.type];
 

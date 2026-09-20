@@ -610,3 +610,10 @@ OpenAI configuration audit confirmed OPENAI_API_KEY exists in the linked project
 Enrichment used a 60-second browser deadline despite a 105-second batch-planning budget. The client now allows 110 seconds; the direct enrichment dispatch bounds server work to 100 seconds. Canonical proposals bypass general Builder preprocessing/source normalization and retain their identity/fileOps envelope. The server checks registered paths, duplicate writes, source presence and request identity before returning candidates; the existing client TSX/import/intent/theme validation, preflight and commitMutation remain authoritative.
 
 Failures now retain safe HTTP/error-type diagnostics instead of the generic unavailable message. Provider availability remains distinct from invalid proposals. Verification: 210 test files, 1,874 passed and one skipped; frontend/edge type checks and canonical-write/pipeline checks passed. Live authenticated success is not established by these tests; the available verification browser remains signed out.
+
+- Builder layout pickers now list the generation-eligible (21st-certified) variants
+	plus the layout a section is currently using, so an existing site never shows an
+	empty or unselected picker (`getBuilderVariantsForSection`,
+	`src/test/builderVariantChoices.test.ts`). The earlier "launch fails when AI
+	composition is imperfect" report is stale: composition degrades to the
+	deterministic industry layout.
