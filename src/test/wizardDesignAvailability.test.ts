@@ -56,4 +56,29 @@ describe('V5 P3: Wizard design availability is registry-derived', () => {
   it('availability is answerable for one explicitly selected direction', () => {
     expect(isWizardVisualDirectionAvailable(ART_DIRECTION_PACK_IDS[0], { experience: 'standard' })).toBe(true);
   });
+
+  it('CI gate: every pack stays complete under every experience preference', () => {
+    for (const experience of ['standard', 'motion-rich', 'immersive'] as const) {
+      const blocked = getWizardVisualDirections({ experience, selectedPages: ['pricing', 'faq', 'about', 'blog', 'gallery', 'services'] })
+        .filter(option => !option.available)
+        .map(option => `${experience}/${option.id}: ${option.unavailableReason}`);
+      expect(blocked).toEqual([]);
+    }
+  });
 });
+
+describe('V5 §35: auto mode never degrades into the global pool', () => {
+  it('keeps the preferred pack when it covers the selection', () => {
+    const preferred = ART_DIRECTION_PACK_IDS[0];
+    expect(resolveAvailableAutoArtDirectionPackId(preferred, { experience: 'standard', seed: 'a' })).toBe(preferred);
+  });
+
+  it('resolves deterministically for the same seed', () => {
+    const preferred = ART_DIRECTION_PACK_IDS[1];
+    const first = resolveAvailableAutoArtDirectionPackId(preferred, { experience: 'immersive', seed: 'seed-1' });
+    const second = resolveAvailableAutoArtDirectionPackId(preferred, { experience: 'immersive', seed: 'seed-1' });
+    expect(first).toBe(second);
+    expect(ART_DIRECTION_PACK_IDS).toContain(first);
+  });
+});
+
