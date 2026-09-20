@@ -404,6 +404,7 @@ function inferTopologyRole(page: BuilderPage): PageRole {
   if (path.includes('book')) return 'booking';
   if (path.includes('checkout')) return 'checkout';
   if (path.includes('about')) return 'about';
+  if (path.includes('experience') || path.includes('immersive')) return 'immersive';
   return 'custom';
 }
 
