@@ -617,3 +617,9 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 	`src/test/builderVariantChoices.test.ts`). The earlier "launch fails when AI
 	composition is imperfect" report is stale: composition degrades to the
 	deterministic industry layout.
+
+- AI enrichment now receives the canonical rule set rendered from the validator
+	constants themselves (`src/services/launch/laneBCanonicalContract.ts`), and
+	mechanical envelope defects (code fences, echoed identity, duplicate or
+	out-of-scope file ops) are repaired deterministically instead of failing the
+	page (`src/test/laneBCanonicalContract.test.ts`).

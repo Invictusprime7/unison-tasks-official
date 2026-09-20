@@ -28,7 +28,16 @@ import {
   type GeneratedMotionExports,
 } from '@/platform/core/generatedUiFoundation';
 import { buildDesignVocabularyReport } from '@/services/designImplementationRegistry';
+import {
+  LANE_B_ALWAYS_ALLOWED_PACKAGES,
+  LANE_B_GLOBAL_STYLE_PATTERN,
+  LANE_B_LITERAL_STYLE_PATTERN,
+  LANE_B_PALETTE_LITERAL_PATTERN,
+  normalizeLaneBProposal,
+  renderLaneBCanonicalContract,
+} from '@/services/launch/laneBCanonicalContract';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
+
 
 /** The exact registry projection used by the production enrichment request. */
 export function buildWizardLaneBRegistryContext(
@@ -182,7 +191,15 @@ export interface WizardLaneBEnrichmentRequest {
 
   /** Intent and binding guidance. */
   intentBindingGuide: string;
+
+  /**
+   * The canonical validation contract rendered from the same constants the
+   * validator asserts. Injected per batch by enrichWizardPageBatch so the model
+   * and the validator can never disagree about the rules.
+   */
+  canonicalContract?: string;
 }
+
 
 /**
  * The response from Lane B — a candidate enrichment proposal that must survive
@@ -395,7 +412,7 @@ export function validateWizardLaneBProposal(options: {
         const packageName = specifier.startsWith('@')
           ? specifier.split('/').slice(0, 2).join('/')
           : specifier.split('/')[0];
-        if (packageName === 'react' || packageName === 'react-dom' || allowedPackages.has(packageName)) continue;
+        if ((LANE_B_ALWAYS_ALLOWED_PACKAGES as readonly string[]).includes(packageName) || allowedPackages.has(packageName)) continue;
         violations.push(
           `File ${op.path} imports runtime dependency "${packageName}", which is not in the canonical allow-list: ${Array.from(allowedPackages).join(', ')}.`,
         );
@@ -441,13 +458,14 @@ export function validateWizardLaneBProposal(options: {
   }
 
 
-  // 10. Theme token compliance
+  // 10. Theme token compliance — the exact patterns published to the model in
+  // the canonical contract block (single source of truth, never a prose copy).
   for (const op of proposal.fileOps) {
-    if (/\b(?:bg|text|border|from|via|to)-(?:white|black|(?:red|blue|gray|slate|zinc|neutral|green|purple|orange|pink|cyan|teal|amber|rose|indigo|violet|stone|yellow|lime|emerald|sky|fuchsia)-\d{2,3})\b|\bfont-(?:sans|serif|mono)\b|font(?:Family|Weight)\s*:\s*(?:['"](?!var\()[^'"]+['"]|\d+)/.test(op.content)) {
+    if (LANE_B_LITERAL_STYLE_PATTERN.test(op.content)) {
       violations.push('File ' + op.path + ' overrides the selected preset with literal color or font-family styles. Use semantic colors and the supplied font-family tokens; Tailwind weight and scale utilities remain available for page hierarchy.');
     }
     // Local geometry is permitted; palette and global theme ownership remain Stage 4b.
-    const hardcodedValues = op.content.match(/#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(\s*[\d.]/g);
+    const hardcodedValues = op.content.match(new RegExp(LANE_B_PALETTE_LITERAL_PATTERN.source, 'g'));
     if (hardcodedValues) {
       violations.push(
         `File ${op.path} contains literal palette values: ${hardcodedValues.join(', ')}. Use Stage 4b tokens (var(--ut-*), --radius) or Tailwind classes instead.`,
@@ -456,10 +474,11 @@ export function validateWizardLaneBProposal(options: {
   }
 
   for (const op of proposal.fileOps) {
-    if (/:root\b|:global\b|@import\b|(?:^|[}\s'"`])(html|body)(?:[.#:][\w-]+)?\s*[{,]|--(?:ut-[\w-]+|primary|background|foreground|font-[\w-]+)\s*:/.test(op.content)) {
+    if (LANE_B_GLOBAL_STYLE_PATTERN.test(op.content)) {
       violations.push('File ' + op.path + ' declares global theme or document styles. Stage 4b owns these values.');
     }
   }
+
 
   // 11. Page identity check
   for (const op of proposal.fileOps) {
@@ -560,10 +579,23 @@ export async function enrichWizardPageBatch(options: {
   options.signal.throwIfAborted();
   if (options.enabled === false) return unchanged;
   const reject = (code: string, message: string) => { options.onDegrade?.(code, message); return unchanged; };
+  // The model receives the canonical rule set rendered from the very constants
+  // the validator asserts, so a compliant response cannot fail a rule it never saw.
+  const request: WizardLaneBEnrichmentRequest = {
+    ...options.request,
+    canonicalContract: renderLaneBCanonicalContract({
+      request: options.request,
+      uiFoundationManifest: options.uiFoundationManifest,
+      protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS,
+    }),
+  };
+  /** Mechanical envelope defects are repaired deterministically, never rejected. */
+  const normalize = (candidate: WizardLaneBEnrichmentProposal) =>
+    normalizeLaneBProposal(candidate, options.request, WIZARD_LANE_B_PROTECTED_PATHS);
   try {
     const response = await invoke({
       mode: 'wizard-canonical-enrichment',
-      messages: [{ role: 'user', content: JSON.stringify(options.request) }],
+      messages: [{ role: 'user', content: JSON.stringify(request) }],
       wizardSeed: { id: options.request.wizardSeedId },
       vfsFiles: buildLaneBVfsContext(options.files),
     }, { timeoutMs: LANE_B_WALL_CLOCK_BUDGET_MS + 5000, signal: options.signal });
@@ -576,8 +608,11 @@ export async function enrichWizardPageBatch(options: {
       const reason = status === 401 || status === 403 ? 'authentication' : status === 429 ? 'rate_limited' : status === 400 || status === 413 ? 'request_rejected' : errorType === 'enrichment_contract' || errorType === 'enrichment_identity' ? 'invalid_response' : 'provider';
       return reject('enrich.' + reason, 'AI enrichment failed: ' + reason.replace(/_/g, ' ') + (status ? ' (HTTP ' + status + ')' : '') + (errorType ? ' [' + errorType + ']' : '') + '; the compiled pages were preserved.');
     }
-    const proposal = decodeWizardLaneBProposal(response.data);
-    if (!proposal) return reject('enrich.invalid_response', 'AI returned an invalid design proposal; the compiled pages were preserved.');
+    const decoded = decodeWizardLaneBProposal(response.data);
+    if (!decoded) return reject('enrich.invalid_response', 'AI returned an invalid design proposal; the compiled pages were preserved.');
+    const proposal = normalize(decoded);
+    if (!proposal.fileOps.length) return reject('enrich.invalid_response', 'AI returned no usable page designs; the compiled pages were preserved.');
+
     /** Validate a single op against the canonical contract; duplicates are never acceptable. */
     const screen = (candidateProposal: WizardLaneBEnrichmentProposal, op: WizardLaneBEnrichmentProposal['fileOps'][number]) => {
       if (candidateProposal.fileOps.filter(other => other.path === op.path).length !== 1) {
@@ -606,13 +641,13 @@ export async function enrichWizardPageBatch(options: {
         const repairResponse = await invoke({
           mode: 'wizard-canonical-enrichment',
           messages: [
-            { role: 'user', content: JSON.stringify(options.request) },
+            { role: 'user', content: JSON.stringify(request) },
             { role: 'assistant', content: JSON.stringify(proposal) },
             {
               role: 'user',
               content: JSON.stringify({
                 repair: true,
-                instruction: 'Your previous proposal failed canonical validation. Return the same proposal envelope with fileOps for ONLY the listed paths, fixing every violation. Keep identity fields (wizardSeedId, snapshotId, designRegistrySignature) unchanged.',
+                instruction: 'Your previous proposal failed canonical validation. Return the same proposal envelope with fileOps for ONLY the listed paths, fixing every violation listed below against the CANONICAL VALIDATION CONTRACT in the context record. Keep identity fields (wizardSeedId, snapshotId, designRegistrySignature) unchanged.',
                 issues: failures,
               }),
             },
@@ -621,7 +656,9 @@ export async function enrichWizardPageBatch(options: {
           vfsFiles: buildLaneBVfsContext(options.files),
         }, { timeoutMs: LANE_B_WALL_CLOCK_BUDGET_MS + 5000, signal: options.signal });
         options.signal.throwIfAborted();
-        const repaired = repairResponse.data ? decodeWizardLaneBProposal(repairResponse.data) : null;
+        const repairedDecoded = repairResponse.data ? decodeWizardLaneBProposal(repairResponse.data) : null;
+        const repaired = repairedDecoded ? normalize(repairedDecoded) : null;
+
         if (repaired) {
           const stillFailing: typeof failures = [];
           const failedPaths = new Set(failures.map(failure => failure.path));
