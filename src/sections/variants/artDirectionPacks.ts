@@ -445,7 +445,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Editorial Noir',
     description: 'High-contrast editorial grid, dramatic display type, mosaic media.',
     navbarFamily: ['navbar:floating-pill','navbar:minimal-dark', 'navbar:centered-logo'],
-    footerFamily: ['footer:dark-band', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:full-bleed', 'hero:centered', 'hero:prisma-cinematic', 'hero:image-stream'],
       gallery: ['gallery:editorial-mosaic', 'gallery:cinematic-grid', 'gallery:masonry', 'gallery:case-study'],
@@ -499,7 +499,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Cinematic Portfolio',
     description: 'Full-bleed imagery, inspection-led motion, portrait-weighted media.',
     navbarFamily: ['navbar:floating-pill','navbar:minimal-dark', 'navbar:standard'],
-    footerFamily: ['footer:dark-band', 'footer:centered-minimal'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:full-bleed', 'hero:split-image', 'hero:prisma-cinematic', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:lightbox-grid', 'gallery:editorial-mosaic', 'gallery:case-study'],
@@ -553,7 +553,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Luxury Minimal',
     description: 'Quiet layout, generous whitespace, restrained motion and framed media.',
     navbarFamily: ['navbar:floating-pill','navbar:centered-logo', 'navbar:minimal-dark'],
-    footerFamily: ['footer:centered-minimal', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:centered', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:feature-split', 'gallery:editorial-mosaic', 'gallery:case-study'],
@@ -607,7 +607,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Soft Editorial',
     description: 'Warm rounded surfaces, human proof, medium media density.',
     navbarFamily: ['navbar:floating-pill','navbar:standard', 'navbar:centered-logo'],
-    footerFamily: ['footer:columns', 'footer:centered-minimal'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:masonry', 'gallery:lightbox-grid', 'gallery:case-study'],
@@ -661,7 +661,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Bold Commercial',
     description: 'Loud hierarchy, conversion-forward blocks, compact density.',
     navbarFamily: ['navbar:floating-pill', 'navbar:standard', 'navbar:minimal-dark'],
-    footerFamily: ['footer:brand-social', 'footer:dark-band', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:prisma-cinematic', 'hero:showcase-panel', 'hero:commerce-gradient', 'hero:split-image', 'hero:full-bleed', 'hero:image-stream'],
       gallery: ['gallery:collection-tiles', 'gallery:lightbox-grid', 'gallery:masonry', 'gallery:case-study'],
@@ -716,7 +716,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Glass Tech',
     description: 'Product-led surfaces, systematic grids, precise progressive disclosure.',
     navbarFamily: ['navbar:floating-pill','navbar:minimal-dark', 'navbar:standard'],
-    footerFamily: ['footer:columns', 'footer:dark-band'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:centered', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:lightbox-grid', 'gallery:case-study'],
@@ -770,7 +770,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Organic Studio',
     description: 'Natural pacing, soft geometry, service storytelling over hard sell.',
     navbarFamily: ['navbar:floating-pill','navbar:centered-logo', 'navbar:standard'],
-    footerFamily: ['footer:centered-minimal', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:masonry', 'gallery:feature-split', 'gallery:case-study'],
@@ -824,7 +824,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Commerce Editorial',
     description: 'Catalog-led grids with editorial framing and product focus motion.',
     navbarFamily: ['navbar:floating-pill', 'navbar:standard', 'navbar:centered-logo'],
-    footerFamily: ['footer:brand-social', 'footer:columns', 'footer:dark-band'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:prisma-cinematic', 'hero:commerce-gradient', 'hero:showcase-panel', 'hero:full-bleed', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:collection-tiles', 'gallery:masonry', 'gallery:lightbox-grid', 'gallery:case-study'],
@@ -882,7 +882,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Swiss Grid',
     description: 'Strict modular grid, hairline rules, zero ornament, typographic hierarchy only.',
     navbarFamily: ['navbar:floating-pill','navbar:standard', 'navbar:minimal-dark'],
-    footerFamily: ['footer:columns', 'footer:centered-minimal'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:editorial-mosaic', 'gallery:case-study'],
@@ -936,7 +936,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Print Serif',
     description: 'Long-form magazine feel, wide measure, drop-cap scale, duotone photography.',
     navbarFamily: ['navbar:floating-pill','navbar:centered-logo', 'navbar:standard'],
-    footerFamily: ['footer:centered-minimal', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:prisma-cinematic', 'hero:centered', 'hero:full-bleed', 'hero:image-stream'],
       gallery: ['gallery:editorial-mosaic', 'gallery:feature-split', 'gallery:case-study'],
@@ -990,7 +990,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Neon Grid',
     description: 'Saturated accent bloom over dark panels, glowing edges, kinetic reveals.',
     navbarFamily: ['navbar:floating-pill','navbar:minimal-dark', 'navbar:standard'],
-    footerFamily: ['footer:dark-band', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:prisma-cinematic', 'hero:full-bleed', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:cinematic-grid', 'gallery:lightbox-grid', 'gallery:case-study'],
@@ -1044,7 +1044,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Mono Terminal',
     description: 'Monospaced precision, scanline texture, dense technical tables and rules.',
     navbarFamily: ['navbar:floating-pill','navbar:minimal-dark', 'navbar:standard'],
-    footerFamily: ['footer:columns', 'footer:dark-band'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:centered', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:lightbox-grid', 'gallery:cinematic-grid', 'gallery:case-study'],
@@ -1098,7 +1098,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Brutalist Poster',
     description: 'Oversized type, hard offset shadows, thick rules, unapologetic contrast.',
     navbarFamily: ['navbar:floating-pill','navbar:standard', 'navbar:minimal-dark'],
-    footerFamily: ['footer:dark-band', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:prisma-cinematic', 'hero:full-bleed', 'hero:split-image', 'hero:image-stream'],
       gallery: ['gallery:masonry', 'gallery:lightbox-grid', 'gallery:case-study'],
@@ -1152,7 +1152,7 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
     name: 'Warm Craft',
     description: 'Hand-made warmth, deep rounding, soft masks, unhurried storytelling pace.',
     navbarFamily: ['navbar:floating-pill','navbar:centered-logo', 'navbar:standard'],
-    footerFamily: ['footer:centered-minimal', 'footer:columns'],
+    footerFamily: ['footer:brand-social'],
     sectionFamilies: {
       hero: ['hero:split-image', 'hero:centered', 'hero:image-stream'],
       gallery: ['gallery:feature-split', 'gallery:masonry', 'gallery:case-study'],
