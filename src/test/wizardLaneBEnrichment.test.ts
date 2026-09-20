@@ -33,6 +33,11 @@ const validate = (proposal: unknown) => validateWizardLaneBProposal({
   uiFoundationManifest: { primitiveImports: [], requirements: [] },
 });
 
+const validateWithFiles = (proposal: unknown, files: Record<string, string>) => validateWizardLaneBProposal({
+  proposal, request, files,
+  uiFoundationManifest: { primitiveImports: [], requirements: [] },
+});
+
 describe('Lane B proposal validation', () => {
   it.each([
     null, undefined, 'invalid', [], {},
@@ -88,6 +93,40 @@ describe('Lane B proposal validation', () => {
     }] });
     expect(result.valid).toBe(false);
     expect(result.violations.some((violation) => violation.includes('protected path'))).toBe(true);
+  });
+});
+
+describe('V5 renderable component import gate', () => {
+  const pageWith = (statement: string, tag: string) => ({
+    ...validProposal,
+    fileOps: [{
+      ...validProposal.fileOps[0],
+      content: `${statement} export default function Home(){ return <main><h1>Studio</h1><${tag} /><button data-ut-intent="contact.submit">Contact</button></main>; }`,
+    }],
+  });
+
+  it('accepts valid named and default component imports', () => {
+    const files = {
+      '/src/components/Hero.tsx': 'export function Hero(){ return <section />; }',
+      '/src/components/Nav.tsx': 'export default function Nav(){ return <nav />; }',
+    };
+    expect(validateWithFiles(pageWith('import { Hero } from "@/components/Hero";', 'Hero'), files).valid).toBe(true);
+    expect(validateWithFiles(pageWith('import Nav from "../components/Nav";', 'Nav'), files).valid).toBe(true);
+  });
+
+  it('rejects missing named exports and default/named mismatches', () => {
+    const files = { '/src/components/Hero.tsx': 'export default function Hero(){ return <section />; }' };
+    const missingNamed = validateWithFiles(pageWith('import { Hero } from "@/components/Hero";', 'Hero'), files);
+    expect(missingNamed.violations.some(value => value.includes('does not export Hero'))).toBe(true);
+    const missingDefault = validateWithFiles(pageWith('import Hero from "@/components/Missing";', 'Hero'), files);
+    expect(missingDefault.violations.some(value => value.includes('does not resolve'))).toBe(true);
+  });
+
+  it('accepts namespace member expressions and ignores lowercase intrinsic elements', () => {
+    const files = { '/src/components/Dialog.tsx': 'export const Content = () => <section />;' };
+    const proposal = pageWith('import * as Dialog from "@/components/Dialog";', 'Dialog.Content');
+    expect(validateWithFiles(proposal, files).valid).toBe(true);
+    expect(validateWithFiles(validProposal, {}).valid).toBe(true);
   });
 });
 

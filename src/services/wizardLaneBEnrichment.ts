@@ -42,6 +42,7 @@ import {
   type HomepageVisualLanguage,
 } from '@/services/launch/homepageFirstContract';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
+import { validateRenderableComponentImports } from '@/services/validateRenderableComponentImports';
 
 
 /** The exact registry projection used by the production enrichment request. */
@@ -295,6 +296,8 @@ export const WIZARD_LANE_B_PROTECTED_PATHS = new Set([
 export function validateWizardLaneBProposal(options: {
   proposal: unknown;
   request: WizardLaneBEnrichmentRequest;
+  /** Exact Stage 4b VFS used to resolve local and generated facade exports. */
+  files?: Record<string, string>;
   uiFoundationManifest: {
     primitiveImports: readonly string[];
     requirements: readonly string[];
@@ -411,6 +414,24 @@ export function validateWizardLaneBProposal(options: {
             .join(', ')}.`,
         );
       }
+    }
+  }
+
+  // 9a. A parseable page may still crash React when a JSX component import
+  // resolves to the wrong export shape. Validate against the exact candidate
+  // VFS before the page is allowed to replace its Stage 4b source.
+  if (options.files) {
+    const candidateFiles = {
+      ...options.files,
+      ...Object.fromEntries(proposal.fileOps.map(op => [op.path, op.content])),
+    };
+    for (const op of proposal.fileOps) {
+      const renderability = validateRenderableComponentImports({
+        path: op.path,
+        source: op.content,
+        files: candidateFiles,
+      });
+      violations.push(...renderability.violations.map(issue => issue.message));
     }
   }
 
@@ -658,6 +679,7 @@ export async function enrichWizardPageBatch(options: {
         proposal: { ...candidateProposal, fileOps: [op] },
         request: options.request,
         uiFoundationManifest: options.uiFoundationManifest,
+        files: options.files,
       });
     };
 
