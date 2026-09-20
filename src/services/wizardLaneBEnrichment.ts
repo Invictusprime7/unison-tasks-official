@@ -403,6 +403,41 @@ export function validateWizardLaneBProposal(options: {
     }
   }
 
+  // 9c. Canonical 21st identity contract (M8): an enriched page may restyle a
+  // certified section, but it may not invent a variant identity outside the
+  // eligible registry vocabulary, and it may not drop the canonical section
+  // identities Stage 4b compiled into the page.
+  const vocabulary = options.request.designVocabularyReport;
+  const eligibleVariantIds = new Set<string>([
+    ...(vocabulary?.executableIds ?? []),
+    ...(vocabulary?.globalExecutableIds ?? []),
+    ...(vocabulary?.selectedIds ?? []),
+  ]);
+  const readAttribute = (source: string, attribute: string) => new Set(
+    Array.from(source.matchAll(new RegExp(`${attribute}="([^"]+)"`, 'g')), match => match[1]),
+  );
+  for (const op of proposal.fileOps) {
+    if (eligibleVariantIds.size) {
+      for (const variantId of readAttribute(op.content, 'data-ut-variant')) {
+        if (!eligibleVariantIds.has(variantId)) {
+          violations.push(
+            `File ${op.path} declares variant identity "${variantId}", which is not a certified registry implementation for this launch.`,
+          );
+        }
+      }
+    }
+    const currentSource = options.request.currentPageSources?.[op.path]?.content;
+    if (currentSource) {
+      const proposedSectionIds = readAttribute(op.content, 'data-ut-section-id');
+      for (const sectionId of readAttribute(currentSource, 'data-ut-section-id')) {
+        if (!proposedSectionIds.has(sectionId)) {
+          violations.push(
+            `File ${op.path} drops canonical section identity "${sectionId}". Enrichment may restyle a section but must preserve data-ut-section-id.`,
+          );
+        }
+      }
+    }
+  }
 
 
   // 10. Theme token compliance
