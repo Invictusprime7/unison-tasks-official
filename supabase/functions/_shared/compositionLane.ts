@@ -49,7 +49,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
           .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
         ...(page.copy ? {
           copy: Object.fromEntries(Object.entries(page.copy)
-            .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_FAMILIES.has(family))),
+            .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
         } : {}),
       };
     }),
