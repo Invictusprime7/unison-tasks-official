@@ -39,6 +39,14 @@ export interface LaneBBatchPlanInput {
   pages: string[];
   /** Serialized size of the shared (non-page) request context, in bytes. */
   basePayloadBytes: number;
+  /** Serialized size of the shared (non-page) request context, in bytes. */
+  basePayloadBytes: number;
+  /**
+   * The homepage file path. The homepage establishes the site's visual
+   * language, so it is always authored alone in the first batch and every
+   * later batch inherits what it established.
+   */
+  homeFirstPath?: string;
   /** Optional overrides (tests / tuning). */
   bodyBudgetBytes?: number;
   wallClockBudgetMs?: number;

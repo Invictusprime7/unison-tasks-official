@@ -53,6 +53,8 @@ export function renderLaneBCanonicalContract(options: {
   >;
   uiFoundationManifest: { primitiveImports: readonly string[] };
   protectedPaths: Iterable<string>;
+  /** Established by the homepage; absent for the homepage batch itself. */
+  homepageVisualLanguage?: HomepageVisualLanguage;
 }): string {
   const { request } = options;
   const eligibleVariantIds = Array.from(new Set([
@@ -87,6 +89,9 @@ export function renderLaneBCanonicalContract(options: {
     `10. No raw palette values. Forbidden pattern: ${LANE_B_PALETTE_LITERAL_PATTERN.source}`,
     `11. No global or document styles. Forbidden pattern: ${LANE_B_GLOBAL_STYLE_PATTERN.source}`,
     '12. Exactly one <h1> element per page file.',
+    ...(renderHomepageInheritanceContract(options.homepageVisualLanguage)
+      ? [renderHomepageInheritanceContract(options.homepageVisualLanguage)]
+      : []),
     'PER-PAGE REQUIREMENTS:',
     perPage || '  (none)',
   ].join('\n');
