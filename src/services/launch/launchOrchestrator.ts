@@ -693,9 +693,22 @@ export async function runLaunchPipeline(
         }),
       };
 
-      const pagePaths = pageRegistry.map((page) => page.filePath);
+      // Homepage-first: the homepage is authored alone in the first turn and
+      // establishes the visual language every later page inherits.
+      const homePageEntry = Object.entries(siteBundleSnapshot.pageRegistry.pages || {}).find(
+        ([, page]: [string, any]) => page?.isHome,
+      );
+      const homePageId = homePageEntry?.[0]
+        ?? (siteBundleSnapshot.pageRegistry.homePageId as string | undefined)
+        ?? pageRegistry[0]?.id;
+      const homePagePath = pageRegistry.find((page) => page.id === homePageId)?.filePath;
+      const pagePaths = orderHomepageFirst(
+        pageRegistry.map((page) => page.filePath),
+        (path) => path === homePagePath,
+      );
       const batchPlan = planLaneBBatches({
         pages: pagePaths,
+        homeFirstPath: homePagePath,
         basePayloadBytes: measurePayloadBytes({
           ...enrichmentRequest,
           pageRegistry: [],
@@ -703,6 +716,7 @@ export async function runLaunchPipeline(
         }),
       });
       let acceptedBatchCount = 0;
+      let homepageVisualLanguage: HomepageVisualLanguage | undefined;
 
       // Each batch is independently validated and merged. A failed batch leaves
       // its deterministic Stage 4b pages untouched while later batches proceed.
