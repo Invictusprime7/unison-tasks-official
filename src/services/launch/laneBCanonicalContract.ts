@@ -140,7 +140,7 @@ export function normalizeLaneBProposal(
     if (protectedPaths.has(path) || path.startsWith('/.unison') || path.startsWith('/src/unison')) continue;
     if (seen.has(path)) continue;
     seen.add(path);
-    const content = op.content
+    const content = normalizeHeadingStructure(op.content
       .replace(/^\uFEFF/, '')
       .replace(/^\s*```(?:tsx?|jsx?|typescript|javascript)?\s*\n/i, '')
       .replace(/\n\s*```\s*$/, '')
