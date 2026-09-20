@@ -362,7 +362,7 @@ async function runBuilderLane(
     currentCode, editMode = false, debugMode: _debugMode = false,
     templateAction, systemType, variationSeed, templateName, aesthetic, source,
     userDesignProfile, systemsBuildContext, navPageGen = false, navPageName, navLabel,
-    siteElementsLibraryContext, surgicalEdit = false,
+    siteElementsLibraryContext, registryContext, surgicalEdit = false,
     componentBehaviorContext, vfsFiles, gatewayOptions,
     previewDiagnostics, previewSnapshot, recentChangedFiles,
   } = parsed;
@@ -489,6 +489,8 @@ async function runBuilderLane(
     ? ''
     : buildThinkingInstruction(task.skipThinking);
   const elementsLibraryBlock = buildElementsLibraryBlock(siteElementsLibraryContext, surgicalEdit);
+  // V4 M8: identical canonical registry projection for the in-Builder lane.
+  const registryContextBlock = buildRegistryContextBlock(registryContext);
 
   // For surgical edits, use old-style VFS context (byte-for-byte preservation)
   // For ALL edit tasks, provide VFS context for structure preservation (not just surgical)
@@ -524,7 +526,7 @@ async function runBuilderLane(
         compactedFilesBlock,
         surgicalReinforcement: surgicalEditReinforcement,
         researchContext,
-        designContext: systemTypeContext + designProfileContext,
+        designContext: systemTypeContext + designProfileContext + registryContextBlock,
         blueprintContext: systemsBuildContextText,
         elementsLibrary: elementsLibraryBlock,
         thinkingInstruction,
@@ -542,7 +544,7 @@ async function runBuilderLane(
         compactedFilesBlock,
         surgicalReinforcement: surgicalEditReinforcement,
         researchContext,
-        designContext: systemTypeContext + designProfileContext,
+        designContext: systemTypeContext + designProfileContext + registryContextBlock,
         blueprintContext: systemsBuildContextText,
         elementsLibrary: elementsLibraryBlock,
         thinkingInstruction,
@@ -557,7 +559,7 @@ async function runBuilderLane(
         compactedFilesBlock,
         researchContext,
         industryPageContext,
-        designContext: systemTypeContext + designProfileContext,
+        designContext: systemTypeContext + designProfileContext + registryContextBlock,
         blueprintContext: systemsBuildContextText,
         elementsLibrary: elementsLibraryBlock,
         thinkingInstruction,

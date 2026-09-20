@@ -161,6 +161,8 @@ export const AIRequestSchema = z.object({
     template_intents: z.array(z.string().max(60)).max(20).optional(),
   }).passthrough().optional(),
   siteElementsLibraryContext: z.string().max(50_000).optional(),
+  /** V4 M8: bounded canonical registry projection shared by both AI layers. */
+  registryContext: z.object({}).passthrough().optional(),
   surgicalEdit: z.boolean().optional(),
   behavioralEdit: z.boolean().optional(),
   targetFile: z.string().max(300).optional(),

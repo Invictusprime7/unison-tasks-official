@@ -147,6 +147,61 @@ export function buildElementsLibraryBlock(siteElementsLibraryContext: unknown, s
   return `\n${siteElementsLibraryContext}\n⚠️ LIBRARY USAGE RULE: The element library above provides STRUCTURE and INTENT WIRING patterns only. For colors, fonts, gradients, card styles, and visual effects, follow the industry variation system, design profile, and brand palette provided elsewhere in this prompt. Do NOT copy visual styles from the library skeletons — create a UNIQUE design each time.\n`;
 }
 
+// ── Canonical registry context (V4 M8) ───────────────────────────────────────
+
+/**
+ * Both AI layers (Wizard composer / Lane B and the in-Builder assistant) must
+ * reason over the SAME canonical registry projection: certified variants per
+ * section family, component-state contracts, artifact contracts, runtime
+ * dependencies and capability requirements.
+ */
+export function buildRegistryContextBlock(registryContext: unknown): string {
+  if (!registryContext || typeof registryContext !== 'object') return '';
+  const ctx = registryContext as {
+    industry?: string;
+    templateId?: string;
+    themePresetId?: string;
+    artDirectionPackId?: string;
+    generationPolicy?: string;
+    sections?: Array<{ type?: string; allowedVariantIds?: string[]; artifactId?: string | null }>;
+    implementations?: Array<{
+      id?: string;
+      sectionType?: string;
+      certification?: string;
+      componentStates?: { states?: string[]; responsive?: string[] };
+      artifactContract?: { supportedSlots?: readonly string[]; intentBindings?: readonly string[] };
+    }>;
+    capabilityRequirements?: Array<{ id?: string; providedIntents?: string[] }>;
+    runtimeDependencies?: Record<string, string>;
+  };
+  const sections = (ctx.sections ?? [])
+    .filter((section) => (section.allowedVariantIds?.length ?? 0) > 0)
+    .map((section) => `- ${section.type}: ${(section.allowedVariantIds ?? []).join(', ')}${section.artifactId ? ` (artifact ${section.artifactId})` : ''}`)
+    .join('\n');
+  const states = (ctx.implementations ?? [])
+    .filter((implementation) => implementation.componentStates?.states?.length)
+    .slice(0, 40)
+    .map((implementation) => `- ${implementation.id}: states ${(implementation.componentStates?.states ?? []).join('/')}; responsive ${(implementation.componentStates?.responsive ?? []).join('/')}`)
+    .join('\n');
+  const capabilities = (ctx.capabilityRequirements ?? [])
+    .map((capability) => `${capability.id}${capability.providedIntents?.length ? ` (${capability.providedIntents.join(', ')})` : ''}`)
+    .join('; ');
+  const deps = Object.keys(ctx.runtimeDependencies ?? {}).join(', ');
+
+  return `\n\n## CANONICAL REGISTRY CONTEXT (authoritative)
+Industry: ${ctx.industry ?? 'unknown'} | Template: ${ctx.templateId ?? 'unknown'} | Theme: ${ctx.themePresetId ?? 'unknown'}${ctx.artDirectionPackId ? ` | Art direction: ${ctx.artDirectionPackId}` : ''}${ctx.generationPolicy ? ` | Policy: ${ctx.generationPolicy}` : ''}
+${sections ? `\nCertified variants eligible per section family:\n${sections}` : ''}
+${states ? `\nComponent-state contracts to honour:\n${states}` : ''}
+${capabilities ? `\nCapability requirements: ${capabilities}` : ''}
+${deps ? `\nAllowed runtime dependencies: ${deps}` : ''}
+
+RULES:
+- Only reference variant IDs listed above; never invent a design ID.
+- Preserve the declared component states (hover/focus/expanded/loading/reduced-motion) when rewriting a section.
+- Do not add runtime dependencies outside the allowed list.
+`;
+}
+
 // ── VFS files context ────────────────────────────────────────────────────────
 
 export function buildVfsFilesContext(surgicalEdit: boolean, vfsFiles?: Record<string, string>): string {
