@@ -325,18 +325,10 @@ function buildActiveVariants(templateId: string | null | undefined, seed: string
   return Object.fromEntries(composition.sections.flatMap((section) => {
     const candidates = getGenerationVariantsForSection(section.type, packId ? ART_DIRECTION_PACKS[packId] : undefined, 'home');
     if (!candidates.length) throw new Error('No certified 21st implementation for ' + section.type);
-    const score = (id: string) => {
-      const implementation = getDesignImplementation(id);
-      return (implementation?.vfs?.mode === 'portable-recipe' ? 4 : 0)
-        + (implementation?.radixPrimitives?.length || 0) * 2;
-    };
-    const richest = Math.max(0, ...candidates.map(variant => score(variant.id)));
-    const variants = candidates.filter(variant => score(variant.id) === richest);
-    if (variants.length === 0) return [];
     const layout = (section.props as { layout?: string }).layout;
     const baselineVariantId = section.variantId ?? getVariantIdForLayout(section.type, layout);
-    const baselineIndex = Math.max(0, variants.findIndex((variant) => variant.id === baselineVariantId));
-    const selected = variants[(baselineIndex + stableIndex(`${seed}|${section.id}`, variants.length)) % variants.length]?.id;
+    const baselineIndex = Math.max(0, candidates.findIndex((variant) => variant.id === baselineVariantId));
+    const selected = candidates[(baselineIndex + stableIndex(`${seed}|${section.id}`, candidates.length)) % candidates.length]?.id;
     return selected ? [[section.id, selected]] : [];
   })) as Record<string, VariantId>;
 }

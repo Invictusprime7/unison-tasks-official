@@ -1881,23 +1881,25 @@ export function clampVariantToPack(
   return family[0];
 }
 
-/** New AI compositions use only executable 21st implementations. Saved IDs remain resolvable. */
+/**
+ * Fresh generation uses only preferred, executable 21st implementations.
+ *
+ * When a pack is supplied its declared family is a hard boundary. Returning
+ * the global certified pool when that family is empty silently erases the
+ * selected Art Direction, so incomplete packs intentionally return no
+ * candidates and are handled by the launch coverage policy.
+ * Saved and legacy IDs remain resolvable through the unfiltered registry APIs.
+ */
 export function getGenerationVariantsForSection(sectionType: SectionType, pack?: ArtDirectionPack, role?: string): SectionVariant[] {
-  // Certification is the hard gate. `pageRoles` and the pack family are
-  // *preferences*: a section that is legal to compile must never resolve to an
-  // empty set just because no certified variant happens to declare this page
-  // role — that produced spurious "no certified 21st implementation" coverage
-  // gaps for roles like gallery:services.
   const certified = getVariantsForSection(sectionType).filter(variant =>
     variant.source?.origin === '21st' && variant.vfs?.mode === 'portable-recipe' &&
-    variant.vfs.certification === 'approved' && variant.generationStatus !== 'legacy');
-  const roleMatched = role
-    ? certified.filter(variant => !variant.pageRoles?.length || variant.pageRoles.some(candidate => candidate === role))
+    variant.vfs.certification === 'approved' && variant.generationStatus === 'preferred');
+  const packScoped = pack
+    ? certified.filter(variant => familyForSection(pack, sectionType).includes(variant.id))
     : certified;
-  const eligible = roleMatched.length ? roleMatched : certified;
-  const declared = pack ? familyForSection(pack, sectionType) : [];
-  const compatible = eligible.filter(variant => declared.includes(variant.id));
-  return compatible.length ? compatible : eligible;
+  if (!role) return packScoped;
+  return packScoped.filter(variant =>
+    !variant.pageRoles?.length || variant.pageRoles.some(candidate => candidate === role));
 }
 
 /**
