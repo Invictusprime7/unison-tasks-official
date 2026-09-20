@@ -647,7 +647,7 @@ export async function enrichWizardPageBatch(options: {
               role: 'user',
               content: JSON.stringify({
                 repair: true,
-                instruction: 'Your previous proposal failed canonical validation. Return the same proposal envelope with fileOps for ONLY the listed paths, fixing every violation. Keep identity fields (wizardSeedId, snapshotId, designRegistrySignature) unchanged.',
+                instruction: 'Your previous proposal failed canonical validation. Return the same proposal envelope with fileOps for ONLY the listed paths, fixing every violation listed below against the CANONICAL VALIDATION CONTRACT in the context record. Keep identity fields (wizardSeedId, snapshotId, designRegistrySignature) unchanged.',
                 issues: failures,
               }),
             },
