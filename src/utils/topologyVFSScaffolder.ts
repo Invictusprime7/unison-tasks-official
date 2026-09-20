@@ -269,6 +269,11 @@ function normalizeWizardSeed(seed: Record<string, unknown> | undefined): Normali
     phone: findSocial('phone') || (socials.find((s) => s.phone)?.phone as string | undefined),
     address: findSocial('address'),
     socials,
+    media: buildSeedMediaLibrary(
+      (Array.isArray((seed.media as { assets?: unknown })?.assets)
+        ? ((seed.media as { assets: unknown[] }).assets)
+        : []) as Array<Record<string, unknown>>,
+    ),
   };
 }
 
