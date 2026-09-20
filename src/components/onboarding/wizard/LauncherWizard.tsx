@@ -154,6 +154,8 @@ export const LauncherWizard = ({
   );
   const [artDirectionPackId, setArtDirectionPackId] = useState<ArtDirectionPackId | null>(null);
   const [experience, setExperience] = useState<WizardExperiencePreference>("standard");
+  const [sectionPins, setSectionPins] = useState<Record<string, VariantId>>({});
+
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [visionPrompt, setVisionPrompt] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<WizardPromptAnalysis | null>(
