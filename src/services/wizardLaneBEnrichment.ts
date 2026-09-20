@@ -36,6 +36,11 @@ import {
   normalizeLaneBProposal,
   renderLaneBCanonicalContract,
 } from '@/services/launch/laneBCanonicalContract';
+import {
+  alignWithHomepageVisualLanguage,
+  validateHomepageInheritance,
+  type HomepageVisualLanguage,
+} from '@/services/launch/homepageFirstContract';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 
 
