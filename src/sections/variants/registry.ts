@@ -1898,9 +1898,14 @@ export function getGenerationVariantsForSection(sectionType: SectionType, pack?:
     ? certified.filter(variant => familyForSection(pack, sectionType).includes(variant.id))
     : certified;
   if (!role) return packScoped;
-  return packScoped.filter(variant =>
+  // Page role is a preference, never a hard gate: certification is the only
+  // hard requirement, so a role with no role-declared variants falls back to
+  // the full certified set instead of resolving empty.
+  const roleScoped = packScoped.filter(variant =>
     !variant.pageRoles?.length || variant.pageRoles.some(candidate => candidate === role));
+  return roleScoped.length ? roleScoped : packScoped;
 }
+
 
 /**
  * Builder-facing variant list.
