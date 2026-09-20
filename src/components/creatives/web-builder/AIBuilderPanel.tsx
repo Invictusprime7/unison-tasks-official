@@ -82,6 +82,7 @@ import { wireGhlBinding } from '@/services/skills/ghlSkillPack';
 import { detectSections } from '@/utils/sectionSwapper';
 import { isThemeOnlyRequest } from '@/services/theme/themeEdit';
 import { isBuilderSessionError, runBuilderTurn } from '@/services/builderBrainClient';
+import { resolveBuilderRegistryContext } from '@/services/builderRegistryContext';
 import {
   envelopeRunIdFromResponse,
   recordRunOutcome,
