@@ -579,10 +579,23 @@ export async function enrichWizardPageBatch(options: {
   options.signal.throwIfAborted();
   if (options.enabled === false) return unchanged;
   const reject = (code: string, message: string) => { options.onDegrade?.(code, message); return unchanged; };
+  // The model receives the canonical rule set rendered from the very constants
+  // the validator asserts, so a compliant response cannot fail a rule it never saw.
+  const request: WizardLaneBEnrichmentRequest = {
+    ...options.request,
+    canonicalContract: renderLaneBCanonicalContract({
+      request: options.request,
+      uiFoundationManifest: options.uiFoundationManifest,
+      protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS,
+    }),
+  };
+  /** Mechanical envelope defects are repaired deterministically, never rejected. */
+  const normalize = (candidate: WizardLaneBEnrichmentProposal) =>
+    normalizeLaneBProposal(candidate, options.request, WIZARD_LANE_B_PROTECTED_PATHS);
   try {
     const response = await invoke({
       mode: 'wizard-canonical-enrichment',
-      messages: [{ role: 'user', content: JSON.stringify(options.request) }],
+      messages: [{ role: 'user', content: JSON.stringify(request) }],
       wizardSeed: { id: options.request.wizardSeedId },
       vfsFiles: buildLaneBVfsContext(options.files),
     }, { timeoutMs: LANE_B_WALL_CLOCK_BUDGET_MS + 5000, signal: options.signal });
@@ -595,8 +608,11 @@ export async function enrichWizardPageBatch(options: {
       const reason = status === 401 || status === 403 ? 'authentication' : status === 429 ? 'rate_limited' : status === 400 || status === 413 ? 'request_rejected' : errorType === 'enrichment_contract' || errorType === 'enrichment_identity' ? 'invalid_response' : 'provider';
       return reject('enrich.' + reason, 'AI enrichment failed: ' + reason.replace(/_/g, ' ') + (status ? ' (HTTP ' + status + ')' : '') + (errorType ? ' [' + errorType + ']' : '') + '; the compiled pages were preserved.');
     }
-    const proposal = decodeWizardLaneBProposal(response.data);
-    if (!proposal) return reject('enrich.invalid_response', 'AI returned an invalid design proposal; the compiled pages were preserved.');
+    const decoded = decodeWizardLaneBProposal(response.data);
+    if (!decoded) return reject('enrich.invalid_response', 'AI returned an invalid design proposal; the compiled pages were preserved.');
+    const proposal = normalize(decoded);
+    if (!proposal.fileOps.length) return reject('enrich.invalid_response', 'AI returned no usable page designs; the compiled pages were preserved.');
+
     /** Validate a single op against the canonical contract; duplicates are never acceptable. */
     const screen = (candidateProposal: WizardLaneBEnrichmentProposal, op: WizardLaneBEnrichmentProposal['fileOps'][number]) => {
       if (candidateProposal.fileOps.filter(other => other.path === op.path).length !== 1) {
