@@ -90,8 +90,13 @@ import {
 import {
   measurePayloadBytes,
   planLaneBBatches,
-
 } from "@/services/laneBBatchPlanner";
+import {
+  extractHomepageVisualLanguage,
+  hasEstablishedVisualLanguage,
+  orderHomepageFirst,
+  type HomepageVisualLanguage,
+} from "@/services/launch/homepageFirstContract";
 import { designRegistrySignature } from "@/services/designImplementationRegistry";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
 import { resolveExperienceRequirement, resolveArtDirectionPack } from "@/sections/variants";
