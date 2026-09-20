@@ -127,7 +127,7 @@ Milestone index (status tracked against the phases below):
       certified variants (no legacy renderer fallback). Added the certified
       `gallery:horizontal-reel` variant. Full suite: 200 files / 1643 tests green.
 - [x] M5 Generated UI Foundation expansion.
-- [ ] M6 Artifact / catalog / asset wiring.
+- [x] M6 Artifact / catalog / asset wiring.
 - [x] M7 Wizard Registry Context v2. Executable pack-filtered implementation
       metadata, source provenance, certification, page roles and Radix requirements
       reach composition and Lane B. Compiled descriptors determine selected
