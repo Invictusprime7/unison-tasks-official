@@ -614,8 +614,18 @@ export async function enrichWizardPageBatch(options: {
     }),
   };
   /** Mechanical envelope defects are repaired deterministically, never rejected. */
-  const normalize = (candidate: WizardLaneBEnrichmentProposal) =>
-    normalizeLaneBProposal(candidate, options.request, WIZARD_LANE_B_PROTECTED_PATHS);
+  const normalize = (candidate: WizardLaneBEnrichmentProposal) => {
+    const normalized = normalizeLaneBProposal(candidate, options.request, WIZARD_LANE_B_PROTECTED_PATHS);
+    // Drifting site chrome is mechanical, not a design decision: realign it
+    // with the homepage rather than discarding the page's design.
+    return {
+      ...normalized,
+      fileOps: normalized.fileOps.map(op => ({
+        ...op,
+        content: alignWithHomepageVisualLanguage(op.content, options.request.homepageVisualLanguage),
+      })),
+    };
+  };
   try {
     const response = await invoke({
       mode: 'wizard-canonical-enrichment',

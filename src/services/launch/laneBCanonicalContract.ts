@@ -16,6 +16,10 @@
  *      that are not design decisions and must never cost a page its enrichment.
  */
 
+import {
+  renderHomepageInheritanceContract,
+  type HomepageVisualLanguage,
+} from '@/services/launch/homepageFirstContract';
 import type { WizardLaneBEnrichmentProposal, WizardLaneBEnrichmentRequest } from '@/services/wizardLaneBEnrichment';
 
 /** Literal colour / font-family styling that overrides the Stage 4b preset. */
