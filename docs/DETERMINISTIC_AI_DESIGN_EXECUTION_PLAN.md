@@ -2,7 +2,7 @@
 
 ## Current Wizard AI policy ? user clarification, 2026-09-17
 
-Contextual AI composition is required for new Wizard generation. A missing, invalid or incomplete composition stops before Stage 4b and reports the specific failure. Do not replace it with an AI-disabled launch. The template-free Wizard remains unchanged.
+AI composition is OPTIONAL for new Wizard generation. A missing, invalid or incomplete composition degrades the launch with a visible note and Stage 4b compiles the deterministic Design Intervention for the selected industry layout. AI improves quality but is never an availability risk. The template-free Wizard remains unchanged.
 
 Stage 4b compiles and validates the accepted AI plan using canonical registered implementations. A successful plan does not skip Lane B. Lane B receives that plan as bounded context and may propose registered page-body TSX; only validation, canonical merge, preflight and commitMutation may promote it. Rejected or unavailable refinements preserve the already validated AI-composed pages. Global theme, routes, protected foundation files, intents and commit ownership stay canonical.
 
