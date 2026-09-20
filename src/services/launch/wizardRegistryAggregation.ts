@@ -264,6 +264,7 @@ export function buildWizardAggregatedRegistryContext(options: {
           ...(implementation.radixPrimitives ?? []).map(id => `@radix-ui/react-${id}`),
           ...(implementation.experience?.status === 'enabled' ? foundation.manifest.experience.runtimePackages : []),
         ],
+        componentStates: resolveComponentStateContract(implementation),
         artifactContract: artifact ? {
           artifactId: artifact.artifactId,
           dataSourceKind: artifact.dataSource.kind,
