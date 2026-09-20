@@ -25,7 +25,7 @@ function launch(industryOverlay: 'real_estate', templateId: string) {
 
 describe('immersive page role wiring (all industries)', () => {
   it('registers the immersive page with a classified role at launch', () => {
-    const launched = launch('real-estate', 'real-estate-premium');
+    const launched = launch('real_estate', 'real-estate-premium');
     const pages = Object.values(launched.playground.pageRegistry.pages);
     const immersive = pages.find((page) => page.path === '/experience');
     expect(immersive).toBeDefined();
@@ -33,7 +33,7 @@ describe('immersive page role wiring (all industries)', () => {
   });
 
   it('self-heals legacy drafts whose immersive page persisted pageRole custom', () => {
-    const launched = launch('real-estate', 'real-estate-premium');
+    const launched = launch('real_estate', 'real-estate-premium');
     const registry = launched.playground.pageRegistry;
     const immersive = Object.values(registry.pages).find((page) => page.path === '/experience')!;
     // Simulate a draft saved before the immersive role existed.
