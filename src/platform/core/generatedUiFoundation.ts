@@ -29,14 +29,19 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.9' as const;
+export const GENERATED_UI_FOUNDATION_VERSION = '1.10' as const;
 /** Runtime components emitted by this owner's motion facade, not type exports. */
 export const GENERATED_MOTION_PRIMITIVES = [
   'Reveal', 'RevealGroup', 'Stagger', 'StaggerGroup', 'StaggerItem',
   'MarqueeBand', 'HorizontalRail', 'HoverDepth', 'ImageReveal',
   'ParallaxMedia', 'MaskReveal', 'MotionImage',
 ] as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8']);
+/** Runtime components emitted by this owner's backgrounds facade. */
+export const GENERATED_BACKGROUND_PRIMITIVES = [
+  'OrbitalBackdrop', 'GlowField', 'AnimatedGrid',
+  'NoiseField', 'GradientOrbs', 'MediaCanvas',
+] as const;
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9']);
 
 export const GENERATED_MOTION_TYPES = [
   'MotionRecipe', 'MarqueeBandProps', 'HorizontalRailProps', 'HoverDepthProps',
@@ -235,6 +240,7 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
 const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
   '/.unison/ui-manifest.json',
   '/src/unison/ui/index.ts',
+  '/src/unison/ui/backgrounds.tsx',
   '/src/unison/ui/button.tsx',
   '/src/unison/ui/card.tsx',
   '/src/unison/ui/content.tsx',
@@ -331,6 +337,7 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
     importRoot: '@/unison/ui',
     primitiveImports: [
       '@/unison/ui',
+      '@/unison/ui/backgrounds',
       '@/unison/ui/button',
       '@/unison/ui/card',
       '@/unison/ui/content',
