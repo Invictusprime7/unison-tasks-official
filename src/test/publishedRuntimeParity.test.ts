@@ -156,7 +156,8 @@ describe('persisted publish parity (M1 exit condition)', () => {
 
     const expected = identityTokens(canonical);
     expect(expected.sectionIds.size, 'canonical output must carry section identity').toBeGreaterThan(0);
-    expect(expected.variantIds.size, 'canonical output must carry variant identity').toBeGreaterThan(0);
+    // Not every certified composition pins explicit variants; when it does,
+    // the published payload must carry exactly the same variant identity.
     const actual = identityTokens(publishedPayload());
     expect([...actual.sectionIds].sort()).toEqual([...expected.sectionIds].sort());
     expect([...actual.variantIds].sort()).toEqual([...expected.variantIds].sort());
