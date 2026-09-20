@@ -115,7 +115,13 @@ function deriveSlot(slotId: string, artifact: ResolvedArtifact): ResolvedImpleme
 // Resolution
 // ─────────────────────────────────────────────────────────────────────────────
 
-function deriveDependencies(variant: SectionVariant): {
+/** Dependency-bearing shape shared by SectionVariant and DesignImplementation. */
+type DependencySource = Pick<
+  SectionVariant,
+  'radixPrimitives' | 'vocabulary' | 'vocabularyRefs' | 'experience'
+>;
+
+function deriveDependencies(variant: DependencySource): {
   primitiveDependencies: string[];
   runtimeDependencies: string[];
 } {
