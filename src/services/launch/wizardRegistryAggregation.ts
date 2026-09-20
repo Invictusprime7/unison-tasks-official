@@ -23,6 +23,7 @@ import type { SectionType } from '@/sections/types';
 import { resolveComponentStateContract } from '@/sections/variants/componentStates';
 import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
+import { resolveImplementationContract } from '@/platform/core/resolvedImplementationContract';
 import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
 import { GENERATED_MOTION_PRIMITIVES } from '@/platform/core/generatedUiFoundation';
 import { buildGeneratedUiFoundation } from '@/platform/core/generatedUiFoundation';
@@ -277,6 +278,8 @@ export function buildWizardAggregatedRegistryContext(options: {
           supportedSlots: [...artifact.supportedSlots],
           intentBindings: [...artifact.intentBindings],
           aiEditScope: artifact.aiEditScope,
+          slots: contract?.slots,
+          catalogSurfaceId: contract?.catalogSurfaceId,
         } : undefined,
       };
     })),
