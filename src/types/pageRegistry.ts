@@ -205,6 +205,14 @@ export interface BuilderPage {
   /** Is this the homepage? */
   isHome: boolean;
 
+  /**
+   * Homepage-first visual language. The homepage establishes the site's design
+   * language; every other page records which page it inherited from and the
+   * signature it inherited, so drift is detectable by the topology validator.
+   */
+  visualLanguageSourcePageId?: PageId;
+  visualLanguageSignature?: string;
+
   /** Creation metadata */
   createdAt: string;
   updatedAt: string;
@@ -258,6 +266,15 @@ export interface PageRegistry {
   funnels: Record<string, FunnelGraph>;
   /** Homepage page ID */
   homePageId: PageId;
+  /**
+   * The visual language the homepage established, inherited by every other
+   * page. Stamped once the homepage body is authored and accepted.
+   */
+  visualLanguage?: {
+    sourcePageId: PageId;
+    signature: string;
+    establishedAt: string;
+  };
   /** Version for change detection */
   version: number;
 }
