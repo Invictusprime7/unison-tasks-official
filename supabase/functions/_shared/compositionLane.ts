@@ -100,7 +100,11 @@ export async function runCompositionLane(context: string, headers: Record<string
   const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
     status, headers: { ...headers, 'Content-Type': 'application/json' },
   });
-  const messages = [{ role: 'system', content: COMPOSITION_SYSTEM_PROMPT }, { role: 'user', content: context }];
+  const canonicalContract = typeof options.brief?.canonicalContract === 'string' ? options.brief.canonicalContract : '';
+  const systemPrompt = COMPOSITION_SYSTEM_PROMPT + (canonicalContract
+    ? '\n\n' + canonicalContract + '\nThese machine-checked rules override any general guidance above. Satisfy every one of them.'
+    : '');
+  const messages = [{ role: 'system', content: systemPrompt }, { role: 'user', content: context }];
   let issues: string[] = [];
   let errorType = 'composition_contract';
   for (let attempt = 0; attempt < (options.brief ? 2 : 1); attempt++) {
@@ -111,7 +115,7 @@ export async function runCompositionLane(context: string, headers: Record<string
     try {
       const content = result.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
       const parsed = resultSchema.safeParse(JSON.parse(content));
-      const normalized = parsed.success ? withoutCompilerOwnedVariantSelections(parsed.data) : null;
+      const normalized = parsed.success ? normalizeCompositionPlan(parsed.data, options.brief) : null;
       issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
       errorType = parsed.success ? 'composition_catalog' : 'composition_contract';
       if (normalized && !issues.length) return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
