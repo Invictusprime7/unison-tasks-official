@@ -23,7 +23,10 @@ import { GENERATED_RUNTIME_PROFILE } from '@/platform/core/generatedRuntimeCapab
 
 import { ensureReactImports, sanitizeSvgElements } from '@/utils/aiCodeCleaner';
 import { LAUNCHER_BASE_THEME } from '@/sections/themes';
-import { isSandpackAllowedImport } from '@/utils/sandpackDependencies';
+import {
+  isSandpackAllowedImport,
+  resolvePinnedRuntimeVersion,
+} from '@/utils/sandpackDependencies';
 import { isValidAesthetic } from '@/utils/aestheticToCSS';
 import { buildThemedIndexCss } from '@/components/onboarding/themePresetToIndexCss';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
