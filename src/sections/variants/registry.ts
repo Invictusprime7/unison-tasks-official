@@ -424,9 +424,11 @@ const VARIANT_REGISTRY: VariantRegistry = {
       component: GalleryCinematicGrid,
       vfs: { mode: 'portable-recipe' },
       radixPrimitives: ['dialog'],
-      // Phase 4 declaration only: records the Phase 6A dependency, grants no
-      // capability, and leaves this variant's DOM implementation unchanged.
-      experience: { status: 'declared', vocabulary: { category: 'media', id: 'depth-gallery' } },
+      // M10 (owner-authorized acceptance): the depth-gallery experience is
+      // enabled. Activation still requires a WebGL-eligible envelope, the
+      // heavy vocabulary in the sealed candidates, real bound media and canvas
+      // budget — otherwise the DOM gallery renders unchanged.
+      experience: { status: 'enabled', vocabulary: { category: 'media', id: 'depth-gallery' } },
       thumbnail: '/variants/gallery-cinematic-grid.svg',
       tags: ['cinematic', 'wide'],
       renderJSX: galleryCinematicGridJSX,
