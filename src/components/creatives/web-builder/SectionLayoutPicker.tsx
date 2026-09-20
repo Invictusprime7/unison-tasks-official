@@ -110,7 +110,10 @@ export const SectionLayoutPicker: React.FC<SectionLayoutPickerProps> = ({
 
       {/* Variant groups */}
       {swappableSections.map(section => {
-        const variants = getVariantsForSection(section.type);
+        const currentVariantId =
+          (section.props?.variantId as string | undefined) ?? (section.props?.variant as string | undefined) ?? null;
+        const variants = getVariantsForSection(section.type, currentVariantId);
+
         if (variants.length < 2) return null;
         const meta = sectionTypeLabels[section.type];
 
