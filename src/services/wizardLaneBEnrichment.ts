@@ -656,7 +656,9 @@ export async function enrichWizardPageBatch(options: {
           vfsFiles: buildLaneBVfsContext(options.files),
         }, { timeoutMs: LANE_B_WALL_CLOCK_BUDGET_MS + 5000, signal: options.signal });
         options.signal.throwIfAborted();
-        const repaired = repairResponse.data ? decodeWizardLaneBProposal(repairResponse.data) : null;
+        const repairedDecoded = repairResponse.data ? decodeWizardLaneBProposal(repairResponse.data) : null;
+        const repaired = repairedDecoded ? normalize(repairedDecoded) : null;
+
         if (repaired) {
           const stillFailing: typeof failures = [];
           const failedPaths = new Set(failures.map(failure => failure.path));
