@@ -57,19 +57,26 @@ function canonicalVfsForTemplate(templateId: string): Record<string, string> {
   return { ...files, '/index.html': INDEX_HTML };
 }
 
+/**
+ * Canonical identity is data-driven: the compiled page reads
+ * `data-ut-section-id` / `data-ut-variant` from the sealed composition record
+ * emitted at `/.unison/compositions/pages/*.json`. Parity therefore means the
+ * published payload carries that same record with the same ids and variants.
+ */
 function identityTokens(files: Record<string, string>) {
   const sectionIds = new Set<string>();
   const variantIds = new Set<string>();
-  for (const content of Object.values(files)) {
-    for (const match of content.matchAll(/data-ut-section-id=(?:"|\{")([^"}]+)(?:"|"\})/g)) {
-      sectionIds.add(match[1]);
-    }
-    for (const match of content.matchAll(/data-ut-variant=(?:"|\{")([^"}]+)(?:"|"\})/g)) {
-      variantIds.add(match[1]);
+  for (const [path, content] of Object.entries(files)) {
+    if (!path.replace(/^\/+/, '').startsWith('.unison/compositions/pages/')) continue;
+    const record = JSON.parse(content) as { sections?: Array<{ id?: string; variantId?: string }> };
+    for (const section of record.sections ?? []) {
+      if (section.id) sectionIds.add(section.id);
+      if (section.variantId) variantIds.add(section.variantId);
     }
   }
   return { sectionIds, variantIds };
 }
+
 
 function publishedPayload(): Record<string, string> {
   const call = mocks.invoke.mock.calls.at(-1);
