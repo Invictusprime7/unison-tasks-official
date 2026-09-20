@@ -35,13 +35,18 @@ import {
 } from "@/components/onboarding/themePresets";
 import { StyleTokenCard } from "@/components/onboarding/StyleTokenCard";
 import {
-  ART_DIRECTION_PACKS,
   type ArtDirectionPackId,
 } from "@/sections/variants/artDirectionPacks";
+import {
+  getWizardSectionPickers,
+  getWizardVisualDirections,
+} from "@/services/wizardDesignAvailability";
 import {
   createWizardDesignSelection,
   type WizardExperiencePreference,
 } from "@/services/wizardDesignSelection";
+import type { VariantId } from "@/sections/variants/types";
+
 
 import { ImportProjectZipButton } from "@/components/onboarding/ImportProjectZipButton";
 import { ImportUnisonSiteZipButton } from "@/components/onboarding/ImportUnisonSiteZipButton";
