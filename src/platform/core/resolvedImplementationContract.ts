@@ -139,8 +139,11 @@ function deriveDependencies(variant: SectionVariant): {
 export function resolveImplementationContract(
   variantId: VariantId | string,
 ): ResolvedImplementationContract | null {
-  const variant = getVariantById(variantId as VariantId) ?? getDesignImplementation(variantId);
-  if (!variant) return null;
+  if (!variantId) return null;
+  const variant =
+    getDesignImplementation(variantId) ??
+    (variantId.includes(':') ? getVariantById(variantId as VariantId) : undefined);
+  if (!variant || !variant.id) return null;
 
   const artifact = resolveArtifact(variant.sectionType);
   const { primitiveDependencies, runtimeDependencies } = deriveDependencies(variant);
