@@ -1861,3 +1861,22 @@ export function getGenerationVariantsForSection(sectionType: SectionType, pack?:
   const compatible = eligible.filter(variant => declared.includes(variant.id));
   return compatible.length ? compatible : eligible;
 }
+
+/**
+ * Builder-facing variant list.
+ *
+ * Generation is 21st-only, but the Builder must still show the layout a page is
+ * currently using — otherwise a site built on an older registered variant shows
+ * no selected option and the user cannot switch back to it. So this returns the
+ * generation-eligible set plus the current variant when it is registered.
+ */
+export function getBuilderVariantsForSection(
+  sectionType: SectionType,
+  currentVariantId?: string | null,
+): SectionVariant[] {
+  const eligible = getGenerationVariantsForSection(sectionType);
+  if (!currentVariantId || eligible.some(variant => variant.id === currentVariantId)) return eligible;
+  const current = getVariantsForSection(sectionType).find(variant => variant.id === currentVariantId);
+  return current ? [current, ...eligible] : eligible;
+}
+
