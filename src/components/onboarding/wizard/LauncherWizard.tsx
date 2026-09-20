@@ -181,6 +181,8 @@ export const LauncherWizard = ({
     setTheme(THEME_PRESETS[0] ?? null);
     setArtDirectionPackId(null);
     setExperience("standard");
+    setSectionPins({});
+
     setSocialLinks({});
     setVisionPrompt("");
     setAiAnalysis(null);
