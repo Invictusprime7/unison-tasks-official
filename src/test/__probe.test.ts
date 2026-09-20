@@ -1,13 +1,10 @@
 import { describe, it } from 'vitest';
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
-import { getGenerationVariantsForSection } from '@/sections/variants';
-describe('probe', () => { it('shop coverage', () => {
+import { getGenerationVariantsForSection, getAllVariants } from '@/sections/variants';
+describe('probe', () => { it('all types', () => {
+  const types = [...new Set(getAllVariants().map(v => v.sectionType))];
   for (const pack of Object.values(ART_DIRECTION_PACKS) as any[]) {
-    const out: string[] = [];
-    for (const t of ['hero','stats','pricing','services','features','gallery','testimonials','cta','contact','footer','navbar'] as any[]) {
-      const n = getGenerationVariantsForSection(t, pack, 'shop').length;
-      if (!n) out.push(t);
-    }
-    if (out.length) console.log(pack.id, 'EMPTY:', out.join(','));
+    const empty = types.filter(t => !getGenerationVariantsForSection(t as any, pack, 'shop').length);
+    console.log(pack.id, 'EMPTY:', empty.join(',') || 'none');
   }
 }); });
