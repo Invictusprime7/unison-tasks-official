@@ -4,6 +4,8 @@ import {
   getWizardSectionPickers,
   getWizardVisualDirections,
   isWizardVisualDirectionAvailable,
+  resolveAvailableAutoArtDirectionPackId,
+
   sectionTypesForSelectedPages,
   WIZARD_CORE_SECTION_TYPES,
 } from '@/services/wizardDesignAvailability';
