@@ -38,6 +38,8 @@ const immersiveEnvelope = {
   ...envelope,
   webgl: 'eligible' as const,
   canvasBudget: 2,
+  immersiveRequested: true,
+  heroCandidates: ['immersive-product', ...envelope.heroCandidates],
   backgroundCandidates: ['3d-scene', ...envelope.backgroundCandidates],
   mediaCandidates: ['depth-gallery', ...envelope.mediaCandidates],
 };
@@ -60,7 +62,7 @@ describe('M10 immersive / 3D acceptance', () => {
   it('selects the immersive scene and depth gallery for an eligible site', () => {
     const activation = resolveCompositionEnhancements(withRealMedia, immersiveEnvelope);
     const selected = activation.decisions.filter((d) => d.reason === 'selected').map((d) => d.recipeId);
-    expect(selected).toContain('scene-backdrop');
+    expect(selected).toContain('immersive-hero');
     expect(selected).toContain('depth-gallery');
     expect(activation.canvasRoots).toBeGreaterThan(0);
     expect(activation.canvasRoots).toBeLessThanOrEqual(2);
@@ -74,7 +76,7 @@ describe('M10 immersive / 3D acceptance', () => {
       }),
     };
     const page = files[pagePath];
-    expect(page).toContain('SceneBackground');
+    expect(page).toContain('ImmersiveHero');
     expect(page).toContain('DepthGallery');
     const preflight = runExperiencePreflight(files);
     expect(preflight.violations).toEqual([]);
@@ -87,6 +89,18 @@ describe('M10 immersive / 3D acceptance', () => {
     const activation = resolveCompositionEnhancements(withRealMedia, { ...immersiveEnvelope, webgl: 'ineligible', canvasBudget: 0 });
     expect(activation.canvasRoots).toBe(0);
     expect(activation.decisions.some((d) => d.reason === 'incompatible-capability')).toBe(true);
+  });
+
+  it('keeps immersive scenes absent until the Wizard need is selected', () => {
+    const activation = resolveCompositionEnhancements(withRealMedia, { ...immersiveEnvelope, immersiveRequested: false });
+    expect(activation.decisions.find((decision) => decision.recipeId === 'immersive-hero')?.reason).toBe('not-applicable');
+  });
+
+  it('emits a pointer-responsive, frame-rate-independent scene with a DOM fallback', () => {
+    const scene = foundation['/src/unison/ui/experience/scene.tsx'];
+    expect(scene).toContain('state.pointer.x');
+    expect(scene).toContain('delta * 3.5');
+    expect(scene).toContain('fallback={<div');
   });
 
   it('mounts no depth gallery when the business has no real media', () => {

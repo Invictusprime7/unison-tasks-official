@@ -6,6 +6,7 @@ import { EXPERIENCE_PERFORMANCE_BUDGET } from '@/platform/core/generatedRuntimeC
 /** Executable adapters only. Vocabulary without an adapter is never mounted. */
 export const COMPOSITION_ENHANCEMENTS = [
   { id: 'editorial-reveal', category: 'motion', vocabularyId: null, sectionTypes: ['about', 'services', 'features', 'testimonials', 'stats', 'team', 'pricing', 'contact', 'cta', 'faq', 'gallery', 'blog-preview', 'before-after', 'logo-cloud'], canvasRoots: 0, imports: ["import { Reveal } from '@/unison/ui/motion';"] },
+  { id: 'immersive-hero', category: 'hero', vocabularyId: 'immersive-product', sectionTypes: ['hero'], canvasRoots: 1, imports: ["import { ImmersiveHero } from '@/unison/ui/experience/scene';"] },
   { id: 'scene-backdrop', category: 'background', vocabularyId: '3d-scene', sectionTypes: ['hero'], canvasRoots: 1, imports: ["import { SceneBackground } from '@/unison/ui/experience/scene';"] },
   { id: 'depth-gallery', category: 'media', vocabularyId: 'depth-gallery', sectionTypes: ['gallery'], canvasRoots: 1, imports: ["import { DepthGallery } from '@/unison/ui/experience/media';", "import * as ExperienceTabs from '@/unison/ui/radix/tabs';", "import { Container } from '@/unison/ui/layout';"] },
 ] as const;
@@ -39,6 +40,8 @@ export function resolveCompositionEnhancements(
       if (!(recipe.sectionTypes as readonly string[]).includes(section.type)) continue;
       let reason: EnhancementReason = 'selected';
       if (!getDesignImplementation(implementationId)) reason = 'missing-implementation';
+      else if (recipe.id === 'immersive-hero' && (!envelope?.immersiveRequested || !['home', 'immersive'].includes(template.pageRole || 'home'))) reason = 'not-applicable';
+      else if (recipe.id === 'scene-backdrop' && envelope?.immersiveRequested && ['home', 'immersive'].includes(template.pageRole || 'home')) reason = 'not-applicable';
       else if (recipe.id === 'scene-backdrop' && section.sourceSectionId) reason = 'not-applicable';
       else if (recipe.canvasRoots && (!envelope || envelope.webgl === 'ineligible')) reason = 'incompatible-capability';
       else if (recipe.id === 'scene-backdrop' && !envelope?.backgroundCandidates.includes('3d-scene')) reason = 'incompatible-capability';
@@ -75,6 +78,8 @@ export function emitCompositionEnhancements(activation?: CompositionActivation):
       case 'scene-backdrop':
         // Keep the canonical hero, its media and actions intact. The scene is decorative.
         return `if (${condition}) content = <div className="relative isolate"><div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-20"><SceneBackground className="z-0" /></div>{content}</div>;`;
+      case 'immersive-hero':
+        return `if (${condition}) content = <div data-ut-enhancement="immersive-hero"><ImmersiveHero intensity="cinematic" className="rounded-none">{content}</ImmersiveHero></div>;`;
       case 'depth-gallery':
         // Hydrated props, not frozen sample items. Grid retains the existing lightbox.
         return `if (${condition} && Array.isArray(props.items) && props.items.length) content = <ExperienceTabs.Root defaultValue="depth" className="ut-block" data-ut-enhancement="depth-gallery">

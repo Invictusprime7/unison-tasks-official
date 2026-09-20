@@ -152,6 +152,7 @@ export interface WizardDesignInterventionInput {
   needsBooking?: boolean;
   sellsProducts?: boolean;
   wantsLeadCapture?: boolean;
+  needsImmersive?: boolean;
 }
 
 const LAYOUT_RECIPES = new Set<WizardDesignIntervention['layoutRecipe']>([
@@ -461,6 +462,7 @@ export function buildWizardDesignIntervention(
     sellsProducts: input.sellsProducts,
     needsBooking: input.needsBooking,
     wantsLeadCapture: input.wantsLeadCapture,
+    immersiveRequested: input.needsImmersive,
     disallowWebgl: experience.budget === 'none',
   });
   const brief = buildArtDirectionBrief(envelope, artDirectionPackId);
@@ -476,7 +478,7 @@ export function buildWizardDesignIntervention(
   // The immersive layer is only offered when a registered implementation
   // enables it; otherwise the launch approves nothing and preflight would
   // reject any edit that followed an immersive instruction.
-  const experienceApproved =
+  const experienceApproved = input.needsImmersive ||
     resolveExperienceRequirement(Object.values(activeVariants)).capabilities.length > 0;
   const experienceDirective = experienceApproved
     ? `Experience budget is "${experience.budget}" — compose the immersive layer only from @/unison/ui/experience (${experienceRecipes.join(', ')}), at most one heavy primitive per page band and two per page, and never import three/@react-three/* directly.`

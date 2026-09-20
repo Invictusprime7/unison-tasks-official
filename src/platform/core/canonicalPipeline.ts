@@ -430,6 +430,7 @@ export function executeCanonicalPipeline(
     needsBooking: selections.needsBooking,
     sellsProducts: selections.sellsProducts,
     wantsLeadCapture: selections.wantsLeadCapture,
+    needsImmersive: selections.needsImmersive,
   });
   const themedCss = buildThemedIndexCssFromTokens(themeTokens, {
     presetId: themePresetId,
@@ -729,6 +730,7 @@ function projectToSiteBundleSnapshot(
     wizardSeedId?: string | null;
     themeTokens?: ThemeTokens;
     interactionManifest?: WizardInteractionManifest;
+    secondaryGoals?: string[];
     uiFoundation?: GeneratedUiManifest;
     designIntervention?: WizardDesignIntervention;
   },

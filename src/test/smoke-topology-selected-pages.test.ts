@@ -96,6 +96,21 @@ describe('selected-pages wizard mode — no blank routes', () => {
     ]);
   });
 
+  it('adds the immersive route only when its selected need has resolved to the role', () => {
+    const withoutNeed = planSiteTopology('agency', 'Acme', {
+      additionalPages: resolvePageSpecsForRoles(['about']),
+      restrictToAdditionalPages: true,
+    });
+    expect(withoutNeed.pages.some((page) => page.route === '/experience')).toBe(false);
+
+    const withNeed = planSiteTopology('agency', 'Acme', {
+      additionalPages: resolvePageSpecsForRoles(['about', 'immersive']),
+      restrictToAdditionalPages: true,
+    });
+    expect(withNeed.pages.map((page) => [page.role, page.route])).toContainEqual(['immersive', '/experience']);
+    expect(generateCanonicalRouterFromPlan(withNeed)).toContain('path="/experience"');
+  });
+
   it('resolves every page role exposed by the Wizard catalog', () => {
     const resolvedPaths = resolvePageSpecsForRoles(PAGE_CHOICES.map((choice) => choice.id));
     expect(resolvedPaths).toHaveLength(PAGE_CHOICES.length);

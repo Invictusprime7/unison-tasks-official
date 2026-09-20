@@ -73,6 +73,8 @@ export interface ExperienceEnvelope {
   webgl: WebglEligibility;
   /** Max heavy (WebGL) primitives the composition may mount per page. */
   canvasBudget: number;
+  /** Explicit Wizard need; eligibility alone never creates immersive routes or scenes. */
+  immersiveRequested?: boolean;
   heroCandidates: string[];
   contentCandidates: string[];
   mediaCandidates: string[];
@@ -102,6 +104,7 @@ export interface ExperienceEnvelopeInput {
   wantsLeadCapture?: boolean;
   /** Explicit opt-out (accessibility, performance, or user preference). */
   disallowWebgl?: boolean;
+  immersiveRequested?: boolean;
 }
 
 interface ModelProfile {
@@ -332,6 +335,7 @@ export function resolveExperienceEnvelope(input: ExperienceEnvelopeInput): Exper
     motion: profile.motion,
     webgl,
     canvasBudget,
+    immersiveRequested: Boolean(input.immersiveRequested) && webgl !== 'ineligible',
     heroCandidates,
     contentCandidates,
     mediaCandidates,
