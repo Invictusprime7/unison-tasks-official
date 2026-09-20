@@ -40,9 +40,11 @@ describe('immersive page role wiring (all industries)', () => {
     immersive.pageRole = 'custom';
     immersive.pageType = 'custom';
 
+    const existing = launched.siteBundleSnapshot.vfsFiles;
     expect(() =>
-      compilePlayground(launched.playground, {}, 'Role Healing Co', {
+      compilePlayground(launched.playground, existing, 'Role Healing Co', {
         selectedTemplateId: 'real-estate-premium',
+        stage4bCss: existing['/src/index.css'],
       }),
     ).not.toThrow();
     expect(immersive.pageRole).toBe('immersive');
