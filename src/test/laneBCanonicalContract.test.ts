@@ -3,6 +3,7 @@ import {
   LANE_B_GLOBAL_STYLE_PATTERN,
   LANE_B_LITERAL_STYLE_PATTERN,
   LANE_B_PALETTE_LITERAL_PATTERN,
+  normalizeHeadingStructure,
   normalizeLaneBProposal,
   renderLaneBCanonicalContract,
 } from '@/services/launch/laneBCanonicalContract';
