@@ -18,8 +18,8 @@ describe('certified implementation visual signatures', () => {
   });
 
   it('uses one compatibility graph for standard, motion-rich, and immersive selection', () => {
-    const standard = { geometry: 'centered', mediaDominance: 'low', typographyScale: 'restrained', density: 'balanced', motion: [], composition: 'Static', experienceLevel: 'standard' } as const;
-    const immersive = { ...standard, experienceLevel: 'immersive' } as const;
+    const standard = { geometry: 'centered', mediaDominance: 'low', typographyScale: 'restrained', density: 'balanced', motion: [], composition: 'Static', experienceLevel: 'standard' } satisfies import('@/services/implementationVisualSignature').ImplementationVisualSignature;
+    const immersive = { ...standard, experienceLevel: 'immersive' } satisfies import('@/services/implementationVisualSignature').ImplementationVisualSignature;
     expect(compatibleExperiencePreferences(standard)).toEqual(['standard', 'motion-rich', 'immersive']);
     expect(isImplementationExperienceCompatible(immersive, 'standard')).toBe(false);
     expect(isImplementationExperienceCompatible(immersive, 'immersive')).toBe(true);

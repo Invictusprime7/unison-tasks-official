@@ -422,6 +422,7 @@ export async function runLaunchPipeline(
     businessId: plan.confirmed.businessId,
     projectId: plan.confirmed.projectId,
     assets: [...cloudAssets, ...localAssets],
+    designSelection: plan.designSelection,
   });
 
   // M6 — real business media is projected into the seed so the compiler can
