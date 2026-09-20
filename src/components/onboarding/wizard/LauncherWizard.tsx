@@ -869,24 +869,32 @@ const Chip = ({
   active,
   onClick,
   children,
+  disabled = false,
+  title,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  disabled?: boolean;
+  title?: string;
 }) => (
   <button
     type="button"
     onClick={onClick}
+    disabled={disabled}
+    title={title}
     aria-pressed={active}
     className={cn(
       "rounded-xl border px-4 py-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300",
       active
         ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
         : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:border-white/20 hover:text-white",
+      disabled && "cursor-not-allowed opacity-40 hover:border-white/[0.08] hover:text-slate-300",
     )}
   >
     {children}
   </button>
 );
+
 
 export default LauncherWizard;
