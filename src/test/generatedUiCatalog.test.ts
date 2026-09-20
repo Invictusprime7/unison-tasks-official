@@ -16,6 +16,7 @@ import {
 import {
   REQUIRED_GENERATED_UI_FOUNDATION_PATHS,
   buildGeneratedUiFoundation,
+  buildGeneratedUiFoundationDirective,
 } from '@/platform/core/generatedUiFoundation';
 import {
   SANDPACK_DEPENDENCIES,
@@ -123,8 +124,9 @@ describe('generated UI component catalog', () => {
     for (const importPath of GENERATED_UI_CATALOG_IMPORTS) {
       expect(foundation.manifest.primitiveImports).toContain(importPath);
     }
+    const directive = buildGeneratedUiFoundationDirective(foundation.manifest);
     for (const line of GENERATED_UI_CATALOG_PROMPT_LINES) {
-      expect(foundation.directive).toContain(line);
+      expect(directive).toContain(line);
     }
   });
 
