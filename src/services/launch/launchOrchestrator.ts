@@ -152,6 +152,7 @@ export interface LaunchOrchestratorInput {
   selectedPages: PageChoice[];
   socialLinks?: Record<string, string>;
   existingBusinessId?: string | null;
+  designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
 }
 
 export interface LaunchOrchestratorCallbacks {
@@ -340,6 +341,7 @@ export async function runLaunchPipeline(
     const themeTokens = themePresetToThemeTokens(input.theme);
     const selections: WizardSelections = {
       visionPrompt: input.visionPrompt?.trim(),
+      designSelection: input.designSelection,
       businessName: brand,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
       industryOverlay,

@@ -219,6 +219,8 @@ export interface SiteBundleSnapshotMeta {
    * instead of re-deriving a pack, so the aesthetic cannot drift.
    */
   artDirectionPackId?: string | null;
+  /** Wizard-selected direction, experience posture, and protected section pins. */
+  designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
   /** Durable constrained final interaction plan. */
   interactionManifest?: WizardInteractionManifest;
   /** Explicit chain-of-custody for the Stage 4b dynamic theme stylesheet. */
@@ -733,6 +735,7 @@ function projectToSiteBundleSnapshot(
     secondaryGoals?: string[];
     uiFoundation?: GeneratedUiManifest;
     designIntervention?: WizardDesignIntervention;
+    designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
   },
   source: SiteBundleSnapshotMeta['source'] = 'wizard',
   uiFoundation?: GeneratedUiManifest,
@@ -821,6 +824,7 @@ function projectToSiteBundleSnapshot(
       templateId: resolvedTemplateId,
       artDirectionPackId:
         (designIntervention || selections.designIntervention)?.artDirectionPackId ?? null,
+      designSelection: selections.designSelection,
       wizardSeedId: selections.wizardSeedId ?? undefined,
       generationSeed: (designIntervention || selections.designIntervention)?.seed,
       designPlanSignature: (() => {
