@@ -68,6 +68,7 @@ export function renderLaneBCanonicalContract(options: {
     const source = Object.values(request.currentPageSources ?? {}).find(entry => entry?.filePath === page.filePath)?.content ?? '';
     return [
       `  ${page.filePath}`,
+      `    page role and selected need: ${page.role || 'custom'} — ${page.pageNeed || 'preserve the registered route purpose'}`,
       `    required data-ut-intent values: ${list(page.requiredIntents ?? [])}`,
       `    data-ut-section-id values that MUST all still be present: ${list(attributeValues(source, 'data-ut-section-id'))}`,
     ].join('\n');

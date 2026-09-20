@@ -166,6 +166,8 @@ export interface WizardLaneBEnrichmentRequest {
     route: string;
     title: string;
     requiredIntents: string[];
+    role?: string;
+    pageNeed?: string;
   }>;
 
   /** Current Stage 4b page sources — Lane B enriches these, not the template. */

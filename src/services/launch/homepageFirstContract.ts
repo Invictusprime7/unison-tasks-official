@@ -25,6 +25,19 @@ export interface HomepageVisualLanguage {
   tokens: string[];
   /** Canonical typography/utility classes the homepage established (`ut-hero`, …). */
   typography: string[];
+  /** Bounded business/content anchors inherited by later pages without copying a page body. */
+  contentModel: {
+    headings: string[];
+    intents: string[];
+    sectionFamilies: string[];
+  };
+  /** Reusable architecture cues; body ordering and body variants remain page-specific. */
+  architecture: {
+    spacingClasses: string[];
+    surfaceClasses: string[];
+    contrastRoles: string[];
+    mediaPosture: string[];
+  };
   /** Stable fingerprint of the established language. */
   signature: string;
 }
@@ -36,6 +49,14 @@ const attributeValues = (source: string, attribute: string): string[] =>
   )));
 
 const familyOf = (variantId: string): string => variantId.split(':')[0]?.trim() ?? '';
+
+const bounded = (values: Iterable<string>, limit: number): string[] =>
+  Array.from(new Set(Array.from(values).map(value => value.trim()).filter(Boolean))).slice(0, limit);
+
+const textValues = (source: string, tag: string): string[] => bounded(
+  Array.from(source.matchAll(new RegExp(`<${tag}\\b[^>]*>([^<]{1,240})<\\/${tag}>`, 'gi')), match => match[1]),
+  8,
+);
 
 /** Stable, order-independent fingerprint. FNV-1a over the sorted projection. */
 function fingerprint(parts: string[]): string {
@@ -68,16 +89,40 @@ export function extractHomepageVisualLanguage(
   const typography = Array.from(new Set(
     Array.from(content.matchAll(/\but-(?:hero|display|title|subtitle|eyebrow|body)\b/g), match => match[0]),
   )).sort();
+  const sectionFamilies = bounded(
+    attributeValues(content, 'data-ut-variant').map(familyOf),
+    20,
+  );
+  const contentModel = {
+    headings: bounded([...textValues(content, 'h1'), ...textValues(content, 'h2')], 8),
+    intents: bounded(attributeValues(content, 'data-ut-intent'), 20),
+    sectionFamilies,
+  };
+  const classNames = Array.from(content.matchAll(/className=["']([^"']+)["']/g), match => match[1].split(/\s+/)).flat();
+  const architecture = {
+    spacingClasses: bounded(classNames.filter(value => /^ut-(?:section|rhythm|grid|stack|block|pad)$/.test(value)), 12),
+    surfaceClasses: bounded(classNames.filter(value => /^ut-(?:surface|accent-wash|gradient-panel|divider)$/.test(value)), 12),
+    contrastRoles: bounded(classNames.filter(value => /^(?:bg|text)-(?:background|foreground|card|card-foreground|primary|primary-foreground|secondary|secondary-foreground|muted|muted-foreground|accent|accent-foreground)$/.test(value)), 16),
+    mediaPosture: bounded(classNames.filter(value => /^ut-(?:media|hero-media)$/.test(value)), 8),
+  };
 
   return {
     sourcePageId,
     variants,
     tokens,
     typography,
+    contentModel,
+    architecture,
     signature: fingerprint([
       ...Object.entries(variants).map(([family, id]) => `v:${family}=${id}`),
       ...tokens.map(token => `t:${token}`),
       ...typography.map(entry => `y:${entry}`),
+      ...contentModel.headings.map(entry => `h:${entry}`),
+      ...contentModel.intents.map(entry => `i:${entry}`),
+      ...architecture.spacingClasses.map(entry => `s:${entry}`),
+      ...architecture.surfaceClasses.map(entry => `u:${entry}`),
+      ...architecture.contrastRoles.map(entry => `c:${entry}`),
+      ...architecture.mediaPosture.map(entry => `m:${entry}`),
     ]),
   };
 }
@@ -124,10 +169,14 @@ export function renderHomepageInheritanceContract(
     language!.typography.length
       ? `15. Inherit the homepage type scale; the established tiers are: ${language!.typography.join(', ')}. Reserve the largest tier for the homepage headline.`
       : '15. Inherit the homepage type scale; do not invent new heading tiers.',
-    `16. Established homepage section designs (reuse them wherever the same family appears): ${
-      Object.entries(language!.variants).map(([family, id]) => `${family}=${id}`).join(', ') || 'none'
-    }.`,
+    `16. Ground the page in the homepage business narrative without copying it. Homepage headings: ${listValues(language!.contentModel.headings)}. Canonical actions: ${listValues(language!.contentModel.intents)}.`,
+    `17. Reuse the homepage architecture, not its body composition. Spacing: ${listValues(language!.architecture.spacingClasses)}. Surfaces: ${listValues(language!.architecture.surfaceClasses)}. Contrast roles: ${listValues(language!.architecture.contrastRoles)}. Media posture: ${listValues(language!.architecture.mediaPosture)}.`,
+    '18. Select a distinct role-appropriate body section order and certified body variants. Only navbar and footer identities must match exactly.',
   ].join('\n');
+}
+
+function listValues(values: readonly string[]): string {
+  return values.length ? values.join(', ') : 'none established';
 }
 
 /**

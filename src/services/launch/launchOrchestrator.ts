@@ -660,6 +660,8 @@ export async function runLaunchPipeline(
           route: page.route || `/${id}`,
           title: page.title || id,
           requiredIntents: page.requiredIntents || [],
+          role: page.pageRole || page.pageType || (page.isHome ? 'home' : 'custom'),
+          pageNeed: `${page.title || id}: ${(plan.selections.secondaryGoals || []).join(', ') || 'support the primary business goal'}; preserve this route's distinct purpose and composition.`,
         }),
       );
 

@@ -20,7 +20,10 @@ export type VisualQualityFinding =
   | 'LOW_MEDIA_COVERAGE'
   | 'MISSING_CTA'
   | 'NO_MOTION_COVERAGE'
-  | 'MOBILE_OVERFLOW_RISK';
+  | 'MOBILE_OVERFLOW_RISK'
+  | 'SPACING_SYSTEM_DRIFT'
+  | 'CONTRAST_ROLE_DRIFT'
+  | 'INVALID_H1_COUNT';
 
 export interface VisualQualityPageReport {
   path: string;
@@ -31,6 +34,7 @@ export interface VisualQualityPageReport {
   headingLevels: number[];
   ctaCount: number;
   motionCount: number;
+  h1Count: number;
   findings: VisualQualityFinding[];
 }
 
@@ -62,6 +66,8 @@ const MOTION_TAG = /(?:motion\.|Reveal|Stagger|whileInView|animate=|useScroll|Mo
 const CTA_INTENT = /data-ut-intent\s*=/g;
 const SECTION_TAG = /<section\b/g;
 const FIXED_WIDTH = /\b(?:w|min-w)-\[\s*\d{4,}px\s*\]/g;
+const RAW_SPACING = /\b(?:p[trblxy]?|m[trblxy]?|gap|space-[xy])-\[(?!var\(--ut-)[^\]]+\]/g;
+const RAW_CONTRAST = /\b(?:bg|text|border)-\[(?:#|rgb|hsl)[^\]]+\]/g;
 
 function countMatches(source: string, pattern: RegExp): number {
   return source.match(new RegExp(pattern.source, pattern.flags))?.length ?? 0;
@@ -107,6 +113,7 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
   const ctaCount = countMatches(source, CTA_INTENT);
   const diversity = layoutSignatures(source).size;
   const levels = headingLevels(source);
+  const h1Count = countMatches(source, /<h1\b/g);
 
   const findings: VisualQualityFinding[] = [];
   if (cardGridCount >= 3 && diversity <= 3) findings.push('REPETITIVE_COMPOSITION');
@@ -116,6 +123,9 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
   if (ctaCount === 0) findings.push('MISSING_CTA');
   if (motionCount === 0) findings.push('NO_MOTION_COVERAGE');
   if (countMatches(source, FIXED_WIDTH) > 0) findings.push('MOBILE_OVERFLOW_RISK');
+  if (countMatches(source, RAW_SPACING) > 0) findings.push('SPACING_SYSTEM_DRIFT');
+  if (countMatches(source, RAW_CONTRAST) > 0) findings.push('CONTRAST_ROLE_DRIFT');
+  if (h1Count !== 1) findings.push('INVALID_H1_COUNT');
 
   return {
     path,
@@ -126,6 +136,7 @@ function evaluatePage(path: string, source: string): VisualQualityPageReport {
     headingLevels: levels,
     ctaCount,
     motionCount,
+    h1Count,
     findings,
   };
 }
@@ -149,6 +160,12 @@ const REFINEMENT_DIRECTIVES: Partial<Record<VisualQualityFinding, string>> = {
     'Apply the briefed motion recipes (staged reveal / stagger) within the sealed motion budget.',
   MOBILE_OVERFLOW_RISK:
     'Remove fixed pixel widths that overflow small viewports; use fluid and token-driven sizing.',
+  SPACING_SYSTEM_DRIFT:
+    'Restore the shared spacing rhythm using the established ut-* layout classes and --ut-* tokens instead of raw arbitrary spacing.',
+  CONTRAST_ROLE_DRIFT:
+    'Restore semantic foreground/background pairs from the selected theme; do not use raw color values for text, surfaces, or borders.',
+  INVALID_H1_COUNT:
+    'Restore document hierarchy with exactly one h1 on this page and h2/h3 headings for its body sections.',
 };
 
 export function evaluateVisualQuality(
@@ -178,7 +195,11 @@ export function evaluateVisualQuality(
     .filter((value): value is string => Boolean(value));
 
   const repetitivePages = pages.filter((page) => page.findings.includes('REPETITIVE_COMPOSITION'));
-  const needsRefinement = repetitivePages.length > 0 || findings.includes('THIN_COMPOSITION');
+  const needsRefinement = repetitivePages.length > 0
+    || findings.includes('THIN_COMPOSITION')
+    || findings.includes('SPACING_SYSTEM_DRIFT')
+    || findings.includes('CONTRAST_ROLE_DRIFT')
+    || findings.includes('INVALID_H1_COUNT');
 
   const refinementDirective = needsRefinement && directives.length > 0
     ? [
