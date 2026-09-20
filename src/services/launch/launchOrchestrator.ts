@@ -321,7 +321,8 @@ export async function runLaunchPipeline(
       needsBooking: customerNeeds.includes("book_service"),
       wantsLeadCapture: customerNeeds.includes("request_quote") || customerNeeds.includes("fill_form"),
     });
-    const needsImmersive = immersiveRequested && experienceEnvelope.webgl !== 'ineligible';
+    const needsImmersive = (immersiveRequested || input.designSelection?.experience === 'immersive')
+      && experienceEnvelope.webgl !== 'ineligible';
     const requestedPages = uniqueValues<string>(["home", ...input.selectedPages, ...(needsImmersive ? ['immersive'] : [])]);
     const goalNeeds = GOAL_TO_NEEDS[primaryGoal] || {};
 
@@ -605,6 +606,7 @@ export async function runLaunchPipeline(
     uiFoundation,
     generationBrief: siteBundleSnapshot.meta.generationBrief,
     designIntervention: siteBundleSnapshot.meta.designIntervention,
+    designSelection: siteBundleSnapshot.meta.designSelection,
     registryContext: wizardRegistryContext,
     bindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
       industry: plan.industryOverlay,

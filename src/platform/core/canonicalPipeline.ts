@@ -433,6 +433,7 @@ export function executeCanonicalPipeline(
     sellsProducts: selections.sellsProducts,
     wantsLeadCapture: selections.wantsLeadCapture,
     needsImmersive: selections.needsImmersive,
+    designSelection: selections.designSelection,
   });
   const themedCss = buildThemedIndexCssFromTokens(themeTokens, {
     presetId: themePresetId,
@@ -574,14 +575,20 @@ export function recompileFromPlayground(
   // recompiles preserve chain-of-custody back to the original wizard payload.
   let recoveredSeedId: string | undefined;
   let sealedPackId: string | undefined;
+  let recoveredDesignSelection: import('@/services/wizardDesignSelection').WizardDesignSelection | undefined;
   try {
     const snapRaw = existingVfsFiles['/.unison/site-bundle-snapshot.json'];
     if (snapRaw) {
       const snap = JSON.parse(snapRaw) as {
-        meta?: { wizardSeedId?: string; artDirectionPackId?: string | null };
+        meta?: {
+          wizardSeedId?: string;
+          artDirectionPackId?: string | null;
+          designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
+        };
       };
       recoveredSeedId = snap?.meta?.wizardSeedId;
       sealedPackId = snap?.meta?.artDirectionPackId || undefined;
+      recoveredDesignSelection = snap?.meta?.designSelection;
     }
   } catch { /* ignore */ }
 
@@ -603,6 +610,7 @@ export function recompileFromPlayground(
     templateId: options?.selectedTemplateId,
     themePresetId,
     wizardSeedId: recoveredSeedId,
+    designSelection: recoveredDesignSelection,
   });
   // Art direction is read back from the sealed snapshot meta first, then the
   // sealed design intervention — never re-derived here.
@@ -688,6 +696,7 @@ export function recompileFromPlayground(
       themeId: options?.selectedThemeId,
       templateId: options?.selectedTemplateId,
       wizardSeedId: recoveredSeedId,
+      designSelection: recoveredDesignSelection,
       themeTokens: options.themeTokens,
     },
     'recompile',
