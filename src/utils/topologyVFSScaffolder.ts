@@ -28,6 +28,7 @@ import { EXPERIENCE_PERFORMANCE_BUDGET } from '@/platform/core/generatedRuntimeC
 import { getVariantsForSection } from '@/sections/variants/registry';
 import { getIndustryProfile } from '@/platform/core/industryMatrix';
 import { getDefaultTemplateIdForIndustry, createIndustryStarterSection } from '@/sections/templates/industryDefaultRegistry';
+import { bindMediaToComposition, buildSeedMediaLibrary, type SeedMediaAsset } from '@/services/launch/assetSlotBinding';
 
 /**
  * Options shared by the scaffolding entry points.
