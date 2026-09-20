@@ -39,6 +39,12 @@ export interface LaneBBatchPlanInput {
   pages: string[];
   /** Serialized size of the shared (non-page) request context, in bytes. */
   basePayloadBytes: number;
+  /**
+   * The homepage file path. The homepage establishes the site's visual
+   * language, so it is always authored alone in the first batch and every
+   * later batch inherits what it established.
+   */
+  homeFirstPath?: string;
   /** Optional overrides (tests / tuning). */
   bodyBudgetBytes?: number;
   wallClockBudgetMs?: number;
@@ -100,9 +106,16 @@ export function planLaneBBatches(input: LaneBBatchPlanInput): LaneBBatchPlan {
         : 'cap';
   }
 
-  const batches: string[][] = [];
-  for (let i = 0; i < targets.length; i += pagesPerBatch) {
-    batches.push(targets.slice(i, i + pagesPerBatch));
+  // Homepage-first: the homepage establishes the site's visual language, so it
+  // is authored alone in the first turn and every later turn inherits it.
+  const homeFirstPath = input.homeFirstPath && targets.includes(input.homeFirstPath)
+    ? input.homeFirstPath
+    : null;
+  const remaining = homeFirstPath ? targets.filter((page) => page !== homeFirstPath) : targets;
+
+  const batches: string[][] = homeFirstPath ? [[homeFirstPath]] : [];
+  for (let i = 0; i < remaining.length; i += pagesPerBatch) {
+    batches.push(remaining.slice(i, i + pagesPerBatch));
   }
 
   return {

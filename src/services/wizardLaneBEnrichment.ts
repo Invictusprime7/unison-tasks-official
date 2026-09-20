@@ -36,6 +36,11 @@ import {
   normalizeLaneBProposal,
   renderLaneBCanonicalContract,
 } from '@/services/launch/laneBCanonicalContract';
+import {
+  alignWithHomepageVisualLanguage,
+  validateHomepageInheritance,
+  type HomepageVisualLanguage,
+} from '@/services/launch/homepageFirstContract';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 
 
@@ -198,6 +203,13 @@ export interface WizardLaneBEnrichmentRequest {
    * and the validator can never disagree about the rules.
    */
   canonicalContract?: string;
+
+  /**
+   * The visual language the homepage established. Absent for the homepage
+   * batch itself (it is authored first); present for every later batch, whose
+   * pages must inherit it instead of inventing their own site chrome.
+   */
+  homepageVisualLanguage?: HomepageVisualLanguage;
 }
 
 
@@ -523,6 +535,17 @@ export function validateWizardLaneBProposal(options: {
     }
   }
 
+  // 13b. Homepage-first visual language inheritance. The homepage is authored
+  // first and establishes the site's design language; later pages inherit its
+  // site chrome exactly instead of introducing a second visual system.
+  for (const op of proposal.fileOps) {
+    violations.push(...validateHomepageInheritance({
+      path: op.path,
+      content: op.content,
+      language: options.request.homepageVisualLanguage,
+    }));
+  }
+
   // 14, 15: Merge and preflight safety is handled by canonical merge + preflight
   // gates. This validator confirms structural readiness; final approval happens
   // during canonical merge and strict preflight in buildCanonicalLaunchArtifactsAsync.
@@ -587,11 +610,22 @@ export async function enrichWizardPageBatch(options: {
       request: options.request,
       uiFoundationManifest: options.uiFoundationManifest,
       protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS,
+      homepageVisualLanguage: options.request.homepageVisualLanguage,
     }),
   };
   /** Mechanical envelope defects are repaired deterministically, never rejected. */
-  const normalize = (candidate: WizardLaneBEnrichmentProposal) =>
-    normalizeLaneBProposal(candidate, options.request, WIZARD_LANE_B_PROTECTED_PATHS);
+  const normalize = (candidate: WizardLaneBEnrichmentProposal) => {
+    const normalized = normalizeLaneBProposal(candidate, options.request, WIZARD_LANE_B_PROTECTED_PATHS);
+    // Drifting site chrome is mechanical, not a design decision: realign it
+    // with the homepage rather than discarding the page's design.
+    return {
+      ...normalized,
+      fileOps: normalized.fileOps.map(op => ({
+        ...op,
+        content: alignWithHomepageVisualLanguage(op.content, options.request.homepageVisualLanguage),
+      })),
+    };
+  };
   try {
     const response = await invoke({
       mode: 'wizard-canonical-enrichment',

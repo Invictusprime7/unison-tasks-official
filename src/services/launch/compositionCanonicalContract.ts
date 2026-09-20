@@ -70,6 +70,7 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
     '4. variants maps a family to one eligible catalog ID listed below for that page role. Every variants family must appear in sectionOrder. Provide at least one variant selection per page.',
     '5. navbar and footer are compiler-owned: never select a variant ID for them and never target them with copy.',
     '6. copy is optional and may only target a body family present in sectionOrder. Keys: headline (max 240 chars), subheadline (max 700), description (max 1600). copy.items (1-8 entries) is allowed only for services/features (each item: title max 140, description max 600) and faq (each item: question max 240, answer max 1000). Never invent prices, credentials, metrics, reviews or business facts.',
+    '7. Homepage-first: the "home" page establishes the site visual language. When another page repeats a section family the home page already used, select the same variant ID the home page selected whenever that ID is eligible for the other page role. Only diverge when the home selection is not eligible for that role.',
     'ELIGIBLE VARIANT IDS PER ROLE (choose only from these):',
     perRole || '  (none)',
   ].join('\n');
@@ -117,5 +118,34 @@ export function normalizeCompositionResponse(value: unknown, brief: CompositionC
       : undefined;
     pages.push({ ...page, sectionOrder, variants, ...(copy ? { copy } : {}) });
   }
-  return { ...plan, version: '1.0', pages };
+  return { ...plan, version: '1.0', pages: alignPagesWithHomepage(pages, brief) };
+}
+
+/**
+ * Homepage-first alignment. A repeated section family that drifts to a
+ * different design on a secondary page is mechanical drift, not a design
+ * decision, so it is realigned with the home page whenever the home selection
+ * is eligible for that page role. Copy is never touched.
+ */
+function alignPagesWithHomepage(
+  pages: CompositionPlanPage[],
+  brief: CompositionContractBrief,
+): CompositionPlanPage[] {
+  const home = pages.find(page => page.role === 'home');
+  if (!home) return pages;
+  const eligibleForRole = (variantId: string, role: string): boolean => {
+    const variant = brief.variants.find(entry => entry.id === variantId);
+    if (!variant) return false;
+    return !variant.pageRoles.length || variant.pageRoles.includes(role);
+  };
+  return pages.map(page => {
+    if (page === home) return page;
+    const variants = { ...page.variants };
+    for (const [family, homeVariantId] of Object.entries(home.variants)) {
+      if (!(family in variants)) continue;
+      if (variants[family] === homeVariantId) continue;
+      if (eligibleForRole(homeVariantId, page.role)) variants[family] = homeVariantId;
+    }
+    return { ...page, variants };
+  });
 }

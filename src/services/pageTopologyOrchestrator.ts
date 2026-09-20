@@ -86,6 +86,23 @@ export function applyTopologyChange(
   let editorFilePath: string | null = null;
   let newPageId: string | null = null;
 
+  /** Every page inherits the homepage's established visual language. */
+  const stampVisualLanguage = () => {
+    const language = updated.visualLanguage;
+    for (const page of Object.values(updated.pages)) {
+      if (page.isHome) {
+        page.visualLanguageSourcePageId = page.pageId;
+        page.visualLanguageSignature = language?.signature;
+        continue;
+      }
+      page.visualLanguageSourcePageId = updated.homePageId || language?.sourcePageId;
+      page.visualLanguageSignature = language?.signature;
+    }
+    if (language && updated.homePageId && language.sourcePageId !== updated.homePageId) {
+      updated.visualLanguage = { ...language, sourcePageId: updated.homePageId };
+    }
+  };
+
   switch (change.type) {
     case 'add_page': {
       const pageId = `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -182,6 +199,9 @@ export function applyTopologyChange(
       break;
     }
   }
+
+  // Homepage authority first, then the router derived from it.
+  stampVisualLanguage();
 
   // Regenerate canonical router for file-backed pages only. Newly added pages
   // become routable after the AI Builder writes their component file.

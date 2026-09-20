@@ -91,6 +91,12 @@ import {
   measurePayloadBytes,
   planLaneBBatches,
 } from "@/services/laneBBatchPlanner";
+import {
+  extractHomepageVisualLanguage,
+  hasEstablishedVisualLanguage,
+  orderHomepageFirst,
+  type HomepageVisualLanguage,
+} from "@/services/launch/homepageFirstContract";
 import { designRegistrySignature } from "@/services/designImplementationRegistry";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
 import { resolveExperienceRequirement, resolveArtDirectionPack } from "@/sections/variants";
@@ -693,9 +699,22 @@ export async function runLaunchPipeline(
         }),
       };
 
-      const pagePaths = pageRegistry.map((page) => page.filePath);
+      // Homepage-first: the homepage is authored alone in the first turn and
+      // establishes the visual language every later page inherits.
+      const homePageEntry = Object.entries(siteBundleSnapshot.pageRegistry.pages || {}).find(
+        ([, page]: [string, any]) => page?.isHome,
+      );
+      const homePageId = homePageEntry?.[0]
+        ?? (siteBundleSnapshot.pageRegistry.homePageId as string | undefined)
+        ?? pageRegistry[0]?.id;
+      const homePagePath = pageRegistry.find((page) => page.id === homePageId)?.filePath;
+      const pagePaths = orderHomepageFirst(
+        pageRegistry.map((page) => page.filePath),
+        (path) => path === homePagePath,
+      );
       const batchPlan = planLaneBBatches({
         pages: pagePaths,
+        homeFirstPath: homePagePath,
         basePayloadBytes: measurePayloadBytes({
           ...enrichmentRequest,
           pageRegistry: [],
@@ -703,6 +722,7 @@ export async function runLaunchPipeline(
         }),
       });
       let acceptedBatchCount = 0;
+      let homepageVisualLanguage: HomepageVisualLanguage | undefined;
 
       // Each batch is independently validated and merged. A failed batch leaves
       // its deterministic Stage 4b pages untouched while later batches proceed.
@@ -711,6 +731,7 @@ export async function runLaunchPipeline(
         const batchPathSet = new Set(batchPaths);
         const batchRequest: WizardLaneBEnrichmentRequest = {
           ...enrichmentRequest,
+          homepageVisualLanguage,
           pageRegistry: pageRegistry.filter((page) => batchPathSet.has(page.filePath)),
           currentPageSources: Object.fromEntries(
             Object.entries(enrichmentRequest.currentPageSources)
@@ -726,6 +747,29 @@ export async function runLaunchPipeline(
         enrichedVfsFiles = batch.files;
         for (const path of batch.acceptedPaths) acceptedLaneBPagePaths.add(path);
         if (batch.acceptedPaths.length) acceptedBatchCount += 1;
+
+        // Once the homepage body exists, seal what it established so every
+        // later batch — and the page registry — inherits the same language.
+        if (!homepageVisualLanguage && homePagePath && batchPathSet.has(homePagePath)) {
+          const language = extractHomepageVisualLanguage(
+            enrichedVfsFiles[homePagePath] || '',
+            homePageId || 'home',
+          );
+          if (hasEstablishedVisualLanguage(language)) {
+            homepageVisualLanguage = language;
+            const registryPages = siteBundleSnapshot.pageRegistry.pages || {};
+            siteBundleSnapshot.pageRegistry.visualLanguage = {
+              sourcePageId: language.sourcePageId,
+              signature: language.signature,
+              establishedAt: new Date().toISOString(),
+            };
+            for (const [id, page] of Object.entries(registryPages) as [string, any][]) {
+              page.visualLanguageSourcePageId = language.sourcePageId;
+              page.visualLanguageSignature = language.signature;
+              void id;
+            }
+          }
+        }
       }
 
       console.log('[launch] Lane B enrichment complete:', {

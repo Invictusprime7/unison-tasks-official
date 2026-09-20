@@ -32,7 +32,7 @@ const COMPILER_OWNED_VARIANT_FAMILIES = new Set(['navbar', 'footer']);
  */
 function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: CompositionBrief): z.infer<typeof resultSchema> {
   const seenRoles = new Set<string>();
-  return {
+  const normalized = {
     ...plan,
     pages: plan.pages.filter(page => {
       if (brief && !brief.roles.includes(page.role)) return false;
@@ -52,6 +52,28 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
             .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_VARIANT_FAMILIES.has(family))),
         } : {}),
       };
+    }),
+  };
+
+  // Homepage-first: the home page establishes the site visual language. A
+  // repeated family drifting to another design on a secondary page is
+  // mechanical drift and is realigned when the home choice stays eligible.
+  const home = normalized.pages.find(page => page.role === 'home');
+  if (!brief || !home) return normalized;
+  const eligible = (id: string, role: string) => {
+    const variant = brief.variants.find(entry => entry.id === id);
+    return Boolean(variant && (!variant.pageRoles.length || variant.pageRoles.includes(role)));
+  };
+  return {
+    ...normalized,
+    pages: normalized.pages.map(page => {
+      if (page.role === home.role) return page;
+      const variants = { ...page.variants };
+      for (const [family, homeVariantId] of Object.entries(home.variants)) {
+        if (!(family in variants) || variants[family] === homeVariantId) continue;
+        if (eligible(homeVariantId, page.role)) variants[family] = homeVariantId;
+      }
+      return { ...page, variants };
     }),
   };
 }

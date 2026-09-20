@@ -638,3 +638,8 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 	mechanical envelope defects (code fences, echoed identity, duplicate or
 	out-of-scope file ops) are repaired deterministically instead of failing the
 	page (`src/test/laneBCanonicalContract.test.ts`).
+
+## Homepage-first visual language
+- [x] Homepage authored alone in the first design turn; every later page inherits its established language (homepageFirstContract.ts, laneBBatchPlanner home-first batching, launchOrchestrator stamping).
+- [x] Page registry + topology validator carry and check the established language (visualLanguage / visualLanguageSignature, HOMEPAGE_NOT_FIRST, VISUAL_LANGUAGE_DRIFT).
+- [x] Composition lane home-first rule mirrored client-side and in the deployed edge normalizer.
