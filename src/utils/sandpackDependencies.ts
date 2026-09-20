@@ -149,6 +149,15 @@ export const SANDPACK_RUNTIME_PACKAGE_VERSIONS: Record<string, string> = {
   '@radix-ui/react-toggle-group': '1.1.11',
   '@radix-ui/react-tooltip': '1.2.8',
   'framer-motion': '12.29.2',
+  // Component catalog facades (@/unison/ui/catalog/*). Pinned for the same
+  // reason as Radix: a floating major breaks the generated facade's API.
+  'cmdk': '1.1.1',
+  'vaul': '1.1.2',
+  'embla-carousel-react': '8.6.0',
+  'react-day-picker': '9.11.1',
+  'input-otp': '1.4.2',
+  'react-resizable-panels': '3.0.6',
+  'sonner': '2.0.7',
 };
 
 /**
