@@ -77,6 +77,8 @@ export interface WizardRegistryImplementationSummary {
   radixPrimitives: readonly string[];
   /** Canonical generated-runtime imports needed by this implementation. */
   runtimeDependencies?: readonly string[];
+  /** Component-state contract (V4 M6); absent on older persisted contexts. */
+  componentStates?: import('@/sections/variants/componentStates').ComponentStateContract;
   /** Derived from the artifact owner; absent on older persisted contexts. */
   artifactContract?: {
     artifactId: string;
