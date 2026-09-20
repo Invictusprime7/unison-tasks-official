@@ -198,6 +198,13 @@ export interface WizardLaneBEnrichmentRequest {
    * and the validator can never disagree about the rules.
    */
   canonicalContract?: string;
+
+  /**
+   * The visual language the homepage established. Absent for the homepage
+   * batch itself (it is authored first); present for every later batch, whose
+   * pages must inherit it instead of inventing their own site chrome.
+   */
+  homepageVisualLanguage?: HomepageVisualLanguage;
 }
 
 
