@@ -454,6 +454,31 @@ export async function runLaunchPipeline(
       plan.selections.compositionPlan = compositionPlan;
       wizardSeedFile.compositionPlan = compositionPlan;
     }
+
+    // V4 M5: 21st generation coverage gate — runs before Stage 4b so a launch
+    // can never silently substitute generic UI for a certified implementation.
+    const coveragePack = resolveArtDirectionPack({
+      industry: plan.industryOverlay,
+      themePresetId: input.theme.id,
+      seed: plan.seed,
+    });
+    const coverage = validateTwentyFirstGenerationCoverage({
+      pages: plan.requestedPages.map((role) => ({
+        role,
+        sectionTypes: composition.sections.filter((section) => !section.hidden).map((section) => section.type),
+      })),
+      artDirectionPack: coveragePack,
+      selectedVariants: compositionPlan?.pages?.reduce<Record<string, VariantId>>((acc, page) => {
+        for (const [sectionType, variantId] of Object.entries(page.variants || {})) {
+          acc[`${page.role}:${sectionType}`] = variantId as VariantId;
+        }
+        return acc;
+      }, {}),
+    });
+    if (!coverage.ok) {
+      run.degrade('seed', 'coverage.21st-incomplete', summarizeCoverageReport(coverage));
+      if (import.meta.env?.DEV) console.error('[launch] 21st coverage gate issues', coverage.issues);
+    }
     const result = await runWizardStage4b({
       selections: plan.selections,
       existingVfsFiles: {
