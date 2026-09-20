@@ -47,6 +47,9 @@ jobs:
       - name: Lint single source of truth (brainstem import guard)
         run: npm run lint:single-source-of-truth
 
+      - name: 21st generation coverage gate (blocking)
+        run: npx vitest run src/test/twentyFirstCoverageGate.test.ts src/test/twentyFirstGenerationPolicy.test.ts --reporter=default
+
       - name: Run unit & contract tests (blocking)
         run: npx vitest run --reporter=default
 
