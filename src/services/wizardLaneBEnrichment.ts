@@ -191,7 +191,15 @@ export interface WizardLaneBEnrichmentRequest {
 
   /** Intent and binding guidance. */
   intentBindingGuide: string;
+
+  /**
+   * The canonical validation contract rendered from the same constants the
+   * validator asserts. Injected per batch by enrichWizardPageBatch so the model
+   * and the validator can never disagree about the rules.
+   */
+  canonicalContract?: string;
 }
+
 
 /**
  * The response from Lane B — a candidate enrichment proposal that must survive
