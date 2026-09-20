@@ -144,7 +144,8 @@ export function normalizeLaneBProposal(
       .replace(/^\uFEFF/, '')
       .replace(/^\s*```(?:tsx?|jsx?|typescript|javascript)?\s*\n/i, '')
       .replace(/\n\s*```\s*$/, '')
-      .trim();
+      .trim(),
+    );
     if (!content) continue;
     fileOps.push({ type: 'replace', path, content });
   }
