@@ -730,15 +730,22 @@ export const LauncherWizard = ({
                     <Chip active={artDirectionPackId === null} onClick={() => setArtDirectionPackId(null)}>
                       Auto match
                     </Chip>
-                    {Object.values(ART_DIRECTION_PACKS).map((pack) => (
+                    {visualDirections.map((option) => (
                       <Chip
-                        key={pack.id}
-                        active={artDirectionPackId === pack.id}
-                        onClick={() => setArtDirectionPackId(pack.id)}
+                        key={option.id}
+                        active={artDirectionPackId === option.id}
+                        disabled={!option.available}
+                        title={option.unavailableReason}
+                        onClick={() => option.available && setArtDirectionPackId(option.id)}
                       >
                         <span className="flex flex-col items-start">
-                          <span>{pack.name}</span>
-                          <span className="text-[10px] font-normal text-muted-foreground">{pack.description}</span>
+                          <span>
+                            {option.name}
+                            {!option.available && " — unavailable"}
+                          </span>
+                          <span className="text-[10px] font-normal text-muted-foreground">
+                            {option.available ? option.description : option.unavailableReason}
+                          </span>
                         </span>
                       </Chip>
                     ))}
@@ -758,6 +765,38 @@ export const LauncherWizard = ({
                     ))}
                   </div>
                 </div>
+                {sectionPickers.length > 0 && (
+                  <div>
+                    <FieldLabel>Customize sections</FieldLabel>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {sectionPickers.map((picker) => (
+                        <label key={picker.sectionType} className="flex flex-col gap-1 text-[11px] text-white/60">
+                          <span className="capitalize">{picker.sectionType.replace(/-/g, " ")}</span>
+                          <select
+                            value={sectionPins[picker.sectionType] ?? ""}
+                            onChange={(event) =>
+                              setSectionPins((current) => {
+                                const next = { ...current };
+                                if (!event.target.value) delete next[picker.sectionType];
+                                else next[picker.sectionType] = event.target.value as VariantId;
+                                return next;
+                              })
+                            }
+                            className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[12px] text-white"
+                          >
+                            <option value="">Auto</option>
+                            {picker.options.map((option) => (
+                              <option key={option.variantId} value={option.variantId}>
+                                {option.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               </>
             )}
 
