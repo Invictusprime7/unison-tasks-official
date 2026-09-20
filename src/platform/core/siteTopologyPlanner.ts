@@ -594,7 +594,7 @@ export function populateRegistryFromTopology(plan: GeneratedSitePlan): PageRegis
 // Helpers
 // ============================================================================
 
-function roleToPageType(role: PageRole): BuilderPageType {
+export function roleToPageType(role: PageRole): BuilderPageType {
   const map: Record<PageRole, BuilderPageType> = {
     home: 'home',
     about: 'about',
