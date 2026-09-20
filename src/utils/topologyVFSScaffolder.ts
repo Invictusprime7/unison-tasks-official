@@ -357,7 +357,7 @@ function applyWizardSeedToComposition(
     return { ...section, props } as SectionEntry;
   });
 
-  return { ...composition, name: brand || composition.name, sections: nextSections };
+  return withMedia({ ...composition, name: brand || composition.name, sections: nextSections });
 }
 
 
