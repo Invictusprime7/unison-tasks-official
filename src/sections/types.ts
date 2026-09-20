@@ -331,6 +331,7 @@ export type TemplatePageRole =
   | 'thank_you'
   | 'blog'
   | 'shop'
+  | 'immersive'
   | 'custom';
 
 /** A complete template definition — just data, no JSX */

@@ -5,7 +5,7 @@ import { getVariantById, getGenerationVariantsForSection } from '@/sections/vari
 import { ART_DIRECTION_PACKS, type ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
 import type { VariantId } from '@/sections/variants/types';
 
-export const COMPOSITION_ROLES = ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'checkout', 'thank_you', 'blog', 'custom'] as const;
+export const COMPOSITION_ROLES = ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'checkout', 'thank_you', 'blog', 'immersive', 'custom'] as const;
 const family = z.enum(['navbar', 'hero', 'about', 'services', 'features', 'gallery', 'pricing', 'logo-cloud', 'blog-preview', 'before-after', 'testimonials', 'cta', 'contact', 'footer', 'stats', 'team', 'faq']);
 const sectionCopy = z.object({
   items: z.array(z.union([z.object({ title: z.string().max(140), description: z.string().max(600) }).strict(), z.object({ question: z.string().max(240), answer: z.string().max(1000) }).strict()])).min(1).max(8).optional(),

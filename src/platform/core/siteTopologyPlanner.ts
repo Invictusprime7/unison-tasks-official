@@ -46,6 +46,7 @@ export type PageRole =
   | 'thank_you'
   | 'blog'
   | 'shop'
+  | 'immersive'
   | 'custom';
 
 const PAGE_ROLE_SPECS: Partial<Record<PageRole, PageSpec>> = {
@@ -59,6 +60,7 @@ const PAGE_ROLE_SPECS: Partial<Record<PageRole, PageSpec>> = {
   checkout: { title: 'Checkout', path: '/checkout', purpose: 'checkout', expectedSections: [] },
   blog:     { title: 'Blog',     path: '/blog',     purpose: 'blog', expectedSections: [] },
   shop:     { title: 'Shop',     path: '/shop',     purpose: 'shop', expectedSections: [] },
+  immersive:{ title: 'Experience', path: '/experience', purpose: 'immersive', expectedSections: [] },
 };
 
 export function resolvePageSpecsForRoles(
@@ -168,6 +170,7 @@ const PURPOSE_TO_PAGE_TYPE: Record<string, BuilderPageType> = {
   booking: 'booking',
   pricing: 'landing',
   faq: 'landing',
+  immersive: 'immersive',
 };
 
 const PURPOSE_TO_ROLE: Record<string, PageRole> = {
@@ -182,6 +185,7 @@ const PURPOSE_TO_ROLE: Record<string, PageRole> = {
   booking: 'booking',
   pricing: 'pricing',
   faq: 'faq',
+  immersive: 'immersive',
 };
 
 // ============================================================================
@@ -604,6 +608,7 @@ function roleToPageType(role: PageRole): BuilderPageType {
     thank_you: 'thankyou',
     blog: 'blog',
     shop: 'shop',
+    immersive: 'immersive',
     custom: 'custom',
   };
   return map[role] || 'custom';

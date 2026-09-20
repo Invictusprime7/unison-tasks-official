@@ -13,7 +13,7 @@ const resultSchema = z.object({
     sectionOrder: z.array(z.string().max(40)).min(1).max(17),
     copy: z.record(z.string(), z.object({ items: z.array(z.union([z.object({ title: z.string().max(140), description: z.string().max(600) }).strict(), z.object({ question: z.string().max(240), answer: z.string().max(1000) }).strict()])).min(1).max(8).optional(), headline: z.string().max(240).optional(), subheadline: z.string().max(700).optional(), description: z.string().max(1600).optional() }).strict()).optional(),
     variants: z.record(z.string(), z.string().max(100)),
-  }).strict()).min(1).max(13),
+  }).strict()).min(1).max(14),
 }).strict();
 
 type Generate = (messages: Array<{ role: string; content: string }>) => Promise<{
