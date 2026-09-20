@@ -1,7 +1,11 @@
 /**
  * Navbar Variant: Centered Logo
- * Centered brand/logo with navigation links split on either side.
- * Elegant, editorial-style navigation.
+ *
+ * Canonical adaptation of 21st:4003 "Navbar" by @designali-in. The source's
+ * floating container with an absolutely centred menu island is preserved,
+ * including the condensed rounded/blurred shell it adopts once the page
+ * scrolls. Next.js links and the liquid-glass button dependency are replaced by
+ * canonical anchors and theme tokens.
  */
 
 import React from 'react';
@@ -11,84 +15,78 @@ import { MobileNavbarNavigation } from './MobileNavbarNavigation';
 
 export const NavbarCenteredLogo: React.FC<BaseSectionProps<'navbar'>> = ({ section, theme }) => {
   const { brand, links = [], cta } = section.props;
+  const [condensed, setCondensed] = React.useState(false);
 
-  const midpoint = Math.ceil(links.length / 2);
-  const leftLinks = links.slice(0, midpoint);
-  const rightLinks = links.slice(midpoint);
+  React.useEffect(() => {
+    const onScroll = () => setCondensed(window.scrollY > 50);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
     <header
       data-ut-variant="navbar:centered-logo"
-      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
-      style={{
-        background: hsla(theme.colors.background, 0.95),
-        borderBottom: `1px solid ${hsla(theme.colors.border, 0.3)}`,
-      }}
+      data-ut-slot="navigation"
+      data-state={condensed ? 'condensed' : 'top'}
+      className="sticky top-0 z-50 w-full px-2 pt-2"
     >
       <MobileNavbarNavigation brand={brand} links={links} cta={cta} />
       <div
-        className="mx-auto hidden h-16 items-center justify-between px-6 lg:flex"
-        style={{ maxWidth: theme.containerWidth }}
+        className="mx-auto hidden px-6 motion-safe:transition-all motion-safe:duration-300 lg:block"
+        style={{
+          maxWidth: condensed ? `calc(${theme.containerWidth} * 0.82)` : theme.containerWidth,
+          background: condensed ? hsla(theme.colors.background, 0.72) : 'transparent',
+          border: condensed ? `1px solid ${hsla(theme.colors.border, 0.6)}` : '1px solid transparent',
+          borderRadius: condensed ? '1rem' : theme.radius,
+          backdropFilter: condensed ? 'blur(14px)' : undefined,
+        }}
       >
-        {/* Left Links */}
-        <nav className="flex items-center gap-6 flex-1 justify-end pr-8">
-          {leftLinks.map((link, i) => (
-            <a
-              key={i}
-              href={link.href}
-              data-ut-intent={link.intent}
-              className="text-sm transition-colors hover:opacity-80"
-              style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
+        <div className="relative flex items-center justify-between py-3">
+          <a
+            href="#"
+            data-ut-slot="brand"
+            aria-label="Home"
+            className="text-xl font-semibold tracking-tight"
+            style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.foreground) }}
+          >
+            {brand}
+          </a>
 
-        {/* Centered Brand */}
-        <a
-          href="#"
-          className="text-xl font-bold tracking-tight flex-shrink-0"
-          style={{
-            fontFamily: theme.typography.headingFont,
-            color: hsl(theme.colors.foreground),
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {brand}
-        </a>
+          <nav aria-label="Main navigation" className="absolute inset-0 m-auto hidden size-fit lg:block">
+            <ul className="flex gap-8 text-sm">
+              {links.map((link, i) => (
+                <li key={i}>
+                  <a
+                    href={link.href}
+                    data-ut-intent={link.intent}
+                    className="block motion-safe:duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
+                    style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        {/* Right Links + CTA */}
-        <nav className="flex items-center gap-6 flex-1 pl-8">
-          {rightLinks.map((link, i) => (
-            <a
-              key={i}
-              href={link.href}
-              data-ut-intent={link.intent}
-              className="text-sm transition-colors hover:opacity-80"
-              style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
-            >
-              {link.label}
-            </a>
-          ))}
           {cta && (
             <a
               href={cta.href || '#'}
               data-ut-intent={cta.intent}
               data-ut-cta="cta.nav"
-              className="text-sm px-4 py-2 ml-auto transition-all hover:opacity-90"
+              className="px-5 py-2 text-sm font-medium motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
               style={{
                 background: hsl(theme.colors.primary),
                 color: hsl(theme.colors.primaryForeground),
-                borderRadius: theme.radius,
+                borderRadius: '999px',
                 fontFamily: theme.typography.bodyFont,
-                fontWeight: '500',
               }}
             >
               {cta.label}
             </a>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

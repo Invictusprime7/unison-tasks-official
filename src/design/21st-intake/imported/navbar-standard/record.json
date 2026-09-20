@@ -1,0 +1,68 @@
+{
+  "sourceId": "21st:18258",
+  "name": "Header Navbar",
+  "sourceUrl": "https://21st.dev/karthikmudunuri/header-02",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Header Navbar by @karthikmudunuri",
+  "designTags": [
+    "navbar",
+    "navigation"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "navbar:standard"
+  ],
+  "author": "karthikmudunuri",
+  "implementationId": "navbar:standard",
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "https://21st.dev/karthikmudunuri/header-02",
+    "verifiedAt": "2026-09-20T23:50:10.746048Z",
+    "notes": "Retrieved through the workspace 21st.dev paid subscription via MCP get_component; the 21st record declares no upstream license, so the project owner authorized canonical adaptation. Unison ships an independent adaptation: Next.js/Headless UI/Heroicons dependencies removed, tokens and imports normalized, canonical data-ut-* identity added. No upstream bytes are shipped to generated sites."
+  },
+  "archivePath": "src/design/21st-intake/archive/navbar-standard",
+  "archivedAt": "2026-09-20T23:50:10.746048Z",
+  "reviewEvidence": {
+    "sourceSha256": "55c89f0685eabde82e22487f7861796a984470abc117b6c470555b81d1549906",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-20T23:50:10.746048Z"
+  }
+}

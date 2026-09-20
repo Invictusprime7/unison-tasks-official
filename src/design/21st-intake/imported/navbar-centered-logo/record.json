@@ -1,0 +1,68 @@
+{
+  "sourceId": "21st:4003",
+  "name": "Navbar",
+  "sourceUrl": "https://21st.dev/designali-in/navbar",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Navbar by @designali-in",
+  "designTags": [
+    "navbar",
+    "navigation"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "navbar:centered-logo"
+  ],
+  "author": "designali-in",
+  "implementationId": "navbar:centered-logo",
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "https://21st.dev/designali-in/navbar",
+    "verifiedAt": "2026-09-20T23:50:10.746048Z",
+    "notes": "Retrieved through the workspace 21st.dev paid subscription via MCP get_component; the 21st record declares no upstream license, so the project owner authorized canonical adaptation. Unison ships an independent adaptation: Next.js/Headless UI/Heroicons dependencies removed, tokens and imports normalized, canonical data-ut-* identity added. No upstream bytes are shipped to generated sites."
+  },
+  "archivePath": "src/design/21st-intake/archive/navbar-centered-logo",
+  "archivedAt": "2026-09-20T23:50:10.746048Z",
+  "reviewEvidence": {
+    "sourceSha256": "e8c61ef9cf601c3dea0d9f09d5eb2fdf512e466783852a98d5747d0b6198deef",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-20T23:50:10.746048Z"
+  }
+}
