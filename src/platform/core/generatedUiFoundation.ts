@@ -20,6 +20,12 @@ import {
   GENERATED_RUNTIME_PROFILE,
   THREE_D_CAPABILITY,
 } from '@/platform/core/generatedRuntimeCapabilities';
+import {
+  GENERATED_UI_CATALOG_IMPORTS,
+  GENERATED_UI_CATALOG_PATHS,
+  GENERATED_UI_CATALOG_PROMPT_LINES,
+  buildGeneratedUiCatalogFiles,
+} from '@/platform/core/generatedUiCatalog';
 
 /**
  * Canonical generated UI foundation.
@@ -29,7 +35,7 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.10' as const;
+export const GENERATED_UI_FOUNDATION_VERSION = '1.11' as const;
 /** Runtime components emitted by this owner's motion facade, not type exports. */
 export const GENERATED_MOTION_PRIMITIVES = [
   'Reveal', 'RevealGroup', 'Stagger', 'StaggerGroup', 'StaggerItem',
@@ -41,7 +47,7 @@ export const GENERATED_BACKGROUND_PRIMITIVES = [
   'OrbitalBackdrop', 'GlowField', 'AnimatedGrid',
   'NoiseField', 'GradientOrbs', 'MediaCanvas',
 ] as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9']);
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '1.10']);
 
 export const GENERATED_MOTION_TYPES = [
   'MotionRecipe', 'MarqueeBandProps', 'HorizontalRailProps', 'HoverDepthProps',
@@ -196,6 +202,7 @@ export function buildGeneratedUiFoundationDirective(
     '  - "@/unison/ui/animation" is the full framer-motion re-export (motion, AnimatePresence, useReducedMotion, useScroll, useInView, etc.) — use this facade for any raw framer-motion export not in the @/unison/ui/motion list above.',
   'Do not import "@/unison/ui/tailwind.css" from a page; it is already applied globally. Use the root Image facade or a plain <img alt="...">; there is no framework-specific next/image component.',
     compositionDirective,
+    ...GENERATED_UI_CATALOG_PROMPT_LINES,
     EXPERIENCE_VOCABULARY_DIRECTIVE,
     requirementsList ? 'Manifest requirements for this snapshot:' : '',
     requirementsList,
@@ -239,7 +246,7 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   'Rules: exactly ONE <h1> per page (a single <Heading level={1}>). Use <Section> for every band and <Container> inside it. Pass className only for standard Tailwind scale utilities or var(--ut-*)/var(--radius) arbitrary values — never a raw px/rem/vh/vw/#hex literal.',
 ].join('\n');
 
-const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
+export const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
   '/.unison/ui-manifest.json',
   '/src/unison/ui/index.ts',
   '/src/unison/ui/backgrounds.tsx',
@@ -254,6 +261,7 @@ const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
   '/src/unison/ui/recipes.tsx',
   '/src/unison/ui/surface.tsx',
   '/src/unison/ui/tailwind.css',
+  ...GENERATED_UI_CATALOG_PATHS,
   ...EXPERIENCE_FOUNDATION_PATHS,
 ] as const;
 
@@ -359,6 +367,7 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
       '@/unison/ui/zod',
       '@/unison/ui/radix',
       ...RADIX_VFS_PRIMITIVES.map((primitive) => `@/unison/ui/radix/${primitive}`),
+      ...GENERATED_UI_CATALOG_IMPORTS,
       ...EXPERIENCE_IMPORT_PATHS,
     ],
     runtimeFacades: buildRuntimeFacades(),
@@ -1625,6 +1634,7 @@ export function FeatureCard({ title, description, media, className }: { title: s
 }
 `,
     '/.unison/ui-manifest.json': JSON.stringify(manifest, null, 2),
+    ...buildGeneratedUiCatalogFiles(marker),
     ...buildExperienceFoundationFiles(marker),
   };
 }

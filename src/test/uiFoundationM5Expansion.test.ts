@@ -84,13 +84,13 @@ describe('M5 generated UI foundation expansion', () => {
   });
 
   it('bumps the foundation version and keeps 1.9 snapshots readable', () => {
-    expect(GENERATED_UI_FOUNDATION_VERSION).toBe('1.10');
+    expect(GENERATED_UI_FOUNDATION_VERSION).toBe('1.11');
     const legacy = { ...foundation.manifest, version: '1.9' } as Record<string, unknown>;
     const manifest = readGeneratedUiManifest({
       '/.unison/ui-manifest.json': JSON.stringify(legacy),
       '/src/unison/ui/motion.tsx': foundation.files['/src/unison/ui/motion.tsx'],
     });
-    expect(manifest?.version).toBe('1.10');
+    expect(manifest?.version).toBe('1.11');
     expect(manifest?.primitiveImports).toContain('@/unison/ui/backgrounds');
   });
 
