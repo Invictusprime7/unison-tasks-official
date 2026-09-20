@@ -51,7 +51,7 @@ describe('pinned runtime package versions', () => {
 describe('composition enhancement guards', () => {
   const activation = {
     policy: 'maximum-compatible' as const,
-    version: '1.0',
+    version: '1.0' as const,
     canvasRoots: 1,
     decisions: [
       { recipeId: 'immersive-hero', sectionId: 's-hero', reason: 'selected' as const },
