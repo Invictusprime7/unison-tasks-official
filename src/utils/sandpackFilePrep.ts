@@ -3880,6 +3880,26 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         postcss: '^8.4.0',
       },
     }, null, 2);
+  } else {
+    // Heal persisted package.json files that recorded `latest` (or an older
+    // floating range) for runtime-critical packages. A stale snapshot must
+    // not keep installing an incompatible three/fiber or Radix major.
+    try {
+      const existing = JSON.parse(out['/package.json']) as {
+        dependencies?: Record<string, string>;
+      };
+      if (existing && typeof existing === 'object' && existing.dependencies) {
+        let healed = false;
+        for (const [name, version] of Object.entries(existing.dependencies)) {
+          const pinned = resolvePinnedRuntimeVersion(name);
+          if (pinned && pinned !== version) {
+            existing.dependencies[name] = pinned;
+            healed = true;
+          }
+        }
+        if (healed) out['/package.json'] = JSON.stringify(existing, null, 2);
+      }
+    } catch { /* leave malformed package.json untouched */ }
   }
 
   if (!out['/tsconfig.json']) {
