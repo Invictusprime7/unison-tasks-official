@@ -28,7 +28,10 @@ export type ValidationCode =
   | 'MISSING_ROUTER_ENTRY'
   | 'FUNNEL_STEP_MISSING'
   | 'EMPTY_REGISTRY'
-  | 'MISSING_FILE_PATH';
+  | 'MISSING_FILE_PATH'
+  | 'HOMEPAGE_NOT_FIRST'
+  | 'VISUAL_LANGUAGE_NOT_ESTABLISHED'
+  | 'VISUAL_LANGUAGE_DRIFT';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -77,6 +80,55 @@ export function validatePageTopology(
       severity: 'error',
       message: 'No page is designated as the homepage.',
     });
+  }
+
+  // 2b. Homepage-first authoring order. The homepage establishes the site's
+  // visual language, so it must lead the navigation/authoring order.
+  const homePage = pages.find(p => p.isHome);
+  if (homePage) {
+    const lowestOrder = Math.min(...pages.map(p => p.navOrder ?? 0));
+    if ((homePage.navOrder ?? 0) > lowestOrder) {
+      issues.push({
+        code: 'HOMEPAGE_NOT_FIRST',
+        severity: 'warning',
+        message: `Homepage "${homePage.title}" is not first in the page order; it must be authored first so other pages inherit its visual language.`,
+        pageId: homePage.pageId,
+      });
+    }
+  }
+
+  // 2c. Homepage-first visual language inheritance.
+  const established = registry.visualLanguage;
+  if (!established && pages.length > 1) {
+    issues.push({
+      code: 'VISUAL_LANGUAGE_NOT_ESTABLISHED',
+      severity: 'info',
+      message: 'No homepage visual language has been established yet; other pages have nothing to inherit.',
+      pageId: homePage?.pageId,
+    });
+  }
+  if (established) {
+    if (homePage && established.sourcePageId !== homePage.pageId) {
+      issues.push({
+        code: 'VISUAL_LANGUAGE_DRIFT',
+        severity: 'error',
+        message: `Visual language was established by "${established.sourcePageId}", which is no longer the homepage. Re-establish it from the current homepage.`,
+        pageId: homePage.pageId,
+      });
+    }
+    for (const page of pages) {
+      if (page.isHome) continue;
+      if (!page.visualLanguageSignature) continue;
+      if (page.visualLanguageSignature !== established.signature) {
+        issues.push({
+          code: 'VISUAL_LANGUAGE_DRIFT',
+          severity: 'warning',
+          message: `Page "${page.title}" was built against an older homepage visual language and may look inconsistent.`,
+          pageId: page.pageId,
+          route: page.path,
+        });
+      }
+    }
   }
 
   // 3. Duplicate routes
