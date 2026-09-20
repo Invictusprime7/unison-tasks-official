@@ -35,12 +35,12 @@ Only families that are green in the Phase A matrix, at every visual direction:
 - Keep registry-derived Wizard pickers, art-direction packs, and coverage tests passing at each step.
 
 ### Phase D — Expansion
-- Author new certified designs composed from the installed primitives, targeting the families with the thinnest choice.
-- Spend the daily 21st pulls on genuine sources for the families where authored adaptation is weakest.
+- Pull genuine 21st sources broadly (no retrieval cap) and grow every family's choice, prioritising the thinnest ones.
+- Compose new certified designs on top of the installed primitives already pinned in the runtime.
 - Every new design registers automatically through the existing registry pipeline; no new registries.
 
 ## Technical notes
-Authorities stay unchanged: Variant Registry, DesignImplementationRegistry, Art Direction Packs, Artifact Registry, Wizard Registry Context. No new registries are introduced; pickers, coverage, and AI context remain projections over those owners. Deletions land behind the coverage gate, and each phase ends with the full suite, typecheck, and preview build green.
+Authorities stay unchanged: Variant Registry, DesignImplementationRegistry, Art Direction Packs, Artifact Registry, Wizard Registry Context. No new registries are introduced; pickers, coverage, and AI context remain projections over those owners. Every migrated design keeps real source metadata (source id, author, url, licence, derivation). Deletions land behind the coverage gate, and each phase ends with the full suite, typecheck, and preview build green.
 
-## Question before I start
-Phase A is read-only and safe. Confirm you want me to start there, and confirm that for designs with no obtainable 21st source I should register them as owner-authorised adaptations rather than retiring them.
+## Before I start
+Phase A is read-only and safe, so I will begin there unless you say otherwise. For 21st source retrieval I will need the account credential available to this project; if it is not already stored I will ask for it at the start of Phase B.
