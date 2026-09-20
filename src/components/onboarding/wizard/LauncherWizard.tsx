@@ -317,7 +317,7 @@ export const LauncherWizard = ({
         mode: artDirectionPackId ? "guided" : "auto",
         artDirectionPackId: artDirectionPackId ?? undefined,
         experience,
-        sectionPins: {},
+        sectionPins,
       }),
       businessName,
       primaryGoal,
