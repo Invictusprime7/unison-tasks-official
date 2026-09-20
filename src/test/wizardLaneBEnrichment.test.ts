@@ -146,3 +146,49 @@ describe('V4 M9: Lane B runtime dependency allow-list', () => {
       .some(v => v.includes('runtime dependency'))).toBe(false);
   });
 });
+
+describe('M8: Lane B 21st identity contract', () => {
+  const identityRequest = {
+    ...request,
+    designVocabularyReport: { executableIds: ['hero:image-stream'], unimplementedIds: [], selectedIds: ['hero:image-stream'] },
+    currentPageSources: {
+      home: {
+        filePath: '/src/pages/Home.tsx',
+        content: '<section data-ut-section-id="home-hero" data-ut-variant="hero:image-stream" />',
+      },
+    },
+  } as unknown as WizardLaneBEnrichmentRequest;
+  const validateIdentity = (content: string) => validateWizardLaneBProposal({
+    proposal: { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], content }] },
+    request: identityRequest,
+    uiFoundationManifest: { primitiveImports: [], requirements: [] },
+  });
+  const page = (attrs: string) =>
+    `export default function Home(){ return <main><section ${attrs}><h1>Studio</h1></section><button data-ut-intent="contact.submit">Contact</button></main>; }`;
+
+  it('accepts an enriched page that keeps the canonical section identity and a certified variant', () => {
+    expect(validateIdentity(page('data-ut-section-id="home-hero" data-ut-variant="hero:image-stream"')))
+      .toMatchObject({ valid: true, violations: [] });
+  });
+
+  it('rejects an invented variant identity outside the certified vocabulary', () => {
+    const result = validateIdentity(page('data-ut-section-id="home-hero" data-ut-variant="hero:invented"'));
+    expect(result.valid).toBe(false);
+    expect(result.violations.some(v => v.includes('hero:invented'))).toBe(true);
+  });
+
+  it('rejects a proposal that drops a canonical section identity', () => {
+    const result = validateIdentity(page('data-ut-variant="hero:image-stream"'));
+    expect(result.valid).toBe(false);
+    expect(result.violations.some(v => v.includes('home-hero'))).toBe(true);
+  });
+
+  it('stays silent for legacy requests without vocabulary or current sources', () => {
+    const result = validateWizardLaneBProposal({
+      proposal: { ...validProposal, fileOps: [{ ...validProposal.fileOps[0], content: page('data-ut-variant="hero:anything"') }] },
+      request,
+      uiFoundationManifest: { primitiveImports: [], requirements: [] },
+    });
+    expect(result).toMatchObject({ valid: true, violations: [] });
+  });
+});
