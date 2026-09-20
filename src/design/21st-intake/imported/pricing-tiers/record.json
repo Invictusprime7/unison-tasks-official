@@ -4,17 +4,15 @@
   "sourceUrl": "https://21st.dev/c/6247",
   "sourceType": "component",
   "dependencies": [
-    "@number-flow/react",
     "lucide-react",
-    "motion",
     "react"
   ],
   "registryDependencies": [
     "card",
     "timeline-animation"
   ],
-  "license": "MIT (21st.dev community default — verify before promotion)",
-  "attribution": "21st.dev — Pricing Section by @unknown",
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Pricing Section by @unknown",
   "designTags": [],
   "capabilities": {
     "motion": true,
@@ -30,31 +28,31 @@
     "clientOnly": true
   },
   "adaptation": {
-    "tokensNormalized": false,
-    "importsNormalized": false,
-    "reducedMotionSupported": false,
-    "responsiveVerified": false,
-    "canonicalSlotsAdded": false,
-    "intentReady": false,
-    "portableRecipeCertified": false
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
   },
-  "step": 3,
+  "step": 10,
   "dependencyAudit": {
     "decisions": [
       {
         "dep": "@number-flow/react",
-        "verdict": "unknown",
-        "reason": "Not on the allowlist — requires manual review"
+        "verdict": "removed",
+        "reason": "Replaced by token-driven CSS odometer transforms \u2014 not shipped to generated sites"
+      },
+      {
+        "dep": "motion",
+        "verdict": "removed",
+        "reason": "Replaced by approved CSS/framer-motion-safe transitions \u2014 not shipped to generated sites"
       },
       {
         "dep": "lucide-react",
         "verdict": "allowed",
-        "reason": "Baseline stack"
-      },
-      {
-        "dep": "motion",
-        "verdict": "unknown",
-        "reason": "Not on the allowlist — requires manual review"
+        "reason": "Baseline stack (inline SVG facade used in the adaptation)"
       },
       {
         "dep": "react",
@@ -62,6 +60,33 @@
         "reason": "Baseline stack"
       }
     ],
-    "approved": false
-  }
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "pricing:billing-toggle"
+  ],
+  "implementationId": "pricing:billing-toggle",
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "Project owner explicitly authorized the adaptation without @number-flow/react and motion/react.",
+    "verifiedAt": "2026-09-20T08:00:00.000Z",
+    "notes": "Odometer price roll and switch spring reproduced with CSS transforms; reduced-motion safe; canonical slots/intents; portable recipe certified."
+  },
+  "reviewEvidence": {
+    "sourceSha256": "0e07e4c60483906f310871976ccf9a4b3c21737b4dbf8b7dec3425ec1359e3fe",
+    "componentSha256": "bede16646ff06c225053b4b983393a6926121a4aaeed916ce0b9807dbc52eb49",
+    "checks": [
+      "dependency-allowlist",
+      "react19-vite-tailwind3",
+      "token-normalization",
+      "reduced-motion",
+      "canonical-identity-and-intents",
+      "portable-recipe"
+    ],
+    "reviewedAt": "2026-09-20T08:00:00.000Z"
+  },
+  "archivePath": "src/design/21st-intake/archive/pricing-tiers",
+  "archivedAt": "2026-09-20T08:00:00.000Z"
 }
