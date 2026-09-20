@@ -30,6 +30,13 @@ LauncherWizard
 - Component states are first-class: `src/sections/variants/componentStates.ts`
   owns the derived state/interaction/responsive contract exposed to both AI
   layers through the wizard registry context.
+- Both AI layers consume one canonical registry projection: the Wizard
+  composer and Lane B receive it directly, and the in-Builder assistant
+  resolves it through `src/services/builderRegistryContext.ts` (sealed
+  `/.unison/wizard-registry-context.json` first, aggregated rebuild otherwise)
+  and sends it as `registryContext`, rendered into the prompt by
+  `buildRegistryContextBlock`. Bounded: registry vocabulary only, never source
+  files or credentials (`src/test/builderRegistryContext.test.ts`).
 - Stage 4b is the only global theme authority.
 - `commitMutation` is the only accepted mutation boundary.
 - Preview and Playground consume committed canonical artifacts.
