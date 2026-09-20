@@ -399,6 +399,10 @@ export async function runLaunchPipeline(
     assets: [...cloudAssets, ...localAssets],
   });
 
+  // M6 — real business media is projected into the seed so the compiler can
+  // bind it into the media slots the composition already declares.
+  const seedMediaLibrary = buildSeedMediaLibrary([...cloudAssets, ...localAssets] as unknown as Array<Record<string, unknown>>);
+
   const wizardSeedFile = {
     version: "2.0",
     id: plan.wizardSeedId,
