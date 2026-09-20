@@ -87,6 +87,10 @@ export interface WizardRegistryImplementationSummary {
     supportedSlots: readonly string[];
     intentBindings: readonly string[];
     aiEditScope: string;
+    /** Typed slot projection from the M6 crosswalk; absent on older contexts. */
+    slots?: readonly import('@/platform/core/resolvedImplementationContract').ResolvedImplementationSlot[];
+    /** Present when the owning artifact hydrates from a catalog surface. */
+    catalogSurfaceId?: string;
   };
 }
 
@@ -254,6 +258,7 @@ export function buildWizardAggregatedRegistryContext(options: {
     implementations: sections.flatMap(section => section.allowedVariantIds.map(id => {
       const implementation = getDesignImplementation(id)!;
       const artifact = getArtifact(section.type);
+      const contract = resolveImplementationContract(id);
       return {
         id, sectionType: section.type, name: implementation.name,
         certification: implementation.vfs?.certification === 'approved' ? 'approved' as const : 'portable' as const,
