@@ -285,7 +285,11 @@ function applyWizardSeedToComposition(
     (plan as GeneratedSitePlan & { wizardSeed?: Record<string, unknown> }).wizardSeed,
   );
   const brand = seed.brand?.trim() || plan.businessName.trim();
-  if (!brand && !seed.tagline && !seed.email && !seed.phone) return composition;
+  const mediaLibrary = seed.media || [];
+  const mediaSeedKey = `${composition.id}:${plan.selectedThemePresetId || ''}:${plan.industry || ''}`;
+  const withMedia = (result: TemplateComposition) =>
+    bindMediaToComposition(result, mediaLibrary, mediaSeedKey).composition;
+  if (!brand && !seed.tagline && !seed.email && !seed.phone) return withMedia(composition);
 
   // Template brand copy is sample data. Replace it across the full composition
   // before deriving route-specific pages so Wizard identity remains canonical.
