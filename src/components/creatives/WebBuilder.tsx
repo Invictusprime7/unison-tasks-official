@@ -326,7 +326,7 @@ import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { useCodeHistory } from "@/hooks/useCodeHistory";
 import { useWebBuilderState } from "@/hooks/useWebBuilderState";
 import { useLaunch } from "@/contexts/useLaunchHooks";
-import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose, ArrowLeft, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose, ArrowLeft, Download, SlidersHorizontal } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
 import {
