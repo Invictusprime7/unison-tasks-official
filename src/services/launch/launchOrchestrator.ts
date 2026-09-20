@@ -444,7 +444,11 @@ export async function runLaunchPipeline(
     }, wizardRegistryContext);
     signal.throwIfAborted();
     if (!compositionPlan) {
-      throw new LaunchFatalError(compositionFailureMessage, { stage: 'seed', code: 'composition.' + compositionFailure });
+      // V4 M1: AI composition is optional — never an availability risk.
+      // Degrade and continue; Stage 4b compiles the deterministic Design
+      // Intervention for the selected industry layout.
+      run.degrade('seed', 'composition.' + compositionFailure, compositionFailureMessage +
+        ' The selected industry layout was used instead.');
     } else {
       plan.selections.compositionPlan = compositionPlan;
       wizardSeedFile.compositionPlan = compositionPlan;
