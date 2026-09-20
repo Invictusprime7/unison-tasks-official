@@ -10,7 +10,10 @@
  * - Merges with bundled dependencies for Sandpack
  */
 
-import { expandSandpackRuntimeDependencies } from '@/utils/sandpackDependencies';
+import {
+  expandSandpackRuntimeDependencies,
+  resolvePinnedRuntimeVersion,
+} from '@/utils/sandpackDependencies';
 import {
   GENERATED_RUNTIME_CAPABILITY_DEPENDENCIES,
   GENERATED_RUNTIME_PROFILE,
@@ -323,6 +326,16 @@ export function extractDependencies(
   const dependencies: Record<string, string> = {};
   
   for (const pkg of detected) {
+    // Runtime-critical packages (Radix facade graph, framer-motion, the
+    // three.js experience capability) are pinned against the generated React
+    // profile. Their pins outrank even a persisted package.json so stale
+    // snapshots that recorded `latest` heal on the next preview instead of
+    // installing an incompatible major.
+    const pinned = resolvePinnedRuntimeVersion(pkg);
+    if (pinned) {
+      dependencies[pkg] = pinned;
+      continue;
+    }
     // Priority: package.json > known versions > 'latest'
     if (packageJsonDeps[pkg]) {
       dependencies[pkg] = packageJsonDeps[pkg];

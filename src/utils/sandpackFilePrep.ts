@@ -3850,7 +3850,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     for (const m of importMatches) {
       const pkg = m[1].startsWith('@') ? m[1].split('/').slice(0, 2).join('/') : m[1].split('/')[0];
       if (pkg && !pkg.startsWith('.') && !pkg.startsWith('/') && !detectedDeps[pkg]) {
-        detectedDeps[pkg] = 'latest';
+        // Runtime-critical packages (Radix facade graph, framer-motion, the
+        // three.js experience capability) must resolve to their pinned
+        // versions — `latest` can install a major incompatible with the
+        // generated React runtime profile and crash the preview.
+        detectedDeps[pkg] = resolvePinnedRuntimeVersion(pkg) ?? 'latest';
       }
     }
     out['/package.json'] = JSON.stringify({
