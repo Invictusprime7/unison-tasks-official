@@ -146,13 +146,23 @@ export function resolveImplementationContract(
   variantId: VariantId | string,
 ): ResolvedImplementationContract | null {
   if (!variantId) return null;
-  const variant =
-    getDesignImplementation(variantId) ??
-    (variantId.includes(':') ? getVariantById(variantId as VariantId) : undefined);
-  if (!variant || !variant.id) return null;
+  // The implementation registry indexes every registered variant (plus generic
+  // family defaults) keyed by `implementationId`; the variant registry is the
+  // fallback for ids spelled like a variant but never indexed.
+  const indexed = getDesignImplementation(variantId);
+  const fallback = !indexed && variantId.includes(':')
+    ? getVariantById(variantId as VariantId)
+    : undefined;
+  if (!indexed && !fallback) return null;
 
-  const artifact = resolveArtifact(variant.sectionType);
-  const { primitiveDependencies, runtimeDependencies } = deriveDependencies(variant);
+  const implementationId = indexed?.implementationId ?? fallback!.id;
+  const sectionType = indexed?.sectionType ?? fallback!.sectionType;
+  const dependencySource: DependencySource = indexed ?? fallback!;
+  const generationStatus = (indexed?.generationStatus ?? fallback?.generationStatus) ?? 'preferred';
+  const source = indexed?.source ?? fallback?.source;
+
+  const artifact = resolveArtifact(sectionType);
+  const { primitiveDependencies, runtimeDependencies } = deriveDependencies(dependencySource);
 
   const slots = artifact ? artifact.supportedSlots.map((slot) => deriveSlot(slot, artifact)) : [];
   const intents = artifact
