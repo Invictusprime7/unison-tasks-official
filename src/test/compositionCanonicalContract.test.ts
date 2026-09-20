@@ -5,7 +5,7 @@ import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
 import { VARIANT_REGISTRY, getGenerationVariantsForSection } from '@/sections/variants/registry';
 import type { SectionType } from '@/sections/types';
 
-const pack = ART_DIRECTION_PACKS['salon-premium'];
+const pack = ART_DIRECTION_PACKS['commerce-editorial'];
 const roles = ['home', 'services'] as const;
 const variants = [...new Map(Object.keys(VARIANT_REGISTRY).flatMap(type => roles.flatMap(role =>
   getGenerationVariantsForSection(type as SectionType, pack, role))).map(variant => [variant.id, variant])).values()]
