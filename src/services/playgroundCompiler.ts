@@ -137,6 +137,19 @@ export function compilePlayground(
   const registry = state.pageRegistry;
   const pages = Object.values(registry.pages);
 
+  // Self-heal page roles before any topology work: drafts persisted before a
+  // role existed (or pages authored by an older lane) may carry pageRole
+  // 'custom'/'' even when their path or type is fully classifiable (e.g.
+  // /experience => immersive). Re-inferring here makes the fix retroactive
+  // for every industry and every saved draft, not only new launches.
+  for (const page of pages) {
+    if (page.pageRole && page.pageRole !== 'custom') continue;
+    const inferred = inferTopologyRole(page);
+    if (inferred !== 'custom') {
+      page.pageRole = inferred as BuilderPage['pageRole'];
+    }
+  }
+
   const wizardSeed = parseWizardSeed(existingVfsFiles);
   const snapshotMeta = parseJsonFile<{
     meta?: { templateId?: string | null; themePresetId?: string | null; industry?: string | null };
