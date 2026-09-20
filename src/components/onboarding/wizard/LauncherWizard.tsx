@@ -692,7 +692,7 @@ export const LauncherWizard = ({
                       >
                         <span className="flex flex-col items-start">
                           <span>{pack.name}</span>
-                          <span className="text-[10px] font-normal text-white/40">{pack.description}</span>
+                          <span className="text-[10px] font-normal text-muted-foreground">{pack.description}</span>
                         </span>
                       </Chip>
                     ))}
