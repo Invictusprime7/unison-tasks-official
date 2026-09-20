@@ -8,7 +8,7 @@
 import React, { useMemo } from 'react';
 import { Layout, Layers, ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getGenerationVariantsForSection as getVariantsForSection, getSectionTypesWithVariants } from '@/sections/variants/registry';
+import { getBuilderVariantsForSection as getVariantsForSection, getSectionTypesWithVariants } from '@/sections/variants/registry';
 import { detectSections, type DetectedSection } from '@/utils/sectionSwapper';
 import type { SectionVariant } from '@/sections/variants/types';
 import type { SectionType } from '@/sections/types';
