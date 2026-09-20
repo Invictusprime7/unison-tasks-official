@@ -135,7 +135,14 @@ Milestone index (status tracked against the phases below):
       first-class. Business/project-scoped assets, dependency versions, primitive
       families, capabilities and artifact/slot contracts are bounded projections
       of existing authorities; no parallel registry was added.
-- [ ] M8 Lane B 21st-aware creative enrichment.
+- [x] M8 Lane B 21st-aware creative enrichment. Enrichment receives the
+      pack-filtered implementation context, the certified runtime dependency
+      allow-list and the design vocabulary report, and its validator now
+      enforces the 21st identity contract: a proposed page may not declare a
+      `data-ut-variant` outside the certified vocabulary and may not drop the
+      canonical `data-ut-section-id` values Stage 4b compiled. Legacy requests
+      without vocabulary or current sources remain unaffected
+      (`src/test/wizardLaneBEnrichment.test.ts`).
 - [ ] M9 Visual selection / property inspector.
 - [ ] M10 Immersive / 3D expansion (gated behind Phase 6A acceptance).
 
