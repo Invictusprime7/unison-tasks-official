@@ -97,6 +97,7 @@ const TOKEN_ROLES: Record<string, { group: ThemeContractGroup['id']; role: strin
   '--font-heading': { group: 'typography', role: 'heading font family', usage: 'font-heading' },
   '--font-body': { group: 'typography', role: 'body font family', usage: 'font-body' },
   '--ut-type-ratio': { group: 'scale', role: 'modular type-scale ratio', usage: 'informational — drives the size tokens below' },
+  '--ut-type-hero': { group: 'typography', role: 'home-hero headline size — one modular step above display', usage: 'text-[length:var(--ut-type-hero)] — or <Heading size="hero">' },
   '--ut-type-display': { group: 'typography', role: 'hero / page-title size', usage: 'text-[length:var(--ut-type-display)]' },
   '--ut-type-title': { group: 'typography', role: 'section-heading size', usage: 'text-[length:var(--ut-type-title)]' },
   '--ut-type-lead': { group: 'typography', role: 'lead paragraph size', usage: 'text-[length:var(--ut-type-lead)]' },

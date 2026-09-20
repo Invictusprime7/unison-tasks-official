@@ -344,6 +344,7 @@ export function buildArtDirectionTokens(pack: ArtDirectionPack): Record<string, 
   return {
     '--ut-art-direction': pack.id,
     '--ut-type-ratio': String(d.typeScaleRatio),
+    '--ut-type-hero': `clamp(2.75rem, ${(d.typeScaleRatio * 4.4).toFixed(2)}vw + 1rem, ${(d.typeScaleRatio ** 4).toFixed(2)}rem)`,
     '--ut-type-display': `clamp(2.25rem, ${(d.typeScaleRatio * 3.4).toFixed(2)}vw + 1rem, ${(d.typeScaleRatio ** 3).toFixed(2)}rem)`,
     '--ut-type-title': `clamp(1.75rem, ${(d.typeScaleRatio * 2.2).toFixed(2)}vw + 0.75rem, ${(d.typeScaleRatio ** 2).toFixed(2)}rem)`,
     '--ut-type-lead': `clamp(1.0625rem, ${(d.typeScaleRatio * 0.7).toFixed(2)}vw + 0.7rem, 1.375rem)`,
