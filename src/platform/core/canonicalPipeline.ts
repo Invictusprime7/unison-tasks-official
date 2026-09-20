@@ -789,6 +789,7 @@ function projectToSiteBundleSnapshot(
     artDirectionPackId: (designIntervention || selections.designIntervention)?.artDirectionPackId,
     industry: resolvedIndustry,
     seed: (designIntervention || selections.designIntervention)?.seed,
+    customerGoals: selections.secondaryGoals,
   });
 
   return {

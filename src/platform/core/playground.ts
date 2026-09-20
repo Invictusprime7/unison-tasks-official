@@ -84,6 +84,8 @@ export interface WizardSelections {
   needsBooking?: boolean;
   sellsProducts?: boolean;
   wantsLeadCapture?: boolean;
+  /** User selected an immersive experience and the launch envelope admitted WebGL. */
+  needsImmersive?: boolean;
   templateId?: string;
   themeId?: string;
   /**
@@ -228,6 +230,7 @@ export type PlaygroundPageRole =
   | 'faq'
   | 'blog'
   | 'shop'
+  | 'immersive'
   | 'custom';
 
 export type PlaygroundFunnelGoal =

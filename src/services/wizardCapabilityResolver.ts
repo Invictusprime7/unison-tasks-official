@@ -486,7 +486,7 @@ export function resolveCapabilities(selections: WizardSelections): CapabilityPac
   // topology, router, and binding guide regardless of business-model defaults.
   const VALID_REQUESTED: PlaygroundPageRole[] = [
     'home','about','services','pricing','gallery','contact','booking',
-    'booking_confirmation','checkout','thankyou','faq','blog','shop','custom',
+    'booking_confirmation','checkout','thankyou','faq','blog','shop','immersive','custom',
   ];
   for (const raw of selections.requestedPages ?? []) {
     const role = (raw as PlaygroundPageRole);

@@ -51,7 +51,8 @@ export type CustomerNeed =
   | "book_service"
   | "buy_offer"
   | "fill_form"
-  | "browse_services";
+  | "browse_services"
+  | "explore_immersive";
 
 export type PageChoice =
   | "about"
@@ -85,6 +86,7 @@ export const CUSTOMER_NEEDS: { id: CustomerNeed; label: string; icon: string }[]
   { id: "buy_offer", label: "Buy an offer/package", icon: "🛒" },
   { id: "fill_form", label: "Fill out a form", icon: "📝" },
   { id: "browse_services", label: "Browse services/products", icon: "🔍" },
+  { id: "explore_immersive", label: "Explore an interactive experience", icon: "✦" },
 ];
 
 export const PAGE_CHOICES: { id: PageChoice; label: string; icon: string }[] = [

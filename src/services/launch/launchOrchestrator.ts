@@ -102,7 +102,7 @@ import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract
 import { resolveExperienceRequirement, resolveArtDirectionPack } from "@/sections/variants";
 import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from "@/services/launch/twentyFirstCoverageGate";
 import type { VariantId } from "@/sections/variants/types";
-import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
+import { resolveApprovedExperienceCapabilities, resolveExperienceEnvelope } from "@/services/experienceCapabilityResolver";
 import { runExperiencePreflight } from "@/services/experiencePreflightGate";
 import type { BuilderIdentity } from "@/types/builderIdentity";
 import type { BusinessProfileDTO } from "@/types/businessProfile";
@@ -306,7 +306,21 @@ export async function runLaunchPipeline(
     const primaryGoal: PrimaryGoal =
       input.primaryGoal || preselect?.primaryGoal || "collect_leads";
     const customerNeeds = uniqueValues<CustomerNeed>(input.customerNeeds);
-    const requestedPages = uniqueValues<string>(["home", ...input.selectedPages]);
+    const immersiveRequested = customerNeeds.includes("explore_immersive");
+    const experienceEnvelope = resolveExperienceEnvelope({
+      seed: wizardSeedId,
+      businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
+      industry: industryOverlay,
+      templateId: input.template.id,
+      themePresetId: input.theme.id,
+      styleIntent: input.theme.id,
+      primaryGoal,
+      sellsProducts: customerNeeds.includes("buy_offer"),
+      needsBooking: customerNeeds.includes("book_service"),
+      wantsLeadCapture: customerNeeds.includes("request_quote") || customerNeeds.includes("fill_form"),
+    });
+    const needsImmersive = immersiveRequested && experienceEnvelope.webgl !== 'ineligible';
+    const requestedPages = uniqueValues<string>(["home", ...input.selectedPages, ...(needsImmersive ? ['immersive'] : [])]);
     const goalNeeds = GOAL_TO_NEEDS[primaryGoal] || {};
 
     const wizardSeedId = newId("ws");
@@ -345,6 +359,7 @@ export async function runLaunchPipeline(
         !!goalNeeds.wantsLeadCapture ||
         customerNeeds.includes("request_quote") ||
         customerNeeds.includes("fill_form"),
+      needsImmersive,
       templateId: input.template.id,
       themeId: input.theme.id,
       themePresetId: input.theme.id,
@@ -660,6 +675,8 @@ export async function runLaunchPipeline(
           route: page.route || `/${id}`,
           title: page.title || id,
           requiredIntents: page.requiredIntents || [],
+          role: page.pageRole || page.pageType || (page.isHome ? 'home' : 'custom'),
+          pageNeed: `${page.title || id}: ${(plan.selections.secondaryGoals || []).join(', ') || 'support the primary business goal'}; preserve this route's distinct purpose and composition.`,
         }),
       );
 

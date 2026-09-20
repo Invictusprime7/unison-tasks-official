@@ -26,6 +26,11 @@ export interface WizardGenerationBrief {
     path: string;
     role: string;
     title: string;
+    pageNeed: {
+      purpose: string;
+      customerGoals: string[];
+      requiredIntents: string[];
+    };
     hero: {
       required: true;
       posture: 'visual-hero' | 'editorial-header' | 'task-header';
@@ -225,6 +230,7 @@ export function buildWizardGenerationBrief(input: {
   artDirectionPackId?: string | null;
   industry?: string | null;
   seed?: string | null;
+  customerGoals?: readonly string[];
 }): WizardGenerationBrief {
   const pack = resolveArtDirectionPack({
     sealedPackId: input.artDirectionPackId,
@@ -258,6 +264,11 @@ export function buildWizardGenerationBrief(input: {
         path: page.filePath,
         role,
         title,
+        pageNeed: {
+          purpose: generationAngle(role, title),
+          customerGoals: [...(input.customerGoals ?? [])],
+          requiredIntents: [],
+        },
         hero: {
           required: true as const,
           posture,

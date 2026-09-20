@@ -26,6 +26,7 @@ export type BuilderPageType =
   | "blog"
   | "faq"
   | "pricing"
+  | "immersive"
   | "legal"
   | "custom";
 
@@ -44,6 +45,7 @@ export type BuilderPageRole =
   | "blog"
   | "about"
   | "pricing"
+  | "immersive"
   | "legal"
   | "custom";
 

@@ -13,7 +13,7 @@ const resultSchema = z.object({
     sectionOrder: z.array(z.string().max(40)).min(1).max(17),
     copy: z.record(z.string(), z.object({ items: z.array(z.union([z.object({ title: z.string().max(140), description: z.string().max(600) }).strict(), z.object({ question: z.string().max(240), answer: z.string().max(1000) }).strict()])).min(1).max(8).optional(), headline: z.string().max(240).optional(), subheadline: z.string().max(700).optional(), description: z.string().max(1600).optional() }).strict()).optional(),
     variants: z.record(z.string(), z.string().max(100)),
-  }).strict()).min(1).max(13),
+  }).strict()).min(1).max(14),
 }).strict();
 
 type Generate = (messages: Array<{ role: string; content: string }>) => Promise<{
@@ -55,27 +55,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
     }),
   };
 
-  // Homepage-first: the home page establishes the site visual language. A
-  // repeated family drifting to another design on a secondary page is
-  // mechanical drift and is realigned when the home choice stays eligible.
-  const home = normalized.pages.find(page => page.role === 'home');
-  if (!brief || !home) return normalized;
-  const eligible = (id: string, role: string) => {
-    const variant = brief.variants.find(entry => entry.id === id);
-    return Boolean(variant && (!variant.pageRoles.length || variant.pageRoles.includes(role)));
-  };
-  return {
-    ...normalized,
-    pages: normalized.pages.map(page => {
-      if (page.role === home.role) return page;
-      const variants = { ...page.variants };
-      for (const [family, homeVariantId] of Object.entries(home.variants)) {
-        if (!(family in variants) || variants[family] === homeVariantId) continue;
-        if (eligible(homeVariantId, page.role)) variants[family] = homeVariantId;
-      }
-      return { ...page, variants };
-    }),
-  };
+  return normalized;
 }
 
 export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, brief: {
