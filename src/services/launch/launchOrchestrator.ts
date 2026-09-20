@@ -741,6 +741,29 @@ export async function runLaunchPipeline(
         enrichedVfsFiles = batch.files;
         for (const path of batch.acceptedPaths) acceptedLaneBPagePaths.add(path);
         if (batch.acceptedPaths.length) acceptedBatchCount += 1;
+
+        // Once the homepage body exists, seal what it established so every
+        // later batch — and the page registry — inherits the same language.
+        if (!homepageVisualLanguage && homePagePath && batchPathSet.has(homePagePath)) {
+          const language = extractHomepageVisualLanguage(
+            enrichedVfsFiles[homePagePath] || '',
+            homePageId || 'home',
+          );
+          if (hasEstablishedVisualLanguage(language)) {
+            homepageVisualLanguage = language;
+            const registryPages = siteBundleSnapshot.pageRegistry.pages || {};
+            siteBundleSnapshot.pageRegistry.visualLanguage = {
+              sourcePageId: language.sourcePageId,
+              signature: language.signature,
+              establishedAt: new Date().toISOString(),
+            };
+            for (const [id, page] of Object.entries(registryPages) as [string, any][]) {
+              page.visualLanguageSourcePageId = language.sourcePageId;
+              page.visualLanguageSignature = language.signature;
+              void id;
+            }
+          }
+        }
       }
 
       console.log('[launch] Lane B enrichment complete:', {
