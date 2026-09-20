@@ -730,6 +730,7 @@ function projectToSiteBundleSnapshot(
     wizardSeedId?: string | null;
     themeTokens?: ThemeTokens;
     interactionManifest?: WizardInteractionManifest;
+    secondaryGoals?: string[];
     uiFoundation?: GeneratedUiManifest;
     designIntervention?: WizardDesignIntervention;
   },

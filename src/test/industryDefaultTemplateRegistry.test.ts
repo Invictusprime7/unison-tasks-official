@@ -22,6 +22,7 @@ const PURPOSE_TO_ROLE: Record<PageSpec['purpose'], PageRouteNode['role']> = {
   booking: 'booking',
   pricing: 'pricing',
   faq: 'faq',
+  immersive: 'immersive',
 };
 
 function readSections(source: string): SectionEntry[] {
