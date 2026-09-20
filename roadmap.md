@@ -144,7 +144,22 @@ Milestone index (status tracked against the phases below):
       without vocabulary or current sources remain unaffected
       (`src/test/wizardLaneBEnrichment.test.ts`).
 - [x] M9 Visual selection / property inspector — propertyInspectorModel projection + PropertyInspectorPanel mounted in WebBuilder (canonical patch plans + grounded AI requests).
-- [ ] M10 Immersive / 3D expansion (gated behind Phase 6A acceptance).
+- [x] M6b Asset → slot binding — real business media (cloud + local Asset
+      Registry, bounded to 40 images) is projected into the wizard seed
+      (`seed.media.assets`) and bound into the media slots the composition
+      already declares (`src/services/launch/assetSlotBinding.ts`, applied in
+      `applyWizardSeedToComposition`). Binding is deterministic, never adds or
+      removes props, and leaves stock defaults when the business owns no media
+      (`src/test/assetSlotBinding.test.ts`).
+- [x] M10 Immersive / 3D expansion — unlocked by explicit owner acceptance
+      after M6b. `gallery:cinematic-grid` now declares `experience: enabled`,
+      so the derived contract exposes the three / @react-three/fiber runtime.
+      Activation stays fully guarded: a WebGL-eligible envelope, the heavy
+      vocabulary in the sealed candidates, real bound media and remaining
+      canvas budget are all required, otherwise the DOM section renders
+      unchanged. Acceptance: `src/test/immersiveExperienceAcceptance.test.ts`
+      (scene + depth gallery compile with three/@react-three/fiber inside the
+      per-page canvas budget; no eligibility or no media ⇒ no canvas).
 
 M1 exit condition is unchanged: Wizard preview implementation = canonical VFS
 implementation = Builder Preview implementation = published runtime
