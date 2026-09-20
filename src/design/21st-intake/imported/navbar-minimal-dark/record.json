@@ -1,0 +1,68 @@
+{
+  "sourceId": "21st:841",
+  "name": "Header",
+  "sourceUrl": "https://21st.dev/tommyjepsen/header",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Header by @tommyjepsen",
+  "designTags": [
+    "navbar",
+    "navigation"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": false,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "navbar:minimal-dark"
+  ],
+  "author": "tommyjepsen",
+  "implementationId": "navbar:minimal-dark",
+  "licenseReview": {
+    "status": "owner-authorized",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "https://21st.dev/tommyjepsen/header",
+    "verifiedAt": "2026-09-20T23:50:10.746048Z",
+    "notes": "Retrieved with the workspace 21st.dev paid subscription via MCP get_component; adapted under owner authorization."
+  },
+  "archivePath": "src/design/21st-intake/archive/navbar-minimal-dark",
+  "archivedAt": "2026-09-20T23:50:10.746048Z",
+  "reviewEvidence": {
+    "sourceSha256": "a01eaadd761dd167df60bfa92af66e29e59f8d23be928c613672f10b118c6758",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-20T23:50:10.746048Z"
+  }
+}
