@@ -1522,7 +1522,7 @@ export function OrbitalBackdrop({ className, ...props }: BackdropProps) {
   return (
     <BackdropLayer className={className} {...props}>
       <motion.div
-        className="absolute left-1/2 top-1/2 size-[var(--ut-hero-block)] min-size-96 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:hsl(var(--primary)/0.18)]"
+        className="absolute left-1/2 top-1/2 size-[var(--ut-hero-block)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:hsl(var(--primary)/0.18)]"
         animate={reduceMotion ? undefined : { rotate: 360 }}
         transition={reduceMotion ? undefined : { duration: 60, ease: 'linear', repeat: Infinity }}
       />
