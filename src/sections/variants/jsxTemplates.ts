@@ -151,35 +151,37 @@ export function navbarStandardJSX(c: ExtractedSectionContent): string {
   const navLinks = c.navLinks || [];
   const ctaButton = c.ctaButtons?.[0];
 
-  return `      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm" data-variant="navbar:standard">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
-          <a href="/" className="text-xl font-bold text-gray-900">${esc(brand)}</a>
-          <div className="hidden md:flex items-center gap-6">
-${renderLinks(navLinks, 'text-sm text-gray-600 hover:text-gray-900 transition-colors')}
+  return `      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md" data-variant="navbar:standard">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="flex items-stretch justify-between border-y border-border">
+            <a href="/" className="flex items-center py-4 text-lg font-semibold tracking-tight text-foreground">${esc(brand)}</a>
+            <nav aria-label="Main navigation" className="hidden items-stretch md:flex">
+${renderLinks(navLinks, 'flex items-center border-l border-border px-4 text-sm font-medium text-foreground motion-safe:transition-colors hover:opacity-80')}
+${ctaButton ? `              <span className="flex items-center border-l border-border pl-4"><a href="${ctaButton.href}" className="rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">${esc(ctaButton.text)}</a></span>\n` : ''}\
+            </nav>
           </div>
-${ctaButton ? `          <a href="${ctaButton.href}" className="hidden md:inline-block px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">${esc(ctaButton.text)}</a>\n` : ''}\
         </div>
-      </nav>`;
+      </header>`;
 }
 
 export function navbarCenteredLogoJSX(c: ExtractedSectionContent): string {
   const brand = c.brandName || 'Brand';
   const navLinks = c.navLinks || [];
-  const half = Math.ceil(navLinks.length / 2);
-  const leftLinks = navLinks.slice(0, half);
-  const rightLinks = navLinks.slice(half);
+  const ctaButton = c.ctaButtons?.[0];
 
-  return `      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm" data-variant="navbar:centered-logo">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-center h-16 gap-8">
-          <div className="hidden md:flex items-center gap-6">
-${renderLinks(leftLinks, 'text-sm text-gray-600 hover:text-gray-900 transition-colors')}
-          </div>
-          <a href="/" className="text-xl font-bold text-gray-900 px-4">${esc(brand)}</a>
-          <div className="hidden md:flex items-center gap-6">
-${renderLinks(rightLinks, 'text-sm text-gray-600 hover:text-gray-900 transition-colors')}
+  return `      <header className="sticky top-0 z-50 w-full px-2 pt-2" data-variant="navbar:centered-logo">
+        <div className="mx-auto max-w-6xl rounded-2xl border border-border/60 bg-background/70 px-6 backdrop-blur-lg">
+          <div className="relative flex items-center justify-between py-3">
+            <a href="/" aria-label="Home" className="text-xl font-semibold tracking-tight text-foreground">${esc(brand)}</a>
+            <nav aria-label="Main navigation" className="absolute inset-0 m-auto hidden size-fit md:block">
+              <ul className="flex gap-8 text-sm">
+${renderLinks(navLinks, 'block text-muted-foreground motion-safe:duration-150 hover:opacity-80')}
+              </ul>
+            </nav>
+${ctaButton ? `            <a href="${ctaButton.href}" className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">${esc(ctaButton.text)}</a>\n` : ''}\
           </div>
         </div>
-      </nav>`;
+      </header>`;
 }
 
 export function navbarMinimalDarkJSX(c: ExtractedSectionContent): string {
@@ -187,15 +189,17 @@ export function navbarMinimalDarkJSX(c: ExtractedSectionContent): string {
   const navLinks = c.navLinks || [];
   const ctaButton = c.ctaButtons?.[0];
 
-  return `      <nav className="sticky top-0 z-50 bg-gray-900" data-variant="navbar:minimal-dark">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
-          <a href="/" className="text-xl font-bold text-white">${esc(brand)}</a>
-          <div className="hidden md:flex items-center gap-6">
-${renderLinks(navLinks, 'text-sm text-gray-400 hover:text-white transition-colors')}
-${ctaButton ? `              <a href="${ctaButton.href}" className="px-4 py-1.5 rounded-full bg-white text-gray-900 text-sm font-medium hover:bg-gray-100 transition-colors">${esc(ctaButton.text)}</a>\n` : ''}\
+  return `      <header className="sticky top-0 z-50 border-b border-background/10 bg-foreground/95 backdrop-blur-md" data-variant="navbar:minimal-dark">
+        <div className="mx-auto grid min-h-16 max-w-6xl grid-cols-3 items-center gap-4 px-6">
+          <nav aria-label="Main navigation" className="hidden items-center justify-start gap-6 md:flex">
+${renderLinks(navLinks, 'text-sm text-background/70 motion-safe:transition-colors hover:text-background')}
+          </nav>
+          <a href="/" className="justify-self-center text-base font-semibold tracking-tight text-background">${esc(brand)}</a>
+          <div className="flex items-center justify-end gap-4 border-l border-background/10 py-3 pl-6">
+${ctaButton ? `            <a href="${ctaButton.href}" className="rounded-[var(--radius)] bg-primary px-5 py-1.5 text-sm font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">${esc(ctaButton.text)}</a>\n` : ''}\
           </div>
         </div>
-      </nav>`;
+      </header>`;
 }
 
 // ============================================================================
