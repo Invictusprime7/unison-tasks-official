@@ -19,6 +19,7 @@ import { getCompositionById } from '@/sections/templates';
 import type { LayoutCategory } from '@/data/templates/types';
 import type { BuilderPage } from '@/types/pageRegistry';
 import type { GeneratedSitePlan, PageRole, PageRouteNode } from '@/platform/core/siteTopologyPlanner';
+import { roleToPageType } from '@/platform/core/siteTopologyPlanner';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { collectResolvedCompositions, resolvedCompositionPathFor } from '@/platform/core/resolvedComposition';
 import { collectReachableFiles } from '@/utils/dependencyExtractor';
@@ -136,6 +137,21 @@ export function compilePlayground(
 ): PlaygroundCompileResult {
   const registry = state.pageRegistry;
   const pages = Object.values(registry.pages);
+
+  // Self-heal page roles before any topology work: drafts persisted before a
+  // role existed (or pages authored by an older lane) may carry pageRole
+  // 'custom'/'' even when their path or type is fully classifiable (e.g.
+  // /experience => immersive). Re-inferring here makes the fix retroactive
+  // for every industry and every saved draft, not only new launches.
+  for (const page of pages) {
+    const roleUnclassified = !page.pageRole || page.pageRole === 'custom';
+    const typeUnclassified = !page.pageType || page.pageType === 'custom';
+    if (!roleUnclassified && !typeUnclassified) continue;
+    const inferred = inferTopologyRole(page);
+    if (inferred === 'custom') continue;
+    if (roleUnclassified) page.pageRole = inferred as BuilderPage['pageRole'];
+    if (typeUnclassified) page.pageType = roleToPageType(inferred);
+  }
 
   const wizardSeed = parseWizardSeed(existingVfsFiles);
   const snapshotMeta = parseJsonFile<{

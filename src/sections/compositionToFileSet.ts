@@ -551,8 +551,9 @@ export function updateResolvedCompositionVariants(source: string, previous: Reso
   const previousOverrides = previous.variantOverrides ?? {};
   const sections = (JSON.parse(data[1]) as TemplateComposition['sections']).map(section => {
     const key = section.id in nextOverrides ? section.id : section.type !== 'hero' ? section.sourceSectionId : undefined;
-    if (!key || previousOverrides[key] === nextOverrides[key]) return section;
-    const variant = getVariantById(nextOverrides[key]);
+    const nextVariantId = key ? nextOverrides[key] : undefined;
+    if (!nextVariantId || previousOverrides[key!] === nextVariantId) return section;
+    const variant = getVariantById(nextVariantId);
     if (!variant || variant.sectionType !== section.type) return section;
     const layout = getLayoutForVariantId(variant.id);
     return { ...section, variantId: variant.id, props: { ...section.props, ...(layout ? { layout } : {}) } };

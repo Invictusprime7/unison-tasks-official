@@ -867,6 +867,7 @@ function ensureRequiredPages(
     gallery:               { title: 'Gallery',      route: '/gallery',      filePath: '/src/pages/Gallery.tsx',     pageType: 'gallery',   showInNav: true },
     faq:                   { title: 'FAQ',           route: '/faq',          filePath: '/src/pages/Faq.tsx',         pageType: 'faq',       showInNav: true },
     blog:                  { title: 'Blog',          route: '/blog',         filePath: '/src/pages/Blog.tsx',        pageType: 'blog',      showInNav: true },
+    immersive:             { title: 'Experience',    route: '/experience',   filePath: '/src/pages/Experience.tsx',  pageType: 'immersive', showInNav: true },
   };
 
   const navOrder = Object.keys(registry.pages).length * 10;
