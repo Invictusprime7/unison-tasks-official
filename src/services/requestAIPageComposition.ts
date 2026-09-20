@@ -7,6 +7,8 @@ import { VARIANT_REGISTRY, getGenerationVariantsForSection } from '@/sections/va
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
 import type { WizardSelections } from '@/types/playground';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
+import { deriveImplementationVisualSignature } from '@/services/implementationVisualSignature';
+import { isImplementationExperienceCompatible } from '@/services/designCompatibilityGraph';
 
 export type CompositionFailure = 'endpoint-unavailable' | 'authentication' | 'request-rejected' | 'provider' | 'invalid-response' | 'incomplete-plan' | 'transport';
 export async function requestAIPageComposition(selections: WizardSelections, signal: AbortSignal, invoke = runBuilderTurn, onFailure?: (reason: CompositionFailure, details?: CompositionFailureDetails) => void, registryContext?: WizardAggregatedRegistryContext) {
@@ -19,10 +21,15 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
   const design = buildWizardDesignIntervention({ ...selections, themePresetId: selections.themePresetId || 'modern', projectId: selections.businessId });
   const pack = ART_DIRECTION_PACKS[design.artDirectionPackId];
   const roles = COMPOSITION_ROLES.filter(role => role === 'home' || selections.requestedPages?.includes(role));
+  const experiencePreference = selections.designSelection?.experience ?? 'standard';
+  const pinnedVariants = Object.fromEntries(Object.values(selections.designSelection?.sectionPins ?? {})
+    .map(id => [String(id).split(':')[0], id]));
   const variants = [...new Map(Object.keys(VARIANT_REGISTRY).flatMap(type => roles.flatMap(role =>
     getGenerationVariantsForSection(type as import('@/sections/types').SectionType, pack, role))).map(variant => [variant.id, variant])).values()]
+    .filter(variant => isImplementationExperienceCompatible(deriveImplementationVisualSignature(variant), experiencePreference))
     .map(variant => ({ id: variant.id, family: variant.sectionType, description: variant.description, tags: variant.tags,
-      pageRoles: roles.filter(role => getGenerationVariantsForSection(variant.sectionType, pack, role).some(eligible => eligible.id === variant.id)), preferredSource: true, certification: variant.vfs?.certification ?? 'approved' }));
+      pageRoles: roles.filter(role => getGenerationVariantsForSection(variant.sectionType, pack, role).some(eligible => eligible.id === variant.id)), preferredSource: true, certification: variant.vfs?.certification ?? 'approved',
+      visualSignature: deriveImplementationVisualSignature(variant) }));
   try {
     const response = await invoke({ mode: 'wizard-site-composition', gatewayOptions: { maxTokens: 6000, reasoningEffort: 'none' }, messages: [{ role: 'user', content: JSON.stringify({
       task: 'Compose every requested page with original business-specific copy, section order and local variants. Prefer certified 21st-derived options when suitable. Preserve page roles and all business content. No source code or new routes.',
@@ -30,6 +37,7 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       launchSeed: selections.wizardSeedId, vision: selections.visionPrompt, needs: selections.secondaryGoals,
       businessName: selections.businessName, industry: selections.industryOverlay, goal: selections.primaryGoal,
        roles, pack: pack.id, variants,
+       designSelection: { mode: selections.designSelection?.mode ?? 'auto', artDirectionPackId: pack.id, experience: experiencePreference, pinnedVariants },
        assets: registryContext?.assets,
        runtimeDependencies: registryContext?.runtimeDependencies,
        primitiveFamilies: registryContext?.primitiveFamilies,
@@ -37,9 +45,12 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
        implementationContracts: registryContext?.implementations?.map(implementation => ({
          id: implementation.id, sectionType: implementation.sectionType,
          runtimeDependencies: implementation.runtimeDependencies,
+         componentStates: implementation.componentStates,
+         visualSignature: implementation.visualSignature,
+         compatibleExperiencePreferences: implementation.compatibleExperiencePreferences,
          artifactContract: implementation.artifactContract,
        })),
-      canonicalContract: renderCompositionCanonicalContract({ roles, variants }),
+      canonicalContract: renderCompositionCanonicalContract({ roles, variants, experiencePreference, pinnedVariants }),
       output: { version: '1.0', pages: [{ role: 'home', sectionOrder: ['navbar','hero','services','testimonials','cta','footer'], variants: { services: 'choose an eligible id' }, copy: { hero: { headline: 'Original business-specific headline', subheadline: 'Useful supporting copy' } } }] },
       constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Copy is optional because canonical business content is preserved. When writing copy, use original headline, subheadline and description text by family. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
     }) }] }, { signal, functionName: 'wizard-site-composer' });
@@ -49,7 +60,7 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       const reason = details.status === 404 ? 'endpoint-unavailable' : details.status === 401 || details.status === 403 ? 'authentication' : details.status === 400 ? 'request-rejected' : 'provider';
       return fail(reason, details);
     }
-    const plan = validateAIPageComposition(normalizeCompositionResponse(response.data, { roles, variants }), pack.id, roles);
+    const plan = validateAIPageComposition(normalizeCompositionResponse(response.data, { roles, variants }), pack.id, roles, { experiencePreference, pinnedVariants });
     if (!plan) return fail('invalid-response');
     const missingRoles = roles.filter(role => !plan.pages.some(page => page.role === role && Object.keys(page.variants).length > 0));
     if (missingRoles.length) return fail('incomplete-plan', { missingRoles, message: 'AI omitted a valid composition for: ' + missingRoles.join(', ') + '. Please retry generation.' });
