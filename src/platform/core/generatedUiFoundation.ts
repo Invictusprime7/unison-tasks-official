@@ -2056,7 +2056,7 @@ export function validateGeneratedUiContract(
       if (
         isSandpackAllowedImport(specifier) ||
         specifier.startsWith('.') ||
-        specifier.startsWith('@/components/ui/')
+        specifier.startsWith('@/')
       ) {
         continue;
       }
