@@ -19,6 +19,14 @@ LauncherWizard
 ```
 
 - Launcher compilation is always deterministic: Stage 4b is mandatory. An accepted bounded AI composition plan refines the layout when available; missing or invalid composition degrades with a visible note and the deterministic Design Intervention launches instead.
+- Before Stage 4b, the 21st generation coverage gate
+  (`src/services/launch/twentyFirstCoverageGate.ts`) verifies every visual
+  section resolves to a certified, portable, artifact-bindable,
+  state-documented 21st implementation. Incomplete coverage degrades with a
+  visible note and is loud in development; it never substitutes generic UI.
+- Component states are first-class: `src/sections/variants/componentStates.ts`
+  owns the derived state/interaction/responsive contract exposed to both AI
+  layers through the wizard registry context.
 - Stage 4b is the only global theme authority.
 - `commitMutation` is the only accepted mutation boundary.
 - Preview and Playground consume committed canonical artifacts.

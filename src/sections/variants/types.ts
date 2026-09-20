@@ -84,6 +84,12 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   /** Experience-layer dependency this variant declares or enables */
   experience?: VariantExperienceDeclaration;
   /**
+   * Component-state contract (V4 M6). Optional per entry: the canonical
+   * contract is derived from the family posture in `componentStates.ts` and
+   * refined by whatever an implementation declares here.
+   */
+  states?: Partial<import('./componentStates').ComponentStateContract>;
+  /**
    * @deprecated Legacy source metadata retained only while nonportable families
    * migrate. It must not be invoked to write or replace canonical VFS output.
    */

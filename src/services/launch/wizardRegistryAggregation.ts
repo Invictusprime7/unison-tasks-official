@@ -20,6 +20,7 @@ import {
   resolveArtDirectionPack,
 } from '@/sections/variants';
 import type { SectionType } from '@/sections/types';
+import { resolveComponentStateContract } from '@/sections/variants/componentStates';
 import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
 import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
@@ -77,6 +78,8 @@ export interface WizardRegistryImplementationSummary {
   radixPrimitives: readonly string[];
   /** Canonical generated-runtime imports needed by this implementation. */
   runtimeDependencies?: readonly string[];
+  /** Component-state contract (V4 M6); absent on older persisted contexts. */
+  componentStates?: import('@/sections/variants/componentStates').ComponentStateContract;
   /** Derived from the artifact owner; absent on older persisted contexts. */
   artifactContract?: {
     artifactId: string;
@@ -262,6 +265,7 @@ export function buildWizardAggregatedRegistryContext(options: {
           ...(implementation.radixPrimitives ?? []).map(id => `@radix-ui/react-${id}`),
           ...(implementation.experience?.status === 'enabled' ? foundation.manifest.experience.runtimePackages : []),
         ],
+        componentStates: resolveComponentStateContract(implementation),
         artifactContract: artifact ? {
           artifactId: artifact.artifactId,
           dataSourceKind: artifact.dataSource.kind,
