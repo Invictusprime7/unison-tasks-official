@@ -24,6 +24,9 @@ LauncherWizard
   section resolves to a certified, portable, artifact-bindable,
   state-documented 21st implementation. Incomplete coverage degrades with a
   visible note and is loud in development; it never substitutes generic UI.
+  All art direction packs pass the gate
+  (`src/test/artDirectionPackCoverage.test.ts`), and the gate runs as a
+  dedicated blocking CI step.
 - Component states are first-class: `src/sections/variants/componentStates.ts`
   owns the derived state/interaction/responsive contract exposed to both AI
   layers through the wizard registry context.
