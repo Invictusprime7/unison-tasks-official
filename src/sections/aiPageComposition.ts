@@ -4,6 +4,9 @@ import type { SectionType, TemplateComposition } from '@/sections/types';
 import { getVariantById, getGenerationVariantsForSection } from '@/sections/variants/registry';
 import { ART_DIRECTION_PACKS, type ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
 import type { VariantId } from '@/sections/variants/types';
+import type { WizardExperiencePreference } from '@/services/wizardDesignSelection';
+import { deriveImplementationVisualSignature } from '@/services/implementationVisualSignature';
+import { isImplementationExperienceCompatible } from '@/services/designCompatibilityGraph';
 
 export const COMPOSITION_ROLES = ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'checkout', 'thank_you', 'blog', 'immersive', 'custom'] as const;
 const family = z.enum(['navbar', 'hero', 'about', 'services', 'features', 'gallery', 'pricing', 'logo-cloud', 'blog-preview', 'before-after', 'testimonials', 'cta', 'contact', 'footer', 'stats', 'team', 'faq']);
@@ -25,7 +28,10 @@ const schema = z.object({
 export type AIPageCompositionPlan = z.infer<typeof schema>;
 
 /** No source code, theme overrides, props, routes or mutation commands are accepted. */
-export function validateAIPageComposition(value: unknown, packId: ArtDirectionPackId, roles: readonly string[]) {
+export function validateAIPageComposition(value: unknown, packId: ArtDirectionPackId, roles: readonly string[], constraints?: {
+  experiencePreference?: WizardExperiencePreference;
+  pinnedVariants?: Readonly<Record<string, string>>;
+}) {
   if (typeof value === 'object' && value && 'content' in value) value = (value as { content: unknown }).content;
   if (typeof value === 'string') {
     if (value.length > 40000) return null;
@@ -49,6 +55,8 @@ export function validateAIPageComposition(value: unknown, packId: ArtDirectionPa
       // treats pageRoles as a preference and falls back to the certified set.
       const allowed = getGenerationVariantsForSection(variant.sectionType, ART_DIRECTION_PACKS[packId], page.role).map(candidate => candidate.id);
       if (!allowed.includes(variant.id)) return null;
+      if (constraints?.experiencePreference && !isImplementationExperienceCompatible(deriveImplementationVisualSignature(variant), constraints.experiencePreference)) return null;
+      if (constraints?.pinnedVariants?.[type] && constraints.pinnedVariants[type] !== id) return null;
     }
   }
   return plan;

@@ -22,6 +22,8 @@ import {
   type WizardAggregatedRegistryContext,
 } from '@/services/launch/wizardRegistryAggregation';
 import type { ComponentStateContract } from '@/sections/variants/componentStates';
+import type { ImplementationVisualSignature } from '@/services/implementationVisualSignature';
+import type { WizardDesignSelection, WizardExperiencePreference } from '@/services/wizardDesignSelection';
 
 /** Bounded projection handed to the in-Builder AI lane. */
 export interface BuilderRegistryContext {
@@ -31,6 +33,7 @@ export interface BuilderRegistryContext {
   templateId: string;
   themePresetId: string;
   artDirectionPackId?: string;
+  designSelection?: WizardDesignSelection;
   designRegistrySignature: string;
   sections: Array<{
     type: string;
@@ -45,6 +48,8 @@ export interface BuilderRegistryContext {
     certification: string;
     runtimeDependencies?: readonly string[];
     componentStates?: ComponentStateContract;
+    visualSignature?: ImplementationVisualSignature;
+    compatibleExperiencePreferences?: readonly WizardExperiencePreference[];
     artifactContract?: {
       artifactId: string;
       dataSourceKind: string;
@@ -102,6 +107,8 @@ export function boundRegistryContext(
       certification: implementation.certification,
       runtimeDependencies: implementation.runtimeDependencies,
       componentStates: implementation.componentStates,
+      visualSignature: implementation.visualSignature,
+      compatibleExperiencePreferences: implementation.compatibleExperiencePreferences,
       artifactContract: implementation.artifactContract,
     })) as BuilderRegistryContext['implementations'];
 
@@ -112,6 +119,7 @@ export function boundRegistryContext(
     templateId: context.templateId,
     themePresetId: context.themePresetId,
     artDirectionPackId: context.artDirectionPackId,
+    designSelection: context.designSelection,
     designRegistrySignature: context.designRegistrySignature,
     sections,
     implementations,

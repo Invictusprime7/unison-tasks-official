@@ -461,8 +461,13 @@ export function buildWizardDesignIntervention(
   });
   const brief = buildArtDirectionBrief(envelope, artDirectionPackId);
 
+  const pinnedVariants = Object.fromEntries(Object.values(input.designSelection?.sectionPins ?? {})
+    .map(id => [String(id).split(':')[0], id]));
   const compositionPlan = input.compositionPlan
-    ? validateAIPageComposition(input.compositionPlan, artDirectionPackId, COMPOSITION_ROLES) ?? undefined : undefined;
+    ? validateAIPageComposition(input.compositionPlan, artDirectionPackId, COMPOSITION_ROLES, {
+        experiencePreference: input.designSelection?.experience,
+        pinnedVariants,
+      }) ?? undefined : undefined;
   const activeVariants = buildActiveVariants(input.templateId, seed, artDirectionPackId);
   const homeChoices = compositionPlan?.pages.find(page => page.role === 'home')?.variants;
   const home = input.templateId ? getCompositionById(input.templateId) : undefined;

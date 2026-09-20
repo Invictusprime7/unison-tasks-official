@@ -30,6 +30,9 @@ import { buildGeneratedUiFoundation } from '@/platform/core/generatedUiFoundatio
 import { CAPABILITY_REGISTRY, type CapabilityId } from '@/platform/core/capabilityRegistry';
 import { WIZARD_PREVIEW_RUNTIME_DEPENDENCIES } from '@/utils/sandpackDependencies';
 import type { Asset } from '@/types/asset';
+import { deriveImplementationVisualSignature, type ImplementationVisualSignature } from '@/services/implementationVisualSignature';
+import { compatibleExperiencePreferences } from '@/services/designCompatibilityGraph';
+import type { WizardDesignSelection } from '@/services/wizardDesignSelection';
 
 export const WIZARD_REGISTRY_CONTEXT_PATH = '/.unison/wizard-registry-context.json' as const;
 export const WIZARD_REGISTRY_CONTEXT_VERSION = '2.0' as const;
@@ -81,6 +84,10 @@ export interface WizardRegistryImplementationSummary {
   runtimeDependencies?: readonly string[];
   /** Component-state contract (V4 M6); absent on older persisted contexts. */
   componentStates?: import('@/sections/variants/componentStates').ComponentStateContract;
+  /** Derived only from certified registry metadata; never authored by AI. */
+  visualSignature?: ImplementationVisualSignature;
+  /** Canonical compatibility edges for Wizard and AI selection. */
+  compatibleExperiencePreferences?: readonly import('@/services/wizardDesignSelection').WizardExperiencePreference[];
   /** Derived from the artifact owner; absent on older persisted contexts. */
   artifactContract?: {
     artifactId: string;
@@ -125,6 +132,8 @@ export interface WizardAggregatedRegistryContext {
   templateId: string;
   themePresetId: string;
   artDirectionPackId?: string;
+  /** Additive persisted Wizard constraints; absent on legacy snapshots. */
+  designSelection?: WizardDesignSelection;
   designRegistrySignature: string;
   /** Additive: old persisted contexts remain valid without this fingerprint. */
   designCapabilityFingerprint?: string;
@@ -166,11 +175,13 @@ export function buildWizardAggregatedRegistryContext(options: {
   projectId?: string;
   /** Injectable for tests; callers must still provide the active ownership boundary. */
   assets?: readonly Asset[];
+  designSelection?: WizardDesignSelection;
 }): WizardAggregatedRegistryContext {
   const pack = resolveArtDirectionPack({
     industry: options.industry,
     themePresetId: options.themePresetId,
     seed: options.seed,
+    sealedPackId: options.designSelection?.artDirectionPackId,
   });
 
   const allSections = getAllSections();
@@ -249,6 +260,7 @@ export function buildWizardAggregatedRegistryContext(options: {
     templateId: options.templateId,
     themePresetId: options.themePresetId,
     artDirectionPackId: pack?.id,
+    designSelection: options.designSelection,
     designRegistrySignature: designRegistrySignature(),
     designCapabilityFingerprint: designCapabilityFingerprint({
       ...options,
@@ -260,6 +272,7 @@ export function buildWizardAggregatedRegistryContext(options: {
       const implementation = getDesignImplementation(id)!;
       const artifact = getArtifact(section.type);
       const contract = resolveImplementationContract(id);
+      const visualSignature = deriveImplementationVisualSignature(implementation);
       return {
         id, sectionType: section.type, name: implementation.name,
         certification: implementation.vfs?.certification === 'approved' ? 'approved' as const : 'portable' as const,
@@ -272,6 +285,8 @@ export function buildWizardAggregatedRegistryContext(options: {
           ...(implementation.experience?.status === 'enabled' ? foundation.manifest.experience.runtimePackages : []),
         ],
         componentStates: resolveComponentStateContract(implementation),
+        visualSignature,
+        compatibleExperiencePreferences: compatibleExperiencePreferences(visualSignature),
         artifactContract: artifact ? {
           artifactId: artifact.artifactId,
           dataSourceKind: artifact.dataSource.kind,

@@ -60,6 +60,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
 
 export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, brief: {
   roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[] }>;
+  designSelection?: { pinnedVariants?: Record<string, string> };
 }) {
   const normalized = normalizeCompositionPlan(plan, brief);
   if (normalized.pages.length !== brief.roles.length) return false;
@@ -67,7 +68,8 @@ export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, br
     new Set(page.sectionOrder).size === page.sectionOrder.length && Object.keys(page.variants).length > 0 &&
     Object.keys(page.copy ?? {}).every(type => page.sectionOrder.includes(type) && type !== 'navbar' && type !== 'footer') &&
     Object.entries(page.variants).every(([family, id]) => page.sectionOrder.includes(family) &&
-      brief.variants.some(variant => variant.id === id && variant.family === family && variant.pageRoles.includes(page.role))));
+      brief.variants.some(variant => variant.id === id && variant.family === family && variant.pageRoles.includes(page.role)) &&
+      (!brief.designSelection?.pinnedVariants?.[family] || brief.designSelection.pinnedVariants[family] === id)));
 }
 
 
@@ -75,6 +77,7 @@ export interface CompositionBrief {
   roles: string[];
   variants: Array<{ id: string; family: string; pageRoles: string[] }>;
   canonicalContract?: string;
+  designSelection?: { pinnedVariants?: Record<string, string> };
 }
 
 /** Actionable paths only: do not log business copy or entire model responses. */
@@ -91,6 +94,7 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
     for (const [family, id] of Object.entries(page.variants)) {
       if (!page.sectionOrder.includes(family)) issues.push(prefix + '.variants.' + family + ': family must be in sectionOrder');
       if (!brief.variants.some(v => v.id === id && v.family === family && (!v.pageRoles.length || v.pageRoles.includes(page.role)))) issues.push(prefix + '.variants.' + family + ': select an eligible ID for this role from the supplied catalog');
+      if (brief.designSelection?.pinnedVariants?.[family] && brief.designSelection.pinnedVariants[family] !== id) issues.push(prefix + '.variants.' + family + ': preserve the user-pinned ID ' + brief.designSelection.pinnedVariants[family]);
     }
     for (const family of Object.keys(page.copy ?? {})) if (!page.sectionOrder.includes(family) || family === 'navbar' || family === 'footer') issues.push(prefix + '.copy.' + family + ': copy must target a body family in sectionOrder');
   }

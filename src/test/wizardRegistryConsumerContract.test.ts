@@ -167,6 +167,7 @@ describe('v2 resolved implementation contracts', () => {
     expect(registry.primitiveFamilies?.map(item => item.family)).toEqual(expect.arrayContaining(['layout', 'motion', 'radix', 'experience']));
     expect(registry.capabilityRequirements?.every(item => item.requiredTables && item.supportedSlots && item.providedIntents)).toBe(true);
     expect(registry.implementations?.every(item => Array.isArray(item.runtimeDependencies))).toBe(true);
+    expect(registry.implementations?.every(item => item.visualSignature && item.compatibleExperiencePreferences?.length)).toBe(true);
   });
 
   it('forwards only the bounded v2 projection into Lane B', () => {
