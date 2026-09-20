@@ -106,9 +106,16 @@ export function planLaneBBatches(input: LaneBBatchPlanInput): LaneBBatchPlan {
         : 'cap';
   }
 
-  const batches: string[][] = [];
-  for (let i = 0; i < targets.length; i += pagesPerBatch) {
-    batches.push(targets.slice(i, i + pagesPerBatch));
+  // Homepage-first: the homepage establishes the site's visual language, so it
+  // is authored alone in the first turn and every later turn inherits it.
+  const homeFirstPath = input.homeFirstPath && targets.includes(input.homeFirstPath)
+    ? input.homeFirstPath
+    : null;
+  const remaining = homeFirstPath ? targets.filter((page) => page !== homeFirstPath) : targets;
+
+  const batches: string[][] = homeFirstPath ? [[homeFirstPath]] : [];
+  for (let i = 0; i < remaining.length; i += pagesPerBatch) {
+    batches.push(remaining.slice(i, i + pagesPerBatch));
   }
 
   return {
