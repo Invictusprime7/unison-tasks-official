@@ -641,7 +641,7 @@ export async function enrichWizardPageBatch(options: {
         const repairResponse = await invoke({
           mode: 'wizard-canonical-enrichment',
           messages: [
-            { role: 'user', content: JSON.stringify(options.request) },
+            { role: 'user', content: JSON.stringify(request) },
             { role: 'assistant', content: JSON.stringify(proposal) },
             {
               role: 'user',
