@@ -392,6 +392,7 @@ function inferTopologyRole(page: BuilderPage): PageRole {
   if (raw === 'checkout') return 'checkout';
   if (raw === 'blog') return 'blog';
   if (raw === 'shop') return 'shop';
+  if (raw === 'immersive') return 'immersive';
 
   const path = page.path.toLowerCase();
   if (path.includes('service')) return 'services';
