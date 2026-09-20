@@ -129,11 +129,20 @@ describe('v2 resolved implementation contracts', () => {
     expect(registry.implementations?.length).toBeGreaterThan(0);
     for (const implementation of registry.implementations ?? []) {
       const artifact = getArtifact(implementation.sectionType);
-      expect(implementation.artifactContract).toEqual(artifact ? {
+      expect(implementation.artifactContract).toEqual(artifact ? expect.objectContaining({
         artifactId: artifact.artifactId, dataSourceKind: artifact.dataSource.kind,
         supportedSlots: artifact.supportedSlots, intentBindings: artifact.intentBindings, aiEditScope: artifact.aiEditScope,
-      } : undefined);
-      if (artifact) expect(implementation.artifactContract?.supportedSlots).not.toBe(artifact.supportedSlots);
+      }) : undefined);
+      if (artifact) {
+        expect(implementation.artifactContract?.supportedSlots).not.toBe(artifact.supportedSlots);
+        // M6 typed slot projection: one entry per declared slot, ids aligned.
+        expect(implementation.artifactContract?.slots?.map((slot) => slot.id)).toEqual([
+          ...artifact.supportedSlots,
+        ]);
+        if (artifact.dataSource.kind === 'catalog') {
+          expect(implementation.artifactContract?.catalogSurfaceId).toBe(artifact.dataSource.surfaceId);
+        }
+      }
     }
   });
   it('passes resolved contracts through the production Lane B projection', () => {
