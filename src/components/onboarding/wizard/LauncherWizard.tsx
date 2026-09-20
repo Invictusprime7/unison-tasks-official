@@ -242,6 +242,43 @@ export const LauncherWizard = ({
     [selectedIndustry],
   );
 
+  // Design availability is a registry projection: directions and section
+  // choices are derived from the certified registry, the coverage gate, the
+  // selected pages and the experience preference — never hard-coded here.
+  const visualDirections = useMemo(
+    () => getWizardVisualDirections({ selectedPages, experience }),
+    [selectedPages, experience],
+  );
+  const sectionPickers = useMemo(
+    () => getWizardSectionPickers(artDirectionPackId, experience),
+    [artDirectionPackId, experience],
+  );
+
+  // A direction or pin that stops being eligible after another change must not
+  // survive silently into the launch brief.
+  useEffect(() => {
+    if (
+      artDirectionPackId &&
+      !visualDirections.some((option) => option.id === artDirectionPackId && option.available)
+    ) {
+      setArtDirectionPackId(null);
+    }
+  }, [artDirectionPackId, visualDirections]);
+
+  useEffect(() => {
+    setSectionPins((current) => {
+      const allowed = new Set(
+        sectionPickers.flatMap((picker) => picker.options.map((option) => option.variantId)),
+      );
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([, variantId]) => allowed.has(variantId)),
+      );
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
+  }, [sectionPickers]);
+
+
+
   const canContinue =
     step === "industry"
       ? Boolean(systemId && selectedIndustry)
