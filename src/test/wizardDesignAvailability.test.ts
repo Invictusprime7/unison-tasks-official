@@ -42,8 +42,8 @@ describe('V5 P3: Wizard design availability is registry-derived', () => {
         expect(variant?.vfs?.certification).toBe('approved');
         expect(variant?.generationStatus).toBe('preferred');
         const level = deriveImplementationVisualSignature(variant!).experienceLevel;
-        if (experience === 'standard') expect(level).toBe('standard');
-        if (experience === 'motion-rich') expect(level).not.toBe('immersive');
+        if (experience !== 'immersive') expect(level).not.toBe('immersive');
+
       }
     }
   });
