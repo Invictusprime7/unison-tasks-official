@@ -94,6 +94,25 @@ describe('snapshot seal Wizard ownership proof', () => {
     expect(snapshot.vfsFiles['/src/App.tsx']).toBe(originalRouter);
   });
 
+  it('preserves the canonical Wizard design selection through sealing', () => {
+    const snapshot = createSnapshot();
+    snapshot.meta.designSelection = {
+      version: '1.0',
+      mode: 'guided',
+      artDirectionPackId: 'editorial-noir',
+      experience: 'motion-rich',
+      sectionPins: {},
+    };
+    const sealed = sealSnapshot({
+      artifact: snapshot,
+      vfsFiles: snapshot.vfsFiles,
+      appContext: appContext(),
+      sealedBy: 'recompile',
+    });
+
+    expect(sealed.meta.designSelection).toEqual(snapshot.meta.designSelection);
+  });
+
   it.each(['wizard-launch', 'recompile'] as const)('consumes the v2 proof for %s and persists canonical compiler authority metadata', (sealedBy) => {
     const snapshot = createSnapshot();
     const sealed = sealSnapshot({

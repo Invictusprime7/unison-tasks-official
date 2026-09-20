@@ -153,6 +153,7 @@ export interface WizardDesignInterventionInput {
   sellsProducts?: boolean;
   wantsLeadCapture?: boolean;
   needsImmersive?: boolean;
+  designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
 }
 
 const LAYOUT_RECIPES = new Set<WizardDesignIntervention['layoutRecipe']>([
@@ -422,6 +423,7 @@ export function buildWizardDesignIntervention(
     themePresetId: input.themePresetId,
     industry,
     seed,
+    sealedPackId: input.designSelection?.artDirectionPackId,
   });
   const pack = ART_DIRECTION_PACKS[artDirectionPackId];
 
@@ -454,7 +456,7 @@ export function buildWizardDesignIntervention(
     sellsProducts: input.sellsProducts,
     needsBooking: input.needsBooking,
     wantsLeadCapture: input.wantsLeadCapture,
-    immersiveRequested: input.needsImmersive,
+    immersiveRequested: input.needsImmersive || input.designSelection?.experience === 'immersive',
     disallowWebgl: experience.budget === 'none',
   });
   const brief = buildArtDirectionBrief(envelope, artDirectionPackId);
@@ -466,6 +468,12 @@ export function buildWizardDesignIntervention(
   const home = input.templateId ? getCompositionById(input.templateId) : undefined;
   for (const section of home?.sections ?? []) {
     if (homeChoices?.[section.type]) activeVariants[section.id] = homeChoices[section.type] as VariantId;
+  }
+  // Explicit user pins are the final authority: user pin > accepted AI choice
+  // > deterministic seeded choice. Eligibility is already constrained by the
+  // Wizard's registry-derived picker and is revalidated at compile time.
+  for (const [sectionId, variantId] of Object.entries(input.designSelection?.sectionPins ?? {})) {
+    activeVariants[sectionId] = variantId;
   }
   // The immersive layer is only offered when a registered implementation
   // enables it; otherwise the launch approves nothing and preflight would

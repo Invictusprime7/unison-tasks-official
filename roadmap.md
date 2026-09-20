@@ -649,6 +649,6 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 - [x] P0 strict certified pack resolution and coverage
 - [x] P0 deterministic diversity selection
 - [x] P0 renderable component import gate
-- [ ] P1 canonical design selection persistence and Wizard controls
+- [x] P1 canonical design selection persistence and Wizard controls
 - [ ] P2 visual signatures and AI constraint parity
 - [ ] Verification: focused suites, full tests, preview diagnostics, authenticated journey

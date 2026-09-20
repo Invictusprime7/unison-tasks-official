@@ -266,6 +266,7 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
       baseline.meta?.artDirectionPackId ??
       baseline.meta?.designIntervention?.artDirectionPackId ??
       null,
+    designSelection: baseline.meta?.designSelection,
     industry: input.appContext.industry || baseline.meta?.industry || baseline.industry,
     verticalContractId: baseline.meta?.verticalContractId || input.appContext.systemType || null,
     // The generation seed is sealed exactly as Stage 4b resolved it — sealing

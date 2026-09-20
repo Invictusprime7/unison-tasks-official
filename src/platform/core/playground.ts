@@ -65,6 +65,8 @@ export type WizardScaffoldMode = 'selected-pages' | 'capability-full';
 export interface WizardSelections {
   visionPrompt?: string;
   compositionPlan?: import('@/sections/aiPageComposition').AIPageCompositionPlan;
+  /** Durable visual direction, experience posture, and optional section pins. */
+  designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
   businessName: string;
   businessModel: BusinessModel;
   industryOverlay: IndustryOverlay;

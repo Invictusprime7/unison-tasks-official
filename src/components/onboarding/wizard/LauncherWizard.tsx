@@ -34,6 +34,14 @@ import {
   type ThemePreset,
 } from "@/components/onboarding/themePresets";
 import { StyleTokenCard } from "@/components/onboarding/StyleTokenCard";
+import {
+  ART_DIRECTION_PACKS,
+  type ArtDirectionPackId,
+} from "@/sections/variants/artDirectionPacks";
+import {
+  createWizardDesignSelection,
+  type WizardExperiencePreference,
+} from "@/services/wizardDesignSelection";
 
 import { ImportProjectZipButton } from "@/components/onboarding/ImportProjectZipButton";
 import { ImportUnisonSiteZipButton } from "@/components/onboarding/ImportUnisonSiteZipButton";
@@ -139,6 +147,8 @@ export const LauncherWizard = ({
   const [theme, setTheme] = useState<ThemePreset | null>(
     THEME_PRESETS[0] ?? null,
   );
+  const [artDirectionPackId, setArtDirectionPackId] = useState<ArtDirectionPackId | null>(null);
+  const [experience, setExperience] = useState<WizardExperiencePreference>("standard");
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [visionPrompt, setVisionPrompt] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<WizardPromptAnalysis | null>(
@@ -162,6 +172,8 @@ export const LauncherWizard = ({
     setCustomerNeeds([]);
     setSelectedPages([]);
     setTheme(THEME_PRESETS[0] ?? null);
+    setArtDirectionPackId(null);
+    setExperience("standard");
     setSocialLinks({});
     setVisionPrompt("");
     setAiAnalysis(null);
@@ -255,6 +267,12 @@ export const LauncherWizard = ({
       industry: selectedIndustry || undefined,
       visionPrompt,
       theme,
+      designSelection: createWizardDesignSelection({
+        mode: artDirectionPackId ? "guided" : "auto",
+        artDirectionPackId: artDirectionPackId ?? undefined,
+        experience,
+        sectionPins: {},
+      }),
       businessName,
       primaryGoal,
       customerNeeds,
@@ -660,6 +678,40 @@ export const LauncherWizard = ({
                   ))}
                 </div>
                 <StyleTokenCard theme={theme} businessName={businessName} />
+                <div>
+                  <FieldLabel>Visual direction</FieldLabel>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Chip active={artDirectionPackId === null} onClick={() => setArtDirectionPackId(null)}>
+                      Auto match
+                    </Chip>
+                    {Object.values(ART_DIRECTION_PACKS).map((pack) => (
+                      <Chip
+                        key={pack.id}
+                        active={artDirectionPackId === pack.id}
+                        onClick={() => setArtDirectionPackId(pack.id)}
+                      >
+                        <span className="flex flex-col items-start">
+                          <span>{pack.name}</span>
+                          <span className="text-[10px] font-normal text-muted-foreground">{pack.description}</span>
+                        </span>
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel>Experience</FieldLabel>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {([
+                      ["standard", "Standard"],
+                      ["motion-rich", "Motion rich"],
+                      ["immersive", "Immersive 3D"],
+                    ] as const).map(([value, label]) => (
+                      <Chip key={value} active={experience === value} onClick={() => setExperience(value)}>
+                        {label}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
 

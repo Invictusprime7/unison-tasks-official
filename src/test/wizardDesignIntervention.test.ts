@@ -53,6 +53,26 @@ describe('wizard design intervention', () => {
     }
   });
 
+  it('honors the persisted Wizard pack and section pins over deterministic defaults', () => {
+    const composition = getCompositionById(salonInput.templateId);
+    const hero = composition?.sections.find((section) => section.type === 'hero');
+    if (!hero) throw new Error('Salon composition must include a hero section');
+
+    const intervention = buildWizardDesignIntervention({
+      ...salonInput,
+      designSelection: {
+        version: '1.0',
+        mode: 'custom',
+        artDirectionPackId: 'editorial-noir',
+        experience: 'motion-rich',
+        sectionPins: { [hero.id]: 'hero:prisma-cinematic' },
+      },
+    });
+
+    expect(intervention.artDirectionPackId).toBe('editorial-noir');
+    expect(intervention.activeVariants[hero.id]).toBe('hero:prisma-cinematic');
+  });
+
   it('varies emitted card and form geometry by wizard seed without changing composition ownership', () => {
     const composition = getCompositionById(salonInput.templateId);
     if (!composition) throw new Error('Salon composition must be registered');
