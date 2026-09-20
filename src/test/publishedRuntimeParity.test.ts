@@ -68,9 +68,11 @@ function identityTokens(files: Record<string, string>) {
   const variantIds = new Set<string>();
   for (const [path, content] of Object.entries(files)) {
     if (!path.replace(/^\/+/, '').startsWith('.unison/compositions/pages/')) continue;
-    const record = JSON.parse(content) as { sections?: Array<{ id?: string; variantId?: string }> };
+    const record = JSON.parse(content) as {
+      sections?: Array<{ sectionId?: string; variantId?: string }>;
+    };
     for (const section of record.sections ?? []) {
-      if (section.id) sectionIds.add(section.id);
+      if (section.sectionId) sectionIds.add(section.sectionId);
       if (section.variantId) variantIds.add(section.variantId);
     }
   }
