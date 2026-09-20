@@ -65,7 +65,7 @@ model may be introduced, and generated sites carry no live 21st dependency.
 
 Milestone index (status tracked against the phases below):
 
-- [ ] M1 Canonical variant -> VFS parity. Fourteen families now resolve
+- [x] M1 Canonical variant -> VFS parity. Fourteen families now resolve
 	registered variants first through the portable-recipe path: navbar, hero,
 	services, features, pricing, gallery, testimonials, CTA, contact, footer and
 	— new in this batch — about, faq, stats and team. Their twelve registered
@@ -180,7 +180,17 @@ overflow; FAQ search and reduced-motion behavior were verified. Production build
 passes. Final suite: 202 files, 1,753 tests passed, one skipped; type-check, changed-file
 ESLint, all four architecture lints and recipe source verification pass. Live
 authenticated publishing and delivery of form/payment requests are
-not claimed by these checks. M1 persisted-publish evidence remains open.
+not claimed by these checks.
+
+M1 persisted-publish evidence is now closed: `src/test/publishedRuntimeParity.test.ts`
+drives the real publish path (`deployToProvider` with a `projectId`, which loads the
+durable publish-ready revision from the ledger) for salon-premium, store-premium,
+store-minimal and store-boutique. It proves byte parity between the canonical VFS and
+the payload handed to the deploy provider (index.html attribution aside), that no
+non-canonical file is published, that the sealed composition record keeps identical
+`sectionId`/`variantId` identity after publish, that the published fingerprint equals
+the canonical VFS fingerprint, and that publishing is refused outright when no
+publish-ready revision exists. Stale in-memory caller state is never shipped.
 
 Review locally at /tools/section-variants.html (development only).
 
