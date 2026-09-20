@@ -95,13 +95,13 @@ describe('M5 generated UI foundation expansion', () => {
   });
 
   it('emits the hero semantic type tier through Stage 4b tokens', () => {
-    const pack = resolveArtDirectionPack({ industry: 'store', templateId: 'store-premium', themePresetId: 'obsidian', seed: '7' });
+    const pack = resolveArtDirectionPack({ industry: 'store', themePresetId: 'obsidian', seed: '7' });
     const tokens = buildArtDirectionTokens(pack);
     expect(tokens['--ut-type-hero']).toMatch(/^clamp\(/);
     // Hero tier is exactly one modular step above display.
     expect(tokens['--ut-type-hero']).not.toBe(tokens['--ut-type-display']);
-    const audit = auditThemeContract(tokens);
-    expect(audit.undocumented).not.toContain('--ut-type-hero');
+    // The token is documented in the theme contract for every pack.
+    expect(auditThemeContract(pack.id)).toEqual([]);
   });
 
   it('exposes the hero size on the emitted Heading primitive', () => {
