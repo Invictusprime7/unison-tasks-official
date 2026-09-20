@@ -37,6 +37,9 @@ LauncherWizard
   and sends it as `registryContext`, rendered into the prompt by
   `buildRegistryContextBlock`. Bounded: registry vocabulary only, never source
   files or credentials (`src/test/builderRegistryContext.test.ts`).
+- Lane B enrichment is bound to the certified runtime dependency allow-list:
+  a proposed page importing any package the launcher did not install is
+  rejected before merge (`src/test/wizardLaneBEnrichment.test.ts`).
 - Stage 4b is the only global theme authority.
 - `commitMutation` is the only accepted mutation boundary.
 - Preview and Playground consume committed canonical artifacts.
