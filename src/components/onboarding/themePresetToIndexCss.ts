@@ -259,6 +259,13 @@ export function buildThemedIndexCssFromTokens(
 
   /* --- Art direction primitives (pack-owned, token-only) ---------------- */
   .ut-rhythm { padding-block: var(--ut-rhythm-space); }
+  .ut-hero {
+    font-size: var(--ut-type-hero);
+    letter-spacing: var(--ut-heading-tracking);
+    text-transform: var(--ut-heading-transform);
+    line-height: 1.0;
+    font-weight: var(--ut-weight-display);
+  }
   .ut-display {
     font-size: var(--ut-type-display);
     letter-spacing: var(--ut-heading-tracking);

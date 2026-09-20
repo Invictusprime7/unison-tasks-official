@@ -97,7 +97,7 @@ RUNTIME + IMPORT CONTRACT (HARD):
 - This project is a Vite + React Router single-page app. It is NOT Next.js, Remix, or Gatsby.
 - External imports are limited to "react", "react-dom", and "react-router-dom". Never import from "next", any "next/*" module, "gatsby", "remix", or another application framework.
 - Import icons, motion, schemas, forms, styling helpers, and UI controls only through the supplied "@/unison/ui" snapshot facades rather than raw packages.
-- Use only "@/unison/ui" and its documented sub-paths for UI primitives: "@/unison/ui/button", "@/unison/ui/card", "@/unison/ui/content", "@/unison/ui/icon", "@/unison/ui/icons", "@/unison/ui/layout", "@/unison/ui/media", "@/unison/ui/motion", "@/unison/ui/animation", "@/unison/ui/navigation", "@/unison/ui/recipes", "@/unison/ui/styles", "@/unison/ui/surface", "@/unison/ui/form-fields", "@/unison/ui/forms", "@/unison/ui/zod", "@/unison/ui/radix".
+- Use only "@/unison/ui" and its documented sub-paths for UI primitives: "@/unison/ui/button", "@/unison/ui/card", "@/unison/ui/content", "@/unison/ui/icon", "@/unison/ui/icons", "@/unison/ui/layout", "@/unison/ui/media", "@/unison/ui/motion", "@/unison/ui/animation", "@/unison/ui/backgrounds", "@/unison/ui/navigation", "@/unison/ui/recipes", "@/unison/ui/styles", "@/unison/ui/surface", "@/unison/ui/form-fields", "@/unison/ui/forms", "@/unison/ui/zod", "@/unison/ui/radix".
 - COMPOSE FROM THE VOCABULARY. Build every band from the composition primitives instead of raw <div> + arbitrary utility soup — they already encode the sealed art direction's rhythm, measure, surfaces and motion:
   - layout: <Section tone wash flush as>, <Container width>, <Stack gap direction align wrap>, <Grid columns gap>, <Split reverse align>, <Divider />, <Bleed>
   - content: <Eyebrow>, <Heading level size gradient>, <Lead>, <Body>, <Badge>, <Stat value label hint>, <Quote attribution role media>, <CTAGroup>, <SectionHeader eyebrow title lead align>
@@ -181,7 +181,7 @@ OUTPUT RULES:
 - Emit complete, valid React/TypeScript page source.
 - One file per page, path must match the registered page registry.
 - Preserve the canonical routes, data-ut-intent contract, and binding semantics.
-- Use only @/unison/ui imports (motion, animation, layout, content, surface, form-fields, icons, button, card, navigation, recipes).
+- Use only @/unison/ui imports (motion, animation, backgrounds, layout, content, surface, form-fields, icons, button, card, navigation, recipes).
 - Compose from the vocabulary: Section, Container, Stack, Grid, Split, Heading, Body, Lead, Panel, MediaFrame, CTAGroup, and motion primitives.
 - All motion must honor useReducedMotion() for accessibility.`;
 }

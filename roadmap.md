@@ -126,7 +126,7 @@ Milestone index (status tracked against the phases below):
       family now emits through `SECTION_FAMILY_EMIT` and resolves only registered,
       certified variants (no legacy renderer fallback). Added the certified
       `gallery:horizontal-reel` variant. Full suite: 200 files / 1643 tests green.
-- [ ] M5 Generated UI Foundation expansion.
+- [x] M5 Generated UI Foundation expansion.
 - [ ] M6 Artifact / catalog / asset wiring.
 - [x] M7 Wizard Registry Context v2. Executable pack-filtered implementation
       metadata, source provenance, certification, page roles and Radix requirements

@@ -29,14 +29,19 @@ import {
  * owner of global theme tokens and CSS.
  */
 
-export const GENERATED_UI_FOUNDATION_VERSION = '1.9' as const;
+export const GENERATED_UI_FOUNDATION_VERSION = '1.10' as const;
 /** Runtime components emitted by this owner's motion facade, not type exports. */
 export const GENERATED_MOTION_PRIMITIVES = [
   'Reveal', 'RevealGroup', 'Stagger', 'StaggerGroup', 'StaggerItem',
   'MarqueeBand', 'HorizontalRail', 'HoverDepth', 'ImageReveal',
   'ParallaxMedia', 'MaskReveal', 'MotionImage',
 ] as const;
-const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8']);
+/** Runtime components emitted by this owner's backgrounds facade. */
+export const GENERATED_BACKGROUND_PRIMITIVES = [
+  'OrbitalBackdrop', 'GlowField', 'AnimatedGrid',
+  'NoiseField', 'GradientOrbs', 'MediaCanvas',
+] as const;
+const LEGACY_GENERATED_UI_FOUNDATION_VERSIONS = new Set(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9']);
 
 export const GENERATED_MOTION_TYPES = [
   'MotionRecipe', 'MarqueeBandProps', 'HorizontalRailProps', 'HoverDepthProps',
@@ -212,7 +217,7 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   '  - <Split reverse?={boolean} align="start|center"> — two-column editorial/media split on the pack\'s hero column ratio.',
   '  - <Divider /> — token gradient rule. <Bleed> — full-width band.',
   'Content — "@/unison/ui/content":',
-  '  - <Eyebrow>, <Heading level={1|2|3|4} size="display|title|subtitle" gradient?={boolean}>, <Lead>, <Body>, <Badge>',
+  '  - <Eyebrow>, <Heading level={1|2|3|4} size="hero|display|title|subtitle" gradient?={boolean}> — hero is the home-headline tier, one step above display — <Lead>, <Body>, <Badge>',
   '  - <Stat value label hint?>, <Quote attribution? role? media?>, <CTAGroup>',
   '  - <SectionHeader eyebrow? title lead? align="start|center" level? size?> — the standard section intro cluster.',
   'Surfaces — "@/unison/ui/surface":',
@@ -220,6 +225,8 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   '  - <MediaFrame src alt ratio="media|hero|square" loading? overlay?>',
   '  - <FeaturePanel title description? icon? media? actions?> — the standard offering/feature card.',
   '  - <BentoFeatureGrid> — high-fidelity Framer-style feature card arrangement.',
+  'Backgrounds — "@/unison/ui/backgrounds" (decorative, aria-hidden bands placed as the first child of a <Section>):',
+  '  - <OrbitalBackdrop> — slow conic orbital rings. <GlowField> — soft radial token glows. <AnimatedGrid> — drifting blueprint grid. <NoiseField> — film-grain texture. <GradientOrbs> — floating blurred orbs. <MediaCanvas src alt overlay?> — full-bleed media backdrop with the pack\'s hero gradient scrim.',
   'Motion & Micro-interactions — "@/unison/ui/motion":',
   '  - <Reveal recipe="editorial-reveal"> — entrance reveal animations for headers and key bands.',
   '  - <StaggerGroup> + <StaggerItem> — staggered cascade entrance for cards and grids.',
@@ -235,6 +242,7 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
 const REQUIRED_GENERATED_UI_FOUNDATION_PATHS = [
   '/.unison/ui-manifest.json',
   '/src/unison/ui/index.ts',
+  '/src/unison/ui/backgrounds.tsx',
   '/src/unison/ui/button.tsx',
   '/src/unison/ui/card.tsx',
   '/src/unison/ui/content.tsx',
@@ -331,6 +339,7 @@ function buildManifest(options: GeneratedUiFoundationOptions): GeneratedUiManife
     importRoot: '@/unison/ui',
     primitiveImports: [
       '@/unison/ui',
+      '@/unison/ui/backgrounds',
       '@/unison/ui/button',
       '@/unison/ui/card',
       '@/unison/ui/content',
@@ -601,6 +610,7 @@ export { Icon } from './icon';
 export { Image, ImageLightbox, type ImageProps, type ImageSource, type StaticImageData } from './media';
 export { Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, type MotionRecipe } from './motion';
 export { FloatingNavbar, type NavigationLink } from './navigation';
+export { OrbitalBackdrop, GlowField, AnimatedGrid, NoiseField, GradientOrbs, MediaCanvas, type BackdropProps, type MediaCanvasProps } from './backgrounds';
 export { BentoFeatureGrid, FeatureCard } from './recipes';
 export { colorStyles, componentStyles, motionStyles, styles, typography } from './styles';
 export { Slot, Slottable } from './radix/slot';
@@ -848,9 +858,10 @@ export function Eyebrow({ className, ...props }: React.HTMLAttributes<HTMLParagr
 }
 
 export type HeadingLevel = 1 | 2 | 3 | 4;
-export type HeadingSize = 'display' | 'title' | 'subtitle';
+export type HeadingSize = 'hero' | 'display' | 'title' | 'subtitle';
 
 const headingSize: Record<HeadingSize, string> = {
+  hero: 'text-[length:var(--ut-type-hero)] leading-none font-[number:var(--ut-weight-display)]',
   display: 'text-[length:var(--ut-type-display)] leading-[var(--ut-display-leading)] font-[number:var(--ut-weight-display)]',
   title: 'text-[length:var(--ut-type-title)] leading-tight font-[number:var(--ut-weight-display)]',
   subtitle: 'text-xl font-[number:var(--ut-weight-display)] leading-snug',
@@ -1474,6 +1485,132 @@ export function FloatingNavbar({ brand, links, ctaLabel, ctaIntent, className }:
   return <header className={cn('sticky top-3 z-40 mx-auto w-[var(--ut-shell-width)] rounded-[var(--radius)] border border-border bg-background/80 px-4 py-3 shadow-sm backdrop-blur-md', className)}><div className="flex items-center justify-between gap-4"><a href="#top" className="text-base font-bold text-foreground">{brand}</a><nav className="hidden items-center gap-5 md:flex">{links.map((link) => <a key={link.href} href={link.href} data-ut-intent={link.intent || 'nav.anchor'} className="text-sm text-muted-foreground transition-colors hover:text-foreground">{link.label}</a>)}</nav>{ctaLabel && <Button className="hidden md:inline-flex" data-ut-intent={ctaIntent || 'cta.primary'}>{ctaLabel}</Button>}<Dialog.Root><Dialog.Trigger asChild><button type="button" aria-label="Open navigation" className="grid size-10 place-items-center rounded-[var(--ut-control-radius)] hover:bg-accent md:hidden"><Menu className="size-5" /></button></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm" /><Dialog.Content className="fixed right-3 top-3 z-50 w-[var(--ut-panel-width)] rounded-[var(--radius)] border border-border bg-card p-5 shadow-xl"><div className="mb-6 flex items-center justify-between"><Dialog.Title className="font-[number:var(--ut-weight-display)]">{brand}</Dialog.Title><Dialog.Close asChild><button type="button" aria-label="Close navigation" className="grid size-9 place-items-center rounded-[var(--ut-control-radius)] hover:bg-accent"><X className="size-5" /></button></Dialog.Close></div><nav className="grid gap-2">{links.map((link) => <Dialog.Close key={link.href} asChild><a href={link.href} data-ut-intent={link.intent || 'nav.anchor'} className="rounded-[var(--ut-control-radius)] px-3 py-3 text-foreground hover:bg-accent">{link.label}</a></Dialog.Close>)}{ctaLabel && <Button data-ut-intent={ctaIntent || 'cta.primary'}>{ctaLabel}</Button>}</nav></Dialog.Content></Dialog.Portal></Dialog.Root></div></header>;
 }
 `,
+    '/src/unison/ui/backgrounds.tsx': `${marker}
+import * as React from 'react';
+import { motion, useReducedMotion } from './animation';
+import { Image } from './media';
+import { cn } from './cn';
+
+/**
+ * COMPOSITION VOCABULARY — decorative backgrounds.
+ * 21st-derived backdrop primitives, normalized to Stage 4b tokens: every
+ * color is a semantic HSL token and every duration/easing comes from the
+ * pack's motion tokens. All are aria-hidden, pointer-events-none layers;
+ * place one as the first child of a relative <Section>. Reduced motion
+ * freezes every animated layer in its final visible state.
+ */
+
+export interface BackdropProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** 0–1 layer opacity multiplier; defaults to the subtle band strength. */
+  intensity?: number;
+}
+
+function BackdropLayer({ className, intensity, ...props }: BackdropProps) {
+  return (
+    <div
+      aria-hidden
+      className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)}
+      style={intensity !== undefined ? { opacity: intensity } : undefined}
+      {...props}
+    />
+  );
+}
+
+/** Slow conic orbital rings radiating from the pack's primary/accent tokens. */
+export function OrbitalBackdrop({ className, ...props }: BackdropProps) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <BackdropLayer className={className} {...props}>
+      <motion.div
+        className="absolute left-1/2 top-1/2 size-[var(--ut-hero-block)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:hsl(var(--primary)/0.18)]"
+        animate={reduceMotion ? undefined : { rotate: 360 }}
+        transition={reduceMotion ? undefined : { duration: 60, ease: 'linear', repeat: Infinity }}
+      />
+      <motion.div
+        className="absolute left-1/2 top-1/2 size-[calc(var(--ut-hero-block)*0.66)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[color:hsl(var(--accent)/0.22)]"
+        animate={reduceMotion ? undefined : { rotate: -360 }}
+        transition={reduceMotion ? undefined : { duration: 45, ease: 'linear', repeat: Infinity }}
+      />
+      <div className="absolute left-1/2 top-1/2 size-[calc(var(--ut-hero-block)*0.33)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.14),transparent_70%)]" />
+    </BackdropLayer>
+  );
+}
+
+/** Soft radial token glows anchored to the band corners. */
+export function GlowField({ className, ...props }: BackdropProps) {
+  return (
+    <BackdropLayer className={className} {...props}>
+      <div className="absolute -left-24 -top-24 size-[var(--ut-hero-media-max)] rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.22),transparent_70%)] blur-3xl" />
+      <div className="absolute -bottom-24 -right-24 size-[var(--ut-hero-media-max)] rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--accent)/0.18),transparent_70%)] blur-3xl" />
+    </BackdropLayer>
+  );
+}
+
+/** Drifting blueprint grid drawn from the border token. */
+export function AnimatedGrid({ className, ...props }: BackdropProps) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <BackdropLayer className={className} {...props}>
+      <motion.div
+        className="absolute -inset-16 bg-[linear-gradient(to_right,hsl(var(--border)/0.5)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.5)_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
+        animate={reduceMotion ? undefined : { x: [0, 48], y: [0, 48] }}
+        transition={reduceMotion ? undefined : { duration: 24, ease: 'linear', repeat: Infinity }}
+      />
+    </BackdropLayer>
+  );
+}
+
+const NOISE_TEXTURE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
+
+/** Film-grain texture that adds depth without introducing new color. */
+export function NoiseField({ className, ...props }: BackdropProps) {
+  return (
+    <BackdropLayer className={className} {...props}>
+      <div
+        className="absolute inset-0 opacity-[0.06] mix-blend-overlay"
+        style={{ backgroundImage: NOISE_TEXTURE }}
+      />
+    </BackdropLayer>
+  );
+}
+
+/** Floating blurred orbs in the pack's primary/accent/secondary tokens. */
+export function GradientOrbs({ className, ...props }: BackdropProps) {
+  const reduceMotion = useReducedMotion();
+  const float = (delay: number) =>
+    reduceMotion
+      ? {}
+      : {
+          animate: { y: [0, -18, 0] },
+          transition: { duration: 9, ease: 'easeInOut', repeat: Infinity, delay },
+        };
+  return (
+    <BackdropLayer className={className} {...props}>
+      <motion.div className="absolute left-[8%] top-[12%] size-[var(--ut-hero-media-block)] rounded-full bg-primary/25 blur-3xl" {...float(0)} />
+      <motion.div className="absolute right-[10%] top-[30%] size-[var(--ut-media-block-lg)] rounded-full bg-accent/25 blur-3xl" {...float(1.4)} />
+      <motion.div className="absolute bottom-[8%] left-[35%] size-[var(--ut-tile-block)] rounded-full bg-secondary/40 blur-3xl" {...float(2.8)} />
+    </BackdropLayer>
+  );
+}
+
+export interface MediaCanvasProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
+  src: string;
+  alt: string;
+  /** Paint the pack's hero gradient over the media for legible overlay copy. */
+  overlay?: boolean;
+}
+
+/** Full-bleed media backdrop with the pack's hero gradient scrim. */
+export function MediaCanvas({ src, alt, overlay = true, className, ...props }: MediaCanvasProps) {
+  return (
+    <div aria-hidden className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)} {...props}>
+      <Image src={src} alt={alt} priority className="absolute inset-0 h-full w-full object-cover" />
+      {overlay && <div className="absolute inset-0 bg-[image:var(--ut-gradient-hero)] opacity-70" />}
+    </div>
+  );
+}
+`,
     '/src/unison/ui/recipes.tsx': `${marker}
 import * as React from 'react';
 import { Card, CardContent } from './card';
@@ -1510,6 +1647,7 @@ export const GENERATED_UI_BARREL_EXPORTS: ReadonlySet<string> = new Set([
   'Icon', 'Image', 'ImageLightbox',
   'Reveal', 'RevealGroup', 'StaggerGroup', 'Stagger', 'StaggerItem',
   'FloatingNavbar', 'BentoFeatureGrid', 'FeatureCard',
+  'OrbitalBackdrop', 'GlowField', 'AnimatedGrid', 'NoiseField', 'GradientOrbs', 'MediaCanvas',
   'Slot', 'Slottable',
   ...EXPERIENCE_BARREL_EXPORTS,
 ]);
