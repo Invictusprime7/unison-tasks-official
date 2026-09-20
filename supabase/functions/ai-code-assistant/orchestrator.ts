@@ -30,6 +30,7 @@ import {
   buildSystemsBlueprintContext,
   analyzeTemplateStructure,
   buildElementsLibraryBlock,
+  buildRegistryContextBlock,
   buildVfsFilesContext,
   buildUserDBContext,
   buildWizardSeedContext,
