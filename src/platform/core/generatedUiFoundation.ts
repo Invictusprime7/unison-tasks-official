@@ -225,6 +225,8 @@ export const COMPOSITION_VOCABULARY_DIRECTIVE = [
   '  - <MediaFrame src alt ratio="media|hero|square" loading? overlay?>',
   '  - <FeaturePanel title description? icon? media? actions?> — the standard offering/feature card.',
   '  - <BentoFeatureGrid> — high-fidelity Framer-style feature card arrangement.',
+  'Backgrounds — "@/unison/ui/backgrounds" (decorative, aria-hidden bands placed as the first child of a <Section>):',
+  '  - <OrbitalBackdrop> — slow conic orbital rings. <GlowField> — soft radial token glows. <AnimatedGrid> — drifting blueprint grid. <NoiseField> — film-grain texture. <GradientOrbs> — floating blurred orbs. <MediaCanvas src alt overlay?> — full-bleed media backdrop with the pack\'s hero gradient scrim.',
   'Motion & Micro-interactions — "@/unison/ui/motion":',
   '  - <Reveal recipe="editorial-reveal"> — entrance reveal animations for headers and key bands.',
   '  - <StaggerGroup> + <StaggerItem> — staggered cascade entrance for cards and grids.',
@@ -608,6 +610,7 @@ export { Icon } from './icon';
 export { Image, ImageLightbox, type ImageProps, type ImageSource, type StaticImageData } from './media';
 export { Reveal, RevealGroup, StaggerGroup, Stagger, StaggerItem, type MotionRecipe } from './motion';
 export { FloatingNavbar, type NavigationLink } from './navigation';
+export { OrbitalBackdrop, GlowField, AnimatedGrid, NoiseField, GradientOrbs, MediaCanvas, type BackdropProps, type MediaCanvasProps } from './backgrounds';
 export { BentoFeatureGrid, FeatureCard } from './recipes';
 export { colorStyles, componentStyles, motionStyles, styles, typography } from './styles';
 export { Slot, Slottable } from './radix/slot';
