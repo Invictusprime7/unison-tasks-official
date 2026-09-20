@@ -54,10 +54,10 @@ describe('composition enhancement guards', () => {
     version: '1.0' as const,
     canvasRoots: 1,
     decisions: [
-      { recipeId: 'immersive-hero', sectionId: 's-hero', reason: 'selected' as const },
-      { recipeId: 'scene-backdrop', sectionId: 's-feature', reason: 'selected' as const },
-      { recipeId: 'depth-gallery', sectionId: 's-gallery', reason: 'selected' as const },
-      { recipeId: 'editorial-reveal', sectionId: 's-about', reason: 'selected' as const },
+      { recipeId: 'immersive-hero', sectionId: 's-hero', implementationId: 'impl-hero', reason: 'selected' as const },
+      { recipeId: 'scene-backdrop', sectionId: 's-feature', implementationId: 'impl-scene', reason: 'selected' as const },
+      { recipeId: 'depth-gallery', sectionId: 's-gallery', implementationId: 'impl-depth', reason: 'selected' as const },
+      { recipeId: 'editorial-reveal', sectionId: 's-about', implementationId: 'impl-reveal', reason: 'selected' as const },
     ],
   };
 
