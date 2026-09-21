@@ -34,7 +34,7 @@ function resolveRelative(fromPath: string, spec: string, files: Record<string, s
     `${target}/index.ts`, `${target}/index.tsx`].some((c) => c in files);
 }
 
-describe('probe: preview resolution across roles', () => {
+describe('preview module resolution', () => {
   it('resolves imports and renders declared variants for every role of every composition', async () => {
     const problems: string[] = [];
     for (const template of ALL_COMPOSITIONS) {
