@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { getAllSections } from '@/sections/registry';
-import { getGenerationVariantsForSection, getVariantById, ART_DIRECTION_PACKS } from '@/sections/variants';
+import { getGenerationVariantsForSection, getVariantById, getVariantsForSection as getVariantsForSectionAll, ART_DIRECTION_PACKS } from '@/sections/variants';
 import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
 import type { SectionType } from '@/sections/types';
 import { TWENTY_FIRST_INTAKE_MANIFEST } from '@/design/21st-intake/manifest';
