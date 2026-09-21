@@ -21,7 +21,7 @@ import type { SectionType } from '@/sections/types';
 
 /** Certified designs per family as of the Phase A audit. Raise, never lower. */
 const BASELINE_ELIGIBLE: Record<string, number> = {
-  navbar: 5, hero: 3, services: 4, features: 1, pricing: 3, testimonials: 2,
+  navbar: 5, hero: 8, services: 4, features: 1, pricing: 3, testimonials: 2,
   team: 1, gallery: 1, faq: 2, cta: 2, contact: 3, footer: 1, stats: 2,
   about: 1, 'logo-cloud': 1, 'blog-preview': 1, 'before-after': 1,
 };

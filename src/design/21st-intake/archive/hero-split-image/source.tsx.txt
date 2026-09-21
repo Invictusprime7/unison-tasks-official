@@ -1,0 +1,52 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "# Hero with image, text and two buttons \u2014 Default\nHero with image, text and two shadcn/ui buttons\n\ninstall: npx shadcn@latest add \"https://21st.dev/r/tommyjepsen/hero-with-image-text-and-two-buttons?api_key=$API_KEY_21ST\"\n\n## Component\n```tsx\nimport { MoveRight, PhoneCall } from \"lucide-react\";\nimport { Button } from \"@/components/ui/button\";\nimport { Badge } from \"@/components/ui/badge\";\n\nfunction Hero() {\n  return (\n    <div className=\"w-full  py-20 lg:py-40\">\n      <div className=\"container mx-auto\">\n        <div className=\"grid grid-cols-1 gap-8 items-center lg:grid-cols-2\">\n          <div className=\"flex gap-4 flex-col\">\n            <div>\n              <Badge variant=\"outline\">We&apos;re live!</Badge>\n            </div>\n            <div className=\"flex gap-4 flex-col\">\n              <h1 className=\"text-5xl md:text-7xl max-w-lg tracking-tighter text-left font-regular\">\n                This is the start of something!\n              </h1>\n              <p className=\"text-xl leading-relaxed tracking-tight text-muted-foreground max-w-md text-left\">\n                Managing a small business today is already tough. Avoid further\n                complications by ditching outdated, tedious trade methods. Our\n                goal is to streamline SMB trade, making it easier and faster than\n                ever.\n              </p>\n            </div>\n            <div className=\"flex flex-row gap-4\">\n              <Button size=\"lg\" className=\"gap-4\" variant=\"outline\">\n                Jump on a call <PhoneCall className=\"w-4 h-4\" />\n              </Button>\n              <Button size=\"lg\" className=\"gap-4\">\n                Sign up here <MoveRight className=\"w-4 h-4\" />\n              </Button>\n            </div>\n          </div>\n          <div className=\"bg-muted rounded-md aspect-square\"></div>\n        </div>\n      </div>\n    </div>\n  );\n}\n\nexport { Hero };\n```\n\n## Demo (usage)\n```tsx\nimport { Hero } from \"@/components/ui/hero-with-image-text-and-two-buttons\";\n\nfunction HeroDemo() {\n  return (\n    <div className=\"block\">\n      <Hero />\n    </div>\n  );\n}\n\nexport { HeroDemo };\n```"
+      }
+    ],
+    "structuredContent": {
+      "component": {
+        "id": 1160,
+        "componentId": 692,
+        "authorUserId": "user_tommyjepsen",
+        "name": "Hero with image, text and two buttons",
+        "demoName": "Default",
+        "description": "Hero with image, text and two shadcn/ui buttons",
+        "previewUrl": "https://cdn.21st.dev/user_tommyjepsen/hero-with-image-text-and-two-buttons/default/preview.png",
+        "installCommand": "npx shadcn@latest add \"https://21st.dev/r/tommyjepsen/hero-with-image-text-and-two-buttons?api_key=$API_KEY_21ST\"",
+        "componentCode": "import { MoveRight, PhoneCall } from \"lucide-react\";\nimport { Button } from \"@/components/ui/button\";\nimport { Badge } from \"@/components/ui/badge\";\n\nfunction Hero() {\n  return (\n    <div className=\"w-full  py-20 lg:py-40\">\n      <div className=\"container mx-auto\">\n        <div className=\"grid grid-cols-1 gap-8 items-center lg:grid-cols-2\">\n          <div className=\"flex gap-4 flex-col\">\n            <div>\n              <Badge variant=\"outline\">We&apos;re live!</Badge>\n            </div>\n            <div className=\"flex gap-4 flex-col\">\n              <h1 className=\"text-5xl md:text-7xl max-w-lg tracking-tighter text-left font-regular\">\n                This is the start of something!\n              </h1>\n              <p className=\"text-xl leading-relaxed tracking-tight text-muted-foreground max-w-md text-left\">\n                Managing a small business today is already tough. Avoid further\n                complications by ditching outdated, tedious trade methods. Our\n                goal is to streamline SMB trade, making it easier and faster than\n                ever.\n              </p>\n            </div>\n            <div className=\"flex flex-row gap-4\">\n              <Button size=\"lg\" className=\"gap-4\" variant=\"outline\">\n                Jump on a call <PhoneCall className=\"w-4 h-4\" />\n              </Button>\n              <Button size=\"lg\" className=\"gap-4\">\n                Sign up here <MoveRight className=\"w-4 h-4\" />\n              </Button>\n            </div>\n          </div>\n          <div className=\"bg-muted rounded-md aspect-square\"></div>\n        </div>\n      </div>\n    </div>\n  );\n}\n\nexport { Hero };",
+        "demoCode": "import { Hero } from \"@/components/ui/hero-with-image-text-and-two-buttons\";\n\nfunction HeroDemo() {\n  return (\n    <div className=\"block\">\n      <Hero />\n    </div>\n  );\n}\n\nexport { HeroDemo };",
+        "registryDependencies": {
+          "filesWithRegistry": {
+            "/components/ui/button.tsx": {
+              "code": "import * as React from \"react\"\nimport { Slot } from \"@radix-ui/react-slot\"\nimport { cva, type VariantProps } from \"class-variance-authority\"\n\nimport { cn } from \"@/lib/utils\"\n\nconst buttonVariants = cva(\n  \"inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50\",\n  {\n    variants: {\n      variant: {\n        default: \"bg-primary text-primary-foreground hover:bg-primary/90\",\n        destructive:\n          \"bg-destructive text-destructive-foreground hover:bg-destructive/90\",\n        outline:\n          \"border border-input bg-background hover:bg-accent hover:text-accent-foreground\",\n        secondary:\n          \"bg-secondary text-secondary-foreground hover:bg-secondary/80\",\n        ghost: \"hover:bg-accent hover:text-accent-foreground\",\n        link: \"text-primary underline-offset-4 hover:underline\",\n      },\n      size: {\n        default: \"h-10 px-4 py-2\",\n        sm: \"h-9 rounded-md px-3\",\n        lg: \"h-11 rounded-md px-8\",\n        icon: \"h-10 w-10\",\n      },\n    },\n    defaultVariants: {\n      variant: \"default\",\n      size: \"default\",\n    },\n  },\n)\n\nexport interface ButtonProps\n  extends React.ButtonHTMLAttributes<HTMLButtonElement>,\n    VariantProps<typeof buttonVariants> {\n  asChild?: boolean\n}\n\nconst Button = React.forwardRef<HTMLButtonElement, ButtonProps>(\n  ({ className, variant, size, asChild = false, ...props }, ref) => {\n    const Comp = asChild ? Slot : \"button\"\n    return (\n      <Comp\n        className={cn(buttonVariants({ variant, size, className }))}\n        ref={ref}\n        {...props}\n      />\n    )\n  },\n)\nButton.displayName = \"Button\"\n\nexport { Button, buttonVariants }\n",
+              "registry": "ui"
+            },
+            "/components/ui/badge.tsx": {
+              "code": "import * as React from \"react\"\nimport { cva, type VariantProps } from \"class-variance-authority\"\n\nimport { cn } from \"@/lib/utils\"\n\nconst badgeVariants = cva(\n  \"inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2\",\n  {\n    variants: {\n      variant: {\n        default:\n          \"border-transparent bg-primary text-primary-foreground hover:bg-primary/80\",\n        secondary:\n          \"border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80\",\n        destructive:\n          \"border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80\",\n        outline: \"text-foreground\",\n      },\n    },\n    defaultVariants: {\n      variant: \"default\",\n    },\n  },\n)\n\nexport interface BadgeProps\n  extends React.HTMLAttributes<HTMLDivElement>,\n    VariantProps<typeof badgeVariants> {}\n\nfunction Badge({ className, variant, ...props }: BadgeProps) {\n  return (\n    <div className={cn(badgeVariants({ variant }), className)} {...props} />\n  )\n}\n\nexport { Badge, badgeVariants }\n",
+              "registry": "ui"
+            }
+          },
+          "npmDependencies": {
+            "@radix-ui/react-slot": "latest",
+            "class-variance-authority": "latest"
+          }
+        },
+        "isPublic": true,
+        "registryTeamId": null,
+        "registryUserId": null
+      },
+      "quota": {
+        "tier": "paid",
+        "remaining": null,
+        "perDay": null,
+        "resetAt": null,
+        "upgradeUrl": null
+      }
+    }
+  }
+}

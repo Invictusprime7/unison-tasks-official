@@ -43,34 +43,35 @@ function renderLinks(links: ExtractedSectionContent['navLinks'], cls: string): s
 // ============================================================================
 
 export function heroCenteredJSX(c: ExtractedSectionContent): string {
-  return `      <section className="relative py-20 md:py-28 bg-white" data-variant="hero:centered">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-${c.badge ? `          <span className="inline-block text-xs font-medium tracking-wide uppercase mb-4 px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200">${esc(c.badge)}</span>\n` : ''}\
-${c.heading ? `          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">${esc(c.heading)}</h1>\n` : ''}\
-${c.subheading ? `          <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">${esc(c.subheading)}</p>\n` : ''}\
-${c.ctaButtons?.length ? `          <div className="flex gap-3 justify-center flex-wrap">
-${renderButtons(c.ctaButtons, 'inline-block px-6 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors', 'inline-block px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors')}
+  return `      <section className="relative isolate overflow-hidden bg-background py-20 md:py-28" data-variant="hero:centered">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-16 -z-10 h-80 bg-[radial-gradient(35%_80%_at_50%_0%,hsl(var(--primary)/0.12),transparent)]" />
+        <div className="relative mx-auto max-w-4xl px-4 text-center">
+${c.badge ? `          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-primary">${esc(c.badge)}</span>\n` : ''}\
+${c.heading ? `          <h1 className="mb-6 text-balance font-heading text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl lg:text-6xl">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `          <p className="mx-auto mb-9 max-w-2xl font-body text-lg leading-relaxed text-muted-foreground md:text-xl">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `          <div className="flex flex-wrap justify-center gap-3">
+${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary px-6 py-3 font-body font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-border px-6 py-3 font-body font-medium text-foreground motion-safe:transition-colors hover:bg-muted')}
           </div>\n` : ''}\
-${c.imageSrc ? `          <div className="mt-12"><img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" className="w-full max-w-3xl mx-auto rounded-xl shadow-lg" /></div>\n` : ''}\
+${c.imageSrc ? `          <div className="mt-12"><img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" className="mx-auto w-full max-w-3xl rounded-[var(--radius)] shadow-lg" /></div>\n` : ''}\
         </div>
       </section>`;
 }
 
 export function heroSplitImageJSX(c: ExtractedSectionContent): string {
-  return `      <section className="relative py-20 md:py-28 bg-white" data-variant="hero:split-image">
-        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div>
-${c.badge ? `            <span className="inline-block text-xs font-medium tracking-wide uppercase mb-4 px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200">${esc(c.badge)}</span>\n` : ''}\
-${c.heading ? `            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">${esc(c.heading)}</h1>\n` : ''}\
-${c.subheading ? `            <p className="text-lg text-gray-600 mb-8 leading-relaxed">${esc(c.subheading)}</p>\n` : ''}\
-${c.ctaButtons?.length ? `            <div className="flex gap-3 flex-wrap">
-${renderButtons(c.ctaButtons, 'inline-block px-6 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors', 'inline-block px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors')}
+  return `      <section className="relative overflow-hidden bg-background py-20 md:py-28" data-variant="hero:split-image">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 md:grid-cols-2">
+          <div className="flex flex-col gap-6">
+${c.badge ? `            <span className="inline-flex w-fit items-center rounded-full border border-border px-3 py-1 text-xs font-medium uppercase tracking-wide text-foreground">${esc(c.badge)}</span>\n` : ''}\
+${c.heading ? `            <h1 className="max-w-xl font-heading text-3xl font-bold leading-[1.05] tracking-tighter text-foreground md:text-4xl lg:text-5xl">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `            <p className="max-w-md font-body text-xl leading-relaxed tracking-tight text-muted-foreground">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `            <div className="flex flex-wrap gap-3">
+${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary px-6 py-3 font-body font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-border px-6 py-3 font-body font-medium text-foreground motion-safe:transition-colors hover:bg-muted')}
             </div>\n` : ''}\
           </div>
-          <div className="relative">
+          <div className="relative aspect-square w-full overflow-hidden rounded-[var(--radius)] bg-muted">
 ${c.imageSrc
-    ? `            <img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" className="w-full rounded-xl shadow-lg object-cover aspect-[4/3]" />`
-    : `            <div className="w-full aspect-[4/3] rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center"><span className="text-4xl">🖼️</span></div>`
+    ? `            <img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" className="h-full w-full object-cover" />`
+    : ''
 }
           </div>
         </div>
@@ -80,15 +81,19 @@ ${c.imageSrc
 export function heroFullBleedJSX(c: ExtractedSectionContent): string {
   const bgStyle = c.imageSrc
     ? `{{ backgroundImage: "url('${c.imageSrc}')", backgroundSize: "cover", backgroundPosition: "center" }}`
-    : `{{ background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)" }}`;
-  return `      <section className="relative min-h-[var(--ut-hero-block)] flex items-center justify-center" data-variant="hero:full-bleed" style={${bgStyle}}>
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/80 to-gray-900/60" />
-        <div className="relative z-10 max-w-4xl mx-auto px-4 text-center py-20">
-${c.badge ? `          <span className="inline-block text-xs font-medium tracking-wide uppercase mb-4 px-3 py-1 rounded-full bg-white/10 text-white/90 border border-white/20 backdrop-blur-sm">${esc(c.badge)}</span>\n` : ''}\
-${c.heading ? `          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-lg">${esc(c.heading)}</h1>\n` : ''}\
-${c.subheading ? `          <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed">${esc(c.subheading)}</p>\n` : ''}\
-${c.ctaButtons?.length ? `          <div className="flex gap-3 justify-center flex-wrap">
-${renderButtons(c.ctaButtons, 'inline-block px-6 py-3 rounded-lg bg-white text-gray-900 font-medium hover:bg-gray-100 transition-colors shadow-lg', 'inline-block px-6 py-3 rounded-lg border border-white/30 text-white font-medium hover:bg-white/10 transition-colors backdrop-blur-sm')}
+    : `{{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))" }}`;
+  return `      <section className="relative isolate flex min-h-[var(--ut-hero-block)] items-center justify-center overflow-hidden" data-variant="hero:full-bleed" style={${bgStyle}}>
+        <div aria-hidden="true" className="absolute inset-0 bg-foreground/55" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-1/4 left-1/4 h-96 w-96 rounded-full bg-primary/30 blur-3xl" />
+          <div className="absolute -bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-accent/30 blur-3xl" />
+        </div>
+        <div className="relative z-10 mx-auto max-w-4xl px-4 py-20 text-center">
+${c.badge ? `          <span className="mb-4 inline-block rounded-full border border-primary-foreground/25 bg-primary-foreground/15 px-3 py-1 text-xs font-medium uppercase tracking-wide text-primary-foreground backdrop-blur-sm">${esc(c.badge)}</span>\n` : ''}\
+${c.heading ? `          <h1 className="mb-6 text-balance font-heading text-4xl font-bold leading-tight tracking-tight text-primary-foreground md:text-5xl lg:text-6xl">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `          <p className="mx-auto mb-9 max-w-2xl font-body text-lg leading-relaxed text-primary-foreground/80 md:text-xl">${esc(c.subheading)}</p>\n` : ''}\
+${c.ctaButtons?.length ? `          <div className="flex flex-wrap justify-center gap-3">
+${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary-foreground px-6 py-3 font-body font-semibold text-primary motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-primary-foreground/30 px-6 py-3 font-body font-medium text-primary-foreground backdrop-blur-sm motion-safe:transition-colors')}
           </div>\n` : ''}\
         </div>
       </section>`;

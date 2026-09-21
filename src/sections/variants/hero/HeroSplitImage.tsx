@@ -1,7 +1,12 @@
 /**
  * Hero Variant: Split Image
- * Two-column layout with text on the left and a hero image on the right.
- * Modern SaaS-style split hero.
+ *
+ * Canonical adaptation of 21st:1160 "Hero with image, text and two buttons" by
+ * @tommyjepsen. The source's two-column grid, outline badge, oversized
+ * tracking-tight regular-weight headline, muted lead paragraph, paired action
+ * buttons and square media panel are preserved. shadcn Button/Badge and lucide
+ * imports are replaced by canonical intent anchors, and every colour resolves
+ * from the Stage 4b theme instead of the source palette.
  */
 
 import React from 'react';
@@ -14,28 +19,26 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
   return (
     <section
       data-ut-variant="hero:split-image"
+      data-ut-slot="hero"
       className="relative overflow-hidden"
       style={{
         padding: theme.sectionPadding,
-        paddingTop: '6rem',
+        paddingTop: 'clamp(5rem, 8vw, 7rem)',
         background: hsl(theme.colors.background),
       }}
     >
       <div
-        className="mx-auto relative grid grid-cols-1 lg:grid-cols-2 items-center gap-12"
-        style={{
-          maxWidth: theme.containerWidth,
-        }}
+        className="mx-auto grid grid-cols-1 items-center gap-10 px-6 lg:grid-cols-2 lg:gap-16"
+        style={{ maxWidth: theme.containerWidth }}
       >
-        {/* Text Column */}
-        <div>
+        <div className="flex flex-col gap-6">
           {badge && (
             <span
-              className="inline-block text-xs font-medium tracking-wide uppercase mb-6 px-3 py-1 rounded-full"
+              className="inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide"
               style={{
-                color: hsl(theme.colors.primary),
-                background: hsla(theme.colors.primary, 0.08),
-                border: `1px solid ${hsla(theme.colors.primary, 0.15)}`,
+                color: hsl(theme.colors.foreground),
+                border: `1px solid ${hsla(theme.colors.border, 1)}`,
+                fontFamily: theme.typography.bodyFont,
               }}
             >
               {badge}
@@ -43,13 +46,12 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
           )}
 
           <h1
-            className="leading-tight mb-6"
+            className="max-w-xl text-left leading-[1.05] tracking-tighter"
             style={{
               fontFamily: theme.typography.headingFont,
               fontWeight: theme.typography.headingWeight,
               color: hsl(theme.colors.foreground),
-              fontSize: 'clamp(2rem, 4vw, 3.25rem)',
-              letterSpacing: 0,
+              fontSize: 'clamp(2.25rem, 5vw, 3.75rem)',
             }}
           >
             {headline}
@@ -57,25 +59,22 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
 
           {subheadline && (
             <p
-              className="text-lg leading-relaxed mb-8"
-              style={{
-                fontFamily: theme.typography.bodyFont,
-                color: hsl(theme.colors.mutedForeground),
-              }}
+              className="max-w-md text-left text-xl leading-relaxed tracking-tight"
+              style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >
               {subheadline}
             </p>
           )}
 
           {ctas.length > 0 && (
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-wrap gap-3">
               {ctas.map((c, i) => (
                 <a
                   key={i}
                   href={c.href || '#'}
                   data-ut-intent={c.intent}
                   data-ut-cta={i === 0 ? 'cta.hero' : 'cta.hero-secondary'}
-                  className="inline-block text-sm font-medium px-6 py-3 transition-all hover:opacity-90"
+                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={
                     c.variant === 'outline'
                       ? {
@@ -83,11 +82,13 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
                           color: hsl(theme.colors.foreground),
                           border: `1px solid ${hsla(theme.colors.border, 1)}`,
                           borderRadius: theme.radius,
+                          fontFamily: theme.typography.bodyFont,
                         }
                       : {
                           background: hsl(theme.colors.primary),
                           color: hsl(theme.colors.primaryForeground),
                           borderRadius: theme.radius,
+                          fontFamily: theme.typography.bodyFont,
                         }
                   }
                 >
@@ -98,7 +99,7 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
           )}
 
           {stats && stats.length > 0 && (
-            <div className="flex gap-8 mt-10 flex-wrap">
+            <div className="flex flex-wrap gap-8 pt-2">
               {stats.map((s, i) => (
                 <div key={i}>
                   <div
@@ -107,7 +108,7 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
                   >
                     {s.value}
                   </div>
-                  <div className="text-xs uppercase tracking-widest mt-1" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                  <div className="mt-1 text-xs uppercase tracking-widest" style={{ color: hsl(theme.colors.mutedForeground) }}>
                     {s.label}
                   </div>
                 </div>
@@ -116,33 +117,18 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
           )}
         </div>
 
-        {/* Image Column */}
         <div
-          className="relative rounded-2xl overflow-hidden"
-          style={{
-            aspectRatio: '4/3',
-            background: hsla(theme.colors.muted, 0.2),
-          }}
+          data-ut-slot="hero-media"
+          className="relative w-full overflow-hidden"
+          style={{ aspectRatio: '1 / 1', borderRadius: theme.radius, background: hsla(theme.colors.muted, 1) }}
         >
-          {image ? (
+          {image && (
             <img
               src={image}
-              alt={headline}
-              className="w-full h-full object-cover"
-              style={{ borderRadius: theme.radius }}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:hover:scale-[1.02]"
             />
-          ) : (
-            <div
-              className="w-full h-full flex items-center justify-center"
-              style={{
-                background: `linear-gradient(135deg, ${hsla(theme.colors.primary, 0.1)}, ${hsla(theme.colors.secondary, 0.1)})`,
-                borderRadius: theme.radius,
-              }}
-            >
-              <div style={{ color: hsl(theme.colors.mutedForeground), fontSize: '0.875rem' }}>
-                Hero Image
-              </div>
-            </div>
           )}
         </div>
       </div>

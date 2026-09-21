@@ -1,0 +1,67 @@
+{
+  "sourceId": "21st:10024",
+  "name": "Hero 1",
+  "sourceUrl": "https://21st.dev/efferd/hero-1",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Hero 1 by @efferd",
+  "designTags": [
+    "hero"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:centered"
+  ],
+  "author": "efferd",
+  "implementationId": "hero:centered",
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "https://21st.dev/efferd/hero-1",
+    "verifiedAt": "2026-09-21T00:00:00.000000Z",
+    "notes": "Retrieved through the workspace 21st.dev paid subscription via MCP get_component. Unison ships an independent adaptation: foreign framework/UI-kit imports removed, tokens and imports normalized, canonical data-ut-* identity and intents added, reduced-motion handled. No upstream bytes are shipped to generated sites."
+  },
+  "archivePath": "src/design/21st-intake/archive/hero-centered",
+  "archivedAt": "2026-09-21T00:00:00.000000Z",
+  "reviewEvidence": {
+    "sourceSha256": "2b6903b5a21474a9a649584487e62f60a1ba5f146f0513b81336a933b6821ae5",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-21T00:00:00.000000Z"
+  }
+}

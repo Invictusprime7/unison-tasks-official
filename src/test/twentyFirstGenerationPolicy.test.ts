@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { getAllSections } from '@/sections/registry';
-import { getGenerationVariantsForSection, getVariantById, ART_DIRECTION_PACKS } from '@/sections/variants';
+import { getGenerationVariantsForSection, getVariantById, getVariantsForSection as getVariantsForSectionAll, ART_DIRECTION_PACKS } from '@/sections/variants';
 import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
 import type { SectionType } from '@/sections/types';
 import { TWENTY_FIRST_INTAKE_MANIFEST } from '@/design/21st-intake/manifest';
@@ -30,10 +30,11 @@ describe('21st-only generation closure', () => {
     expect(validateAIPageComposition(plan,pack.id,[role]),role+':'+variant.id).not.toBeNull();
    }
   }
-   for(const id of ['hero:centered']) {
-    expect(getVariantById(id as never)).toBeDefined();
-    const type=id.split(':')[0];
-    expect(validateAIPageComposition({version:'1.0',pages:[{role:'home',sectionOrder:[type],variants:{[type]:id}}]},pack.id,['home'])).toBeNull();
+   // A registered but not-yet-migrated hero stays inadmissible for generation.
+   const eligibleHeroes=new Set(getGenerationVariantsForSection('hero',pack,'home').map(variant=>variant.id));
+   const ineligibleHero=getVariantsForSectionAll('hero').find(variant=>!eligibleHeroes.has(variant.id));
+   if(ineligibleHero) {
+    expect(validateAIPageComposition({version:'1.0',pages:[{role:'home',sectionOrder:['hero'],variants:{hero:ineligibleHero.id}}]},pack.id,['home'])).toBeNull();
    }
    // hero:prisma-cinematic is a certified generation hero: eligible wherever a pack declares it.
    expect(getVariantById('hero:prisma-cinematic' as never)).toBeDefined();
