@@ -118,7 +118,11 @@ export function abstractGoalOntologyPrompt(): string {
       const parts: string[] = [`- ${g.id} (${g.aliases.slice(0, 4).join(', ')})`];
       if (g.designSignals?.length) parts.push(`  design: ${g.designSignals.join('; ')}`);
       if (g.contentSignals?.length) parts.push(`  content: ${g.contentSignals.join('; ')}`);
-      if (g.capabilities?.length) parts.push(`  capabilities: ${g.capabilities.join('; ')}`);
+      if (g.designTraits?.length) parts.push(`  designTraits: ${g.designTraits.join('; ')}`);
+      if (g.businessGoals?.length) parts.push(`  businessGoals: ${g.businessGoals.join('; ')}`);
+      if (g.capabilities?.length) {
+        parts.push(`  requestedBusinessCapabilities: ${g.capabilities.join('; ')}`);
+      }
       if (g.components?.length) parts.push(`  components: ${g.components.join('; ')}`);
       return parts.join('\n');
     })
