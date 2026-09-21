@@ -4144,7 +4144,7 @@ export function prepareSandpackFiles(
   // Foundation primitives imported from an unauthored relative path are an
   // import-specifier mistake, not a missing module: point them at the canonical
   // barrel before any unresolved-import enforcement runs.
-  let resolvedFiles = normalizeFoundationLocalImports(files);
+  let resolvedFiles = withRuntimeConfigDefaults(normalizeFoundationLocalImports(files));
   const fileKeys = Object.keys(resolvedFiles);
 
   // Case 1: The entire VFS has a single file whose content is a JSON files wrapper
