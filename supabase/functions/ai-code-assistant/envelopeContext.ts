@@ -58,7 +58,13 @@ export function buildEnvelopeDirective(envelope?: EnvelopeShape | null): string 
   const kinds = clean(envelope.requestKinds);
   const domains = clean(envelope.domains);
   const constraints = clean(envelope.constraints);
-  const capabilities = clean(envelope.requestedCapabilities);
+  const capabilities = filterBusinessCapabilityIds([
+    ...clean(envelope.requestedBusinessCapabilities),
+    ...clean(envelope.requestedCapabilities),
+  ]);
+  const designTraits = clean(envelope.designTraits);
+  const experienceFeatures = clean(envelope.experienceFeatures);
+  const businessGoals = clean(envelope.businessGoals);
   const ambiguities = clean(envelope.ambiguities);
   const targets = clean(envelope.scope?.targets);
   const goals = Array.isArray(envelope.goals)
