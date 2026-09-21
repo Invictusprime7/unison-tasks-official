@@ -28,6 +28,7 @@ import {
   resolvePinnedRuntimeVersion,
 } from '@/utils/sandpackDependencies';
 import { isValidAesthetic } from '@/utils/aestheticToCSS';
+import { withRuntimeConfigDefaults } from '@/sections/runtimeConfigDefaults';
 import { buildThemedIndexCss } from '@/components/onboarding/themePresetToIndexCss';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
@@ -3754,6 +3755,12 @@ export function normalizeLauncherFiles(
     }
   }
 
+  // Generated runtime hooks (catalog hydration, forms, published actions) import
+  // the two canonical runtime config modules. Fill inert defaults when a file set
+  // was produced outside a full launch so those imports resolve to real config
+  // instead of a synthesized null-component placeholder.
+  resolvedFiles = withRuntimeConfigDefaults(resolvedFiles);
+
   const out: Record<string, string> = {};
 
   // Normalize all paths to have leading slash
@@ -4144,7 +4151,7 @@ export function prepareSandpackFiles(
   // Foundation primitives imported from an unauthored relative path are an
   // import-specifier mistake, not a missing module: point them at the canonical
   // barrel before any unresolved-import enforcement runs.
-  let resolvedFiles = normalizeFoundationLocalImports(files);
+  let resolvedFiles = withRuntimeConfigDefaults(normalizeFoundationLocalImports(files));
   const fileKeys = Object.keys(resolvedFiles);
 
   // Case 1: The entire VFS has a single file whose content is a JSON files wrapper
