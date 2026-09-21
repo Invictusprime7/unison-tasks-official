@@ -122,9 +122,27 @@ export function buildEnvelopeDirective(envelope?: EnvelopeShape | null): string 
     constraints.forEach((c) => lines.push(`  - ${c}`));
   }
 
+  if (designTraits.length) {
+    lines.push(
+      `Design traits (presentation only — tokens/type/spacing/motion): ${designTraits.join(', ')}`,
+      'Express these through Stage 4b tokens and certified implementations. They are NOT backend work.',
+    );
+  }
+
+  if (experienceFeatures.length) {
+    lines.push(
+      `Experience features (presentation only): ${experienceFeatures.join(', ')}`,
+      'Use certified experience/motion implementations; never add raw 3D or animation packages.',
+    );
+  }
+
+  if (businessGoals.length) {
+    lines.push(`Business goals (outcomes, not capability ids): ${businessGoals.join(', ')}`);
+  }
+
   if (capabilities.length) {
     lines.push(
-      `Implied capabilities: ${capabilities.join(', ')}`,
+      `Business capabilities: ${capabilities.join(', ')}`,
       'Wire these through canonical data-ut-intent bindings — never mock or stub the behavior.',
     );
   }
