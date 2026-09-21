@@ -9,6 +9,8 @@
  * declared scope must not be exceeded.
  */
 
+import { filterBusinessCapabilityIds } from "../_shared/businessCapabilityVocabulary.ts";
+
 export interface EnvelopeGoalShape {
   description?: string;
   priority?: string;
