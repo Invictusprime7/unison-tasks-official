@@ -1,0 +1,67 @@
+{
+  "sourceId": "21st:1160",
+  "name": "Hero with image, text and two buttons",
+  "sourceUrl": "https://21st.dev/tommyjepsen/hero-with-image-text-and-two-buttons",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Hero with image, text and two buttons by @tommyjepsen",
+  "designTags": [
+    "hero"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:split-image"
+  ],
+  "author": "tommyjepsen",
+  "implementationId": "hero:split-image",
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "https://21st.dev/tommyjepsen/hero-with-image-text-and-two-buttons",
+    "verifiedAt": "2026-09-21T00:00:00.000000Z",
+    "notes": "Retrieved through the workspace 21st.dev paid subscription via MCP get_component. Unison ships an independent adaptation: foreign framework/UI-kit imports removed, tokens and imports normalized, canonical data-ut-* identity and intents added, reduced-motion handled. No upstream bytes are shipped to generated sites."
+  },
+  "archivePath": "src/design/21st-intake/archive/hero-split-image",
+  "archivedAt": "2026-09-21T00:00:00.000000Z",
+  "reviewEvidence": {
+    "sourceSha256": "83fb9b796879bd5a875b7ac89693f186e7aac1b88ef51e7a97def4506edf828d",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-21T00:00:00.000000Z"
+  }
+}

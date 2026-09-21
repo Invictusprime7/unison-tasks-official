@@ -1,0 +1,67 @@
+{
+  "sourceId": "21st:19077",
+  "name": "Editorial Image Hero",
+  "sourceUrl": "https://21st.dev/felipemenezes098/hero-07",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Editorial Image Hero by @felipemenezes098",
+  "designTags": [
+    "hero"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:editorial-banner"
+  ],
+  "author": "felipemenezes098",
+  "implementationId": "hero:editorial-banner",
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "https://21st.dev/felipemenezes098/hero-07",
+    "verifiedAt": "2026-09-21T00:00:00.000000Z",
+    "notes": "Retrieved through the workspace 21st.dev paid subscription via MCP get_component. Unison ships an independent adaptation: foreign framework/UI-kit imports removed, tokens and imports normalized, canonical data-ut-* identity and intents added, reduced-motion handled. No upstream bytes are shipped to generated sites."
+  },
+  "archivePath": "src/design/21st-intake/archive/hero-editorial-banner",
+  "archivedAt": "2026-09-21T00:00:00.000000Z",
+  "reviewEvidence": {
+    "sourceSha256": "4568600118aa2afb485163c862d2ee2ed021f34bbd98d7622ce9e48867d1a828",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-21T00:00:00.000000Z"
+  }
+}

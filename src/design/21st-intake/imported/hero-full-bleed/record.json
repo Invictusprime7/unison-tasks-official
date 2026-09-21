@@ -1,0 +1,67 @@
+{
+  "sourceId": "21st:6834",
+  "name": "Hero \u2014 Aurora Background",
+  "sourceUrl": "https://21st.dev/ravikatiyar162/hero-2",
+  "sourceType": "component",
+  "dependencies": [],
+  "registryDependencies": [
+    "button"
+  ],
+  "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+  "attribution": "21st.dev \u2014 Hero \u2014 Aurora Background by @ravikatiyar162",
+  "designTags": [
+    "hero"
+  ],
+  "capabilities": {
+    "motion": true,
+    "threeD": false,
+    "media": true,
+    "forms": false,
+    "carousel": false
+  },
+  "compatibility": {
+    "react19": true,
+    "tailwind3": true,
+    "vite": true,
+    "clientOnly": false
+  },
+  "adaptation": {
+    "tokensNormalized": true,
+    "importsNormalized": true,
+    "reducedMotionSupported": true,
+    "responsiveVerified": true,
+    "canonicalSlotsAdded": true,
+    "intentReady": true,
+    "portableRecipeCertified": true
+  },
+  "step": 10,
+  "dependencyAudit": {
+    "decisions": [],
+    "approved": true
+  },
+  "status": "promoted",
+  "promotedVariants": [
+    "hero:full-bleed"
+  ],
+  "author": "ravikatiyar162",
+  "implementationId": "hero:full-bleed",
+  "licenseReview": {
+    "status": "verified",
+    "license": "Owner-authorized source adaptation (approved for canonical Unison generation)",
+    "source": "https://21st.dev/ravikatiyar162/hero-2",
+    "verifiedAt": "2026-09-21T00:00:00.000000Z",
+    "notes": "Retrieved through the workspace 21st.dev paid subscription via MCP get_component. Unison ships an independent adaptation: foreign framework/UI-kit imports removed, tokens and imports normalized, canonical data-ut-* identity and intents added, reduced-motion handled. No upstream bytes are shipped to generated sites."
+  },
+  "archivePath": "src/design/21st-intake/archive/hero-full-bleed",
+  "archivedAt": "2026-09-21T00:00:00.000000Z",
+  "reviewEvidence": {
+    "sourceSha256": "4d589d8cfcb9e357001fc0eedb64d7756eb9c67c762cc9b7fe302c199f614572",
+    "checks": [
+      "portable compiler and renderer parity",
+      "semantic theme bindings",
+      "canonical intent bindings",
+      "responsive and reduced-motion review"
+    ],
+    "reviewedAt": "2026-09-21T00:00:00.000000Z"
+  }
+}
