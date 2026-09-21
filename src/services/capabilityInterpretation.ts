@@ -257,7 +257,12 @@ export function interpretCapabilities(
   let source: CapabilityInterpretation['source'] = 'none';
 
   if (envelope) {
-    for (const raw of envelope.requestedCapabilities) {
+    // Typed projection only: design traits / experience features / outcome
+    // language live in their own envelope fields and are never provisioned.
+    const declaredCapabilities = envelope.requestedBusinessCapabilities?.length
+      ? envelope.requestedBusinessCapabilities
+      : (envelope.requestedCapabilities ?? []);
+    for (const raw of declaredCapabilities) {
       const cap = normalizeBusinessCapability(raw);
       if (cap) requested.add(cap);
     }
