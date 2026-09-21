@@ -198,8 +198,19 @@ export function envelopeBrief(envelope: BuilderRequestEnvelope): string {
     lines.push('Constraints (do not violate):');
     envelope.constraints.forEach((c) => lines.push(`  - ${c}`));
   }
-  if (envelope.requestedCapabilities.length) {
-    lines.push(`Implied capabilities: ${envelope.requestedCapabilities.join(', ')}`);
+  if (envelope.designTraits.length) {
+    lines.push(`Design traits (presentation only): ${envelope.designTraits.join(', ')}`);
+  }
+  if (envelope.experienceFeatures.length) {
+    lines.push(`Experience features (presentation only): ${envelope.experienceFeatures.join(', ')}`);
+  }
+  if (envelope.businessGoals.length) {
+    lines.push(`Business goals: ${envelope.businessGoals.join(', ')}`);
+  }
+  if (envelope.requestedBusinessCapabilities.length) {
+    lines.push(
+      `Business capabilities: ${envelope.requestedBusinessCapabilities.join(', ')}`,
+    );
   }
   if (envelope.ambiguities.length) {
     lines.push(`Ambiguities to state explicitly: ${envelope.ambiguities.join('; ')}`);
