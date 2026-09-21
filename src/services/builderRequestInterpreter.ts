@@ -50,9 +50,18 @@ export async function interpretBuilderRequest(
 
   const abstractGoals = matchAbstractGoals(prompt);
   if (abstractGoals.length) {
-    hints.requestedCapabilities = Array.from(
-      new Set(abstractGoals.flatMap((g) => g.capabilities ?? [])),
+    // Typed projections: design traits and outcome language never enter the
+    // business-capability array, so they can never reach backend provisioning.
+    hints.requestedBusinessCapabilities = Array.from(
+      new Set(
+        abstractGoals
+          .flatMap((g) => g.capabilities ?? [])
+          .map((c) => normalizeBusinessCapability(c))
+          .filter((c): c is BusinessCapability => Boolean(c)),
+      ),
     );
+    hints.designTraits = Array.from(new Set(abstractGoals.flatMap((g) => g.designTraits ?? [])));
+    hints.businessGoals = Array.from(new Set(abstractGoals.flatMap((g) => g.businessGoals ?? [])));
   }
 
   try {
