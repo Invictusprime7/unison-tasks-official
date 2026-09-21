@@ -375,6 +375,11 @@ export function buildEnvelopeHints(
     needsExternalResearch: false,
     needsApproval: backendish,
     confidence: 0.35,
+    businessGoals: [],
+    designTraits: [],
+    experienceFeatures: [],
+    editorOperations: [],
+    requestedBusinessCapabilities: [],
     requestedCapabilities: [],
     source: 'heuristic',
   };
