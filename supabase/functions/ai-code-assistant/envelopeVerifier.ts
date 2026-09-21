@@ -18,6 +18,7 @@
 
 import type { EnvelopeShape } from "./envelopeContext.ts";
 import { resolveDatabaseContracts } from "../_shared/capabilityPackContracts.ts";
+import { filterBusinessCapabilityIds } from "../_shared/businessCapabilityVocabulary.ts";
 
 
 export interface GoalVerdict {
