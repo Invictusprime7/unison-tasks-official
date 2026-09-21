@@ -76,7 +76,23 @@ export interface BuilderRequestEnvelope {
   needsExternalResearch: boolean;
   needsApproval: boolean;
   confidence: number;
-  /** Capability ids implied by abstract/explicit goals (from the goal ontology). */
+  /** Outcome language ("easier to book", "more leads"). Never provisioned. */
+  businessGoals: string[];
+  /** Presentation language ("premium", "modern"). Never provisioned. */
+  designTraits: string[];
+  /** Motion / immersive features ("motion.marquee"). Never provisioned. */
+  experienceFeatures: string[];
+  /** Deterministic editor operations implied by the request. */
+  editorOperations: string[];
+  /**
+   * The ONLY projection allowed to reach backend capability verification.
+   * Every value is a canonical business capability id.
+   */
+  requestedBusinessCapabilities: BusinessCapability[];
+  /**
+   * @deprecated Legacy mirror of `requestedBusinessCapabilities`, kept for one
+   * migration window. It never carries design/goal/experience language.
+   */
   requestedCapabilities: string[];
   /** How this envelope was produced. */
   source: 'model' | 'heuristic' | 'hybrid';
