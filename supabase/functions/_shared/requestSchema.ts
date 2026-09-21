@@ -35,6 +35,11 @@ export const AIRequestSchema = z.object({
     complexity: z.string().max(30).optional(),
     constraints: z.array(z.string().max(400)).max(20).optional(),
     requestedCapabilities: z.array(z.string().max(60)).max(20).optional(),
+    requestedBusinessCapabilities: z.array(z.string().max(60)).max(20).optional(),
+    businessGoals: z.array(z.string().max(120)).max(24).optional(),
+    designTraits: z.array(z.string().max(120)).max(24).optional(),
+    experienceFeatures: z.array(z.string().max(120)).max(24).optional(),
+    editorOperations: z.array(z.string().max(120)).max(24).optional(),
     ambiguities: z.array(z.string().max(400)).max(20).optional(),
 
     executionMode: z.string().max(40).optional(),

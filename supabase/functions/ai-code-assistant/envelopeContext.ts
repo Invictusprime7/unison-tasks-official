@@ -9,6 +9,8 @@
  * declared scope must not be exceeded.
  */
 
+import { filterBusinessCapabilityIds } from "../_shared/businessCapabilityVocabulary.ts";
+
 export interface EnvelopeGoalShape {
   description?: string;
   priority?: string;
@@ -24,6 +26,11 @@ export interface EnvelopeShape {
   goals?: EnvelopeGoalShape[];
   constraints?: string[];
   requestedCapabilities?: string[];
+  requestedBusinessCapabilities?: string[];
+  businessGoals?: string[];
+  designTraits?: string[];
+  experienceFeatures?: string[];
+  editorOperations?: string[];
   ambiguities?: string[];
   complexity?: string;
   executionMode?: string;
@@ -53,7 +60,13 @@ export function buildEnvelopeDirective(envelope?: EnvelopeShape | null): string 
   const kinds = clean(envelope.requestKinds);
   const domains = clean(envelope.domains);
   const constraints = clean(envelope.constraints);
-  const capabilities = clean(envelope.requestedCapabilities);
+  const capabilities = filterBusinessCapabilityIds([
+    ...clean(envelope.requestedBusinessCapabilities),
+    ...clean(envelope.requestedCapabilities),
+  ]);
+  const designTraits = clean(envelope.designTraits);
+  const experienceFeatures = clean(envelope.experienceFeatures);
+  const businessGoals = clean(envelope.businessGoals);
   const ambiguities = clean(envelope.ambiguities);
   const targets = clean(envelope.scope?.targets);
   const goals = Array.isArray(envelope.goals)
@@ -111,9 +124,27 @@ export function buildEnvelopeDirective(envelope?: EnvelopeShape | null): string 
     constraints.forEach((c) => lines.push(`  - ${c}`));
   }
 
+  if (designTraits.length) {
+    lines.push(
+      `Design traits (presentation only — tokens/type/spacing/motion): ${designTraits.join(', ')}`,
+      'Express these through Stage 4b tokens and certified implementations. They are NOT backend work.',
+    );
+  }
+
+  if (experienceFeatures.length) {
+    lines.push(
+      `Experience features (presentation only): ${experienceFeatures.join(', ')}`,
+      'Use certified experience/motion implementations; never add raw 3D or animation packages.',
+    );
+  }
+
+  if (businessGoals.length) {
+    lines.push(`Business goals (outcomes, not capability ids): ${businessGoals.join(', ')}`);
+  }
+
   if (capabilities.length) {
     lines.push(
-      `Implied capabilities: ${capabilities.join(', ')}`,
+      `Business capabilities: ${capabilities.join(', ')}`,
       'Wire these through canonical data-ut-intent bindings — never mock or stub the behavior.',
     );
   }

@@ -17,6 +17,8 @@ import {
   type BuilderRequestEnvelope,
 } from '@/types/builderRequestEnvelope';
 import { matchAbstractGoals } from '@/platform/core/abstractGoalRegistry';
+import { normalizeBusinessCapability } from '@/platform/core/businessCapabilityVocabulary';
+import type { BusinessCapability } from '@/platform/core/capabilityRegistry';
 
 export interface InterpretContext {
   projectMode?: 'html' | 'react';
@@ -50,9 +52,18 @@ export async function interpretBuilderRequest(
 
   const abstractGoals = matchAbstractGoals(prompt);
   if (abstractGoals.length) {
-    hints.requestedCapabilities = Array.from(
-      new Set(abstractGoals.flatMap((g) => g.capabilities ?? [])),
+    // Typed projections: design traits and outcome language never enter the
+    // business-capability array, so they can never reach backend provisioning.
+    hints.requestedBusinessCapabilities = Array.from(
+      new Set(
+        abstractGoals
+          .flatMap((g) => g.capabilities ?? [])
+          .map((c) => normalizeBusinessCapability(c))
+          .filter((c): c is BusinessCapability => Boolean(c)),
+      ),
     );
+    hints.designTraits = Array.from(new Set(abstractGoals.flatMap((g) => g.designTraits ?? [])));
+    hints.businessGoals = Array.from(new Set(abstractGoals.flatMap((g) => g.businessGoals ?? [])));
   }
 
   try {
@@ -187,8 +198,19 @@ export function envelopeBrief(envelope: BuilderRequestEnvelope): string {
     lines.push('Constraints (do not violate):');
     envelope.constraints.forEach((c) => lines.push(`  - ${c}`));
   }
-  if (envelope.requestedCapabilities.length) {
-    lines.push(`Implied capabilities: ${envelope.requestedCapabilities.join(', ')}`);
+  if (envelope.designTraits.length) {
+    lines.push(`Design traits (presentation only): ${envelope.designTraits.join(', ')}`);
+  }
+  if (envelope.experienceFeatures.length) {
+    lines.push(`Experience features (presentation only): ${envelope.experienceFeatures.join(', ')}`);
+  }
+  if (envelope.businessGoals.length) {
+    lines.push(`Business goals: ${envelope.businessGoals.join(', ')}`);
+  }
+  if (envelope.requestedBusinessCapabilities.length) {
+    lines.push(
+      `Business capabilities: ${envelope.requestedBusinessCapabilities.join(', ')}`,
+    );
   }
   if (envelope.ambiguities.length) {
     lines.push(`Ambiguities to state explicitly: ${envelope.ambiguities.join('; ')}`);

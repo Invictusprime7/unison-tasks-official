@@ -18,6 +18,7 @@
 
 import type { EnvelopeShape } from "./envelopeContext.ts";
 import { resolveDatabaseContracts } from "../_shared/capabilityPackContracts.ts";
+import { filterBusinessCapabilityIds } from "../_shared/businessCapabilityVocabulary.ts";
 
 
 export interface GoalVerdict {
@@ -138,18 +139,6 @@ const HARDCODED_COLLECTION_RE =
 
 const RUNTIME_CLIENT_RE = /(integrations\/supabase|runtime-client|useCatalog|CatalogRuntime|supabase\s*\.\s*from)/i;
 
-// Interpreter domains describe where work happens; they are not installable
-// database packs. Keep them in the envelope for routing/scope, but never ask
-// capability-pack verification to provision them.
-const NON_BACKEND_PACK_CAPABILITIES = new Set([
-  "layout",
-  "visual_design",
-  "copy",
-  "navigation",
-  "database",
-  "runtime",
-]);
-
 /**
  * Step 7 — backend-aware verification.
  *
@@ -157,14 +146,16 @@ const NON_BACKEND_PACK_CAPABILITIES = new Set([
  * and require the produced markup to read them through the runtime client.
  * When a section renders an inline collection literal and never touches the
  * backend, the capability is decoration, not a system — that is a `must` miss.
+ *
+ * Only canonical business capability ids reach this function. Design traits,
+ * experience features, outcome language and interpreter domains are separate
+ * request projections and can never become a missing-backend-pack warning.
  */
 function verifyBackendWiring(
   capabilities: string[],
   files: Record<string, string>,
 ): GoalVerdict[] {
-  const backendCapabilities = capabilities.filter((capability) => (
-    !NON_BACKEND_PACK_CAPABILITIES.has(capability.trim().toLowerCase())
-  ));
+  const backendCapabilities = filterBusinessCapabilityIds(capabilities);
   const { order, unsupported } = resolveDatabaseContracts(backendCapabilities);
   if (order.length === 0 && unsupported.length === 0) return [];
 
@@ -273,9 +264,14 @@ export function verifyAgainstEnvelope(opts: {
   }
 
   // ── Capability wiring ─────────────────────────────────────────────────────
-  const capabilities = Array.isArray(envelope.requestedCapabilities)
-    ? envelope.requestedCapabilities.filter((c): c is string => typeof c === "string")
-    : [];
+  // Typed projection: only canonical business capability ids are verified.
+  // Design traits / experience features / goals are presentation domains.
+  const capabilities = filterBusinessCapabilityIds([
+    ...(Array.isArray(envelope.requestedBusinessCapabilities)
+      ? envelope.requestedBusinessCapabilities
+      : []),
+    ...(Array.isArray(envelope.requestedCapabilities) ? envelope.requestedCapabilities : []),
+  ]);
   const haystack = Object.values(files).join("\n");
   const touchesMarkup = touched.some((f) => /\.(tsx|jsx)$/i.test(f));
   if (capabilities.length > 0 && touchesMarkup && !haystack.includes("data-ut-intent")) {

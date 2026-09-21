@@ -8,6 +8,12 @@
  * `normalizeEnvelope` guarantees the shape regardless of model output.
  */
 
+import {
+  classifyBuilderRequestTerm,
+  normalizeBusinessCapability,
+} from '@/platform/core/businessCapabilityVocabulary';
+import type { BusinessCapability } from '@/platform/core/capabilityRegistry';
+
 export type BuilderRequestKind =
   | 'create'
   | 'edit'
@@ -76,7 +82,23 @@ export interface BuilderRequestEnvelope {
   needsExternalResearch: boolean;
   needsApproval: boolean;
   confidence: number;
-  /** Capability ids implied by abstract/explicit goals (from the goal ontology). */
+  /** Outcome language ("easier to book", "more leads"). Never provisioned. */
+  businessGoals: string[];
+  /** Presentation language ("premium", "modern"). Never provisioned. */
+  designTraits: string[];
+  /** Motion / immersive features ("motion.marquee"). Never provisioned. */
+  experienceFeatures: string[];
+  /** Deterministic editor operations implied by the request. */
+  editorOperations: string[];
+  /**
+   * The ONLY projection allowed to reach backend capability verification.
+   * Every value is a canonical business capability id.
+   */
+  requestedBusinessCapabilities: BusinessCapability[];
+  /**
+   * @deprecated Legacy mirror of `requestedBusinessCapabilities`, kept for one
+   * migration window. It never carries design/goal/experience language.
+   */
   requestedCapabilities: string[];
   /** How this envelope was produced. */
   source: 'model' | 'heuristic' | 'hybrid';
@@ -123,6 +145,80 @@ function strings(value: unknown, max = 24): string[] {
     .map((v) => (typeof v === 'string' ? v.trim() : ''))
     .filter(Boolean)
     .slice(0, max);
+}
+
+/**
+ * Typed request-domain projection.
+ *
+ * Design traits, business goals and experience features are separate domains
+ * from business capabilities. Only `requestedBusinessCapabilities` may reach
+ * backend provisioning / capability-pack verification, so a word like
+ * "modern" can never be reported as a missing backend pack.
+ *
+ * Legacy `requestedCapabilities` arrays (one migration window) are split into
+ * the typed projections instead of being forwarded verbatim.
+ */
+function splitRequestDomains(
+  o: Record<string, unknown>,
+  hints?: Partial<BuilderRequestEnvelope>,
+): Pick<
+  BuilderRequestEnvelope,
+  | 'businessGoals'
+  | 'designTraits'
+  | 'experienceFeatures'
+  | 'editorOperations'
+  | 'requestedBusinessCapabilities'
+  | 'requestedCapabilities'
+> {
+  const businessGoals = new Set<string>([
+    ...strings(o.businessGoals),
+    ...(hints?.businessGoals ?? []),
+  ]);
+  const designTraits = new Set<string>([
+    ...strings(o.designTraits),
+    ...(hints?.designTraits ?? []),
+  ]);
+  const experienceFeatures = new Set<string>([
+    ...strings(o.experienceFeatures),
+    ...(hints?.experienceFeatures ?? []),
+  ]);
+  const editorOperations = new Set<string>([
+    ...strings(o.editorOperations),
+    ...(hints?.editorOperations ?? []),
+  ]);
+  const capabilities = new Set<BusinessCapability>();
+
+  const declared = [
+    ...strings(o.requestedBusinessCapabilities),
+    ...(hints?.requestedBusinessCapabilities ?? []),
+  ];
+  for (const raw of declared) {
+    const capability = normalizeBusinessCapability(raw);
+    if (capability) capabilities.add(capability);
+  }
+
+  // Legacy/untyped values get classified rather than trusted.
+  const legacy = [
+    ...strings(o.requestedCapabilities),
+    ...(hints?.requestedCapabilities ?? []),
+  ];
+  for (const raw of legacy) {
+    const { domain, value } = classifyBuilderRequestTerm(raw);
+    if (domain === 'capability') capabilities.add(value as BusinessCapability);
+    else if (domain === 'design') designTraits.add(value);
+    else if (domain === 'experience') experienceFeatures.add(value);
+    else businessGoals.add(value);
+  }
+
+  const requestedBusinessCapabilities = [...capabilities];
+  return {
+    businessGoals: [...businessGoals].slice(0, 24),
+    designTraits: [...designTraits].slice(0, 24),
+    experienceFeatures: [...experienceFeatures].slice(0, 24),
+    editorOperations: [...editorOperations].slice(0, 24),
+    requestedBusinessCapabilities,
+    requestedCapabilities: [...requestedBusinessCapabilities],
+  };
 }
 
 /**
@@ -186,9 +282,7 @@ export function normalizeEnvelope(
     needsApproval:
       typeof o.needsApproval === 'boolean' ? o.needsApproval : (hints?.needsApproval ?? false),
     confidence,
-    requestedCapabilities: strings(o.requestedCapabilities).length
-      ? strings(o.requestedCapabilities)
-      : (hints?.requestedCapabilities ?? []),
+    ...splitRequestDomains(o, hints),
     source: 'model',
   };
 }
@@ -281,6 +375,11 @@ export function buildEnvelopeHints(
     needsExternalResearch: false,
     needsApproval: backendish,
     confidence: 0.35,
+    businessGoals: [],
+    designTraits: [],
+    experienceFeatures: [],
+    editorOperations: [],
+    requestedBusinessCapabilities: [],
     requestedCapabilities: [],
     source: 'heuristic',
   };
