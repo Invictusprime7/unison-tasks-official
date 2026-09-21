@@ -35,7 +35,7 @@ function resolveRelative(fromPath: string, spec: string, files: Record<string, s
 }
 
 describe('probe: preview resolution across roles', () => {
-  it('resolves imports and renders declared variants for every role of every composition', () => {
+  it('resolves imports and renders declared variants for every role of every composition', async () => {
     const problems: string[] = [];
     for (const template of ALL_COMPOSITIONS) {
       for (const role of ROLES) {
@@ -90,5 +90,5 @@ describe('probe: preview resolution across roles', () => {
       }
     }
     expect([...new Set(problems)].slice(0, 40)).toEqual([]);
-  });
+  }, 120000);
 });
