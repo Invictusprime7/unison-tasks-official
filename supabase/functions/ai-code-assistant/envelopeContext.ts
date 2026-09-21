@@ -24,6 +24,11 @@ export interface EnvelopeShape {
   goals?: EnvelopeGoalShape[];
   constraints?: string[];
   requestedCapabilities?: string[];
+  requestedBusinessCapabilities?: string[];
+  businessGoals?: string[];
+  designTraits?: string[];
+  experienceFeatures?: string[];
+  editorOperations?: string[];
   ambiguities?: string[];
   complexity?: string;
   executionMode?: string;
