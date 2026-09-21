@@ -119,8 +119,8 @@ export const HeroSplitImage: React.FC<BaseSectionProps<'hero'>> = ({ section, th
 
         <div
           data-ut-slot="hero-media"
-          className="relative aspect-square w-full overflow-hidden"
-          style={{ borderRadius: theme.radius, background: hsla(theme.colors.muted, 1) }}
+          className="relative w-full overflow-hidden"
+          style={{ aspectRatio: '1 / 1', borderRadius: theme.radius, background: hsla(theme.colors.muted, 1) }}
         >
           {image && (
             <img
