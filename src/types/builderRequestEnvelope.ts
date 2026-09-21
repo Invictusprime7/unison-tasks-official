@@ -202,9 +202,7 @@ export function normalizeEnvelope(
     needsApproval:
       typeof o.needsApproval === 'boolean' ? o.needsApproval : (hints?.needsApproval ?? false),
     confidence,
-    requestedCapabilities: strings(o.requestedCapabilities).length
-      ? strings(o.requestedCapabilities)
-      : (hints?.requestedCapabilities ?? []),
+    ...splitRequestDomains(o, hints),
     source: 'model',
   };
 }
