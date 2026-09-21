@@ -21,81 +21,17 @@ import type {
 import { ABSTRACT_GOALS } from '@/platform/core/abstractGoalRegistry';
 import type { BusinessCapability } from '@/platform/core/capabilityRegistry';
 import { capabilitiesForSurfaces } from '@/services/catalog/catalogCapabilityResolution';
+import {
+  BUSINESS_CAPABILITIES,
+  CAPABILITY_ALIASES,
+  normalizeBusinessCapability,
+} from '@/platform/core/businessCapabilityVocabulary';
 
 export type BuilderScope = 'website' | 'business-system' | 'developer';
 
-export const BUSINESS_CAPABILITIES: BusinessCapability[] = [
-  'business_profile',
-  'catalog.services',
-  'catalog.products',
-  'catalog.menu',
-  'crm.leads',
-  'crm.contacts',
-  'booking.appointments',
-  'commerce.cart',
-  'commerce.checkout',
-  'forms.contact',
-  'forms.quote',
-  'auth.customer',
-  'portal.customer',
-  'automation.follow_up',
-  'notifications.email',
-];
-
-const CAPABILITY_SET = new Set<string>(BUSINESS_CAPABILITIES);
-
-/**
- * Loose aliases the interpreter (or the abstract-goal ontology) may emit.
- * Anything not resolvable here is dropped rather than guessed.
- */
-const CAPABILITY_ALIASES: Record<string, BusinessCapability> = {
-  booking: 'booking.appointments',
-  bookings: 'booking.appointments',
-  appointments: 'booking.appointments',
-  scheduling: 'booking.appointments',
-  services: 'catalog.services',
-  'service catalog': 'catalog.services',
-  products: 'catalog.products',
-  'product catalog': 'catalog.products',
-  menu: 'catalog.menu',
-  commerce: 'commerce.checkout',
-  ecommerce: 'commerce.checkout',
-  cart: 'commerce.cart',
-  checkout: 'commerce.checkout',
-  payments: 'commerce.checkout',
-  crm: 'crm.contacts',
-  contacts: 'crm.contacts',
-  leads: 'crm.leads',
-  'lead capture': 'crm.leads',
-  'contact form': 'forms.contact',
-  contact: 'forms.contact',
-  quote: 'forms.quote',
-  quotes: 'forms.quote',
-  quoting: 'forms.quote',
-  auth: 'auth.customer',
-  authentication: 'auth.customer',
-  accounts: 'auth.customer',
-  login: 'auth.customer',
-  portal: 'portal.customer',
-  dashboard: 'portal.customer',
-  memberships: 'portal.customer',
-  automation: 'automation.follow_up',
-  automations: 'automation.follow_up',
-  'follow up': 'automation.follow_up',
-  notifications: 'notifications.email',
-  email: 'notifications.email',
-  'business profile': 'business_profile',
-  profile: 'business_profile',
-};
-
-export function normalizeBusinessCapability(raw: string): BusinessCapability | null {
-  const v = String(raw ?? '').trim().toLowerCase();
-  if (!v) return null;
-  if (CAPABILITY_SET.has(v)) return v as BusinessCapability;
-  const underscored = v.replace(/[\s-]+/g, '_');
-  if (CAPABILITY_SET.has(underscored)) return underscored as BusinessCapability;
-  return CAPABILITY_ALIASES[v] ?? CAPABILITY_ALIASES[v.replace(/[_-]+/g, ' ')] ?? null;
-}
+// The canonical vocabulary lives in `businessCapabilityVocabulary.ts` so the
+// request envelope can validate against it without importing this layer.
+export { BUSINESS_CAPABILITIES, CAPABILITY_ALIASES, normalizeBusinessCapability };
 
 // ---------------------------------------------------------------------------
 // Domain → capability mapping (authoritative, envelope-driven)
