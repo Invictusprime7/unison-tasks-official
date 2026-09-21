@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789951630824,
+      "tag": "0000_restrict_public_business_fields_and_fix_bookings_owner_policy",
+      "breakpoints": true
+    }
+  ]
+}
