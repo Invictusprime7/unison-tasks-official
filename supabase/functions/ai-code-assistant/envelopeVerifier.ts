@@ -263,9 +263,14 @@ export function verifyAgainstEnvelope(opts: {
   }
 
   // ── Capability wiring ─────────────────────────────────────────────────────
-  const capabilities = Array.isArray(envelope.requestedCapabilities)
-    ? envelope.requestedCapabilities.filter((c): c is string => typeof c === "string")
-    : [];
+  // Typed projection: only canonical business capability ids are verified.
+  // Design traits / experience features / goals are presentation domains.
+  const capabilities = filterBusinessCapabilityIds([
+    ...(Array.isArray(envelope.requestedBusinessCapabilities)
+      ? envelope.requestedBusinessCapabilities
+      : []),
+    ...(Array.isArray(envelope.requestedCapabilities) ? envelope.requestedCapabilities : []),
+  ]);
   const haystack = Object.values(files).join("\n");
   const touchesMarkup = touched.some((f) => /\.(tsx|jsx)$/i.test(f));
   if (capabilities.length > 0 && touchesMarkup && !haystack.includes("data-ut-intent")) {
