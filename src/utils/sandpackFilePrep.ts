@@ -3754,6 +3754,12 @@ export function normalizeLauncherFiles(
     }
   }
 
+  // Generated runtime hooks (catalog hydration, forms, published actions) import
+  // the two canonical runtime config modules. Fill inert defaults when a file set
+  // was produced outside a full launch so those imports resolve to real config
+  // instead of a synthesized null-component placeholder.
+  resolvedFiles = withRuntimeConfigDefaults(resolvedFiles);
+
   const out: Record<string, string> = {};
 
   // Normalize all paths to have leading slash
