@@ -15,20 +15,27 @@ import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
 import { safeParseBody } from "../_shared/validate.ts";
 import { createChatCompletion, isTextGenerationConfigured } from "../_shared/ai/providerClient.ts";
+import {
+  BUSINESS_CAPABILITY_IDS,
+  filterBusinessCapabilityIds,
+} from "../_shared/businessCapabilityVocabulary.ts";
 
 const AI_MODEL = "google/gemini-2.5-flash";
 const MAX_PROMPT_CHARS = 24_000;
 
 const ABSTRACT_GOAL_ONTOLOGY = `
-- trustworthy (established, credible, professional): consistent typography; restrained palette; clear hierarchy; social proof; testimonials; trust badges; FAQ
-- premium (luxury, high-end, elevated): editorial spacing; high-quality imagery; limited accent colors; strong typography
-- modern (sleek, clean, contemporary): generous whitespace; subtle motion; consistent radii
-- easier_to_buy: clear product hierarchy; persistent cart state; direct checkout CTA; variant selection; price visibility
-- easier_to_book: catalog.services; booking.appointments; crm.contacts; notifications.email
-- shopify_like: catalog CRUD; collections; variants; inventory; product media; cart; checkout; order state
-- real_business_system (operate like a real business, not just look like one): catalog.services; crm.leads; crm.contacts; booking.appointments; automation.follow_up
-- lead_generation: forms.contact; crm.leads; automation.follow_up; notifications.email
+- trustworthy (established, credible, professional) -> designTraits: trustworthy; consistent-typography; restrained-palette; clear-hierarchy
+- premium (luxury, high-end, elevated) -> designTraits: premium; editorial-spacing; restrained-accent; strong-typography
+- modern (sleek, clean, contemporary) -> designTraits: modern; generous-whitespace; subtle-motion; consistent-radii
+- easier_to_buy -> businessGoals: easier_to_buy | requestedBusinessCapabilities: catalog.products; commerce.cart; commerce.checkout
+- easier_to_book -> businessGoals: easier_to_book | requestedBusinessCapabilities: catalog.services; booking.appointments; crm.contacts; notifications.email
+- shopify_like -> businessGoals: shopify_like | requestedBusinessCapabilities: catalog.products; commerce.cart; commerce.checkout; crm.contacts; notifications.email
+- real_business_system -> businessGoals: real_business_system | requestedBusinessCapabilities: catalog.services; crm.leads; crm.contacts; booking.appointments; automation.follow_up; notifications.email
+- lead_generation -> businessGoals: lead_generation | requestedBusinessCapabilities: forms.contact; crm.leads; automation.follow_up; notifications.email
 `.trim();
+
+/** The ONLY values allowed in requestedBusinessCapabilities. */
+const CAPABILITY_VOCABULARY = BUSINESS_CAPABILITY_IDS.join(" | ");
 
 const SYSTEM_PROMPT = `You are the Request Interpreter for Unison's AI Builder — an AI business system builder (website + catalog + CRM + bookings + automations as one connected system).
 
@@ -38,7 +45,13 @@ Rules:
 1. MULTI-LABEL. A request usually has several requestKinds and several domains. Never collapse to one.
 2. READ THE WHOLE PROMPT. Requirements stated at the very end matter as much as the first sentence. Every distinct requirement becomes a goal entry.
 3. Preserve constraints verbatim-ish ("keep the existing colors", "don't touch the nav").
-4. Abstract outcome language must be grounded using this ontology into concrete capabilities/design signals:
+4. TYPED REQUEST DOMAINS — never mix them:
+   - designTraits: presentation language (modern, premium, spacing, typography, palette). NEVER a backend capability.
+   - experienceFeatures: motion/immersive features (motion.marquee, parallax, 3d scene). NEVER a backend capability.
+   - businessGoals: outcome language (easier_to_book, more leads). NEVER a capability id.
+   - editorOperations: deterministic editor operations implied by the request (set-slot-text, set-variant, set-theme-token, set-intent).
+   - requestedBusinessCapabilities: ONLY values from this closed vocabulary: ${CAPABILITY_VOCABULARY}. Emit nothing else here; if a need does not map to one of these, express it as a businessGoal.
+   Ground abstract outcome language using this ontology:
 ${ABSTRACT_GOAL_ONTOLOGY}
 5. needsExternalResearch is TRUE only when the answer genuinely depends on current external information (competitor/product research, live pricing, third-party API docs). Editing, debugging, local backend wiring, and architecture questions are FALSE.
 6. needsApproval is TRUE for backend/database/destructive/deployment changes.
@@ -47,7 +60,7 @@ ${ABSTRACT_GOAL_ONTOLOGY}
 9. confidence is your own 0..1 estimate. If the request is ambiguous, list ambiguities instead of guessing silently.
 
 Return ONLY minified JSON matching:
-{"summary":string,"requestKinds":string[],"domains":string[],"scope":{"level":string,"targets":string[]},"goals":[{"id":string,"description":string,"priority":"required"|"preferred"|"optional"}],"constraints":string[],"assumptions":string[],"dependencies":string[],"ambiguities":string[],"complexity":string,"executionMode":string,"needsExternalResearch":boolean,"needsApproval":boolean,"confidence":number,"requestedCapabilities":string[]}
+{"summary":string,"requestKinds":string[],"domains":string[],"scope":{"level":string,"targets":string[]},"goals":[{"id":string,"description":string,"priority":"required"|"preferred"|"optional"}],"constraints":string[],"assumptions":string[],"dependencies":string[],"ambiguities":string[],"complexity":string,"executionMode":string,"needsExternalResearch":boolean,"needsApproval":boolean,"confidence":number,"businessGoals":string[],"designTraits":string[],"experienceFeatures":string[],"editorOperations":string[],"requestedBusinessCapabilities":string[]}
 
 requestKinds ⊂ create|edit|debug|review|explain|plan|data_binding|backend_configuration|deployment
 domains ⊂ layout|visual_design|copy|navigation|catalog|crm|booking|auth|commerce|forms|automation|database|runtime
@@ -192,8 +205,21 @@ serve(async (req: Request) => {
       );
     }
 
+    // Typed-domain enforcement: an unknown capability id is a schema problem,
+    // never a backend-provisioning request. Drop it here so it can never reach
+    // capability-pack verification.
+    const typedEnvelope = envelope && typeof envelope === "object"
+      ? {
+        ...(envelope as Record<string, unknown>),
+        requestedBusinessCapabilities: filterBusinessCapabilityIds(
+          (envelope as Record<string, unknown>).requestedBusinessCapabilities ??
+            (envelope as Record<string, unknown>).requestedCapabilities,
+        ),
+      }
+      : envelope;
+
     return secureJsonResponse(
-      { envelope, degraded: false, truncated },
+      { envelope: typedEnvelope, degraded: false, truncated },
       200,
       corsHeaders,
     );
