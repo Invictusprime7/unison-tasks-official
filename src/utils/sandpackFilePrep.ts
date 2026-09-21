@@ -28,6 +28,7 @@ import {
   resolvePinnedRuntimeVersion,
 } from '@/utils/sandpackDependencies';
 import { isValidAesthetic } from '@/utils/aestheticToCSS';
+import { withRuntimeConfigDefaults } from '@/sections/runtimeConfigDefaults';
 import { buildThemedIndexCss } from '@/components/onboarding/themePresetToIndexCss';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
