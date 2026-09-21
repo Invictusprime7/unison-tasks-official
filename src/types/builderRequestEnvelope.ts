@@ -8,6 +8,12 @@
  * `normalizeEnvelope` guarantees the shape regardless of model output.
  */
 
+import {
+  classifyBuilderRequestTerm,
+  normalizeBusinessCapability,
+} from '@/platform/core/businessCapabilityVocabulary';
+import type { BusinessCapability } from '@/platform/core/capabilityRegistry';
+
 export type BuilderRequestKind =
   | 'create'
   | 'edit'
