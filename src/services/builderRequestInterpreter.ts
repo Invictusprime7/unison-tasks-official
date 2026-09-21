@@ -17,6 +17,8 @@ import {
   type BuilderRequestEnvelope,
 } from '@/types/builderRequestEnvelope';
 import { matchAbstractGoals } from '@/platform/core/abstractGoalRegistry';
+import { normalizeBusinessCapability } from '@/platform/core/businessCapabilityVocabulary';
+import type { BusinessCapability } from '@/platform/core/capabilityRegistry';
 
 export interface InterpretContext {
   projectMode?: 'html' | 'react';
