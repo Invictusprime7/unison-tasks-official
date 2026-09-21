@@ -142,6 +142,80 @@ function strings(value: unknown, max = 24): string[] {
 }
 
 /**
+ * Typed request-domain projection.
+ *
+ * Design traits, business goals and experience features are separate domains
+ * from business capabilities. Only `requestedBusinessCapabilities` may reach
+ * backend provisioning / capability-pack verification, so a word like
+ * "modern" can never be reported as a missing backend pack.
+ *
+ * Legacy `requestedCapabilities` arrays (one migration window) are split into
+ * the typed projections instead of being forwarded verbatim.
+ */
+function splitRequestDomains(
+  o: Record<string, unknown>,
+  hints?: Partial<BuilderRequestEnvelope>,
+): Pick<
+  BuilderRequestEnvelope,
+  | 'businessGoals'
+  | 'designTraits'
+  | 'experienceFeatures'
+  | 'editorOperations'
+  | 'requestedBusinessCapabilities'
+  | 'requestedCapabilities'
+> {
+  const businessGoals = new Set<string>([
+    ...strings(o.businessGoals),
+    ...(hints?.businessGoals ?? []),
+  ]);
+  const designTraits = new Set<string>([
+    ...strings(o.designTraits),
+    ...(hints?.designTraits ?? []),
+  ]);
+  const experienceFeatures = new Set<string>([
+    ...strings(o.experienceFeatures),
+    ...(hints?.experienceFeatures ?? []),
+  ]);
+  const editorOperations = new Set<string>([
+    ...strings(o.editorOperations),
+    ...(hints?.editorOperations ?? []),
+  ]);
+  const capabilities = new Set<BusinessCapability>();
+
+  const declared = [
+    ...strings(o.requestedBusinessCapabilities),
+    ...(hints?.requestedBusinessCapabilities ?? []),
+  ];
+  for (const raw of declared) {
+    const capability = normalizeBusinessCapability(raw);
+    if (capability) capabilities.add(capability);
+  }
+
+  // Legacy/untyped values get classified rather than trusted.
+  const legacy = [
+    ...strings(o.requestedCapabilities),
+    ...(hints?.requestedCapabilities ?? []),
+  ];
+  for (const raw of legacy) {
+    const { domain, value } = classifyBuilderRequestTerm(raw);
+    if (domain === 'capability') capabilities.add(value as BusinessCapability);
+    else if (domain === 'design') designTraits.add(value);
+    else if (domain === 'experience') experienceFeatures.add(value);
+    else businessGoals.add(value);
+  }
+
+  const requestedBusinessCapabilities = [...capabilities];
+  return {
+    businessGoals: [...businessGoals].slice(0, 24),
+    designTraits: [...designTraits].slice(0, 24),
+    experienceFeatures: [...experienceFeatures].slice(0, 24),
+    editorOperations: [...editorOperations].slice(0, 24),
+    requestedBusinessCapabilities,
+    requestedCapabilities: [...requestedBusinessCapabilities],
+  };
+}
+
+/**
  * Coerce arbitrary (model) output into a valid envelope. Never throws.
  * `hints` fills gaps so a degraded model response still routes correctly.
  */
