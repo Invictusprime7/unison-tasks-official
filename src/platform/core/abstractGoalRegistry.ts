@@ -15,7 +15,18 @@ export interface AbstractGoalDefinition {
   designSignals?: string[];
   contentSignals?: string[];
   components?: string[];
-  /** Canonical business capabilities this outcome tends to require. */
+  /**
+   * Presentation traits implied by this outcome. These are NEVER backend
+   * capabilities and must never reach capability-pack provisioning.
+   */
+  designTraits?: string[];
+  /** Outcome language kept as a business goal, not a capability id. */
+  businessGoals?: string[];
+  /**
+   * Canonical business capability ids only (validated against
+   * `businessCapabilityVocabulary`). Anything else belongs in the
+   * design/goal/component projections.
+   */
   capabilities?: string[];
 }
 
@@ -26,32 +37,37 @@ export const ABSTRACT_GOALS: Record<string, AbstractGoalDefinition> = {
     designSignals: ['consistent typography', 'restrained palette', 'clear hierarchy', 'professional spacing'],
     contentSignals: ['specific claims', 'social proof', 'business credentials', 'clear policies'],
     components: ['testimonial section', 'trust badges', 'business details', 'FAQ'],
+    designTraits: ['trustworthy', 'consistent-typography', 'restrained-palette', 'clear-hierarchy'],
   },
   premium: {
     id: 'premium',
     aliases: ['premium', 'luxury', 'high-end', 'upscale', 'elevated', 'boutique feel'],
     designSignals: ['editorial spacing', 'high-quality imagery', 'limited accent colors', 'strong typography'],
     contentSignals: ['confident concise copy', 'craft and provenance details'],
+    designTraits: ['premium', 'editorial-spacing', 'restrained-accent', 'strong-typography'],
   },
   modern: {
     id: 'modern',
     aliases: ['modern', 'sleek', 'contemporary', 'fresh', 'clean'],
     designSignals: ['generous whitespace', 'subtle motion', 'consistent radii', 'muted gradients'],
+    designTraits: ['modern', 'generous-whitespace', 'subtle-motion', 'consistent-radii'],
   },
   easier_to_buy: {
     id: 'easier_to_buy',
     aliases: ['easier to buy', 'more conversions', 'sell more', 'reduce friction', 'streamline purchase'],
+    businessGoals: ['easier_to_buy'],
+    designTraits: ['clear-product-hierarchy', 'price-visibility'],
     capabilities: [
-      'clear product hierarchy',
-      'persistent cart state',
-      'direct checkout CTA',
-      'variant selection',
-      'price visibility',
+      'catalog.products',
+      'commerce.cart',
+      'commerce.checkout',
     ],
+    components: ['product cards with add-to-cart', 'persistent cart', 'checkout CTA'],
   },
   easier_to_book: {
     id: 'easier_to_book',
     aliases: ['easier to book', 'take appointments', 'let customers book', 'online booking'],
+    businessGoals: ['easier_to_book'],
     capabilities: [
       'catalog.services',
       'booking.appointments',
@@ -63,20 +79,20 @@ export const ABSTRACT_GOALS: Record<string, AbstractGoalDefinition> = {
   shopify_like: {
     id: 'shopify_like',
     aliases: ['like shopify', 'real store', 'full storefront', 'online shop'],
+    businessGoals: ['shopify_like'],
     capabilities: [
-      'catalog CRUD',
-      'collections',
-      'variants',
-      'inventory',
-      'product media',
-      'cart',
-      'checkout',
-      'order state',
+      'catalog.products',
+      'commerce.cart',
+      'commerce.checkout',
+      'crm.contacts',
+      'notifications.email',
     ],
+    components: ['collections', 'variant selection', 'inventory state', 'order confirmation'],
   },
   real_business_system: {
     id: 'real_business_system',
     aliases: ['operate like a real', 'actually work', 'not just look like', 'run the business'],
+    businessGoals: ['real_business_system'],
     capabilities: [
       'catalog.services',
       'crm.leads',
@@ -89,6 +105,7 @@ export const ABSTRACT_GOALS: Record<string, AbstractGoalDefinition> = {
   lead_generation: {
     id: 'lead_generation',
     aliases: ['more leads', 'capture leads', 'grow the list', 'get inquiries'],
+    businessGoals: ['lead_generation'],
     capabilities: ['forms.contact', 'crm.leads', 'automation.follow_up', 'notifications.email'],
     components: ['inline lead form', 'sticky CTA', 'quote request'],
   },
