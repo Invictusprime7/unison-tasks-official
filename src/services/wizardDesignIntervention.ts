@@ -321,7 +321,7 @@ function stableIndex(seed: string, size: number): number {
   return (hash >>> 0) % size;
 }
 
-function buildActiveVariants(templateId: string | null | undefined, seed: string, packId?: ArtDirectionPackId): ActiveVariantMap {
+function buildActiveVariants(templateId: string | null | undefined, seed: string, packId?: ArtDirectionPackId, industry?: string | null): ActiveVariantMap {
   const composition = templateId ? getCompositionById(templateId) : null;
   if (!composition) return {};
 
@@ -330,8 +330,14 @@ function buildActiveVariants(templateId: string | null | undefined, seed: string
     if (!candidates.length) throw new Error('No certified 21st implementation for ' + section.type);
     const layout = (section.props as { layout?: string }).layout;
     const baselineVariantId = section.variantId ?? getVariantIdForLayout(section.type, layout);
-    const baselineIndex = Math.max(0, candidates.findIndex((variant) => variant.id === baselineVariantId));
-    const selected = candidates[(baselineIndex + stableIndex(`${seed}|${section.id}`, candidates.length)) % candidates.length]?.id;
+    // Affinity ranks the legal candidates (art direction order, industry
+    // dialect, page role, provenance); the seed only decides among the
+    // implementations that tie at the top, so selection stays deterministic
+    // without being arbitrary.
+    const selected = selectAffineVariant(candidates, `${seed}|${section.id}`, {
+      packId, industry, role: 'home', baselineVariantId,
+      neighbors: composition.sections.map((entry) => entry.type),
+    })?.id;
     return selected ? [[section.id, selected]] : [];
   })) as Record<string, VariantId>;
 }
