@@ -29,6 +29,7 @@ import { getVariantsForSection } from '@/sections/variants/registry';
 import { getIndustryProfile } from '@/platform/core/industryMatrix';
 import { getDefaultTemplateIdForIndustry, createIndustryStarterSection } from '@/sections/templates/industryDefaultRegistry';
 import { bindMediaToComposition, buildSeedMediaLibrary, type SeedMediaAsset } from '@/services/launch/assetSlotBinding';
+import { assertArtifactCatalogClosure } from '@/platform/core/resolvedArtifactCatalog';
 
 /**
  * Options shared by the scaffolding entry points.
