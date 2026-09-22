@@ -18,7 +18,10 @@
  *   1. Never restate a slot list — derive it from the artifact owner.
  *   2. Never restate an intent string — pass through the artifact's bindings,
  *      filtered to what the intent registry knows.
- *   3. Unknown implementations resolve to `null`; callers keep their legacy path.
+ *   3. Unknown implementations resolve to `null` for readers. Phase 8.2 adds
+ *      `resolveLegalImplementation()`: fresh generation and AI edits may only
+ *      use certified, non-legacy implementations; saved revisions stay
+ *      readable; migration resolves through an explicit alias map.
  */
 
 import type { SectionType } from '@/sections/types';
@@ -34,6 +37,20 @@ import {
   getImplementationVocabularyRefs,
   listDesignImplementations,
 } from '@/services/designImplementationRegistry';
+import {
+  ART_DIRECTION_PACKS,
+  ART_DIRECTION_PACK_IDS,
+  type ArtDirectionPackId,
+} from '@/sections/variants/artDirectionPacks';
+import {
+  INDUSTRY_CREATIVE_PROFILES,
+  industryCreativeProfile,
+} from '@/sections/templates/industryCreativeVocabulary';
+import {
+  deriveImplementationVisualSignature,
+  type ImplementationVisualSignature,
+} from '@/services/implementationVisualSignature';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -76,7 +93,26 @@ export interface ResolvedImplementationContract {
 
   generationStatus: 'preferred' | 'supported' | 'legacy';
   source?: SectionVariant['source'];
+
+  /** Phase 8.1 — derived creative affinity; never hand-maintained. */
+  creativeAffinity: {
+    /** Industries whose profile reaches for this family or trait. */
+    industries: readonly string[];
+    /** Industries whose negative vocabulary rejects this family or trait. */
+    discouragedIndustries: readonly string[];
+    /** Art direction packs that list this implementation for its family. */
+    artDirections: readonly ArtDirectionPackId[];
+    /** Page roles the implementation declares itself suited to. */
+    pageIntents: readonly string[];
+    /** Interaction / motion traits derived from the certified metadata. */
+    interactionTags: readonly string[];
+  };
+  /** Derived visual signature — geometry, density, media, motion, experience. */
+  visualSignature: ImplementationVisualSignature | null;
+  /** Certified for fresh generation: portable recipe + approved certification. */
+  certified: boolean;
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Slot kind derivation — one deterministic convention, no restated lists
@@ -175,6 +211,8 @@ export function resolveImplementationContract(
       ? artifact.dataSource.surfaceId
       : undefined;
 
+  const signatureSource = (indexed ?? fallback) as SectionVariant | undefined;
+
   return {
     implementationId,
     sectionType,
@@ -186,8 +224,142 @@ export function resolveImplementationContract(
     runtimeDependencies,
     generationStatus,
     source,
+    creativeAffinity: deriveCreativeAffinity(implementationId, sectionType, signatureSource),
+    visualSignature: signatureSource ? deriveImplementationVisualSignature(signatureSource) : null,
+    certified: isCertifiedSource(signatureSource) && generationStatus !== 'legacy',
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 8.1 — derived creative affinity
+// ─────────────────────────────────────────────────────────────────────────────
+
+function isCertifiedSource(variant: SectionVariant | undefined): boolean {
+  return variant?.vfs?.mode === 'portable-recipe' && variant.vfs?.certification === 'approved';
+}
+
+function deriveCreativeAffinity(
+  implementationId: string,
+  sectionType: SectionType,
+  variant: SectionVariant | undefined,
+): ResolvedImplementationContract['creativeAffinity'] {
+  const tags = (variant?.tags ?? []).map((tag) => String(tag));
+
+  const artDirections = ART_DIRECTION_PACK_IDS.filter((packId) =>
+    (ART_DIRECTION_PACKS[packId].sectionFamilies?.[sectionType] ?? []).includes(implementationId as VariantId),
+  );
+
+  const industries: string[] = [];
+  const discouragedIndustries: string[] = [];
+  for (const key of Object.keys(INDUSTRY_CREATIVE_PROFILES)) {
+    const profile = industryCreativeProfile(key);
+    if (!profile) continue;
+    const rejectsTrait = profile.discouragedTags.some((tag) => tags.includes(tag));
+    if (rejectsTrait || profile.discouragedFamilies.includes(sectionType)) {
+      discouragedIndustries.push(profile.industry);
+      continue;
+    }
+    const pageWants = Object.values(profile.pageProfiles).some((page) =>
+      (page.requiredFamilies ?? []).includes(sectionType) || (page.preferredFamilies ?? []).includes(sectionType));
+    if (profile.preferredFamilies.includes(sectionType) || pageWants
+      || profile.preferredArtDirections.some((packId) => artDirections.includes(packId))) {
+      industries.push(profile.industry);
+    }
+  }
+
+  const interactionTags = tags.filter((tag) =>
+    /(marquee|parallax|reveal|kinetic|carousel|hover|scroll|drag|stream|lightbox|accordion|toggle|tabs|slider)/.test(tag));
+
+  return {
+    industries,
+    discouragedIndustries,
+    artDirections,
+    pageIntents: (variant?.pageRoles ?? []).map((role) => String(role)),
+    interactionTags,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 8.2 — legal implementation resolution (end of legacy fallback authority)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * How an implementation is being asked for. Fresh generation and AI edits are
+ * production surfaces: legacy and uncertified ids are rejected there. A saved
+ * revision must stay readable, and migration resolves an explicit alias.
+ */
+export type ImplementationUsage = 'fresh-generation' | 'ai-edit' | 'saved-revision' | 'migration';
+
+/**
+ * Explicit canonical replacements for retired ids (plan §8.3 step 3). An entry
+ * is only added once the replacement is proven equivalent or an intentional
+ * supersession; migration reads this, fresh generation never does.
+ */
+export const LEGACY_IMPLEMENTATION_ALIASES: Readonly<Record<string, string>> = {};
+
+export type LegalImplementationResult =
+  | { legal: true; contract: ResolvedImplementationContract; migratedFrom?: string }
+  | { legal: false; reason: string; canonicalReplacement?: string };
+
+/** Resolve an implementation for a specific usage, with legacy authority removed. */
+export function resolveLegalImplementation(
+  variantId: VariantId | string,
+  usage: ImplementationUsage,
+): LegalImplementationResult {
+  const aliased = LEGACY_IMPLEMENTATION_ALIASES[variantId];
+  const targetId = usage === 'migration' && aliased ? aliased : variantId;
+  const contract = resolveImplementationContract(targetId);
+
+  if (!contract) {
+    return {
+      legal: false,
+      reason: `"${variantId}" is not a registered design.`,
+      canonicalReplacement: aliased,
+    };
+  }
+
+  if (usage === 'saved-revision' || usage === 'migration') {
+    return { legal: true, contract, migratedFrom: targetId === variantId ? undefined : variantId };
+  }
+
+  if (contract.generationStatus === 'legacy') {
+    return {
+      legal: false,
+      reason: `"${contract.implementationId}" is a retired design and cannot be used for new work.`,
+      canonicalReplacement: aliased,
+    };
+  }
+  if (!contract.certified) {
+    return {
+      legal: false,
+      reason: `"${contract.implementationId}" is not a certified design.`,
+      canonicalReplacement: aliased,
+    };
+  }
+  return { legal: true, contract };
+}
+
+/**
+ * Every implementation a production surface may legally choose from for a
+ * family, optionally narrowed by art direction and industry affinity.
+ */
+export function listLegalImplementations(
+  sectionType: SectionType,
+  options?: { usage?: ImplementationUsage; packId?: ArtDirectionPackId; industry?: string },
+): ResolvedImplementationContract[] {
+  const usage = options?.usage ?? 'fresh-generation';
+  return (VARIANT_REGISTRY[sectionType] ?? [])
+    .map((variant) => resolveLegalImplementation(variant.id, usage))
+    .filter((result): result is Extract<LegalImplementationResult, { legal: true }> => result.legal)
+    .map((result) => result.contract)
+    .filter((contract) => !options?.packId || contract.creativeAffinity.artDirections.includes(options.packId))
+    .filter((contract) => {
+      if (!options?.industry) return true;
+      const profile = industryCreativeProfile(options.industry);
+      return !profile || !contract.creativeAffinity.discouragedIndustries.includes(profile.industry);
+    });
+}
+
 
 /** Contracts for every registered implementation, optionally generation-eligible only. */
 export function listImplementationContracts(options?: {

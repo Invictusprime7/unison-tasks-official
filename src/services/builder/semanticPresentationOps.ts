@@ -16,6 +16,8 @@ import type { WizardDesignIntervention } from '@/services/wizardDesignInterventi
 import { getVariantById } from '@/sections/variants/registry';
 import type { VariantId } from '@/sections/variants/types';
 import { COMPOSITION_ROLES, validateAIPageComposition, type AIPageCompositionPlan } from '@/sections/aiPageComposition';
+import { resolveLegalImplementation } from '@/platform/core/resolvedImplementationContract';
+
 
 export const PRESENTATION_LAYOUT_RECIPES = [
   'floating-navbar', 'collage-hero', 'bento-features', 'media-card-grid', 'conversion-form', 'rich-footer',
@@ -77,7 +79,44 @@ export function applySemanticPresentationOps(
         if (!currentVariant || !nextVariant || currentVariant.sectionType !== nextVariant.sectionType) {
           throw new Error(`[presentation] invalid variant ${op.variantId} for section ${op.sectionId}.`);
         }
+        // §8.4 — a new edit asks the resolved catalog; legacy ids are not legal here.
+        const legality = resolveLegalImplementation(nextVariant.id, 'ai-edit');
+        if (!legality.legal) throw new Error(`[presentation] ${legality.reason}`);
         next.activeVariants[op.sectionId] = nextVariant.id;
+        break;
+      }
+
+
+      /**
+       * §7.7 — "all pages" edits use inheritance. One shared family decision is
+       * written to the sealed variant map; page-local overrides are cleared so
+       * every page inherits it, except roles the caller named explicitly.
+       */
+      case 'setFamilyVariant': {
+        const nextVariant = getVariantById(op.variantId as VariantId);
+        if (!nextVariant || nextVariant.sectionType !== op.sectionType) {
+          throw new Error(`[presentation] ${op.variantId} is not a registered ${op.sectionType} design.`);
+        }
+        const exceptions = new Set(
+          (op.exceptPageRoles ?? []).map((role) => toCompositionRole(role)).filter(Boolean) as CompositionRole[],
+        );
+        let applied = false;
+        for (const [sectionId, variantId] of Object.entries(next.activeVariants)) {
+          const current = variantId ? getVariantById(variantId) : undefined;
+          if (!current || current.sectionType !== op.sectionType) continue;
+          next.activeVariants[sectionId] = nextVariant.id;
+          applied = true;
+        }
+        for (const page of next.compositionPlan?.pages ?? []) {
+          if (exceptions.has(page.role)) continue;
+          if (!page.variants || !(op.sectionType in page.variants)) continue;
+          delete page.variants[op.sectionType];
+          applied = true;
+          planTouched = true;
+        }
+        if (!applied) {
+          throw new Error(`[presentation] this site has no ${op.sectionType} section to restyle.`);
+        }
         break;
       }
 
