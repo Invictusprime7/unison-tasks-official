@@ -104,6 +104,7 @@ import {
   neutralizeModelSuccessClaim,
   transactionVerdictLine,
 } from '@/services/builder/builderTransactionState';
+import { awaitPreviewVerification, markPreviewPending } from '@/services/builder/previewVerification';
 
 import {
   planBusinessCapabilities,
@@ -1986,6 +1987,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           if (onApplyToVFS) {
             console.log('[AIBuilderPanel] Calling onApplyToVFS with normalized paths:', Object.keys(normalizedFiles));
             vfsEventBus.emit('ai:apply:start', { source: 'multi-file' });
+            markPreviewPending();
             const applyOutcome = await applyAIBuilderFiles(onApplyToVFS, normalizedFiles, {
               prompt: userContent,
               model: modelUsed,
@@ -2005,12 +2007,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               },
             );
             if (applyOutcome.success) {
-              liveStep('complete', `✓ Applied ${Object.keys(normalizedFiles).length} files to project`);
               vfsEventBus.emit('ai:apply:complete', { filesWritten: Object.keys(normalizedFiles), source: 'multi-file' });
-              const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
-              toast.success(`✓ Multi-file project applied${approvalNote}`);
-              // P0.5: the verdict comes from the transaction, not from AI prose.
-              transactionVerdict = transactionVerdictLine('verified');
+              // P0.4: the commit is not the verdict — the preview is.
+              const verification = await awaitPreviewVerification();
+              if (verification.verified) {
+                liveStep('complete', `✓ Applied ${Object.keys(normalizedFiles).length} files to project`);
+                const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
+                toast.success(`✓ Multi-file project applied${approvalNote}`);
+                transactionVerdict = transactionVerdictLine('verified');
+              } else {
+                liveStep('error', 'Saved, but the preview did not confirm the change', verification.reason);
+                toast.warning('Saved, but the preview did not confirm the change', {
+                  description: verification.reason,
+                  duration: 8000,
+                });
+                transactionVerdict = transactionVerdictLine('held-for-review', verification.reason);
+              }
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated files.';
               liveStep('error', 'AI edit was not applied', applyError);
@@ -2165,6 +2177,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           } else if (onApplyToVFS && !multiFileOutput) {
             console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
             vfsEventBus.emit('ai:apply:start', { source: 'single-file' });
+            markPreviewPending();
             const applyOutcome = await applyAIBuilderFiles(onApplyToVFS, { [singleFilePath]: generatedCode }, {
               prompt: userContent,
               model: modelUsed,
@@ -2184,17 +2197,30 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               },
             );
             if (applyOutcome.success) {
-              advancePlanStep(taskPlan, 'refresh_preview', 'done');
-              advancePlanStep(taskPlan, 'validate', 'done');
-              advancePlanStep(taskPlan, 'report', 'done');
-              liveStep('complete', `✓ Applied to ${singleFilePath}`);
               vfsEventBus.emit('ai:apply:complete', { filesWritten: [singleFilePath], source: 'single-file' });
-              const approvalNote = responseMeta?.requiresApproval ? ' — review recommended' : '';
-              toast.success(isSurgicalEdit ? `✓ Edit applied${approvalNote}` : `✓ Code applied${approvalNote}`);
-              // P0.5: only the transaction layer may assert success.
-              setMessages(prev => prev.map(m => m.id === streamingId
-                ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('verified')}` }
-                : m));
+              // P0.4: the preview — not the commit — decides the verdict.
+              const verification = await awaitPreviewVerification();
+              if (verification.verified) {
+                advancePlanStep(taskPlan, 'refresh_preview', 'done');
+                advancePlanStep(taskPlan, 'validate', 'done');
+                advancePlanStep(taskPlan, 'report', 'done');
+                liveStep('complete', `✓ Applied to ${singleFilePath}`);
+                const approvalNote = responseMeta?.requiresApproval ? ' — review recommended' : '';
+                toast.success(isSurgicalEdit ? `✓ Edit applied${approvalNote}` : `✓ Code applied${approvalNote}`);
+                setMessages(prev => prev.map(m => m.id === streamingId
+                  ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('verified')}` }
+                  : m));
+              } else {
+                advancePlanStep(taskPlan, 'refresh_preview', 'failed');
+                liveStep('error', 'Saved, but the preview did not confirm the change', verification.reason);
+                toast.warning('Saved, but the preview did not confirm the change', {
+                  description: verification.reason,
+                  duration: 8000,
+                });
+                setMessages(prev => prev.map(m => m.id === streamingId
+                  ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('held-for-review', verification.reason)}` }
+                  : m));
+              }
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated file.';
               advancePlanStep(taskPlan, 'refresh_preview', 'failed');

@@ -38,6 +38,7 @@ import { buildPreviewArtifactsAsync } from '@/utils/previewArtifacts';
 import { PreviewPipelineError, isPreviewPipelineError } from '@/services/previewPipelineError';
 import { createVfsHandoffSignature } from '@/services/vfsHandoffSignature';
 import { PreviewRuntimeError } from '@/components/PreviewRuntimeError';
+import { reportPreviewError, reportPreviewRunning } from '@/services/builder/previewVerification';
 import { LaunchGateNotice } from '@/components/creatives/web-builder/LaunchGateNotice';
 import { isCanonicalRuntimeError } from '@/platform/core/canonicalRuntimeContract';
 import { resolveSnapshot } from '@/services/snapshotProjector';
@@ -231,6 +232,8 @@ const SandpackErrorListener: React.FC<{
           ? `${(error as any).title || 'Error'}: ${(error as any).message}${(error as any).path ? ` (${(error as any).path}:${(error as any).line || ''})` : ''}`
           : String(error);
 
+      // P0.4: a fatal preview error means no surface may claim "applied".
+      reportPreviewError(msg);
       if (msg !== lastReportedRef.current) {
         lastReportedRef.current = msg;
         const dependencyFetchFailure = /could not fetch dependencies/i.test(msg);
@@ -250,6 +253,8 @@ const SandpackErrorListener: React.FC<{
       }
     } else if (status === 'running') {
       lastReportedRef.current = '';
+      // P0.4: the preview compiled and is rendering the committed revision.
+      reportPreviewRunning();
       onRunning?.();
     } else if (status === 'idle') {
       lastReportedRef.current = '';

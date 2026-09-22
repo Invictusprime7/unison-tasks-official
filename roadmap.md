@@ -884,7 +884,7 @@ preview runtime — extend what exists.
 - [x] P0.1 Lockfile synced; Node 22 pinned in engines, .npmrc, .nvmrc and CI.
 - [x] P0.2 SiteShell closure is a blocking commit gate in `commitMutation` (fatal: stale chrome link, duplicate navbar/footer, router route missing/unknown; advisory: missing nav link → publish blocker).
 - [x] P0.3 Legacy AI success wording removed: deleted the unused `AICodeAssistant.tsx` and web-builder `AIAssistantPanel.tsx`; `useDesignStudio.applyAIEdit` returns a real verdict; unverified builder paths now report held/failed. Guard: `src/test/legacyAiSuccessWording.test.ts`.
-- [ ] P0.4 Preview verification (not commit/mirror) as the requirement for `verified`.
+- [x] P0.4 Preview verification (not commit/mirror) as the requirement for `verified` — `src/services/builder/previewVerification.ts` observes the Sandpack runtime; AIBuilderPanel awaits it after commit and downgrades to held-for-review when the preview errors or never confirms.
 - [ ] P0.5 Audit all 35 VFS exemptions.
 - [ ] P0.6 Launcher strictPreflight → blocking.
 - [ ] P0.7 Unresolved page/module closure fatal before the accepted revision is persisted.
