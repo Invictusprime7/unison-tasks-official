@@ -125,8 +125,11 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
  */
 export function compositionAdvisoryIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
   const normalized = normalizeCompositionPlan(plan, brief);
-  return normalized.pages.flatMap(page => pageArchetypeIssues(page.role, page.sectionOrder, {}, { industry: brief.industry })
-    .filter(issue => issue.includes('must include')));
+  return normalized.pages.flatMap(page => [
+    ...pageArchetypeIssues(page.role, page.sectionOrder, {}, { industry: brief.industry })
+      .filter(issue => issue.includes('must include')),
+    ...projectionDensityIssues(brief.designContract, page.role, page.sectionOrder).advisory,
+  ]);
 }
 
 /** Dedicated data-only lane. One bounded AI repair, never a deterministic substitute. */
