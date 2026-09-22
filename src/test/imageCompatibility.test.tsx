@@ -70,10 +70,9 @@ describe('image compatibility', () => {
     const exports: Record<string, any> = {};
     const dependencies: Record<string, unknown> = {
       react: React,
-      three: { TextureLoader: class { load(_url: string, _success: unknown, _progress: unknown, fail: () => void) { queueMicrotask(fail); } } },
-      '@react-three/drei': { Float: passthrough, ScrollControls: passthrough, Scroll: passthrough },
       '@/unison/ui': { cn: (...items: unknown[]) => items.filter(Boolean).join(' ') },
-      '../media': mediaModule(), './canvas': { ExperienceCanvas: passthrough }, './scene': { LightRig: () => null },
+      '../media': mediaModule(),
+      './lazy': { WebglLayer: ({ fallback }: { fallback: React.ReactNode }) => <>{fallback}</> },
     };
     new Function('require', 'exports', code)((name: string) => dependencies[name], exports);
     const Gallery = exports.DepthGallery;
@@ -85,7 +84,8 @@ describe('image compatibility', () => {
   it('never crosses import boundaries when preparing the foundation', () => {
     const foundation = buildGeneratedUiFoundation({ themePresetId: 'editorial' });
     const files = prepareSandpackFiles({ ...foundation.files, '/src/App.tsx': 'export default function App(){return <main>Editorial</main>}' }, { strict: true });
-    expect(files['/unison/ui/experience/scene.tsx']).toContain("import { Float, Points, PointMaterial } from '@react-three/drei'");
+    expect(files['/unison/ui/experience/webgl.tsx']).toContain("from '@react-three/drei'");
+    expect(files['/unison/ui/experience/scene.tsx']).not.toContain("@react-three/drei");
     expect(files['/unison/ui/experience/scene.tsx']).not.toContain('ExperienceCanvas as Points');
     expect(files['/unison/ui/media.tsx']).toContain('export default Image;');
     expect(files['/unison/ui/media.tsx']).not.toContain('export default ImageLightbox');
