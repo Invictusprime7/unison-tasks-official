@@ -1827,7 +1827,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
           if (isReactComponent && trimmed.includes('return') && trimmed.includes('<') && !hasConfigContent && !hasRawHtml) {
             generatedCode = trimmed;
-            explanationText = '✅ Component applied to your project.';
+            explanationText = CANDIDATE_COMPONENT_NOTICE;
           }
         }
 
@@ -1867,7 +1867,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               console.log('[AIBuilderPanel] Extracted React code from fence');
             } else if (isCssOnly) {
               multiFileOutput = { '/src/index.css': bestBlock };
-              explanationText = '✅ Theme stylesheet applied.';
+              explanationText = CANDIDATE_STYLESHEET_NOTICE;
               console.log('[AIBuilderPanel] Extracted CSS fence for /src/index.css');
             } else if (hasHtmlStructure) {
               generatedCode = wrapHtmlInReactComponent(bestBlock);
@@ -1889,7 +1889,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               explanationText = trimmed.slice(0, htmlIdx).trim();
             }
             if (!explanationText) {
-              explanationText = '✅ HTML site generated and wrapped for preview.';
+              explanationText = CANDIDATE_PAGE_NOTICE;
             }
           }
         }
@@ -1899,19 +1899,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           if (/^\s*<!DOCTYPE/i.test(trimmed) || /^\s*<html[\s>]/i.test(trimmed)) {
             console.log('[AIBuilderPanel] Content is raw HTML, wrapping in React component');
             generatedCode = wrapHtmlInReactComponent(trimmed);
-            explanationText = '✅ HTML site generated and wrapped for preview.';
+            explanationText = CANDIDATE_PAGE_NOTICE;
           }
         }
 
         // Extract explanation: everything that's NOT inside code fences
         if (!explanationText) {
-          explanationText = aiContent
-            .replace(/```[\s\S]*?```/g, '')
-            .replace(/^\s*\n/gm, '\n')
-            .trim();
+          explanationText = neutralizeModelSuccessClaim(
+            aiContent
+              .replace(/```[\s\S]*?```/g, '')
+              .replace(/^\s*\n/gm, '\n'),
+          );
 
           if (!explanationText && (generatedCode || multiFileOutput)) {
-            explanationText = isSurgicalEdit ? '✅ Edit applied successfully.' : '✅ Code generated and applied to your project.';
+            explanationText = CANDIDATE_GENERATED_NOTICE;
           }
         }
 
