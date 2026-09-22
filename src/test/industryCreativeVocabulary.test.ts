@@ -7,7 +7,7 @@ import {
 import { COMPOSITION_ROLES, isCreativelyAdditiveSection } from '@/sections/aiPageComposition';
 import { PAGE_ARCHETYPES, pageArchetypeFor, resolvePageArchetype } from '@/sections/pageArchetypeContract';
 import { ART_DIRECTION_PACK_IDS } from '@/sections/variants/artDirectionPacks';
-import { VARIANT_REGISTRY } from '@/sections/registry';
+import { getVariantsForSection } from '@/sections/variants/registry';
 import {
   INDUSTRY_DIALECTS,
   resolvePageArchetype as edgeResolve,
@@ -32,7 +32,7 @@ describe('industry creative vocabulary', () => {
           ...(page.requiredFamilies ?? []), ...(page.preferredFamilies ?? []), ...(page.discouragedFamilies ?? []),
         ]),
       ];
-      for (const family of families) expect(Object.keys(VARIANT_REGISTRY)).toContain(family);
+      for (const family of families) expect(getVariantsForSection(family).length).toBeGreaterThan(0);
       for (const role of Object.keys(profile.pageProfiles)) expect(COMPOSITION_ROLES).toContain(role);
     }
   });
