@@ -531,6 +531,16 @@ export interface WizardSeedShape {
       };
     }>;
     ui?: { formFormats?: string[]; buttonFormats?: string[]; iconFormats?: string[] };
+    chrome?: {
+      owner?: string;
+      rule?: string;
+      navigation?: {
+        source?: string;
+        primary?: Array<{ label?: string; href?: string }>;
+        footer?: Array<{ label?: string; href?: string }>;
+        rule?: string;
+      };
+    };
     [k: string]: unknown;
   };
   designIntervention?: {
@@ -655,6 +665,18 @@ export function buildWizardSeedContext(seed: WizardSeedShape | undefined): strin
     }
     lines.push('');
   }
+
+  const chrome = seed.generationBrief?.chrome;
+  if (chrome?.navigation?.primary?.length) {
+    lines.push('── CANONICAL SITE SHELL — ROUTE TRUTH (PageRegistry projection) ──');
+    if (chrome.rule) lines.push(chrome.rule);
+    lines.push(`Primary nav links (exact label → href, exact order): ${chrome.navigation.primary.map((l) => `${l.label} → ${l.href}`).join(' | ')}`);
+    if (chrome.navigation.footer?.length) {
+      lines.push(`Footer route column (exact label → href): ${chrome.navigation.footer.map((l) => `${l.label} → ${l.href}`).join(' | ')}`);
+    }
+    lines.push('Design freedom applies to the presentation of the navbar and footer only. Never invent, rename, drop, reorder or re-point these links, and render exactly one primary nav bar and one footer per page.');
+    lines.push('');
+  }
   if (c.capabilities?.length) lines.push(`Capabilities: ${c.capabilities.join(', ')}`);
   if (c.intents?.length)      lines.push(`Wired intents: ${c.intents.join(', ')}`);
   if (c.capabilities?.length || c.intents?.length) lines.push('');
@@ -757,7 +779,7 @@ export function buildWizardSeedContext(seed: WizardSeedShape | undefined): strin
   lines.push('');
   lines.push('RULES:');
   lines.push('1. DO NOT author /src/App.tsx — the deterministic router owns it.');
-  lines.push('2. DO NOT author shared chrome modules (SiteNavbar.tsx / SiteFooter.tsx). Author each page\'s navigation and footer inline in the page file; never render two competing primary nav bars or two footers on one page.');
+  lines.push('2. DO NOT author shared chrome modules (SiteNavbar.tsx / SiteFooter.tsx). Author each page\'s navigation and footer inline in the page file, carrying the canonical site shell links verbatim; never render two competing primary nav bars or two footers on one page.');
   lines.push('3. Use Tailwind semantic tokens (bg-primary, text-foreground, bg-card, border-border).');
   lines.push('   For raw colors use hsl(var(--token)). Never hardcode hex.');
   if (seed?.theme?.geometryRule) {
