@@ -98,11 +98,22 @@ export interface WizardGenerationBrief {
     classes: string[];
     rule: string;
   };
-  /** Chrome authority: the page body is the only place chrome can exist. */
+  /**
+   * Chrome authority: the canonical SiteShell owns route truth. The page body
+   * renders the chrome, but its links are a PageRegistry projection.
+   */
   chrome: {
-    owner: 'page-body';
+    owner: 'site-shell';
     rule: string;
-    routes: { path: string; label: string }[];
+    /** Registered routes: visitor path + hash href + module path. */
+    routes: { path: string; href: string; filePath: string; label: string; showInNav: boolean }[];
+    /** Canonical navigation projection — the only legal chrome links. */
+    navigation: {
+      source: 'page-registry';
+      primary: { label: string; href: string }[];
+      footer: { label: string; href: string }[];
+      rule: string;
+    };
   };
   ui: { formFormats: string[]; buttonFormats: string[]; iconFormats: string[] };
 }
