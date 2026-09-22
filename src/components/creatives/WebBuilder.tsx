@@ -1780,32 +1780,20 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     const snapshot = effectiveRouteState?.siteBundleSnapshot ?? null;
                     const commit = await commitMutation({
                       source: 'ai-builder',
-                      identity: {
+                      identity: buildCommitIdentity({
                         userId: user.id,
                         businessId,
-                        projectId: resolvedProjectId || currentDraftId,
+                        projectId: resolvedProjectId,
                         draftId: currentDraftId,
                         revisionId: currentRevisionIdRef.current,
-                        sessionId: `web-builder:${currentDraftId}`,
-                      },
-                      current: {
-                        vfsFiles: beforeFiles,
-                        siteBundleSnapshot: snapshot ?? undefined,
-                        playground: {
-                          pageRegistry: creatorPlayground.pageRegistry,
-                          creatorData: creatorPlayground.creatorData,
-                          bindings: playgroundBindings,
-                          calendars: playgroundCalendars,
-                          popups: playgroundPopups,
-                        },
-                      },
+                      })!,
+                      current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
                       patch,
+                      // Capability installs change backend behaviour: these keep the gates on.
                       options: {
+                        ...buildCommitOptions(snapshot),
                         requirePreviewPass: true,
                         requireReadinessPass: true,
-                        industry: snapshot?.industry,
-                        themePresetId: snapshot?.meta.themePresetId ?? undefined,
-                        themeTokens: snapshot?.themeTokens,
                       },
                     });
                     recordCanonicalVfsAdoption({
@@ -3313,14 +3301,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         try {
           const { data: { user } } = await supabaseClient.auth.getUser();
           if (!user) return;
-          const identity: BuilderIdentity = {
+          const identity = buildCommitIdentity({
             userId: user.id,
             businessId,
-            projectId: resolvedProjectId || currentDraftId,
+            projectId: resolvedProjectId,
             draftId: currentDraftId,
             revisionId: currentRevisionId,
-            sessionId: `web-builder:${currentDraftId}`,
-          };
+          });
+          if (!identity) return;
           const patch = legacyFilesToPatchPlan(
             { [targetPath]: nextCode },
             `Toolbar · ${summary}`,
@@ -3330,13 +3318,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             identity,
             current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
             patch,
-            options: {
-              requirePreviewPass: false,
-              requireReadinessPass: false,
-              industry: snapshot?.industry,
-              themePresetId: snapshot?.meta.themePresetId ?? undefined,
-              themeTokens: snapshot?.themeTokens,
-            },
+            options: buildCommitOptions(snapshot),
           });
           if (commit.status !== 'committed') {
             throw new CommitRejectedError('toolbar edit was rejected by the canonical pipeline', commit);
@@ -7639,11 +7621,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         const snapshot = resolveSnapshot(files, effectiveRouteState as any).snapshot
                           ?? effectiveRouteState?.siteBundleSnapshot ?? null;
                         return {
-                          identity: {
-                            userId: currentUserId, businessId, projectId: resolvedProjectId || currentDraftId,
-                            draftId: currentDraftId, revisionId: currentRevisionIdRef.current,
-                            sessionId: `web-builder:${currentDraftId}`,
-                          },
+                          identity: buildCommitIdentity({
+                            userId: currentUserId,
+                            businessId,
+                            projectId: resolvedProjectId,
+                            draftId: currentDraftId,
+                            revisionId: currentRevisionIdRef.current,
+                          })!,
                           current: buildCanonicalCommitCurrent(files, snapshot),
                           options: { industry: snapshot?.industry, themePresetId: snapshot?.meta?.themePresetId, themeTokens: snapshot?.themeTokens },
                         };
