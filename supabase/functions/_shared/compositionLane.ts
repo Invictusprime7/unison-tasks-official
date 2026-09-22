@@ -83,6 +83,8 @@ export interface CompositionBrief {
   designSelection?: { pinnedVariants?: Record<string, string> };
   /** Industry dialect key — modulates the page archetypes (Phase 7). */
   industry?: string;
+  /** Compiled site design contract, projected by the client (Phase 7 / P1.8). */
+  designContract?: SiteDesignContractProjection;
 }
 
 /** Actionable paths only: do not log business copy or entire model responses. */
