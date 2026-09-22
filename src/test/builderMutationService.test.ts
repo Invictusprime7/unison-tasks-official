@@ -2,22 +2,21 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const persistAiCommit = vi.fn();
 
-class TestCommitRejectedError extends Error {
-  constructor(message: string, public result: { publishBlockers: Array<{ source: string; code: string; message: string }> }) {
-    super(message);
-    this.name = 'CommitRejectedError';
-  }
-}
-
 vi.mock('@/services/aiApplyGate', () => ({
   persistAiCommit: (...args: unknown[]) => persistAiCommit(...args),
 }));
 
 // The real module installs global runtime listeners; only the rejection type
 // matters to the transaction, so it is stubbed here.
-vi.mock('@/services/vfsCommitService', () => ({ CommitRejectedError: TestCommitRejectedError }));
+vi.mock('@/services/vfsCommitService', () => ({
+  CommitRejectedError: class extends Error {
+    result: unknown;
+    constructor(message: string, result: unknown) { super(message); this.name = 'CommitRejectedError'; this.result = result; }
+  },
+}));
 
 import { runBuilderAiMutation } from '@/services/builder/builderMutationService';
+import { CommitRejectedError as RejectedError } from '@/services/vfsCommitService';
 
 const ctx = {
   businessId: 'b1',
@@ -49,7 +48,7 @@ describe('builder AI mutation transaction', () => {
 
   it('reports rejected without mirroring when the canonical gate refuses', async () => {
     persistAiCommit.mockImplementation(async () => {
-      throw new TestCommitRejectedError('blocked', {
+      throw new (RejectedError as any)('blocked', {
         publishBlockers: [{ source: 'preview', code: 'syntax', message: 'Preview would break.' }],
       } as never);
     });
