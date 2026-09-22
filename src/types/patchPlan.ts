@@ -147,8 +147,38 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
     }
   }
   for (const op of p.presentationOps as PresentationOp[]) {
-    if (!op || typeof op !== 'object' || op.type !== 'setVariant' || typeof op.sectionId !== 'string' || typeof op.variantId !== 'string') {
+    if (!op || typeof op !== 'object' || !isValidPresentationOp(op)) {
       throw new Error(`[${context}] invalid PresentationOp: ${JSON.stringify(op)}`);
     }
+  }
+}
+
+const COPY_FIELDS = ['headline', 'subheadline', 'description'] as const;
+
+function isValidPresentationOp(op: PresentationOp): boolean {
+  switch (op.type) {
+    case 'setVariant':
+      return typeof op.sectionId === 'string' && typeof op.variantId === 'string';
+    case 'setSectionCopy': {
+      if (typeof op.pageRole !== 'string' || typeof op.sectionType !== 'string') return false;
+      if (!op.copy || typeof op.copy !== 'object') return false;
+      const entries = Object.entries(op.copy);
+      if (entries.length === 0) return false;
+      return entries.every(([key, value]) =>
+        (COPY_FIELDS as readonly string[]).includes(key) && typeof value === 'string');
+    }
+    case 'reorderSections':
+      return typeof op.pageRole === 'string'
+        && Array.isArray(op.sectionOrder)
+        && op.sectionOrder.length > 0
+        && op.sectionOrder.every((type) => typeof type === 'string');
+    case 'removeSection':
+      return typeof op.pageRole === 'string' && typeof op.sectionType === 'string';
+    case 'setMotionBudget':
+      return op.motionBudget === 'restrained' || op.motionBudget === 'expressive';
+    case 'setLayoutRecipe':
+      return typeof op.layoutRecipe === 'string';
+    default:
+      return false;
   }
 }
