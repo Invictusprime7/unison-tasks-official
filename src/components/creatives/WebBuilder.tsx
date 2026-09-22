@@ -138,6 +138,8 @@ import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { ElementIntentInspector } from "./web-builder/ElementIntentInspector";
 import { PropertyInspectorPanel } from "./web-builder/PropertyInspectorPanel";
+import { planInspectorExecution } from "@/services/builder/inspectorPatchExecution";
+import type { InspectorPatchPlan } from "@/services/builder/propertyInspectorModel";
 
 import { CatalogInspectorPanel } from "@/components/business-center/CatalogInspectorPanel";
 import { buildSectionTypeMap } from "@/services/autoEmitSectionBindings";
@@ -3272,6 +3274,48 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if ((currentRevisionIdRef.current || null) !== revisionId) throw new Error('The site changed during this request. Please request the theme change again.');
     return commitThemeTokenOps([], prompt, decodeThemeEdit(response.data));
   }, [commitThemeTokenOps, effectiveRouteState]);
+
+  /**
+   * Property Inspector → canonical execution (no AI round-trip).
+   * The inspector already produced a validated canonical patch plan; it is
+   * executed directly on the existing rails (presentation / theme / source),
+   * so a deterministic edit never depends on a language model.
+   */
+  const applyInspectorPatchPlan = useCallback(async (
+    plan: Extract<InspectorPatchPlan, { ok: true }>,
+  ): Promise<boolean> => {
+    const files = virtualFSRef.current.getSandpackFiles();
+    const snapshot = resolveSnapshot(files, effectiveRouteState as any).snapshot
+      ?? effectiveRouteState?.siteBundleSnapshot
+      ?? null;
+    const execution = planInspectorExecution(plan, {
+      files,
+      snapshotId: snapshot?.snapshotId ?? null,
+      revisionId: currentRevisionIdRef.current || null,
+    });
+
+    if (execution.kind === 'rejected') {
+      toast.error(execution.reason);
+      return false;
+    }
+    if (execution.kind === 'presentation') {
+      return commitPresentationOps(execution.ops);
+    }
+    if (execution.kind === 'theme') {
+      return commitThemeTokenOps([], execution.summary, execution.themeEdit);
+    }
+
+    const committed = await commitBuilderFiles(
+      Object.fromEntries(
+        execution.fileOps
+          .filter((op): op is Extract<FileOp, { contents: string }> => op.type !== 'delete')
+          .map((op) => [op.path, op.contents]),
+      ),
+      { source: 'playground-edit', summary: execution.summary, failureMessage: 'Could not apply this edit' },
+    );
+    if (committed) toast.success(execution.summary);
+    return Boolean(committed);
+  }, [effectiveRouteState, commitPresentationOps, commitThemeTokenOps, commitBuilderFiles]);
 
 
   // ── Preview Floating Toolbar → VFSCommitService bridge ───────────────────
@@ -8385,11 +8429,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   }}
                   onClose={() => setPropertyPanelOpen(false)}
                   onApplyPatchPlan={(plan) => {
-                    // Canonical patch plans are executed through the governed
-                    // AI Builder lane (VFSCommitService), never by ad-hoc DOM writes.
-                    dispatchBuilderPrompt(
-                      `${plan.description}.\nApply this canonical patch plan exactly:\n${JSON.stringify(plan.op, null, 2)}`,
-                    );
+                    // Already-validated canonical plans execute directly on the
+                    // canonical rails (presentation / theme / source) through
+                    // VFSCommitService — no AI round-trip, no DOM-only writes.
+                    void applyInspectorPatchPlan(plan);
                     setPropertyPanelOpen(false);
                   }}
                   onContextualAIRequest={(prompt) => {
