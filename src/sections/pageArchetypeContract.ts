@@ -31,6 +31,8 @@ import {
   type DensityId,
   type RhythmId,
 } from '@/sections/variants/artDirectionPacks';
+import { describeIndustryDialect, industryCreativeProfile } from '@/sections/templates/industryCreativeVocabulary';
+
 
 export const COMPILER_OWNED_FAMILIES: readonly SectionType[] = ['navbar', 'footer'];
 
