@@ -677,8 +677,24 @@ preview runtime — extend what exists.
 	`src/test/builderRequestOntology.test.ts`). Legacy `requestedCapabilities`
 	arrays are split into the typed domains instead of forwarded. `premium`,
 	`modern` and `motion.marquee` can no longer surface as missing backend packs.
-- [ ] 2. Property Inspector → PatchPlan direct execution (no prose dispatch)
-- [ ] 3. Single AI mutation transaction (BuilderMutationService)
+- [x] 2. Property Inspector → PatchPlan direct execution (no prose dispatch) —
+	`src/services/builder/inspectorPatchExecution.ts` routes a validated
+	`InspectorPatchPlan` straight onto the existing rails: set-variant →
+	`commitPresentationOps`, set-theme-token → `commitThemeTokenOps`,
+	slot text / asset / intent → a deterministic `data-ut-slot`-scoped source
+	rewrite committed through `commitBuilderFiles`. Non-literal (data-bound)
+	copy, recipe-owned media and unknown slots are rejected with a reason
+	instead of being handed to the AI. `WebBuilder.onApplyPatchPlan` no longer
+	serialises the plan into a prompt. Tests: `src/test/inspectorPatchExecution.test.ts`.
+- [x] 3. Single AI mutation transaction (BuilderMutationService) —
+	`src/services/builder/builderMutationService.ts` replaces the dry-run +
+	persist + mirror sequence with one transaction: a single `commitMutation`
+	run validates and persists the same bytes, the mirror follows, and the
+	result settles on exactly one terminal state (`rejected` / `applied` /
+	`failed`). A mirror failure after commit rolls the working VFS back to its
+	pre-edit bytes instead of leaving preview half-applied. Both the desktop
+	and mobile AI mounts in WebBuilder use it. Tests:
+	`src/test/builderMutationService.test.ts`.
 - [ ] 4. Module-closure hard gate on every edit path
 - [ ] 5. Verified-success state machine ("applied" = transaction state)
 - [ ] 6. PageRegistry → canonical SiteShell topology closure (chrome.owner)
