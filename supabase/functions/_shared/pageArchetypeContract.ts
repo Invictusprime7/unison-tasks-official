@@ -35,7 +35,163 @@ export const PAGE_ARCHETYPES: Record<string, EdgePageArchetype> = {
 export const pageArchetypeFor = (role: string): EdgePageArchetype =>
   PAGE_ARCHETYPES[role] ?? PAGE_ARCHETYPES.custom;
 
+/**
+ * Edge mirror of src/sections/templates/industryCreativeVocabulary.ts — the
+ * industry dialect. Only the validator-relevant fields are mirrored (required,
+ * preferred and discouraged families, discouraged traits). Drift against the
+ * client table is asserted by src/test/pageArchetypeContract.test.ts.
+ */
+export interface EdgeIndustryPageProfile {
+  requiredFamilies?: string[];
+  preferredFamilies?: string[];
+  discouragedFamilies?: string[];
+}
+export interface EdgeIndustryDialect {
+  preferredFamilies: string[];
+  discouragedFamilies: string[];
+  discouragedTags: string[];
+  pageProfiles: Record<string, EdgeIndustryPageProfile>;
+}
+
+export const INDUSTRY_ALIASES: Record<string, string> = {
+  barber: 'salon', medspa: 'salon', wellness: 'salon',
+  dental: 'local-service', healthcare: 'local-service', contractor: 'local-service',
+  local_service: 'local-service', hvac: 'local-service', cleaning: 'local-service',
+  landscaping: 'local-service', auto_detailing: 'local-service', moving: 'local-service',
+  legal: 'agency', landing: 'agency',
+  realestate: 'real-estate', real_estate: 'real-estate',
+  store: 'ecommerce', 'e-commerce': 'ecommerce',
+  photographer: 'portfolio', photography: 'portfolio', creative: 'portfolio', creator: 'portfolio',
+  fitness: 'coaching', content: 'nonprofit',
+};
+
+export const INDUSTRY_DIALECTS: Record<string, EdgeIndustryDialect> = {
+  salon: {
+    preferredFamilies: ['gallery', 'before-after', 'team', 'testimonials', 'services'],
+    discouragedFamilies: ['logo-cloud', 'blog-preview'], discouragedTags: ['mono-terminal'],
+    pageProfiles: {
+      home: { requiredFamilies: ['services'], preferredFamilies: ['gallery', 'before-after', 'team', 'testimonials'] },
+      services: { preferredFamilies: ['pricing', 'before-after', 'faq'] },
+      gallery: { requiredFamilies: ['before-after'], preferredFamilies: ['testimonials'] },
+      about: { requiredFamilies: ['team'] },
+      booking: { preferredFamilies: ['testimonials', 'faq'] },
+    },
+  },
+  'local-service': {
+    preferredFamilies: ['before-after', 'stats', 'testimonials', 'services', 'faq'],
+    discouragedFamilies: ['blog-preview'], discouragedTags: ['immersive', 'parallax', 'marquee'],
+    pageProfiles: {
+      home: { requiredFamilies: ['services'], preferredFamilies: ['stats', 'before-after', 'testimonials', 'faq'] },
+      gallery: { requiredFamilies: ['before-after'] },
+      services: { preferredFamilies: ['faq', 'stats'] },
+      contact: { preferredFamilies: ['faq'] },
+    },
+  },
+  restaurant: {
+    preferredFamilies: ['gallery', 'services', 'testimonials', 'about'],
+    discouragedFamilies: ['logo-cloud', 'pricing'], discouragedTags: ['mono-terminal', 'brutalist'],
+    pageProfiles: {
+      home: { requiredFamilies: ['services'], preferredFamilies: ['gallery', 'about', 'testimonials'] },
+      services: { preferredFamilies: ['gallery'], discouragedFamilies: ['pricing'] },
+      gallery: { preferredFamilies: ['about'] },
+      booking: { preferredFamilies: ['faq'] },
+    },
+  },
+  saas: {
+    preferredFamilies: ['features', 'pricing', 'logo-cloud', 'stats', 'faq'],
+    discouragedFamilies: ['before-after', 'team'], discouragedTags: [],
+    pageProfiles: {
+      home: { requiredFamilies: ['features'], preferredFamilies: ['logo-cloud', 'pricing', 'stats', 'testimonials'] },
+      services: { requiredFamilies: ['features'], preferredFamilies: ['pricing', 'faq'] },
+      pricing: { preferredFamilies: ['stats', 'testimonials'] },
+      about: { preferredFamilies: ['stats', 'team'] },
+    },
+  },
+  agency: {
+    preferredFamilies: ['gallery', 'logo-cloud', 'stats', 'services', 'testimonials'],
+    discouragedFamilies: [], discouragedTags: [],
+    pageProfiles: {
+      home: { requiredFamilies: ['services'], preferredFamilies: ['logo-cloud', 'gallery', 'stats', 'testimonials'] },
+      gallery: { preferredFamilies: ['stats', 'testimonials'] },
+      about: { requiredFamilies: ['team'], preferredFamilies: ['stats'] },
+      services: { preferredFamilies: ['stats'] },
+    },
+  },
+  portfolio: {
+    preferredFamilies: ['gallery', 'about', 'testimonials'],
+    discouragedFamilies: ['logo-cloud', 'pricing', 'stats'], discouragedTags: [],
+    pageProfiles: {
+      home: { requiredFamilies: ['gallery'], preferredFamilies: ['about', 'testimonials'] },
+      gallery: { preferredFamilies: ['about', 'cta'], discouragedFamilies: ['pricing'] },
+      about: { preferredFamilies: ['gallery'] },
+      services: { discouragedFamilies: ['logo-cloud'] },
+    },
+  },
+  coaching: {
+    preferredFamilies: ['testimonials', 'about', 'faq', 'services', 'stats'],
+    discouragedFamilies: ['logo-cloud'], discouragedTags: ['brutalist', 'mono-terminal'],
+    pageProfiles: {
+      home: { requiredFamilies: ['testimonials'], preferredFamilies: ['about', 'services', 'faq'] },
+      services: { preferredFamilies: ['testimonials', 'pricing', 'faq'] },
+      about: { preferredFamilies: ['testimonials', 'stats'] },
+      booking: { preferredFamilies: ['testimonials', 'faq'] },
+    },
+  },
+  ecommerce: {
+    preferredFamilies: ['gallery', 'testimonials', 'features', 'faq'],
+    discouragedFamilies: ['team', 'before-after'], discouragedTags: [],
+    pageProfiles: {
+      home: { requiredFamilies: ['services'], preferredFamilies: ['gallery', 'testimonials', 'features'] },
+      shop: { preferredFamilies: ['gallery', 'testimonials', 'faq'] },
+      gallery: { preferredFamilies: ['cta'] },
+      checkout: {},
+    },
+  },
+  'real-estate': {
+    preferredFamilies: ['gallery', 'stats', 'team', 'faq'],
+    discouragedFamilies: ['logo-cloud', 'blog-preview'], discouragedTags: ['brutalist', 'mono-terminal'],
+    pageProfiles: {
+      home: { requiredFamilies: ['gallery'], preferredFamilies: ['stats', 'services', 'testimonials'] },
+      gallery: { preferredFamilies: ['stats', 'cta'] },
+      about: { requiredFamilies: ['team'], preferredFamilies: ['stats'] },
+      contact: { preferredFamilies: ['faq'] },
+    },
+  },
+  nonprofit: {
+    preferredFamilies: ['stats', 'about', 'testimonials', 'team'],
+    discouragedFamilies: ['pricing'], discouragedTags: ['neon', 'brutalist'],
+    pageProfiles: {
+      home: { requiredFamilies: ['stats'], preferredFamilies: ['about', 'testimonials', 'gallery'] },
+      about: { requiredFamilies: ['team'], preferredFamilies: ['stats'] },
+      services: { discouragedFamilies: ['pricing'] },
+      blog: { preferredFamilies: ['cta'] },
+    },
+  },
+};
+
+const union = (...groups: Array<string[] | undefined>): string[] =>
+  Array.from(new Set(groups.flatMap(group => group ?? [])));
+
+/** Exact mirror of the client resolvePageArchetype (validator-relevant fields). */
+export function resolvePageArchetype(role: string, industry?: string | null): EdgePageArchetype {
+  const base = pageArchetypeFor(role);
+  if (!industry) return base;
+  const dialect = INDUSTRY_DIALECTS[INDUSTRY_ALIASES[industry.trim().toLowerCase()] ?? industry.trim().toLowerCase()];
+  if (!dialect) return base;
+  const page = dialect.pageProfiles[role];
+  const requiredFamilies = union(base.requiredFamilies, page?.requiredFamilies);
+  const forbiddenFamilies = union(base.forbiddenFamilies, dialect.discouragedFamilies, page?.discouragedFamilies)
+    .filter(family => !requiredFamilies.includes(family) && !(page?.preferredFamilies ?? []).includes(family));
+  return {
+    requiredFamilies,
+    forbiddenFamilies,
+    forbiddenTags: union(base.forbiddenTags, dialect.discouragedTags),
+    maxBodySections: Math.max(base.maxBodySections, requiredFamilies.length),
+  };
+}
+
 const isChrome = (family: string) => COMPILER_OWNED_FAMILIES.includes(family);
+
 
 /** Exact mirror of the client normalizePageSectionOrder. */
 export function normalizePageSectionOrder(role: string, sectionOrder: string[]): string[] {
