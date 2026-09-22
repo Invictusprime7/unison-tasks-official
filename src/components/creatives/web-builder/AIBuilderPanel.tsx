@@ -1968,16 +1968,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           console.warn('[AIBuilderPanel] SCOPE BLOCK:', scopeBlockReason);
           setHeldFiles({ files: normalizedFiles, reason: `Edit held back: ${scopeBlockReason}` });
           toast.warning(`⚠️ Edit held for review: ${scopeBlockReason}`);
+          transactionVerdict = transactionVerdictLine('held-for-review', scopeBlockReason);
         } else if (shouldBlock) {
           void recordRunOutcome(envelopeRunId, 'rejected', { note: 'requires-approval' });
           console.warn('[AIBuilderPanel] Patch requires approval — NOT auto-applying');
-          setHeldFiles({
-            files: normalizedFiles,
-            reason: responseMeta?.warnings?.map((warning) => warning.message).filter(Boolean).join('; ')
-              || 'The reviewer flagged this patch. Review the warnings, then apply.',
-          });
+          const heldReason = responseMeta?.warnings?.map((warning) => warning.message).filter(Boolean).join('; ')
+            || 'The reviewer flagged this patch. Review the warnings, then apply.';
+          setHeldFiles({ files: normalizedFiles, reason: heldReason });
           toast.warning('⚠️ AI patch flagged for review — apply it from the review card when ready');
+          transactionVerdict = transactionVerdictLine('held-for-review', heldReason);
         } else {
+
           if (onApplyToVFS) {
             console.log('[AIBuilderPanel] Calling onApplyToVFS with normalized paths:', Object.keys(normalizedFiles));
             vfsEventBus.emit('ai:apply:start', { source: 'multi-file' });
