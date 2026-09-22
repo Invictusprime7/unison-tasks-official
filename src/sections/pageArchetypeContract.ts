@@ -254,8 +254,9 @@ export function buildPageArchetypeCss(pack: ArtDirectionPack): string {
  * the CTA tail, and the body is clamped to the archetype's maximum. Chrome
  * placement stays compiler-owned and untouched.
  */
-export function normalizePageSectionOrder(role: string, sectionOrder: readonly string[]): string[] {
-  const archetype = pageArchetypeFor(role);
+export function normalizePageSectionOrder(role: string, sectionOrder: readonly string[], industry?: string | null): string[] {
+  const archetype = resolvePageArchetype(role, industry);
+
   const forbidden = new Set<string>(archetype.forbiddenFamilies);
   const kept = sectionOrder.filter((family, index) =>
     sectionOrder.indexOf(family) === index && (isChrome(family) || !forbidden.has(family)));
@@ -282,9 +283,10 @@ export function pageArchetypeIssues(
   role: string,
   sectionOrder: readonly string[],
   variantTags: Readonly<Record<string, readonly string[]>> = {},
-  options: { requireFamilies?: boolean } = {},
+  options: { requireFamilies?: boolean; industry?: string | null } = {},
 ): string[] {
-  const archetype = pageArchetypeFor(role);
+  const archetype = resolvePageArchetype(role, options.industry);
+
   const issues: string[] = [];
   const body = sectionOrder.filter(family => !isChrome(family));
   for (const family of sectionOrder) {
@@ -310,9 +312,11 @@ export function pageArchetypeIssues(
 }
 
 /** The archetype rule block handed verbatim to the composition model. */
-export function describePageArchetypes(roles: readonly string[]): string {
-  return roles.map(role => {
-    const archetype = pageArchetypeFor(role);
+export function describePageArchetypes(roles: readonly string[], industry?: string | null): string {
+  const dialect = describeIndustryDialect(industry);
+  const body = roles.map(role => {
+    const archetype = resolvePageArchetype(role, industry);
+
     const value = (values: readonly string[]) => (values.length ? values.join(', ') : 'none');
     return [
       `  role "${role}" — ${archetype.purpose}`,
