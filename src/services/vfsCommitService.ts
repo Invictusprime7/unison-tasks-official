@@ -43,6 +43,11 @@ import {
   findLocalJsxImportContractViolations,
   describeUnresolvedImports,
 } from '@/services/laneBCompanionModules';
+import {
+  buildSiteShellTopology,
+  assertSiteShellClosure,
+  type SiteShellClosureViolation,
+} from '@/services/siteShellTopology';
 import { resolveApprovedExperienceCapabilities } from './experienceCapabilityResolver';
 import { runExperiencePreflight } from './experiencePreflightGate';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
@@ -820,6 +825,57 @@ export async function commitMutation(
     }
   }
 
+  // P0.2 — SiteShell closure hard gate. The PageRegistry owns which routes
+  // exist; the router and the page chrome are projections of it. Structural
+  // divergence (a link to an unregistered route, a route the router never
+  // renders, a router route with no registry page, competing navbars/footers)
+  // is a broken site, so it rejects the candidate instead of shipping. A page
+  // that merely omits a nav link is recorded as a publish blocker — it is
+  // incomplete chrome, not a broken route graph.
+  const shellClosureBlockers: PublishBlockerSummary[] = [];
+  if (status === 'committed') {
+    const registry = (snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry;
+    if (registry && Object.keys(registry.pages ?? {}).length > 0) {
+      const topology = buildSiteShellTopology(registry);
+      const pageSources: Record<string, string> = {};
+      for (const [path, source] of Object.entries(files)) {
+        if (path.startsWith('/src/pages/') && /\.(tsx|jsx)$/.test(path)) pageSources[path] = source;
+      }
+      const routerSource = files['/src/App.tsx'] ?? '';
+      const parsedRouterRoutes = routerSource
+        ? Array.from(routerSource.matchAll(/path=["']([^"']+)["']/g)).map((m) => m[1])
+        : [];
+      // A router with no literal `path=` attributes is not evidence of a broken
+      // route graph (index routes, generated tables); only compare when the
+      // router actually declares paths.
+      const routerRoutes = parsedRouterRoutes.length > 0 ? parsedRouterRoutes : undefined;
+      const violations = assertSiteShellClosure(topology, { pageSources, routerRoutes });
+      const fatal = violations.filter(
+        (violation: SiteShellClosureViolation) => violation.code !== 'missing-nav-link',
+      );
+      for (const violation of violations) {
+        shellClosureBlockers.push({
+          source: 'preview',
+          code: `site-shell-${violation.code}`,
+          message: violation.message,
+          meta: { pageId: violation.pageId, path: violation.path },
+        });
+      }
+      if (fatal.length > 0 && requirePreview) {
+        status = 'rejected';
+        preExecutionReady = false;
+        log('gate', 'error', 'site shell closure gate rejected the candidate', {
+          fatal: fatal.length,
+          advisory: violations.length - fatal.length,
+          first: fatal.slice(0, 5).map((violation) => violation.message),
+        });
+      } else if (violations.length > 0) {
+        log('gate', 'warn', 'site shell closure defects retained as publish blockers', {
+          total: violations.length,
+        });
+      }
+    }
+  }
 
 
   // Move C: execute transactional backend ops only after the candidate VFS
@@ -883,7 +939,7 @@ export async function commitMutation(
   }
 
   // Move D — compute publish readiness + blockers aggregate.
-  const publishBlockers: PublishBlockerSummary[] = [...moduleClosureBlockers];
+  const publishBlockers: PublishBlockerSummary[] = [...moduleClosureBlockers, ...shellClosureBlockers];
   if (runtimeReconciliationError) {
     publishBlockers.push({
       source: 'backendOps',

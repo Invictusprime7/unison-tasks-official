@@ -60,7 +60,8 @@ export interface DesignStudioActions {
   duplicateNode: (nodeId: string) => string | null;
 
   // AI edits
-  applyAIEdit: (prompt: string, targetNodeId?: string) => Promise<void>;
+  /** Resolves true only when the edit actually changed the scene. */
+  applyAIEdit: (prompt: string, targetNodeId?: string) => Promise<boolean>;
   applyAIInstructions: (instructions: AIEditInstruction[]) => void;
 
   // Slots & Assets
@@ -311,8 +312,12 @@ export function useDesignStudio(initialScene?: RootNode): UseDesignStudioReturn 
   // AI EDITS
   // ============================================
 
-  const applyAIEdit = useCallback(async (prompt: string, targetNodeId?: string) => {
-    if (!scene) return;
+  const applyAIEdit = useCallback(async (prompt: string, targetNodeId?: string): Promise<boolean> => {
+    if (!scene) {
+      setLastError('No scene is open, so there was nothing to change.');
+      return false;
+    }
+    let changed = false;
 
     setIsCompiling(true);
     setLastError(null);
@@ -331,6 +336,7 @@ export function useDesignStudio(initialScene?: RootNode): UseDesignStudioReturn 
           nodeId: targetNodeId,
           layout: { alignItems: 'center', justifyContent: 'center' },
         } as Omit<PatchOperation, 'id' | 'timestamp' | 'source'>);
+        changed = true;
       }
 
       if (targetNodeId && lowerPrompt.includes('gradient')) {
@@ -339,11 +345,17 @@ export function useDesignStudio(initialScene?: RootNode): UseDesignStudioReturn 
           nodeId: targetNodeId,
           style: { background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
         } as Omit<PatchOperation, 'id' | 'timestamp' | 'source'>);
+        changed = true;
       }
 
+      if (!changed) {
+        setLastError('That request was not understood, so nothing was changed.');
+      }
+      return changed;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'AI edit failed';
       setLastError(message);
+      return false;
     } finally {
       setIsCompiling(false);
     }

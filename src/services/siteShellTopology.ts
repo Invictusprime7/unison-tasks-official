@@ -78,10 +78,10 @@ export function buildSiteShellTopology(registry: PageRegistry): SiteShellTopolog
   const routes: SiteShellRoute[] = Object.values(registry.pages ?? {})
     .map((page) => ({
       pageId: page.pageId,
-      path: page.path,
+      path: page.path || '/',
       href: toHref(page.path),
       filePath: derivedFilePath(page),
-      label: page.title || page.path,
+      label: page.title || page.path || '/',
       isHome: Boolean(page.isHome),
       showInNav: page.showInNav !== false && !NAV_HIDDEN_PAGE_TYPES.has(String(page.pageType)),
       navOrder: typeof page.navOrder === 'number' ? page.navOrder : 0,
@@ -98,7 +98,8 @@ export function buildSiteShellTopology(registry: PageRegistry): SiteShellTopolog
 
 const INTERNAL_HREF = /href=["'](#?\/[^"'#?]*)["']/g;
 
-function normalizeLinkPath(raw: string): string {
+function normalizeLinkPath(raw: string | undefined | null): string {
+  if (!raw) return '/';
   const withoutHash = raw.startsWith('#') ? raw.slice(1) : raw;
   const trimmed = withoutHash.split('?')[0].replace(/\/+$/, '');
   return trimmed || '/';
