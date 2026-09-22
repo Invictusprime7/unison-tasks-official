@@ -3290,7 +3290,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       ?? effectiveRouteState?.siteBundleSnapshot
       ?? null;
     const registryPage = plan.pagePath
-      ? (snapshot?.pageRegistry?.pages ?? []).find((page: any) => page.filePath === plan.pagePath || page.path === plan.pagePath)
+      ? ((snapshot?.pageRegistry?.pages ?? []) as any[]).find((page: any) => page.filePath === plan.pagePath || page.path === plan.pagePath)
       : undefined;
     const pageRole = registryPage?.pageRole ?? registryPage?.pageType ?? (registryPage?.isHome ? 'home' : null);
     const composedRole = toCompositionRole(pageRole);
