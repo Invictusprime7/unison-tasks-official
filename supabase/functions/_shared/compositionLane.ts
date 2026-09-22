@@ -104,9 +104,20 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
       const tags = brief.variants.find(v => v.id === id)?.tags;
       if (tags?.length) variantTags[family] = tags;
     }
-    issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags));
+    // Negative vocabulary and body ceiling are hard: they must never ship.
+    issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags, { requireFamilies: false }));
   }
   return issues;
+}
+
+/**
+ * Missing page-required families. Advisory: the model is asked once to repair
+ * them, but the compiler resolves certified defaults, so they never 502 a launch.
+ */
+export function compositionAdvisoryIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
+  const normalized = normalizeCompositionPlan(plan, brief);
+  return normalized.pages.flatMap(page => pageArchetypeIssues(page.role, page.sectionOrder)
+    .filter(issue => issue.includes('must include')));
 }
 
 /** Dedicated data-only lane. One bounded AI repair, never a deterministic substitute. */
@@ -131,8 +142,13 @@ export async function runCompositionLane(context: string, headers: Record<string
       const parsed = resultSchema.safeParse(JSON.parse(content));
       const normalized = parsed.success ? normalizeCompositionPlan(parsed.data, options.brief) : null;
       issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
+      const advisory = normalized && options.brief ? compositionAdvisoryIssues(normalized, options.brief) : [];
       errorType = parsed.success ? 'composition_catalog' : 'composition_contract';
-      if (normalized && !issues.length) return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
+      if (normalized && !issues.length && !(advisory.length && attempt === 0 && options.brief)) {
+        if (advisory.length) console.warn('[wizard-composition] accepted with unmet page requirements', { advisory: advisory.slice(0, 10) });
+        return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
+      }
+      if (normalized && !issues.length) issues = advisory;
     } catch { issues = ['Return valid JSON matching the supplied output schema.']; errorType = 'composition_contract'; }
     if (attempt === 0 && options.brief) {
       console.warn('[wizard-composition] requesting AI repair', { issues: issues.slice(0, 20) });
