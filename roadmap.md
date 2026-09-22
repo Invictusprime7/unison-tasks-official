@@ -695,7 +695,16 @@ preview runtime — extend what exists.
 	pre-edit bytes instead of leaving preview half-applied. Both the desktop
 	and mobile AI mounts in WebBuilder use it. Tests:
 	`src/test/builderMutationService.test.ts`.
-- [ ] 4. Module-closure hard gate on every edit path
+- [x] 4. Module-closure hard gate on every edit path — `commitMutation` (the
+	single durable writer, so every edit path is covered once) now runs
+	`findUnresolvedLocalImports` + `findLocalJsxImportContractViolations` on the
+	final candidate before backend ops. An unresolved relative import, or a
+	local JSX import naming a symbol the target module never exports, rejects
+	the commit with a `preview` blocker (`module-closure-unresolved-import` /
+	`module-closure-missing-export`) instead of persisting a revision that
+	crashes preview with "element type is invalid". When preview enforcement is
+	explicitly waived the defects persist as publish blockers. Tests:
+	`src/test/vfsCommitService.golden.test.ts`.
 - [ ] 5. Verified-success state machine ("applied" = transaction state)
 - [ ] 6. PageRegistry → canonical SiteShell topology closure (chrome.owner)
 
