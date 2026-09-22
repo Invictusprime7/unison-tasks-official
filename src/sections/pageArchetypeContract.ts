@@ -31,6 +31,8 @@ import {
   type DensityId,
   type RhythmId,
 } from '@/sections/variants/artDirectionPacks';
+import { describeIndustryDialect, industryCreativeProfile } from '@/sections/templates/industryCreativeVocabulary';
+
 
 export const COMPILER_OWNED_FAMILIES: readonly SectionType[] = ['navbar', 'footer'];
 
@@ -187,7 +189,41 @@ export const PAGE_ARCHETYPES: Readonly<Record<string, PageArchetype>> = ARCHETYP
 export const pageArchetypeFor = (role: string): PageArchetype =>
   PAGE_ARCHETYPES[role] ?? PAGE_ARCHETYPES.custom;
 
+const union = <T,>(...groups: ReadonlyArray<readonly T[] | undefined>): T[] =>
+  Array.from(new Set(groups.flatMap(group => group ?? [])));
+
+/**
+ * The page archetype modulated by the industry dialect (governing plan,
+ * Phase 7 / Invariant K). The dialect may add required and recommended
+ * families and widen the negative vocabulary; it can never strip a family the
+ * page role requires, and it never touches rhythm, density or the ceiling —
+ * those stay page-owned so the homepage's language survives.
+ */
+export function resolvePageArchetype(role: string, industry?: string | null): PageArchetype {
+  const base = pageArchetypeFor(role);
+  const profile = industryCreativeProfile(industry);
+  if (!profile) return base;
+  const page = profile.pageProfiles[role];
+
+  const requiredFamilies = union(base.requiredFamilies, page?.requiredFamilies);
+  const preferred = union(page?.preferredFamilies, profile.preferredFamilies);
+  const forbiddenFamilies = union(base.forbiddenFamilies, profile.discouragedFamilies, page?.discouragedFamilies)
+    .filter(family => !requiredFamilies.includes(family) && !(page?.preferredFamilies ?? []).includes(family));
+  const recommendedFamilies = union(base.recommendedFamilies, preferred)
+    .filter(family => !forbiddenFamilies.includes(family) && !requiredFamilies.includes(family));
+
+  return {
+    ...base,
+    requiredFamilies,
+    recommendedFamilies,
+    forbiddenFamilies,
+    forbiddenTags: union(base.forbiddenTags, profile.discouragedTags),
+    maxBodySections: Math.max(base.maxBodySections, requiredFamilies.length),
+  };
+}
+
 const isChrome = (family: string) => COMPILER_OWNED_FAMILIES.includes(family as SectionType);
+
 
 /** Resolved spacing scale for one page role against the sealed pack. */
 export function resolvePageScale(role: string, pack: ArtDirectionPack): { rhythm: RhythmId; density: DensityId } {
@@ -218,8 +254,9 @@ export function buildPageArchetypeCss(pack: ArtDirectionPack): string {
  * the CTA tail, and the body is clamped to the archetype's maximum. Chrome
  * placement stays compiler-owned and untouched.
  */
-export function normalizePageSectionOrder(role: string, sectionOrder: readonly string[]): string[] {
-  const archetype = pageArchetypeFor(role);
+export function normalizePageSectionOrder(role: string, sectionOrder: readonly string[], industry?: string | null): string[] {
+  const archetype = resolvePageArchetype(role, industry);
+
   const forbidden = new Set<string>(archetype.forbiddenFamilies);
   const kept = sectionOrder.filter((family, index) =>
     sectionOrder.indexOf(family) === index && (isChrome(family) || !forbidden.has(family)));
@@ -246,9 +283,10 @@ export function pageArchetypeIssues(
   role: string,
   sectionOrder: readonly string[],
   variantTags: Readonly<Record<string, readonly string[]>> = {},
-  options: { requireFamilies?: boolean } = {},
+  options: { requireFamilies?: boolean; industry?: string | null } = {},
 ): string[] {
-  const archetype = pageArchetypeFor(role);
+  const archetype = resolvePageArchetype(role, options.industry);
+
   const issues: string[] = [];
   const body = sectionOrder.filter(family => !isChrome(family));
   for (const family of sectionOrder) {
@@ -274,9 +312,11 @@ export function pageArchetypeIssues(
 }
 
 /** The archetype rule block handed verbatim to the composition model. */
-export function describePageArchetypes(roles: readonly string[]): string {
-  return roles.map(role => {
-    const archetype = pageArchetypeFor(role);
+export function describePageArchetypes(roles: readonly string[], industry?: string | null): string {
+  const dialect = describeIndustryDialect(industry);
+  const body = roles.map(role => {
+    const archetype = resolvePageArchetype(role, industry);
+
     const value = (values: readonly string[]) => (values.length ? values.join(', ') : 'none');
     return [
       `  role "${role}" — ${archetype.purpose}`,
@@ -287,4 +327,6 @@ export function describePageArchetypes(roles: readonly string[]): string {
       `    at most ${archetype.maxBodySections} body sections; page spacing is ${archetype.rhythmShift === 0 ? 'the site rhythm' : archetype.rhythmShift < 0 ? 'one step tighter than the site rhythm' : 'one step airier than the site rhythm'}.`,
     ].join('\n');
   }).join('\n');
+  return dialect ? `${dialect}\n${body}` : body;
 }
+

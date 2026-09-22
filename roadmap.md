@@ -841,6 +841,26 @@ preview runtime — extend what exists.
 	explicitly. Tests: `src/test/builderCommitController.test.ts`, including a
 	guard that no hand-rolled envelope returns to `WebBuilder.tsx`.
 
+- [x] Phase 7 (plan §7). Industry creative dialect compiled into the page
+	contract. `src/sections/templates/industryCreativeVocabulary.ts` declares an
+	`IndustryCreativeProfile` for all ten canonical industries (salon,
+	local-service, restaurant, saas, agency, portfolio, coaching, ecommerce,
+	real-estate, nonprofit): preferred art directions, site-wide preferred and
+	discouraged families, discouraged variant traits, and per-page-role
+	dialect. `resolvePageArchetype(role, industry)` in
+	`src/sections/pageArchetypeContract.ts` merges it into the page archetype —
+	required families union, recommended widened, negative vocabulary widened,
+	never stripping a required family, never touching rhythm/density (those stay
+	page-owned so the homepage language survives). Threaded through
+	`describePageArchetypes`, `normalizePageSectionOrder`, `pageArchetypeIssues`,
+	`renderCompositionCanonicalContract`, `normalizeCompositionResponse`,
+	`requestAIPageComposition` and the edge lane (`CompositionBrief.industry`)
+	with a byte-for-byte edge mirror. `aiPageComposition.ts`'s hard-coded
+	six-family additive set is replaced by contract-aware
+	`isCreativelyAdditiveSection(type, role, industry)`. Tests:
+	`src/test/industryCreativeVocabulary.test.ts` (8, including client↔edge
+	drift across every industry × role).
+
 ### P2
 - [ ] 13. Booking vertical golden journey
 - [ ] 14. Two-tenant RLS isolation proof

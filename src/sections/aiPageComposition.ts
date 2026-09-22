@@ -7,6 +7,7 @@ import type { VariantId } from '@/sections/variants/types';
 import type { WizardExperiencePreference } from '@/services/wizardDesignSelection';
 import { deriveImplementationVisualSignature } from '@/services/implementationVisualSignature';
 import { isImplementationExperienceCompatible } from '@/services/designCompatibilityGraph';
+import { COMPILER_OWNED_FAMILIES, resolvePageArchetype } from '@/sections/pageArchetypeContract';
 
 export const COMPOSITION_ROLES = ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'checkout', 'thank_you', 'blog', 'immersive', 'custom'] as const;
 const family = z.enum(['navbar', 'hero', 'about', 'services', 'features', 'gallery', 'pricing', 'logo-cloud', 'blog-preview', 'before-after', 'testimonials', 'cta', 'contact', 'footer', 'stats', 'team', 'faq']);
@@ -62,6 +63,21 @@ export function validateAIPageComposition(value: unknown, packId: ArtDirectionPa
   return plan;
 }
 
+/**
+ * Whether a planned family may be ADDED to a page that does not already carry
+ * it. Phase 7 replaces the old hard-coded six-family list with the page
+ * contract: a family is additive when the page role (modulated by the industry
+ * dialect) requires or recommends it, and never when the page forbids it.
+ * Chrome stays compiler-owned. A family with no industry starter section still
+ * resolves to nothing, so this can only widen within the contract.
+ */
+export function isCreativelyAdditiveSection(type: SectionType, role: string, industry?: string | null): boolean {
+  if (COMPILER_OWNED_FAMILIES.includes(type) || type === 'hero') return false;
+  const archetype = resolvePageArchetype(role, industry);
+  if (archetype.forbiddenFamilies.includes(type)) return false;
+  return archetype.requiredFamilies.includes(type) || archetype.recommendedFamilies.includes(type);
+}
+
 /** Reorders existing data-owned sections. Chrome and every business section survive. */
 export function applyAIPageComposition(template: TemplateComposition, plan: AIPageCompositionPlan | undefined) {
   const page = plan?.pages.find(entry => entry.role === (template.pageRole || 'home'));
@@ -69,13 +85,14 @@ export function applyAIPageComposition(template: TemplateComposition, plan: AIPa
   const rank = (type: SectionType) => type === 'navbar' ? -2 : type === 'hero' ? -1 : type === 'footer' ? 100 :
     page.sectionOrder.includes(type) ? page.sectionOrder.indexOf(type) : 50;
   const sections = [...template.sections];
-  const additive = new Set<SectionType>(['about', 'features', 'services', 'faq', 'contact', 'cta']);
   for (const type of page.sectionOrder) {
-    if (!additive.has(type) || sections.some(section => section.type === type) || !page.variants[type] || !page.copy?.[type]) continue;
+    if (!isCreativelyAdditiveSection(type, page.role, template.industry)) continue;
+    if (sections.some(section => section.type === type) || !page.variants[type] || !page.copy?.[type]) continue;
     const brand = template.sections.find(section => section.type === 'navbar')?.props as { brand?: string } | undefined;
     const section = createIndustryStarterSection(template.industry, type, { businessName: brand?.brand || template.name, idPrefix: template.id + '-ai' });
     if (section) sections.push(section);
   }
+
   return { ...template, sections: sections.map(section => {
     const copy = page.copy?.[section.type];
     const existing = (section.props as { items?: Record<string, unknown>[] }).items;

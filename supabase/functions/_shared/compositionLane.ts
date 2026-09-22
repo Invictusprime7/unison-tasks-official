@@ -41,7 +41,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
       seenRoles.add(page.role);
       return true;
     }).map(page => {
-      const sectionOrder = normalizePageSectionOrder(page.role, page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index));
+      const sectionOrder = normalizePageSectionOrder(page.role, page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index), brief?.industry);
       const inOrder = new Set(sectionOrder);
       return {
         ...page,
@@ -62,6 +62,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
 export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, brief: {
   roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[]; tags?: string[] }>;
   designSelection?: { pinnedVariants?: Record<string, string> };
+  industry?: string;
 }) {
   const normalized = normalizeCompositionPlan(plan, brief);
   if (normalized.pages.length !== brief.roles.length) return false;
@@ -79,6 +80,8 @@ export interface CompositionBrief {
   variants: Array<{ id: string; family: string; pageRoles: string[]; tags?: string[] }>;
   canonicalContract?: string;
   designSelection?: { pinnedVariants?: Record<string, string> };
+  /** Industry dialect key — modulates the page archetypes (Phase 7). */
+  industry?: string;
 }
 
 /** Actionable paths only: do not log business copy or entire model responses. */
@@ -105,7 +108,7 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
       if (tags?.length) variantTags[family] = tags;
     }
     // Negative vocabulary and body ceiling are hard: they must never ship.
-    issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags, { requireFamilies: false }));
+    issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags, { requireFamilies: false, industry: brief.industry }));
   }
   return issues;
 }
@@ -116,7 +119,7 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
  */
 export function compositionAdvisoryIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
   const normalized = normalizeCompositionPlan(plan, brief);
-  return normalized.pages.flatMap(page => pageArchetypeIssues(page.role, page.sectionOrder)
+  return normalized.pages.flatMap(page => pageArchetypeIssues(page.role, page.sectionOrder, {}, { industry: brief.industry })
     .filter(issue => issue.includes('must include')));
 }
 

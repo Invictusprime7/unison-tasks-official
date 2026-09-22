@@ -52,7 +52,7 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
          compatibleExperiencePreferences: implementation.compatibleExperiencePreferences,
          artifactContract: implementation.artifactContract,
        })),
-      canonicalContract: renderCompositionCanonicalContract({ roles, variants, experiencePreference, pinnedVariants }),
+      canonicalContract: renderCompositionCanonicalContract({ roles, variants, experiencePreference, pinnedVariants, industry: selections.industryOverlay }),
       output: { version: '1.0', pages: [{ role: 'home', sectionOrder: ['navbar','hero','services','testimonials','cta','footer'], variants: { services: 'choose an eligible id' }, copy: { hero: { headline: 'Original business-specific headline', subheadline: 'Useful supporting copy' } } }] },
       constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Copy is optional because canonical business content is preserved. When writing copy, use original headline, subheadline and description text by family. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
     }) }] }, { signal, functionName: 'wizard-site-composer' });
@@ -62,7 +62,7 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       const reason = details.status === 404 ? 'endpoint-unavailable' : details.status === 401 || details.status === 403 ? 'authentication' : details.status === 400 ? 'request-rejected' : 'provider';
       return fail(reason, details);
     }
-    const plan = validateAIPageComposition(normalizeCompositionResponse(response.data, { roles, variants }), pack.id, roles, { experiencePreference, pinnedVariants });
+    const plan = validateAIPageComposition(normalizeCompositionResponse(response.data, { roles, variants, industry: selections.industryOverlay }), pack.id, roles, { experiencePreference, pinnedVariants });
     if (!plan) return fail('invalid-response');
     // Page archetype closure — page-specific required families and negative
     // vocabulary. The composition lane already repairs and re-asks the model;
@@ -71,7 +71,7 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       Object.fromEntries(Object.entries(page.variants).map(([family, id]) => [family, getVariantById(id as VariantId)?.tags ?? []])),
       // Required families are repaired by the composition lane against the
       // model; the client gate enforces the negative vocabulary and ceiling.
-      { requireFamilies: false }));
+      { requireFamilies: false, industry: selections.industryOverlay }));
     if (archetypeIssues.length) return fail('invalid-response', { message: 'AI composition violated the page archetype contract: ' + archetypeIssues.slice(0, 6).join('; ') });
     const missingRoles = roles.filter(role => !plan.pages.some(page => page.role === role && Object.keys(page.variants).length > 0));
     if (missingRoles.length) return fail('incomplete-plan', { missingRoles, message: 'AI omitted a valid composition for: ' + missingRoles.join(', ') + '. Please retry generation.' });
