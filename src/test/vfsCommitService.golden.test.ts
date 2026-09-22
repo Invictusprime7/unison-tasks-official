@@ -976,4 +976,37 @@ describe('Move D — publish-ready ledger', () => {
     expect(revisionStore[0].status).toBe('committed');
     expect(draftProjectionUpdates).toHaveLength(1);
   });
+
+  it('rejects a candidate whose local module graph is not closed (P0.4)', async () => {
+    const files = {
+      '/src/App.tsx': "import Hero from './components/Hero';\nexport default function App(){return <Hero />}",
+    };
+    mockPipeline(files); mockPreflight(files); mockIntents();
+
+    await expect(commitMutation({
+      source: 'ai-builder',
+      identity: IDENTITY,
+      current: { vfsFiles: files },
+      patch: legacyFilesToPatchPlan(files, 'missing module'),
+      options: { requireReadinessPass: false },
+    })).rejects.toThrow(CommitRejectedError);
+    expect(revisionStore.filter((r) => r.status === 'committed')).toHaveLength(0);
+  });
+
+  it('rejects a local component import the target module never exports (P0.4)', async () => {
+    const files = {
+      '/src/App.tsx': "import { Hero } from './components/Hero';\nexport default function App(){return <Hero />}",
+      '/src/components/Hero.tsx': 'export const Banner = () => null;',
+    };
+    mockPipeline(files); mockPreflight(files); mockIntents();
+
+    await expect(commitMutation({
+      source: 'ai-builder',
+      identity: IDENTITY,
+      current: { vfsFiles: files },
+      patch: legacyFilesToPatchPlan(files, 'missing export'),
+      options: { requireReadinessPass: false },
+    })).rejects.toThrow(CommitRejectedError);
+    expect(revisionStore.filter((r) => r.status === 'committed')).toHaveLength(0);
+  });
 });
