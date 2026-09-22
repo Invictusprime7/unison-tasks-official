@@ -260,9 +260,22 @@ Review locally at /tools/section-variants.html (development only).
 	models x industries x style intents in
 	`src/test/launcherVocabularyClosure.test.ts`.
 
-- [ ] **Phase 6 - Expand industry families and page archetypes.**
-	Add booking, contractor, SaaS, agency, portfolio, store, and content depth
-	without changing topology ownership or adding a generator.
+- [x] **Phase 6 - Expand industry families and page archetypes.**
+	`industryMatrix.defaultPages` now carries real archetype depth for all ten
+	families (6-7 pages each, every page a full section contract led by navbar
+	and closed by footer): booking (salon/restaurant/coaching/real-estate keep a
+	dedicated booking route plus gallery/about/FAQ depth), contractor via
+	local-service (Projects + before/after + FAQ), SaaS (Product, Pricing,
+	Customers, Company, Blog), agency (Work, Studio, Insights), portfolio (Work,
+	Studio, Services, Journal), store (Shop, Journal, Help, hidden Checkout) and
+	content/nonprofit (Programs, Impact, Stories, FAQ). Topology ownership is
+	unchanged and no generator was added: the planner, wizard page choices and
+	VFS scaffolder all read the same matrix. A template-authored `sectionPool`
+	now stays authoritative over the industry contract. Proven in
+	`src/test/industryPageArchetypes.test.ts` (42 tests): unique routes, certified
+	design available for every expected section, nav depth, hidden utility
+	routes, and authored route identity (menu/listings/projects/insights).
+
 - [ ] **Phase 7 - Complete artifact and editor closure.**
 	Cover every runtime surface with stable artifacts, editable slots, intents,
 	bindings, data sources, capabilities, and toolbar contracts.
