@@ -8,7 +8,7 @@ import {
   filterRedundantPresentationOps,
   commitAdoptionRecord,
 } from '@/services/builder/builderCommitController';
-import type { SiteBundleSnapshot } from '@/types/siteBundle';
+import type { SiteBundleSnapshot } from '@/platform/core';
 
 const snapshot = {
   industry: 'salon',

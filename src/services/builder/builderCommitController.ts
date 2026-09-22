@@ -14,7 +14,7 @@
  */
 import type { CommitMutationInput, CommitMutationResult } from '@/services/vfsCommitService';
 import type { PresentationOp } from '@/types/patchPlan';
-import type { SiteBundleSnapshot } from '@/types/siteBundle';
+import type { SiteBundleSnapshot } from '@/platform/core';
 
 /** Identity + canonical state the builder holds for the open site. */
 export interface BuilderCommitContext {
