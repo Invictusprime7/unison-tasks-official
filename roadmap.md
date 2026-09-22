@@ -888,3 +888,4 @@ preview runtime — extend what exists.
 - [ ] P0.5 Audit all 35 VFS exemptions.
 - [ ] P0.6 Launcher strictPreflight → blocking.
 - [ ] P0.7 Unresolved page/module closure fatal before the accepted revision is persisted.
+- [x] P0.5 All 35 canonical VFS write exemptions audited: `scripts/canonical-vfs-exemption-registry.json` records nine approved categories (hydration, adoption, rollback, local-history, router-projection, workspace-import, editor-buffer, runtime-manifest, optimistic-hmr), maps every reason string to one, and freezes per-file/per-reason counts. `auditExemptions()` in the lint script rejects unregistered reasons, count growth and any `optimistic-hmr` exemption not chained to commitMutation/saveDraft within 120 lines. Tests: `src/test/canonicalVfsExemptionAudit.test.ts` (4).
