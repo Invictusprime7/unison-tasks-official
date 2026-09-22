@@ -1758,6 +1758,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       let explanationText = '';
       let multiFileOutput: Record<string, string> | null = null;
       let structuredContractExtractionFailed = false;
+      // P0.5: the authoritative verdict line, set only by the transaction layer.
+      let transactionVerdict: string | null = null;
 
       if (aiContent) {
         const trimmed = aiContent.trim();
@@ -1765,17 +1767,18 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         const structuredOutput = extractMultiFileOutput(trimmed);
         if (structuredOutput) {
           multiFileOutput = structuredOutput.files;
-          explanationText = structuredOutput.explanation || '✅ Multi-file project generated and applied.';
+          explanationText = neutralizeModelSuccessClaim(structuredOutput.explanation) || CANDIDATE_GENERATED_NOTICE;
           console.log('[AIBuilderPanel] Parsed multi-file output:', Object.keys(multiFileOutput));
         }
         if (!multiFileOutput) {
           const stylesheetOutput = extractStylesheetOutput(trimmed);
           if (stylesheetOutput) {
             multiFileOutput = stylesheetOutput;
-            explanationText = '✅ Theme stylesheet applied.';
+            explanationText = CANDIDATE_STYLESHEET_NOTICE;
             console.log('[AIBuilderPanel] Parsed stylesheet output for /src/index.css');
           }
         }
+
 
       // Pre-processing: Detect if content is AI reasoning/prose with no usable code
       // AI sometimes outputs planning text with inline HTML tag refs like `<style>`, `<nav>`
