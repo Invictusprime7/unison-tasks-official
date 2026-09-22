@@ -20,6 +20,7 @@
  */
 
 import { describePageArchetypes, normalizePageSectionOrder } from '@/sections/pageArchetypeContract';
+import type { SiteDesignContractProjection } from '@/services/launch/siteDesignContract';
 
 export interface CompositionContractBrief {
   roles: readonly string[];
@@ -28,6 +29,8 @@ export interface CompositionContractBrief {
   pinnedVariants?: Readonly<Record<string, string>>;
   /** Industry dialect key — modulates the page archetypes (Phase 7). */
   industry?: string;
+  /** The compiled site design contract, projected for transport (Phase 7 / P1.8). */
+  designContract?: SiteDesignContractProjection;
 }
 
 
