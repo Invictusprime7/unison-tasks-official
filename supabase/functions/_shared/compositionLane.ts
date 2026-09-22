@@ -144,11 +144,12 @@ export async function runCompositionLane(context: string, headers: Record<string
       issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
       const advisory = normalized && options.brief ? compositionAdvisoryIssues(normalized, options.brief) : [];
       errorType = parsed.success ? 'composition_catalog' : 'composition_contract';
-      if (normalized && !issues.length && !(advisory.length && attempt === 0 && options.brief)) {
+      if (normalized && !issues.length) {
+        // Unmet page requirements are observability only: the compiler resolves
+        // certified defaults, so they never cost the user a launch or a retry.
         if (advisory.length) console.warn('[wizard-composition] accepted with unmet page requirements', { advisory: advisory.slice(0, 10) });
         return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
       }
-      if (normalized && !issues.length) issues = advisory;
     } catch { issues = ['Return valid JSON matching the supplied output schema.']; errorType = 'composition_contract'; }
     if (attempt === 0 && options.brief) {
       console.warn('[wizard-composition] requesting AI repair', { issues: issues.slice(0, 20) });
