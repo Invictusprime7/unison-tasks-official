@@ -2004,12 +2004,16 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               vfsEventBus.emit('ai:apply:complete', { filesWritten: Object.keys(normalizedFiles), source: 'multi-file' });
               const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
               toast.success(`✅ Multi-file project applied${approvalNote}`);
+              // P0.5: the verdict comes from the transaction, not from AI prose.
+              transactionVerdict = transactionVerdictLine('verified');
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated files.';
               liveStep('error', 'AI edit was not applied', applyError);
               vfsEventBus.emit('ai:apply:error', { message: applyError, source: 'multi-file' });
               toast.error('AI edit was not applied', { description: applyError, duration: 8000 });
+              transactionVerdict = transactionVerdictLine('failed', applyError);
             }
+
           } else if (onFilesPatch) {
             onFilesPatch(normalizedFiles);
             toast.success('✅ Multi-file project applied to VFS');
