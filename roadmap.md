@@ -765,7 +765,19 @@ preview runtime — extend what exists.
 	`topologyVFSScaffolder` runs `assertArtifactCatalogClosure` so a required
 	media slot with no image is loud instead of a blank frame. The catalog never
 	fabricates media. Tests: `src/test/resolvedArtifactCatalog.test.ts`.
-- [ ] 10. Legacy fallback retirement
+- [x] 10. Legacy fallback retirement — a section family's *fallback* design may
+	no longer be a generic pre-21st layout. `SECTION_FAMILY_EMIT` now declares a
+	certified `defaultVariantId` for all seventeen families,
+	`isCertifiedImplementation` (portable-recipe + `certification: 'approved'`)
+	is the single certification predicate, and `certifiedDefaultVariantId`
+	accepts a declared default or layout token only when it is certified,
+	otherwise it takes the family's first certified implementation and throws
+	when none exists. Unknown layout tokens and unknown variant ids therefore
+	resolve to certified designs instead of the retired generic ones. Registered
+	uncertified variants stay resolvable when a composition names them
+	explicitly — retirement applies to fallbacks only.
+	Tests: `src/test/legacyFallbackRetirement.test.ts`.
+
 - [ ] 11. Direct VFS writers 42 → 0
 - [ ] 12. WebBuilder controller extraction
 

@@ -27,7 +27,10 @@ describe('Wizard layout presentation', () => {
     const section = (type: SectionEntry['type'], layout: string): SectionEntry => ({ id: 'example', type, props: { layout } } as SectionEntry);
     expect(resolveSectionLayout(section('hero', 'split'))?.id).toBe('hero:split-image');
     expect(resolveSectionLayout(section('testimonials', 'carousel'))?.id).toBe('testimonials:rail');
-    expect(resolveSectionLayout(section('services', 'unknown'))?.id).toBe('services:card-grid');
+    // P1.10: an unresolvable layout token falls back to the family's certified
+    // implementation, never to the retired generic layout.
+    expect(resolveSectionLayout(section('services', 'unknown'))?.id).toBe('services:editorial-rows');
+
     expect(resolveSectionLayout({ ...section('hero', 'split'), variantId: 'hero:centered' })?.id).toBe('hero:centered');
   });
 
