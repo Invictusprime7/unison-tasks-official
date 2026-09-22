@@ -252,8 +252,16 @@ export const AIDesignAssistant: React.FC<AIDesignAssistantProps> = ({
         // Apply edit to selected element or scene
         addMessage("assistant", "🔧 Applying your changes...", "text");
         
-        await actions.applyAIEdit(prompt, state.selectedNodeId || undefined);
-        addMessage("assistant", "✅ Changes applied!", "edit");
+        const changed = await actions.applyAIEdit(prompt, state.selectedNodeId || undefined);
+        if (changed) {
+          addMessage("assistant", "✓ Changes applied", "edit");
+        } else {
+          addMessage(
+            "assistant",
+            `✗ Changes were not applied — ${state.lastError || "nothing in the design changed."}`,
+            "error",
+          );
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong";
@@ -285,7 +293,7 @@ export const AIDesignAssistant: React.FC<AIDesignAssistantProps> = ({
                           action.prompt.includes("cta") ? "cta" : "hero";
       actions.addSection(sectionType);
       addMessage("user", action.prompt);
-      addMessage("assistant", `✅ Added ${sectionType} section!`, "edit");
+      addMessage("assistant", `✓ Added the ${sectionType} section`, "edit");
     }
   };
 
