@@ -20,6 +20,7 @@
  */
 
 import { describePageArchetypes, normalizePageSectionOrder } from '@/sections/pageArchetypeContract';
+import type { SiteDesignContractProjection } from '@/services/launch/siteDesignContract';
 
 export interface CompositionContractBrief {
   roles: readonly string[];
@@ -28,6 +29,8 @@ export interface CompositionContractBrief {
   pinnedVariants?: Readonly<Record<string, string>>;
   /** Industry dialect key — modulates the page archetypes (Phase 7). */
   industry?: string;
+  /** The compiled site design contract, projected for transport (Phase 7 / P1.8). */
+  designContract?: SiteDesignContractProjection;
 }
 
 
@@ -81,11 +84,15 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
     `8. Experience preference is "${brief.experiencePreference ?? 'standard'}". Every advertised ID is already compatibility-filtered; never invent or import a stronger runtime experience.`,
     `9. User-pinned family choices are final and override AI selection: ${Object.entries(brief.pinnedVariants ?? {}).map(([family, id]) => `${family}=${id}`).join(', ') || 'none'}. If selecting a pinned family, use exactly its pinned ID.`,
     '10. Page archetypes are machine-checked: each role below states the families it must include, the families and design traits it must never include (negative vocabulary) and its body-section ceiling. A page that borrows another role\'s composition is discarded.',
+    brief.designContract
+      ? '11. The compiled site design contract below is the site-wide authority: one art direction, one type and geometry grammar, one motion budget, and a body-section budget per page. Stay inside every page budget and prove every required page role.'
+      : '',
+    brief.designContract?.summary ?? '',
     'PAGE ARCHETYPES (page-specific purpose, required and forbidden vocabulary):',
     describePageArchetypes(brief.roles, brief.industry),
     'ELIGIBLE VARIANT IDS PER ROLE (choose only from these):',
     perRole || '  (none)',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 /**

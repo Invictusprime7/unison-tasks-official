@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalizePageSectionOrder, pageArchetypeIssues } from './pageArchetypeContract.ts';
+import { projectionDensityIssues, type SiteDesignContractProjection } from './siteDesignContractProjection.ts';
 
 export const COMPOSITION_SYSTEM_PROMPT = `You compose Unison pages using only the supplied local variant catalog.
 Return ONLY JSON shaped as {"version":"1.0","pages":[{"role":"home","sectionOrder":["navbar","hero","services","footer"],"variants":{"services":"an eligible catalog ID"},"copy":{"hero":{"headline":"Original business-specific headline"}}}]}.
@@ -82,6 +83,8 @@ export interface CompositionBrief {
   designSelection?: { pinnedVariants?: Record<string, string> };
   /** Industry dialect key — modulates the page archetypes (Phase 7). */
   industry?: string;
+  /** Compiled site design contract, projected by the client (Phase 7 / P1.8). */
+  designContract?: SiteDesignContractProjection;
 }
 
 /** Actionable paths only: do not log business copy or entire model responses. */
@@ -109,6 +112,9 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
     }
     // Negative vocabulary and body ceiling are hard: they must never ship.
     issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags, { requireFamilies: false, industry: brief.industry }));
+    // Compiled site design contract: page density budget is hard, required
+    // creative roles are advisory (the compiler resolves certified defaults).
+    issues.push(...projectionDensityIssues(brief.designContract, page.role, page.sectionOrder).hard);
   }
   return issues;
 }
@@ -119,8 +125,11 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
  */
 export function compositionAdvisoryIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
   const normalized = normalizeCompositionPlan(plan, brief);
-  return normalized.pages.flatMap(page => pageArchetypeIssues(page.role, page.sectionOrder, {}, { industry: brief.industry })
-    .filter(issue => issue.includes('must include')));
+  return normalized.pages.flatMap(page => [
+    ...pageArchetypeIssues(page.role, page.sectionOrder, {}, { industry: brief.industry })
+      .filter(issue => issue.includes('must include')),
+    ...projectionDensityIssues(brief.designContract, page.role, page.sectionOrder).advisory,
+  ]);
 }
 
 /** Dedicated data-only lane. One bounded AI repair, never a deterministic substitute. */

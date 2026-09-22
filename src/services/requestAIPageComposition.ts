@@ -5,6 +5,7 @@ import { buildWizardDesignIntervention } from './wizardDesignIntervention';
 import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
 import { VARIANT_REGISTRY, getGenerationVariantsForSection, getVariantById } from '@/sections/variants/registry';
 import { pageArchetypeIssues } from '@/sections/pageArchetypeContract';
+import { compileSiteDesignContract, projectSiteDesignContract, projectionDensityIssues } from '@/services/launch/siteDesignContract';
 import type { VariantId } from '@/sections/variants/types';
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
 import type { WizardSelections } from '@/types/playground';
@@ -26,6 +27,15 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
   const experiencePreference = selections.designSelection?.experience ?? 'standard';
   const pinnedVariants = Object.fromEntries(Object.values(selections.designSelection?.sectionPins ?? {})
     .map(id => [String(id).split(':')[0], id]));
+  // The site design contract is compiled ONCE here, at the canonical acceptance
+  // point, and transported as a projection. Downstream never recompiles it.
+  const designContract = projectSiteDesignContract(compileSiteDesignContract({
+    industry: selections.industryOverlay,
+    roles,
+    artDirectionPackId: pack.id,
+    experience: experiencePreference,
+    mode: selections.designSelection?.mode ?? 'auto',
+  }));
   const variants = [...new Map(Object.keys(VARIANT_REGISTRY).flatMap(type => roles.flatMap(role =>
     getGenerationVariantsForSection(type as import('@/sections/types').SectionType, pack, role))).map(variant => [variant.id, variant])).values()]
     .filter(variant => isImplementationExperienceCompatible(deriveImplementationVisualSignature(variant), experiencePreference))
@@ -52,7 +62,8 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
          compatibleExperiencePreferences: implementation.compatibleExperiencePreferences,
          artifactContract: implementation.artifactContract,
        })),
-      canonicalContract: renderCompositionCanonicalContract({ roles, variants, experiencePreference, pinnedVariants, industry: selections.industryOverlay }),
+      designContract,
+      canonicalContract: renderCompositionCanonicalContract({ roles, variants, experiencePreference, pinnedVariants, industry: selections.industryOverlay, designContract }),
       output: { version: '1.0', pages: [{ role: 'home', sectionOrder: ['navbar','hero','services','testimonials','cta','footer'], variants: { services: 'choose an eligible id' }, copy: { hero: { headline: 'Original business-specific headline', subheadline: 'Useful supporting copy' } } }] },
       constraints: 'Choose only listed IDs, roles and families. Include every requested role exactly once with at least one eligible variant choice. sectionOrder lists desired family order; eligible missing sections with copy are added and existing business sections are preserved. Copy is optional because canonical business content is preserved. When writing copy, use original headline, subheadline and description text by family. For services/features use copy.items with title and description; for FAQ use question and answer. Do not invent testimonials, metrics, certifications, prices or business facts. Navbar, hero and footer positions are compiler-owned. Never alter data, intents, assets, theme, dependencies or files.',
     }) }] }, { signal, functionName: 'wizard-site-composer' });
@@ -73,6 +84,10 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
       // model; the client gate enforces the negative vocabulary and ceiling.
       { requireFamilies: false, industry: selections.industryOverlay }));
     if (archetypeIssues.length) return fail('invalid-response', { message: 'AI composition violated the page archetype contract: ' + archetypeIssues.slice(0, 6).join('; ') });
+    // Compiled site design contract: the page density budget is hard here too,
+    // so a page can never ship thinner or longer than its compiled profile.
+    const densityIssues = plan.pages.flatMap(page => projectionDensityIssues(designContract, page.role, page.sectionOrder).hard);
+    if (densityIssues.length) return fail('invalid-response', { message: 'AI composition violated the site design contract: ' + densityIssues.slice(0, 6).join('; ') });
     const missingRoles = roles.filter(role => !plan.pages.some(page => page.role === role && Object.keys(page.variants).length > 0));
     if (missingRoles.length) return fail('incomplete-plan', { missingRoles, message: 'AI omitted a valid composition for: ' + missingRoles.join(', ') + '. Please retry generation.' });
     console.info('[wizard-composition] accepted', { roles: plan.pages.map(page => page.role) });
