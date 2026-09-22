@@ -287,6 +287,7 @@ export function applyAIOutputToVFS(
     }
 
     // 4. Import all files into VFS atomically
+    // canonical-vfs-exempt: projection of an already-accepted AI apply transaction
     vfs.importFiles(mergedFiles);
 
     const filesWritten = Object.keys(aiFiles);
