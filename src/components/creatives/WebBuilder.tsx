@@ -2998,7 +2998,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
     const currentVariants = snapshot.meta?.designIntervention?.activeVariants ?? {};
     const presentationOps = requestedOps.filter(
-      (op) => currentVariants[op.sectionId] !== op.variantId,
+      (op) => op.type !== 'setVariant' || currentVariants[op.sectionId] !== op.variantId,
     );
     if (presentationOps.length === 0) return true;
 
