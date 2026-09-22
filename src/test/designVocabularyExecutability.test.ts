@@ -117,11 +117,12 @@ describe('sealed composition directive', () => {
   it('describes the design language only through implementations that claim one', (): void => {
     const { aiDirective, activeVariants } = buildWizardDesignIntervention(launches[0]);
     const claimed = new Set(
-      Object.values(activeVariants)
-        .map((id) => getDesignImplementation(id)?.vocabulary)
-        .filter(Boolean)
-        .map((ref) => ref!.id),
+      Object.values(activeVariants).flatMap((id) => {
+        const implementation = getDesignImplementation(id);
+        return implementation ? getImplementationVocabularyRefs(implementation).map((ref) => ref.id) : [];
+      }),
     );
+
     const stated = [...aiDirective.matchAll(/design language is ([^;]+);/g)][0]?.[1]
       .split(',').map((id) => id.trim()) ?? [];
 
