@@ -187,7 +187,41 @@ export const PAGE_ARCHETYPES: Readonly<Record<string, PageArchetype>> = ARCHETYP
 export const pageArchetypeFor = (role: string): PageArchetype =>
   PAGE_ARCHETYPES[role] ?? PAGE_ARCHETYPES.custom;
 
+const union = <T,>(...groups: ReadonlyArray<readonly T[] | undefined>): T[] =>
+  Array.from(new Set(groups.flatMap(group => group ?? [])));
+
+/**
+ * The page archetype modulated by the industry dialect (governing plan,
+ * Phase 7 / Invariant K). The dialect may add required and recommended
+ * families and widen the negative vocabulary; it can never strip a family the
+ * page role requires, and it never touches rhythm, density or the ceiling —
+ * those stay page-owned so the homepage's language survives.
+ */
+export function resolvePageArchetype(role: string, industry?: string | null): PageArchetype {
+  const base = pageArchetypeFor(role);
+  const profile = industryCreativeProfile(industry);
+  if (!profile) return base;
+  const page = profile.pageProfiles[role];
+
+  const requiredFamilies = union(base.requiredFamilies, page?.requiredFamilies);
+  const preferred = union(page?.preferredFamilies, profile.preferredFamilies);
+  const forbiddenFamilies = union(base.forbiddenFamilies, profile.discouragedFamilies, page?.discouragedFamilies)
+    .filter(family => !requiredFamilies.includes(family) && !(page?.preferredFamilies ?? []).includes(family));
+  const recommendedFamilies = union(base.recommendedFamilies, preferred)
+    .filter(family => !forbiddenFamilies.includes(family) && !requiredFamilies.includes(family));
+
+  return {
+    ...base,
+    requiredFamilies,
+    recommendedFamilies,
+    forbiddenFamilies,
+    forbiddenTags: union(base.forbiddenTags, profile.discouragedTags),
+    maxBodySections: Math.max(base.maxBodySections, requiredFamilies.length),
+  };
+}
+
 const isChrome = (family: string) => COMPILER_OWNED_FAMILIES.includes(family as SectionType);
+
 
 /** Resolved spacing scale for one page role against the sealed pack. */
 export function resolvePageScale(role: string, pack: ArtDirectionPack): { rhythm: RhythmId; density: DensityId } {
