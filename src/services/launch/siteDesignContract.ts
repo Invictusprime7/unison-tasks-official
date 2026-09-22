@@ -292,6 +292,70 @@ export function pageDensityIssues(
   return issues;
 }
 
+/* ---------------------------------------------------------------------------
+ * Wire projection
+ *
+ * The contract is compiled ONCE, on the client, at the canonical acceptance
+ * point. Everything downstream — including the composition edge lane — reads a
+ * serialisable projection of that single compilation instead of recompiling
+ * against its own copy of the packs. Projection-only downstream: there is no
+ * second authority to drift from.
+ * ------------------------------------------------------------------------- */
+
+export interface SiteDesignContractProjection {
+  version: typeof SITE_DESIGN_CONTRACT_VERSION;
+  industry: string;
+  artDirectionPackId: string;
+  negativeVocabularyEnforced: boolean;
+  chromeFamilies: string[];
+  /** The prompt block, rendered from the compiled contract. */
+  summary: string;
+  pages: Record<string, { required: string[]; min: number; max: number }>;
+}
+
+/** Serialise the compiled contract for transport to a generation lane. */
+export function projectSiteDesignContract(contract: SiteDesignContract): SiteDesignContractProjection {
+  return {
+    version: contract.version,
+    industry: contract.industry,
+    artDirectionPackId: contract.artDirectionPackId,
+    negativeVocabularyEnforced: contract.negativeVocabularyEnforced,
+    chromeFamilies: [...contract.chromeFamilies],
+    summary: describeSiteDesignContract(contract),
+    pages: Object.fromEntries(Object.entries(contract.pages).map(([role, page]) => [role, {
+      required: [...page.requiredFamilies],
+      min: page.densityBudget.min,
+      max: page.densityBudget.max,
+    }])),
+  };
+}
+
+/**
+ * Density and required-role validation against the transported projection.
+ * Mirrored byte-for-byte at supabase/functions/_shared/siteDesignContractProjection.ts
+ * and drift-tested; keep the two bodies identical.
+ */
+export function projectionDensityIssues(
+  projection: SiteDesignContractProjection | undefined,
+  role: string,
+  sectionOrder: readonly string[],
+): { hard: string[]; advisory: string[] } {
+  const page = projection?.pages[role];
+  if (!page) return { hard: [], advisory: [] };
+  const chrome = new Set(projection!.chromeFamilies);
+  const body = sectionOrder.filter(family => !chrome.has(family));
+  const hard: string[] = [];
+  const advisory: string[] = [];
+  if (body.length < page.min) hard.push(`pages.${role}: at least ${page.min} body sections`);
+  if (body.length > page.max) hard.push(`pages.${role}: at most ${page.max} body sections`);
+  for (const required of page.required) {
+    if (!sectionOrder.includes(required)) {
+      advisory.push(`pages.${role}: a ${role} page must prove its ${required} role`);
+    }
+  }
+  return { hard, advisory };
+}
+
 /** The contract block handed verbatim to a generation lane. */
 export function describeSiteDesignContract(contract: SiteDesignContract): string {
   const list = (values: readonly string[]) => (values.length ? values.join(', ') : 'none');
