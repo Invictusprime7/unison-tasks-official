@@ -5,6 +5,7 @@ import { buildWizardDesignIntervention } from './wizardDesignIntervention';
 import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
 import { VARIANT_REGISTRY, getGenerationVariantsForSection, getVariantById } from '@/sections/variants/registry';
 import { pageArchetypeIssues } from '@/sections/pageArchetypeContract';
+import { compileSiteDesignContract, projectSiteDesignContract, projectionDensityIssues } from '@/services/launch/siteDesignContract';
 import type { VariantId } from '@/sections/variants/types';
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
 import type { WizardSelections } from '@/types/playground';
