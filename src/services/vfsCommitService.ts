@@ -548,6 +548,34 @@ export async function commitMutation(
     ),
   );
 
+  // 6b. Site-wide design contract -------------------------------------------
+  // The homepage established the visual language at generation time; every
+  // later mutation stays inside it. Mechanical drift (a page picking different
+  // site chrome, or claiming the homepage headline tier) is repaired here, and
+  // a palette escape is a blocker for AI-authored edits rather than a silent
+  // regression the user discovers in preview.
+  if ((input.source === 'ai-builder' || input.source === 'playground-edit')
+    && !restoredRevision && !reviewedArtifact && !reviewedComposition) {
+    const registryPages = ((snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry as
+      { pages?: Record<string, { isHome?: boolean; filePath?: string }> } | undefined)?.pages ?? {};
+    const homePath = Object.values(registryPages).find(page => page?.isHome)?.filePath ?? null;
+    const designContract = enforceSiteDesignContract({ files, homePath });
+    if (!designContract.skipped) {
+      files = designContract.files;
+      if (designContract.repairs.length) {
+        log('siteDesignContract', 'info', `repaired ${designContract.repairs.length} design drift(s)`, designContract.repairs);
+      }
+      if (designContract.violations.length) {
+        log('siteDesignContract', 'warn', 'site design contract violations', designContract.violations);
+        if (input.source === 'ai-builder') {
+          throw new Error(
+            `[VFSCommitService] This edit breaks the site's design language: ${designContract.violations[0]}`,
+          );
+        }
+      }
+    }
+  }
+
   const requirePreview = input.options?.requirePreviewPass !== false;
   const requireReadiness = input.options?.requireReadinessPass !== false;
 
