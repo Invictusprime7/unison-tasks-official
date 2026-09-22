@@ -28,6 +28,7 @@ import type {
 } from '@/platform/core/designVocabulary';
 import { getDesignImplementation, getImplementationVocabularyRefs } from '@/services/designImplementationRegistry';
 import { resolveAvailableAutoArtDirectionPackId } from '@/services/wizardDesignAvailability';
+import { selectAffineVariant } from '@/sections/compositionAffinity';
 
 
 
@@ -235,7 +236,7 @@ export function readWizardDesignIntervention(
       intervention.experienceBudget = intervention.experienceBudget ?? baseline.budget;
     }
     if (!intervention.activeVariants) {
-      intervention.activeVariants = buildActiveVariants(intervention.templateId, intervention.seed || 'legacy');
+      intervention.activeVariants = buildActiveVariants(intervention.templateId, intervention.seed || 'legacy', undefined, intervention.industry);
     }
     if (!isArtDirectionPackId(intervention.artDirectionPackId)) {
       // Legacy brief written before art direction was sealed — re-derive it
@@ -488,7 +489,7 @@ export function buildWizardDesignIntervention(
         experiencePreference: input.designSelection?.experience,
         pinnedVariants,
       }) ?? undefined : undefined;
-  const activeVariants = buildActiveVariants(input.templateId, seed, artDirectionPackId);
+  const activeVariants = buildActiveVariants(input.templateId, seed, artDirectionPackId, typeof industry === 'string' ? industry : String(industry));
   const homeChoices = compositionPlan?.pages.find(page => page.role === 'home')?.variants;
   const home = input.templateId ? getCompositionById(input.templateId) : undefined;
   for (const section of home?.sections ?? []) {
