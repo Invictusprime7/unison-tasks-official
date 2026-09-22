@@ -2173,13 +2173,21 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               vfsEventBus.emit('ai:apply:complete', { filesWritten: [singleFilePath], source: 'single-file' });
               const approvalNote = responseMeta?.requiresApproval ? ' — review recommended' : '';
               toast.success(isSurgicalEdit ? `✅ Edit applied${approvalNote}` : `✅ Code applied${approvalNote}`);
+              // P0.5: only the transaction layer may assert success.
+              setMessages(prev => prev.map(m => m.id === streamingId
+                ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('verified')}` }
+                : m));
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated file.';
               advancePlanStep(taskPlan, 'refresh_preview', 'failed');
               liveStep('error', 'AI edit was not applied', applyError);
               vfsEventBus.emit('ai:apply:error', { message: applyError, source: 'single-file' });
               toast.error('AI edit was not applied', { description: applyError, duration: 8000 });
+              setMessages(prev => prev.map(m => m.id === streamingId
+                ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('failed', applyError)}` }
+                : m));
             }
+
           } else if (onCodeGenerated) {
             onCodeGenerated(generatedCode);
             toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
