@@ -439,11 +439,14 @@ function buildRoleComposition(
     getIndustryProfile(plan.industry)?.defaultPages.find((spec) => spec.path === page.route)
       ?.expectedSections ?? []
   ) as SectionType[];
+  // An explicit template-authored pool is a deliberate override and stays
+  // authoritative; the industry contract only fills the generic role pool.
+  const authoredPool = template.sectionPool?.[role as TemplatePageRole];
   const rolePool: SectionType[] =
-    template.sectionPool?.[role as TemplatePageRole] ??
+    authoredPool ??
     DEFAULT_ROLE_SECTION_POOL[role] ??
     DEFAULT_ROLE_SECTION_POOL.custom;
-  const rawPool = contractTypes.length > 0
+  const rawPool = !authoredPool && contractTypes.length > 0
     ? [...contractTypes, ...rolePool.filter((type) => !contractTypes.includes(type))]
     : rolePool;
   const hasNavbar = rawPool.includes('navbar');
