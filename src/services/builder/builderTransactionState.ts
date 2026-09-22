@@ -94,7 +94,7 @@ export function withTransactionVerdict(
   reason?: string,
 ): string {
   const line = transactionVerdictLine(verdict, reason);
+  if (body.includes(line)) return body;
   const clean = neutralizeModelSuccessClaim(body) || CANDIDATE_GENERATED_NOTICE;
-  if (clean.includes(line)) return clean;
   return `${clean}\n\n${line}`;
 }
