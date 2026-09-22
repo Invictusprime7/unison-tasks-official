@@ -37,11 +37,14 @@ describe('§7.7 site-wide edits use inheritance', () => {
 
   it('keeps a named page as an explicit exception', () => {
     const next = applySemanticPresentationOps(intervention(), [
-      { type: 'setFamilyVariant', sectionType: 'hero', variantId: target.id, exceptPageRoles: ['about'] },
+      { type: 'setFamilyVariant', sectionType: 'hero', variantId: target.id, exceptPageRoles: ['home'] },
     ]);
+    const home = next.compositionPlan!.pages.find(page => page.role === 'home');
     const about = next.compositionPlan!.pages.find(page => page.role === 'about');
-    expect(about?.variants.hero).toBe(heroes[0].id);
+    expect(home?.variants.hero).toBe(heroes[0].id);
+    expect(about?.variants.hero).toBeUndefined();
   });
+
 
   it('refuses a design that is not registered for the family', () => {
     expect(() => applySemanticPresentationOps(intervention(), [
