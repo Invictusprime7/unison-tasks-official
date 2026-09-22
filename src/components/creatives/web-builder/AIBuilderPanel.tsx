@@ -2005,10 +2005,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               },
             );
             if (applyOutcome.success) {
-              liveStep('complete', `✅ Applied ${Object.keys(normalizedFiles).length} files to project`);
+              liveStep('complete', `✓ Applied ${Object.keys(normalizedFiles).length} files to project`);
               vfsEventBus.emit('ai:apply:complete', { filesWritten: Object.keys(normalizedFiles), source: 'multi-file' });
               const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
-              toast.success(`✅ Multi-file project applied${approvalNote}`);
+              toast.success(`✓ Multi-file project applied${approvalNote}`);
               // P0.5: the verdict comes from the transaction, not from AI prose.
               transactionVerdict = transactionVerdictLine('verified');
             } else {
@@ -2020,8 +2020,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             }
 
           } else if (onFilesPatch) {
+            // No verified commit path here — never claim the edit landed.
             onFilesPatch(normalizedFiles);
-            toast.success('✅ Multi-file project applied to VFS');
+            toast.warning('Files handed to the editor — not verified in the preview yet');
+            transactionVerdict = transactionVerdictLine(
+              'held-for-review',
+              'This workspace has no verified save path, so the change is unconfirmed.',
+            );
           } else {
             console.warn('[AIBuilderPanel] No VFS callback available for multi-file output!');
           }
@@ -2182,10 +2187,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               advancePlanStep(taskPlan, 'refresh_preview', 'done');
               advancePlanStep(taskPlan, 'validate', 'done');
               advancePlanStep(taskPlan, 'report', 'done');
-              liveStep('complete', `✅ Applied to ${singleFilePath}`);
+              liveStep('complete', `✓ Applied to ${singleFilePath}`);
               vfsEventBus.emit('ai:apply:complete', { filesWritten: [singleFilePath], source: 'single-file' });
               const approvalNote = responseMeta?.requiresApproval ? ' — review recommended' : '';
-              toast.success(isSurgicalEdit ? `✅ Edit applied${approvalNote}` : `✅ Code applied${approvalNote}`);
+              toast.success(isSurgicalEdit ? `✓ Edit applied${approvalNote}` : `✓ Code applied${approvalNote}`);
               // P0.5: only the transaction layer may assert success.
               setMessages(prev => prev.map(m => m.id === streamingId
                 ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('verified')}` }
@@ -2203,7 +2208,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
           } else if (onCodeGenerated) {
             onCodeGenerated(generatedCode);
-            toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');
+            toast.success(isSurgicalEdit ? '✓ Edit applied to preview' : '✓ Code applied to preview');
           }
 
           // Notify about removed/blocked files from review
@@ -2465,7 +2470,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           const parsed = JSON.parse(jsonStr);
           if (parsed.files && typeof parsed.files === 'object') {
             fixFiles = parsed.files;
-            fixExplanation = parsed.explanation || '✅ Debug fix applied.';
+            fixExplanation = parsed.explanation || 'Proposed a debug fix.';
           }
         } catch { /* not JSON */ }
 
@@ -2474,14 +2479,14 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           const fenceMatch = rawContent.match(/```(?:tsx|jsx|ts|js)?\s*\n([\s\S]*?)```/);
           if (fenceMatch) {
             fixCode = fenceMatch[1].trim();
-            fixExplanation = rawContent.replace(/```[\s\S]*?```/g, '').trim() || '✅ Fix applied.';
+            fixExplanation = rawContent.replace(/```[\s\S]*?```/g, '').trim() || 'Proposed a fix.';
           }
         }
 
         // Strategy 3: Direct code (starts with import/export)
         if (!fixFiles && !fixCode && /^(?:import |export )/.test(rawContent.trim())) {
           fixCode = rawContent.trim();
-          fixExplanation = '✅ Fix applied.';
+          fixExplanation = 'Proposed a fix.';
         }
 
         // Fallback: treat entire content as explanation
