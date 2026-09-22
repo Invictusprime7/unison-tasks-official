@@ -7260,67 +7260,51 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   if (!commitCtx) {
                     return { success: false, errors: ['Canonical project identity is unavailable.'] };
                   }
-                  const dry = await dryRunAiCommit(commitCtx);
-                  if (!dry.accepted) {
-                    console.warn('[WebBuilder] AI apply rejected by commit gate:', dry.blockers);
+                  // P0.3 — one transaction: validate + persist in a single
+                  // canonical commit, mirror, then settle on one terminal state.
+                  const beforeSnapshotFiles = beforeFiles;
+                  const outcome = await runBuilderAiMutation(commitCtx, {
+                    mirror: (patch) => {
+                      const applied = aiVFS.applyCode(patch);
+                      return { success: applied.success, errors: applied.errors, filesWritten: applied.filesWritten };
+                    },
+                    rollback: (restore) => { aiVFS.applyCode(restore); },
+                  });
+
+                  if (outcome.state === 'rejected') {
+                    console.warn('[WebBuilder] AI apply rejected by commit gate:', outcome.blockers);
                     toast.error('AI edit rejected — preview would break', {
-                      description: dry.rejectMessage ?? 'Canonical preview gate blocked this patch.',
+                      description: outcome.reason ?? 'Canonical preview gate blocked this patch.',
                       duration: 8000,
                     });
-                    return { success: false, errors: dry.blockers.map((blocker) => blocker.message) };
+                    return { success: false, errors: outcome.errors };
                   }
-                  let canonicalCommit: CommitMutationResult;
-                  try {
-                    canonicalCommit = await persistAiCommit(commitCtx);
-                  } catch (error) {
-                    const message = error instanceof Error ? error.message : String(error);
-                    toast.error('AI edit could not be committed', { description: message });
-                    return { success: false, errors: [message] };
+                  if (outcome.state === 'failed') {
+                    toast.error('AI edit could not be applied', { description: outcome.reason });
+                    return { success: false, errors: outcome.errors };
                   }
 
-                  const committedPatch: Record<string, string> = Object.fromEntries(
-                    Object.entries(canonicalCommit.vfsFiles)
-                      .filter(([path, contents]) => beforeFiles[path] !== contents),
-                  );
-                  const result = aiVFS.applyCode(committedPatch);
-                  console.log('[WebBuilder] aiVFS.applyCode result:', { success: result.success, filesWritten: result.filesWritten, errors: result.errors });
-                  if (result.success) {
-                    // Protect these paths from the snapshot projection until the
-                    // durable commit refreshes the snapshot with the same content.
-                    markLiveEditedVfsPaths(result.filesWritten);
-                    const appliedFiles = Object.fromEntries(
-                      result.filesWritten
-                        .filter((path) => files[path] !== undefined)
-                        .map((path) => [path, files[path]]),
-                    );
-                    const mergedFiles = {
-                      ...canonicalCommit.vfsFiles,
-                    };
-                    const syncedEntry = syncBuilderFromFiles(mergedFiles, activePagePath);
-                    console.log('[WebBuilder] Entry file for preview:', syncedEntry?.entryPath || 'NOT FOUND');
-                    setViewMode('canvas');
-                    console.log('[WebBuilder] AI→VFS orchestrator applied:', result.filesWritten.length, 'files,',
-                      Object.keys(result.dependencies.dependencies).length, 'deps');
-                    // Capture an edit snapshot so users can revert/reapply.
-                    const changedPaths = diffChangedPaths(beforeFiles, mergedFiles);
-                    if (changedPaths.length > 0) {
-                      const promptPreview = applyMeta?.prompt
-                        ? applyMeta.prompt.length > 60 ? `${applyMeta.prompt.slice(0, 57)}…` : applyMeta.prompt
-                        : `${changedPaths.length} file${changedPaths.length > 1 ? 's' : ''}`;
-                      pushAISnapshot(currentDraftId ?? null, {
-                        label: `AI · ${promptPreview}`,
-                        source: applyMeta?.origin === 'debug-fix' ? 'debug' : 'ai',
-                        before: beforeFiles,
-                        after: mergedFiles,
-                        changedPaths,
-                        meta: applyMeta,
-                      });
-                    }
-                    setCurrentRevisionId(canonicalCommit.persistedRevisionId!);
-                  } else {
-                    console.error('[WebBuilder] aiVFS.applyCode failed:', result.errors);
+                  const mergedFiles = outcome.committedFiles ?? beforeSnapshotFiles;
+                  markLiveEditedVfsPaths(outcome.changedPaths);
+                  const syncedEntry = syncBuilderFromFiles(mergedFiles, activePagePath);
+                  console.log('[WebBuilder] Entry file for preview:', syncedEntry?.entryPath || 'NOT FOUND');
+                  setViewMode('canvas');
+                  const changedPaths = diffChangedPaths(beforeSnapshotFiles, mergedFiles);
+                  if (changedPaths.length > 0) {
+                    const promptPreview = applyMeta?.prompt
+                      ? applyMeta.prompt.length > 60 ? `${applyMeta.prompt.slice(0, 57)}…` : applyMeta.prompt
+                      : `${changedPaths.length} file${changedPaths.length > 1 ? 's' : ''}`;
+                    pushAISnapshot(currentDraftId ?? null, {
+                      label: `AI · ${promptPreview}`,
+                      source: applyMeta?.origin === 'debug-fix' ? 'debug' : 'ai',
+                      before: beforeSnapshotFiles,
+                      after: mergedFiles,
+                      changedPaths,
+                      meta: applyMeta,
+                    });
                   }
-                  return { success: result.success, errors: result.errors };
+                  if (outcome.revisionId) setCurrentRevisionId(outcome.revisionId);
+                  return { success: true, errors: [] };
                 }}
                 onViewEdits={(edits) => {
                   // Switch to code view and highlight the edited files
