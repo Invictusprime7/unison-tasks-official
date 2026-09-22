@@ -752,7 +752,19 @@ preview runtime — extend what exists.
 	AI edits. Restores, reviewed artifacts and wizard launches are untouched
 	(Lane B already enforces the same contract at authoring time). Tests:
 	`src/test/homepageFirstContract.test.ts`.
-- [ ] 9. ResolvedArtifactCatalog as the consumer-facing runtime authority
+- [x] 9. ResolvedArtifactCatalog as the consumer-facing runtime authority —
+	`src/platform/core/resolvedArtifactCatalog.ts` owns the single declaration of
+	what counts as media (`MEDIA_PROP_KEYS`, `MEDIA_COLLECTION_KEYS`), the single
+	traversal (`enumerateCompositionMedia`) and the derived runtime projection
+	(`buildResolvedArtifactCatalog`): every reference carries its section, prop
+	path, canonical `data-ut-slot` id (derived from the M6 implementation
+	contract), required flag and origin (`business-asset` | `stock-default` |
+	`empty`). `assetSlotBinding` no longer keeps its own key list — it narrows the
+	catalog vocabulary to what may be substituted (brand `logo`/`logos` stay
+	template-owned) and returns the post-binding catalog in its report.
+	`topologyVFSScaffolder` runs `assertArtifactCatalogClosure` so a required
+	media slot with no image is loud instead of a blank frame. The catalog never
+	fabricates media. Tests: `src/test/resolvedArtifactCatalog.test.ts`.
 - [ ] 10. Legacy fallback retirement
 - [ ] 11. Direct VFS writers 42 → 0
 - [ ] 12. WebBuilder controller extraction
