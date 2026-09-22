@@ -29,8 +29,11 @@ export function projectionDensityIssues(
   const body = sectionOrder.filter(family => !chrome.has(family));
   const hard: string[] = [];
   const advisory: string[] = [];
-  if (body.length < page.min) hard.push(`pages.${role}: at least ${page.min} body sections`);
+  // The ceiling is hard (a padded page ships badly); the floor and the required
+  // creative roles are advisory, because the compiler resolves certified
+  // defaults for them and they must never cost a launch.
   if (body.length > page.max) hard.push(`pages.${role}: at most ${page.max} body sections`);
+  if (body.length < page.min) advisory.push(`pages.${role}: at least ${page.min} body sections`);
   for (const required of page.required) {
     if (!sectionOrder.includes(required)) {
       advisory.push(`pages.${role}: a ${role} page must prove its ${required} role`);
