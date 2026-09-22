@@ -521,7 +521,71 @@ export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> =
       motionDistance: '1.5rem',
     },
   },
+  /**
+   * Noir Atelier — the reference direction: an unlit studio ground, a
+   * perspective band of interior photography behind a monumental display
+   * lockup, one warm signal accent on the booking action, dark service tiles
+   * with a circled arrow, and a thin uppercase proof row closing the fold.
+   * Every implementation below is already certified 21st source; the pack
+   * only states the order the direction reaches for them in.
+   */
+  'noir-atelier': {
+    id: 'noir-atelier',
+    signature: {
+      typography: {
+        displayStack: '"Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif',
+        bodyStack: 'ui-sans-serif, system-ui, "Segoe UI", sans-serif',
+        displayWeight: 800,
+        bodyWeight: 400,
+        displayLineHeight: '0.94',
+        eyebrowTracking: '0.28em',
+        eyebrowTransform: 'uppercase',
+      },
+      gradient: 'ink-fade',
+      density: 'roomy',
+      hero: { layout: 'full-bleed', align: 'center', minHeight: '84vh', mediaRatio: '21 / 9' },
+      pill: 'pill-solid',
+      entrance: 'slow-pan',
+    },
+    name: 'Noir Atelier',
+    description: 'Unlit studio ground, perspective image band, monumental display lockup, one warm signal accent.',
+    navbarFamily: ['navbar:minimal-dark', 'navbar:floating-pill', 'navbar:centered-logo'],
+    footerFamily: ['footer:brand-social', 'footer:dark-band'],
+    sectionFamilies: {
+      ...UNIVERSAL_CERTIFIED_SECTION_FAMILIES,
+      hero: ['hero:image-stream', 'hero:prisma-cinematic', 'hero:full-bleed', 'hero:centered'],
+      services: ['services:product-cards', 'services:bento-spotlight', 'services:card-grid', 'services:editorial-rows', 'services:alternating', 'services:expandable'],
+      gallery: ['gallery:cinematic-grid', 'gallery:editorial-mosaic', 'gallery:masonry', 'gallery:case-study'],
+      stats: ['stats:proof-grid', 'stats:row', 'stats:highlight'],
+      testimonials: ['testimonials:spotlight', 'testimonials:grid', 'testimonials:columns'],
+      features: ['features:minimal-centered', 'features:spotlight-cards', 'features:grid'],
+      pricing: ['pricing:tiers', 'pricing:spotlight', 'pricing:feature-table', 'pricing:comparison', 'pricing:billing-toggle'],
+      cta: ['cta:signal-banner', 'cta:split-card', 'cta:centered'],
+      contact: ['contact:split-card', 'contact:editorial-form', 'contact:centered', 'contact:map-studio', 'contact:checkout-panel'],
+      about: ['about:story-panel', 'about:image-story', 'about:editorial-split'],
+      faq: ['faq:two-column', 'faq:accordion', 'faq:editorial', 'faq:searchable'],
+      team: ['team:profile-cards'],
+    },
+    motionProfile: 'gallery-inspection',
+    interactionProfile: 'image-lightbox',
+    design: {
+      typeScaleRatio: 1.414,
+      headingTracking: '-0.02em',
+      headingTransform: 'uppercase',
+      measure: '62ch',
+      rhythm: 'expansive',
+      radius: '0.375rem',
+      borderWeight: '1px',
+      surface: 'bordered',
+      accentPolicy: 'radial-bloom',
+      mediaTreatment: 'full-bleed',
+      motionDuration: '720ms',
+      motionEase: 'cubic-bezier(0.22, 1, 0.36, 1)',
+      motionDistance: '2rem',
+    },
+  },
   'cinematic-portfolio': {
+
     id: 'cinematic-portfolio',
     signature: {
       typography: {
