@@ -169,7 +169,9 @@ export function bindMediaToComposition(
   seedKey: string,
 ): { composition: TemplateComposition; report: AssetBindingReport } {
   const report: AssetBindingReport = { bound: 0, sections: [] };
-  if (!library.length) return { composition, report };
+  if (!library.length) {
+    return { composition, report: { ...report, catalog: buildResolvedArtifactCatalog(composition) } };
+  }
 
   const next = createPicker(library, seedKey || composition.id);
   const sections = composition.sections.map((section) => {
