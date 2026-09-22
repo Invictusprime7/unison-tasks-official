@@ -112,9 +112,16 @@ export function affinityBand(
   tolerance = 0.12,
 ): SectionVariant[] {
   if (candidates.length < 2) return [...candidates];
-  const scored = candidates.map(variant => ({ variant, score: compositionAffinityScore(variant, context) }));
-  const best = Math.max(...scored.map(entry => entry.score));
-  return scored.filter(entry => entry.score >= best - tolerance).map(entry => entry.variant);
+  const scored = candidates
+    .map(variant => ({ variant, score: compositionAffinityScore(variant, context) }))
+    .sort((left, right) => right.score - left.score);
+  const best = scored[0].score;
+  const band = scored.filter(entry => entry.score >= best - tolerance);
+  // Two sites in one industry must still read as two sites: the band always
+  // keeps the runner-up so the wizard seed retains real choice, while every
+  // lower-scoring (incoherent) implementation is dropped.
+  const widened = band.length >= 2 ? band : scored.slice(0, 2);
+  return widened.map(entry => entry.variant);
 }
 
 /**
