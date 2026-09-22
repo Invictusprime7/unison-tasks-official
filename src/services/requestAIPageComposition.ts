@@ -27,6 +27,15 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
   const experiencePreference = selections.designSelection?.experience ?? 'standard';
   const pinnedVariants = Object.fromEntries(Object.values(selections.designSelection?.sectionPins ?? {})
     .map(id => [String(id).split(':')[0], id]));
+  // The site design contract is compiled ONCE here, at the canonical acceptance
+  // point, and transported as a projection. Downstream never recompiles it.
+  const designContract = projectSiteDesignContract(compileSiteDesignContract({
+    industry: selections.industryOverlay,
+    roles,
+    artDirectionPackId: pack.id,
+    experience: experiencePreference,
+    mode: selections.designSelection?.mode ?? 'auto',
+  }));
   const variants = [...new Map(Object.keys(VARIANT_REGISTRY).flatMap(type => roles.flatMap(role =>
     getGenerationVariantsForSection(type as import('@/sections/types').SectionType, pack, role))).map(variant => [variant.id, variant])).values()]
     .filter(variant => isImplementationExperienceCompatible(deriveImplementationVisualSignature(variant), experiencePreference))
