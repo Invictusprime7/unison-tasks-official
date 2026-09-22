@@ -247,10 +247,19 @@ Review locally at /tools/section-variants.html (development only).
 	Grow in tested family-sized batches toward 100+ implementations. Every item
 	must declare semantic tokens, primitive dependencies, runtime cost, and
 	editor identity before it counts.
-- [ ] **Phase 5 - Make design vocabulary executable.**
-	Resolve Launcher-used vocabulary into registered implementation and primitive
-	recipes. The seeded compiler makes final choices; descriptive AI-only
-	candidate semantics are retired.
+- [x] **Phase 5 - Make design vocabulary executable.**
+	`src/services/launch/executableVocabulary.ts` is the single authority:
+	`resolveVocabularyExecution` classifies every entry as implementation /
+	adapter / primitive / none, and `isOfferableVocabulary` gates
+	`experienceCapabilityResolver` so descriptive-only and asset-dependent
+	entries (ModelViewer-backed 3D) never reach Lane B for any business model
+	or industry. 15 entries resolve through foundation primitive recipes; 24
+	now resolve to certified implementations via `vocabularyRefs` on the
+	registry (hero, content, media, commerce, navigation families). The seeded
+	compiler still makes final choices. Closure proven across all business
+	models x industries x style intents in
+	`src/test/launcherVocabularyClosure.test.ts`.
+
 - [ ] **Phase 6 - Expand industry families and page archetypes.**
 	Add booking, contractor, SaaS, agency, portfolio, store, and content depth
 	without changing topology ownership or adding a generator.
