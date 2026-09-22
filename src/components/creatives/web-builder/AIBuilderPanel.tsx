@@ -2177,6 +2177,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           } else if (onApplyToVFS && !multiFileOutput) {
             console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
             vfsEventBus.emit('ai:apply:start', { source: 'single-file' });
+            markPreviewPending();
             const applyOutcome = await applyAIBuilderFiles(onApplyToVFS, { [singleFilePath]: generatedCode }, {
               prompt: userContent,
               model: modelUsed,
