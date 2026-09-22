@@ -101,11 +101,15 @@ export function compositionAffinityScore(
   return clamp(score);
 }
 
-/** Candidates within the top affinity band — everything effectively tied at the top. */
+/**
+ * Candidates within the top affinity band. The band is deliberately wide: two
+ * sites in the same industry must still look like two sites, so affinity drops
+ * the incoherent choices and leaves the comparable ones to the seed.
+ */
 export function affinityBand(
   candidates: readonly SectionVariant[],
   context: CompositionAffinityContext = {},
-  tolerance = 0.05,
+  tolerance = 0.12,
 ): SectionVariant[] {
   if (candidates.length < 2) return [...candidates];
   const scored = candidates.map(variant => ({ variant, score: compositionAffinityScore(variant, context) }));
