@@ -70,7 +70,7 @@ import {
   type PatchSource,
   type PresentationOp,
 } from '@/types/patchPlan';
-import { getVariantById } from '@/sections/variants';
+import { applySemanticPresentationOps } from '@/services/builder/semanticPresentationOps';
 import { recordCommitOutcome } from '@/services/mutationLedger';
 
 
@@ -990,16 +990,10 @@ function applyPresentationOps(
     throw new Error('[VFSCommitService] presentation mutation requires a snapshot-owned design intervention.');
   }
 
-  const intervention = JSON.parse(JSON.stringify(snapshot.meta.designIntervention)) as typeof snapshot.meta.designIntervention;
-  for (const op of ops) {
-    const currentVariantId = intervention.activeVariants[op.sectionId];
-    const currentVariant = currentVariantId ? getVariantById(currentVariantId) : undefined;
-    const nextVariant = getVariantById(op.variantId as import('@/sections/variants').VariantId);
-    if (!currentVariant || !nextVariant || currentVariant.sectionType !== nextVariant.sectionType) {
-      throw new Error(`[VFSCommitService] invalid presentation variant ${op.variantId} for section ${op.sectionId}.`);
-    }
-    intervention.activeVariants[op.sectionId] = nextVariant.id;
-  }
+  const intervention = applySemanticPresentationOps(
+    snapshot.meta.designIntervention as import('@/services/wizardDesignIntervention').WizardDesignIntervention,
+    ops,
+  );
 
   const nextSnapshot: SiteBundleSnapshot = {
     ...snapshot,

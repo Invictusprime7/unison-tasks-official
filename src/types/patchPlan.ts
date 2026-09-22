@@ -57,12 +57,24 @@ export interface BackendOp {
   payload?: Record<string, unknown>;
 }
 
-/** Snapshot-owned visual mutations. These never rewrite page JSX directly. */
-export interface PresentationOp {
-  type: 'setVariant';
-  sectionId: string;
-  variantId: string;
+/**
+ * Snapshot-owned visual mutations. These never rewrite page JSX directly:
+ * they mutate the sealed design intervention and the canonical compiler
+ * re-projects the pages (see `@/services/builder/semanticPresentationOps`).
+ */
+export interface PresentationSectionCopy {
+  headline?: string;
+  subheadline?: string;
+  description?: string;
 }
+
+export type PresentationOp =
+  | { type: 'setVariant'; sectionId: string; variantId: string }
+  | { type: 'setSectionCopy'; pageRole: string; sectionType: string; copy: PresentationSectionCopy }
+  | { type: 'reorderSections'; pageRole: string; sectionOrder: string[] }
+  | { type: 'removeSection'; pageRole: string; sectionType: string }
+  | { type: 'setMotionBudget'; motionBudget: 'restrained' | 'expressive' }
+  | { type: 'setLayoutRecipe'; layoutRecipe: 'floating-navbar' | 'collage-hero' | 'bento-features' | 'media-card-grid' | 'conversion-form' | 'rich-footer' };
 
 export interface PatchPlan {
   themeEdit?: import('@/services/theme/themeEdit').ThemeEdit;
@@ -135,8 +147,38 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
     }
   }
   for (const op of p.presentationOps as PresentationOp[]) {
-    if (!op || typeof op !== 'object' || op.type !== 'setVariant' || typeof op.sectionId !== 'string' || typeof op.variantId !== 'string') {
+    if (!op || typeof op !== 'object' || !isValidPresentationOp(op)) {
       throw new Error(`[${context}] invalid PresentationOp: ${JSON.stringify(op)}`);
     }
+  }
+}
+
+const COPY_FIELDS = ['headline', 'subheadline', 'description'] as const;
+
+function isValidPresentationOp(op: PresentationOp): boolean {
+  switch (op.type) {
+    case 'setVariant':
+      return typeof op.sectionId === 'string' && typeof op.variantId === 'string';
+    case 'setSectionCopy': {
+      if (typeof op.pageRole !== 'string' || typeof op.sectionType !== 'string') return false;
+      if (!op.copy || typeof op.copy !== 'object') return false;
+      const entries = Object.entries(op.copy);
+      if (entries.length === 0) return false;
+      return entries.every(([key, value]) =>
+        (COPY_FIELDS as readonly string[]).includes(key) && typeof value === 'string');
+    }
+    case 'reorderSections':
+      return typeof op.pageRole === 'string'
+        && Array.isArray(op.sectionOrder)
+        && op.sectionOrder.length > 0
+        && op.sectionOrder.every((type) => typeof type === 'string');
+    case 'removeSection':
+      return typeof op.pageRole === 'string' && typeof op.sectionType === 'string';
+    case 'setMotionBudget':
+      return op.motionBudget === 'restrained' || op.motionBudget === 'expressive';
+    case 'setLayoutRecipe':
+      return typeof op.layoutRecipe === 'string';
+    default:
+      return false;
   }
 }

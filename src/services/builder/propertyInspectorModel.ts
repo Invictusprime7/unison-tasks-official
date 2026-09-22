@@ -225,6 +225,8 @@ export type InspectorMutation =
 export interface InspectorPatchOp {
   type: 'set-variant' | 'set-slot-text' | 'set-slot-asset' | 'set-theme-token' | 'set-intent';
   sectionId: string | null;
+  /** Canonical section family (copy edits project onto the composition plan). */
+  sectionType?: SectionType | null;
   selector: string;
   slotId?: string;
   variantId?: VariantId;
@@ -291,6 +293,7 @@ export function buildInspectorPatchPlan(
             op: {
               type: 'set-slot-text',
               sectionId: model.sectionId,
+              sectionType: model.sectionType,
               selector,
               slotId: slot.id,
               value: mutation.value,

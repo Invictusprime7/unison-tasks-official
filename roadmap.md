@@ -729,7 +729,18 @@ preview runtime — extend what exists.
 	Tests: `src/test/siteShellTopology.test.ts`.
 
 ### P1
-- [ ] 7. Expand semantic `PresentationOp`
+- [x] 7. Expand semantic `PresentationOp` — `src/services/builder/semanticPresentationOps.ts`
+	is the single authority for snapshot-owned visual mutation. `PresentationOp`
+	grows from `setVariant` to `setSectionCopy`, `reorderSections`,
+	`removeSection`, `setMotionBudget` and `setLayoutRecipe`; every plan mutation
+	is re-validated through `validateAIPageComposition` against the sealed art
+	direction pack, chrome (navbar/footer) stays site-shell owned, and
+	`assertPatchPlan` validates the expanded shapes at the commit boundary.
+	`VFSCommitService.applyPresentationOps` delegates instead of owning variant
+	logic. The Property Inspector now routes headline/subheadline/description
+	edits on composed sections to `setSectionCopy` (snapshot-owned) and only
+	falls back to a literal JSX rewrite when the composition plan does not own
+	that copy. Tests: `src/test/semanticPresentationOps.test.ts`.
 - [ ] 8. Site-wide design contract enforcement
 - [ ] 9. ResolvedArtifactCatalog as the consumer-facing runtime authority
 - [ ] 10. Legacy fallback retirement

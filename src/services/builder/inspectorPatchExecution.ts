@@ -23,6 +23,7 @@
 import type { InspectorPatchOp, InspectorPatchPlan } from './propertyInspectorModel';
 import type { FileOp, PresentationOp } from '@/types/patchPlan';
 import type { ThemeEdit } from '@/services/theme/themeEdit';
+import { toCompositionRole } from './semanticPresentationOps';
 
 export type InspectorExecution =
   | { kind: 'presentation'; summary: string; ops: PresentationOp[] }
@@ -35,7 +36,24 @@ export interface InspectorExecutionContext {
   /** Canonical snapshot identity — required for the theme lane. */
   snapshotId?: string | null;
   revisionId?: string | null;
+  /**
+   * Canonical page role + composed plan for this selection. When present, a
+   * copy edit on a composition-owned slot becomes a snapshot-owned
+   * `setSectionCopy` operation instead of a JSX rewrite.
+   */
+  pageRole?: string | null;
+  composedSections?: readonly string[] | null;
 }
+
+/** Copy slots the composition plan owns directly. */
+const COMPOSITION_COPY_SLOTS: Record<string, 'headline' | 'subheadline' | 'description'> = {
+  headline: 'headline',
+  title: 'headline',
+  subheadline: 'subheadline',
+  subtitle: 'subheadline',
+  description: 'description',
+  body: 'description',
+};
 
 const SOURCE_FILE_RE = /\.(tsx|jsx)$/;
 
@@ -177,11 +195,28 @@ export function planInspectorExecution(
     };
   }
 
-  // set-slot-text — only a literal text child may be rewritten in place.
+  // set-slot-text — prefer the snapshot-owned composition plan; fall back to a
+  // literal text child rewrite when the plan does not own this copy.
   const text = String(op.value ?? '');
   if (!text.trim()) return { kind: 'rejected', reason: 'Enter some text before applying this change.' };
   if (/[<>{}]/.test(text)) {
     return { kind: 'rejected', reason: 'Text cannot contain code or markup characters.' };
+  }
+
+  const copyField = COMPOSITION_COPY_SLOTS[op.slotId];
+  const compositionRole = toCompositionRole(context.pageRole);
+  const sectionType = op.sectionType ?? null;
+  if (copyField && compositionRole && sectionType && context.composedSections?.includes(sectionType)) {
+    return {
+      kind: 'presentation',
+      summary: plan.description,
+      ops: [{
+        type: 'setSectionCopy',
+        pageRole: compositionRole,
+        sectionType,
+        copy: { [copyField]: text },
+      }],
+    };
   }
   const after = target.content.slice(target.end + 1);
   const literal = /^([^<>{}]*)</.exec(after);
