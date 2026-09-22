@@ -216,6 +216,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'testimonials:marquee',
+      vocabularyRefs: [{ category: 'content', id: 'marquee' }],
       sectionType: 'testimonials',
       slug: 'marquee',
       name: 'Proof Marquee',
@@ -416,6 +417,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'gallery:editorial-mosaic',
+      vocabularyRefs: [{ category: 'media', id: 'lookbook' }],
       sectionType: 'gallery',
       slug: 'editorial-mosaic',
       name: 'Editorial Mosaic',
@@ -503,6 +505,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'gallery:collection-tiles',
+      vocabularyRefs: [{ category: 'commerce', id: 'category-showcase' }],
       sectionType: 'gallery',
       slug: 'collection-tiles',
       name: 'Collection Tiles',
@@ -528,6 +531,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   hero: [
     {
       id: 'hero:image-stream',
+      vocabularyRefs: [{ category: 'hero', id: 'collage' }],
       sectionType: 'hero',
       slug: 'image-stream',
       name: 'Image Stream',
@@ -552,6 +556,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     { id: 'hero:launch-showcase', sectionType: 'hero', slug: 'launch-showcase', name: 'Centered headline and actions above a framed media showcase', description: 'Centered headline and actions above a framed media showcase', component: HeroLaunchShowcase, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:1526","sourceUrl":"https://21st.dev/@mikolajdobrucki/components/hero-section","author":"mikolajdobrucki","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/hero-launch-showcase.svg', renderJSX: portableRecipeOnly },
     {
       id: 'hero:prisma-cinematic',
+      vocabularyRefs: [{ category: 'hero', id: 'fullscreen-video' }],
       sectionType: 'hero',
       slug: 'prisma-cinematic',
       name: 'Prisma Cinematic',
@@ -664,6 +669,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'hero:editorial-banner', sectionType: 'hero', slug: 'editorial-banner',
+      vocabularyRefs: [{ category: 'hero', id: 'asymmetric-story' }],
       name: 'Editorial Banner', description: 'Landscape image band above a tagline and right-aligned editorial headline',
       component: HeroEditorialBanner,
       vfs: { mode: 'portable-recipe', certification: 'approved' },
@@ -706,6 +712,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'hero:showcase-panel',
+      vocabularyRefs: [{ category: 'commerce', id: 'featured-product' }],
       sectionType: 'hero',
       slug: 'showcase-panel',
       name: 'Showcase Panel',
@@ -796,6 +803,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     { id: 'navbar:catalog-bar', sectionType: 'navbar', slug: 'catalog-bar', name: 'Brand, desktop navigation and action with an accessible mobile drawer', description: 'Brand, desktop navigation and action with an accessible mobile drawer', component: NavbarCatalogBar, radixPrimitives: ['dialog'], vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:606","sourceUrl":"https://21st.dev/@shadcnblockscom/components/shadcnblocks-com-navbar1","author":"shadcnblockscom","derivation":"visual-reference","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/navbar-catalog-bar.svg', renderJSX: portableRecipeOnly },
     {
       id: 'navbar:floating-pill',
+      vocabularyRefs: [{ category: 'navigation', id: 'floating-pill' }],
       sectionType: 'navbar',
       slug: 'floating-pill',
       name: 'Floating Pill',
@@ -820,6 +828,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'navbar:standard',
+      vocabularyRefs: [{ category: 'navigation', id: 'editorial' }],
       radixPrimitives: ['dialog'],
       sectionType: 'navbar',
       slug: 'standard',
@@ -868,6 +877,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'navbar:minimal-dark',
+      vocabularyRefs: [{ category: 'navigation', id: 'minimal' }],
       radixPrimitives: ['dialog'],
       sectionType: 'navbar',
       slug: 'minimal-dark',
@@ -893,6 +903,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
 
   features: [
     { id: 'features:spotlight-cards', sectionType: 'features', slug: 'spotlight-cards', name: 'Spotlight Cards',
+      vocabularyRefs: [{ category: 'content', id: 'floating-cards' }],
       description: 'Responsive feature cards with a pointer spotlight and static reduced-motion presentation', component: FeaturesSpotlightCards,
       vfs: { mode: 'portable-recipe', certification: 'approved' },
       source: { origin: '21st', sourceId: '21st:2220', sourceUrl: 'https://21st.dev/@preetsuthar17/components/spotlight-card', author: 'preetsuthar17', derivation: 'visual-reference', adaptationVersion: '1' },
@@ -938,6 +949,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'features:bento-grid',
+      vocabularyRefs: [{ category: 'content', id: 'bento' }],
       sectionType: 'features',
       slug: 'bento-grid',
       name: 'Bento Grid',
@@ -1037,6 +1049,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'services:product-cards',
+      vocabularyRefs: [{ category: 'commerce', id: 'editorial-product-grid' }],
       sectionType: 'services',
       slug: 'product-cards',
       name: 'Product Cards',
@@ -1279,6 +1292,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
   about: [
     {
       id: 'about:image-story',
+      vocabularyRefs: [{ category: 'content', id: 'editorial-story' }],
       sectionType: 'about',
       slug: 'image-story',
       name: 'Image Story',
@@ -1329,6 +1343,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
     },
     {
       id: 'about:story-panel',
+      vocabularyRefs: [{ category: 'content', id: 'layered-media' }],
       sectionType: 'about',
       slug: 'story-panel',
       name: 'Story Panel',

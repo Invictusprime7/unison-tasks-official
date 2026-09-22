@@ -6,6 +6,7 @@ import {
   getDesignImplementation,
   isExecutableVocabulary,
   listImplementationsForVocabulary,
+  getImplementationVocabularyRefs,
   vocabularyExecutabilityReport,
   vocabularyKey,
 } from '@/services/designImplementationRegistry';
@@ -42,14 +43,30 @@ describe('design vocabulary executability', () => {
     expect(report.executable).toEqual([
       'hero:oversized-editorial',
       'hero:split-cinematic',
+      'hero:fullscreen-video',
+      'hero:collage',
+      'hero:asymmetric-story',
+      'content:editorial-story',
+      'content:bento',
       'content:horizontal-scroll',
+      'content:layered-media',
       'content:split-feature',
+      'content:floating-cards',
+      'content:marquee',
       'content:comparison',
+      'media:lookbook',
       'media:masonry',
       'media:lightbox',
       'media:filmstrip',
+      'commerce:editorial-product-grid',
+      'commerce:featured-product',
+      'commerce:category-showcase',
+      'navigation:floating-pill',
+      'navigation:editorial',
+      'navigation:minimal',
       'navigation:split',
     ]);
+
     // Phase 5 closes this by registering implementations, never by trimming
     // the vocabulary — so this list is expected to shrink, not to be edited.
     expect(report.unimplemented.length).toBeGreaterThan(0);
@@ -101,11 +118,12 @@ describe('sealed composition directive', () => {
   it('describes the design language only through implementations that claim one', (): void => {
     const { aiDirective, activeVariants } = buildWizardDesignIntervention(launches[0]);
     const claimed = new Set(
-      Object.values(activeVariants)
-        .map((id) => getDesignImplementation(id)?.vocabulary)
-        .filter(Boolean)
-        .map((ref) => ref!.id),
+      Object.values(activeVariants).flatMap((id) => {
+        const implementation = getDesignImplementation(id);
+        return implementation ? getImplementationVocabularyRefs(implementation).map((ref) => ref.id) : [];
+      }),
     );
+
     const stated = [...aiDirective.matchAll(/design language is ([^;]+);/g)][0]?.[1]
       .split(',').map((id) => id.trim()) ?? [];
 
