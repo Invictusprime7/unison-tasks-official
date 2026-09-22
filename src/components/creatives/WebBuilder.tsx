@@ -1277,6 +1277,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       const vfsFiles = shouldReplayRecovery ? recovery!.vfsFiles : canvasData.vfsFiles;
       const entry = canvasData.entryPoint || launchEntryPoint;
       const preferred = canvasData.activePagePath || entry;
+      // canonical-vfs-exempt: hydration of a persisted revision into the working set
       importBuilderFiles(vfsFiles, {
         preferredPath: preferred,
         entryPoint: entry,
@@ -2751,6 +2752,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               context: 'Committed revision hydration',
             });
           } else {
+            // canonical-vfs-exempt: hydration of the committed wizard handoff
             importBuilderFiles(files, {
               entryPoint: launchEntryPoint,
               replace: true,
@@ -2957,6 +2959,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           }
         } catch (err) {
           // Rejected canonical mutations must not survive in working VFS.
+          // canonical-vfs-exempt: rollback restore of the pre-mutation working set
           importBuilderFiles(beforeFiles, {
             replace: true,
             preferredPath: activePagePath,
@@ -3051,6 +3054,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (commit.status !== 'committed') {
         throw new CommitRejectedError('presentation mutation was rejected', commit);
       }
+      // canonical-vfs-exempt: adoption of an accepted commitMutation result
       importBuilderFiles(commit.vfsFiles, {
         replace: true,
         preferredPath: activePagePath,
@@ -3137,6 +3141,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (commit.status !== 'committed') {
         throw new CommitRejectedError('builder edit was rejected by the canonical pipeline', commit);
       }
+      // canonical-vfs-exempt: adoption of an accepted commitMutation result
       const imported = importBuilderFiles(commit.vfsFiles, {
         replace: true,
         preferredPath: options.preferredPath ?? activePagePath,
@@ -3244,6 +3249,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (commit.status !== 'committed') {
         throw new CommitRejectedError('theme token override was rejected', commit);
       }
+      // canonical-vfs-exempt: adoption of an accepted commitMutation result
       importBuilderFiles(commit.vfsFiles, {
         replace: true,
         preferredPath: activePagePath,
@@ -3386,6 +3392,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             console.log('[WebBuilder] preview-toolbar commit persisted:', commit.persistedRevisionId);
           }
         } catch (err) {
+          // canonical-vfs-exempt: rollback restore of the pre-mutation working set
           importBuilderFiles(beforeFiles, {
             replace: true,
             preferredPath: activePagePath,
@@ -4686,6 +4693,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           if (!isDefaultContent) {
             setShowLauncher(false);
             if (hasRecoveredVfs) {
+              // canonical-vfs-exempt: hydration of a saved draft into the working set
               importBuilderFiles(draft.vfsFiles, {
                 preferredPath: activePagePath,
                 entryPoint: launchEntryPoint,
@@ -5800,6 +5808,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       }
     }
     
+    // canonical-vfs-exempt: template import adoption, declared through the adoption record
     importBuilderFiles(templateToVFSFiles(code, template.name), {
       preferredPath: launchEntryPoint,
       entryPoint: launchEntryPoint,
@@ -5851,6 +5860,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     });
     setTemplateCtaAnalysis(normalized.analysis);
     
+    // canonical-vfs-exempt: template import adoption, declared through the adoption record
     importBuilderFiles(templateToVFSFiles(normalized.code, name), {
       preferredPath: launchEntryPoint,
       entryPoint: launchEntryPoint,
@@ -7685,6 +7695,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         };
                       }}
                       onCommitted={commit => {
+                        // canonical-vfs-exempt: adoption of an accepted commitMutation result
                         importBuilderFiles(commit.vfsFiles, {
                           replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
                           adoption: { source: commit.source, vfsHash: commit.vfsHash, revisionId: commit.persistedRevisionId },
@@ -7952,12 +7963,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   onUndo={() => {
                     const snap = vfsSnapshotManager.undo();
                     if (!snap) return false;
+                    // canonical-vfs-exempt: local editor undo of a working-set snapshot
                     virtualFS.importFiles(snap.files);
                     return true;
                   }}
                   onRedo={() => {
                     const snap = vfsSnapshotManager.redo();
                     if (!snap) return false;
+                    // canonical-vfs-exempt: local editor redo of a working-set snapshot
                     virtualFS.importFiles(snap.files);
                     return true;
                   }}
@@ -8336,6 +8349,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                           meta: { origin: 'floating-toolbar-ai', actionType: 'element-edit' },
                         });
                       } catch (err) { console.warn('[onAIEditComplete] snapshot failed:', err); }
+                      // canonical-vfs-exempt: optimistic HMR projection; the edit is persisted through saveDraft below
                       virtualFS.importFiles({ [path]: attempt.code });
                       const saved = await saveDraft({
                         force: true,
@@ -8594,6 +8608,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               projectId={currentDraftId ?? null}
               onRevert={async (snap) => {
                 const beforeFiles = virtualFS.getSandpackFiles();
+                // canonical-vfs-exempt: AI edit-history revert of a recorded working-set snapshot
                 virtualFS.importFiles(snap.before);
                 syncBuilderFromFiles(snap.before, activePagePath);
                 const restoredFiles = { ...beforeFiles, ...snap.before };
@@ -8617,6 +8632,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               }}
               onReapply={async (snap) => {
                 const beforeFiles = virtualFS.getSandpackFiles();
+                // canonical-vfs-exempt: AI edit-history reapply of a recorded working-set snapshot
                 virtualFS.importFiles(snap.after);
                 syncBuilderFromFiles(snap.after, activePagePath);
                 const restoredFiles = { ...beforeFiles, ...snap.after };
