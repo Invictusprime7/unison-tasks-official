@@ -38,6 +38,11 @@ import type { CompiledContract } from '@/platform/core/contractCompiler';
 import type { ThemeTokens } from '@/sections/types';
 import { PreviewGate, PublishGate, type GateVerdict } from '@/platform/core/gates';
 import { runFullPreflight } from '@/services/runFullPreflight';
+import {
+  findUnresolvedLocalImports,
+  findLocalJsxImportContractViolations,
+  describeUnresolvedImports,
+} from '@/services/laneBCompanionModules';
 import { resolveApprovedExperienceCapabilities } from './experienceCapabilityResolver';
 import { runExperiencePreflight } from './experiencePreflightGate';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
