@@ -854,7 +854,7 @@ export async function commitMutation(
   }
 
   // Move D — compute publish readiness + blockers aggregate.
-  const publishBlockers: PublishBlockerSummary[] = [];
+  const publishBlockers: PublishBlockerSummary[] = [...moduleClosureBlockers];
   if (runtimeReconciliationError) {
     publishBlockers.push({
       source: 'backendOps',
