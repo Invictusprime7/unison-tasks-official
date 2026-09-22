@@ -26,7 +26,10 @@ export interface CompositionContractBrief {
   variants: ReadonlyArray<{ id: string; family: string; pageRoles: readonly string[] }>;
   experiencePreference?: string;
   pinnedVariants?: Readonly<Record<string, string>>;
+  /** Industry dialect key — modulates the page archetypes (Phase 7). */
+  industry?: string;
 }
+
 
 const COMPILER_OWNED_FAMILIES = new Set(['navbar', 'footer']);
 
