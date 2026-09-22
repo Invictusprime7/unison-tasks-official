@@ -19,6 +19,8 @@
  *      launch its composition.
  */
 
+import { describePageArchetypes, normalizePageSectionOrder } from '@/sections/pageArchetypeContract';
+
 export interface CompositionContractBrief {
   roles: readonly string[];
   variants: ReadonlyArray<{ id: string; family: string; pageRoles: readonly string[] }>;
@@ -75,6 +77,9 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
     '7. Homepage-first: the "home" page establishes shared architecture and visual language, not a reusable body composition. Every non-home page must choose a role-appropriate section order and may choose different certified body variants. Navbar and footer remain compiler-owned and identical.',
     `8. Experience preference is "${brief.experiencePreference ?? 'standard'}". Every advertised ID is already compatibility-filtered; never invent or import a stronger runtime experience.`,
     `9. User-pinned family choices are final and override AI selection: ${Object.entries(brief.pinnedVariants ?? {}).map(([family, id]) => `${family}=${id}`).join(', ') || 'none'}. If selecting a pinned family, use exactly its pinned ID.`,
+    '10. Page archetypes are machine-checked: each role below states the families it must include, the families and design traits it must never include (negative vocabulary) and its body-section ceiling. A page that borrows another role\'s composition is discarded.',
+    'PAGE ARCHETYPES (page-specific purpose, required and forbidden vocabulary):',
+    describePageArchetypes(brief.roles),
     'ELIGIBLE VARIANT IDS PER ROLE (choose only from these):',
     perRole || '  (none)',
   ].join('\n');
@@ -110,9 +115,9 @@ export function normalizeCompositionResponse(value: unknown, brief: CompositionC
     if (!page || typeof page.role !== 'string' || !brief.roles.includes(page.role)) continue;
     if (seenRoles.has(page.role)) continue;
     seenRoles.add(page.role);
-    const sectionOrder = Array.isArray(page.sectionOrder)
+    const sectionOrder = normalizePageSectionOrder(page.role, Array.isArray(page.sectionOrder)
       ? page.sectionOrder.filter((family, index) => typeof family === 'string' && page.sectionOrder.indexOf(family) === index)
-      : [];
+      : []);
     const inOrder = new Set(sectionOrder);
     const variants = Object.fromEntries(Object.entries(page.variants ?? {})
       .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_FAMILIES.has(family)));

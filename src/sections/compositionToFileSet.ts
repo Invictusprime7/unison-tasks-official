@@ -176,7 +176,7 @@ import { usePublishedActionRuntime } from './publishedActionRuntime';
  * SiteLayout installs structural responsive rules and published runtimes.
  * Stage 4b remains the only owner of global presentation.
  */
-export default function SiteLayout({ children }: { children: React.ReactNode }) {
+export default function SiteLayout({ children, pageRole }: { children: React.ReactNode; pageRole?: string }) {
   usePublishedFormRuntime();
   usePublishedActionRuntime();
   useEffect(() => {
@@ -186,7 +186,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     return () => { s.remove(); };
   }, []);
 
-  return <div>{children}</div>;
+  // data-ut-page-role scopes the page archetype's rhythm and density, which
+  // Stage 4b emits into index.css. Nothing else is page-scoped.
+  return <div data-ut-page-role={pageRole || 'custom'}>{children}</div>;
 }
 `;
 }
@@ -769,7 +771,7 @@ export default function Page() {
   // section to its emitted binding (\`\${requirementKey}-\${index}\`).
   const typeCounters: Record<string, number> = {};
   return (
-    <SiteLayout>
+    <SiteLayout pageRole={${JSON.stringify(template.pageRole || 'home')}}>
       {visible.map((s: any) => {
         const occurrence = typeCounters[s.type] ?? 0;
         typeCounters[s.type] = occurrence + 1;

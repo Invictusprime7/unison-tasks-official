@@ -11,7 +11,7 @@ import { Zap, ArrowRight, CheckSquare } from "lucide-react";
 /**
  * Full-screen onboarding page.
  * Shown to new users after signup, or to returning users with no completed projects.
- * Opens the SystemLauncher wizard immediately so the user can build their first site.
+ * Opens the LauncherWizard wizard immediately so the user can build their first site.
  * 
  * Note: Route protection via requiresAuth ensures only authenticated users can access this page.
  */
@@ -139,7 +139,7 @@ const Onboarding = () => {
         </div>
       </main>
 
-      {/* SystemLauncher dialog (default path with theme aesthetic cards) */}
+      {/* LauncherWizard dialog (default path with theme aesthetic cards) */}
       <BusinessProfileGate
         open={gateOpen}
         onOpenChange={setGateOpen}

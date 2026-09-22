@@ -416,6 +416,34 @@ export function buildArtDirectionTokens(pack: ArtDirectionPack): Record<string, 
   };
 }
 
+/** Ordered scales — page archetypes modulate the pack base by whole steps. */
+export const RHYTHM_ORDER: readonly RhythmId[] = ['tight', 'balanced', 'airy', 'expansive'];
+export const DENSITY_ORDER: readonly DensityId[] = ['compact', 'standard', 'roomy', 'gallery'];
+
+const stepOn = <T,>(order: readonly T[], base: T, step: number): T =>
+  order[Math.min(order.length - 1, Math.max(0, order.indexOf(base) + step))] ?? base;
+
+export const shiftRhythm = (base: RhythmId, step: number): RhythmId => stepOn(RHYTHM_ORDER, base, step);
+export const shiftDensity = (base: DensityId, step: number): DensityId => stepOn(DENSITY_ORDER, base, step);
+
+/**
+ * The spacing subset of the pack contract, resolved for one page. Page
+ * archetypes never redefine colour, type or motion — only vertical rhythm and
+ * spacing density — so the homepage-established language always survives.
+ */
+export function buildPageScaleTokens(rhythm: RhythmId, density: DensityId): Record<string, string> {
+  const recipe = DENSITY_RECIPES[density];
+  return {
+    '--ut-rhythm-space': RHYTHM_SPACE[rhythm],
+    '--ut-density': density,
+    '--ut-grid-gap': recipe.gridGap,
+    '--ut-block-gap': recipe.blockGap,
+    '--ut-card-padding': recipe.cardPadding,
+    '--ut-inline-gutter': recipe.gutter,
+    '--ut-stack-gap': recipe.stackGap,
+  };
+}
+
 /** Serialize the pack tokens as a CSS declaration block fragment. */
 export function buildArtDirectionCssDeclarations(pack: ArtDirectionPack): string {
   return Object.entries(buildArtDirectionTokens(pack))

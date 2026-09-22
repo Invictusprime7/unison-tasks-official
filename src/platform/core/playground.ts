@@ -74,7 +74,7 @@ export interface WizardSelections {
   secondaryGoals: string[];
   /**
    * Canonical BusinessSystemType (booking/saas/agency/portfolio/store/content).
-   * Threaded by SystemLauncher so the canonical pipeline can stamp
+   * Threaded by LauncherWizard so the canonical pipeline can stamp
    * `SiteBundleSnapshot.meta.systemId` and resolve the VerticalLaunchContract
    * deterministically downstream — replacing the legacy `activeSystemType`
    * UI state that DeployButton/Readiness Center used to read.
@@ -113,7 +113,7 @@ export interface WizardSelections {
   /**
    * Primary intent from the industry profile (e.g. 'booking.create', 'contact.submit').
    * Forwarded to the topology planner so the materializer's internal planSiteTopology
-   * call produces the same page set as the SystemLauncher's direct call.
+   * call produces the same page set as the LauncherWizard's direct call.
    */
   primaryIntent?: string;
   /**

@@ -3,7 +3,9 @@ import { normalizeCompositionResponse, renderCompositionCanonicalContract } from
 import { runBuilderTurn } from './builderBrainClient';
 import { buildWizardDesignIntervention } from './wizardDesignIntervention';
 import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
-import { VARIANT_REGISTRY, getGenerationVariantsForSection } from '@/sections/variants/registry';
+import { VARIANT_REGISTRY, getGenerationVariantsForSection, getVariantById } from '@/sections/variants/registry';
+import { pageArchetypeIssues } from '@/sections/pageArchetypeContract';
+import type { VariantId } from '@/sections/variants/types';
 import { ART_DIRECTION_PACKS } from '@/sections/variants/artDirectionPacks';
 import type { WizardSelections } from '@/types/playground';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
@@ -62,6 +64,15 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
     }
     const plan = validateAIPageComposition(normalizeCompositionResponse(response.data, { roles, variants }), pack.id, roles, { experiencePreference, pinnedVariants });
     if (!plan) return fail('invalid-response');
+    // Page archetype closure — page-specific required families and negative
+    // vocabulary. The composition lane already repairs and re-asks the model;
+    // anything still violating the archetype is not an acceptable composition.
+    const archetypeIssues = plan.pages.flatMap(page => pageArchetypeIssues(page.role, page.sectionOrder,
+      Object.fromEntries(Object.entries(page.variants).map(([family, id]) => [family, getVariantById(id as VariantId)?.tags ?? []])),
+      // Required families are repaired by the composition lane against the
+      // model; the client gate enforces the negative vocabulary and ceiling.
+      { requireFamilies: false }));
+    if (archetypeIssues.length) return fail('invalid-response', { message: 'AI composition violated the page archetype contract: ' + archetypeIssues.slice(0, 6).join('; ') });
     const missingRoles = roles.filter(role => !plan.pages.some(page => page.role === role && Object.keys(page.variants).length > 0));
     if (missingRoles.length) return fail('incomplete-plan', { missingRoles, message: 'AI omitted a valid composition for: ' + missingRoles.join(', ') + '. Please retry generation.' });
     console.info('[wizard-composition] accepted', { roles: plan.pages.map(page => page.role) });

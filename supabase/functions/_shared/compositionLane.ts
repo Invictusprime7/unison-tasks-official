@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizePageSectionOrder, pageArchetypeIssues } from './pageArchetypeContract.ts';
 
 export const COMPOSITION_SYSTEM_PROMPT = `You compose Unison pages using only the supplied local variant catalog.
 Return ONLY JSON shaped as {"version":"1.0","pages":[{"role":"home","sectionOrder":["navbar","hero","services","footer"],"variants":{"services":"an eligible catalog ID"},"copy":{"hero":{"headline":"Original business-specific headline"}}}]}.
@@ -40,7 +41,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
       seenRoles.add(page.role);
       return true;
     }).map(page => {
-      const sectionOrder = page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index);
+      const sectionOrder = normalizePageSectionOrder(page.role, page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index));
       const inOrder = new Set(sectionOrder);
       return {
         ...page,
@@ -59,7 +60,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
 }
 
 export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, brief: {
-  roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[] }>;
+  roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[]; tags?: string[] }>;
   designSelection?: { pinnedVariants?: Record<string, string> };
 }) {
   const normalized = normalizeCompositionPlan(plan, brief);
@@ -75,7 +76,7 @@ export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, br
 
 export interface CompositionBrief {
   roles: string[];
-  variants: Array<{ id: string; family: string; pageRoles: string[] }>;
+  variants: Array<{ id: string; family: string; pageRoles: string[]; tags?: string[] }>;
   canonicalContract?: string;
   designSelection?: { pinnedVariants?: Record<string, string> };
 }
@@ -97,6 +98,13 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
       if (brief.designSelection?.pinnedVariants?.[family] && brief.designSelection.pinnedVariants[family] !== id) issues.push(prefix + '.variants.' + family + ': preserve the user-pinned ID ' + brief.designSelection.pinnedVariants[family]);
     }
     for (const family of Object.keys(page.copy ?? {})) if (!page.sectionOrder.includes(family) || family === 'navbar' || family === 'footer') issues.push(prefix + '.copy.' + family + ': copy must target a body family in sectionOrder');
+    // Page archetype (page-specific required roles and negative vocabulary).
+    const variantTags: Record<string, string[]> = {};
+    for (const [family, id] of Object.entries(page.variants)) {
+      const tags = brief.variants.find(v => v.id === id)?.tags;
+      if (tags?.length) variantTags[family] = tags;
+    }
+    issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags));
   }
   return issues;
 }
