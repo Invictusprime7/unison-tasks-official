@@ -741,7 +741,17 @@ preview runtime — extend what exists.
 	edits on composed sections to `setSectionCopy` (snapshot-owned) and only
 	falls back to a literal JSX rewrite when the composition plan does not own
 	that copy. Tests: `src/test/semanticPresentationOps.test.ts`.
-- [ ] 8. Site-wide design contract enforcement
+- [x] 8. Site-wide design contract enforcement — `enforceSiteDesignContract`
+	in `src/services/launch/homepageFirstContract.ts` (same authority that
+	governs generation) now enforces the homepage-established language across
+	the whole file set after generation. `VFSCommitService.commitMutation`
+	runs it for `ai-builder` and `playground-edit` commits: chrome drift and a
+	non-home page claiming the `ut-hero` tier are repaired deterministically,
+	palette escapes (hex utilities, bg/text-white/black, inline hex styles) are
+	violations — logged for inspector edits, rejected with a readable reason for
+	AI edits. Restores, reviewed artifacts and wizard launches are untouched
+	(Lane B already enforces the same contract at authoring time). Tests:
+	`src/test/homepageFirstContract.test.ts`.
 - [ ] 9. ResolvedArtifactCatalog as the consumer-facing runtime authority
 - [ ] 10. Legacy fallback retirement
 - [ ] 11. Direct VFS writers 42 → 0
