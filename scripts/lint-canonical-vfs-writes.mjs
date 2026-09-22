@@ -37,6 +37,72 @@ export function countDirectVfsWrites(text) {
   return count;
 }
 
+/**
+ * P0.5 — exemption audit.
+ *
+ * Every `// canonical-vfs-exempt: <reason>` must state a reason that maps to an
+ * approved category in scripts/canonical-vfs-exemption-registry.json, and the
+ * per-file, per-reason counts are frozen at the audited baseline. The
+ * highest-risk category (`optimistic-hmr`) must additionally be chained to a
+ * durable write in the same code path.
+ */
+export const EXEMPTION_REGISTRY_PATH = 'scripts/canonical-vfs-exemption-registry.json';
+const COMMIT_CHAIN_PATTERN = /commitMutation|commitBuilderFiles|saveDraft\s*\(/;
+const COMMIT_CHAIN_WINDOW = 120;
+
+export function collectExemptions(text) {
+  const lines = text.split('\n');
+  const found = [];
+  lines.forEach((line, index) => {
+    const match = line.match(/canonical-vfs-exempt:\s*(.+?)\s*$/);
+    if (!match) return;
+    found.push({ line: index + 1, reason: match[1] });
+  });
+  return found;
+}
+
+export function auditExemptions(fileTexts, registry) {
+  const violations = [];
+  const seen = {};
+
+  for (const [file, text] of Object.entries(fileTexts)) {
+    const lines = text.split('\n');
+    for (const { line, reason } of collectExemptions(text)) {
+      const category = registry.reasons[reason];
+      if (!category) {
+        violations.push(`${file}:${line} — unregistered exemption reason: "${reason}"`);
+        continue;
+      }
+      if (!registry.categories[category]) {
+        violations.push(`${file}:${line} — reason maps to unknown category "${category}"`);
+        continue;
+      }
+      seen[file] = seen[file] ?? {};
+      seen[file][reason] = (seen[file][reason] ?? 0) + 1;
+
+      if (category === 'optimistic-hmr') {
+        const window = lines.slice(line, line + COMMIT_CHAIN_WINDOW).join('\n');
+        if (!COMMIT_CHAIN_PATTERN.test(window)) {
+          violations.push(
+            `${file}:${line} — optimistic-hmr exemption is not chained to commitMutation/saveDraft within ${COMMIT_CHAIN_WINDOW} lines`,
+          );
+        }
+      }
+    }
+  }
+
+  for (const [file, reasons] of Object.entries(seen)) {
+    for (const [reason, count] of Object.entries(reasons)) {
+      const allowed = registry.baseline[file]?.[reason] ?? 0;
+      if (count > allowed) {
+        violations.push(`${file} — "${reason}": ${count} exemption(s), baseline allows ${allowed}`);
+      }
+    }
+  }
+
+  return violations;
+}
+
 function collectCounts(dir) {
   const counts = {};
   function walk(currentDir) {
