@@ -81,6 +81,39 @@ export function applySemanticPresentationOps(
         break;
       }
 
+      /**
+       * §7.7 — "all pages" edits use inheritance. One shared family decision is
+       * written to the sealed variant map; page-local overrides are cleared so
+       * every page inherits it, except roles the caller named explicitly.
+       */
+      case 'setFamilyVariant': {
+        const nextVariant = getVariantById(op.variantId as VariantId);
+        if (!nextVariant || nextVariant.sectionType !== op.sectionType) {
+          throw new Error(`[presentation] ${op.variantId} is not a registered ${op.sectionType} design.`);
+        }
+        const exceptions = new Set(
+          (op.exceptPageRoles ?? []).map((role) => toCompositionRole(role)).filter(Boolean) as CompositionRole[],
+        );
+        let applied = false;
+        for (const [sectionId, variantId] of Object.entries(next.activeVariants)) {
+          const current = variantId ? getVariantById(variantId) : undefined;
+          if (!current || current.sectionType !== op.sectionType) continue;
+          next.activeVariants[sectionId] = nextVariant.id;
+          applied = true;
+        }
+        for (const page of next.compositionPlan?.pages ?? []) {
+          if (exceptions.has(page.role)) continue;
+          if (!page.variants || !(op.sectionType in page.variants)) continue;
+          delete page.variants[op.sectionType];
+          applied = true;
+          planTouched = true;
+        }
+        if (!applied) {
+          throw new Error(`[presentation] this site has no ${op.sectionType} section to restyle.`);
+        }
+        break;
+      }
+
       case 'setMotionBudget': {
         if (!PRESENTATION_MOTION_BUDGETS.includes(op.motionBudget)) {
           throw new Error(`[presentation] unknown motion budget ${op.motionBudget}.`);
