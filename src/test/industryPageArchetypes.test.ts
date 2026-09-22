@@ -39,10 +39,10 @@ describe('Phase 6 — industry page archetypes', () => {
         expect(page.expectedSections[0]).toBe('navbar');
         expect(page.expectedSections[page.expectedSections.length - 1]).toBe('footer');
         for (const section of page.expectedSections) {
-          const entry = families.get(section);
+          const entry = families.get(section as never);
           expect(entry, `${industry} ${page.path}: unknown family "${section}"`).toBeDefined();
           expect(() =>
-            certifiedDefaultVariantId(entry!.name, entry!.family, layoutVariantMap(entry!.family)),
+            certifiedDefaultVariantId(entry!.name as Parameters<typeof certifiedDefaultVariantId>[0], entry!.family, layoutVariantMap(entry!.family)),
           ).not.toThrow();
         }
         const unique = new Set(page.expectedSections);

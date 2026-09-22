@@ -2984,7 +2984,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const presentationCommitInFlightRef = useRef<string | null>(null);
 
   const commitPresentationOps = useCallback(async (
-    requestedOps: Array<{ type: 'setVariant'; sectionId: string; variantId: string }>,
+    requestedOps: import('@/types/patchPlan').PresentationOp[],
   ): Promise<boolean> => {
     if (!businessId || !currentDraftId || requestedOps.length === 0) return false;
 
@@ -2998,7 +2998,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
     const currentVariants = snapshot.meta?.designIntervention?.activeVariants ?? {};
     const presentationOps = requestedOps.filter(
-      (op) => currentVariants[op.sectionId] !== op.variantId,
+      (op) => op.type !== 'setVariant' || currentVariants[op.sectionId] !== op.variantId,
     );
     if (presentationOps.length === 0) return true;
 
@@ -3290,7 +3290,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       ?? effectiveRouteState?.siteBundleSnapshot
       ?? null;
     const registryPage = plan.pagePath
-      ? (snapshot?.pageRegistry?.pages ?? []).find((page: any) => page.filePath === plan.pagePath || page.path === plan.pagePath)
+      ? ((snapshot?.pageRegistry?.pages ?? []) as any[]).find((page: any) => page.filePath === plan.pagePath || page.path === plan.pagePath)
       : undefined;
     const pageRole = registryPage?.pageRole ?? registryPage?.pageType ?? (registryPage?.isHome ? 'home' : null);
     const composedRole = toCompositionRole(pageRole);

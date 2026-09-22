@@ -18,8 +18,8 @@ export const briefSchema = z.object({
       mediaDominance: z.enum(['low','medium','high']), typographyScale: z.enum(['restrained','display','monumental']),
       density: z.enum(['airy','balanced','dense']), motion: z.array(z.string().max(100)).max(20),
       composition: z.string().max(1200), experienceLevel: z.enum(['standard','motion-rich','immersive']),
-    }).strict().optional(),
-  }).strict()).min(1).max(300),
+    }).passthrough().optional(),
+  }).passthrough()).min(1).max(300),
   designSelection: z.object({ mode: z.enum(['auto','guided','custom']), artDirectionPackId: z.string().max(80),
     experience: z.enum(['standard','motion-rich','immersive']), pinnedVariants: z.record(z.string(), z.string().max(100)) }).strict().optional(),
   assets: z.array(z.object({ id: z.string().max(150), kind: z.string().max(30), name: z.string().max(300),
@@ -32,8 +32,8 @@ export const briefSchema = z.object({
   implementationContracts: z.array(z.object({ id: z.string().max(100), sectionType: z.string().max(50),
     runtimeDependencies: z.array(z.string().max(150)).max(40).optional(), componentStates: z.unknown().optional(),
     visualSignature: z.unknown().optional(), compatibleExperiencePreferences: z.array(z.enum(['standard','motion-rich','immersive'])).max(3).optional(),
-    artifactContract: z.unknown().optional() }).strict()).max(300).optional(),
+    artifactContract: z.unknown().optional() }).passthrough()).max(300).optional(),
   canonicalContract: z.string().max(40000).optional(),
   task: z.string().max(1000).optional(), designGuidance: z.string().max(2000).optional(),
   constraints: z.string().max(3000).optional(), output: z.unknown().optional(),
-}).strict();
+}).passthrough();
