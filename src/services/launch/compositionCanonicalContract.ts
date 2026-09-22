@@ -92,7 +92,7 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
     describePageArchetypes(brief.roles, brief.industry),
     'ELIGIBLE VARIANT IDS PER ROLE (choose only from these):',
     perRole || '  (none)',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 /**
