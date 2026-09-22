@@ -4,6 +4,7 @@ import { normalizeWizardPageRole } from '@/services/wizardPageQuality';
 import { resolveGeometryTokens } from '@/components/onboarding/themePresetToIndexCss';
 import { resolveArtDirectionPack } from '@/sections/variants/artDirectionPacks';
 import { childSeed, seededPick, seededRotate } from '@/platform/core/generationSeed';
+import { buildSiteShellTopology, describeSiteShellNavigation } from '@/services/siteShellTopology';
 
 
 export interface WizardHeroGeometry {
@@ -251,6 +252,7 @@ export function buildWizardGenerationBrief(input: {
   });
   const seed = input.seed || `${input.themePresetId || 'theme'}|${input.industry || 'general'}`;
   const homePage = Object.values(input.pageRegistry.pages).find((page) => page.isHome);
+  const shellTopology = buildSiteShellTopology(input.pageRegistry);
 
   const homePath = homePage?.filePath || '';
   const homeSource = homePath
