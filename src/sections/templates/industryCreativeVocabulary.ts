@@ -49,8 +49,9 @@ export interface IndustryCreativeProfile {
 const PROFILES = {
   salon: {
     industry: 'salon',
-    preferredArtDirections: ['soft-editorial', 'luxury-minimal', 'editorial-noir'],
-    preferredFamilies: ['gallery', 'before-after', 'team', 'testimonials', 'services'],
+    preferredArtDirections: ['noir-atelier', 'soft-editorial', 'luxury-minimal', 'editorial-noir'],
+    preferredFamilies: ['gallery', 'before-after', 'team', 'testimonials', 'services', 'stats'],
+
     discouragedFamilies: ['logo-cloud', 'blog-preview'],
     discouragedTags: ['mono-terminal'],
     pageProfiles: {
