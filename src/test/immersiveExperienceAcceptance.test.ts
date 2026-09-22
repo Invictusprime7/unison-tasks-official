@@ -97,10 +97,22 @@ describe('M10 immersive / 3D acceptance', () => {
   });
 
   it('emits a pointer-responsive, frame-rate-independent scene with a DOM fallback', () => {
+    const webgl = foundation['/src/unison/ui/experience/webgl.tsx'];
+    expect(webgl).toContain('state.pointer.x');
+    expect(webgl).toContain('delta * 3.5');
     const scene = foundation['/src/unison/ui/experience/scene.tsx'];
-    expect(scene).toContain('state.pointer.x');
-    expect(scene).toContain('delta * 3.5');
     expect(scene).toContain('fallback={<div');
+  });
+
+  it('keeps the WebGL renderer out of the page module graph so a failed 3D bundle cannot blank the site', () => {
+    for (const path of ['scene.tsx', 'media.tsx', 'stage.tsx', 'canvas.tsx', 'lazy.tsx']) {
+      const source = foundation[`/src/unison/ui/experience/${path}`];
+      expect(source, path).toBeDefined();
+      expect(source, path).not.toMatch(/from '(three|@react-three\/[a-z]+)'/);
+    }
+    // The only reach into the 3D packages is behind a dynamic import.
+    expect(foundation['/src/unison/ui/experience/lazy.tsx']).toContain("import('./webgl')");
+    expect(foundation['/src/unison/ui/experience/webgl.tsx']).toContain("from '@react-three/fiber'");
   });
 
   it('mounts no depth gallery when the business has no real media', () => {
