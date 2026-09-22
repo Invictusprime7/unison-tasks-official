@@ -16,6 +16,8 @@ import type { WizardDesignIntervention } from '@/services/wizardDesignInterventi
 import { getVariantById } from '@/sections/variants/registry';
 import type { VariantId } from '@/sections/variants/types';
 import { COMPOSITION_ROLES, validateAIPageComposition, type AIPageCompositionPlan } from '@/sections/aiPageComposition';
+import { resolveLegalImplementation } from '@/platform/core/resolvedImplementationContract';
+
 
 export const PRESENTATION_LAYOUT_RECIPES = [
   'floating-navbar', 'collage-hero', 'bento-features', 'media-card-grid', 'conversion-form', 'rich-footer',
