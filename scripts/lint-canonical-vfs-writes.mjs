@@ -125,6 +125,26 @@ function collectCounts(dir) {
   return counts;
 }
 
+export function collectSourceFiles(dir = SRC) {
+  const texts = {};
+  function walk(currentDir) {
+    for (const name of readdirSync(currentDir)) {
+      const full = join(currentDir, name);
+      const st = statSync(full);
+      if (st.isDirectory()) {
+        if (name === 'node_modules' || name === 'dist' || name.startsWith('.')) continue;
+        walk(full);
+        continue;
+      }
+      if (!/\.(ts|tsx)$/.test(name)) continue;
+      if (/\.test\.tsx?$|\.spec\.tsx?$/.test(name)) continue;
+      texts[relative(ROOT, full).split(sep).join('/')] = readFileSync(full, 'utf8');
+    }
+  }
+  walk(dir);
+  return texts;
+}
+
 async function main() {
   const counts = collectCounts(SRC);
 
