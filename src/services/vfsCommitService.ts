@@ -71,6 +71,7 @@ import {
   type PresentationOp,
 } from '@/types/patchPlan';
 import { applySemanticPresentationOps } from '@/services/builder/semanticPresentationOps';
+import { enforceSiteDesignContract } from '@/services/launch/homepageFirstContract';
 import { recordCommitOutcome } from '@/services/mutationLedger';
 
 
