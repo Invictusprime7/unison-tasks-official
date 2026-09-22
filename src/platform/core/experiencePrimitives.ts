@@ -14,7 +14,7 @@ import {
   THREE_D_CAPABILITY,
 } from '@/platform/core/generatedRuntimeCapabilities';
 
-export const EXPERIENCE_FOUNDATION_VERSION = '1.2' as const;
+export const EXPERIENCE_FOUNDATION_VERSION = '1.3' as const;
 
 /** The runtime capability that backs this layer (single source of truth). */
 export const EXPERIENCE_CAPABILITY = THREE_D_CAPABILITY;
@@ -55,6 +55,8 @@ export const EXPERIENCE_BARREL_EXPORTS: ReadonlySet<string> = new Set([
 export const EXPERIENCE_FOUNDATION_PATHS = [
   '/src/unison/ui/experience/index.ts',
   '/src/unison/ui/experience/canvas.tsx',
+  '/src/unison/ui/experience/lazy.tsx',
+  '/src/unison/ui/experience/webgl.tsx',
   '/src/unison/ui/experience/tokens.ts',
   '/src/unison/ui/experience/scene.tsx',
   '/src/unison/ui/experience/media.tsx',
@@ -64,6 +66,8 @@ export const EXPERIENCE_FOUNDATION_PATHS = [
 export const EXPERIENCE_IMPORT_PATHS = [
   '@/unison/ui/experience',
   '@/unison/ui/experience/canvas',
+  '@/unison/ui/experience/lazy',
+  '@/unison/ui/experience/webgl',
   '@/unison/ui/experience/tokens',
   '@/unison/ui/experience/scene',
   '@/unison/ui/experience/media',
@@ -154,71 +158,47 @@ export function useExperienceEnabled(): boolean {
 }
 `,
 
-    '/src/unison/ui/experience/canvas.tsx': `${marker}
+    '/src/unison/ui/experience/webgl.tsx': `${marker}
+// Internal WebGL implementation module. NOTHING outside this folder may import
+// it directly: every public primitive reaches it through a lazy dynamic import
+// so a missing or slow 3D bundle degrades to DOM instead of blanking the page.
 import * as React from 'react';
-import { Canvas } from '@react-three/fiber';
-import { cn } from '@/unison/ui';
-import { useExperienceEnabled } from './tokens';
+import { Canvas, useFrame } from '@react-three/fiber';
+import {
+  Bounds,
+  ContactShadows,
+  Float,
+  OrbitControls,
+  PointMaterial,
+  Points,
+  Scroll,
+  ScrollControls,
+  useGLTF,
+} from '@react-three/drei';
+import * as THREE from 'three';
+import { useExperienceMaterial } from './tokens';
 
-export interface ExperienceCanvasProps {
+export interface SceneHostProps {
   children: React.ReactNode;
-  /** Rendered whenever WebGL is unavailable or motion is reduced. */
-  fallback?: React.ReactNode;
-  className?: string;
   camera?: { position?: [number, number, number]; fov?: number };
-  /** Keeps ambient layers cheap; interactive stages opt into 'always'. */
   frameloop?: 'always' | 'demand';
+  fallback?: React.ReactNode;
 }
 
-class ExperienceBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(error: Error) { console.warn('[Experience] Using DOM fallback:', error.message); }
-  render() { return this.state.failed ? this.props.fallback : this.props.children; }
-}
-
-/**
- * The single WebGL entry point of the generated runtime: caps device pixel
- * ratio, suspends on assets, and degrades to a DOM fallback rather than
- * leaving a blank canvas.
- */
-export function ExperienceCanvas({
-  children,
-  fallback = null,
-  className,
-  camera = { position: [0, 0, 6], fov: 50 },
-  frameloop = 'always',
-}: ExperienceCanvasProps) {
-  const enabled = useExperienceEnabled();
-  if (!enabled) {
-    return <div className={cn('absolute inset-0', className)} aria-hidden="true">{fallback}</div>;
-  }
+/** The single WebGL context factory: capped DPR, suspended assets. */
+export function SceneHost({ children, camera, frameloop = 'always', fallback = null }: SceneHostProps) {
   return (
-    <div className={cn('absolute inset-0', className)} aria-hidden="true">
-      <ExperienceBoundary fallback={fallback}>
-      <Canvas
-        fallback={fallback}
-        dpr={[1, 2]}
-        frameloop={frameloop}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
-        camera={camera}
-      >
-        <React.Suspense fallback={null}>{children}</React.Suspense>
-      </Canvas>
-      </ExperienceBoundary>
-    </div>
+    <Canvas
+      fallback={fallback}
+      dpr={[1, 2]}
+      frameloop={frameloop}
+      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      camera={camera || { position: [0, 0, 6], fov: 50 }}
+    >
+      <React.Suspense fallback={null}>{children}</React.Suspense>
+    </Canvas>
   );
 }
-`,
-
-    '/src/unison/ui/experience/scene.tsx': `${marker}
-import * as React from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Float, Points, PointMaterial } from '@react-three/drei';
-import type * as THREE from 'three';
-import { cn } from '@/unison/ui';
-import { ExperienceCanvas } from './canvas';
-import { useExperienceMaterial } from './tokens';
 
 export type LightRigPreset = 'studio' | 'soft' | 'dramatic';
 
@@ -273,6 +253,299 @@ function DriftingShape({ intensity }: { intensity: number }) {
   );
 }
 
+function ParticleCloud({ count }: { count: number }) {
+  const material = useExperienceMaterial();
+  const positions = React.useMemo(() => {
+    const buffer = new Float32Array(count * 3);
+    for (let index = 0; index < count * 3; index += 1) {
+      buffer[index] = (Math.random() - 0.5) * 14;
+    }
+    return buffer;
+  }, [count]);
+  const points = React.useRef<THREE.Points>(null);
+  useFrame((_state, delta) => {
+    if (points.current) points.current.rotation.y += delta * 0.03;
+  });
+  return (
+    <Points ref={points} positions={positions} stride={3} frustumCulled>
+      <PointMaterial transparent size={0.045} sizeAttenuation depthWrite={false} color={material.accent} />
+    </Points>
+  );
+}
+
+/** Callback-based loading keeps a failed texture out of React's render/throw path. */
+function ImagePlane({ url, scale, position, onFailure }: { url: string; scale: number; position?: [number, number, number]; onFailure: () => void }) {
+  const [texture, setTexture] = React.useState<THREE.Texture | null>(null);
+  React.useEffect(() => {
+    let active = true;
+    let loaded: THREE.Texture | undefined;
+    setTexture(null);
+    if (!url) { onFailure(); return; }
+    const loader = new THREE.TextureLoader();
+    loader.load(url, (asset) => {
+      if (!active) { asset.dispose(); return; }
+      loaded = asset;
+      asset.colorSpace = THREE.SRGBColorSpace;
+      setTexture(asset);
+    }, undefined, () => { if (active) onFailure(); });
+    return () => { active = false; loaded?.dispose(); };
+  }, [url, onFailure]);
+  if (!texture) return null;
+  const aspect = texture.image?.width && texture.image?.height ? texture.image.width / texture.image.height : 1;
+  return <mesh position={position} scale={[scale, scale / aspect, 1]}><planeGeometry args={[1, 1]} /><meshBasicMaterial map={texture} transparent toneMapped={false} /></mesh>;
+}
+
+function Spinner({ spin, children }: { spin: boolean; children: React.ReactNode }) {
+  const group = React.useRef<THREE.Group>(null);
+  useFrame((_state, delta) => {
+    if (spin && group.current) group.current.rotation.y += delta * 0.35;
+  });
+  return <group ref={group}>{children}</group>;
+}
+
+function PlaceholderObject() {
+  const material = useExperienceMaterial();
+  return (
+    <mesh castShadow>
+      <torusKnotGeometry args={[1, 0.34, 160, 24]} />
+      <meshStandardMaterial color={material.primary} roughness={0.2} metalness={0.75} />
+    </mesh>
+  );
+}
+
+function GltfObject({ src }: { src: string }) {
+  const { scene } = useGLTF(src);
+  return <primitive object={scene} />;
+}
+
+/** Hero backdrop scene. */
+export function HeroScene({ intensity = 1 }: { intensity?: number }) {
+  return (
+    <SceneHost>
+      <LightRig preset="studio" />
+      <DriftingShape intensity={intensity} />
+    </SceneHost>
+  );
+}
+
+/** Ambient particle scene. */
+export function ParticleScene({ count = 1600 }: { count?: number }) {
+  return (
+    <SceneHost>
+      <ParticleCloud count={count} />
+    </SceneHost>
+  );
+}
+
+/** Page-band background scene. */
+export function BackgroundScene({ variant = 'aurora' }: { variant?: 'aurora' | 'starfield' | 'mesh' }) {
+  const material = useExperienceMaterial();
+  return (
+    <SceneHost>
+      <LightRig preset="soft" />
+      {variant === 'starfield' ? (
+        <ParticleCloud count={2400} />
+      ) : (
+        <Float speed={variant === 'mesh' ? 0.8 : 1.4} floatIntensity={1.2}>
+          <mesh scale={variant === 'mesh' ? 5 : 6}>
+            <sphereGeometry args={[1, 48, 48]} />
+            <meshStandardMaterial
+              color={variant === 'mesh' ? material.surface : material.primary}
+              wireframe={variant === 'mesh'}
+              roughness={0.4}
+              metalness={0.35}
+              transparent
+              opacity={0.55}
+            />
+          </mesh>
+        </Float>
+      )}
+    </SceneHost>
+  );
+}
+
+/** Single floating image plane. */
+export function FloatingMediaScene({ src, onFailure }: { src: string; onFailure: () => void }) {
+  return (
+    <SceneHost camera={{ position: [0, 0, 5], fov: 45 }}>
+      <LightRig preset="soft" />
+      <Float speed={1.1} rotationIntensity={0.25} floatIntensity={0.9}>
+        <ImagePlane url={src} scale={3.2} onFailure={onFailure} />
+      </Float>
+    </SceneHost>
+  );
+}
+
+/** Depth-staggered media wall. */
+export function DepthGalleryScene({ items, onFailure }: { items: { src: string; alt: string }[]; onFailure: () => void }) {
+  return (
+    <SceneHost camera={{ position: [0, 0, 7], fov: 50 }}>
+      <LightRig preset="soft" />
+      <ScrollControls horizontal pages={Math.max(1, items.length / 3)} damping={0.2}>
+        <Scroll>
+          {items.map((item, index) => (
+            <Float key={item.src} speed={0.9} floatIntensity={0.5}>
+              <ImagePlane
+                url={item.src}
+                scale={2.4}
+                onFailure={onFailure}
+                position={[index * 2.8 - 2, index % 2 === 0 ? 0.4 : -0.4, -index * 0.35]}
+              />
+            </Float>
+          ))}
+        </Scroll>
+      </ScrollControls>
+    </SceneHost>
+  );
+}
+
+/** Centred product/object stage. */
+export function ProductScene({ src, spin = true }: { src?: string; spin?: boolean }) {
+  return (
+    <SceneHost camera={{ position: [0, 0.6, 5], fov: 45 }}>
+      <LightRig preset="studio" />
+      <Bounds fit clip observe margin={1.2}>
+        <Spinner spin={spin}>{src ? <GltfObject src={src} /> : <PlaceholderObject />}</Spinner>
+      </Bounds>
+      <ContactShadows position={[0, -1.6, 0]} opacity={0.4} blur={2.6} far={4} />
+    </SceneHost>
+  );
+}
+
+/** Orbitable GLTF viewer scene. */
+export function ModelScene({ src, spin = false }: { src: string; spin?: boolean }) {
+  return (
+    <SceneHost camera={{ position: [0, 0.5, 4.5], fov: 45 }}>
+      <LightRig preset="studio" />
+      <Bounds fit clip observe margin={1.25}>
+        <Spinner spin={spin}>
+          <GltfObject src={src} />
+        </Spinner>
+      </Bounds>
+      <ContactShadows position={[0, -1.5, 0]} opacity={0.35} blur={2.4} far={4} />
+      <OrbitControls makeDefault enablePan={false} enableZoom={false} minPolarAngle={0.8} maxPolarAngle={2.1} />
+    </SceneHost>
+  );
+}
+`,
+
+    '/src/unison/ui/experience/lazy.tsx': `${marker}
+import * as React from 'react';
+import { cn } from '@/unison/ui';
+import { useExperienceEnabled } from './tokens';
+
+const loadWebgl = () => import('./webgl');
+
+const CACHE = new Map<string, React.ComponentType<Record<string, unknown>>>();
+
+/** Lazily resolves one export of the internal WebGL module. */
+export function lazyExperienceComponent(name: string): React.ComponentType<Record<string, unknown>> {
+  const cached = CACHE.get(name);
+  if (cached) return cached;
+  const component = React.lazy(async () => {
+    const mod = (await loadWebgl()) as Record<string, unknown>;
+    const resolved = mod[name];
+    if (typeof resolved !== 'function') throw new Error('Experience scene "' + name + '" is unavailable.');
+    return { default: resolved as React.ComponentType<Record<string, unknown>> };
+  }) as unknown as React.ComponentType<Record<string, unknown>>;
+  CACHE.set(name, component);
+  return component;
+}
+
+export class ExperienceBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: Error) { console.warn('[Experience] Using DOM fallback:', error.message); }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
+export interface WebglLayerProps {
+  /** Export name inside the internal WebGL module. */
+  scene: string;
+  sceneProps?: Record<string, unknown>;
+  /** Rendered until (or unless) the WebGL scene mounts. */
+  fallback?: React.ReactNode;
+  className?: string;
+}
+
+/**
+ * Mounts a WebGL scene only when the device supports it AND the 3D bundle
+ * resolves. Any failure — no WebGL, reduced motion, missing/failed module,
+ * render error — leaves the DOM fallback on screen instead of a blank page.
+ */
+export function WebglLayer({ scene, sceneProps, fallback = null, className }: WebglLayerProps) {
+  const enabled = useExperienceEnabled();
+  const Scene = React.useMemo(() => (enabled ? lazyExperienceComponent(scene) : null), [enabled, scene]);
+  if (!enabled || !Scene) {
+    return <div className={cn('absolute inset-0', className)} aria-hidden="true">{fallback}</div>;
+  }
+  return (
+    <div className={cn('absolute inset-0', className)} aria-hidden="true">
+      <ExperienceBoundary fallback={fallback}>
+        <React.Suspense fallback={fallback}>
+          <Scene {...(sceneProps || {})} />
+        </React.Suspense>
+      </ExperienceBoundary>
+    </div>
+  );
+}
+`,
+
+    '/src/unison/ui/experience/canvas.tsx': `${marker}
+import * as React from 'react';
+import { cn } from '@/unison/ui';
+import { useExperienceEnabled } from './tokens';
+import { ExperienceBoundary, lazyExperienceComponent } from './lazy';
+
+export interface ExperienceCanvasProps {
+  children: React.ReactNode;
+  /** Rendered whenever WebGL is unavailable, reduced, or the 3D bundle fails. */
+  fallback?: React.ReactNode;
+  className?: string;
+  camera?: { position?: [number, number, number]; fov?: number };
+  /** Keeps ambient layers cheap; interactive stages opt into 'always'. */
+  frameloop?: 'always' | 'demand';
+}
+
+/**
+ * The single WebGL entry point of the generated runtime. The renderer itself is
+ * loaded lazily, so a missing 3D bundle degrades to the DOM fallback instead of
+ * failing the whole page module.
+ */
+export function ExperienceCanvas({
+  children,
+  fallback = null,
+  className,
+  camera = { position: [0, 0, 6], fov: 50 },
+  frameloop = 'always',
+}: ExperienceCanvasProps) {
+  const enabled = useExperienceEnabled();
+  const Host = React.useMemo(() => (enabled ? lazyExperienceComponent('SceneHost') : null), [enabled]);
+  if (!enabled || !Host) {
+    return <div className={cn('absolute inset-0', className)} aria-hidden="true">{fallback}</div>;
+  }
+  return (
+    <div className={cn('absolute inset-0', className)} aria-hidden="true">
+      <ExperienceBoundary fallback={fallback}>
+        <React.Suspense fallback={fallback}>
+          <Host camera={camera} frameloop={frameloop} fallback={fallback}>{children}</Host>
+        </React.Suspense>
+      </ExperienceBoundary>
+    </div>
+  );
+}
+`,
+
+    '/src/unison/ui/experience/scene.tsx': `${marker}
+import * as React from 'react';
+import { cn } from '@/unison/ui';
+import { WebglLayer, lazyExperienceComponent } from './lazy';
+
+export type LightRigPreset = 'studio' | 'soft' | 'dramatic';
+
+/** Lighting preset — composed inside a stage/viewer children slot. */
+export const LightRig = lazyExperienceComponent('LightRig') as React.ComponentType<{ preset?: LightRigPreset }>;
+
 export type ExperienceIntensity = 'subtle' | 'balanced' | 'cinematic';
 
 const INTENSITY: Record<ExperienceIntensity, number> = {
@@ -298,34 +571,13 @@ export function ImmersiveHero({ children, intensity = 'balanced', className }: I
         className,
       )}
     >
-      <ExperienceCanvas
+      <WebglLayer
+        scene="HeroScene"
+        sceneProps={{ intensity: INTENSITY[intensity] }}
         fallback={<div className="size-full bg-gradient-to-br from-primary/25 via-background to-accent/20" />}
-      >
-        <LightRig preset="studio" />
-        <DriftingShape intensity={INTENSITY[intensity]} />
-      </ExperienceCanvas>
+      />
       <div className="relative z-10 flex size-full flex-col justify-center">{children}</div>
     </div>
-  );
-}
-
-function ParticleCloud({ count }: { count: number }) {
-  const material = useExperienceMaterial();
-  const positions = React.useMemo(() => {
-    const buffer = new Float32Array(count * 3);
-    for (let index = 0; index < count * 3; index += 1) {
-      buffer[index] = (Math.random() - 0.5) * 14;
-    }
-    return buffer;
-  }, [count]);
-  const points = React.useRef<THREE.Points>(null);
-  useFrame((_state, delta) => {
-    if (points.current) points.current.rotation.y += delta * 0.03;
-  });
-  return (
-    <Points ref={points} positions={positions} stride={3} frustumCulled>
-      <PointMaterial transparent size={0.045} sizeAttenuation depthWrite={false} color={material.accent} />
-    </Points>
   );
 }
 
@@ -341,9 +593,7 @@ export function ParticleField({ density = 'medium', className }: { density?: Par
       data-ut-editable="density"
       className={cn('pointer-events-none absolute inset-0', className)}
     >
-      <ExperienceCanvas frameloop="always" fallback={null}>
-        <ParticleCloud count={DENSITY[density]} />
-      </ExperienceCanvas>
+      <WebglLayer scene="ParticleScene" sceneProps={{ count: DENSITY[density] }} fallback={null} />
     </div>
   );
 }
@@ -355,35 +605,17 @@ export function SceneBackground({
   variant = 'aurora',
   className,
 }: { variant?: SceneBackgroundVariant; className?: string }) {
-  const material = useExperienceMaterial();
   return (
     <div
       data-ut-component="scene-background"
       data-ut-editable="variant"
       className={cn('pointer-events-none absolute inset-0 -z-10 overflow-hidden', className)}
     >
-      <ExperienceCanvas
+      <WebglLayer
+        scene="BackgroundScene"
+        sceneProps={{ variant }}
         fallback={<div className="size-full bg-gradient-to-b from-background via-primary/10 to-background" />}
-      >
-        <LightRig preset="soft" />
-        {variant === 'starfield' ? (
-          <ParticleCloud count={2400} />
-        ) : (
-          <Float speed={variant === 'mesh' ? 0.8 : 1.4} floatIntensity={1.2}>
-            <mesh scale={variant === 'mesh' ? 5 : 6}>
-              <sphereGeometry args={[1, 48, 48]} />
-              <meshStandardMaterial
-                color={variant === 'mesh' ? material.surface : material.primary}
-                wireframe={variant === 'mesh'}
-                roughness={0.4}
-                metalness={0.35}
-                transparent
-                opacity={0.55}
-              />
-            </mesh>
-          </Float>
-        )}
-      </ExperienceCanvas>
+      />
     </div>
   );
 }
@@ -391,34 +623,9 @@ export function SceneBackground({
 
     '/src/unison/ui/experience/media.tsx': `${marker}
 import * as React from 'react';
-import { Float, ScrollControls, Scroll } from '@react-three/drei';
-import * as THREE from 'three';
 import { Image as SiteImage } from '../media';
 import { cn } from '@/unison/ui';
-import { ExperienceCanvas } from './canvas';
-import { LightRig } from './scene';
-
-/** Callback-based loading keeps a failed texture out of React's render/throw path. */
-function ImagePlane({ url, scale, position, onFailure }: { url: string; scale: number; position?: [number, number, number]; onFailure: () => void }) {
-  const [texture, setTexture] = React.useState<THREE.Texture | null>(null);
-  React.useEffect(() => {
-    let active = true;
-    let loaded: THREE.Texture | undefined;
-    setTexture(null);
-    if (!url) { onFailure(); return; }
-    const loader = new THREE.TextureLoader();
-    loader.load(url, (asset) => {
-      if (!active) { asset.dispose(); return; }
-      loaded = asset;
-      asset.colorSpace = THREE.SRGBColorSpace;
-      setTexture(asset);
-    }, undefined, () => { if (active) onFailure(); });
-    return () => { active = false; loaded?.dispose(); };
-  }, [url, onFailure]);
-  if (!texture) return null;
-  const aspect = texture.image?.width && texture.image?.height ? texture.image.width / texture.image.height : 1;
-  return <mesh position={position} scale={[scale, scale / aspect, 1]}><planeGeometry args={[1, 1]} /><meshBasicMaterial map={texture} transparent toneMapped={false} /></mesh>;
-}
+import { WebglLayer } from './lazy';
 
 export interface FloatingMediaProps {
   src: string;
@@ -431,6 +638,7 @@ export interface FloatingMediaProps {
 export function FloatingMedia({ src, alt, caption, className }: FloatingMediaProps) {
   const [failedSource, setFailedSource] = React.useState<string | null>(null);
   const onFailure = React.useCallback(() => setFailedSource(src), [src]);
+  const domImage = <SiteImage src={src} alt={alt} loading="lazy" className="size-full object-cover" />;
   return (
     <figure
       data-ut-component="floating-media"
@@ -438,15 +646,9 @@ export function FloatingMedia({ src, alt, caption, className }: FloatingMediaPro
       className={cn('relative overflow-hidden rounded-[var(--ut-media-radius)]', className)}
     >
       <div className="relative min-h-[var(--ut-media-block)]">
-        {failedSource === src ? <SiteImage src={src} alt={alt} className="size-full object-cover" /> : <ExperienceCanvas
-          camera={{ position: [0, 0, 5], fov: 45 }}
-          fallback={<SiteImage src={src} alt={alt} loading="lazy" className="size-full object-cover" />}
-        >
-          <LightRig preset="soft" />
-          <Float speed={1.1} rotationIntensity={0.25} floatIntensity={0.9}>
-            <ImagePlane url={src} scale={3.2} onFailure={onFailure} />
-          </Float>
-        </ExperienceCanvas>}
+        {failedSource === src ? domImage : (
+          <WebglLayer scene="FloatingMediaScene" sceneProps={{ src, onFailure }} fallback={domImage} />
+        )}
         <span className="sr-only">{alt}</span>
       </div>
       {caption ? <figcaption className="mt-3 text-sm text-muted-foreground">{caption}</figcaption> : null}
@@ -474,23 +676,9 @@ export function DepthGallery({ items, className }: { items: DepthGalleryItem[]; 
       className={cn('relative overflow-hidden rounded-[var(--ut-media-radius)]', className)}
     >
       <div className="relative min-h-[var(--ut-media-block-lg)]">
-        {failedSources === sourceKey ? fallback : <ExperienceCanvas camera={{ position: [0, 0, 7], fov: 50 }} fallback={fallback}>
-          <LightRig preset="soft" />
-          <ScrollControls horizontal pages={Math.max(1, planes.length / 3)} damping={0.2}>
-            <Scroll>
-              {planes.map((item, index) => (
-                <Float key={item.src} speed={0.9} floatIntensity={0.5}>
-                  <ImagePlane
-                    url={item.src}
-                    scale={2.4}
-                    onFailure={onFailure}
-                    position={[index * 2.8 - 2, index % 2 === 0 ? 0.4 : -0.4, -index * 0.35]}
-                  />
-                </Float>
-              ))}
-            </Scroll>
-          </ScrollControls>
-        </ExperienceCanvas>}
+        {failedSources === sourceKey ? fallback : (
+          <WebglLayer scene="DepthGalleryScene" sceneProps={{ items: planes, onFailure }} fallback={fallback} />
+        )}
       </div>
       <ul className="sr-only">
         {planes.map((item) => (
@@ -504,36 +692,8 @@ export function DepthGallery({ items, className }: { items: DepthGalleryItem[]; 
 
     '/src/unison/ui/experience/stage.tsx': `${marker}
 import * as React from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Bounds, ContactShadows, OrbitControls, useGLTF } from '@react-three/drei';
-import type * as THREE from 'three';
 import { cn } from '@/unison/ui';
-import { ExperienceCanvas } from './canvas';
-import { LightRig } from './scene';
-import { useExperienceMaterial } from './tokens';
-
-function Spinner({ spin, children }: { spin: boolean; children: React.ReactNode }) {
-  const group = React.useRef<THREE.Group>(null);
-  useFrame((_state, delta) => {
-    if (spin && group.current) group.current.rotation.y += delta * 0.35;
-  });
-  return <group ref={group}>{children}</group>;
-}
-
-function PlaceholderObject() {
-  const material = useExperienceMaterial();
-  return (
-    <mesh castShadow>
-      <torusKnotGeometry args={[1, 0.34, 160, 24]} />
-      <meshStandardMaterial color={material.primary} roughness={0.2} metalness={0.75} />
-    </mesh>
-  );
-}
-
-function GltfObject({ src }: { src: string }) {
-  const { scene } = useGLTF(src);
-  return <primitive object={scene} />;
-}
+import { WebglLayer } from './lazy';
 
 export interface ProductStageProps {
   /** Optional .glb model. Without one the stage renders a themed object. */
@@ -553,16 +713,11 @@ export function ProductStage({ src, alt, caption, spin = true, className }: Prod
       className={cn('relative overflow-hidden rounded-[var(--ut-media-radius)] bg-card', className)}
     >
       <div className="relative min-h-[var(--ut-media-block-lg)]">
-        <ExperienceCanvas
-          camera={{ position: [0, 0.6, 5], fov: 45 }}
+        <WebglLayer
+          scene="ProductScene"
+          sceneProps={{ src, spin }}
           fallback={<div className="size-full bg-gradient-to-b from-card to-muted" />}
-        >
-          <LightRig preset="studio" />
-          <Bounds fit clip observe margin={1.2}>
-            <Spinner spin={spin}>{src ? <GltfObject src={src} /> : <PlaceholderObject />}</Spinner>
-          </Bounds>
-          <ContactShadows position={[0, -1.6, 0]} opacity={0.4} blur={2.6} far={4} />
-        </ExperienceCanvas>
+        />
         <span className="sr-only">{alt}</span>
       </div>
       {caption ? <figcaption className="mt-3 text-sm text-muted-foreground">{caption}</figcaption> : null}
@@ -588,19 +743,11 @@ export function ModelViewer({ src, alt, spin = false, className }: ModelViewerPr
       aria-label={alt}
     >
       <div className="relative min-h-[var(--ut-media-block-lg)]">
-        <ExperienceCanvas
-          camera={{ position: [0, 0.5, 4.5], fov: 45 }}
+        <WebglLayer
+          scene="ModelScene"
+          sceneProps={{ src, spin }}
           fallback={<div className="size-full bg-gradient-to-b from-card to-muted" />}
-        >
-          <LightRig preset="studio" />
-          <Bounds fit clip observe margin={1.25}>
-            <Spinner spin={spin}>
-              <GltfObject src={src} />
-            </Spinner>
-          </Bounds>
-          <ContactShadows position={[0, -1.5, 0]} opacity={0.35} blur={2.4} far={4} />
-          <OrbitControls makeDefault enablePan={false} enableZoom={false} minPolarAngle={0.8} maxPolarAngle={2.1} />
-        </ExperienceCanvas>
+        />
       </div>
     </div>
   );
@@ -610,7 +757,10 @@ export function ModelViewer({ src, alt, spin = false, className }: ModelViewerPr
     '/src/unison/ui/experience/index.ts': `${marker}
 // Experience layer barrel — the ONLY sanctioned WebGL surface for generated
 // pages. Heavy primitives (${heavyList}) are budgeted by the preflight gate.
+// The WebGL renderer itself is loaded lazily from './webgl'; every primitive
+// renders its DOM fallback until (or unless) that bundle resolves.
 export { ExperienceCanvas, type ExperienceCanvasProps } from './canvas';
+export { WebglLayer, ExperienceBoundary, lazyExperienceComponent, type WebglLayerProps } from './lazy';
 export { useExperienceMaterial, useExperienceEnabled, type ExperienceMaterial } from './tokens';
 export {
   ImmersiveHero,
