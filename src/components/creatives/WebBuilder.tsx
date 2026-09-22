@@ -138,6 +138,8 @@ import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { ElementIntentInspector } from "./web-builder/ElementIntentInspector";
 import { PropertyInspectorPanel } from "./web-builder/PropertyInspectorPanel";
+import { planInspectorExecution } from "@/services/builder/inspectorPatchExecution";
+import type { InspectorPatchPlan } from "@/services/builder/propertyInspectorModel";
 
 import { CatalogInspectorPanel } from "@/components/business-center/CatalogInspectorPanel";
 import { buildSectionTypeMap } from "@/services/autoEmitSectionBindings";
