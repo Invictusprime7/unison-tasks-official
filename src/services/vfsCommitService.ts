@@ -747,6 +747,52 @@ export async function commitMutation(
     }
   }
 
+  // P0.4 — module-closure hard gate. Every edit path (wizard launch, AI
+  // builder, presentation ops, theme edits, inspector patches, restores)
+  // funnels through this single writer, so the closure check lives here once:
+  // a candidate whose relative imports do not resolve, or whose local JSX
+  // imports name a symbol the target module never exports, can never be
+  // persisted — that is exactly the "element type is invalid" preview crash.
+  const moduleClosureBlockers: PublishBlockerSummary[] = [];
+  if (status === 'committed') {
+    const unresolvedModules = findUnresolvedLocalImports(files);
+    if (unresolvedModules.length > 0) {
+      moduleClosureBlockers.push({
+        source: 'preview',
+        code: 'module-closure-unresolved-import',
+        message: `${unresolvedModules.length} unresolved local import(s): ${describeUnresolvedImports(unresolvedModules)}`,
+        meta: { unresolved: unresolvedModules.slice(0, 20) },
+      });
+    }
+    const exportViolations = findLocalJsxImportContractViolations(files);
+    if (exportViolations.length > 0) {
+      moduleClosureBlockers.push({
+        source: 'preview',
+        code: 'module-closure-missing-export',
+        message: `${exportViolations.length} local component import(s) reference a symbol the module does not export: ${exportViolations
+          .slice(0, 5)
+          .map((v) => `${v.filePath} → "${v.importPath}" (${v.symbol})`)
+          .join(', ')}`,
+        meta: { violations: exportViolations.slice(0, 20) },
+      });
+    }
+    if (moduleClosureBlockers.length > 0 && requirePreview) {
+      status = 'rejected';
+      preExecutionReady = false;
+      log('gate', 'error', 'module closure gate rejected the candidate', {
+        unresolved: unresolvedModules.length,
+        missingExports: exportViolations.length,
+      });
+    } else if (moduleClosureBlockers.length > 0) {
+      log('gate', 'warn', 'module closure defects retained as publish blockers', {
+        unresolved: unresolvedModules.length,
+        missingExports: exportViolations.length,
+      });
+    }
+  }
+
+
+
   // Move C: execute transactional backend ops only after the candidate VFS
   // has survived preview and readiness checks. This is intentionally after
   // the auto-repair decision: a rejected revision must never provision or
