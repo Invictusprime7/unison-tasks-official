@@ -57,12 +57,24 @@ export interface BackendOp {
   payload?: Record<string, unknown>;
 }
 
-/** Snapshot-owned visual mutations. These never rewrite page JSX directly. */
-export interface PresentationOp {
-  type: 'setVariant';
-  sectionId: string;
-  variantId: string;
+/**
+ * Snapshot-owned visual mutations. These never rewrite page JSX directly:
+ * they mutate the sealed design intervention and the canonical compiler
+ * re-projects the pages (see `@/services/builder/semanticPresentationOps`).
+ */
+export interface PresentationSectionCopy {
+  headline?: string;
+  subheadline?: string;
+  description?: string;
 }
+
+export type PresentationOp =
+  | { type: 'setVariant'; sectionId: string; variantId: string }
+  | { type: 'setSectionCopy'; pageRole: string; sectionType: string; copy: PresentationSectionCopy }
+  | { type: 'reorderSections'; pageRole: string; sectionOrder: string[] }
+  | { type: 'removeSection'; pageRole: string; sectionType: string }
+  | { type: 'setMotionBudget'; motionBudget: 'restrained' | 'expressive' }
+  | { type: 'setLayoutRecipe'; layoutRecipe: 'floating-navbar' | 'collage-hero' | 'bento-features' | 'media-card-grid' | 'conversion-form' | 'rich-footer' };
 
 export interface PatchPlan {
   themeEdit?: import('@/services/theme/themeEdit').ThemeEdit;
