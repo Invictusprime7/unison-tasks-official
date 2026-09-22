@@ -186,5 +186,7 @@ export function bindMediaToComposition(
     return { ...section, props: nextProps } as SectionEntry;
   });
 
-  return { composition: { ...composition, sections }, report };
+  const bound: TemplateComposition = { ...composition, sections };
+  report.catalog = buildResolvedArtifactCatalog(bound, buildBusinessAssetIndex(library));
+  return { composition: bound, report };
 }
