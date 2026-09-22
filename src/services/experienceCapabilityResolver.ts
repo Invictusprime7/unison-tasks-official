@@ -301,11 +301,16 @@ export function resolveExperienceEnvelope(input: ExperienceEnvelopeInput): Exper
   const canvasBudget = webgl === 'eligible' ? 2 : webgl === 'accent' ? 1 : 0;
 
   const isAllowed = (item: DesignVocabularyEntry): boolean => {
+    // Phase 5: descriptive-only vocabulary is retired from every envelope. An
+    // entry reaches Lane B only when a registered implementation, an
+    // enhancement adapter or an emitted foundation primitive can build it.
+    if (!isOfferableVocabulary({ category: item.category, id: item.id })) return false;
     if (item.capabilities.some((capability) => !capabilities.has(capability))) return false;
     if (item.experience === 'heavy' && webgl !== 'eligible') return false;
     if (item.experience === 'accent' && webgl === 'ineligible') return false;
     return true;
   };
+
 
   const heroCandidates = candidatesFor('hero', profile, input.seed, isAllowed);
   const contentCandidates = candidatesFor('content', profile, input.seed, isAllowed);
