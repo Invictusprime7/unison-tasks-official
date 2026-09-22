@@ -70,11 +70,18 @@ export interface PresentationSectionCopy {
 
 export type PresentationOp =
   | { type: 'setVariant'; sectionId: string; variantId: string }
+  /**
+   * §7.7 — a site-wide ("all pages") design edit. Mutates the shared design
+   * authority for a whole section family and clears page-local overrides so
+   * every page inherits it. Explicit exceptions stay page-local.
+   */
+  | { type: 'setFamilyVariant'; sectionType: string; variantId: string; exceptPageRoles?: string[] }
   | { type: 'setSectionCopy'; pageRole: string; sectionType: string; copy: PresentationSectionCopy }
   | { type: 'reorderSections'; pageRole: string; sectionOrder: string[] }
   | { type: 'removeSection'; pageRole: string; sectionType: string }
   | { type: 'setMotionBudget'; motionBudget: 'restrained' | 'expressive' }
   | { type: 'setLayoutRecipe'; layoutRecipe: 'floating-navbar' | 'collage-hero' | 'bento-features' | 'media-card-grid' | 'conversion-form' | 'rich-footer' };
+
 
 export interface PatchPlan {
   themeEdit?: import('@/services/theme/themeEdit').ThemeEdit;
@@ -159,6 +166,12 @@ function isValidPresentationOp(op: PresentationOp): boolean {
   switch (op.type) {
     case 'setVariant':
       return typeof op.sectionId === 'string' && typeof op.variantId === 'string';
+    case 'setFamilyVariant':
+      return typeof op.sectionType === 'string'
+        && typeof op.variantId === 'string'
+        && (op.exceptPageRoles === undefined
+          || (Array.isArray(op.exceptPageRoles) && op.exceptPageRoles.every((role) => typeof role === 'string')));
+
     case 'setSectionCopy': {
       if (typeof op.pageRole !== 'string' || typeof op.sectionType !== 'string') return false;
       if (!op.copy || typeof op.copy !== 'object') return false;
