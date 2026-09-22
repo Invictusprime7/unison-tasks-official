@@ -28,6 +28,7 @@ import type {
 } from '@/platform/core/designVocabulary';
 import { getDesignImplementation, getImplementationVocabularyRefs } from '@/services/designImplementationRegistry';
 import { resolveAvailableAutoArtDirectionPackId } from '@/services/wizardDesignAvailability';
+import { selectAffineVariant } from '@/sections/compositionAffinity';
 
 
 
@@ -235,7 +236,7 @@ export function readWizardDesignIntervention(
       intervention.experienceBudget = intervention.experienceBudget ?? baseline.budget;
     }
     if (!intervention.activeVariants) {
-      intervention.activeVariants = buildActiveVariants(intervention.templateId, intervention.seed || 'legacy');
+      intervention.activeVariants = buildActiveVariants(intervention.templateId, intervention.seed || 'legacy', undefined, intervention.industry);
     }
     if (!isArtDirectionPackId(intervention.artDirectionPackId)) {
       // Legacy brief written before art direction was sealed — re-derive it
@@ -312,16 +313,7 @@ const MODEL_RECIPES: Record<BusinessModel, Omit<WizardDesignIntervention, 'versi
   },
 };
 
-function stableIndex(seed: string, size: number): number {
-  let hash = 2166136261;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash ^= seed.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0) % size;
-}
-
-function buildActiveVariants(templateId: string | null | undefined, seed: string, packId?: ArtDirectionPackId): ActiveVariantMap {
+function buildActiveVariants(templateId: string | null | undefined, seed: string, packId?: ArtDirectionPackId, industry?: string | null): ActiveVariantMap {
   const composition = templateId ? getCompositionById(templateId) : null;
   if (!composition) return {};
 
@@ -330,8 +322,14 @@ function buildActiveVariants(templateId: string | null | undefined, seed: string
     if (!candidates.length) throw new Error('No certified 21st implementation for ' + section.type);
     const layout = (section.props as { layout?: string }).layout;
     const baselineVariantId = section.variantId ?? getVariantIdForLayout(section.type, layout);
-    const baselineIndex = Math.max(0, candidates.findIndex((variant) => variant.id === baselineVariantId));
-    const selected = candidates[(baselineIndex + stableIndex(`${seed}|${section.id}`, candidates.length)) % candidates.length]?.id;
+    // Affinity ranks the legal candidates (art direction order, industry
+    // dialect, page role, provenance); the seed only decides among the
+    // implementations that tie at the top, so selection stays deterministic
+    // without being arbitrary.
+    const selected = selectAffineVariant(candidates, `${seed}|${section.id}`, {
+      packId, industry, role: 'home', baselineVariantId,
+      neighbors: composition.sections.map((entry) => entry.type),
+    })?.id;
     return selected ? [[section.id, selected]] : [];
   })) as Record<string, VariantId>;
 }
@@ -482,7 +480,7 @@ export function buildWizardDesignIntervention(
         experiencePreference: input.designSelection?.experience,
         pinnedVariants,
       }) ?? undefined : undefined;
-  const activeVariants = buildActiveVariants(input.templateId, seed, artDirectionPackId);
+  const activeVariants = buildActiveVariants(input.templateId, seed, artDirectionPackId, typeof industry === 'string' ? industry : String(industry));
   const homeChoices = compositionPlan?.pages.find(page => page.role === 'home')?.variants;
   const home = input.templateId ? getCompositionById(input.templateId) : undefined;
   for (const section of home?.sections ?? []) {

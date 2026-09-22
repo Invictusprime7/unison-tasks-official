@@ -43,6 +43,7 @@ import {
 } from '@/platform/core/resolvedComposition';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { getGenerationVariantsForSection, getLayoutForVariantId, getVariantById } from '@/sections/variants';
+import { selectAffineVariant } from '@/sections/compositionAffinity';
 import type { VariantId } from '@/sections/variants';
 import heroPageIntroSource from '@/sections/variants/hero/HeroPageIntro.tsx?raw';
 import stylexRecipes from './recipes/stylexRecipes.generated.json';
@@ -628,7 +629,18 @@ function applyDesignVariants(
         // their content using a certified implementation of the same family.
         const eligible = roleEligible.length ? roleEligible : getGenerationVariantsForSection(section.type, pack);
         if (!eligible.length) throw new Error('No certified 21st implementation for ' + section.type);
-        if (!activeVariant || !eligible.some(candidate => candidate.id === activeVariant!.id)) activeVariant = eligible[0];
+        // Affinity-guided, not "first in the list": the art direction order,
+        // the industry dialect and the page's own neighbouring families rank
+        // the legal candidates; the seed breaks ties deterministically.
+        if (!activeVariant || !eligible.some(candidate => candidate.id === activeVariant!.id)) {
+          activeVariant = selectAffineVariant(eligible, `${designIntervention?.seed ?? template.id}|${section.id}`, {
+            packId: pack?.id,
+            industry: designIntervention?.industry,
+            role: template.pageRole || 'home',
+            neighbors: template.sections.map(entry => entry.type),
+            baselineVariantId: activeVariantId,
+          }) ?? eligible[0];
+        }
       }
       if (!activeVariant && section.type === 'hero' && section.sourceSectionId && section.variantId) {
         const layout = getLayoutForVariantId(section.variantId);

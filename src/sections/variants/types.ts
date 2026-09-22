@@ -72,6 +72,12 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   thumbnail: string;
   /** Tags for filtering (e.g., "modern", "minimal", "bold") */
   tags?: string[];
+  /**
+   * Optional authored composition affinity: neighbouring section family →
+   * coherence weight in 0..1 (0.5 is neutral). Guides seeded selection only;
+   * it never gates eligibility. See `src/sections/compositionAffinity.ts`.
+   */
+  compositionAffinity?: Readonly<Partial<Record<SectionType, number>>>;
   pageRoles?: readonly import('../types').TemplatePageRole[];
   /** Whether this is the default variant for the section type */
   isDefault?: boolean;
