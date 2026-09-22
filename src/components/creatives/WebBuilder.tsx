@@ -4389,14 +4389,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
         const commit = await commitMutation({
           source: 'playground-edit',
-          identity: {
+          identity: buildCommitIdentity({
             userId: user.id,
             businessId,
             projectId: canonicalProjectId,
             draftId: existingDraftId,
             revisionId: currentRevisionIdRef.current,
-            sessionId: `web-builder:${existingDraftId}`,
-          },
+          })!,
           current: {
             ...buildCanonicalCommitCurrent(
               currentVfsFiles,
@@ -7647,14 +7646,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       vfsFiles={virtualFS.getSandpackFiles()}
                       identity={
                         currentUserId && businessId && currentDraftId
-                          ? {
+                          ? buildCommitIdentity({
                               userId: currentUserId,
                               businessId,
-                              projectId: resolvedProjectId || currentDraftId,
+                              projectId: resolvedProjectId,
                               draftId: currentDraftId,
                               revisionId: currentRevisionId,
-                              sessionId: `web-builder:${currentDraftId}`,
-                            }
+                            })!
                           : null
                       }
                       onRestored={(revId) => {
