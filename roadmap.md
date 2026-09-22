@@ -715,7 +715,18 @@ preview runtime — extend what exists.
 	the reason, so "broken imports + preview unchanged + ✅ applied" is now
 	impossible. `AIBuilderApplyOutcome` carries status/revision/changed paths/
 	blockers. Tests: `src/test/builderTransactionState.test.ts`.
-- [ ] 6. PageRegistry → canonical SiteShell topology closure (chrome.owner)
+- [x] 6. PageRegistry → canonical SiteShell topology closure (chrome.owner) —
+	`src/services/siteShellTopology.ts` projects the canonical PageRegistry into
+	the one navigation model every consumer uses (`buildSiteShellTopology`:
+	routes + hash hrefs + primary/footer nav in navOrder, utility page types
+	hidden) and `assertSiteShellClosure` proves closure between registry, page
+	chrome and router routes (stale-chrome-link, missing-nav-link,
+	duplicate-primary-navbar, duplicate-footer, router-route-missing/unknown).
+	`wizardGenerationBrief.chrome.owner` flips `page-body` → `site-shell`: pages
+	still render chrome inline, but links are a registry projection
+	(`chrome.navigation.primary/footer`) they must carry verbatim. The
+	ai-code-assistant prompt emits the same site-shell contract block.
+	Tests: `src/test/siteShellTopology.test.ts`.
 
 ### P1
 - [ ] 7. Expand semantic `PresentationOp`
