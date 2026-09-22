@@ -77,9 +77,13 @@ export function applySemanticPresentationOps(
         if (!currentVariant || !nextVariant || currentVariant.sectionType !== nextVariant.sectionType) {
           throw new Error(`[presentation] invalid variant ${op.variantId} for section ${op.sectionId}.`);
         }
+        // §8.4 — a new edit asks the resolved catalog; legacy ids are not legal here.
+        const legality = resolveLegalImplementation(nextVariant.id, 'ai-edit');
+        if (!legality.legal) throw new Error(`[presentation] ${legality.reason}`);
         next.activeVariants[op.sectionId] = nextVariant.id;
         break;
       }
+
 
       /**
        * §7.7 — "all pages" edits use inheritance. One shared family decision is
