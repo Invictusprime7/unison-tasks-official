@@ -139,6 +139,7 @@ import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
 import { ElementIntentInspector } from "./web-builder/ElementIntentInspector";
 import { PropertyInspectorPanel } from "./web-builder/PropertyInspectorPanel";
 import { planInspectorExecution } from "@/services/builder/inspectorPatchExecution";
+import { toCompositionRole } from "@/services/builder/semanticPresentationOps";
 import type { InspectorPatchPlan } from "@/services/builder/propertyInspectorModel";
 
 import { CatalogInspectorPanel } from "@/components/business-center/CatalogInspectorPanel";
@@ -3288,10 +3289,21 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const snapshot = resolveSnapshot(files, effectiveRouteState as any).snapshot
       ?? effectiveRouteState?.siteBundleSnapshot
       ?? null;
+    const registryPage = plan.pagePath
+      ? (snapshot?.pageRegistry?.pages ?? []).find((page: any) => page.filePath === plan.pagePath || page.path === plan.pagePath)
+      : undefined;
+    const pageRole = registryPage?.pageRole ?? registryPage?.pageType ?? (registryPage?.isHome ? 'home' : null);
+    const composedRole = toCompositionRole(pageRole);
+    const composedSections = composedRole
+      ? snapshot?.meta?.designIntervention?.compositionPlan?.pages
+          ?.find((page) => page.role === composedRole)?.sectionOrder ?? null
+      : null;
     const execution = planInspectorExecution(plan, {
       files,
       snapshotId: snapshot?.snapshotId ?? null,
       revisionId: currentRevisionIdRef.current || null,
+      pageRole,
+      composedSections,
     });
 
     if (execution.kind === 'rejected') {
