@@ -54,7 +54,7 @@ export interface LaunchBlueprint {
 }
 
 export interface LaunchState {
-  // Core launch metadata (from SystemLauncher)
+  // Core launch metadata (from LauncherWizard)
   systemType: SystemType;
   systemName: string;
   businessName: string;
@@ -64,7 +64,7 @@ export interface LaunchState {
    * Resolved industry key that drove seeding + intent-profile selection.
    * Top-level mirror of `blueprint.identity.industry` so downstream
    * consumers (WebBuilder, IntentRouter, publish gate) don't need to
-   * dig through the blueprint. Populated by SystemLauncher.
+   * dig through the blueprint. Populated by LauncherWizard.
    */
   industry?: string;
 
@@ -155,7 +155,7 @@ export interface LaunchContextType {
 // ============================================================================
 
 /**
- * Create a minimal LaunchState from SystemLauncher data
+ * Create a minimal LaunchState from LauncherWizard data
  */
 export function createLaunchState(
   input: Pick<LaunchState, 

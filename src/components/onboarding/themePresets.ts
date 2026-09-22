@@ -1,5 +1,5 @@
 // ============================================================================
-// Theme Presets for SystemLauncher
+// Theme Presets for LauncherWizard
 // VISUAL-ONLY: These presets control colors, typography, and layout formatting.
 // They must NEVER influence industry content, text copy, or business language.
 // ============================================================================

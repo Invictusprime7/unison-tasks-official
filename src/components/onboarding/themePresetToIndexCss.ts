@@ -21,6 +21,7 @@ import {
   resolveArtDirectionPack,
   type ArtDirectionResolutionInput,
 } from '@/sections/variants/artDirectionPacks';
+import { buildPageArchetypeCss } from '@/sections/pageArchetypeContract';
 
 export const SHADCN_LIBRARY_CSS_MARKER = 'SHADCN LIBRARY: canonical Stage 4b foundation';
 
@@ -113,6 +114,7 @@ export function buildThemedIndexCssFromTokens(
     seed: metadata.seed,
   });
   const artDirection = buildArtDirectionCssDeclarations(artDirectionPack);
+  const pageArchetypeCss = buildPageArchetypeCss(artDirectionPack);
   const entrance = buildEntranceKeyframes(artDirectionPack);
 
 
@@ -256,6 +258,9 @@ export function buildThemedIndexCssFromTokens(
   .ut-content { width: min(100% - 2.5rem, var(--ut-content-width)); margin-inline: auto; }
   .ut-section { padding-block: var(--ut-section-space); }
   .ut-media-frame { overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: var(--ut-media-radius); background: hsl(var(--muted)); }
+
+  /* --- Page archetypes (page-specific rhythm and density only) ---------- */
+${pageArchetypeCss}
 
   /* --- Art direction primitives (pack-owned, token-only) ---------------- */
   .ut-rhythm { padding-block: var(--ut-rhythm-space); }

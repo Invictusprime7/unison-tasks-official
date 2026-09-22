@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizePageSectionOrder, pageArchetypeIssues } from './pageArchetypeContract.ts';
 
 export const COMPOSITION_SYSTEM_PROMPT = `You compose Unison pages using only the supplied local variant catalog.
 Return ONLY JSON shaped as {"version":"1.0","pages":[{"role":"home","sectionOrder":["navbar","hero","services","footer"],"variants":{"services":"an eligible catalog ID"},"copy":{"hero":{"headline":"Original business-specific headline"}}}]}.
@@ -40,7 +41,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
       seenRoles.add(page.role);
       return true;
     }).map(page => {
-      const sectionOrder = page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index);
+      const sectionOrder = normalizePageSectionOrder(page.role, page.sectionOrder.filter((family, index) => page.sectionOrder.indexOf(family) === index));
       const inOrder = new Set(sectionOrder);
       return {
         ...page,
@@ -59,7 +60,7 @@ function normalizeCompositionPlan(plan: z.infer<typeof resultSchema>, brief?: Co
 }
 
 export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, brief: {
-  roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[] }>;
+  roles: string[]; variants: Array<{ id: string; family: string; pageRoles: string[]; tags?: string[] }>;
   designSelection?: { pinnedVariants?: Record<string, string> };
 }) {
   const normalized = normalizeCompositionPlan(plan, brief);
@@ -75,7 +76,7 @@ export function compositionMatchesCatalog(plan: z.infer<typeof resultSchema>, br
 
 export interface CompositionBrief {
   roles: string[];
-  variants: Array<{ id: string; family: string; pageRoles: string[] }>;
+  variants: Array<{ id: string; family: string; pageRoles: string[]; tags?: string[] }>;
   canonicalContract?: string;
   designSelection?: { pinnedVariants?: Record<string, string> };
 }
@@ -97,8 +98,26 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
       if (brief.designSelection?.pinnedVariants?.[family] && brief.designSelection.pinnedVariants[family] !== id) issues.push(prefix + '.variants.' + family + ': preserve the user-pinned ID ' + brief.designSelection.pinnedVariants[family]);
     }
     for (const family of Object.keys(page.copy ?? {})) if (!page.sectionOrder.includes(family) || family === 'navbar' || family === 'footer') issues.push(prefix + '.copy.' + family + ': copy must target a body family in sectionOrder');
+    // Page archetype (page-specific required roles and negative vocabulary).
+    const variantTags: Record<string, string[]> = {};
+    for (const [family, id] of Object.entries(page.variants)) {
+      const tags = brief.variants.find(v => v.id === id)?.tags;
+      if (tags?.length) variantTags[family] = tags;
+    }
+    // Negative vocabulary and body ceiling are hard: they must never ship.
+    issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags, { requireFamilies: false }));
   }
   return issues;
+}
+
+/**
+ * Missing page-required families. Advisory: the model is asked once to repair
+ * them, but the compiler resolves certified defaults, so they never 502 a launch.
+ */
+export function compositionAdvisoryIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
+  const normalized = normalizeCompositionPlan(plan, brief);
+  return normalized.pages.flatMap(page => pageArchetypeIssues(page.role, page.sectionOrder)
+    .filter(issue => issue.includes('must include')));
 }
 
 /** Dedicated data-only lane. One bounded AI repair, never a deterministic substitute. */
@@ -123,8 +142,14 @@ export async function runCompositionLane(context: string, headers: Record<string
       const parsed = resultSchema.safeParse(JSON.parse(content));
       const normalized = parsed.success ? normalizeCompositionPlan(parsed.data, options.brief) : null;
       issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
+      const advisory = normalized && options.brief ? compositionAdvisoryIssues(normalized, options.brief) : [];
       errorType = parsed.success ? 'composition_catalog' : 'composition_contract';
-      if (normalized && !issues.length) return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
+      if (normalized && !issues.length) {
+        // Unmet page requirements are observability only: the compiler resolves
+        // certified defaults, so they never cost the user a launch or a retry.
+        if (advisory.length) console.warn('[wizard-composition] accepted with unmet page requirements', { advisory: advisory.slice(0, 10) });
+        return respond({ content: JSON.stringify(normalized), task: 'wizard_composition' });
+      }
     } catch { issues = ['Return valid JSON matching the supplied output schema.']; errorType = 'composition_contract'; }
     if (attempt === 0 && options.brief) {
       console.warn('[wizard-composition] requesting AI repair', { issues: issues.slice(0, 20) });

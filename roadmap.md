@@ -800,6 +800,22 @@ preview runtime — extend what exists.
 	explicitly — retirement applies to fallbacks only.
 	Tests: `src/test/legacyFallbackRetirement.test.ts`.
 
+- [x] Phase 7. Page-specific rhythm, density, required roles and negative
+	vocabulary. `src/sections/pageArchetypeContract.ts` declares an archetype for
+	all fourteen composition roles (purpose, rhythm/density shift, required,
+	recommended and forbidden families, forbidden design traits, body ceiling),
+	mirrored byte-for-byte for the edge in
+	`supabase/functions/_shared/pageArchetypeContract.ts` and drift-tested.
+	Page scale modulates the art-direction pack's own rhythm/density (spacing
+	tokens only — never colour, type or motion) and is emitted per role as
+	`[data-ut-page-role="…"]` scope by Stage 4b; `SiteLayout` stamps the role.
+	Enforcement: forbidden families/traits and the body ceiling are hard at both
+	the composition lane and the client gate; missing required families are
+	advisory (logged, compiler resolves certified defaults) so they never cost a
+	launch. Legacy `useWizardAI`, `WizardTopAction` and every `SystemLauncher`
+	reference are removed.
+	Tests: `src/test/pageArchetypeContract.test.ts`.
+
 - [ ] 11. Direct VFS writers 42 → 0
 - [ ] 12. WebBuilder controller extraction
 
