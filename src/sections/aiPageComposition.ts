@@ -8,6 +8,7 @@ import type { WizardExperiencePreference } from '@/services/wizardDesignSelectio
 import { deriveImplementationVisualSignature } from '@/services/implementationVisualSignature';
 import { isImplementationExperienceCompatible } from '@/services/designCompatibilityGraph';
 import { COMPILER_OWNED_FAMILIES, resolvePageArchetype } from '@/sections/pageArchetypeContract';
+import { isAdditiveUnderContract, type SiteDesignContract } from '@/services/launch/siteDesignContract';
 
 export const COMPOSITION_ROLES = ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'checkout', 'thank_you', 'blog', 'immersive', 'custom'] as const;
 const family = z.enum(['navbar', 'hero', 'about', 'services', 'features', 'gallery', 'pricing', 'logo-cloud', 'blog-preview', 'before-after', 'testimonials', 'cta', 'contact', 'footer', 'stats', 'team', 'faq']);
