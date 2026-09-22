@@ -79,7 +79,7 @@ export function renderCompositionCanonicalContract(brief: CompositionContractBri
     `9. User-pinned family choices are final and override AI selection: ${Object.entries(brief.pinnedVariants ?? {}).map(([family, id]) => `${family}=${id}`).join(', ') || 'none'}. If selecting a pinned family, use exactly its pinned ID.`,
     '10. Page archetypes are machine-checked: each role below states the families it must include, the families and design traits it must never include (negative vocabulary) and its body-section ceiling. A page that borrows another role\'s composition is discarded.',
     'PAGE ARCHETYPES (page-specific purpose, required and forbidden vocabulary):',
-    describePageArchetypes(brief.roles),
+    describePageArchetypes(brief.roles, brief.industry),
     'ELIGIBLE VARIANT IDS PER ROLE (choose only from these):',
     perRole || '  (none)',
   ].join('\n');
@@ -117,7 +117,7 @@ export function normalizeCompositionResponse(value: unknown, brief: CompositionC
     seenRoles.add(page.role);
     const sectionOrder = normalizePageSectionOrder(page.role, Array.isArray(page.sectionOrder)
       ? page.sectionOrder.filter((family, index) => typeof family === 'string' && page.sectionOrder.indexOf(family) === index)
-      : []);
+      : [], brief.industry);
     const inOrder = new Set(sectionOrder);
     const variants = Object.fromEntries(Object.entries(page.variants ?? {})
       .filter(([family]) => inOrder.has(family) && !COMPILER_OWNED_FAMILIES.has(family)));
