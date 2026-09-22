@@ -38,9 +38,11 @@ describe('builder AI mutation transaction', () => {
   });
 
   it('reports rejected without mirroring when the canonical gate refuses', async () => {
-    persistAiCommit.mockRejectedValue(new CommitRejectedError('blocked', {
-      publishBlockers: [{ source: 'preview', code: 'syntax', message: 'Preview would break.' }],
-    } as never));
+    persistAiCommit.mockImplementation(async () => {
+      throw new CommitRejectedError('blocked', {
+        publishBlockers: [{ source: 'preview', code: 'syntax', message: 'Preview would break.' }],
+      } as never);
+    });
     const mirror = vi.fn(() => ({ success: true }));
 
     const outcome = await runBuilderAiMutation(ctx, { mirror });
@@ -70,7 +72,7 @@ describe('builder AI mutation transaction', () => {
   });
 
   it('never reports success when the commit itself throws', async () => {
-    persistAiCommit.mockRejectedValue(new Error('network down'));
+    persistAiCommit.mockImplementation(async () => { throw new Error('network down'); });
     const outcome = await runBuilderAiMutation(ctx, { mirror: () => ({ success: true }) });
     expect(outcome.state).toBe('failed');
     expect(outcome.success).toBe(false);
