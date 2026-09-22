@@ -229,3 +229,94 @@ export function alignWithHomepageVisualLanguage(
   }
   return out;
 }
+
+/* ---------------------------------------------------------------------------
+ * Site-wide enforcement (post-generation)
+ *
+ * Generation establishes the visual language; every later mutation — AI
+ * builder rewrites, property inspector edits, restored artifacts — must keep
+ * the site inside it. Same authority, same rules, applied to a whole file set
+ * instead of one page: mechanical drift is repaired deterministically, and a
+ * real palette escape is a violation the caller can block on.
+ * ------------------------------------------------------------------------- */
+
+/** Largest type tier: reserved for the homepage headline. */
+const HOMEPAGE_ONLY_TYPE_TIER = 'ut-hero';
+const INHERITED_TYPE_TIER = 'ut-display';
+
+/** Hardcoded palette escapes: they bypass the theme and break dark mode. */
+const PALETTE_ESCAPES: ReadonlyArray<{ pattern: RegExp; label: string }> = [
+  { pattern: /\b(?:bg|text|border|from|via|to)-\[#[0-9a-fA-F]{3,8}\]/g, label: 'hardcoded hex utility' },
+  { pattern: /\b(?:bg|text|border)-(?:white|black)\b/g, label: 'hardcoded black/white utility' },
+  { pattern: /(?:color|background(?:-color)?)\s*:\s*#[0-9a-fA-F]{3,8}/g, label: 'inline hex style' },
+];
+
+export interface SiteDesignContractReport {
+  /** Files after deterministic repair (unchanged entries are the same reference). */
+  files: Record<string, string>;
+  /** Mechanical drift repaired without discarding any authored design. */
+  repairs: string[];
+  /** Real contract breaches the caller may reject on. */
+  violations: string[];
+  /** True when nothing has been established yet — nothing to enforce. */
+  skipped: boolean;
+}
+
+const isPageSource = (path: string): boolean =>
+  /^\/src\/pages\/.+\.(?:tsx|jsx)$/.test(path);
+
+/**
+ * Enforce the homepage-established language across every page in a file set.
+ * Never throws: the caller decides what a violation costs.
+ */
+export function enforceSiteDesignContract(options: {
+  files: Record<string, string>;
+  homePath?: string | null;
+  language?: HomepageVisualLanguage;
+}): SiteDesignContractReport {
+  const files = options.files ?? {};
+  const homePath = options.homePath && files[options.homePath]
+    ? options.homePath
+    : ['/src/pages/Index.tsx', '/src/pages/Home.tsx', '/src/pages/index.tsx']
+      .find(candidate => typeof files[candidate] === 'string') ?? null;
+
+  const language = options.language
+    ?? (homePath ? extractHomepageVisualLanguage(files[homePath], homePath) : undefined);
+
+  if (!hasEstablishedVisualLanguage(language)) {
+    return { files, repairs: [], violations: [], skipped: true };
+  }
+
+  const next: Record<string, string> = { ...files };
+  const repairs: string[] = [];
+  const violations: string[] = [];
+
+  for (const [path, source] of Object.entries(files)) {
+    if (typeof source !== 'string' || !isPageSource(path) || path === homePath) continue;
+
+    let content = alignWithHomepageVisualLanguage(source, language);
+    if (content !== source) repairs.push(`${path}: site chrome realigned with the homepage design.`);
+
+    if (content.includes(HOMEPAGE_ONLY_TYPE_TIER) && language!.typography.includes(HOMEPAGE_ONLY_TYPE_TIER)) {
+      const demoted = content.replace(new RegExp(`\\b${HOMEPAGE_ONLY_TYPE_TIER}\\b`, 'g'), INHERITED_TYPE_TIER);
+      if (demoted !== content) {
+        content = demoted;
+        repairs.push(`${path}: headline tier demoted to ${INHERITED_TYPE_TIER}; ${HOMEPAGE_ONLY_TYPE_TIER} is the homepage headline tier.`);
+      }
+    }
+
+    for (const escape of PALETTE_ESCAPES) {
+      const hits = Array.from(new Set(content.match(escape.pattern) ?? []));
+      if (hits.length) {
+        violations.push(
+          `${path} uses ${escape.label} (${hits.slice(0, 4).join(', ')}). Pages must use the site theme tokens the homepage established.`,
+        );
+      }
+    }
+
+    violations.push(...validateHomepageInheritance({ path, content, language }));
+    if (content !== source) next[path] = content;
+  }
+
+  return { files: next, repairs, violations, skipped: false };
+}
