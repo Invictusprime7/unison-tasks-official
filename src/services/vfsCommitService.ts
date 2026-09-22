@@ -70,7 +70,7 @@ import {
   type PatchSource,
   type PresentationOp,
 } from '@/types/patchPlan';
-import { getVariantById } from '@/sections/variants';
+import { applySemanticPresentationOps } from '@/services/builder/semanticPresentationOps';
 import { recordCommitOutcome } from '@/services/mutationLedger';
 
 
