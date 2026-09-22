@@ -313,15 +313,6 @@ const MODEL_RECIPES: Record<BusinessModel, Omit<WizardDesignIntervention, 'versi
   },
 };
 
-function stableIndex(seed: string, size: number): number {
-  let hash = 2166136261;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash ^= seed.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0) % size;
-}
-
 function buildActiveVariants(templateId: string | null | undefined, seed: string, packId?: ArtDirectionPackId, industry?: string | null): ActiveVariantMap {
   const composition = templateId ? getCompositionById(templateId) : null;
   if (!composition) return {};
