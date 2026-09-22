@@ -2005,12 +2005,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               },
             );
             if (applyOutcome.success) {
-              liveStep('complete', `✓ Applied ${Object.keys(normalizedFiles).length} files to project`);
               vfsEventBus.emit('ai:apply:complete', { filesWritten: Object.keys(normalizedFiles), source: 'multi-file' });
-              const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
-              toast.success(`✓ Multi-file project applied${approvalNote}`);
-              // P0.5: the verdict comes from the transaction, not from AI prose.
-              transactionVerdict = transactionVerdictLine('verified');
+              // P0.4: the commit is not the verdict — the preview is.
+              const verification = await awaitPreviewVerification();
+              if (verification.verified) {
+                liveStep('complete', `✓ Applied ${Object.keys(normalizedFiles).length} files to project`);
+                const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
+                toast.success(`✓ Multi-file project applied${approvalNote}`);
+                transactionVerdict = transactionVerdictLine('verified');
+              } else {
+                liveStep('error', 'Saved, but the preview did not confirm the change', verification.reason);
+                toast.warning('Saved, but the preview did not confirm the change', {
+                  description: verification.reason,
+                  duration: 8000,
+                });
+                transactionVerdict = transactionVerdictLine('held-for-review', verification.reason);
+              }
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated files.';
               liveStep('error', 'AI edit was not applied', applyError);
