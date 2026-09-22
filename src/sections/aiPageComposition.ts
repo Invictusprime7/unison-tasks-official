@@ -71,8 +71,15 @@ export function validateAIPageComposition(value: unknown, packId: ArtDirectionPa
  * Chrome stays compiler-owned. A family with no industry starter section still
  * resolves to nothing, so this can only widen within the contract.
  */
-export function isCreativelyAdditiveSection(type: SectionType, role: string, industry?: string | null): boolean {
+export function isCreativelyAdditiveSection(
+  type: SectionType,
+  role: string,
+  industry?: string | null,
+  contract?: SiteDesignContract,
+): boolean {
   if (COMPILER_OWNED_FAMILIES.includes(type) || type === 'hero') return false;
+  const compiled = isAdditiveUnderContract(contract, role, type);
+  if (typeof compiled === 'boolean') return compiled;
   const archetype = resolvePageArchetype(role, industry);
   if (archetype.forbiddenFamilies.includes(type)) return false;
   return archetype.requiredFamilies.includes(type) || archetype.recommendedFamilies.includes(type);
