@@ -112,6 +112,9 @@ export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, bri
     }
     // Negative vocabulary and body ceiling are hard: they must never ship.
     issues.push(...pageArchetypeIssues(page.role, page.sectionOrder, variantTags, { requireFamilies: false, industry: brief.industry }));
+    // Compiled site design contract: page density budget is hard, required
+    // creative roles are advisory (the compiler resolves certified defaults).
+    issues.push(...projectionDensityIssues(brief.designContract, page.role, page.sectionOrder).hard);
   }
   return issues;
 }
