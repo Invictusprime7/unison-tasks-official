@@ -16,6 +16,12 @@
  */
 
 import type { SectionEntry, TemplateComposition } from '@/sections/types';
+import {
+  MEDIA_PROP_KEYS,
+  MEDIA_COLLECTION_KEYS,
+  buildResolvedArtifactCatalog,
+  type ResolvedArtifactCatalog,
+} from '@/platform/core/resolvedArtifactCatalog';
 
 /** Bounded, serialisable projection of an Asset Registry record. */
 export interface SeedMediaAsset {
