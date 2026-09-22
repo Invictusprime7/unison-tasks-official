@@ -350,6 +350,7 @@ export function VFSCodeView({
         : {}),
     };
     mutate(dependencies, devDependencies);
+    // canonical-vfs-exempt: dependency manifest write, not site content
     importFiles({
       '/package.json': JSON.stringify({ ...manifest, dependencies, devDependencies }, null, 2),
     });
@@ -730,6 +731,7 @@ export function VFSCodeView({
           maxHeight="160px"
           onAddDep={handleAddDependency}
           onRemoveDep={handleRemoveDependency}
+          // canonical-vfs-exempt: terminal file write inside the developer workspace
           onWriteFile={(path, content) => importFiles({ [path]: content })}
           onRefreshPreview={() => vfsEventBus.emit('preview:refresh', {})}
         />

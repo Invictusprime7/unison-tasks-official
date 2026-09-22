@@ -816,7 +816,17 @@ preview runtime — extend what exists.
 	reference are removed.
 	Tests: `src/test/pageArchetypeContract.test.ts`.
 
-- [ ] 11. Direct VFS writers 42 → 0
+- [x] 11. Direct VFS writers 42 → 0. Every `importFiles` /
+	`importBuilderFiles` call site is now either a mutation routed through
+	`commitMutation` or a classified non-mutation with a stated reason. Funnel
+	scaffolding and functional-block insertion (the last two user mutations that
+	wrote working VFS directly) go through `commitBuilderFiles`, so a refusal
+	rolls back and reports instead of living in the preview only. Everything
+	else is annotated by class: hydration, adoption of an accepted commit,
+	rollback restore, local undo/redo, deterministic router projection,
+	workspace import, dependency manifest. `scripts/canonical-vfs-write-baseline.json`
+	is now empty, so the CI lint fails on any new unclassified writer.
+	Tests: `src/test/canonicalVfsWriteClosure.test.ts`.
 - [ ] 12. WebBuilder controller extraction
 
 ### P2

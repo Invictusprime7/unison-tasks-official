@@ -193,6 +193,7 @@ export function writeCanonicalsToVFS(
   const canonical = getCanonicalUnisonFiles(opts);
   if (Object.keys(canonical).length === 0) return;
   try {
+    // canonical-vfs-exempt: write-back of canonical Unison runtime files, not user content
     importFiles(canonical);
   } catch (err) {
     console.warn('[unison-canonical] VFS write-back failed', err);

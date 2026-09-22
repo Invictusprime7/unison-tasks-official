@@ -235,6 +235,7 @@ export function VFSProvider({
   const undoSnapshot = useCallback((): boolean => {
     const snapshot = vfsSnapshotManager.undo();
     if (!snapshot) return false;
+    // canonical-vfs-exempt: local working-set undo
     vfs.importFiles(snapshot.files);
     return true;
   }, [vfs]);
@@ -242,6 +243,7 @@ export function VFSProvider({
   const redoSnapshot = useCallback((): boolean => {
     const snapshot = vfsSnapshotManager.redo();
     if (!snapshot) return false;
+    // canonical-vfs-exempt: local working-set redo
     vfs.importFiles(snapshot.files);
     return true;
   }, [vfs]);
@@ -259,6 +261,7 @@ export function VFSProvider({
     try {
       const project = parseSavedProject(data);
       if (project) {
+        // canonical-vfs-exempt: import of a saved project into the workspace
         vfs.importFiles(project.files);
         console.log('[VFSContext] Imported saved project:', project.name, Object.keys(project.files).length, 'files');
       }
@@ -277,6 +280,7 @@ export function VFSProvider({
         splitComponents: true,
         useTypeScript: true,
       });
+      // canonical-vfs-exempt: webpage import into the workspace
       vfs.importFiles(result.files);
       console.log('[VFSContext] Imported webpage:', sourceUrl || 'unknown', Object.keys(result.files).length, 'files');
       return result;
@@ -292,6 +296,7 @@ export function VFSProvider({
         projectName: projectName || 'Generated',
         preferReact: true,
       });
+      // canonical-vfs-exempt: code import into the workspace
       vfs.importFiles(result.files);
       console.log('[VFSContext] Imported code:', result.componentName, Object.keys(result.files).length, 'files');
       return result;

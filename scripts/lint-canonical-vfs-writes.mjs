@@ -59,11 +59,11 @@ function collectCounts(dir) {
   return counts;
 }
 
-function main() {
+async function main() {
   const counts = collectCounts(SRC);
 
   if (process.argv.includes('--write-baseline')) {
-    const { writeFileSync } = require('node:fs');
+    const { writeFileSync } = await import('node:fs');
     writeFileSync(BASELINE_PATH, `${JSON.stringify(counts, null, 2)}\n`);
     console.log('[lint-canonical-vfs-writes] baseline written.');
     return;
