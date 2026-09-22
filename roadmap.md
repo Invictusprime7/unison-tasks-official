@@ -705,7 +705,16 @@ preview runtime — extend what exists.
 	crashes preview with "element type is invalid". When preview enforcement is
 	explicitly waived the defects persist as publish blockers. Tests:
 	`src/test/vfsCommitService.golden.test.ts`.
-- [ ] 5. Verified-success state machine ("applied" = transaction state)
+- [x] 5. Verified-success state machine ("applied" = transaction state) —
+	`src/services/builder/builderTransactionState.ts` owns the canonical stage
+	vocabulary and strips authoritative success language out of model prose.
+	AIBuilderPanel no longer initialises explanations with "generated and
+	applied": candidates read neutrally until the transaction settles, and the
+	only "✓ Changes applied" line is emitted by the apply layer after commit +
+	mirror. Failed and held-for-review transactions stamp their own verdict with
+	the reason, so "broken imports + preview unchanged + ✅ applied" is now
+	impossible. `AIBuilderApplyOutcome` carries status/revision/changed paths/
+	blockers. Tests: `src/test/builderTransactionState.test.ts`.
 - [ ] 6. PageRegistry → canonical SiteShell topology closure (chrome.owner)
 
 ### P1
