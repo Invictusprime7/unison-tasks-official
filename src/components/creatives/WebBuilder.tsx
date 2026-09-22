@@ -853,6 +853,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       try {
         const activePath = snapshotCtxRef.current.activePagePath;
         if (activePath && (activePath.endsWith('.tsx') || activePath.endsWith('.jsx'))) {
+          // canonical-vfs-exempt: optimistic HMR projection; the same mutation is chained through commitMutation below
           virtualFS.importFiles({ [activePath]: next });
         }
       } catch (err) {
@@ -881,6 +882,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               meta: { origin: 'floating-toolbar' },
             });
           } catch (err) { console.warn('[applyMutatorAcrossVFS] snapshot failed:', err); }
+          // canonical-vfs-exempt: optimistic HMR projection; the same mutation is chained through commitMutation below
           virtualFS.importFiles({ [path]: attempt });
           return { ok: true };
         }
@@ -1804,6 +1806,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       revisionId: commit.persistedRevisionId,
                       draftId: currentDraftId ?? null,
                     });
+                    // canonical-vfs-exempt: adoption of an accepted commitMutation result
                     virtualFS.importFiles(commit.vfsFiles);
                     if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
                     for (const binding of resolution.resolved) {
@@ -1985,6 +1988,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         Object.entries(snapshot.vfsFiles).filter(([path]) => !existingFiles[path])
       ) as Record<string, string>;
       if (Object.keys(missingSnapshotFiles).length > 0) {
+        // canonical-vfs-exempt: hydration of canonical snapshot files into an empty working set
         virtualFS.importFiles(missingSnapshotFiles);
         console.log(`[WebBuilder] Imported ${Object.keys(missingSnapshotFiles).length} canonical snapshot files`);
       }
@@ -2135,6 +2139,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         filesToImport[launchEntryPoint] = result.routerCode;
       }
       if (Object.keys(filesToImport).length > 0) {
+        // canonical-vfs-exempt: deterministic router projection from the page registry
         virtualFS.importFiles(filesToImport);
       }
       lastSyncedRouterKeyRef.current = syncKey;
@@ -2280,6 +2285,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (page.filePath && vfsFiles[page.filePath]) {
       const next = { ...vfsFiles };
       delete next[page.filePath];
+      // canonical-vfs-exempt: registry-owned page removal; the registry is the deletion authority
       virtualFS.importFiles(next);
     }
     creatorPlayground.removePage(pageId);
@@ -2293,6 +2299,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       virtualFS.getSandpackFiles(),
     );
     if (result.routerCode) {
+      // canonical-vfs-exempt: deterministic router projection from the page registry
       virtualFS.importFiles({ [launchEntryPoint]: result.routerCode });
     }
 
@@ -3451,6 +3458,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             [targetPath]: previewCode,
           };
 
+      // canonical-vfs-exempt: editor working-buffer projection; persistence happens on commit
       virtualFSRef.current.importFiles(importPayload);
       lastSyncedCodeRef.current = previewCode;
     }
@@ -7149,6 +7157,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           
           // Regenerate canonical router first so the route is registered
           const routerCode = regenerateRouter(creatorPlayground.pageRegistry);
+          // canonical-vfs-exempt: deterministic router projection from the page registry
           if (routerCode) virtualFS.importFiles({ [launchEntryPoint]: routerCode });
           
           // Then trigger AI generation
@@ -7170,6 +7179,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             virtualFS.getSandpackFiles(),
           );
           if (result.routerCode) {
+            // canonical-vfs-exempt: deterministic router projection from the page registry
             virtualFS.importFiles({ [launchEntryPoint]: result.routerCode });
           }
         }}
@@ -7192,8 +7202,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               nextLink,
             });
           });
-          virtualFS.importFiles(newFiles);
-          toast.success(`Funnel scaffolded: ${stepPages.length} pages created in VFS`);
+          void commitBuilderFiles(newFiles, {
+            source: 'playground-edit',
+            summary: `Funnel · ${funnelSlug} (${stepPages.length} steps)`,
+            failureMessage: 'Could not add the funnel pages to your site',
+          }).then((committed) => {
+            if (committed) toast.success(`Funnel added: ${stepPages.length} pages`);
+          });
         }}
       />
       </Suspense>
@@ -7532,16 +7547,19 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     // Get current VFS files and patch with new element
                     const currentFiles = virtualFS.getSandpackFiles();
                     const patchFiles = elementToVFSPatch(currentFiles, html, 'FunctionalBlock', launchEntryPoint);
-                    virtualFS.importFiles(patchFiles);
-                    
-                    // Update legacy state
-                    const newAppCode = patchFiles[launchEntryPoint] || '';
-                    if (newAppCode) {
-                      setEditorCode(newAppCode);
-                      setPreviewCode(newAppCode);
-                    }
-                    
-                    toast.success('Functional block added to VFS');
+                    void commitBuilderFiles(patchFiles, {
+                      source: 'manual-edit',
+                      summary: 'Functional block insert',
+                      failureMessage: 'Could not add this block to your site',
+                    }).then((committed) => {
+                      if (!committed) return;
+                      const newAppCode = committed[launchEntryPoint] || '';
+                      if (newAppCode) {
+                        setEditorCode(newAppCode);
+                        setPreviewCode(newAppCode);
+                      }
+                      toast.success('Functional block added');
+                    });
                   }}
                 />
               </TabsContent>
