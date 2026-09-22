@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getAllIndustries, getIndustryProfile, type PageSpec } from '@/platform/core/industryMatrix';
 import { planSiteTopology, resolvePageSpecsForRoles } from '@/platform/core/siteTopologyPlanner';
-import { certifiedDefaultVariantId, listSectionFamilies } from '@/sections/resolveSectionLayout';
+import { certifiedDefaultVariantId, layoutVariantMap, SECTION_FAMILY_EMIT } from '@/sections/resolveSectionLayout';
 import { getIndustryDefaultPageChoices, getIndustryPageChoiceCards } from '@/components/onboarding/wizard/wizardCatalog';
 
 const industries = getAllIndustries();
@@ -31,14 +31,19 @@ describe('Phase 6 — industry page archetypes', () => {
   it.each(industries.map((profile) => [profile.industry, profile] as const))(
     '%s only expects sections the compiler can render with a certified design',
     (industry, profile) => {
-      const families = new Set(listSectionFamilies());
+      const families = new Map(
+        Object.entries(SECTION_FAMILY_EMIT).map(([name, family]) => [family.sectionType, { name, family }]),
+      );
       for (const page of profile.defaultPages) {
         expect(page.expectedSections.length, `${industry} ${page.path} sections`).toBeGreaterThanOrEqual(3);
         expect(page.expectedSections[0]).toBe('navbar');
         expect(page.expectedSections[page.expectedSections.length - 1]).toBe('footer');
         for (const section of page.expectedSections) {
-          expect(families.has(section), `${industry} ${page.path}: unknown family "${section}"`).toBe(true);
-          expect(() => certifiedDefaultVariantId(section)).not.toThrow();
+          const entry = families.get(section);
+          expect(entry, `${industry} ${page.path}: unknown family "${section}"`).toBeDefined();
+          expect(() =>
+            certifiedDefaultVariantId(entry!.name, entry!.family, layoutVariantMap(entry!.family)),
+          ).not.toThrow();
         }
         const unique = new Set(page.expectedSections);
         expect(unique.size, `${industry} ${page.path} repeats a section`).toBe(page.expectedSections.length);
