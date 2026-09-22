@@ -2984,7 +2984,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const presentationCommitInFlightRef = useRef<string | null>(null);
 
   const commitPresentationOps = useCallback(async (
-    requestedOps: Array<{ type: 'setVariant'; sectionId: string; variantId: string }>,
+    requestedOps: import('@/types/patchPlan').PresentationOp[],
   ): Promise<boolean> => {
     if (!businessId || !currentDraftId || requestedOps.length === 0) return false;
 
