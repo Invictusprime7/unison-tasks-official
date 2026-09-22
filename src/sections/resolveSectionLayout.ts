@@ -13,28 +13,48 @@ export interface SectionFamilyEmit {
   aliases?: Record<string, VariantId>;
 }
 
+/**
+ * P1.10 — legacy fallback retirement.
+ *
+ * A family's *fallback* design (what renders when a composition carries no
+ * explicit, resolvable variant) must be a certified implementation. Generic
+ * pre-21st layouts stay registered so authored compositions that name them
+ * keep resolving, but they may never win by default again.
+ */
+export function isCertifiedImplementation(variantId: string | undefined): boolean {
+  if (!variantId) return false;
+  const variant = getVariantById(variantId as VariantId);
+  return variant?.vfs?.mode === 'portable-recipe' && variant.vfs.certification === 'approved';
+}
+
 export const SECTION_FAMILY_EMIT = {
-  Navbar: { sectionType: 'navbar', defaultLayout: 'standard' },
-  Hero: { sectionType: 'hero', defaultLayout: 'centered', aliases: { split: 'hero:split-image' } },
-  About: { sectionType: 'about', defaultVariantId: 'about:editorial-split' },
-  Services: { sectionType: 'services', defaultLayout: 'card-grid' },
-  Features: { sectionType: 'features', defaultLayout: 'grid', aliases: { centered: 'features:minimal-centered' } },
-  Gallery: { sectionType: 'gallery', defaultLayout: 'grid' },
-  Pricing: { sectionType: 'pricing', defaultLayout: 'tiers' },
-  LogoCloud: { sectionType: 'logo-cloud', defaultVariantId: 'logo-cloud:grid' },
-  BlogPreview: { sectionType: 'blog-preview', defaultVariantId: 'blog-preview:editorial' },
-  BeforeAfter: { sectionType: 'before-after', defaultVariantId: 'before-after:slider' },
+  Navbar: { sectionType: 'navbar', defaultLayout: 'standard', defaultVariantId: 'navbar:standard' },
+  Hero: {
+    sectionType: 'hero',
+    defaultLayout: 'centered',
+    defaultVariantId: 'hero:centered',
+    aliases: { split: 'hero:split-image' },
+  },
+  About: { sectionType: 'about', defaultVariantId: 'about:image-story' },
+  Services: { sectionType: 'services', defaultLayout: 'card-grid', defaultVariantId: 'services:editorial-rows' },
+  Features: { sectionType: 'features', defaultLayout: 'grid', defaultVariantId: 'features:spotlight-cards', aliases: { centered: 'features:minimal-centered' } },
+  Gallery: { sectionType: 'gallery', defaultLayout: 'grid', defaultVariantId: 'gallery:case-study' },
+  Pricing: { sectionType: 'pricing', defaultLayout: 'tiers', defaultVariantId: 'pricing:feature-table' },
+  LogoCloud: { sectionType: 'logo-cloud', defaultVariantId: 'logo-cloud:reveal-tiles' },
+  BlogPreview: { sectionType: 'blog-preview', defaultVariantId: 'blog-preview:four-columns' },
+  BeforeAfter: { sectionType: 'before-after', defaultVariantId: 'before-after:reveal-panel' },
   Testimonials: {
     sectionType: 'testimonials',
     defaultLayout: 'grid',
+    defaultVariantId: 'testimonials:columns',
     aliases: { carousel: 'testimonials:rail', single: 'testimonials:spotlight' },
   },
-  CTA: { sectionType: 'cta', defaultLayout: 'centered' },
-  Contact: { sectionType: 'contact', defaultLayout: 'centered' },
-  Footer: { sectionType: 'footer', defaultLayout: 'columns' },
-  Stats: { sectionType: 'stats', defaultVariantId: 'stats:row' },
-  Team: { sectionType: 'team', defaultVariantId: 'team:portrait-grid' },
-  FAQ: { sectionType: 'faq', defaultVariantId: 'faq:accordion' },
+  CTA: { sectionType: 'cta', defaultLayout: 'centered', defaultVariantId: 'cta:inset-panel' },
+  Contact: { sectionType: 'contact', defaultLayout: 'centered', defaultVariantId: 'contact:editorial-form' },
+  Footer: { sectionType: 'footer', defaultLayout: 'columns', defaultVariantId: 'footer:brand-social' },
+  Stats: { sectionType: 'stats', defaultVariantId: 'stats:metric-cards' },
+  Team: { sectionType: 'team', defaultVariantId: 'team:profile-cards' },
+  FAQ: { sectionType: 'faq', defaultVariantId: 'faq:editorial' },
 } satisfies Record<string, SectionFamilyEmit>;
 
 export function layoutVariantMap(family: SectionFamilyEmit): Record<string, string> {
@@ -56,12 +76,12 @@ export function certifiedDefaultVariantId(
   family: SectionFamilyEmit,
   map: Record<string, string>,
 ): string {
-  const candidates = [
+  const declared = [
     family.defaultVariantId,
     family.defaultLayout ? map[family.defaultLayout] : undefined,
-    getVariantsForSection(family.sectionType)[0]?.id,
   ].filter(Boolean) as string[];
-  const resolved = candidates.find((id) => Boolean(getVariantById(id as VariantId)));
+  const resolved = declared.find(isCertifiedImplementation)
+    ?? getVariantsForSection(family.sectionType).find((variant) => isCertifiedImplementation(variant.id))?.id;
   if (!resolved) {
     throw new Error(
       `[compositionToFileSet] section family ${componentName} (${family.sectionType}) has no certified ` +
@@ -70,6 +90,7 @@ export function certifiedDefaultVariantId(
   }
   return resolved;
 }
+
 
 
 export function resolveSectionLayout(section: SectionEntry) {
