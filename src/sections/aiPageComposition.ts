@@ -8,6 +8,7 @@ import type { WizardExperiencePreference } from '@/services/wizardDesignSelectio
 import { deriveImplementationVisualSignature } from '@/services/implementationVisualSignature';
 import { isImplementationExperienceCompatible } from '@/services/designCompatibilityGraph';
 import { COMPILER_OWNED_FAMILIES, resolvePageArchetype } from '@/sections/pageArchetypeContract';
+import { isAdditiveUnderContract, type SiteDesignContract } from '@/services/launch/siteDesignContract';
 
 export const COMPOSITION_ROLES = ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'checkout', 'thank_you', 'blog', 'immersive', 'custom'] as const;
 const family = z.enum(['navbar', 'hero', 'about', 'services', 'features', 'gallery', 'pricing', 'logo-cloud', 'blog-preview', 'before-after', 'testimonials', 'cta', 'contact', 'footer', 'stats', 'team', 'faq']);
@@ -71,8 +72,15 @@ export function validateAIPageComposition(value: unknown, packId: ArtDirectionPa
  * Chrome stays compiler-owned. A family with no industry starter section still
  * resolves to nothing, so this can only widen within the contract.
  */
-export function isCreativelyAdditiveSection(type: SectionType, role: string, industry?: string | null): boolean {
+export function isCreativelyAdditiveSection(
+  type: SectionType,
+  role: string,
+  industry?: string | null,
+  contract?: SiteDesignContract,
+): boolean {
   if (COMPILER_OWNED_FAMILIES.includes(type) || type === 'hero') return false;
+  const compiled = isAdditiveUnderContract(contract, role, type);
+  if (typeof compiled === 'boolean') return compiled;
   const archetype = resolvePageArchetype(role, industry);
   if (archetype.forbiddenFamilies.includes(type)) return false;
   return archetype.requiredFamilies.includes(type) || archetype.recommendedFamilies.includes(type);
