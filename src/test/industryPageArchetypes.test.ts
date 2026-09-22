@@ -42,7 +42,7 @@ describe('Phase 6 — industry page archetypes', () => {
           const entry = families.get(section);
           expect(entry, `${industry} ${page.path}: unknown family "${section}"`).toBeDefined();
           expect(() =>
-            certifiedDefaultVariantId(entry!.name, entry!.family, layoutVariantMap(entry!.family)),
+            certifiedDefaultVariantId(entry!.name as Parameters<typeof certifiedDefaultVariantId>[0], entry!.family, layoutVariantMap(entry!.family)),
           ).not.toThrow();
         }
         const unique = new Set(page.expectedSections);
