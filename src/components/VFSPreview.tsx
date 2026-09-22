@@ -231,6 +231,8 @@ const SandpackErrorListener: React.FC<{
           ? `${(error as any).title || 'Error'}: ${(error as any).message}${(error as any).path ? ` (${(error as any).path}:${(error as any).line || ''})` : ''}`
           : String(error);
 
+      // P0.4: a fatal preview error means no surface may claim "applied".
+      reportPreviewError(msg);
       if (msg !== lastReportedRef.current) {
         lastReportedRef.current = msg;
         const dependencyFetchFailure = /could not fetch dependencies/i.test(msg);
@@ -250,6 +252,8 @@ const SandpackErrorListener: React.FC<{
       }
     } else if (status === 'running') {
       lastReportedRef.current = '';
+      // P0.4: the preview compiled and is rendering the committed revision.
+      reportPreviewRunning();
       onRunning?.();
     } else if (status === 'idle') {
       lastReportedRef.current = '';
