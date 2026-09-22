@@ -18,6 +18,13 @@ import { CloudPanel } from "./web-builder/CloudPanel";
 import { PageNavigationBar, type PageTab } from "./web-builder/PageNavigationBar";
 import { useCreatorPlayground } from "@/hooks/useCreatorPlayground";
 import { toast } from "sonner";
+import {
+  buildCommitIdentity,
+  buildCommitCurrent,
+  buildCommitOptions,
+  filterRedundantPresentationOps,
+  commitAdoptionRecord,
+} from '@/services/builder/builderCommitController';
 import { VFSPreview, type VFSPreviewHandle } from '../VFSPreview';
 import { DeployButton } from '@/components/DeployButton';
 import { CollapsiblePropertiesPanel } from "./web-builder/CollapsiblePropertiesPanel";
@@ -2890,9 +2897,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const buildCanonicalCommitCurrent = useCallback((
     vfsFiles: Record<string, string>,
     snapshot: SiteBundleSnapshot | null,
-  ) => ({
-    vfsFiles,
-    siteBundleSnapshot: snapshot ?? undefined,
+  ) => buildCommitCurrent({
     activePagePath,
     playground: {
       pageRegistry: creatorPlayground.pageRegistry,
@@ -2901,7 +2906,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       calendars: playgroundCalendars,
       popups: playgroundPopups,
     },
-  }), [
+  }, vfsFiles, snapshot), [
     activePagePath,
     creatorPlayground.pageRegistry,
     creatorPlayground.creatorData,
@@ -2925,14 +2930,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         try {
           const { data: { user } } = await supabaseClient.auth.getUser();
           if (!user) return;
-          const identity: BuilderIdentity = {
+          const identity = buildCommitIdentity({
             userId: user.id,
             businessId,
-            projectId: resolvedProjectId || currentDraftId,
+            projectId: resolvedProjectId,
             draftId: currentDraftId,
             revisionId: currentRevisionId,
-            sessionId: `web-builder:${currentDraftId}`,
-          };
+          });
+          if (!identity) return;
           const patch = legacyFilesToPatchPlan(
             { [targetPath]: nextCode },
             `Layout · ${summary}`,
@@ -2942,13 +2947,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             identity,
             current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
             patch,
-            options: {
-              requirePreviewPass: false,
-              requireReadinessPass: false,
-              industry: snapshot?.industry,
-              themePresetId: snapshot?.meta.themePresetId ?? undefined,
-              themeTokens: snapshot?.themeTokens,
-            },
+            options: buildCommitOptions(snapshot),
           });
           if (commit.status !== 'committed') {
             throw new CommitRejectedError('layout edit was rejected by the canonical pipeline', commit);
@@ -3006,10 +3005,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     // keeps its local reflection; nothing enters the ledger.
     if (!snapshot) return false;
 
-    const currentVariants = snapshot.meta?.designIntervention?.activeVariants ?? {};
-    const presentationOps = requestedOps.filter(
-      (op) => op.type !== 'setVariant' || currentVariants[op.sectionId] !== op.variantId,
-    );
+    const presentationOps = filterRedundantPresentationOps(snapshot, requestedOps);
     if (presentationOps.length === 0) return true;
 
     const operationKey = JSON.stringify(presentationOps);
@@ -3018,38 +3014,22 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return false;
+      const commitIdentity = buildCommitIdentity({
+        userId: user?.id,
+        businessId,
+        projectId: resolvedProjectId,
+        draftId: currentDraftId,
+        revisionId: currentRevisionIdRef.current,
+      });
+      if (!commitIdentity) return false;
       const patch = emptyPatchPlan(`Presentation · ${presentationOps.length} variant update(s)`);
       patch.presentationOps.push(...presentationOps);
       const commit = await commitMutation({
         source: 'playground-edit',
-        identity: {
-          userId: user.id,
-          businessId,
-          projectId: resolvedProjectId || currentDraftId,
-          draftId: currentDraftId,
-          revisionId: currentRevisionIdRef.current,
-          sessionId: `web-builder:${currentDraftId}`,
-        },
-        current: {
-          vfsFiles: beforeFiles,
-          siteBundleSnapshot: snapshot,
-          playground: {
-            pageRegistry: creatorPlayground.pageRegistry,
-            creatorData: creatorPlayground.creatorData,
-            bindings: playgroundBindings,
-            calendars: playgroundCalendars,
-            popups: playgroundPopups,
-          },
-        },
+        identity: commitIdentity,
+        current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
         patch,
-        options: {
-          requirePreviewPass: false,
-          requireReadinessPass: false,
-          industry: snapshot.industry,
-          themePresetId: snapshot.meta.themePresetId ?? undefined,
-          themeTokens: snapshot.themeTokens,
-        },
+        options: buildCommitOptions(snapshot),
       });
       if (commit.status !== 'committed') {
         throw new CommitRejectedError('presentation mutation was rejected', commit);
@@ -3059,7 +3039,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         replace: true,
         preferredPath: activePagePath,
         entryPoint: launchEntryPoint,
-        adoption: { source: commit.source, vfsHash: commit.vfsHash, revisionId: commit.persistedRevisionId },
+        adoption: commitAdoptionRecord(commit),
       });
       if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
       return true;
@@ -3110,7 +3090,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       ?? null;
 
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user || !businessId || !currentDraftId) {
+    const commitIdentity = buildCommitIdentity({
+      userId: user?.id,
+      businessId,
+      projectId: resolvedProjectId,
+      draftId: currentDraftId,
+      revisionId: currentRevisionIdRef.current,
+    });
+    if (!commitIdentity) {
       toast.error('This workspace is not connected to a site yet', {
         description: 'Launch or open a site before editing so changes can be saved.',
       });
@@ -3120,23 +3107,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     try {
       const commit = await commitMutation({
         source: options.source ?? 'ai-builder',
-        identity: {
-          userId: user.id,
-          businessId,
-          projectId: resolvedProjectId || currentDraftId,
-          draftId: currentDraftId,
-          revisionId: currentRevisionIdRef.current,
-          sessionId: `web-builder:${currentDraftId}`,
-        },
+        identity: commitIdentity,
         current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
         patch: legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit'),
-        options: {
-          requirePreviewPass: false,
-          requireReadinessPass: false,
-          industry: snapshot?.industry,
-          themePresetId: snapshot?.meta?.themePresetId ?? undefined,
-          themeTokens: snapshot?.themeTokens,
-        },
+        options: buildCommitOptions(snapshot),
       });
       if (commit.status !== 'committed') {
         throw new CommitRejectedError('builder edit was rejected by the canonical pipeline', commit);
@@ -3146,11 +3120,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         replace: true,
         preferredPath: options.preferredPath ?? activePagePath,
         entryPoint: options.entryPoint ?? launchEntryPoint,
-        adoption: {
-          source: commit.source,
-          vfsHash: commit.vfsHash,
-          revisionId: commit.persistedRevisionId,
-        },
+        adoption: commitAdoptionRecord(commit),
       });
       if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
       return imported?.files ?? commit.vfsFiles;
@@ -3212,39 +3182,23 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return false;
+      const commitIdentity = buildCommitIdentity({
+        userId: user?.id,
+        businessId,
+        projectId: resolvedProjectId,
+        draftId: currentDraftId,
+        revisionId: currentRevisionIdRef.current,
+      });
+      if (!commitIdentity) return false;
       const patch = emptyPatchPlan(summary);
       patch.fileOps.push(...ops);
       if (themeEdit) patch.themeEdit = themeEdit;
       const commit = await commitMutation({
         source: 'theme-change',
-        identity: {
-          userId: user.id,
-          businessId,
-          projectId: resolvedProjectId || currentDraftId,
-          draftId: currentDraftId,
-          revisionId: currentRevisionIdRef.current,
-          sessionId: `web-builder:${currentDraftId}`,
-        },
-        current: {
-          vfsFiles: beforeFiles,
-          siteBundleSnapshot: snapshot,
-          playground: {
-            pageRegistry: creatorPlayground.pageRegistry,
-            creatorData: creatorPlayground.creatorData,
-            bindings: playgroundBindings,
-            calendars: playgroundCalendars,
-            popups: playgroundPopups,
-          },
-        },
+        identity: commitIdentity,
+        current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
         patch,
-        options: {
-          requirePreviewPass: false,
-          requireReadinessPass: false,
-          industry: snapshot.industry,
-          themePresetId: snapshot.meta.themePresetId ?? undefined,
-          themeTokens: snapshot.themeTokens,
-        },
+        options: buildCommitOptions(snapshot),
       });
       if (commit.status !== 'committed') {
         throw new CommitRejectedError('theme token override was rejected', commit);
@@ -3254,7 +3208,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         replace: true,
         preferredPath: activePagePath,
         entryPoint: launchEntryPoint,
-        adoption: { source: commit.source, vfsHash: commit.vfsHash, revisionId: commit.persistedRevisionId },
+        adoption: commitAdoptionRecord(commit),
       });
       if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
       toast.success('Theme tokens applied');
@@ -7698,7 +7652,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         // canonical-vfs-exempt: adoption of an accepted commitMutation result
                         importBuilderFiles(commit.vfsFiles, {
                           replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
-                          adoption: { source: commit.source, vfsHash: commit.vfsHash, revisionId: commit.persistedRevisionId },
+                          adoption: commitAdoptionRecord(commit),
                         });
                         if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
                         toast.success('Template composition saved');
