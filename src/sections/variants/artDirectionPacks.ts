@@ -1335,7 +1335,7 @@ const INDUSTRY_TO_PACKS: Record<string, ArtDirectionPackId[]> = {
   content: ['editorial-noir', 'print-serif', 'swiss-grid', 'soft-editorial'],
   restaurant: ['editorial-noir', 'warm-craft', 'print-serif', 'organic-studio', 'cinematic-portfolio'],
   realestate: ['luxury-minimal', 'cinematic-portfolio', 'swiss-grid', 'soft-editorial'],
-  salon: ['organic-studio', 'warm-craft', 'luxury-minimal', 'soft-editorial'],
+  salon: ['noir-atelier', 'organic-studio', 'warm-craft', 'luxury-minimal', 'soft-editorial'],
   coaching: ['organic-studio', 'warm-craft', 'soft-editorial', 'print-serif'],
   nonprofit: ['organic-studio', 'warm-craft', 'print-serif', 'soft-editorial'],
   agency: ['soft-editorial', 'swiss-grid', 'editorial-noir', 'glass-tech', 'brutalist-poster'],
