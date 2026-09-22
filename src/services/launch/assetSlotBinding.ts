@@ -16,6 +16,12 @@
  */
 
 import type { SectionEntry, TemplateComposition } from '@/sections/types';
+import {
+  MEDIA_PROP_KEYS,
+  MEDIA_COLLECTION_KEYS,
+  buildResolvedArtifactCatalog,
+  type ResolvedArtifactCatalog,
+} from '@/platform/core/resolvedArtifactCatalog';
 
 /** Bounded, serialisable projection of an Asset Registry record. */
 export interface SeedMediaAsset {
@@ -34,15 +40,31 @@ export interface AssetBindingReport {
   bound: number;
   /** Section ids that received at least one real asset. */
   sections: string[];
+  /** Post-binding runtime media authority for the returned composition. */
+  catalog?: ResolvedArtifactCatalog;
+}
+
+/** Index the seed library so the catalog can label business-owned media. */
+export function buildBusinessAssetIndex(library: readonly SeedMediaAsset[]) {
+  const byUrl = new Map<string, string>();
+  const altByUrl = new Map<string, string>();
+  for (const asset of library) {
+    byUrl.set(asset.url, asset.id);
+    if (asset.alt) altByUrl.set(asset.url, asset.alt);
+  }
+  return { byUrl, altByUrl };
 }
 
 /** Maximum assets projected into the wizard seed (keeps the seed bounded). */
 export const SEED_MEDIA_LIBRARY_LIMIT = 40;
 
-/** Media prop keys a section may declare for a single image. */
-const SINGLE_MEDIA_KEYS = ['image', 'imageUrl', 'backgroundImage', 'src', 'photo', 'cover'] as const;
-/** Array props whose entries may declare their own media. */
-const COLLECTION_KEYS = ['items', 'cards', 'products', 'images', 'slides', 'gallery', 'media', 'tiles'] as const;
+/**
+ * Media prop discovery is owned by the Resolved Artifact Catalog — this module
+ * never restates what "media" means, it only narrows the catalog's vocabulary
+ * to what may be *substituted*: brand marks stay template-owned.
+ */
+const SINGLE_MEDIA_KEYS = MEDIA_PROP_KEYS.filter((key) => key !== 'logo');
+const COLLECTION_KEYS = MEDIA_COLLECTION_KEYS.filter((key) => key !== 'logos');
 
 function hash(value: string): number {
   let h = 2166136261;
@@ -147,7 +169,9 @@ export function bindMediaToComposition(
   seedKey: string,
 ): { composition: TemplateComposition; report: AssetBindingReport } {
   const report: AssetBindingReport = { bound: 0, sections: [] };
-  if (!library.length) return { composition, report };
+  if (!library.length) {
+    return { composition, report: { ...report, catalog: buildResolvedArtifactCatalog(composition) } };
+  }
 
   const next = createPicker(library, seedKey || composition.id);
   const sections = composition.sections.map((section) => {
@@ -162,5 +186,7 @@ export function bindMediaToComposition(
     return { ...section, props: nextProps } as SectionEntry;
   });
 
-  return { composition: { ...composition, sections }, report };
+  const bound: TemplateComposition = { ...composition, sections };
+  report.catalog = buildResolvedArtifactCatalog(bound, buildBusinessAssetIndex(library));
+  return { composition: bound, report };
 }

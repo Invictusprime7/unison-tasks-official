@@ -29,6 +29,7 @@ import { getVariantsForSection } from '@/sections/variants/registry';
 import { getIndustryProfile } from '@/platform/core/industryMatrix';
 import { getDefaultTemplateIdForIndustry, createIndustryStarterSection } from '@/sections/templates/industryDefaultRegistry';
 import { bindMediaToComposition, buildSeedMediaLibrary, type SeedMediaAsset } from '@/services/launch/assetSlotBinding';
+import { assertArtifactCatalogClosure } from '@/platform/core/resolvedArtifactCatalog';
 
 /**
  * Options shared by the scaffolding entry points.
@@ -291,8 +292,17 @@ function applyWizardSeedToComposition(
   const brand = seed.brand?.trim() || plan.businessName.trim();
   const mediaLibrary = seed.media || [];
   const mediaSeedKey = `${composition.id}:${plan.selectedThemePresetId || ''}:${plan.industry || ''}`;
-  const withMedia = (result: TemplateComposition) =>
-    bindMediaToComposition(result, mediaLibrary, mediaSeedKey).composition;
+  const withMedia = (result: TemplateComposition) => {
+    const bound = bindMediaToComposition(result, mediaLibrary, mediaSeedKey);
+    // The Resolved Artifact Catalog is the runtime media authority: surface any
+    // required media slot it cannot satisfy instead of shipping a blank frame.
+    if (bound.report.catalog) {
+      for (const violation of assertArtifactCatalogClosure(bound.report.catalog)) {
+        console.warn(`[artifact-catalog] ${violation}`);
+      }
+    }
+    return bound.composition;
+  };
   if (!brand && !seed.tagline && !seed.email && !seed.phone) return withMedia(composition);
 
   // Template brand copy is sample data. Replace it across the full composition
