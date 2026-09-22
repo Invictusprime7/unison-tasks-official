@@ -18,7 +18,10 @@
  *   1. Never restate a slot list — derive it from the artifact owner.
  *   2. Never restate an intent string — pass through the artifact's bindings,
  *      filtered to what the intent registry knows.
- *   3. Unknown implementations resolve to `null`; callers keep their legacy path.
+ *   3. Unknown implementations resolve to `null` for readers. Phase 8.2 adds
+ *      `resolveLegalImplementation()`: fresh generation and AI edits may only
+ *      use certified, non-legacy implementations; saved revisions stay
+ *      readable; migration resolves through an explicit alias map.
  */
 
 import type { SectionType } from '@/sections/types';
@@ -34,6 +37,20 @@ import {
   getImplementationVocabularyRefs,
   listDesignImplementations,
 } from '@/services/designImplementationRegistry';
+import {
+  ART_DIRECTION_PACKS,
+  ART_DIRECTION_PACK_IDS,
+  type ArtDirectionPackId,
+} from '@/sections/variants/artDirectionPacks';
+import {
+  INDUSTRY_CREATIVE_PROFILES,
+  industryCreativeProfile,
+} from '@/sections/templates/industryCreativeVocabulary';
+import {
+  deriveImplementationVisualSignature,
+  type ImplementationVisualSignature,
+} from '@/services/implementationVisualSignature';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -76,7 +93,26 @@ export interface ResolvedImplementationContract {
 
   generationStatus: 'preferred' | 'supported' | 'legacy';
   source?: SectionVariant['source'];
+
+  /** Phase 8.1 — derived creative affinity; never hand-maintained. */
+  creativeAffinity: {
+    /** Industries whose profile reaches for this family or trait. */
+    industries: readonly string[];
+    /** Industries whose negative vocabulary rejects this family or trait. */
+    discouragedIndustries: readonly string[];
+    /** Art direction packs that list this implementation for its family. */
+    artDirections: readonly ArtDirectionPackId[];
+    /** Page roles the implementation declares itself suited to. */
+    pageIntents: readonly string[];
+    /** Interaction / motion traits derived from the certified metadata. */
+    interactionTags: readonly string[];
+  };
+  /** Derived visual signature — geometry, density, media, motion, experience. */
+  visualSignature: ImplementationVisualSignature | null;
+  /** Certified for fresh generation: portable recipe + approved certification. */
+  certified: boolean;
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Slot kind derivation — one deterministic convention, no restated lists
