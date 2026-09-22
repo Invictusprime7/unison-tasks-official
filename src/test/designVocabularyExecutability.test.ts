@@ -6,6 +6,7 @@ import {
   getDesignImplementation,
   isExecutableVocabulary,
   listImplementationsForVocabulary,
+  getImplementationVocabularyRefs,
   vocabularyExecutabilityReport,
   vocabularyKey,
 } from '@/services/designImplementationRegistry';
