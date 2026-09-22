@@ -327,4 +327,6 @@ export function describePageArchetypes(roles: readonly string[], industry?: stri
       `    at most ${archetype.maxBodySections} body sections; page spacing is ${archetype.rhythmShift === 0 ? 'the site rhythm' : archetype.rhythmShift < 0 ? 'one step tighter than the site rhythm' : 'one step airier than the site rhythm'}.`,
     ].join('\n');
   }).join('\n');
+  return dialect ? `${dialect}\n${body}` : body;
 }
+
