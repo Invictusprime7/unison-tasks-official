@@ -36,4 +36,4 @@ export const briefSchema = z.object({
   canonicalContract: z.string().max(40000).optional(),
   task: z.string().max(1000).optional(), designGuidance: z.string().max(2000).optional(),
   constraints: z.string().max(3000).optional(), output: z.unknown().optional(),
-}).strict();
+}).passthrough();
