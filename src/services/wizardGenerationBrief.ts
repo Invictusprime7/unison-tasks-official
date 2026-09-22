@@ -4,6 +4,7 @@ import { normalizeWizardPageRole } from '@/services/wizardPageQuality';
 import { resolveGeometryTokens } from '@/components/onboarding/themePresetToIndexCss';
 import { resolveArtDirectionPack } from '@/sections/variants/artDirectionPacks';
 import { childSeed, seededPick, seededRotate } from '@/platform/core/generationSeed';
+import { buildSiteShellTopology, describeSiteShellNavigation } from '@/services/siteShellTopology';
 
 
 export interface WizardHeroGeometry {
@@ -98,11 +99,22 @@ export interface WizardGenerationBrief {
     classes: string[];
     rule: string;
   };
-  /** Chrome authority: the page body is the only place chrome can exist. */
+  /**
+   * Chrome authority: the canonical SiteShell owns route truth. The page body
+   * renders the chrome, but its links are a PageRegistry projection.
+   */
   chrome: {
-    owner: 'page-body';
+    owner: 'site-shell';
     rule: string;
-    routes: { path: string; label: string }[];
+    /** Registered routes: visitor path + hash href + module path. */
+    routes: { path: string; href: string; filePath: string; label: string; showInNav: boolean }[];
+    /** Canonical navigation projection — the only legal chrome links. */
+    navigation: {
+      source: 'page-registry';
+      primary: { label: string; href: string }[];
+      footer: { label: string; href: string }[];
+      rule: string;
+    };
   };
   ui: { formFormats: string[]; buttonFormats: string[]; iconFormats: string[] };
 }
@@ -240,6 +252,7 @@ export function buildWizardGenerationBrief(input: {
   });
   const seed = input.seed || `${input.themePresetId || 'theme'}|${input.industry || 'general'}`;
   const homePage = Object.values(input.pageRegistry.pages).find((page) => page.isHome);
+  const shellTopology = buildSiteShellTopology(input.pageRegistry);
 
   const homePath = homePage?.filePath || '';
   const homeSource = homePath
@@ -341,9 +354,21 @@ export function buildWizardGenerationBrief(input: {
       rule: `Author every page inside the "${pack.name}" design system: ${pack.description} Typography is ${pack.signature.typography.displayStack.split(',')[0]} display at weight ${pack.signature.typography.displayWeight} over ${pack.signature.typography.bodyStack.split(',')[0]} body; gradient language is "${pack.signature.gradient}" (use ut-gradient-hero / ut-gradient-panel / ut-gradient-text, never a hand-written gradient); spacing density is "${pack.signature.density}" (use ut-grid / ut-stack / ut-block / ut-pad, never literal gap or padding values); the hero is "${pack.signature.hero.layout}" aligned ${pack.signature.hero.align} (use ut-hero + ut-hero-media, never a different hero composition); badges, tags and eyebrows use ut-pill / ut-eyebrow so the "${pack.signature.pill}" shape language stays consistent; entrance motion is "${pack.signature.entrance}" via ut-reveal and ut-reveal-2/3/4 for stagger. Use the ut-* primitives and --ut-* tokens for type scale, surfaces, media framing and motion. Do not invent a competing visual language, and never substitute hardcoded sizes, radii, shadows or gradients for these tokens.`,
     },
     chrome: {
-      owner: 'page-body',
-      rule: 'The router renders routes only — it never injects a navbar or a footer, and there is no platform-owned chrome module. Whatever navigation or footer a visitor sees must be authored inside the page body itself, so give each page the site navigation it needs (a floating bar, a plain header, a hand-authored <nav>, or the shared <FloatingNavbar brand={...} links={...} ctaLabel={...} /> from "@/unison/ui") and keep its links identical to the registered routes below. Design the chrome to fit the page — no fixed count is imposed — but never render two competing primary nav bars or two footers on the same page, and never emit /src/sections/SiteNavbar.tsx or /src/sections/SiteFooter.tsx.',
-      routes: routes.map((route) => ({ path: route.path, label: route.title })),
+      owner: 'site-shell',
+      rule: 'The canonical SiteShell owns route truth: every navbar and footer link is a PageRegistry projection, supplied below as chrome.navigation. The router renders routes only — it never injects a navbar or a footer, and there is no platform-owned chrome module, so each page renders its own header and footer inline (a floating bar, a plain header, a hand-authored <nav>, or the shared <FloatingNavbar brand={...} links={...} ctaLabel={...} /> from "@/unison/ui"). You choose how the chrome LOOKS; you never choose which links it carries — use chrome.navigation.primary verbatim (same labels, same hrefs, same order) for the primary nav and chrome.navigation.footer for the footer route column. Never invent, rename, drop or re-point a route link, never render two competing primary nav bars or two footers on one page, and never emit /src/sections/SiteNavbar.tsx or /src/sections/SiteFooter.tsx.',
+      routes: shellTopology.routes.map((route) => ({
+        path: route.path,
+        href: route.href,
+        filePath: route.filePath,
+        label: route.label,
+        showInNav: route.showInNav,
+      })),
+      navigation: {
+        source: 'page-registry',
+        primary: shellTopology.primaryNav.map((route) => ({ label: route.label, href: route.href })),
+        footer: shellTopology.footerNav.map((route) => ({ label: route.label, href: route.href })),
+        rule: describeSiteShellNavigation(shellTopology),
+      },
     },
     ui: {
       formFormats: [...(input.uiFoundation?.formFormats || [])],
