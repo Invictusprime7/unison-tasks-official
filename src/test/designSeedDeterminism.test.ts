@@ -78,14 +78,22 @@ describe('Phase 1 — deterministic design seed', () => {
     expect(callSites).toEqual([]);
   });
 
-  it('mints the wizard seed before any design decision in the launch orchestrator', () => {
+  it('keeps launch identity out of the design seed in the launch orchestrator', () => {
     const launcher = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
     const seedAt = launcher.indexOf('const wizardSeedId =');
-    const designAt = launcher.indexOf('const seed = deriveGenerationSeed(');
+    const designAt = launcher.indexOf('const seed = deriveDesignSeed(');
     expect(seedAt).toBeGreaterThan(-1);
     expect(designAt).toBeGreaterThan(seedAt);
-    expect(launcher).toContain('launchNonce: wizardSeedId');
+    expect(launcher).toContain('regenerationNonce: input.regenerationNonce ?? null');
+    expect(launcher).not.toContain('launchNonce: wizardSeedId');
   });
+
+  it('never feeds the random launch identity into a design decision', () => {
+    const intervention = readFileSync('src/services/wizardDesignIntervention.ts', 'utf8');
+    expect(intervention).toContain('regenerationNonce: input.regenerationNonce');
+    expect(intervention).not.toContain('launchNonce: input.wizardSeedId');
+  });
+
 
   it('persists the design-plan signature into snapshot metadata', () => {
     const pipeline = readFileSync('src/platform/core/canonicalPipeline.ts', 'utf8');

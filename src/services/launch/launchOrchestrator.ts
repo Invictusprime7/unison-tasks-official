@@ -36,7 +36,7 @@ import {
 import { classifyDraft } from "@/platform/core/canonicalRuntimeContract";
 import { getCompositionMeta } from "@/utils/compositionReference";
 import { getCompositionById } from "@/sections/templates";
-import { deriveGenerationSeed } from "@/platform/core/generationSeed";
+import { deriveDesignSeed } from "@/platform/core/generationSeed";
 import { generateDesignVariation } from "@/utils/designVariation";
 import {
   buildTemplateLayoutContract,
@@ -153,6 +153,11 @@ export interface LaunchOrchestratorInput {
   socialLinks?: Record<string, string>;
   existingBusinessId?: string | null;
   designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
+  /**
+   * Set only when the user intentionally asks for another take of the same
+   * answers. Never a per-launch random id.
+   */
+  regenerationNonce?: string | null;
 }
 
 export interface LaunchOrchestratorCallbacks {
@@ -310,7 +315,7 @@ export async function runLaunchPipeline(
     const wizardSeedId = newId("ws");
     const immersiveRequested = customerNeeds.includes("explore_immersive");
     const experienceEnvelope = resolveExperienceEnvelope({
-      seed: `${plannedBusinessId}:${input.template.id}:${wizardSeedId}`,
+      seed: `${plannedBusinessId}:${input.template.id}:${input.theme.id}:${input.regenerationNonce ?? ''}`,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
       industry: industryOverlay,
       templateId: input.template.id,
@@ -326,7 +331,10 @@ export async function runLaunchPipeline(
     const requestedPages = uniqueValues<string>(["home", ...input.selectedPages, ...(needsImmersive ? ['immersive'] : [])]);
     const goalNeeds = GOAL_TO_NEEDS[primaryGoal] || {};
 
-    const seed = deriveGenerationSeed({
+    // The design seed is derived from the wizard answers only. `wizardSeedId`
+    // is launch identity, never a design input — the same answers must compile
+    // the same site on every run.
+    const seed = deriveDesignSeed({
       businessName: brand,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
       industry: industryOverlay,
@@ -336,8 +344,9 @@ export async function runLaunchPipeline(
       secondaryGoals: customerNeeds,
       requestedPages,
       projectId: plannedBusinessId,
-      launchNonce: wizardSeedId,
+      regenerationNonce: input.regenerationNonce ?? null,
     });
+
 
     const themeTokens = themePresetToThemeTokens(input.theme);
     const selections: WizardSelections = {
