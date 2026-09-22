@@ -660,3 +660,43 @@ Failures now retain safe HTTP/error-type diagnostics instead of the generic unav
 
 - [x] P4 strict coverage gate in launch planning (V5 §35) — auto mode resolves the deterministically preferred visual direction, then moves deterministically (same seed) to another complete compatible direction when the preferred one cannot cover the selected topology under the selected experience; an explicitly selected direction is never swapped or degraded into the global pool. CI test asserts every pack stays complete across all three experience preferences and the widest page selection (`resolveAvailableAutoArtDirectionPackId`, `src/test/wizardDesignAvailability.test.ts`).
 - [x] P4 component state contracts (V5 §33) verified already first-class: `src/sections/variants/componentStates.ts` owns the 13 interaction + 4 responsive states, `variant.states` overrides family posture, and contracts are projected into the Wizard Registry Context, Lane B builder context, the composer edge contract, and the Property Inspector model — no extra registry.
+
+## Active: Canonical Closure → Production OS (plan 2026-09-20)
+Mission: one revision, one topology, one design contract, one artifact vocabulary,
+one mutation transaction, one Preview truth, one publish truth. No new registry,
+VFS writer, theme engine, AI mutation path, router authority, snapshot type or
+preview runtime — extend what exists.
+
+### P0
+- [x] 1. Typed request ontology separation — `BuilderRequestEnvelope` now carries
+	`businessGoals` / `designTraits` / `experienceFeatures` / `editorOperations` /
+	`requestedBusinessCapabilities`. Only the last one reaches capability-pack
+	verification, and it is validated against the closed vocabulary in
+	`src/platform/core/businessCapabilityVocabulary.ts` (edge mirror in
+	`supabase/functions/_shared/businessCapabilityVocabulary.ts`, drift test in
+	`src/test/builderRequestOntology.test.ts`). Legacy `requestedCapabilities`
+	arrays are split into the typed domains instead of forwarded. `premium`,
+	`modern` and `motion.marquee` can no longer surface as missing backend packs.
+- [ ] 2. Property Inspector → PatchPlan direct execution (no prose dispatch)
+- [ ] 3. Single AI mutation transaction (BuilderMutationService)
+- [ ] 4. Module-closure hard gate on every edit path
+- [ ] 5. Verified-success state machine ("applied" = transaction state)
+- [ ] 6. PageRegistry → canonical SiteShell topology closure (chrome.owner)
+
+### P1
+- [ ] 7. Expand semantic `PresentationOp`
+- [ ] 8. Site-wide design contract enforcement
+- [ ] 9. ResolvedArtifactCatalog as the consumer-facing runtime authority
+- [ ] 10. Legacy fallback retirement
+- [ ] 11. Direct VFS writers 42 → 0
+- [ ] 12. WebBuilder controller extraction
+
+### P2
+- [ ] 13. Booking vertical golden journey
+- [ ] 14. Two-tenant RLS isolation proof
+- [ ] 15. Publish / reload / rollback parity
+- [ ] 16. Observability and support diagnostics
+
+### Carried over (suspended)
+- [ ] Preview "installing modules unresolved" — awaiting user detail (symptom, package names, when)
+- [ ] 21st equivalence Phase B — footer family next (3 generic designs)
