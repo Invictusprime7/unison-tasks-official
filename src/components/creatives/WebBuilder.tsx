@@ -110,7 +110,7 @@ import {
   resolvePersistedEditorIdentity,
   resolveProjectActivePagePath,
 } from '@/services/projectRuntimeEnvelope';
-import { dryRunAiCommit, persistAiCommit } from "@/services/aiApplyGate";
+import { runBuilderAiMutation } from "@/services/builder/builderMutationService";
 import { emptyPatchPlan, legacyFilesToPatchPlan, type FileOp, type PatchSource } from "@/types/patchPlan";
 import type { BuilderIdentity } from "@/types/builderIdentity";
 import { normalizeUnisonRuntimeContext } from "@/platform/core/runtimeManifest";
