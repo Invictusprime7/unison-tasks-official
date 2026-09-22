@@ -24,12 +24,27 @@ export interface GenerationSeedInput {
   requestedPages?: readonly string[] | null;
   projectId?: string | null;
   /**
-   * Explicit regeneration token (wizardSeedId today). Omit for a purely
-   * selection-derived seed — useful for tests and for "same answers, same
-   * site" reproductions.
+   * Explicit regeneration token. MUST NOT be a per-launch random id: a launch
+   * identity (wizardSeedId) is minted on every run, so feeding it here would
+   * make the same answers produce a different site every time. Set it only
+   * when the user intentionally asks for another take.
    */
   launchNonce?: string | null;
 }
+
+export interface DesignSeedInput extends Omit<GenerationSeedInput, 'launchNonce'> {
+  /** Only an intentional "regenerate" sets this. Launch identity never does. */
+  regenerationNonce?: string | null;
+}
+
+/**
+ * The seed every visual and structural decision must use. Derived purely from
+ * the wizard's answers plus an optional intentional regeneration token.
+ */
+export function deriveDesignSeed(input: DesignSeedInput): string {
+  return deriveGenerationSeed({ ...input, launchNonce: input.regenerationNonce ?? null });
+}
+
 
 function norm(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -123,4 +138,26 @@ export function seededRotate<T>(seed: string, items: readonly T[]): T[] {
  */
 export function childSeed(seed: string, ...scope: Array<string | number>): string {
   return [seed, ...scope.map((part) => String(part))].join('::');
+}
+
+/**
+ * Stable render hash — the fingerprint of everything that determines the
+ * rendered site (design seed, sealed direction, theme, topology, resolved
+ * implementations). Same inputs in, same hash out, in every runtime; a changed
+ * hash is the only honest proof that the rendered site actually changed.
+ */
+export function computeRenderHash(parts: Record<string, unknown>): string {
+  return `rh_${hashSeed(stableStringify(parts)).toString(16).padStart(8, '0')}`;
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || value === undefined) return 'null';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([key, item]) => `${key}:${stableStringify(item)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
 }

@@ -151,6 +151,11 @@ export interface WizardSelections {
    */
   wizardSeedId?: string;
   /**
+   * Intentional "regenerate" token. The ONLY nonce allowed to participate in a
+   * design decision; launch identity (`wizardSeedId`) never does.
+   */
+  regenerationNonce?: string | null;
+  /**
    * Target Business Profile the generated project should be saved under.
    * Chosen by the creator in the wizard (BusinessSelector) and threaded
    * into LaunchState + builder_drafts so `sync_draft_to_project` stamps

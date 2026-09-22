@@ -80,6 +80,7 @@ import {
   type WizardDesignIntervention,
 } from '@/services/wizardDesignIntervention';
 import { designPlanSignature } from '@/utils/designVariation';
+import { computeRenderHash } from '@/platform/core/generationSeed';
 
 import {
   buildWizardGenerationBrief,
@@ -204,6 +205,13 @@ export interface SiteBundleSnapshotMeta {
    * visual plan is exactly the seeded one — same seed in, same plan out.
    */
   designPlanSignature?: string;
+  /**
+   * Stable render hash — the fingerprint of every input that determines the
+   * rendered site (design seed, sealed art direction, theme, template,
+   * topology, resolved implementations). Two launches with the same answers
+   * must carry the same hash; a different hash is proof the site changed.
+   */
+  renderHash?: string;
   /**
    * Resolved ThemePreset id from the wizard Style-card. Persisted into the
    * snapshot so recompiles/autosaves can re-emit themed /src/index.css
@@ -423,6 +431,7 @@ export function executeCanonicalPipeline(
     templateId: selections.templateId,
     themePresetId,
     wizardSeedId: selections.wizardSeedId,
+    regenerationNonce: selections.regenerationNonce,
     // Every wizard dimension feeds the canonical generation seed so goals and
     // page selections materially change the composition — not just the theme.
     primaryGoal: selections.primaryGoal,
@@ -839,6 +848,30 @@ function projectToSiteBundleSnapshot(
       designPlanSignature: (() => {
         const seed = (designIntervention || selections.designIntervention)?.seed;
         return seed ? designPlanSignature(seed) : undefined;
+      })(),
+      renderHash: (() => {
+        const intervention = designIntervention || selections.designIntervention;
+        return computeRenderHash({
+          seed: intervention?.seed ?? null,
+          industry: resolvedIndustry,
+          templateId: resolvedTemplateId ?? null,
+          themePresetId: resolvedThemePresetId ?? null,
+          artDirectionPackId: intervention?.artDirectionPackId ?? null,
+          layoutRecipe: intervention?.layoutRecipe ?? null,
+          motionRecipes: intervention?.motionRecipes ?? null,
+          experienceBudget: intervention?.experienceBudget ?? null,
+          activeVariants: intervention?.activeVariants ?? null,
+          pages: (Array.isArray(registry)
+            ? (registry as unknown[])
+            : Object.values((registry ?? {}) as Record<string, unknown>)
+          )
+            .map((page) => {
+              const entry = (page ?? {}) as Record<string, unknown>;
+              return `${String(entry.id ?? '')}:${String(entry.slug ?? '')}:${String(entry.role ?? '')}`;
+            })
+            .sort(),
+          routes: [...compileResult.previewManifest.routes].sort(),
+        });
       })(),
       interactionManifest: selections.interactionManifest,
       themeInjection: {

@@ -73,12 +73,13 @@ describe('wizard design intervention', () => {
     expect(intervention.activeVariants[hero.id]).toBe('hero:prisma-cinematic');
   });
 
-  it('varies emitted card and form geometry by wizard seed without changing composition ownership', () => {
+  it('varies emitted card and form geometry by regeneration nonce without changing composition ownership', () => {
     const composition = getCompositionById(salonInput.templateId);
     if (!composition) throw new Error('Salon composition must be registered');
 
-    const interventions = ['wizard-salon-variation-a', 'wizard-salon-variation-b', 'wizard-salon-variation-c']
-      .map((wizardSeedId) => buildWizardDesignIntervention({ ...salonInput, wizardSeedId }));
+    const interventions = ['variation-a', 'variation-b', 'variation-c']
+      .map((regenerationNonce) => buildWizardDesignIntervention({ ...salonInput, regenerationNonce }));
+
     const [first, second] = interventions;
     const services = composition.sections.find((section) => section.type === 'services');
     const contact = composition.sections.find((section) => section.type === 'contact');

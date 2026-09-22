@@ -5,7 +5,7 @@ import { getGenerationVariantsForSection, getVariantById, getVariantIdForLayout,
 import type { ActiveVariantMap, VariantId } from '@/sections/variants';
 import {
   childSeed,
-  deriveGenerationSeed,
+  deriveDesignSeed,
   seededRotate,
 } from '@/platform/core/generationSeed';
 import {
@@ -146,7 +146,11 @@ export interface WizardDesignInterventionInput {
   industryOverlay?: IndustryOverlay | string | null;
   templateId?: string | null;
   themePresetId: string;
+  /** Launch identity only — never participates in a design decision. */
   wizardSeedId?: string | null;
+  /** Set only when the user intentionally asks for another take. */
+  regenerationNonce?: string | null;
+
   /** Wizard goal + page selections participate in the generation seed. */
   primaryGoal?: string | null;
   secondaryGoals?: readonly string[] | null;
@@ -399,10 +403,11 @@ export function buildWizardDesignIntervention(
   input: WizardDesignInterventionInput,
 ): WizardDesignIntervention {
   const industry = input.industryOverlay || 'general';
-  // ONE canonical generation seed: every wizard dimension participates, plus
-  // the launch nonce so an intentional regeneration yields a different — but
-  // still fully reproducible — composition.
-  const seed = deriveGenerationSeed({
+  // ONE canonical design seed: every wizard answer participates. The launch
+  // identity (wizardSeedId) is deliberately excluded — the same answers must
+  // compile the same site on every run. Only an intentional regeneration
+  // token moves the design.
+  const seed = deriveDesignSeed({
     businessName: input.businessName,
     businessModel: input.businessModel,
     industry: typeof industry === 'string' ? industry : String(industry),
@@ -412,8 +417,9 @@ export function buildWizardDesignIntervention(
     secondaryGoals: input.secondaryGoals,
     requestedPages: input.requestedPages,
     projectId: input.projectId,
-    launchNonce: input.wizardSeedId,
+    regenerationNonce: input.regenerationNonce,
   });
+
   const baseline = MODEL_RECIPES[input.businessModel];
   const sectionVariants = seededRotate(childSeed(seed, 'section-variants'), baseline.sectionVariants);
 
