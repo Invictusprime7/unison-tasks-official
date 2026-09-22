@@ -171,8 +171,17 @@ async function main() {
     }
   }
 
+  let registry = null;
+  try {
+    registry = JSON.parse(readFileSync(join(ROOT, EXEMPTION_REGISTRY_PATH), 'utf8'));
+  } catch {
+    console.error('[lint-canonical-vfs-writes] FAIL — missing exemption registry.');
+    process.exit(1);
+  }
+  violations.push(...auditExemptions(collectSourceFiles(SRC), registry));
+
   if (violations.length === 0) {
-    console.log('[lint-canonical-vfs-writes] OK — no new direct canonical VFS writers.');
+    console.log('[lint-canonical-vfs-writes] OK — no new direct canonical VFS writers, every exemption audited.');
     process.exit(0);
   }
 
