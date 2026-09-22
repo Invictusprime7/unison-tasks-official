@@ -55,6 +55,8 @@ export const EXPERIENCE_BARREL_EXPORTS: ReadonlySet<string> = new Set([
 export const EXPERIENCE_FOUNDATION_PATHS = [
   '/src/unison/ui/experience/index.ts',
   '/src/unison/ui/experience/canvas.tsx',
+  '/src/unison/ui/experience/lazy.tsx',
+  '/src/unison/ui/experience/webgl.tsx',
   '/src/unison/ui/experience/tokens.ts',
   '/src/unison/ui/experience/scene.tsx',
   '/src/unison/ui/experience/media.tsx',
@@ -64,6 +66,8 @@ export const EXPERIENCE_FOUNDATION_PATHS = [
 export const EXPERIENCE_IMPORT_PATHS = [
   '@/unison/ui/experience',
   '@/unison/ui/experience/canvas',
+  '@/unison/ui/experience/lazy',
+  '@/unison/ui/experience/webgl',
   '@/unison/ui/experience/tokens',
   '@/unison/ui/experience/scene',
   '@/unison/ui/experience/media',
