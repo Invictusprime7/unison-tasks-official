@@ -16,7 +16,8 @@
  */
 import type { SectionType } from '@/sections/types';
 import type { SectionVariant } from '@/sections/variants/types';
-import { ART_DIRECTION_PACKS, familyForSection, type ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
+import { ART_DIRECTION_PACKS, type ArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
+import { familyForSection } from '@/sections/variants/registry';
 import { industryCreativeProfile } from '@/sections/templates/industryCreativeVocabulary';
 
 export interface CompositionAffinityContext {
