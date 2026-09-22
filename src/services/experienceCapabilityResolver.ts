@@ -29,6 +29,8 @@ import {
 import type { ExperiencePrimitive } from '@/platform/core/experiencePrimitives';
 import { EXPERIENCE_CAPABILITY_ID } from '@/platform/core/generatedRuntimeCapabilities';
 import { childSeed, seededRotate } from '@/platform/core/generationSeed';
+import { isOfferableVocabulary } from '@/services/launch/executableVocabulary';
+
 
 export const EXPERIENCE_ENVELOPE_VERSION = '1.0' as const;
 
