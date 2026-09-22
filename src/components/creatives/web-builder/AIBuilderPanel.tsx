@@ -97,6 +97,15 @@ import {
   type AIBuilderApplyCallback,
 } from '@/services/aiBuilderApply';
 import {
+  CANDIDATE_GENERATED_NOTICE,
+  CANDIDATE_STYLESHEET_NOTICE,
+  CANDIDATE_COMPONENT_NOTICE,
+  CANDIDATE_PAGE_NOTICE,
+  neutralizeModelSuccessClaim,
+  transactionVerdictLine,
+} from '@/services/builder/builderTransactionState';
+
+import {
   planBusinessCapabilities,
   type CapabilityPlan,
 } from '@/services/businessCapabilityPlanner';
@@ -1749,6 +1758,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       let explanationText = '';
       let multiFileOutput: Record<string, string> | null = null;
       let structuredContractExtractionFailed = false;
+      // P0.5: the authoritative verdict line, set only by the transaction layer.
+      let transactionVerdict: string | null = null;
 
       if (aiContent) {
         const trimmed = aiContent.trim();
@@ -1756,17 +1767,18 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         const structuredOutput = extractMultiFileOutput(trimmed);
         if (structuredOutput) {
           multiFileOutput = structuredOutput.files;
-          explanationText = structuredOutput.explanation || '✅ Multi-file project generated and applied.';
+          explanationText = neutralizeModelSuccessClaim(structuredOutput.explanation) || CANDIDATE_GENERATED_NOTICE;
           console.log('[AIBuilderPanel] Parsed multi-file output:', Object.keys(multiFileOutput));
         }
         if (!multiFileOutput) {
           const stylesheetOutput = extractStylesheetOutput(trimmed);
           if (stylesheetOutput) {
             multiFileOutput = stylesheetOutput;
-            explanationText = '✅ Theme stylesheet applied.';
+            explanationText = CANDIDATE_STYLESHEET_NOTICE;
             console.log('[AIBuilderPanel] Parsed stylesheet output for /src/index.css');
           }
         }
+
 
       // Pre-processing: Detect if content is AI reasoning/prose with no usable code
       // AI sometimes outputs planning text with inline HTML tag refs like `<style>`, `<nav>`
@@ -1815,7 +1827,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
           if (isReactComponent && trimmed.includes('return') && trimmed.includes('<') && !hasConfigContent && !hasRawHtml) {
             generatedCode = trimmed;
-            explanationText = '✅ Component applied to your project.';
+            explanationText = CANDIDATE_COMPONENT_NOTICE;
           }
         }
 
@@ -1855,7 +1867,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               console.log('[AIBuilderPanel] Extracted React code from fence');
             } else if (isCssOnly) {
               multiFileOutput = { '/src/index.css': bestBlock };
-              explanationText = '✅ Theme stylesheet applied.';
+              explanationText = CANDIDATE_STYLESHEET_NOTICE;
               console.log('[AIBuilderPanel] Extracted CSS fence for /src/index.css');
             } else if (hasHtmlStructure) {
               generatedCode = wrapHtmlInReactComponent(bestBlock);
@@ -1877,7 +1889,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               explanationText = trimmed.slice(0, htmlIdx).trim();
             }
             if (!explanationText) {
-              explanationText = '✅ HTML site generated and wrapped for preview.';
+              explanationText = CANDIDATE_PAGE_NOTICE;
             }
           }
         }
@@ -1887,19 +1899,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           if (/^\s*<!DOCTYPE/i.test(trimmed) || /^\s*<html[\s>]/i.test(trimmed)) {
             console.log('[AIBuilderPanel] Content is raw HTML, wrapping in React component');
             generatedCode = wrapHtmlInReactComponent(trimmed);
-            explanationText = '✅ HTML site generated and wrapped for preview.';
+            explanationText = CANDIDATE_PAGE_NOTICE;
           }
         }
 
         // Extract explanation: everything that's NOT inside code fences
         if (!explanationText) {
-          explanationText = aiContent
-            .replace(/```[\s\S]*?```/g, '')
-            .replace(/^\s*\n/gm, '\n')
-            .trim();
+          explanationText = neutralizeModelSuccessClaim(
+            aiContent
+              .replace(/```[\s\S]*?```/g, '')
+              .replace(/^\s*\n/gm, '\n'),
+          );
 
           if (!explanationText && (generatedCode || multiFileOutput)) {
-            explanationText = isSurgicalEdit ? '✅ Edit applied successfully.' : '✅ Code generated and applied to your project.';
+            explanationText = CANDIDATE_GENERATED_NOTICE;
           }
         }
 
@@ -1959,16 +1972,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           console.warn('[AIBuilderPanel] SCOPE BLOCK:', scopeBlockReason);
           setHeldFiles({ files: normalizedFiles, reason: `Edit held back: ${scopeBlockReason}` });
           toast.warning(`⚠️ Edit held for review: ${scopeBlockReason}`);
+          transactionVerdict = transactionVerdictLine('held-for-review', scopeBlockReason);
         } else if (shouldBlock) {
           void recordRunOutcome(envelopeRunId, 'rejected', { note: 'requires-approval' });
           console.warn('[AIBuilderPanel] Patch requires approval — NOT auto-applying');
-          setHeldFiles({
-            files: normalizedFiles,
-            reason: responseMeta?.warnings?.map((warning) => warning.message).filter(Boolean).join('; ')
-              || 'The reviewer flagged this patch. Review the warnings, then apply.',
-          });
+          const heldReason = responseMeta?.warnings?.map((warning) => warning.message).filter(Boolean).join('; ')
+            || 'The reviewer flagged this patch. Review the warnings, then apply.';
+          setHeldFiles({ files: normalizedFiles, reason: heldReason });
           toast.warning('⚠️ AI patch flagged for review — apply it from the review card when ready');
+          transactionVerdict = transactionVerdictLine('held-for-review', heldReason);
         } else {
+
           if (onApplyToVFS) {
             console.log('[AIBuilderPanel] Calling onApplyToVFS with normalized paths:', Object.keys(normalizedFiles));
             vfsEventBus.emit('ai:apply:start', { source: 'multi-file' });
@@ -1995,12 +2009,16 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               vfsEventBus.emit('ai:apply:complete', { filesWritten: Object.keys(normalizedFiles), source: 'multi-file' });
               const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
               toast.success(`✅ Multi-file project applied${approvalNote}`);
+              // P0.5: the verdict comes from the transaction, not from AI prose.
+              transactionVerdict = transactionVerdictLine('verified');
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated files.';
               liveStep('error', 'AI edit was not applied', applyError);
               vfsEventBus.emit('ai:apply:error', { message: applyError, source: 'multi-file' });
               toast.error('AI edit was not applied', { description: applyError, duration: 8000 });
+              transactionVerdict = transactionVerdictLine('failed', applyError);
             }
+
           } else if (onFilesPatch) {
             onFilesPatch(normalizedFiles);
             toast.success('✅ Multi-file project applied to VFS');
@@ -2089,9 +2107,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         m.id === streamingId
           ? {
               ...m,
-              content: explanationText || (structuredContractExtractionFailed
-                ? 'The AI response could not be converted into project files.'
-                : aiContent),
+              content: [
+                explanationText || (structuredContractExtractionFailed
+                  ? 'The AI response could not be converted into project files.'
+                  : neutralizeModelSuccessClaim(aiContent) || CANDIDATE_GENERATED_NOTICE),
+                transactionVerdict,
+              ].filter(Boolean).join('\n\n'),
+
               thinking: thinkingSteps,
               claudeReasoning: aiReasoning,
               meta: responseMeta,
@@ -2164,13 +2186,21 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               vfsEventBus.emit('ai:apply:complete', { filesWritten: [singleFilePath], source: 'single-file' });
               const approvalNote = responseMeta?.requiresApproval ? ' — review recommended' : '';
               toast.success(isSurgicalEdit ? `✅ Edit applied${approvalNote}` : `✅ Code applied${approvalNote}`);
+              // P0.5: only the transaction layer may assert success.
+              setMessages(prev => prev.map(m => m.id === streamingId
+                ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('verified')}` }
+                : m));
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated file.';
               advancePlanStep(taskPlan, 'refresh_preview', 'failed');
               liveStep('error', 'AI edit was not applied', applyError);
               vfsEventBus.emit('ai:apply:error', { message: applyError, source: 'single-file' });
               toast.error('AI edit was not applied', { description: applyError, duration: 8000 });
+              setMessages(prev => prev.map(m => m.id === streamingId
+                ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('failed', applyError)}` }
+                : m));
             }
+
           } else if (onCodeGenerated) {
             onCodeGenerated(generatedCode);
             toast.success(isSurgicalEdit ? '✅ Edit applied to preview' : '✅ Code applied to preview');

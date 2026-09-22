@@ -11,7 +11,14 @@ export interface AIBuilderApplyMeta {
 export interface AIBuilderApplyOutcome {
   success: boolean;
   errors?: string[];
+  /** P0.5: terminal transaction state. `success` is derived from `verified`. */
+  status?: 'verified' | 'failed' | 'held-for-review';
+  persistedRevisionId?: string | null;
+  changedPaths?: string[];
+  blockers?: string[];
+  warnings?: string[];
 }
+
 
 export type AIBuilderApplyCallback = (
   files: Record<string, string>,
