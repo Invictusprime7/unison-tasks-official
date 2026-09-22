@@ -7558,7 +7558,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     const currentFiles = virtualFS.getSandpackFiles();
                     const patchFiles = elementToVFSPatch(currentFiles, html, 'FunctionalBlock', launchEntryPoint);
                     void commitBuilderFiles(patchFiles, {
-                      source: 'manual-edit',
+                      source: 'preview-toolbar',
                       summary: 'Functional block insert',
                       failureMessage: 'Could not add this block to your site',
                     }).then((committed) => {
