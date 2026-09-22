@@ -870,3 +870,5 @@ preview runtime — extend what exists.
 ### Carried over (suspended)
 - [ ] Preview "installing modules unresolved" — awaiting user detail (symptom, package names, when)
 - [ ] 21st equivalence Phase B — footer family next (3 generic designs)
+
+- [x] Task 13 — Compile Industry/Page Creative Profiles into one SiteDesignContract (`src/services/launch/siteDesignContract.ts`): compileSiteDesignContract() projects wizard selection + industry profile + page archetype + art direction pack + experience into a single authority (typography, geometry, spacing, media, motion budget, family affinity, allowed implementations, per-page required roles + density budgets, inheritance rules). Negative vocabulary enforced in Auto, advisory in Guided/Custom. isCreativelyAdditiveSection() now consults the contract first. Tests: src/test/siteDesignContract.test.ts (9).
