@@ -104,6 +104,7 @@ import {
   neutralizeModelSuccessClaim,
   transactionVerdictLine,
 } from '@/services/builder/builderTransactionState';
+import { awaitPreviewVerification, markPreviewPending } from '@/services/builder/previewVerification';
 
 import {
   planBusinessCapabilities,
@@ -1986,6 +1987,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           if (onApplyToVFS) {
             console.log('[AIBuilderPanel] Calling onApplyToVFS with normalized paths:', Object.keys(normalizedFiles));
             vfsEventBus.emit('ai:apply:start', { source: 'multi-file' });
+            markPreviewPending();
             const applyOutcome = await applyAIBuilderFiles(onApplyToVFS, normalizedFiles, {
               prompt: userContent,
               model: modelUsed,
