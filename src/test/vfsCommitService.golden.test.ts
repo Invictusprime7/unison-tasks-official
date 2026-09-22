@@ -883,7 +883,7 @@ describe('Snapshot-owned presentation mutations', () => {
         } as never,
       },
       patch,
-    })).rejects.toThrow('invalid presentation variant');
+    })).rejects.toThrow(/invalid variant/);
   });
 });
 
