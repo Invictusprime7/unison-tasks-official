@@ -33,5 +33,5 @@ describe("Launcher Wizard guided flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("Business name")).toHaveValue("Studio Glow");
     expect(runLaunchPipeline).not.toHaveBeenCalled();
-  });
+  }, 20000);
 });

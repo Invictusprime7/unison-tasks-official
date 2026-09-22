@@ -827,7 +827,19 @@ preview runtime — extend what exists.
 	workspace import, dependency manifest. `scripts/canonical-vfs-write-baseline.json`
 	is now empty, so the CI lint fails on any new unclassified writer.
 	Tests: `src/test/canonicalVfsWriteClosure.test.ts`.
-- [ ] 12. WebBuilder controller extraction
+- [x] 12. WebBuilder controller extraction (commit surface). Every builder
+	mutation surface — layout fast path, preview toolbar, presentation ops,
+	authored files, theme tokens, capability installs, composition upgrade and
+	draft save — built its own `commitMutation` envelope inline (identity,
+	canonical `current`, pipeline options, adoption record), so each was a
+	separate chance to drift from the canonical mutation boundary. The envelope
+	now has one React-free source: `src/services/builder/builderCommitController.ts`
+	(`buildCommitIdentity`, `buildCommitCurrent`, `buildCommitOptions`,
+	`buildCommitInput`, `filterRedundantPresentationOps`, `commitAdoptionRecord`).
+	Identity is refused (not fabricated) when the workspace is not bound to a
+	user, business and draft; capability installs keep their stricter gates
+	explicitly. Tests: `src/test/builderCommitController.test.ts`, including a
+	guard that no hand-rolled envelope returns to `WebBuilder.tsx`.
 
 ### P2
 - [ ] 13. Booking vertical golden journey
