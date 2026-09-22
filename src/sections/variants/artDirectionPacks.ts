@@ -22,6 +22,8 @@ import type { VariantId } from './types';
 
 export type ArtDirectionPackId =
   | 'editorial-noir'
+  | 'noir-atelier'
+
   | 'cinematic-portfolio'
   | 'luxury-minimal'
   | 'soft-editorial'
