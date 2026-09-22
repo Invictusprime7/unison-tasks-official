@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalizePageSectionOrder, pageArchetypeIssues } from './pageArchetypeContract.ts';
+import { projectionDensityIssues, type SiteDesignContractProjection } from './siteDesignContractProjection.ts';
 
 export const COMPOSITION_SYSTEM_PROMPT = `You compose Unison pages using only the supplied local variant catalog.
 Return ONLY JSON shaped as {"version":"1.0","pages":[{"role":"home","sectionOrder":["navbar","hero","services","footer"],"variants":{"services":"an eligible catalog ID"},"copy":{"hero":{"headline":"Original business-specific headline"}}}]}.
