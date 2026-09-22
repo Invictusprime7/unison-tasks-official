@@ -40,6 +40,19 @@ export interface AssetBindingReport {
   bound: number;
   /** Section ids that received at least one real asset. */
   sections: string[];
+  /** Post-binding runtime media authority for the returned composition. */
+  catalog?: ResolvedArtifactCatalog;
+}
+
+/** Index the seed library so the catalog can label business-owned media. */
+export function buildBusinessAssetIndex(library: readonly SeedMediaAsset[]) {
+  const byUrl = new Map<string, string>();
+  const altByUrl = new Map<string, string>();
+  for (const asset of library) {
+    byUrl.set(asset.url, asset.id);
+    if (asset.alt) altByUrl.set(asset.url, asset.alt);
+  }
+  return { byUrl, altByUrl };
 }
 
 /** Maximum assets projected into the wizard seed (keeps the seed bounded). */
