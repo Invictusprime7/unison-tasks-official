@@ -81,7 +81,7 @@ export function applySemanticPresentationOps(
         }
         // §8.4 — a new edit asks the resolved catalog; legacy ids are not legal here.
         const legality = resolveLegalImplementation(nextVariant.id, 'ai-edit');
-        if (!legality.legal) throw new Error(`[presentation] ${legality.reason}`);
+        if (legality.legal !== true) throw new Error(`[presentation] ${legality.reason}`);
         next.activeVariants[op.sectionId] = nextVariant.id;
         break;
       }
