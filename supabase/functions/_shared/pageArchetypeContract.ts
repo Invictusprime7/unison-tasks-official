@@ -194,8 +194,9 @@ const isChrome = (family: string) => COMPILER_OWNED_FAMILIES.includes(family);
 
 
 /** Exact mirror of the client normalizePageSectionOrder. */
-export function normalizePageSectionOrder(role: string, sectionOrder: string[]): string[] {
-  const archetype = pageArchetypeFor(role);
+export function normalizePageSectionOrder(role: string, sectionOrder: string[], industry?: string | null): string[] {
+  const archetype = resolvePageArchetype(role, industry);
+
   const forbidden = new Set(archetype.forbiddenFamilies);
   const kept = sectionOrder.filter((family, index) =>
     sectionOrder.indexOf(family) === index && (isChrome(family) || !forbidden.has(family)));
@@ -222,9 +223,10 @@ export function pageArchetypeIssues(
   role: string,
   sectionOrder: string[],
   variantTags: Record<string, string[]> = {},
-  options: { requireFamilies?: boolean } = {},
+  options: { requireFamilies?: boolean; industry?: string | null } = {},
 ): string[] {
-  const archetype = pageArchetypeFor(role);
+  const archetype = resolvePageArchetype(role, options.industry);
+
   const issues: string[] = [];
   const body = sectionOrder.filter(family => !isChrome(family));
   for (const family of sectionOrder) {
