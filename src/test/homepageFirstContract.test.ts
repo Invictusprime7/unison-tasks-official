@@ -6,6 +6,7 @@ import {
   orderHomepageFirst,
   renderHomepageInheritanceContract,
   validateHomepageInheritance,
+  enforceSiteDesignContract,
 } from '@/services/launch/homepageFirstContract';
 import { planLaneBBatches } from '@/services/laneBBatchPlanner';
 import { normalizeCompositionResponse } from '@/services/launch/compositionCanonicalContract';
@@ -102,5 +103,58 @@ describe('homepage-first visual language', () => {
     const about = normalized.pages.find(page => page.role === 'about');
     expect(about?.variants.hero).toBe('hero:centered');
     expect(about?.variants.gallery).toBe('gallery:lightbox-grid');
+  });
+});
+
+describe('site-wide design contract enforcement', () => {
+  const home = `
+    <section data-ut-variant="navbar:aurora-rail" className="ut-section">
+      <h1 className="ut-hero" style={{ color: 'var(--ut-ink)' }}>Northstar</h1>
+    </section>
+    <footer data-ut-variant="footer:rich-columns" className="ut-surface bg-background text-foreground" />
+  `;
+
+  it('repairs chrome drift and the reserved headline tier on other pages', () => {
+    const report = enforceSiteDesignContract({
+      files: {
+        '/src/pages/Index.tsx': home,
+        '/src/pages/About.tsx': `
+          <section data-ut-variant="navbar:slab-bar" />
+          <h2 className="ut-hero">About</h2>
+          <footer data-ut-variant="footer:rich-columns" />
+        `,
+      },
+      homePath: '/src/pages/Index.tsx',
+    });
+
+    expect(report.skipped).toBe(false);
+    expect(report.files['/src/pages/About.tsx']).toContain('data-ut-variant="navbar:aurora-rail"');
+    expect(report.files['/src/pages/About.tsx']).toContain('ut-display');
+    expect(report.files['/src/pages/About.tsx']).not.toContain('ut-hero');
+    expect(report.repairs).toHaveLength(2);
+    expect(report.violations).toEqual([]);
+    expect(report.files['/src/pages/Index.tsx']).toBe(home);
+  });
+
+  it('reports hardcoded palette escapes as contract violations', () => {
+    const report = enforceSiteDesignContract({
+      files: {
+        '/src/pages/Index.tsx': home,
+        '/src/pages/Contact.tsx': '<section className="bg-[#101014] text-white" />',
+      },
+      homePath: '/src/pages/Index.tsx',
+    });
+
+    expect(report.violations).toHaveLength(2);
+    expect(report.violations.join(' ')).toContain('/src/pages/Contact.tsx');
+    expect(report.violations.join(' ')).toContain('theme tokens');
+  });
+
+  it('is a no-op when the homepage has established nothing', () => {
+    const files = { '/src/pages/Index.tsx': '<div />', '/src/pages/About.tsx': '<div className="text-white" />' };
+    const report = enforceSiteDesignContract({ files, homePath: '/src/pages/Index.tsx' });
+    expect(report.skipped).toBe(true);
+    expect(report.violations).toEqual([]);
+    expect(report.files).toBe(files);
   });
 });
