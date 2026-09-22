@@ -39,10 +39,13 @@ export interface AssetBindingReport {
 /** Maximum assets projected into the wizard seed (keeps the seed bounded). */
 export const SEED_MEDIA_LIBRARY_LIMIT = 40;
 
-/** Media prop keys a section may declare for a single image. */
-const SINGLE_MEDIA_KEYS = ['image', 'imageUrl', 'backgroundImage', 'src', 'photo', 'cover'] as const;
-/** Array props whose entries may declare their own media. */
-const COLLECTION_KEYS = ['items', 'cards', 'products', 'images', 'slides', 'gallery', 'media', 'tiles'] as const;
+/**
+ * Media prop discovery is owned by the Resolved Artifact Catalog — this module
+ * never restates what "media" means, it only narrows the catalog's vocabulary
+ * to what may be *substituted*: brand marks stay template-owned.
+ */
+const SINGLE_MEDIA_KEYS = MEDIA_PROP_KEYS.filter((key) => key !== 'logo');
+const COLLECTION_KEYS = MEDIA_COLLECTION_KEYS.filter((key) => key !== 'logos');
 
 function hash(value: string): number {
   let h = 2166136261;
