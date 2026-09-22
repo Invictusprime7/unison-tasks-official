@@ -8429,11 +8429,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   }}
                   onClose={() => setPropertyPanelOpen(false)}
                   onApplyPatchPlan={(plan) => {
-                    // Canonical patch plans are executed through the governed
-                    // AI Builder lane (VFSCommitService), never by ad-hoc DOM writes.
-                    dispatchBuilderPrompt(
-                      `${plan.description}.\nApply this canonical patch plan exactly:\n${JSON.stringify(plan.op, null, 2)}`,
-                    );
+                    // Already-validated canonical plans execute directly on the
+                    // canonical rails (presentation / theme / source) through
+                    // VFSCommitService — no AI round-trip, no DOM-only writes.
+                    void applyInspectorPatchPlan(plan);
                     setPropertyPanelOpen(false);
                   }}
                   onContextualAIRequest={(prompt) => {
