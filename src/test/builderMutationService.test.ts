@@ -27,7 +27,7 @@ const ctx = {
   activePagePath: '/',
 } as never as Parameters<typeof runBuilderAiMutation>[0];
 
-beforeEach(() => persistAiCommit.mockReset());
+beforeEach(() => { persistAiCommit.mockReset(); });
 
 describe('builder AI mutation transaction', () => {
   it('commits once and reports applied only after the mirror succeeds', async () => {
