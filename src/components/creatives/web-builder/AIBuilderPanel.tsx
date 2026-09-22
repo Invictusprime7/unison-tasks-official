@@ -2098,9 +2098,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         m.id === streamingId
           ? {
               ...m,
-              content: explanationText || (structuredContractExtractionFailed
-                ? 'The AI response could not be converted into project files.'
-                : aiContent),
+              content: [
+                explanationText || (structuredContractExtractionFailed
+                  ? 'The AI response could not be converted into project files.'
+                  : neutralizeModelSuccessClaim(aiContent) || CANDIDATE_GENERATED_NOTICE),
+                transactionVerdict,
+              ].filter(Boolean).join('\n\n'),
+
               thinking: thinkingSteps,
               claudeReasoning: aiReasoning,
               meta: responseMeta,
