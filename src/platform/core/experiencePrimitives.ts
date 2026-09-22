@@ -14,7 +14,7 @@ import {
   THREE_D_CAPABILITY,
 } from '@/platform/core/generatedRuntimeCapabilities';
 
-export const EXPERIENCE_FOUNDATION_VERSION = '1.2' as const;
+export const EXPERIENCE_FOUNDATION_VERSION = '1.3' as const;
 
 /** The runtime capability that backs this layer (single source of truth). */
 export const EXPERIENCE_CAPABILITY = THREE_D_CAPABILITY;
