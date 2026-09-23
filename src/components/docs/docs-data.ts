@@ -6,6 +6,10 @@ import {
   Cloud,
   FolderOpen,
   Workflow,
+  Rocket,
+  Sparkles,
+  Globe,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -862,6 +866,362 @@ Running low? You can upgrade anytime or delete files you no longer need.
 **Create a folder system**: Organize by project, client, or date — whatever makes sense for you
 
 **Clean up regularly**: Delete old files you don't need anymore`,
+      },
+    ],
+  },
+  {
+    id: "launch-wizard",
+    title: "Launch Wizard",
+    icon: Rocket,
+    description: "Answer a few questions, get a complete site",
+    image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=200&fit=crop",
+    articles: [
+      {
+        id: "wizard-walkthrough",
+        title: "Launching Your First Site",
+        image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=600&h=300&fit=crop",
+        content: `# Launching Your First Site 🚀
+
+The Launch Wizard turns a handful of answers into a finished, multi-page website — not a blank template you have to fill in yourself.
+
+## The Four Questions
+
+**1. What is your business?**
+Your name and what you do. This is used for real copy on the page, not placeholder text.
+
+**2. What kind of business is it?**
+Salon, restaurant, shop, contractor, agency, coaching, real estate, software, nonprofit, portfolio. Each one starts from a different set of pages.
+
+**3. What do you want people to do?**
+Book an appointment, buy something, request a quote, join a list. Your answer decides which buttons appear and what they actually do.
+
+**4. How should it look?**
+Pick a style card. Every card is a real, finished design direction — colours, type, spacing and motion all move together.
+
+## What You Get
+
+A salon gets Services, Gallery, Our Studio, Book and FAQ. A restaurant gets Menu, Gallery and Reservations. A shop gets Shop, Journal, Help and a checkout. Every page is written for your business, wired to real buttons, and styled to match the home page.
+
+## Regenerating
+
+Not in love with the result? Press **Regenerate**. Your answers stay the same and the look shifts to another finished option. Answers never change by accident.
+
+## Quick Tip 💡
+
+Spend the extra minute on question 3. It is the single answer that decides whether your site takes bookings, payments or enquiries.`,
+      },
+      {
+        id: "same-answers-same-site",
+        title: "Why the Same Answers Build the Same Site",
+        image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&h=300&fit=crop",
+        content: `# Same Answers, Same Site 🎯
+
+Most AI website tools roll the dice every time you press the button. Unison does not.
+
+## Predictable by Design
+
+Your answers are compiled into a site the same way every time. Launch twice with the same answers and you get the same pages, the same layout, the same colours. Nothing drifts between attempts.
+
+## Only You Move the Design
+
+Two things change the look, and both are yours:
+- **Changing an answer** — a different industry, goal or style card
+- **Pressing Regenerate** — a deliberate request for a different finished option
+
+Nothing else. Time of day, luck and retries have no effect.
+
+## Every Site Has a Fingerprint
+
+Each generated site carries a short fingerprint. If two sites share the same fingerprint, they are the same site. It is how support can tell instantly whether something really changed.
+
+## Why It Matters
+
+- You can show a client a result and reproduce it exactly next week
+- A bug can be reproduced instead of guessed at
+- "Regenerate" is a choice, not a gamble`,
+      },
+      {
+        id: "styles-and-look",
+        title: "Style Cards and Your Site's Look",
+        image: "https://images.unsplash.com/photo-1558655146-d09347e92766?w=600&h=300&fit=crop",
+        content: `# Style Cards 🎨
+
+A style card is a complete design direction, not just a colour swap.
+
+## What a Card Controls
+
+- **Type** — which typefaces, how big, how tightly spaced
+- **Colour** — a full palette, including dark and light surfaces
+- **Spacing** — airy and editorial, or tight and commercial
+- **Motion** — how sections reveal as you scroll
+- **Media** — full-bleed photography, mosaics, or contained cards
+
+## Every Page Inherits the Home Page
+
+Whatever the home page establishes, the rest of the site follows. No page invents its own colours or its own heading size. If you change the look, it changes everywhere at once.
+
+## Page-by-Page Rhythm
+
+Pages still breathe differently where it matters. A checkout stays lean and focused. A gallery is given room to show work. The look never changes — only the pacing.
+
+## Choosing Well
+
+- **Booking and beauty businesses** — the darker, editorial cards photograph beautifully
+- **Shops** — commercial cards put products and prices first
+- **Studios and portfolios** — cinematic cards give images the most room
+
+## Quick Tip 💡
+
+Pick the card whose photography looks most like yours. Style and imagery carry each other.`,
+      },
+    ],
+  },
+  {
+    id: "ai-builder",
+    title: "AI Builder",
+    icon: Sparkles,
+    description: "Edit your site by describing the change",
+    image: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400&h=200&fit=crop",
+    articles: [
+      {
+        id: "editing-with-ai",
+        title: "Editing by Describing",
+        image: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=600&h=300&fit=crop",
+        content: `# Editing by Describing ✍️
+
+Open any project in the Builder and tell the assistant what you want. Plain sentences work best.
+
+## Good Requests
+
+- "Make the booking button bigger and move it above the photo"
+- "Swap the gallery on every page for the mosaic layout"
+- "Change the headline on the Services page to 'Colour, cut and care'"
+- "Add a frequently asked questions section to the Book page"
+
+## What Happens Next
+
+1. The assistant works out exactly which part of the site you mean
+2. It prepares the change
+3. The change is checked before anything is saved
+4. It is saved, and the preview is watched to confirm it really rendered
+5. Only then do you see **Changes applied**
+
+## Nothing Is Half-Applied
+
+If any step fails, the whole change is rolled back and you are told why in plain words. Your site is never left in a partly edited state.
+
+## If You See "Held for Review"
+
+That means the change saved but the preview did not confirm it. Reload the preview. If it still does not show, undo and describe the change differently — something in the request could not be rendered safely.
+
+## Quick Tip 💡
+
+One change per request lands faster and is far easier to undo.`,
+      },
+      {
+        id: "verified-changes",
+        title: "Why Unison Never Says 'Done' Too Early",
+        image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600&h=300&fit=crop",
+        content: `# Verified, Not Claimed ✅
+
+Most AI tools tell you an edit worked because the AI said so. Unison refuses to.
+
+## The Checks Behind "Applied"
+
+Before you ever see a success message:
+- The change must be valid on its own
+- Everything it references must exist
+- It must save to your project as one complete step
+- The preview must load it without breaking
+
+Fail any one and you get a clear reason instead of a green tick.
+
+## The Three Outcomes
+
+**Applied** — saved and confirmed in the preview.
+
+**Held for review** — saved, but the preview did not confirm it. Worth a reload or an undo.
+
+**Failed** — nothing changed. Your files are exactly as they were.
+
+## Undo Is Always There
+
+Every edit can be undone, including AI edits. Your previous version is kept.`,
+      },
+      {
+        id: "design-panel",
+        title: "The Design Panel",
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=300&fit=crop",
+        content: `# The Design Panel 🎛️
+
+Not every change needs a sentence. Click any part of your site and edit it directly.
+
+## What You Can Change
+
+- **Text** — click it and type
+- **Images** — swap in one of your own uploads
+- **Section layout** — pick a different finished layout for that block
+- **Spacing and alignment** — nudge without touching code
+- **Order** — move a section up or down, or remove it
+
+## Change It Everywhere
+
+Changing a section's layout can be applied across the whole site at once, so every page keeps the same look. You can exclude specific pages if one needs to stay as it is.
+
+## Colours Stay On-Palette
+
+The panel only offers colours from your site's palette. Off-palette colours are blocked on purpose — it is what keeps the site looking like one site.
+
+## Quick Tip 💡
+
+Use the panel for small, precise edits and the assistant for bigger structural ones.`,
+      },
+    ],
+  },
+  {
+    id: "publishing",
+    title: "Publishing & Domains",
+    icon: Globe,
+    description: "Take your site live",
+    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=200&fit=crop",
+    articles: [
+      {
+        id: "publish-guide",
+        title: "Publishing Your Site",
+        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop",
+        content: `# Publishing Your Site 🌍
+
+When the preview looks right, publishing takes a moment.
+
+## How to Publish
+
+1. Open your project
+2. Check the preview one last time
+3. Click **Publish**
+4. Your site goes live on its own web address
+
+## What Gets Published
+
+Exactly the version you just approved — the same pages, the same content, the same design. Never a half-saved draft.
+
+## Checks Before You Go Live
+
+Publishing is blocked if the site is not whole:
+- A button links to a page that does not exist
+- A page is missing from the menu or has no route
+- A page has two headers or two footers
+- A required feature, like a booking form, is still a placeholder
+
+You are told which one, and where. Fix it and publish again.
+
+## Updating a Live Site
+
+Edit, preview, publish again. Visitors see the new version within moments, and your address stays the same.`,
+      },
+      {
+        id: "custom-domain",
+        title: "Using Your Own Web Address",
+        image: "https://images.unsplash.com/photo-1484417894907-623942c8ee29?w=600&h=300&fit=crop",
+        content: `# Your Own Web Address 🔗
+
+Swap the default address for something like **yourbusiness.com**.
+
+## If You Already Own a Domain
+
+1. Open **Settings → Domains**
+2. Enter your domain
+3. Copy the two records shown
+4. Paste them into your domain provider's DNS settings
+5. Come back and click **Verify**
+
+Verification is usually minutes, occasionally a few hours.
+
+## If You Do Not Own One Yet
+
+Search for one from the same screen and buy it — it connects itself, with no DNS work for you.
+
+## Good to Know
+
+- Secure browsing (the padlock) is set up for you
+- Both **yourbusiness.com** and **www.yourbusiness.com** work
+- Custom addresses are on paid plans
+
+## If Verification Stalls
+
+DNS changes can be slow. Wait an hour and click Verify again before changing anything — most "failures" are simply not finished yet.`,
+      },
+    ],
+  },
+  {
+    id: "troubleshooting",
+    title: "Help & Troubleshooting",
+    icon: LifeBuoy,
+    description: "Fixes for the things that come up most",
+    image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=200&fit=crop",
+    articles: [
+      {
+        id: "common-issues",
+        title: "Common Problems and Fixes",
+        image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=300&fit=crop",
+        content: `# Common Problems 🔧
+
+## The Preview Is Blank
+
+Usually a page still loading something heavy. Reload the preview first. If it stays blank, undo your last change — the assistant will tell you what it could not render.
+
+## My Edit Did Not Show Up
+
+Check what the assistant reported. **Held for review** means it saved but the preview did not confirm it — reload. **Failed** means nothing changed at all, so try describing the change differently.
+
+## A Button Does Nothing
+
+Buttons are wired to real actions such as booking, checkout or contact. If one does nothing, its feature is probably not switched on yet. Open the project's features and enable it, then republish.
+
+## Publishing Is Blocked
+
+The site is not whole yet — a broken link, a missing page, a duplicated header, or a feature that is still a placeholder. The message names the exact page.
+
+## My Site Looks Different on Phones
+
+Layouts adapt automatically. If something looks wrong, resize the preview to phone width, click the offending section and adjust it there.
+
+## Images Look Stretched
+
+Replace the image with one closer to the shape the layout expects, or choose a layout that suits your photo. Unison will never substitute a stock photo for one of yours.
+
+## Still Stuck?
+
+Send us your project name and, if you have it, the site fingerprint shown in project details. It tells us exactly which version you are looking at.`,
+      },
+      {
+        id: "faq",
+        title: "Frequently Asked Questions",
+        image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600&h=300&fit=crop",
+        content: `# Frequently Asked Questions ❓
+
+**Do I need to know how to code?**
+No. Everything here works by clicking and describing. The code exists, and you can read it if you want to.
+
+**Can I export my site?**
+Yes, on paid plans. You get the complete source, not a locked export.
+
+**Will two businesses in the same industry get the same site?**
+No. Two salons get two different salon sites. Same rules, different results.
+
+**Can I undo an AI edit?**
+Always. Every edit is reversible, and failed edits never touch your files.
+
+**Where are the designs from?**
+Unison's own curated, production-certified design registry. Every block is a real, crafted design — never an improvised AI mock-up.
+
+**Who can see my data?**
+Only you and people you invite. Each business's data is isolated at the database level.
+
+**Can I use my own photos?**
+Yes, and you should. Uploaded photos always replace sample imagery, and your logo is never swapped out.
+
+**What happens if I hit my plan limit?**
+Existing work keeps running. You are prompted to upgrade before anything new is created.`,
       },
     ],
   },
