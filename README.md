@@ -275,6 +275,8 @@ npx supabase functions deploy
 
 ## Project Principles
 
+- **Compile, do not improvise.** The same business answers build the same site; only an explicit regenerate changes the look.
+- **Certified designs only.** New builds and AI edits accept designs from the certified registry, with provenance recorded; unknown ones are refused with a reason.
 - **Build real React projects.** Unison creates source-backed React/TSX projects, not HTML-only mockups.
 - **Keep one shared project source.** The editor, AI actions, autosave, recovery, and preview all work on the same files.
 - **Use one React preview.** Sandpack owns the active Web Builder preview; Docker and local Vite are not runtime fallbacks.
