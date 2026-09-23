@@ -1229,9 +1229,13 @@ Existing work keeps running. You are prompted to upgrade before anything new is 
 
 export const quickLinks = [
   { title: "Welcome Guide", sectionId: "getting-started", articleId: "platform-overview" },
+  { title: "Launch a Site", sectionId: "launch-wizard", articleId: "wizard-walkthrough" },
+  { title: "Edit with AI", sectionId: "ai-builder", articleId: "editing-with-ai" },
+  { title: "Publish & Domains", sectionId: "publishing", articleId: "publish-guide" },
+  { title: "Style Cards", sectionId: "launch-wizard", articleId: "styles-and-look" },
   { title: "Build a Website", sectionId: "web-builder", articleId: "web-builder-intro" },
   { title: "Customer Manager", sectionId: "crm", articleId: "crm-overview" },
-  { title: "Cloud Settings", sectionId: "cloud", articleId: "cloud-dashboard-guide" },
   { title: "Design Graphics", sectionId: "design-studio", articleId: "design-studio-overview" },
   { title: "Your Files", sectionId: "files", articleId: "files-guide" },
+  { title: "Troubleshooting", sectionId: "troubleshooting", articleId: "common-issues" },
 ];
