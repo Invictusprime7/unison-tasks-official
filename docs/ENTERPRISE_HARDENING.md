@@ -2,7 +2,7 @@
 
 > **Stack**: React 18 + TypeScript 5.9 | Supabase PostgreSQL (RLS) | Docker container isolation | CloudContext provider for multi-tenancy
 
-This document summarizes the enterprise-grade security and governance controls implemented for Unison Tasks.
+This document summarizes the enterprise-grade security and governance controls implemented for Unison.
 
 ## Overview
 

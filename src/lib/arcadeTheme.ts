@@ -1,7 +1,7 @@
 /**
  * Arcade Theme Utility Classes
  * 
- * Consistent arcade/neon design system used across Unison Tasks.
+ * Consistent arcade/neon design system used across Unison.
  * Based on the WebBuilder arcade aesthetic.
  */
 

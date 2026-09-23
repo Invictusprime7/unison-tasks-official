@@ -69,7 +69,7 @@ const Onboarding = () => {
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="flex items-center gap-2">
           <CheckSquare className="h-6 w-6 text-cyan-400" />
-          <span className="font-bold text-lg tracking-tight">Unison Tasks</span>
+          <span className="font-bold text-lg tracking-tight">Unison</span>
         </div>
         <Button
           variant="ghost"

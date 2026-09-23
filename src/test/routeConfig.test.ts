@@ -53,8 +53,8 @@ describe("app route config", () => {
   });
 
   it("derives consistent browser titles from route metadata", () => {
-    expect(getRouteDocumentTitle(getRouteById("landing")!.meta)).toBe("Unison Tasks");
-    expect(getRouteDocumentTitle(getRouteById("web-builder")!.meta)).toBe("Web builder | Unison Tasks");
+    expect(getRouteDocumentTitle(getRouteById("landing")!.meta)).toBe("Unison");
+    expect(getRouteDocumentTitle(getRouteById("web-builder")!.meta)).toBe("Web builder | Unison");
   });
 
   it("maps every shell definition to its owned routes", () => {

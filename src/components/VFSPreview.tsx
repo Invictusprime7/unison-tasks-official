@@ -1168,7 +1168,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       const src = spIframe?.src;
       if (src) {
         const previewTitle = document.title
-          .replace(/\s*[|–—-]\s*Unison Tasks.*$/i, '')
+          .replace(/\s*[|–—-]\s*Unison.*$/i, '')
           .trim() || 'Site preview';
         const previewKey = createExternalPreviewSession(files, previewTitle);
         const previewUrl = new URL(`/preview/${previewKey}`, window.location.origin);

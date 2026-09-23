@@ -1,4 +1,4 @@
-# Unison Tasks — Architectural Consolidation (Phase 1 & 2)
+# Unison — Architectural Consolidation (Phase 1 & 2)
 
 **Date:** March 31, 2026  
 **Status:** In Progress — Foundation Laid  

@@ -21,7 +21,7 @@ const Dashboard = () => {
   const hasPendingLauncherHandoff = !!readLauncherHandoff();
 
   // Strict enforcement: generated sites must always open in the WebBuilder.
-  // If a fresh launch is in context, the Unison Tasks dashboard must never
+  // If a fresh launch is in context, the Unison dashboard must never
   // intercept the post-launch destination — redirect straight to /web-builder.
   useEffect(() => {
     if (isFreshLaunch || hasPendingLauncherHandoff) {

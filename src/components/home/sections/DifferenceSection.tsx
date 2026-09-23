@@ -7,7 +7,7 @@ export function DifferenceSection() {
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8 sm:mb-12">
-            <Badge className="mb-3 sm:mb-4 bg-purple-500/20 text-purple-400 border border-purple-500/30 text-xs sm:text-sm">Why Unison Tasks</Badge>
+            <Badge className="mb-3 sm:mb-4 bg-purple-500/20 text-purple-400 border border-purple-500/30 text-xs sm:text-sm">Why Unison</Badge>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-white">
               Templates are dead. <span className="text-lime-400 drop-shadow-[0_0_20px_rgba(132,204,22,0.5)]">Systems are alive.</span>
             </h2>

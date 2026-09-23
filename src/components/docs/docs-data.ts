@@ -34,51 +34,91 @@ export const docSections: DocSection[] = [
     id: "getting-started",
     title: "Getting Started",
     icon: BookOpen,
-    description: "Your first steps with Unison Tasks",
+    description: "Your first steps with Unison",
     image: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=200&fit=crop",
     articles: [
       {
         id: "platform-overview",
-        title: "Welcome to Unison Tasks",
+        title: "Welcome to Unison",
         image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop",
-        content: `# Welcome to Unison Tasks! 👋
+        content: `# Welcome to Unison 👋
 
-We're so glad you're here! Unison Tasks is your all-in-one workspace to get things done, build websites, and grow your business.
+Unison turns a few answers about your business into a finished, working website — and then keeps running the business behind it.
 
-## What Can You Do Here?
+## What Unison Is For
 
-Think of Unison Tasks as your digital office. Here's what's waiting for you:
+Most tools give you a blank template and wish you luck. Unison starts from your business: what you do, who you serve, and what you want people to do when they arrive.
 
-**📋 Manage Your Projects**
-Keep track of everything you're working on. Create to-do lists, set deadlines, and never forget what needs to be done.
+**🚀 Launch a complete site**
+Answer four questions in the Launch Wizard and get a real multi-page site — written for your business, styled as one, with buttons that actually do something.
 
-**🌐 Build Websites**
-Create beautiful websites without any coding. Just drag, drop, and customize — it's that simple!
+**✍️ Edit by describing**
+Tell the assistant what to change in plain English, or click any part of the page and edit it directly.
 
-**🎨 Design Graphics**
-Make eye-catching images for social media, business cards, flyers, and more.
+**📅 Take real bookings and orders**
+Appointments, enquiries, quotes, carts and checkouts are real working features, not pictures of features.
 
-**👥 Manage Customers**
-Keep all your contacts organized and never lose track of a potential customer.
+**👥 Keep your customers**
+Every enquiry and booking lands in your customer list, ready to follow up.
 
-**☁️ Store Your Files**
-Upload and organize all your important files in one safe place.
+**🌍 Publish and grow**
+Go live on your own web address, then keep editing. Visitors see updates within moments.
 
-## Your First Steps
+## Your First Hour
 
-Ready to get started? Here's what to do:
-
-1. **Look around the home page** — You'll see cards for each tool. Click any card to explore!
-
-2. **Create your first project** — Click "New Project" on the Dashboard to start organizing your work.
-
-3. **Try the Website Builder** — It's fun! Pick a template and make it your own.
-
-4. **Need help?** — This documentation is always here. Just click the menu icon anytime!
+1. **Run the Launch Wizard** — four questions, one finished site.
+2. **Look through every page** — they are all written for your business already.
+3. **Fix the details** — real photos, real prices, real opening hours.
+4. **Switch on what you sell** — bookings, payments or enquiries.
+5. **Publish** — your site goes live on its own address.
 
 ## Quick Tip 💡
 
-The home page is your starting point for everything. Bookmark it so you can always find your way back!`,
+Do not treat the first result as a draft to rebuild. It is meant to be nearly right — change what is wrong, keep the rest.`,
+      },
+      {
+        id: "who-uses-unison",
+        title: "What People Use Unison For",
+        image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=600&h=300&fit=crop",
+        content: `# What People Use Unison For 🧭
+
+Unison is built for businesses that need a site that *works*, not just one that looks nice.
+
+## Salons, Spas and Studios
+
+Services with prices, a gallery that shows the work, and a booking page that takes real appointments without double-booking you.
+
+## Restaurants and Cafés
+
+A menu that is easy to keep current, photography that carries the room, and reservations that reach you instantly.
+
+## Shops and Makers
+
+A product catalogue, a cart, and a checkout that takes payment. Orders arrive with the customer's details attached.
+
+## Contractors and Local Services
+
+Projects with before-and-after proof, service areas, and a quote request form that turns into a lead you can chase.
+
+## Agencies, Studios and Portfolios
+
+Case studies, a cinematic gallery, and a contact route that treats an enquiry like a brief.
+
+## Coaches and Consultants
+
+Programmes, a booking flow for discovery calls, and a list people can join.
+
+## Nonprofits
+
+A cause page that explains the work, and donations that actually process.
+
+## Agencies Building for Clients
+
+Launch a client site in minutes, hand over a version you can reproduce exactly, and keep every project separate and private.
+
+## Quick Tip 💡
+
+Not listed? Pick the closest one in the Wizard. The pages and wording follow your business description, not the label.`,
       },
       {
         id: "dashboard-guide",
@@ -635,7 +675,7 @@ You control who can:
 
 ## Connecting Other Apps
 
-Make Unison Tasks work with tools you already use:
+Make Unison work with tools you already use:
 
 - **Email**: Connect Gmail or Outlook to send emails directly
 - **Calendar**: Sync with Google Calendar or Outlook
@@ -751,7 +791,7 @@ See all your websites and projects in one list.
 Quick access to your uploaded images and files.
 
 **📧 Email Settings**
-Set up your email to send messages directly from Unison Tasks.
+Set up your email to send messages directly from Unison.
 
 **🔌 Connected Apps**
 See what other services are connected to your account.
@@ -1229,6 +1269,7 @@ Existing work keeps running. You are prompted to upgrade before anything new is 
 
 export const quickLinks = [
   { title: "Welcome Guide", sectionId: "getting-started", articleId: "platform-overview" },
+  { title: "What Unison Is For", sectionId: "getting-started", articleId: "who-uses-unison" },
   { title: "Launch a Site", sectionId: "launch-wizard", articleId: "wizard-walkthrough" },
   { title: "Edit with AI", sectionId: "ai-builder", articleId: "editing-with-ai" },
   { title: "Publish & Domains", sectionId: "publishing", articleId: "publish-guide" },

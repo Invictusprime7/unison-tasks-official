@@ -1,5 +1,5 @@
 /**
- * Unison Tasks — Natural Language Interpretation Types
+ * Unison — Natural Language Interpretation Types
  * 
  * These types define the structured output of the NL interpretation pipeline.
  * The LLM handles raw language understanding; these types enforce

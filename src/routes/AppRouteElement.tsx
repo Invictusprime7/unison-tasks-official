@@ -6,7 +6,7 @@ import { RouteRuntimeProvider } from "./RouteRuntimeContext";
 import { getRouteShellActivationOptionsFromEnv, isRouteShellEnabled } from "./routeShellActivation";
 import type { AppRouteConfig, AppRouteMeta } from "./routeConfig";
 
-const APP_TITLE = "Unison Tasks";
+const APP_TITLE = "Unison";
 
 export function getRouteDocumentTitle(meta: AppRouteMeta) {
   return meta.title === APP_TITLE ? APP_TITLE : `${meta.title} | ${APP_TITLE}`;

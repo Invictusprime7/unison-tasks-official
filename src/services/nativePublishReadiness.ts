@@ -7,7 +7,7 @@
  * WebBuilder/CreatorPlayground so the booking/contact preview already counts
  * as publish-ready when the owner email is known.
  *
- * Wired with Unison Tasks:
+ * Wired with Unison:
  *   - Snapshot feeds resolvePlaygroundControlPlane via setupSnapshot.setupSteps
  *   - Manifest is persisted into /.unison/launch-readiness.json so the in-VFS
  *     setup wizard + intent inspector see the same state as the launcher.

@@ -1,5 +1,5 @@
 /**
- * CloudAIUsage — Admin dashboard for Unison Tasks AI usage
+ * CloudAIUsage — Admin dashboard for Unison AI usage
  *
  * Shows total request counts, model usage, and per-provider error rates
  * (highlighting 429 rate-limits and 402 payment-required errors).
@@ -215,7 +215,7 @@ export function CloudAIUsage({ userId }: Props) {
             )}
           </h2>
           <p className="text-sm text-white/55">
-            Unison Tasks AI request volume, model usage, and provider error rates.
+            Unison AI request volume, model usage, and provider error rates.
           </p>
         </div>
         <div className="flex items-center gap-2">

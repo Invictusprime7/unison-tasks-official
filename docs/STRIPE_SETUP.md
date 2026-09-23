@@ -1,6 +1,6 @@
 # Stripe Subscription Setup Guide
 
-This guide explains how to configure Stripe for subscription payments in Unison Tasks.
+This guide explains how to configure Stripe for subscription payments in Unison.
 
 ## Prerequisites
 
@@ -15,13 +15,13 @@ In your Stripe Dashboard, create the following products:
 
 #### Pro Plan ($29/month)
 1. Go to Products > Add Product
-2. Name: "Unison Tasks Pro"
+2. Name: "Unison Pro"
 3. Pricing: $29.00 monthly recurring
 4. Copy the Price ID (starts with `price_`)
 
 #### Business Plan ($99/month)  
 1. Go to Products > Add Product
-2. Name: "Unison Tasks Business"
+2. Name: "Unison Business"
 3. Pricing: $99.00 monthly recurring
 4. Copy the Price ID (starts with `price_`)
 

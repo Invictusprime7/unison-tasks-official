@@ -7,7 +7,7 @@
  * - Setting up automations
  * - Optimizing for conversions
  * 
- * Navigates to project-specific setup pages within Unison Tasks Cloud
+ * Navigates to project-specific setup pages within Unison Cloud
  */
 
 import React, { useState, useMemo, useCallback } from 'react';

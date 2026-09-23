@@ -235,7 +235,7 @@ export function NotificationSettings() {
             In-App Notifications
           </CardTitle>
           <CardDescription>
-            Control how notifications appear while using Unison Tasks
+            Control how notifications appear while using Unison
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-1">

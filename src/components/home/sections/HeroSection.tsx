@@ -66,7 +66,7 @@ export function HeroSection({ user, onStartLauncher, onAuthRequired }: HeroSecti
                 backgroundClip: "text",
               }}
             >
-              Unison Tasks
+              Unison
             </span>
           </motion.div>
 

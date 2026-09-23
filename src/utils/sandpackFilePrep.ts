@@ -3,7 +3,7 @@ import { GENERATED_RUNTIME_PROFILE } from '@/platform/core/generatedRuntimeCapab
 /**
  * Sandpack File Preparation Utilities
  * 
- * THE canonical preview compiler for Unison Tasks.
+ * THE canonical preview compiler for Unison.
  * 
  * Sandpack's react-ts template expects files at ROOT level (e.g., /App.tsx, not /src/App.tsx).
  * Entry point MUST be /index.tsx (not /main.tsx) — Sandpack react-ts uses /index.tsx.

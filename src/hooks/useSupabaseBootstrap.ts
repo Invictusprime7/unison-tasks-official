@@ -3,7 +3,7 @@
  *
  * Fires ONCE per browser session after the user is authenticated.
  * Automates the Supabase provisioning tasks that must run for every
- * authenticated business in Unison Tasks:
+ * authenticated business in Unison:
  *
  *  1. Resolve the current user's businesses.
  *  2. For each business without a `unison_ai` plugin instance,

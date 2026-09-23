@@ -56,7 +56,7 @@ export function NavigationBar({
             className="flex items-center gap-2 group"
           >
             <CheckSquare className="h-6 w-6 text-cyan-400 group-hover:drop-shadow-[0_0_10px_rgba(0,255,255,0.8)] transition-all" />
-            <span className="text-base font-bold text-white">Unison Tasks</span>
+            <span className="text-base font-bold text-white">Unison</span>
           </button>
         </div>
 

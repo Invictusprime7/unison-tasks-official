@@ -84,7 +84,7 @@ export const appRoutes: AppRouteConfig[] = [
     element: <Landing />,
     meta: {
       id: "landing",
-      title: "Unison Tasks",
+      title: "Unison",
       section: "public",
       shell: "public",
       chrome: "none",

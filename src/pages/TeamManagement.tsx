@@ -578,7 +578,7 @@ const TeamManagement = () => {
           </Button>
           <div className="flex items-center gap-2">
             <CheckSquare className="h-5 w-5 text-cyan-400" />
-            <span className="font-bold">Unison Tasks</span>
+            <span className="font-bold">Unison</span>
             <span className="text-white/20 mx-1">/</span>
             <span className="text-white/60 text-sm">Team Management</span>
           </div>

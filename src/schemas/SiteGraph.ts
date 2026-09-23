@@ -3,7 +3,7 @@ import { IntentTypeSchema, IndustrySchema, PageTypeSchema } from "./BusinessBlue
 
 /**
  * =========================================
- * Unison Tasks — Site Graph Schema
+ * Unison — Site Graph Schema
  * "Click nav → page exists with features"
  * =========================================
  * 

@@ -82,7 +82,7 @@ const CheckoutSuccess = () => {
           </div>
           <CardTitle className="text-2xl text-white">Payment Successful!</CardTitle>
           <CardDescription className="text-gray-400">
-            Welcome to Unison Tasks {subscription?.plan ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1) : "Pro"}
+            Welcome to Unison {subscription?.plan ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1) : "Pro"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -82,7 +82,7 @@ watch_and_deploy() {
 
 # Main
 info "╔═══════════════════════════════════════╗"
-info "║     Unison Tasks Vercel Deployer     ║"
+info "║     Unison Vercel Deployer     ║"
 info "╚═══════════════════════════════════════╝"
 
 if ! check_vercel; then

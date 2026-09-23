@@ -109,7 +109,7 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           VITE_CLOUDINARY_CLOUD_NAME: ${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}
           VITE_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.VITE_CLOUDINARY_UPLOAD_PRESET }}
-          VITE_APP_TITLE: "Unison Tasks"
+          VITE_APP_TITLE: "Unison"
           VITE_APP_DESCRIPTION: "AI-powered task and project management platform"
           VITE_BASE_URL: "https://unison-tasks-unrealdev02s-projects.vercel.app"
         

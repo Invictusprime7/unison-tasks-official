@@ -138,7 +138,7 @@ function Watch-AndDeploy {
 # Main execution
 Write-ColorOutput Cyan @"
 ╔═══════════════════════════════════════╗
-║     Unison Tasks Vercel Deployer     ║
+║     Unison Vercel Deployer     ║
 ╚═══════════════════════════════════════╝
 "@
 
