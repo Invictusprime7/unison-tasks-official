@@ -59,6 +59,18 @@ page layout -> visitor actions -> visual style -> complete project -> AI-authore
 
 This separation lets someone change the look of a site without losing its pages, business purpose, or working actions.
 
+## Unison Affinity: the Same Answers Build the Same Site
+
+Unison does not improvise a site each time it is asked. It compiles one. The same business answers produce the same site on every launch, and only a deliberate "regenerate" moves the design.
+
+- **Reproducible by design.** The look is derived from what the business actually told Unison — its name, industry, goals, pages and chosen style — not from a per-launch roll of the dice.
+- **A fingerprint on every site.** Each generated site carries a short design fingerprint, so it is always clear whether a version really changed and whether the published site is the one that was approved.
+- **A curated, certified design registry.** Every section comes from Unison's own production-certified design library, with the source, author and licence recorded against each piece. Unison never ships a generic, invented AI mockup, and an uncertified design cannot enter a new build.
+- **Coherence, not a lottery.** For each section, Unison ranks the designs that are legal for that industry, page and visual direction, and keeps the most coherent one — so two salons still look like two different salons, and every page still looks like the same site.
+- **Nothing is reported as done until it is done.** An edit counts as applied only after it is saved and the live preview has actually rendered it. A site cannot be saved with a page that links nowhere, a missing route, or a duplicated header or footer.
+
+Maintainers: the full specification lives in [Unison Affinity](docs/UNISON_AFFINITY.md).
+
 ## What You Can Rely On
 
 | Promise                 | What it means                                                                                                          |
@@ -194,7 +206,7 @@ scripts/                   Local setup, deployment, and infrastructure helpers
 
 ### What You Need
 
-- Node.js `>=20 <23`
+- Node.js `>=22 <23` (pinned in `.nvmrc`; `engine-strict` is enabled)
 - npm or Bun
 - A Supabase project for sign-in, saved projects, and Edge Functions
 - The Supabase CLI when running the backend locally, applying database changes, or deploying functions
@@ -263,6 +275,8 @@ npx supabase functions deploy
 
 ## Project Principles
 
+- **Compile, do not improvise.** The same business answers build the same site; only an explicit regenerate changes the look.
+- **Certified designs only.** New builds and AI edits accept designs from the certified registry, with provenance recorded; unknown ones are refused with a reason.
 - **Build real React projects.** Unison creates source-backed React/TSX projects, not HTML-only mockups.
 - **Keep one shared project source.** The editor, AI actions, autosave, recovery, and preview all work on the same files.
 - **Use one React preview.** Sandpack owns the active Web Builder preview; Docker and local Vite are not runtime fallbacks.
@@ -278,7 +292,11 @@ npx supabase functions deploy
 
 | If you are working on...                 | Start here                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------- |
-| System launch and confirmed handoff      | [`SystemLauncher.tsx`](src/components/onboarding/SystemLauncher.tsx)            |
+| Launch selection flow                    | [`LauncherWizard.tsx`](src/components/onboarding/wizard/LauncherWizard.tsx)     |
+| Launch stages and confirmed handoff      | [`launchOrchestrator.ts`](src/services/launch/launchOrchestrator.ts)            |
+| Deterministic design seed and fingerprint | [`generationSeed.ts`](src/platform/core/generationSeed.ts)                      |
+| Compiled site design contract            | [`siteDesignContract.ts`](src/services/launch/siteDesignContract.ts)            |
+| Design selection and coherence ranking   | [`compositionAffinity.ts`](src/sections/compositionAffinity.ts)                 |
 | Site planning and snapshot creation      | [`canonicalPipeline.ts`](src/platform/core/canonicalPipeline.ts)                |
 | Web Builder coordination and autosave    | [`WebBuilder.tsx`](src/components/creatives/WebBuilder.tsx)                     |
 | AI task planning and edit controls       | [`AIBuilderPanel.tsx`](src/components/creatives/web-builder/AIBuilderPanel.tsx) |
@@ -300,6 +318,7 @@ npx supabase functions deploy
 
 | Guide                                                              | What it covers                                          |
 | ------------------------------------------------------------------ | ------------------------------------------------------- |
+| [Unison Affinity](docs/UNISON_AFFINITY.md)                         | The deterministic design compiler and design registry   |
 | [Architecture](docs/ARCHITECTURE.md)                               | Detailed and historical system architecture             |
 | [AI setup](docs/AI_SETUP_GUIDE.md)                                 | AI provider and key setup                               |
 | [AI template troubleshooting](docs/AI_TEMPLATE_TROUBLESHOOTING.md) | Finding and repairing generation problems               |
