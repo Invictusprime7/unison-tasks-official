@@ -59,6 +59,18 @@ page layout -> visitor actions -> visual style -> complete project -> AI-authore
 
 This separation lets someone change the look of a site without losing its pages, business purpose, or working actions.
 
+## Unison Affinity: the Same Answers Build the Same Site
+
+Unison does not improvise a site each time it is asked. It compiles one. The same business answers produce the same site on every launch, and only a deliberate "regenerate" moves the design.
+
+- **Reproducible by design.** The look is derived from what the business actually told Unison — its name, industry, goals, pages and chosen style — not from a per-launch roll of the dice.
+- **A fingerprint on every site.** Each generated site carries a short design fingerprint, so it is always clear whether a version really changed and whether the published site is the one that was approved.
+- **A curated, certified design registry.** Every section comes from Unison's own production-certified design library, with the source, author and licence recorded against each piece. Unison never ships a generic, invented AI mockup, and an uncertified design cannot enter a new build.
+- **Coherence, not a lottery.** For each section, Unison ranks the designs that are legal for that industry, page and visual direction, and keeps the most coherent one — so two salons still look like two different salons, and every page still looks like the same site.
+- **Nothing is reported as done until it is done.** An edit counts as applied only after it is saved and the live preview has actually rendered it. A site cannot be saved with a page that links nowhere, a missing route, or a duplicated header or footer.
+
+Maintainers: the full specification lives in [Unison Affinity](docs/UNISON_AFFINITY.md).
+
 ## What You Can Rely On
 
 | Promise                 | What it means                                                                                                          |
