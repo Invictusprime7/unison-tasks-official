@@ -290,7 +290,11 @@ npx supabase functions deploy
 
 | If you are working on...                 | Start here                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------- |
-| System launch and confirmed handoff      | [`SystemLauncher.tsx`](src/components/onboarding/SystemLauncher.tsx)            |
+| Launch selection flow                    | [`LauncherWizard.tsx`](src/components/onboarding/wizard/LauncherWizard.tsx)     |
+| Launch stages and confirmed handoff      | [`launchOrchestrator.ts`](src/services/launch/launchOrchestrator.ts)            |
+| Deterministic design seed and fingerprint | [`generationSeed.ts`](src/platform/core/generationSeed.ts)                      |
+| Compiled site design contract            | [`siteDesignContract.ts`](src/services/launch/siteDesignContract.ts)            |
+| Design selection and coherence ranking   | [`compositionAffinity.ts`](src/sections/compositionAffinity.ts)                 |
 | Site planning and snapshot creation      | [`canonicalPipeline.ts`](src/platform/core/canonicalPipeline.ts)                |
 | Web Builder coordination and autosave    | [`WebBuilder.tsx`](src/components/creatives/WebBuilder.tsx)                     |
 | AI task planning and edit controls       | [`AIBuilderPanel.tsx`](src/components/creatives/web-builder/AIBuilderPanel.tsx) |
