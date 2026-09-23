@@ -1269,6 +1269,7 @@ Existing work keeps running. You are prompted to upgrade before anything new is 
 
 export const quickLinks = [
   { title: "Welcome Guide", sectionId: "getting-started", articleId: "platform-overview" },
+  { title: "What Unison Is For", sectionId: "getting-started", articleId: "who-uses-unison" },
   { title: "Launch a Site", sectionId: "launch-wizard", articleId: "wizard-walkthrough" },
   { title: "Edit with AI", sectionId: "ai-builder", articleId: "editing-with-ai" },
   { title: "Publish & Domains", sectionId: "publishing", articleId: "publish-guide" },
