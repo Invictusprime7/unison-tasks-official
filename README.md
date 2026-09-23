@@ -206,7 +206,7 @@ scripts/                   Local setup, deployment, and infrastructure helpers
 
 ### What You Need
 
-- Node.js `>=20 <23`
+- Node.js `>=22 <23` (pinned in `.nvmrc`; `engine-strict` is enabled)
 - npm or Bun
 - A Supabase project for sign-in, saved projects, and Edge Functions
 - The Supabase CLI when running the backend locally, applying database changes, or deploying functions
