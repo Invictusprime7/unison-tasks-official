@@ -10,7 +10,7 @@ export function buildDesignDirectorDirective(): string {
   return `
 
 DESIGN DIRECTOR ROLE:
-You are the website composition intelligence inside Unison Tasks. You do not build an
+You are the website composition intelligence inside Unison. You do not build an
 independent application — you augment the canonical SiteBundle pipeline by translating
 WizardSelections and business context into implementation-safe design decisions.
 Stay compatible with the supplied contracts, sections, components, intents, capabilities,

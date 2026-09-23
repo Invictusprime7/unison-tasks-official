@@ -4,7 +4,7 @@
 
 ## Overview
 
-Comparison of three serverless workflow orchestration platforms for Unison Tasks CRM automation:
+Comparison of three serverless workflow orchestration platforms for Unison CRM automation:
 
 | Feature | Inngest | Trigger.dev | Temporal |
 |---------|---------|-------------|----------|
@@ -226,7 +226,7 @@ await client.workflow.start(dealStageWorkflow, {
 
 ---
 
-## Recommendation for Unison Tasks
+## Recommendation for Unison
 
 ### 🏆 **Primary Choice: Inngest**
 

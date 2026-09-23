@@ -1,7 +1,7 @@
 /**
  * Elements Sidebar - Intent-Prewired Drag & Drop Component Library
  *
- * Every element maps to a Unison Tasks Core Intent so it arrives on the
+ * Every element maps to a Unison Core Intent so it arrives on the
  * preview surface fully wired end-to-end (data-ut-intent, payload attrs,
  * CTA labels).  Builders drag an element → it appears in the preview with
  * its intent already bound → inline editing lets them customise copy/style.

@@ -201,7 +201,7 @@ const Auth = () => {
             <CheckSquare className="h-8 w-8 text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)]" />
           </div>
           <h1 className="text-3xl font-bold text-cyan-400 drop-shadow-[0_0_15px_rgba(0,255,255,0.5)]">
-            Unison Tasks
+            Unison
           </h1>
           <p className="text-gray-400 mt-2">Collaborative task management for teams</p>
         </div>

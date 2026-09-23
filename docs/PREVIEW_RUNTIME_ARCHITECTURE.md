@@ -4,7 +4,7 @@
 
 ## Overview
 
-Unison Tasks uses a **single canonical preview pipeline** with `prepareSandpackFiles()` as the sole compiler from source VFS to Sandpack overlay.
+Unison uses a **single canonical preview pipeline** with `prepareSandpackFiles()` as the sole compiler from source VFS to Sandpack overlay.
 
 ## Core Principle: One Preview Truth
 

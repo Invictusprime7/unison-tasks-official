@@ -34,20 +34,20 @@ export const docSections: DocSection[] = [
     id: "getting-started",
     title: "Getting Started",
     icon: BookOpen,
-    description: "Your first steps with Unison Tasks",
+    description: "Your first steps with Unison",
     image: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=200&fit=crop",
     articles: [
       {
         id: "platform-overview",
-        title: "Welcome to Unison Tasks",
+        title: "Welcome to Unison",
         image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop",
-        content: `# Welcome to Unison Tasks! 👋
+        content: `# Welcome to Unison! 👋
 
-We're so glad you're here! Unison Tasks is your all-in-one workspace to get things done, build websites, and grow your business.
+We're so glad you're here! Unison is your all-in-one workspace to get things done, build websites, and grow your business.
 
 ## What Can You Do Here?
 
-Think of Unison Tasks as your digital office. Here's what's waiting for you:
+Think of Unison as your digital office. Here's what's waiting for you:
 
 **📋 Manage Your Projects**
 Keep track of everything you're working on. Create to-do lists, set deadlines, and never forget what needs to be done.
@@ -635,7 +635,7 @@ You control who can:
 
 ## Connecting Other Apps
 
-Make Unison Tasks work with tools you already use:
+Make Unison work with tools you already use:
 
 - **Email**: Connect Gmail or Outlook to send emails directly
 - **Calendar**: Sync with Google Calendar or Outlook
@@ -751,7 +751,7 @@ See all your websites and projects in one list.
 Quick access to your uploaded images and files.
 
 **📧 Email Settings**
-Set up your email to send messages directly from Unison Tasks.
+Set up your email to send messages directly from Unison.
 
 **🔌 Connected Apps**
 See what other services are connected to your account.

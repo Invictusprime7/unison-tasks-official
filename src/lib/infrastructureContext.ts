@@ -437,7 +437,7 @@ export function buildAIContextSummary(systemType: BusinessSystemType): string {
   const tables = getRequiredTables(systemType);
 
   return `
-## Unison Tasks Platform Context for ${caps.displayName}
+## Unison Platform Context for ${caps.displayName}
 
 ### System Type: ${systemType}
 ${caps.description}

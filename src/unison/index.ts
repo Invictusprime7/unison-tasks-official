@@ -1,5 +1,5 @@
 /**
- * Unison Tasks — LLM-native Task Interpretation System
+ * Unison — LLM-native Task Interpretation System
  * 
  * Architecture:
  *   Layer 1: NL Router       — Routes prompt to correct AI subsystem

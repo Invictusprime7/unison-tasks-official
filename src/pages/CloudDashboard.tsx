@@ -192,7 +192,7 @@ const TABS: TabConfig[] = [
     id: 'ai-usage',
     label: 'AI Usage',
     shortLabel: 'AI',
-    description: 'Unison Tasks AI request counts, model usage, error rates',
+    description: 'Unison AI request counts, model usage, error rates',
     gradient: 'from-cyan-500 to-fuchsia-500',
     icon: BarChart3,
   },

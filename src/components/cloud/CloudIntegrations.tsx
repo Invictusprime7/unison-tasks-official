@@ -515,7 +515,7 @@ export function CloudIntegrations({ userId }: CloudIntegrationsProps) {
                               Connect {integration.name}
                             </DialogTitle>
                           <DialogDescription className="text-white/40">
-                              Enter your API credentials to connect {integration.name} with Unison Tasks.
+                              Enter your API credentials to connect {integration.name} with Unison.
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 py-4">
@@ -589,7 +589,7 @@ export function CloudIntegrations({ userId }: CloudIntegrationsProps) {
             </div>
             <div>
               <h2 className="text-lg font-bold">Your API Keys</h2>
-              <p className="text-sm text-white/40">Access Unison Tasks programmatically</p>
+              <p className="text-sm text-white/40">Access Unison programmatically</p>
             </div>
           </div>
           <Button 
@@ -608,7 +608,7 @@ export function CloudIntegrations({ userId }: CloudIntegrationsProps) {
             </div>
             <h3 className="font-bold mb-2">No API Keys Yet</h3>
               <p className="text-sm text-white/40 mb-4">
-              Generate an API key to access Unison Tasks from your applications.
+              Generate an API key to access Unison from your applications.
             </p>
           </div>
         ) : (

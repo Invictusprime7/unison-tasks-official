@@ -472,7 +472,7 @@ export function ProfileSettings() {
             Appearance
           </CardTitle>
           <CardDescription>
-            Customize how Unison Tasks looks for you
+            Customize how Unison looks for you
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

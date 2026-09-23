@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * =========================================
- * Unison Tasks — Business Blueprint Schema
+ * Unison — Business Blueprint Schema
  * Systems AI → Builder (single source of truth)
  * =========================================
  */

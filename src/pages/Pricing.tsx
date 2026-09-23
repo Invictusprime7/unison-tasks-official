@@ -15,7 +15,7 @@ const pricingTiers = [
     name: "Free",
     price: "$0",
     period: "forever",
-    description: "Perfect for trying out Unison Tasks",
+    description: "Perfect for trying out Unison",
     features: [
       "1 project",
       "10 AI generations/month",
@@ -204,7 +204,7 @@ const Pricing = () => {
             </Button>
             <div className="flex items-center gap-2">
               <CheckSquare className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)]" />
-              <span className="text-xl font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.5)]">Unison Tasks</span>
+              <span className="text-xl font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(0,255,255,0.5)]">Unison</span>
             </div>
           </div>
           <Button 
@@ -382,7 +382,7 @@ const Pricing = () => {
       {/* Footer */}
       <footer className="border-t border-cyan-500/10 py-8 bg-[#0a0a12]">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          © 2024 Unison Tasks. All rights reserved.
+          © 2024 Unison. All rights reserved.
         </div>
       </footer>
     </div>

@@ -367,7 +367,7 @@ ${nav}
 ${sections}
 ${footer}
 
-  <!-- Unison Tasks Intent Runtime -->
+  <!-- Unison Intent Runtime -->
   <script>
     document.querySelectorAll('[data-ut-intent]').forEach(el => {
       const intent = el.getAttribute('data-ut-intent');

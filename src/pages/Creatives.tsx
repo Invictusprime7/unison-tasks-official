@@ -109,7 +109,7 @@ const Creatives = () => {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <CheckSquare className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">Unison Tasks</span>
+            <span className="text-2xl font-bold text-foreground">Unison</span>
           </div>
           <div className="hidden md:flex items-center gap-6">
             <button onClick={() => navigate("/home")} className="text-muted-foreground hover:text-foreground transition-colors">Home</button>
@@ -414,7 +414,7 @@ const Creatives = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <CheckSquare className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">Unison Tasks</span>
+              <span className="text-lg font-bold">Unison</span>
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
               <button onClick={() => navigate("/home")} className="hover:text-foreground transition-colors">Home</button>
@@ -422,7 +422,7 @@ const Creatives = () => {
               <button onClick={() => navigate("/crm")} className="hover:text-foreground transition-colors">CRM</button>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 Unison Tasks. All rights reserved.
+              © 2024 Unison. All rights reserved.
             </p>
           </div>
         </div>

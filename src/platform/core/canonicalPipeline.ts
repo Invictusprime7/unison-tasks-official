@@ -792,7 +792,7 @@ function projectToSiteBundleSnapshot(
     },
     metadata: {
       title: selections.businessName || 'My Site',
-      description: `${selections.businessName} — Built with Unison Tasks`,
+      description: `${selections.businessName} — Built with Unison`,
     },
   };
 

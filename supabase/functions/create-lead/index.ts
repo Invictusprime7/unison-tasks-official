@@ -72,7 +72,7 @@ async function sendEmailSafe(params: {
   }
   const resend = new Resend(apiKey);
   await resend.emails.send({
-    from: "Unison Tasks <onboarding@resend.dev>",
+    from: "Unison <onboarding@resend.dev>",
     to: [params.to],
     subject: params.subject,
     html: params.html,

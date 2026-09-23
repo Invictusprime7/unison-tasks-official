@@ -1,4 +1,4 @@
-# Unison Tasks — Architecture Documentation
+# Unison — Architecture Documentation
 
 ## Framework Foundation
 
@@ -24,7 +24,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                     Unison Tasks Platform                         │
+│                     Unison Platform                         │
 │                  React 18 + TypeScript 5.9 + Vite                │
 ├──────────┬──────────┬──────────┬──────────┬──────────┬──────────┤
 │ System   │ AI Web   │ Automa-  │ CRM &    │ VFS      │ Enter-   │
