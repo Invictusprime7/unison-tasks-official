@@ -316,6 +316,7 @@ npx supabase functions deploy
 
 | Guide                                                              | What it covers                                          |
 | ------------------------------------------------------------------ | ------------------------------------------------------- |
+| [Unison Affinity](docs/UNISON_AFFINITY.md)                         | The deterministic design compiler and design registry   |
 | [Architecture](docs/ARCHITECTURE.md)                               | Detailed and historical system architecture             |
 | [AI setup](docs/AI_SETUP_GUIDE.md)                                 | AI provider and key setup                               |
 | [AI template troubleshooting](docs/AI_TEMPLATE_TROUBLESHOOTING.md) | Finding and repairing generation problems               |
