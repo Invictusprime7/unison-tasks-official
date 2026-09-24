@@ -22,6 +22,7 @@
 import type { SiteBundleSnapshot, SiteBundleSnapshotMeta } from './canonicalPipeline';
 import type { RuntimeAppContext } from '@/types/runtimeManifest';
 import type { WizardInteractionManifest } from '@/services/wizardInteractionEnrichment';
+import { readSealedArtDirection } from '@/sections/variants/resolvedArtDirection';
 
 export const SNAPSHOT_SEAL_VERSION = '1.0' as const;
 export const WIZARD_LAUNCH_AUTHORITY_PATH = '/.unison/wizard-launch-authority.json' as const;
