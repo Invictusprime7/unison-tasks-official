@@ -24,6 +24,8 @@ import {
   type ArtDirectionPack,
   type ArtDirectionPackId,
 } from '@/sections/variants/artDirectionPacks';
+import { familyOfPack, qualifiedPackRef } from '@/sections/variants/artDirectionFamilies';
+import type { ResolvedArtDirection } from '@/sections/variants/resolvedArtDirection';
 
 export const THEME_CONTRACT_VERSION = '1.0' as const;
 export const THEME_CONTRACT_PATH = '/.unison/theme-contract.json';
@@ -60,6 +62,10 @@ export interface ThemeContract {
   artDirectionPackId: ArtDirectionPackId;
   artDirectionName: string;
   artDirectionDescription: string;
+  /** Sealed Art Direction Family the pack belongs to (Phase E). */
+  artDirectionFamilyId: string | null;
+  /** Canonical qualified pack id, e.g. `editorial.noir`. */
+  artDirectionQualifiedPackId: string | null;
   /** The style card the pack was resolved from, when known. */
   themePresetId: string | null;
   /** Named characteristics the model must express, not restate. */
@@ -219,6 +225,8 @@ export interface BuildThemeContractInput {
   artDirectionPackId?: string | null;
   /** The style card id, carried through for traceability. */
   themePresetId?: string | null;
+  /** Sealed `meta.artDirection` — the authority when present (Phase E). */
+  artDirection?: ResolvedArtDirection | null;
 }
 
 /**
@@ -226,7 +234,8 @@ export interface BuildThemeContractInput {
  * that should be used to produce theme context for an AI turn.
  */
 export function buildThemeContract(input: BuildThemeContractInput): ThemeContract {
-  const pack = resolvePack(input.artDirectionPackId);
+  const sealed = input.artDirection ?? null;
+  const pack = resolvePack(sealed?.storagePackId ?? input.artDirectionPackId);
   const tokens = { ...buildArtDirectionTokens(pack), '--font-heading': '', '--font-body': '' };
 
   const grouped = new Map<ThemeContractGroup['id'], ThemeContractToken[]>();
@@ -250,7 +259,9 @@ export function buildThemeContract(input: BuildThemeContractInput): ThemeContrac
     artDirectionPackId: pack.id,
     artDirectionName: pack.name,
     artDirectionDescription: pack.description,
-    themePresetId: input.themePresetId ?? null,
+    artDirectionFamilyId: sealed?.familyId ?? familyOfPack(pack.id) ?? null,
+    artDirectionQualifiedPackId: sealed?.packId ?? qualifiedPackRef(pack.id)?.qualifiedId ?? null,
+    themePresetId: sealed ? (input.themePresetId ?? sealed.familyId) : (input.themePresetId ?? null),
     signature: {
       typeScaleRatio: pack.design.typeScaleRatio,
       headingTransform: pack.design.headingTransform,
