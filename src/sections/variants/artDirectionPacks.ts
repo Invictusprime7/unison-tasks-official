@@ -20,6 +20,8 @@
 import type { SectionType } from '../types';
 import type { VariantId } from './types';
 
+import { ART_DIRECTION_FAMILY_IDS, familyPackIds, resolvePackAlias } from './artDirectionFamilies';
+
 export type ArtDirectionPackId =
   | 'editorial-noir'
   | 'noir-atelier'
@@ -1315,14 +1317,9 @@ export const DEFAULT_ART_DIRECTION_PACK_ID: ArtDirectionPackId = 'soft-editorial
  * Theme preset → aesthetic family, most-preferred first.
  * The STYLE CARD LEADS: this is the primary axis of resolution.
  */
-const THEME_PRESET_TO_PACKS: Record<string, ArtDirectionPackId[]> = {
-  modern: ['glass-tech'],
-  editorial: ['editorial-noir', 'print-serif'],
-  futuristic: ['glass-tech', 'neon-grid', 'mono-terminal'],
-  minimalist: ['luxury-minimal', 'swiss-grid'],
-  bold: ['bold-commercial', 'brutalist-poster'],
-  organic: ['organic-studio', 'warm-craft'],
-};
+const THEME_PRESET_TO_PACKS: Record<string, ArtDirectionPackId[]> = Object.fromEntries(
+  ART_DIRECTION_FAMILY_IDS.map((familyId) => [familyId, familyPackIds(familyId)]),
+);
 
 /**
  * Industry → packs whose section families support what the site must DO
@@ -1380,9 +1377,9 @@ function stableIndex(seed: string, size: number): number {
  * capability) → industry capability → neutral default.
  */
 export function resolveArtDirectionPackId(input: ArtDirectionResolutionInput): ArtDirectionPackId {
-  const sealed = (input.sealedPackId || '').trim();
-  if (sealed && ART_DIRECTION_PACKS[sealed as ArtDirectionPackId]) {
-    return sealed as ArtDirectionPackId;
+  const sealed = resolvePackAlias((input.sealedPackId || '').trim());
+  if (sealed && ART_DIRECTION_PACKS[sealed]) {
+    return sealed;
   }
 
   const preset = (input.themePresetId || '').trim().toLowerCase();
@@ -1412,7 +1409,7 @@ export function resolveArtDirectionPack(input: ArtDirectionResolutionInput): Art
 
 export function getArtDirectionPack(id: string | null | undefined): ArtDirectionPack | undefined {
   if (!id) return undefined;
-  return ART_DIRECTION_PACKS[id as ArtDirectionPackId];
+  return ART_DIRECTION_PACKS[(resolvePackAlias(id) ?? id) as ArtDirectionPackId];
 }
 
 export function isArtDirectionPackId(id: string | null | undefined): id is ArtDirectionPackId {

@@ -1,3 +1,4 @@
+import { familyIdFromThemePreset, familyOfPack, qualifiedPackRef } from '@/sections/variants/artDirectionFamilies';
 import { validateAIPageComposition, COMPOSITION_ROLES, type AIPageCompositionPlan } from '@/sections/aiPageComposition';
 import type { BusinessModel, IndustryOverlay } from '@/types/playground';
 import { getCompositionById } from '@/sections/templates';
@@ -398,6 +399,13 @@ export function describeArtDirectionBrief(intervention: WizardDesignIntervention
   ].join('\n');
 }
 
+function familyDirective(themePresetId: string | null | undefined, packId: string): string {
+  const familyId = familyIdFromThemePreset(themePresetId) ?? familyOfPack(packId);
+  if (!familyId) return '';
+  const qualified = qualifiedPackRef(packId, familyId)?.qualifiedId ?? packId;
+  return `Art Direction Family "${familyId}", pack "${qualified}": compose creatively inside this grammar and never switch family.`;
+}
+
 export function buildWizardDesignIntervention(
 
   input: WizardDesignInterventionInput,
@@ -560,7 +568,7 @@ export function buildWizardDesignIntervention(
     compositionPolicy: 'maximum-compatible',
     envelope,
     brief,
-    aiDirective: `Compose only with snapshot-owned UI primitives and semantic Stage 4b tokens. Art direction is "${pack.name}" — ${pack.description} ${compositionDirective} ${experienceDirective} Preserve the motion budget, selected recipes, accessibility, responsive constraints, and canonical intent bindings.`,
+    aiDirective: `Compose only with snapshot-owned UI primitives and semantic Stage 4b tokens. Art direction is "${pack.name}" — ${pack.description} ${familyDirective(input.themePresetId, artDirectionPackId)} ${compositionDirective} ${experienceDirective} Preserve the motion budget, selected recipes, accessibility, responsive constraints, and canonical intent bindings.`,
 
 
   };
