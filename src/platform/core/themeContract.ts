@@ -24,6 +24,8 @@ import {
   type ArtDirectionPack,
   type ArtDirectionPackId,
 } from '@/sections/variants/artDirectionPacks';
+import { familyOfPack, qualifiedPackRef } from '@/sections/variants/artDirectionFamilies';
+import type { ResolvedArtDirection } from '@/sections/variants/resolvedArtDirection';
 
 export const THEME_CONTRACT_VERSION = '1.0' as const;
 export const THEME_CONTRACT_PATH = '/.unison/theme-contract.json';
