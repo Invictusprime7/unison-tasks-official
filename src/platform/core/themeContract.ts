@@ -60,6 +60,10 @@ export interface ThemeContract {
   artDirectionPackId: ArtDirectionPackId;
   artDirectionName: string;
   artDirectionDescription: string;
+  /** Sealed Art Direction Family the pack belongs to (Phase E). */
+  artDirectionFamilyId: string | null;
+  /** Canonical qualified pack id, e.g. `editorial.noir`. */
+  artDirectionQualifiedPackId: string | null;
   /** The style card the pack was resolved from, when known. */
   themePresetId: string | null;
   /** Named characteristics the model must express, not restate. */
