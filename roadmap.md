@@ -899,3 +899,4 @@ preview runtime — extend what exists.
 - [ ] Coverage Wave 2: menu, booking slot picker, donation panel, quote estimator.
 
 - [x] Task 20: Canonical Art Direction — Phase A (6 families, qualified child packs, aliases) + Phase B (ResolvedArtDirection sealed in snapshot meta.artDirection, in renderHash, family directive in Lane B brief). Next: Phase C completeness gate, D edge brief injection, E consumer migration, F erasure.
+- [x] Task 21: Phase C Pack Completeness gate (packCompleteness.ts; 12 surfaces; auto mode only picks complete packs and stays inside the selected family; CI test). Next: Phase D edge brief injection.
