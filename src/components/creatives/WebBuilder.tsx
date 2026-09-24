@@ -84,6 +84,7 @@ import ReadinessCenterPanel from "@/components/web-builder/ReadinessCenterPanel"
 import { decodeThemeEdit, type ThemeEdit } from '@/services/theme/themeEdit';
 import { runBuilderTurn } from '@/services/builderBrainClient';
 import { buildThemeContract } from '@/platform/core/themeContract';
+import { readSealedArtDirection } from '@/sections/variants/resolvedArtDirection';
 import { readCompiledTokenValues, readThemeOverrides, isEditableThemeToken } from '@/services/theme/themeTokenOverrides';
 import ThemeTokenEditorPanel from "@/components/web-builder/ThemeTokenEditorPanel";
 import GateVerdictStrip from "@/components/web-builder/GateVerdictStrip";
