@@ -21,6 +21,7 @@ import {
   WIZARD_REGISTRY_CONTEXT_PATH,
   type WizardAggregatedRegistryContext,
 } from '@/services/launch/wizardRegistryAggregation';
+import { readSealedArtDirection, type SealedArtDirectionMeta } from '@/sections/variants/resolvedArtDirection';
 import type { ComponentStateContract } from '@/sections/variants/componentStates';
 import type { ImplementationVisualSignature } from '@/services/implementationVisualSignature';
 import type { WizardDesignSelection, WizardExperiencePreference } from '@/services/wizardDesignSelection';
@@ -33,6 +34,8 @@ export interface BuilderRegistryContext {
   templateId: string;
   themePresetId: string;
   artDirectionPackId?: string;
+  /** Sealed family + qualified pack — the AI Builder may never switch family. */
+  artDirection?: { familyId: string; packId: string; storagePackId: string } | null;
   designSelection?: WizardDesignSelection;
   designRegistrySignature: string;
   sections: Array<{
@@ -144,8 +147,13 @@ export function resolveBuilderRegistryContext(input: {
   sectionTypes?: readonly string[];
 }): BuilderRegistryContext | null {
   try {
+    const withArt = (ctx: BuilderRegistryContext): BuilderRegistryContext => {
+      const art = readSnapshotArtDirection(input.vfsFiles);
+      if (!art) return ctx;
+      return { ...ctx, artDirectionPackId: art.storagePackId, artDirection: { familyId: art.familyId, packId: art.packId, storagePackId: art.storagePackId } };
+    };
     const persisted = readPersistedRegistryContext(input.vfsFiles);
-    if (persisted) return boundRegistryContext(persisted, { sectionTypes: input.sectionTypes });
+    if (persisted) return withArt(boundRegistryContext(persisted, { sectionTypes: input.sectionTypes }));
     if (!input.industry && !input.templateId && !input.themePresetId) return null;
     const rebuilt = buildWizardAggregatedRegistryContext({
       industry: input.industry || 'general',
@@ -155,7 +163,18 @@ export function resolveBuilderRegistryContext(input: {
       businessId: input.businessId ?? undefined,
       projectId: input.projectId ?? undefined,
     });
-    return boundRegistryContext(rebuilt, { sectionTypes: input.sectionTypes });
+    return withArt(boundRegistryContext(rebuilt, { sectionTypes: input.sectionTypes }));
+  } catch {
+    return null;
+  }
+}
+
+/** Sealed art direction read from the snapshot mirror; null when absent/unparseable. */
+function readSnapshotArtDirection(files?: Record<string, string> | null) {
+  const raw = files?.['/.unison/site-bundle-snapshot.json'];
+  if (!raw) return null;
+  try {
+    return readSealedArtDirection((JSON.parse(raw) as { meta?: SealedArtDirectionMeta }).meta);
   } catch {
     return null;
   }

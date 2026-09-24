@@ -598,11 +598,12 @@ export function recompileFromPlayground(
         meta?: {
           wizardSeedId?: string;
           artDirectionPackId?: string | null;
+          artDirection?: { storagePackId?: string } | null;
           designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
         };
       };
       recoveredSeedId = snap?.meta?.wizardSeedId;
-      sealedPackId = snap?.meta?.artDirectionPackId || undefined;
+      sealedPackId = snap?.meta?.artDirection?.storagePackId || snap?.meta?.artDirectionPackId || undefined;
       recoveredDesignSelection = snap?.meta?.designSelection;
     }
   } catch { /* ignore */ }
