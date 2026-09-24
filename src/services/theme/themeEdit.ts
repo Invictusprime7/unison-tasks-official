@@ -4,6 +4,7 @@ import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
 import { resolveArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
+import { projectResolvedArtDirection } from '@/sections/variants/resolvedArtDirection';
 import { readThemeContract, buildThemeContract, buildThemeContractFiles } from '@/platform/core/themeContract';
 import { isEditableThemeToken, readCompiledTokenValues, validateThemeTypography, isLegalThemeTokenValue, readThemeOverrides, serializeThemeOverrides, THEME_OVERRIDES_PATH } from './themeTokenOverrides';
 
@@ -35,7 +36,7 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
   const presetId = edit.presetId ?? snapshot.meta.themePresetId;
   const preset = THEME_PRESETS.find((p) => p.id === presetId);
   if (!preset) throw new Error('The saved site has no recognized preset. Select a theme before restyling.');
-  const packId = edit.presetId ? resolveArtDirectionPackId({ themePresetId: preset.id, seed: snapshot.meta.wizardSeedId }) : snapshot.meta.artDirectionPackId;
+  const packId = edit.presetId ? resolveArtDirectionPackId({ themePresetId: preset.id, seed: snapshot.meta.designIntervention?.seed ?? snapshot.meta.renderHash ?? preset.id }) : snapshot.meta.artDirectionPackId;
   const contract = buildThemeContract({ themePresetId: preset.id, artDirectionPackId: packId });
   const overrides = edit.presetId ? {} : readThemeOverrides(files);
   for (const name of edit.reset) {
@@ -49,7 +50,8 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
   validateThemeTypography({ ...readCompiledTokenValues(edit.presetId ? buildThemedIndexCss(preset) : files['/src/index.css'] ?? ''), ...overrides });
   const themeTokens = edit.presetId ? themePresetToThemeTokens(preset) : snapshot.themeTokens;
   const intervention = snapshot.meta.designIntervention ? { ...snapshot.meta.designIntervention, themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId } : undefined;
-  const next = { ...snapshot, themeTokens, ...(snapshot.appContext ? { appContext: { ...snapshot.appContext, themePresetId: preset.id } } : {}), meta: { ...snapshot.meta, themeStyleVersion: '2.0' as const, themePresetId: preset.id, selectedThemeId: preset.id, artDirectionPackId: contract.artDirectionPackId, ...(intervention ? { designIntervention: intervention } : {}) } };
+  const artDirection = projectResolvedArtDirection({ ...(intervention ?? {}), themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId });
+  const next = { ...snapshot, themeTokens, ...(snapshot.appContext ? { appContext: { ...snapshot.appContext, themePresetId: preset.id } } : {}), meta: { ...snapshot.meta, themeStyleVersion: '2.0' as const, themePresetId: preset.id, selectedThemeId: preset.id, artDirectionPackId: contract.artDirectionPackId, artDirection, ...(intervention ? { designIntervention: intervention } : {}) } };
   const nextFiles = { ...files, ...buildThemeContractFiles({ themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId }), [THEME_OVERRIDES_PATH]: serializeThemeOverrides(overrides) };
   if (intervention) nextFiles['/.unison/design-intervention.json'] = JSON.stringify(intervention, null, 2);
   nextFiles['/.unison/site-bundle-snapshot.json'] = JSON.stringify(next, null, 2);

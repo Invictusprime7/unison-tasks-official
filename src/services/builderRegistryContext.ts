@@ -33,6 +33,8 @@ export interface BuilderRegistryContext {
   templateId: string;
   themePresetId: string;
   artDirectionPackId?: string;
+  /** Sealed family + qualified pack — the AI Builder may never switch family. */
+  artDirection?: { familyId: string; packId: string; storagePackId: string } | null;
   designSelection?: WizardDesignSelection;
   designRegistrySignature: string;
   sections: Array<{

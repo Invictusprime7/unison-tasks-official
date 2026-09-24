@@ -80,3 +80,33 @@ export function describeResolvedArtDirection(resolved: ResolvedArtDirection): st
     `Motion profile ${resolved.motionProfileId}, media ${resolved.mediaProfileId}, interaction ${resolved.interactionProfileId}.`,
   ].join(' ');
 }
+
+/** Snapshot-meta shape the reader accepts (structural, avoids a pipeline import). */
+export interface SealedArtDirectionMeta {
+  artDirection?: ResolvedArtDirection | null;
+  artDirectionPackId?: string | null;
+  themePresetId?: string | null;
+  designIntervention?: Partial<ArtDirectionProjectionSource> | null;
+}
+
+/**
+ * readSealedArtDirection — the one reader every consumer (Preview, Builder,
+ * Playground, AI Builder, autosave, recompile, publish) uses. Prefers the
+ * sealed `meta.artDirection`; falls back to projecting from the legacy sealed
+ * fields for revisions saved before Phase D. Never re-derives from a seed.
+ */
+export function readSealedArtDirection(meta: SealedArtDirectionMeta | null | undefined): ResolvedArtDirection | null {
+  if (!meta) return null;
+  const sealed = meta.artDirection;
+  const packId = meta.artDirectionPackId ?? meta.designIntervention?.artDirectionPackId ?? null;
+  if (sealed && sealed.version === RESOLVED_ART_DIRECTION_VERSION && getArtDirectionPack(sealed.storagePackId)) {
+    // A sealed record that disagrees with the sealed pack id is stale; re-project.
+    if (!packId || getArtDirectionPack(packId)?.id === sealed.storagePackId) return sealed;
+  }
+  if (!packId) return null;
+  return projectResolvedArtDirection({
+    ...(meta.designIntervention ?? {}),
+    themePresetId: meta.themePresetId ?? meta.designIntervention?.themePresetId ?? null,
+    artDirectionPackId: packId,
+  });
+}
