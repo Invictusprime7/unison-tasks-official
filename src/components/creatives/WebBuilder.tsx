@@ -3224,7 +3224,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const snapshot = resolveSnapshot(files, effectiveRouteState as any).snapshot;
     if (!snapshot) throw new Error('Save or open a site before changing its theme.');
     const revisionId = currentRevisionIdRef.current || null;
-    const contract = buildThemeContract({ artDirectionPackId: snapshot.meta.artDirectionPackId, themePresetId: snapshot.meta.themePresetId });
+    const contract = buildThemeContract({ artDirection: readSealedArtDirection(snapshot.meta), artDirectionPackId: snapshot.meta.artDirectionPackId, themePresetId: snapshot.meta.themePresetId });
     const response = await runBuilderTurn<unknown>({ mode: 'theme-edit', messages: [{ role: 'user', content: JSON.stringify({ prompt, snapshotId: snapshot.snapshotId, revisionId, presetId: snapshot.meta.themePresetId, contract: { ...contract, tokenNames: contract.tokenNames.filter(isEditableThemeToken) }, effectiveValues: { ...readCompiledTokenValues(files['/src/index.css'] || '', true), ...readThemeOverrides(files) }, overrides: readThemeOverrides(files), businessName: snapshot.businessName, industry: snapshot.industry }) }] });
     if (response.error) throw response.error;
     if ((currentRevisionIdRef.current || null) !== revisionId) throw new Error('The site changed during this request. Please request the theme change again.');
