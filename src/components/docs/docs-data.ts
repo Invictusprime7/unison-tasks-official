@@ -988,6 +988,12 @@ Each generated site carries a short fingerprint. If two sites share the same fin
 
 A style card is a complete design direction, not just a colour swap.
 
+## Six Design Families
+
+Every card belongs to one of six families — **Modern, Bold, Editorial, Minimalist, Futuristic and Organic**. A family is a visual philosophy; each one holds several finished directions (for example Editorial includes Noir Atelier, a dark studio look made for salons and spas).
+
+Unison only offers a direction if it can build every part of your site — menu bar, banner, services, gallery, reviews, prices, contact and footer. Once chosen, your site stays in that family: reopening, editing with the AI Builder and publishing all keep the same family, and switching cards moves you cleanly to a new one.
+
 ## What a Card Controls
 
 - **Type** — which typefaces, how big, how tightly spaced

@@ -85,6 +85,15 @@ Uncertified work is therefore inert, not dangerous.
 
 ### Tier 2 — Art direction pack membership
 
+Packs are children of six canonical **Art Direction Families** (modern, bold,
+editorial, minimalist, futuristic, organic — `artDirectionFamilies.ts`).
+`themePresetId` is a legacy alias equal to the family id. A pack is only legal
+if it passes the completeness gate (`packCompleteness.ts`: every required
+section kind has a certified, preview/builder/publish-ready variant). The
+resolved family+pack is sealed into the snapshot (`snapshotSeal.ts`) and every
+consumer reads it back via the sealed reader — never re-derived. Fallback
+stays inside the family before leaving it.
+
 `src/sections/variants/artDirectionPacks.ts` holds ordered per-family candidate arrays. Packs
 state **order, not invention**: every entry must already be certified. Head position is the pack's
 primary candidate. An implementation absent from every pack will never be chosen by a fresh
