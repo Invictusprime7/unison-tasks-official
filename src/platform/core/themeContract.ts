@@ -257,7 +257,9 @@ export function buildThemeContract(input: BuildThemeContractInput): ThemeContrac
     artDirectionPackId: pack.id,
     artDirectionName: pack.name,
     artDirectionDescription: pack.description,
-    themePresetId: input.themePresetId ?? null,
+    artDirectionFamilyId: sealed?.familyId ?? familyOfPack(pack.id) ?? null,
+    artDirectionQualifiedPackId: sealed?.packId ?? qualifiedPackRef(pack.id)?.qualifiedId ?? null,
+    themePresetId: sealed ? (input.themePresetId ?? sealed.familyId) : (input.themePresetId ?? null),
     signature: {
       typeScaleRatio: pack.design.typeScaleRatio,
       headingTransform: pack.design.headingTransform,
