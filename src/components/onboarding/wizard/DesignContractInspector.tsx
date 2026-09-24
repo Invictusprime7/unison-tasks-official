@@ -63,7 +63,7 @@ export const DesignContractInspector = ({
     } catch {
       return null;
     }
-  }, [contract?.industry, seed]);
+  }, [contract, seed]);
 
   if (!contract) {
     return (

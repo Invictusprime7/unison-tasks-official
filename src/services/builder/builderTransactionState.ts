@@ -49,7 +49,7 @@ export const HELD_VERDICT_LINE = '⏸ Changes held for review — not applied';
  * They are removed (not rewritten) so the model's real description survives.
  */
 const SUCCESS_CLAIM_PATTERNS: RegExp[] = [
-  /^[\s>*_-]*[✅✔️✓🎉]\s*/gmu,
+  /^[\s>*_-]*(?:\u2705|\u2714\uFE0F?|\u2713|\u{1F389})\s*/gmu,
   /\bsuccessfully\s+applied\b/gi,
   /\bapplied\s+successfully\b/gi,
   /\b(?:and\s+)?applied\s+to\s+(?:your\s+)?(?:project|preview|vfs|site)\b/gi,
