@@ -904,3 +904,4 @@ preview runtime — extend what exists.
 - [x] Task 22 — Art Direction Phase D: resolved family/pack travels in the site design contract to the page composer; family switch refused at the service.
 
 - [x] Task 23 — Phase E (consumers): sealed `meta.artDirection` is the authority for preview, autosave, recompile, restyle and publish. Theme contract accepts the sealed record and prefers its storage pack; contract now carries familyId + qualified pack id; legacy revisions still resolve a family. Tests: src/test/sealedArtDirectionConsumers.test.ts (4).
+- [x] Task 23 — Art Direction Phase F: every consumer prefers the sealed artDirection record; erasure-gate test blocks direct legacy reads
