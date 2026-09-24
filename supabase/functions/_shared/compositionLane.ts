@@ -91,6 +91,9 @@ export interface CompositionBrief {
 export function compositionCatalogIssues(plan: z.infer<typeof resultSchema>, brief: CompositionBrief): string[] {
   const normalized = normalizeCompositionPlan(plan, brief);
   const issues: string[] = [];
+  // Phase D: a brief whose Art Direction pack disagrees with its contract pack is a family switch.
+  const art = brief.designContract?.artDirection;
+  if (art && art.storagePackId !== brief.designContract!.artDirectionPackId) issues.push('designContract.artDirection: pack ' + art.storagePackId + ' does not match contract pack ' + brief.designContract!.artDirectionPackId + ' — never switch family');
   for (const role of brief.roles) if (normalized.pages.filter(page => page.role === role).length !== 1) issues.push('pages: include requested role exactly once: ' + role);
   for (const page of normalized.pages) {
     const prefix = 'pages.' + page.role;
