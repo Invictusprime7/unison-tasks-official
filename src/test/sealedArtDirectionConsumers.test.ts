@@ -56,7 +56,7 @@ describe('sealed art direction reaches every consumer (Phase E)', () => {
       artifact: JSON.parse(JSON.stringify(first)) as SiteBundleSnapshot,
       vfsFiles: first.vfsFiles,
       appContext,
-      sealedBy: 'autosave',
+      sealedBy: 'builder-commit',
     });
     expect(second.meta.artDirection).toEqual(first.meta.artDirection);
   });
