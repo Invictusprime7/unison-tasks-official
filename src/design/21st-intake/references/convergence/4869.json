@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:4869",
+    "sourceUrl": "https://21st.dev/prebuiltui/image-gallery",
+    "author": "prebuiltui",
+    "derivation": "visual-reference",
+    "adaptationVersion": "1"
+  },
+  "componentId": 4869,
+  "retrievedVia": "21st registry API (TWENTYFIRST_TOKEN)",
+  "retrievedAt": "2026-09-24T04:29:16.953086Z",
+  "sourceSha256": "ac9043c795b7d9cb0ec38fcc0949d459c98dd3614c959d04d22c4e0de6580867",
+  "archivePath": "src/design/21st-intake/archive/convergence-4869",
+  "implementation": "gallery:lightbox-grid",
+  "adaptation": "Image grid gallery with inspection affordance and Radix lightbox",
+  "notes": "Original Unison implementation informed by the published layout; theme tokens, canonical slots and Radix lightbox replace source styling and dependencies. No copied-source license asserted."
+}

@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:4746",
+    "sourceUrl": "https://21st.dev/efferd/image-gallery",
+    "author": "efferd",
+    "derivation": "visual-reference",
+    "adaptationVersion": "1"
+  },
+  "componentId": 4746,
+  "retrievedVia": "21st registry API (TWENTYFIRST_TOKEN)",
+  "retrievedAt": "2026-09-24T04:29:16.953086Z",
+  "sourceSha256": "37d7c482796703f439e40483ab6a0801b032d660d17d7043e2e911cb72077a0a",
+  "archivePath": "src/design/21st-intake/archive/convergence-4746",
+  "implementation": "gallery:masonry",
+  "adaptation": "Column-flow masonry with in-view reveal, reduced-motion safe",
+  "notes": "Original Unison implementation informed by the published layout; theme tokens, canonical slots and Radix lightbox replace source styling and dependencies. No copied-source license asserted."
+}

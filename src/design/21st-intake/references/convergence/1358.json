@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:1358",
+    "sourceUrl": "https://21st.dev/shadcnblockscom/gallery4",
+    "author": "shadcnblockscom",
+    "derivation": "visual-reference",
+    "adaptationVersion": "1"
+  },
+  "componentId": 1358,
+  "retrievedVia": "21st registry API (TWENTYFIRST_TOKEN)",
+  "retrievedAt": "2026-09-24T04:29:16.953086Z",
+  "sourceSha256": "eae73dfe5d48b58ad99ffb4bfb8a5de5e4a0af4721dee1e41386f79e99ec4eee",
+  "archivePath": "src/design/21st-intake/archive/convergence-1358",
+  "implementation": "gallery:cinematic-grid",
+  "adaptation": "Wide captioned media frames on a calm grid",
+  "notes": "Original Unison implementation informed by the published layout; theme tokens, canonical slots and Radix lightbox replace source styling and dependencies. No copied-source license asserted."
+}

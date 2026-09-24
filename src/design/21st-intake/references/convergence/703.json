@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:703",
+    "sourceUrl": "https://21st.dev/tommyjepsen/feature-with-image-comparison",
+    "author": "tommyjepsen",
+    "derivation": "visual-reference",
+    "adaptationVersion": "1"
+  },
+  "componentId": 703,
+  "retrievedVia": "21st registry API (TWENTYFIRST_TOKEN)",
+  "retrievedAt": "2026-09-24T04:29:16.953086Z",
+  "sourceSha256": "fbe8094308657bc6e15db24640cb0dfb21361b41956f1c02751910cb5d69fe91",
+  "archivePath": "src/design/21st-intake/archive/convergence-703",
+  "implementation": "before-after:slider",
+  "adaptation": "Drag-handle comparison of one hero transformation with badge-led intro",
+  "notes": "Original Unison implementation informed by the published layout; theme tokens, canonical slots and Radix lightbox replace source styling and dependencies. No copied-source license asserted."
+}
