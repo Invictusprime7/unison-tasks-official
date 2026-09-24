@@ -155,6 +155,14 @@ const DESIGN_RESOLUTION_ALLOWLIST = new Set([
   'src/services/generatedSiteRuntimeManifest.ts',
   // The single legal presentation-op applier (validates ops against the seal).
   'src/services/vfsCommitService.ts',
+  // Presentation-op validation is part of the canonical commit boundary.
+  'src/services/builder/semanticPresentationOps.ts',
+  // Read-only metadata consumers: inspect certification/states/tags and report
+  // eligibility. None compiles components or writes canonical state.
+  'src/services/builder/propertyInspectorModel.ts',
+  'src/services/design/equivalenceLedger.ts',
+  'src/services/launch/twentyFirstCoverageGate.ts',
+  'src/services/requestAIPageComposition.ts',
   // Transitional: swap helper consumed by the compiler paths above.
   'src/utils/sectionSwapper.ts',
 ]);

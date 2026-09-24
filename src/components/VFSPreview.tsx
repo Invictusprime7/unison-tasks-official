@@ -1070,7 +1070,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     startAttemptedRef.current = true;
 
     setBackend('sandpack');
-    if (!previewCompiling && !pipelineError) onReady?.();
+
   }, [onReady, pipelineError, previewCompiling]);
   
   // Sync file changes to Docker when running
@@ -1130,7 +1130,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const handleSandpackRunning = useCallback(() => {
     timeoutRecoveryCountRef.current = 0;
     setSandpackTimeoutExhausted(false);
-  }, []);
+    onReady?.();
+  }, [onReady]);
 
   const handleRetrySandpackConnection = useCallback(() => {
     if (timeoutRecoveryTimerRef.current !== null) {
@@ -1515,6 +1516,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
                 }}
               >
                 <SandpackPreview
+                  startRoute="/sandpack/index.html"
                   showNavigator={false}
                   showRefreshButton={false}
                   showOpenInCodeSandbox={false}

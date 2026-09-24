@@ -1,0 +1,30 @@
+{
+  "status": "quarantined",
+  "candidateImplementation": "before-after:slider",
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:manuarora700/compare",
+    "sourceUrl": "https://21st.dev/@manuarora700/components/compare",
+    "author": "manuarora700"
+  },
+  "upstreamRegistry": "https://ui.aceternity.com/registry/compare.json",
+  "upstreamAuthor": "Manu Arora <hi@manuarora.in>",
+  "sourceSha256": "fd0801ffcb425cf02693aa7c9db752050d3e2aac2766a2bd8a0f4cb64fc16c08",
+  "retrievedAt": "2026-09-23",
+  "licenseReview": {
+    "status": "unverified",
+    "catalogLicense": "MIT",
+    "evidence": "https://21st.dev/@manuarora700/components/compare",
+    "notes": "The component-specific listing displays MIT and links to the author's component documentation. The public author registry supplies matching Compare source. Complete the repository intake license review before promotion."
+  },
+  "adaptationReview": {
+    "existingImplementation": "Original local slider; do not relabel it as copied source.",
+    "sharedPattern": "Two aligned images, percentage clip-path reveal and draggable divider.",
+    "differences": [
+      "Local implementation adds a native keyboard range and project selection.",
+      "Local implementation uses theme tokens and omits decorative particles and autoplay.",
+      "Upstream uses motion, tabler icons and a SparklesCore dependency; none is introduced into the runtime."
+    ],
+    "pending": ["Explicit adaptation and source comparison", "License review", "Intake certification and generation pack wiring"]
+  }
+}

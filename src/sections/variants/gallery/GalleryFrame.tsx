@@ -29,7 +29,8 @@ export const GalleryFrame: React.FC<GalleryFrameProps> = ({
   const categories = useMemo(() => galleryCategories(media), [media]);
   const [active, setActive] = useState('all');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const visible = active === 'all' ? media : media.filter((item) => item.category === active);
+  const activeCategory = filterable === false || !categories.includes(active) ? 'all' : active;
+  const visible = activeCategory === 'all' ? media : media.filter((item) => item.category === activeCategory);
 
   return (
     <section
@@ -68,11 +69,11 @@ export const GalleryFrame: React.FC<GalleryFrameProps> = ({
               <button
                 key={category}
                 type="button"
-                aria-pressed={active === category}
-                onClick={() => setActive(category)}
+                aria-pressed={activeCategory === category}
+                onClick={() => { setActive(category); setLightboxIndex(null); }}
                 className="rounded-full border px-4 py-1.5 text-xs font-semibold capitalize transition-colors"
                 style={
-                  active === category
+                  activeCategory === category
                     ? {
                         background: hsl(theme.colors.primary),
                         color: hsl(theme.colors.primaryForeground),
@@ -125,7 +126,7 @@ export const GalleryFigure: React.FC<{
       type="button"
       onClick={onOpen}
       aria-label={item.alt || item.caption || 'Open image'}
-      className="block h-full w-full cursor-zoom-in border-0 bg-transparent p-0"
+      className="block h-full w-full cursor-zoom-in border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4"
     >
       <GalleryImage
         src={item.src}
@@ -137,9 +138,9 @@ export const GalleryFigure: React.FC<{
     </button>
     {item.caption && (
       <figcaption
-        className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-sm opacity-0 transition-opacity motion-reduce:transition-none group-hover:opacity-100"
+        className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-sm opacity-0 transition-opacity motion-reduce:transition-none group-hover:opacity-100 group-focus-within:opacity-100"
         style={{
-          background: `linear-gradient(to top, ${hsla(theme.colors.foreground, 0.82)}, transparent)`,
+          background: hsl(theme.colors.foreground),
           color: hsl(theme.colors.background),
           fontFamily: theme.typography.bodyFont,
         }}

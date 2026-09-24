@@ -1,3 +1,5 @@
+import { updateResolvedCompositionVariants } from '@/sections/compositionToFileSet';
+import { isCustomizerPageEdit } from '@/services/builder/customizerDraft';
 /**
  * VFSCommitService — the SINGLE legal writer of Web Builder state.
  *
@@ -101,6 +103,8 @@ export interface CommitMutationInput {
     requireReadinessPass?: boolean;
     /** When true, do NOT persist a revision row (dry-run validation). */
     dryRun?: boolean;
+    /** Restricted serialized section edits from the customizer. */
+    customizerPagePath?: string;
     /** Compiler-owned, presentation-only scratch upgrade. Never executes backend ops. */
     compositionUpgrade?: boolean;
     /** Restore validates the historical artifact without rebuilding template content. */
@@ -246,11 +250,11 @@ function isGovernedAiSourceRewrite(path: string, op: PatchPlan['fileOps'][number
     && !path.startsWith('/src/unison/ui/');
 }
 
-function refreshAiCompositionOwnership(
+function refreshEditedCompositionOwnership(
   beforeFiles: Record<string, string>,
   afterFiles: Record<string, string>,
 ): void {
-  for (const composition of Object.values(collectResolvedCompositions(beforeFiles))) {
+  for (const composition of Object.values(collectResolvedCompositions(afterFiles))) {
     const pagePath = composition.pageFilePath.startsWith('/')
       ? composition.pageFilePath
       : `/${composition.pageFilePath}`;
@@ -345,6 +349,14 @@ export async function commitMutation(
     }
   }
 
+  const customizerPagePath = input.options?.customizerPagePath;
+  if (customizerPagePath && (input.source !== 'playground-edit'
+    || !Object.values((input.current.siteBundleSnapshot as SiteBundleSnapshot | undefined)?.pageRegistry.pages ?? {}).some(page => page.filePath === customizerPagePath)
+    || !input.patch.fileOps.some(op => op.type !== 'delete' && op.path === customizerPagePath && isCustomizerPageEdit(input.current.vfsFiles[op.path] ?? '', op.contents, op.path))
+    || input.patch.fileOps.some(op => op.type === 'delete' || ![customizerPagePath, customizerPagePath.replace(/\.[^.]+$/, '.customizer.css')].includes(op.path)))) {
+    throw new Error('Invalid customizer page edit.');
+  }
+
   // 2. Patch normalisation ---------------------------------------------------
   const patch = input.patch ?? emptyPatchPlan();
   assertPatchPlan(patch, 'commitMutation');
@@ -363,7 +375,7 @@ export async function commitMutation(
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
       }
-      if (isProtectedPath(path, sealedPaths)
+      if (path !== customizerPagePath && isProtectedPath(path, sealedPaths)
         && !(input.source === 'ai-builder' && isGovernedAiSourceRewrite(path, op))
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Canonical router and metadata files are compiler-owned. Edit page or section source instead.');
@@ -404,7 +416,7 @@ export async function commitMutation(
     const planned = planCompositionUpgrade(workingFiles, input.current.siteBundleSnapshot as SiteBundleSnapshot);
     Object.assign(workingFiles, planned.files);
   }
-  if (input.source === 'ai-builder') refreshAiCompositionOwnership(input.current.vfsFiles, workingFiles);
+  if (input.source === 'ai-builder' || customizerPagePath) refreshEditedCompositionOwnership(input.current.vfsFiles, workingFiles);
   log('fileOps', 'info', `applied ${patch.fileOps.length} file op(s)`);
 
   // 4. Apply snapshot-owned presentation operations -------------------------
@@ -425,7 +437,7 @@ export async function commitMutation(
     Object.assign(workingFiles, prepared.files);
     themeSnapshot = prepared.snapshot;
   }
-  const preservePageSources = input.source === 'theme-change'
+  const preservePageSources = Boolean(customizerPagePath) || input.source === 'theme-change'
     || input.source === 'ai-builder'
     || (themeCorrectionApplied && !patch.presentationOps.length && !patch.playgroundOps.length);
   const presentationSnapshot = applyPresentationOps(
@@ -434,6 +446,15 @@ export async function commitMutation(
     patch.presentationOps,
     log,
   );
+
+  if (customizerPagePath && patch.presentationOps.length) {
+    const previous = collectResolvedCompositions(workingFiles)[customizerPagePath];
+    if (!previous) throw new Error('This page has no editable section composition.');
+    const updated = updateResolvedCompositionVariants(workingFiles[customizerPagePath], previous, presentationSnapshot!.meta.designIntervention!.activeVariants ?? {});
+    workingFiles[customizerPagePath] = updated.source;
+    workingFiles[resolvedCompositionPathFor(customizerPagePath)] = serializeResolvedComposition(updated.composition);
+    refreshEditedCompositionOwnership(input.current.vfsFiles, workingFiles);
+  }
 
   // 5. Resolve the canonical projection -------------------------------------
   // Confirmation is a persistence boundary, not another generation stage.

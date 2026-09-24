@@ -139,7 +139,8 @@ import {
   isWizardFallbackOrRouterOnlySource,
 } from "./web-builder/sourceClassifiers";
 import { CodeViewErrorBoundary } from "./web-builder/CodeViewErrorBoundary";
-import { applyCustomizerOverridesToIframe } from "./web-builder/customizerDomPatcher";
+import { customizerFileChanges } from '@/services/builder/customizerDraft';
+import { hashVfsFiles } from '@/services/vfsCommitService';
 import { useTemplateCustomizer } from "@/hooks/useTemplateCustomizer";
 import { TemplateCustomizerPanel } from "./web-builder/TemplateCustomizerPanel";
 import { ElementFloatingToolbar } from "./web-builder/ElementFloatingToolbar";
@@ -667,6 +668,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
   // Template Customizer - full DOM control
   const templateCustomizer = useTemplateCustomizer();
+  const [customizerDraft, setCustomizerDraft] = useState<{ candidate: CommitMutationResult; baseHash: string; key: string; pagePath: string } | null>(null);
+  const [customizerPreviewing, setCustomizerPreviewing] = useState(false);
+  const [customizerSaving, setCustomizerSaving] = useState(false);
+  const [customizerError, setCustomizerError] = useState<string | null>(null);
+  const customizerSequence = useRef(0);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   // AI edit request state — only true when user clicks AI button in floating toolbar
 
@@ -701,72 +707,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setRightPanelCollapsed(true);
     }
   }, [isMobile]);
-
-  // Parse template when previewCode changes (but NOT when customizer is applying overrides)
-  useEffect(() => {
-    if (!previewCode || !previewCode.trim()) return;
-    // Skip re-parsing if the change came from customizer applying overrides
-    // This prevents resetting the images array and losing user-uploaded data URLs
-    if (templateCustomizer.consumeCustomizerApplyFlag()) {
-      return;
-    }
-    // All templates are TSX — use regex-based section + image extraction
-    templateCustomizer.parseSectionsFromJSX(previewCode);
-  }, [previewCode]);
-
-  // Apply customizer overrides to preview (TSX source — image replacements)
-  const applyCustomizerOverrides = useCallback(() => {
-    if (!templateCustomizer.isDirty) return;
-    const baseSource = templateCustomizer.getOriginalSource() || previewCode;
-    if (!baseSource) return;
-    const customized = templateCustomizer.applyOverrides(baseSource);
-    if (customized !== previewCode) {
-      setPreviewCode(customized);
-      setEditorCode(customized);
-    }
-  }, [templateCustomizer, previewCode]);
-
-  // Auto-apply overrides when customizer state changes (e.g. after image replacement)
-  // Patches the iframe DOM in-place to avoid scroll-reset & blink.
-  useEffect(() => {
-    console.log('[WebBuilder] Override useEffect triggered, version:', templateCustomizer.overrideVersion, 'isDirty:', templateCustomizer.isDirty);
-    if (templateCustomizer.overrideVersion <= 0 || !templateCustomizer.isDirty) {
-      console.log('[WebBuilder] Override useEffect skipped - conditions not met');
-      return;
-    }
-
-    // Use VFSPreview (sole preview engine)
-    const iframe = livePreviewRef.current?.getIframe?.() ?? null;
-    const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document || null;
-
-    if (!iframeDoc || !iframeDoc.head) {
-      console.log('[WebBuilder] Iframe not ready — applying source-level overrides');
-      // Iframe not ready — apply source-level overrides (image replacements) via TSX
-      const baseSource = templateCustomizer.getOriginalSource() || previewCode;
-      if (!baseSource) return;
-      const customized = templateCustomizer.applyOverrides(baseSource);
-      if (customized !== previewCode) {
-        setPreviewCode(customized);
-        setEditorCode(customized);
-      }
-      return;
-    }
-
-    console.log('[WebBuilder] Patching iframe DOM, elementOverrides count:', templateCustomizer.elementOverrides.size);
-
-    applyCustomizerOverridesToIframe(iframeDoc, templateCustomizer);
-
-
-    // 4. Keep previewCode AND editorCode in sync — apply TSX source-level overrides (images)
-    const baseSource = templateCustomizer.getOriginalSource() || previewCode;
-    if (baseSource) {
-      const customized = templateCustomizer.applyOverrides(baseSource);
-      if (customized !== previewCode) {
-        setPreviewCode(customized);
-        setEditorCode(customized);
-      }
-    }
-  }, [templateCustomizer.overrideVersion]);
 
   // Stable callback for SimplePreview element selection (avoids new ref each render)
   const handlePreviewElementSelect = useCallback((el: any) => {
@@ -3149,6 +3089,84 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
   }, [templateCustomizer, commitPresentationOps, businessId, currentDraftId]);
 
+  const customizerLoadedRef = useRef('');
+  useEffect(() => {
+    const files = virtualFSRef.current.getSandpackFiles();
+    const source = files[activePagePath] ?? '';
+    const css = files[activePagePath.replace(/\.[^.]+$/, '.customizer.css')] ?? '';
+    const key = JSON.stringify([currentDraftId, activePagePath, source, css, files['/src/index.css']]);
+    if (key === customizerLoadedRef.current) return;
+    customizerLoadedRef.current = key;
+    customizerSequence.current++;
+    setCustomizerDraft(null);
+    templateCustomizer.loadProject(source, css, files['/src/index.css'] ?? '');
+  }, [currentDraftId, activePagePath, virtualFS.nodes, templateCustomizer.loadProject]);
+
+  // Scratch candidates never enter the VFS/autosave owner. Apply persists the
+  // exact validated artifact and rejects a candidate based on an older revision.
+  useEffect(() => {
+    const sequence = ++customizerSequence.current;
+    if (!templateCustomizer.isDirty) {
+      setCustomizerDraft(null); setCustomizerPreviewing(false); setCustomizerError(null);
+      return;
+    }
+    setCustomizerPreviewing(true);
+    setCustomizerError(null);
+    const timer = window.setTimeout(async () => {
+      try {
+        const beforeFiles = virtualFSRef.current.getSandpackFiles();
+        const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot ?? effectiveRouteState?.siteBundleSnapshot;
+        if (!snapshot || !businessId || !currentDraftId) throw new Error('Open a saved project to customize it.');
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const identity = buildCommitIdentity({ userId: user?.id, businessId, projectId: resolvedProjectId, draftId: currentDraftId, revisionId: currentRevisionIdRef.current });
+        if (!identity) throw new Error('Sign in again to save project changes.');
+        const source = templateCustomizer.applyOverrides(beforeFiles[activePagePath] ?? previewCode);
+        const changedFiles = customizerFileChanges(beforeFiles, activePagePath, source, templateCustomizer.generateOverrideCSS());
+        const patch = legacyFilesToPatchPlan(changedFiles, 'Customize site');
+        patch.presentationOps = filterRedundantPresentationOps(snapshot, Object.entries(templateCustomizer.activeVariants).map(([sectionId, variantId]) => ({ type: 'setVariant' as const, sectionId, variantId })));
+        const candidate = await commitMutation({ source: 'playground-edit', identity,
+          current: buildCanonicalCommitCurrent(beforeFiles, snapshot), patch,
+          options: { ...buildCommitOptions(snapshot), dryRun: true, customizerPagePath: activePagePath } });
+        if (candidate.status !== 'committed') throw new Error('These changes could not be previewed. Adjust them and try again.');
+        const baseHash = await hashVfsFiles(beforeFiles);
+        if (sequence === customizerSequence.current) setCustomizerDraft({ candidate, baseHash, key: templateCustomizer.draftKey, pagePath: activePagePath });
+      } catch (error) {
+        if (sequence === customizerSequence.current) setCustomizerError(error instanceof Error ? error.message : 'Could not preview changes');
+      } finally {
+        if (sequence === customizerSequence.current) setCustomizerPreviewing(false);
+      }
+    }, 180);
+    return () => { window.clearTimeout(timer); customizerSequence.current++; };
+  }, [templateCustomizer.draftKey, templateCustomizer.isDirty, activePagePath, currentDraftId, currentRevisionId, businessId, resolvedProjectId, virtualFS.nodes]);
+
+  const cancelCustomizer = useCallback(() => {
+    customizerSequence.current++;
+    setCustomizerDraft(null); setCustomizerError(null); setCustomizerPreviewing(false);
+    templateCustomizer.resetAll();
+  }, [templateCustomizer]);
+
+  const applyCustomizerOverrides = useCallback(async () => {
+    if (customizerSaving || customizerPreviewing || !customizerDraft || customizerDraft.key !== templateCustomizer.draftKey) return;
+    setCustomizerSaving(true); setCustomizerError(null);
+    try {
+      const beforeFiles = virtualFSRef.current.getSandpackFiles();
+      const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot ?? effectiveRouteState?.siteBundleSnapshot;
+      if (!snapshot) throw new Error('The current project is unavailable.');
+      const commit = await commitMutation({ source: 'playground-edit', identity: { ...customizerDraft.candidate.identity, revisionId: currentRevisionIdRef.current ?? '' },
+        current: buildCanonicalCommitCurrent(beforeFiles, snapshot), patch: emptyPatchPlan('Apply customization'),
+        options: { ...buildCommitOptions(snapshot), reviewedComposition: { baseVfsHash: customizerDraft.baseHash, candidate: customizerDraft.candidate } } });
+      if (commit.status !== 'committed' || !commit.persistedRevisionId) throw new Error('Your changes were not saved. Please try Apply again.');
+      // canonical-vfs-exempt: adoption of an accepted commitMutation result
+      importBuilderFiles(commit.vfsFiles, { replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint, adoption: commitAdoptionRecord(commit) });
+      setCurrentRevisionId(commit.persistedRevisionId);
+      templateCustomizer.markSaved(commit.vfsFiles[activePagePath] ?? previewCode);
+      setCustomizerDraft(null);
+      toast.success('Customization saved');
+    } catch (error) {
+      setCustomizerError(error instanceof Error ? error.message : 'Could not save changes');
+    } finally { setCustomizerSaving(false); }
+  }, [customizerDraft, customizerSaving, customizerPreviewing, templateCustomizer, activePagePath, previewCode, effectiveRouteState, buildCanonicalCommitCurrent, importBuilderFiles, launchEntryPoint]);
+
   /**
    * Theme-token overrides. The editor only produces FileOps for
    * `/src/index.css` + `/.unison/theme-overrides.json`; they enter the ledger
@@ -4025,13 +4043,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [previewCode, virtualFS.nodes, computeVfsSignature]);
   
   // Helper to get final TSX with customizer overrides baked in
-  const getFinalCodeWithOverrides = useCallback(() => {
-    if (templateCustomizer.isDirty) {
-      const baseSource = templateCustomizer.getOriginalSource() || previewCode;
-      return templateCustomizer.applyOverrides(baseSource);
-    }
-    return previewCode;
-  }, [templateCustomizer, previewCode]);
+  const getFinalCodeWithOverrides = useCallback(() => previewCode, [previewCode]);
 
   // Build the v2 save payload — full multi-page VFS round-trip
   const buildSavePayload = useCallback(() => {
@@ -7954,8 +7966,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       <VFSPreview
                         ref={livePreviewRef}
                         nodes={virtualFS.nodes}
-                        onImportFiles={virtualFS.importFiles}
-                        onSyncFiles={virtualFS.replaceFiles}
+                        files={templateCustomizer.isDirty && customizerDraft?.pagePath === activePagePath ? customizerDraft.candidate.vfsFiles : undefined}
+                        onImportFiles={templateCustomizer.isDirty ? undefined : virtualFS.importFiles}
+                        onSyncFiles={templateCustomizer.isDirty ? undefined : virtualFS.replaceFiles}
                         activeFile={activePagePath}
                         className="w-full h-full min-h-0 flex-1"
                         showToolbar={false}
@@ -7963,7 +7976,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         forceBackend="sandpack"
                         showBackendIndicator={false}
                         device={device}
-                        enableSelection={builderMode === 'select'}
+                        enableSelection={builderMode === 'select' && !templateCustomizer.isDirty}
                         onElementSelect={builderMode === 'select' ? handlePreviewElementSelect : undefined}
                         onNavigate={(path) => {
                           const pageName = path.replace(/^\//, '').replace(/\.html$/, '') || 'index';
@@ -8168,8 +8181,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               {previewCode && !selectedObject ? (
                 <TemplateCustomizerPanel
                   customizer={templateCustomizer}
-                  onApply={applyCustomizerOverrides}
-                  onVariantCommit={(sectionId, variantId) => { void commitVariantSelection(sectionId, variantId); }}
+                  onApply={() => void applyCustomizerOverrides()}
+                  onCancel={cancelCustomizer}
+                  saving={customizerSaving}
+                  previewing={customizerPreviewing || (templateCustomizer.isDirty && customizerDraft?.key !== templateCustomizer.draftKey)}
+                  error={customizerError}
                 />
               ) : (
                 <CollapsiblePropertiesPanel 

@@ -9,7 +9,7 @@ import { BeforeAfterFrame, StageTag, normalizePairs } from './BeforeAfterFrame';
 import { hsl } from '../../themeUtils';
 
 export const BeforeAfterGrid: React.FC<BaseSectionProps<'before-after'>> = ({ section, theme }) => {
-  const pairs = normalizePairs(section.props.items);
+  const pairs = normalizePairs(section.props.items).filter(pair => pair.before && pair.after);
 
   return (
     <BeforeAfterFrame

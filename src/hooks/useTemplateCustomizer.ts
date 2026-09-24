@@ -8,7 +8,9 @@
  * AI Output (TSX) → Customizer Overrides (CSS + source edits) → VFS → Preview
  */
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { collectCustomizerImages, applyCustomizerSectionData, hexToHslChannels } from '@/services/builder/customizerDraft';
+import { readCompiledTokenValues } from '@/services/theme/themeTokenOverrides';
 import type { VariantId, ActiveVariantMap } from '@/sections/variants';
 
 // ============================================================================
@@ -204,7 +206,7 @@ export const THEME_PRESETS: ThemePreset[] = [
 
 const GOOGLE_FONTS = [
   'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Raleway',
-  'Playfair Display', 'Merriweather', 'Source Sans 3', 'DM Sans', 'DM Serif Display',
+  'Playfair Display', 'Merriweather', 'Source Serif 4', 'Source Sans 3', 'DM Sans', 'DM Serif Display',
   'Outfit', 'Space Grotesk', 'Space Mono', 'JetBrains Mono', 'Lora', 'Nunito',
   'Oswald', 'Quicksand', 'Rubik', 'Work Sans', 'Barlow', 'Manrope',
   'Cormorant Garamond', 'Crimson Text', 'Libre Baskerville', 'Spectral',
@@ -270,6 +272,7 @@ export const useTemplateCustomizer = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [overrideVersion, setOverrideVersion] = useState(0); // Increments on every change to trigger reactivity
   const [activeVariants, setActiveVariants] = useState<ActiveVariantMap>({});
+  const savedStateRef = useRef<{ colors: ColorPalette; typography: TypographyConfig; spacing: SpacingConfig; heights?: Record<string, string>; modified: { colors: boolean; typography: boolean; spacing: boolean } } | null>(null);
   const originalSourceRef = useRef<string>('');
   const isCustomizerApplyingRef = useRef(false); // Prevents re-parsing when customizer applies overrides
   
@@ -285,8 +288,7 @@ export const useTemplateCustomizer = () => {
     if (!source || !source.trim()) return;
     // All templates are now TSX — delegate to the JSX parser
     parseSectionsFromJSX(source);
-  }, // eslint-disable-next-line react-hooks/exhaustive-deps
-  []);
+  }, []);
 
   // ---- Parse sections from JSX/TSX source (for VFS React templates) ----
   const parseSectionsFromJSX = useCallback((jsxSource: string) => {
@@ -312,7 +314,7 @@ export const useTemplateCustomizer = () => {
             id: entry.id as string,
             tagName: 'section',
             label: String(entry.type).replace(/(^|-)(\w)/g, (_, _separator, character) => character.toUpperCase()),
-            visible: true,
+            visible: !(entry as { hidden?: boolean }).hidden,
             order,
             height: 'auto',
             selector: `[data-ut-section-id="${entry.id}"]`,
@@ -402,8 +404,9 @@ export const useTemplateCustomizer = () => {
     }
 
     // If we found sections, update state
-    if (parsedSections.length > 0) {
+    if (!hasCanonicalSections) {
       setSections(parsedSections);
+      setActiveVariants({});
     }
 
     // Extract images from JSX source via regex
@@ -430,9 +433,7 @@ export const useTemplateCustomizer = () => {
         imgIndex++;
       }
     }
-    if (parsedImages.length > 0) {
-      setImages(parsedImages);
-    }
+    setImages(hasCanonicalSections ? collectCustomizerImages(jsxSource) : parsedImages);
 
     // Store original source for reference
     originalSourceRef.current = jsxSource;
@@ -521,7 +522,7 @@ export const useTemplateCustomizer = () => {
   // ---- Image replacement ----
   const replaceImage = useCallback((imageId: string, newSrc: string, newAlt?: string) => {
     setImages(prev => prev.map(img =>
-      img.id === imageId ? { ...img, src: newSrc, alt: newAlt || img.alt } : img
+      img.id === imageId ? { ...img, src: newSrc, alt: newAlt ?? img.alt } : img
     ));
     setIsDirty(true);
     setOverrideVersion(v => v + 1);
@@ -566,7 +567,7 @@ export const useTemplateCustomizer = () => {
       }
       if (fontsToLoad.size > 0) {
         const families = Array.from(fontsToLoad).map(f => f.replace(/\s/g, '+')).join('&family=');
-        cssBlocks.push(`@import url('https://fonts.googleapis.com/css2?family=${families}:wght@300;400;500;600;700;800;900&display=swap');`);
+        cssBlocks.push(`@import url('https://fonts.googleapis.com/css2?family=${families}&display=swap');`);
       }
     }
 
@@ -575,6 +576,7 @@ export const useTemplateCustomizer = () => {
     // Only apply global typography if explicitly modified
     if (hasTypographyModified) {
       cssBlocks.push(`
+:root { --font-heading: ${typography.headingFont} !important; --font-body: ${typography.bodyFont} !important; --ut-weight-display: ${typography.headingWeight} !important; }
 /* Global Typography */
 body, html {
   font-family: ${typography.bodyFont} !important;
@@ -594,16 +596,21 @@ h3 { font-size: ${typography.h3Size} !important; }
 `);
     }
 
+    if (hasColorsModified) {
+      const names = { primary: 'primary', secondary: 'secondary', accent: 'accent', background: 'background', surface: 'card', text: 'foreground', textMuted: 'muted-foreground', border: 'border' };
+      cssBlocks.push(':root { ' + Object.entries(names).map(([key, token]) => `--${token}: ${hexToHslChannels(colors[key as keyof ColorPalette])} !important;`).join(' ') + ' }');
+    }
+
     // Only apply global colors if explicitly modified
     if (hasColorsModified) {
       cssBlocks.push(`
 /* Global Colors */
 body, html {
-  color: ${colors.text} !important;
-  background-color: ${colors.background} !important;
+  color: hsl(var(--foreground)) !important;
+  background-color: hsl(var(--background)) !important;
 }
 
-a { color: ${colors.primary} !important; }
+a { color: hsl(var(--primary)) !important; }
 a:hover { opacity: 0.85; }
 
 button:not([class*="ghost"]):not([class*="outline"]),
@@ -613,20 +620,20 @@ button:not([class*="ghost"]):not([class*="outline"]),
 [class*="bg-indigo"],
 [class*="bg-violet"],
 [class*="bg-purple"] {
-  background-color: ${colors.primary} !important;
-  border-color: ${colors.primary} !important;
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
 }
 
 [class*="text-primary"],
 [class*="text-blue"],
 [class*="text-indigo"] {
-  color: ${colors.primary} !important;
+  color: hsl(var(--primary)) !important;
 }
 
 [class*="bg-secondary"],
 [class*="bg-gray-1"],
 [class*="bg-slate-1"] {
-  background-color: ${colors.surface} !important;
+  background-color: hsl(var(--card)) !important;
 }
 
 /* Muted text */
@@ -636,12 +643,12 @@ button:not([class*="ghost"]):not([class*="outline"]),
 [class*="text-zinc-4"],
 [class*="text-zinc-5"],
 [class*="text-neutral-"] {
-  color: ${colors.textMuted} !important;
+  color: hsl(var(--muted-foreground)) !important;
 }
 
 /* Border colors */
 [class*="border"] {
-  border-color: ${colors.border} !important;
+  border-color: hsl(var(--border)) !important;
 }
 `);
     }
@@ -655,6 +662,7 @@ section, [class*="section"] {
   padding-bottom: ${spacing.sectionPadding} !important;
 }
 
+section [class*="grid"], section [class*="flex"] { gap: ${spacing.elementGap} !important; }
 /* Container width */
 [class*="container"], [class*="max-w-"] {
   max-width: ${spacing.containerMaxWidth} !important;
@@ -692,6 +700,7 @@ section, [class*="section"] {
       cssBlocks.push(`/* Element overrides */\n${elementCSS}`);
     }
 
+    cssBlocks.push('/* customizer-state:' + encodeURIComponent(JSON.stringify({ colors, typography, spacing, heights: Object.fromEntries(sections.map(s => [s.id, s.height])), modified: { colors: hasColorsModified, typography: hasTypographyModified, spacing: hasSpacingModified } })) + ' */');
     return cssBlocks.join('\n');
   }, [colors, typography, spacing, sections, elementOverrides, hasColorsModified, hasTypographyModified, hasSpacingModified]);
 
@@ -704,7 +713,7 @@ section, [class*="section"] {
     if (!isDirty) return source;
 
     const baseSource = originalSourceRef.current || source;
-    let result = baseSource;
+    let result = applyCustomizerSectionData(baseSource, sections, images);
 
     // Replace images in TSX source (regex-based — find <img ... src="old" and replace)
     images.forEach(img => {
@@ -733,9 +742,9 @@ section, [class*="section"] {
       }
     });
 
-    isCustomizerApplyingRef.current = true;
+
     return result;
-  }, [isDirty, images]);
+  }, [isDirty, images, sections]);
 
   // ---- Check if customizer just applied (to skip parseTemplate) ----
   const consumeCustomizerApplyFlag = useCallback((): boolean => {
@@ -753,20 +762,61 @@ section, [class*="section"] {
 
   // ---- Reset all ----
   const resetAll = useCallback(() => {
-    setColors({ ...DEFAULT_COLORS });
-    setTypography({ ...DEFAULT_TYPOGRAPHY });
-    setSpacing({ ...DEFAULT_SPACING });
+    if (originalSourceRef.current) parseSectionsFromJSX(originalSourceRef.current);
+    const saved = savedStateRef.current;
+    setSections(prev => prev.map(section => ({ ...section, height: saved?.heights?.[section.id] ?? 'auto' })));
+    setColors({ ...(saved?.colors ?? DEFAULT_COLORS) });
+    setTypography({ ...(saved?.typography ?? DEFAULT_TYPOGRAPHY) });
+    setSpacing({ ...(saved?.spacing ?? DEFAULT_SPACING) });
     setElementOverrides(new Map());
     setActivePresetId(null);
     setIsDirty(false);
-    setHasColorsModified(false);
-    setHasTypographyModified(false);
-    setHasSpacingModified(false);
+    setHasColorsModified(saved?.modified.colors ?? false);
+    setHasTypographyModified(saved?.modified.typography ?? false);
+    setHasSpacingModified(saved?.modified.spacing ?? false);
     setHasSectionsReordered(false);
-    setActiveVariants({});
-  }, []);
+    setOverrideVersion(v => v + 1);
+  }, [parseSectionsFromJSX]);
+
+  const loadProject = useCallback((source: string, css: string, themeCss: string) => {
+    const tokens = readCompiledTokenValues(themeCss, true);
+    const initialColors = { ...DEFAULT_COLORS };
+    const names = { primary: 'primary', secondary: 'secondary', accent: 'accent', background: 'background', surface: 'card', text: 'foreground', textMuted: 'muted-foreground', border: 'border' };
+    for (const [key, name] of Object.entries(names)) {
+      const match = tokens['--' + name]?.match(/^([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/);
+      if (!match) continue;
+      const h = Number(match[1]), sat = Number(match[2]) / 100, l = Number(match[3]) / 100;
+      const a = sat * Math.min(l, 1 - l);
+      const channel = (n: number) => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); };
+      initialColors[key as keyof ColorPalette] = '#' + channel(0) + channel(8) + channel(4);
+    }
+    const initialTypography = { ...DEFAULT_TYPOGRAPHY, headingFont: tokens['--font-heading'] ?? DEFAULT_TYPOGRAPHY.headingFont, bodyFont: tokens['--font-body'] ?? DEFAULT_TYPOGRAPHY.bodyFont };
+    let saved = { colors: initialColors, typography: initialTypography, spacing: { ...DEFAULT_SPACING }, modified: { colors: false, typography: false, spacing: false }, heights: {} as Record<string, string> };
+    try {
+      const encoded = css.match(/\/\* customizer-state:(.*?) \*\//)?.[1];
+      if (encoded) {
+        const parsed = JSON.parse(decodeURIComponent(encoded));
+        saved = { ...saved, ...parsed, colors: { ...initialColors, ...parsed.colors }, typography: { ...initialTypography, ...parsed.typography }, spacing: { ...DEFAULT_SPACING, ...parsed.spacing } };
+      }
+    } catch { /* Old projects without saved controls retain their compiled theme. */ }
+    savedStateRef.current = saved;
+    parseSectionsFromJSX(source);
+    setSections(prev => prev.map(section => ({ ...section, height: saved.heights[section.id] ?? 'auto' })));
+    setColors(saved.colors); setTypography(saved.typography); setSpacing(saved.spacing);
+    setHasColorsModified(saved.modified.colors); setHasTypographyModified(saved.modified.typography); setHasSpacingModified(saved.modified.spacing);
+    setElementOverrides(new Map()); setActivePresetId(null); setIsDirty(false); setHasSectionsReordered(false);
+  }, [parseSectionsFromJSX]);
+
+  const markSaved = useCallback((source: string) => {
+    savedStateRef.current = { colors, typography, spacing, heights: Object.fromEntries(sections.map(s => [s.id, s.height])), modified: { colors: hasColorsModified, typography: hasTypographyModified, spacing: hasSpacingModified } };
+    originalSourceRef.current = source;
+    setIsDirty(false);
+    parseSectionsFromJSX(source);
+  }, [colors, typography, spacing, sections, hasColorsModified, hasTypographyModified, hasSpacingModified, parseSectionsFromJSX]);
 
   return {
+    markSaved,
+    loadProject,
     // State
     colors,
     typography,
@@ -778,6 +828,8 @@ section, [class*="section"] {
     activeVariants,
     isDirty,
     overrideVersion,
+    draftKey: JSON.stringify({ colors, typography, spacing, sections, images, activeVariants, overrides: [...elementOverrides], hasColorsModified, hasTypographyModified, hasSpacingModified }),
+    modified: { colors: hasColorsModified, typography: hasTypographyModified, spacing: hasSpacingModified },
     presets: THEME_PRESETS,
     availableFonts: GOOGLE_FONTS,
 

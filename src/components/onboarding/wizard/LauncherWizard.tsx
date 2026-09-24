@@ -64,6 +64,7 @@ import {
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
 import { LaunchStageTimeline } from "./LaunchStageTimeline";
+import { VFSPreview } from '@/components/VFSPreview';
 
 import {
   classifyPromptForWizard,
@@ -169,8 +170,21 @@ export const LauncherWizard = ({
     useState<LaunchFailureReport | null>(null);
   const [progress, setProgress] = useState<LaunchRunSnapshot | null>(null);
   const latestProgressRef = useRef<LaunchRunSnapshot | null>(null);
+  const [review, setReview] = useState<{ files: Record<string, string>; entryPoint: string } | null>(null);
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [previewReady, setPreviewReady] = useState(false);
+  const reviewDecision = useRef<((accept: boolean) => void) | null>(null);
+  const generationRef = useRef(0);
+  const handlePreviewReady = useCallback(() => { setPreviewReady(true); setLaunchError(null); }, []);
+  const handlePreviewError = useCallback((message: string) => { setPreviewReady(false); setLaunchError(`Preview could not render: ${message}`); }, []);
+  useEffect(() => () => { generationRef.current++; reviewDecision.current?.(false); }, []);
 
   const reset = useCallback(() => {
+    generationRef.current++;
+    reviewDecision.current?.(false);
+    reviewDecision.current = null;
+    setReview(null);
+    setPreviewReady(false);
     setStep("industry");
     setSelectedIndustry(null);
     setSystemId(null);
@@ -303,6 +317,11 @@ export const LauncherWizard = ({
       return;
     }
     setIsLaunching(true);
+    reviewDecision.current?.(false);
+    reviewDecision.current = null;
+    const generation = ++generationRef.current;
+    setReview(null);
+    setPreviewReady(false);
     setLaunchError(null);
     setLaunchFailure(null);
     latestProgressRef.current = null;
@@ -325,16 +344,24 @@ export const LauncherWizard = ({
       selectedPages,
       socialLinks,
       existingBusinessId: prefill?.businessId ?? null,
+      regenerationNonce: generation > 1 ? `take-${generation}` : null,
     };
 
     try {
       const result = await runLaunchPipeline(input, {
-        onStatus: setLaunchStatus,
+        onReview: candidate => new Promise<boolean>(resolve => {
+          if (generation !== generationRef.current) { resolve(false); return; }
+          setReview(candidate);
+          setIsLaunching(false);
+          reviewDecision.current = resolve;
+        }),
+        onStatus: status => { if (generation === generationRef.current) setLaunchStatus(status); },
         onProgress: (snapshot) => {
           latestProgressRef.current = snapshot;
           setProgress(snapshot);
         },
       });
+      if (generation !== generationRef.current) return;
       setLaunch(result.launchState);
       navigate("/web-builder", {
         replace: true,
@@ -342,6 +369,10 @@ export const LauncherWizard = ({
       });
       onOpenChange(false);
     } catch (error) {
+      if (generation !== generationRef.current || (error instanceof Error && error.name === 'LaunchReviewCancelled')) return;
+      setReview(null);
+      reviewDecision.current = null;
+      setPreviewReady(false);
       const report = createLaunchFailureReport(error, latestProgressRef.current);
       const reportText = JSON.stringify(report, null, 2);
       persistLaunchFailureReport(report);
@@ -360,8 +391,10 @@ export const LauncherWizard = ({
         },
       });
     } finally {
-      setIsLaunching(false);
-      setLaunchStatus("");
+      if (generation === generationRef.current) {
+        setIsLaunching(false);
+        setLaunchStatus("");
+      }
     }
   };
 
@@ -419,7 +452,7 @@ export const LauncherWizard = ({
             })}
           </ol>
 
-          {step !== "industry" && (
+          {step !== "industry" && !review && (
             <div className="flex shrink-0 items-center gap-2">
               {!isLaunching && (
                 <Button
@@ -461,9 +494,27 @@ export const LauncherWizard = ({
           )}
         </div>
 
+        {review && (
+          <div className="space-y-4 p-5" data-testid="wizard-generated-review">
+            <h2 className="text-xl font-semibold">Preview your site</h2>
+            <p className="text-sm text-slate-400">Review this version or generate another before launching.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" aria-pressed={previewDevice === 'desktop'} onClick={() => setPreviewDevice('desktop')}>Desktop</Button>
+              <Button variant="outline" aria-pressed={previewDevice === 'mobile'} onClick={() => setPreviewDevice('mobile')}>Mobile</Button>
+              <Button variant="outline" disabled={isLaunching} onClick={handleGenerate}>Regenerate</Button>
+              <Button disabled={isLaunching} variant="outline" onClick={() => { reviewDecision.current?.(false); reviewDecision.current = null; setReview(null); }}>Edit details</Button>
+              <Button disabled={isLaunching || !previewReady} onClick={() => { setIsLaunching(true); reviewDecision.current?.(true); reviewDecision.current = null; }}>{isLaunching ? 'Launching…' : 'Launch this site'}</Button>
+            </div>
+            <div className="h-[65dvh] min-h-96 overflow-hidden rounded-xl border border-white/10">
+              <VFSPreview nodes={[]} files={review.files} activeFile={review.entryPoint} device={previewDevice} forceBackend="sandpack" autoStart={false} showToolbar={false} onReady={handlePreviewReady} onError={handlePreviewError} />
+            </div>
+            {launchError && <p role="alert" className="text-rose-300">{launchError}</p>}
+          </div>
+        )}
         <div
           className={cn(
             "grid gap-8 p-5 sm:p-8",
+            review && "!hidden",
             step !== "industry" &&
               !isLaunching &&
               "lg:grid-cols-[minmax(0,1fr)_280px]",

@@ -1,7 +1,3 @@
-import { requestAIPageComposition } from '@/services/requestAIPageComposition';
-import { getAssetRegistry, loadScopedProjectAssets } from '@/services/assetRegistry';
-import { buildSeedMediaLibrary } from '@/services/launch/assetSlotBinding';
-import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContract';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
  *
@@ -10,9 +6,9 @@ import { buildThemeContractDirectiveFromFiles } from '@/platform/core/themeContr
  *   → canonical compiler (Stage 4b theme tokens) → sealed SiteBundleSnapshot
  *   → canonical commit → builder handoff.
  *
- * Lane B proposes page designs on top of the deterministic Stage 4b base.
- * Accepted candidates pass canonical merge, preflight and commit before
- * Preview handoff. Every stage runs through `launchRun`.
+ * AI page authorship is retired: nothing in this module calls a model, and no
+ * page body is ever authored outside the canonical compiler. Every stage runs
+ * through `launchRun` so the UI can render live pipeline awareness.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +25,6 @@ import {
   createBlueprintFromIndustry,
   evaluateAllGates,
   getIndustryForCategory,
-  getIndustryProfile,
   getAllowedIntents,
   runIntegrityReport,
 } from "@/platform/core";
@@ -81,28 +76,9 @@ import {
   type LaunchRun,
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
-import {
-  buildWizardLaneBRegistryContext,
-  enrichWizardPageBatch,
-  type WizardLaneBEnrichmentRequest,
-} from "@/services/wizardLaneBEnrichment";
-
-import {
-  measurePayloadBytes,
-  planLaneBBatches,
-} from "@/services/laneBBatchPlanner";
-import {
-  extractHomepageVisualLanguage,
-  hasEstablishedVisualLanguage,
-  orderHomepageFirst,
-  type HomepageVisualLanguage,
-} from "@/services/launch/homepageFirstContract";
-import { designRegistrySignature } from "@/services/designImplementationRegistry";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
-import { resolveExperienceRequirement, resolveArtDirectionPack, getArtDirectionPack } from "@/sections/variants";
-import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from "@/services/launch/twentyFirstCoverageGate";
-import type { VariantId } from "@/sections/variants/types";
-import { resolveApprovedExperienceCapabilities, resolveExperienceEnvelope } from "@/services/experienceCapabilityResolver";
+import { resolveExperienceRequirement } from "@/sections/variants";
+import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
 import { runExperiencePreflight } from "@/services/experiencePreflightGate";
 import type { BuilderIdentity } from "@/types/builderIdentity";
 import type { BusinessProfileDTO } from "@/types/businessProfile";
@@ -133,18 +109,14 @@ import {
   resolveWizardIndustryOverlay,
 } from '@/services/wizardMergeContext';
 import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
-import {
-  buildWizardAggregatedRegistryContext,
-  WIZARD_REGISTRY_CONTEXT_PATH,
-} from "@/services/launch/wizardRegistryAggregation";
 
 export interface LaunchOrchestratorInput {
   systemId: BusinessSystemType;
   template?: TemplateCardData;
   industry?: string;
   visionPrompt?: string;
-  /** Refinement policy; contextual AI composition is always required. */
-  ai?: { laneB?: boolean };
+  designSelection?: import("@/services/wizardDesignSelection").WizardDesignSelection;
+  regenerationNonce?: string | null;
   theme: ThemePreset;
   businessName: string;
   primaryGoal: PrimaryGoal | null;
@@ -152,15 +124,10 @@ export interface LaunchOrchestratorInput {
   selectedPages: PageChoice[];
   socialLinks?: Record<string, string>;
   existingBusinessId?: string | null;
-  designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
-  /**
-   * Set only when the user intentionally asks for another take of the same
-   * answers. Never a per-launch random id.
-   */
-  regenerationNonce?: string | null;
 }
 
 export interface LaunchOrchestratorCallbacks {
+  onReview?: (candidate: { files: Record<string, string>; entryPoint: string }) => Promise<boolean>;
   onStatus?: (status: string) => void;
   onProgress?: (snapshot: LaunchRunSnapshot) => void;
 }
@@ -199,8 +166,6 @@ function resolveGenerationCategory(
   system: (typeof businessSystems)[number],
   template: TemplateCardData,
 ): LayoutCategory {
-  const directIndustry = getIndustryProfile(template.industry);
-  if (directIndustry?.layoutCategories[0]) return directIndustry.layoutCategories[0];
   return (TEMPLATE_INDUSTRY_TO_CATEGORY[template.industry] ||
     system.templateCategories[0]) as LayoutCategory;
 }
@@ -229,7 +194,6 @@ export async function runLaunchPipeline(
   submitted: LaunchOrchestratorInput,
   callbacks: LaunchOrchestratorCallbacks = {},
 ): Promise<LaunchOrchestratorResult> {
-  // Internal semantic content baseline; never a user-selected visual layout.
   const baseline = submitted.template || getDefaultTemplateCardForIndustry(submitted.industry) || getDefaultTemplateCardFor(submitted.systemId);
   if (!baseline) throw new LaunchFatalError('No content baseline is available for this industry.');
   const input = { ...submitted, template: baseline };
@@ -247,7 +211,7 @@ export async function runLaunchPipeline(
   const composition = getCompositionById(input.template.id);
   if (!composition) {
     throw new LaunchFatalError(
-      `"${input.template.label}" has no registered composition. Choose another industry.`,
+      `"${input.template.label}" has no registered composition. Pick another template.`,
     );
   }
 
@@ -262,11 +226,7 @@ export async function runLaunchPipeline(
     const ownerEmail = user.email || "";
 
     const generationCategory = resolveGenerationCategory(system, input.template);
-    // Template industry is the most specific launcher decision. Resolve its
-    // canonical profile before category fallback so shared categories (for
-    // example local-service + contractor) cannot silently cross-wire.
-    const industryProfile =
-      getIndustryProfile(input.template.industry) || getIndustryForCategory(generationCategory);
+    const industryProfile = getIndustryForCategory(generationCategory);
     const industryOverlay = resolveWizardIndustryOverlay({
       templateIndustry: input.template.industry,
       generationIndustry: industryProfile?.industry || generationCategory,
@@ -280,12 +240,9 @@ export async function runLaunchPipeline(
       ...(compositionMeta?.intents || []),
     ]);
 
-    // Real Unison identity is registered BEFORE anything is compiled. Every
-    // artifact below is stamped with the ids that exist in the Unison registry
-    // (businesses/sites/projects/builder_drafts) — never a client-side
-    // placeholder that a later provisioning round could contradict.
+    // Reserve stable IDs; reviewed launches register them only after acceptance.
     const requestedIds = createConfirmedLaunchIds(input.existingBusinessId || undefined);
-    const confirmed: ConfirmedLaunchIds = await provisionConfirmedLaunchSite({
+    const provision = () => provisionConfirmedLaunchSite({
       ids: requestedIds,
       existingBusinessId: input.existingBusinessId || undefined,
       businessName: brand,
@@ -299,8 +256,9 @@ export async function runLaunchPipeline(
       templateId: input.template.id,
       themePresetId: input.theme.id,
     });
+    const confirmed: ConfirmedLaunchIds = callbacks.onReview ? requestedIds : await provision();
     try {
-      localStorage.setItem("unison:lastBusinessId", confirmed.businessId);
+      if (!callbacks.onReview) localStorage.setItem("unison:lastBusinessId", confirmed.businessId);
     } catch {
       /* browser storage is best-effort */
     }
@@ -312,28 +270,10 @@ export async function runLaunchPipeline(
     const primaryGoal: PrimaryGoal =
       input.primaryGoal || preselect?.primaryGoal || "collect_leads";
     const customerNeeds = uniqueValues<CustomerNeed>(input.customerNeeds);
-    const wizardSeedId = newId("ws");
-    const immersiveRequested = customerNeeds.includes("explore_immersive");
-    const experienceEnvelope = resolveExperienceEnvelope({
-      seed: `${plannedBusinessId}:${input.template.id}:${input.theme.id}:${input.regenerationNonce ?? ''}`,
-      businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
-      industry: industryOverlay,
-      templateId: input.template.id,
-      themePresetId: input.theme.id,
-      styleIntent: input.theme.id,
-      primaryGoal,
-      sellsProducts: customerNeeds.includes("buy_offer"),
-      needsBooking: customerNeeds.includes("book_service"),
-      wantsLeadCapture: customerNeeds.includes("request_quote") || customerNeeds.includes("fill_form"),
-    });
-    const needsImmersive = (immersiveRequested || input.designSelection?.experience === 'immersive')
-      && experienceEnvelope.webgl !== 'ineligible';
-    const requestedPages = uniqueValues<string>(["home", ...input.selectedPages, ...(needsImmersive ? ['immersive'] : [])]);
+    const requestedPages = uniqueValues<string>(["home", ...input.selectedPages]);
     const goalNeeds = GOAL_TO_NEEDS[primaryGoal] || {};
 
-    // The design seed is derived from the wizard answers only. `wizardSeedId`
-    // is launch identity, never a design input — the same answers must compile
-    // the same site on every run.
+    const wizardSeedId = newId("ws");
     const seed = deriveDesignSeed({
       businessName: brand,
       businessModel: SYSTEM_TO_BUSINESS_MODEL[input.systemId] || "general",
@@ -346,7 +286,6 @@ export async function runLaunchPipeline(
       projectId: plannedBusinessId,
       regenerationNonce: input.regenerationNonce ?? null,
     });
-
 
     const themeTokens = themePresetToThemeTokens(input.theme);
     const selections: WizardSelections = {
@@ -371,7 +310,6 @@ export async function runLaunchPipeline(
         !!goalNeeds.wantsLeadCapture ||
         customerNeeds.includes("request_quote") ||
         customerNeeds.includes("fill_form"),
-      needsImmersive,
       templateId: input.template.id,
       themeId: input.theme.id,
       themePresetId: input.theme.id,
@@ -394,6 +332,7 @@ export async function runLaunchPipeline(
       ownerEmail,
       ids,
       confirmed,
+      provision,
       generationCategory,
       industryOverlay,
       industryProfile,
@@ -421,22 +360,6 @@ export async function runLaunchPipeline(
     styleVariation: design,
     pageRole: "home",
   });
-  const cloudAssets = await loadScopedProjectAssets({ businessId: plan.confirmed.businessId, projectId: plan.confirmed.projectId });
-  const localAssets = getAssetRegistry().getAll({ businessId: plan.confirmed.businessId });
-  const wizardRegistryContext = buildWizardAggregatedRegistryContext({
-    industry: plan.industryOverlay,
-    templateId: input.template.id,
-    themePresetId: input.theme.id,
-    seed: plan.seed,
-    businessId: plan.confirmed.businessId,
-    projectId: plan.confirmed.projectId,
-    assets: [...cloudAssets, ...localAssets],
-    designSelection: input.designSelection,
-  });
-
-  // M6 — real business media is projected into the seed so the compiler can
-  // bind it into the media slots the composition already declares.
-  const seedMediaLibrary = buildSeedMediaLibrary([...cloudAssets, ...localAssets] as unknown as Array<Record<string, unknown>>);
 
   const wizardSeedFile = {
     version: "2.0",
@@ -460,9 +383,6 @@ export async function runLaunchPipeline(
     },
     theme: { presetId: input.theme.id, label: input.theme.label, tokens: plan.themeTokens },
     design: { seed: plan.seed, contractSignature: designContract.contractSignature },
-    compositionPlan: undefined as WizardSelections["compositionPlan"],
-    registryContext: wizardRegistryContext,
-    media: { version: '1.0', assets: seedMediaLibrary },
     socials: Object.entries(input.socialLinks || {})
       .map(([platform, raw]) => {
         const value = (raw || "").trim();
@@ -475,58 +395,11 @@ export async function runLaunchPipeline(
   // ── Stage: seed (canonical compile + Stage 4b theme tokens) ───────────────
   status("Compiling your themed site…");
   const stage4b = await run.stage("seed", async (signal) => {
-    status('Choosing page compositions from the local design library...');
-    let compositionFailure = 'unknown';
-    let compositionFailureMessage = 'AI site composition could not complete. Please retry generation.';
-    const compositionPlan = await requestAIPageComposition(plan.selections, signal, undefined, (reason, details) => {
-      compositionFailure = reason;
-      compositionFailureMessage = details?.message || ('AI site composition failed (' + reason + '). Please retry generation.');
-      if (details?.status) compositionFailureMessage += ' (HTTP ' + details.status + ')';
-      if (details?.errorType) compositionFailureMessage += ' [' + details.errorType + ']';
-    }, wizardRegistryContext);
-    signal.throwIfAborted();
-    if (!compositionPlan) {
-      // V4 M1: AI composition is optional — never an availability risk.
-      // Degrade and continue; Stage 4b compiles the deterministic Design
-      // Intervention for the selected industry layout.
-      run.degrade('seed', 'composition.' + compositionFailure, compositionFailureMessage +
-        ' The selected industry layout was used instead.');
-    } else {
-      plan.selections.compositionPlan = compositionPlan;
-      wizardSeedFile.compositionPlan = compositionPlan;
-    }
-
-    // V4 M5: 21st generation coverage gate — runs before Stage 4b so a launch
-    // can never silently substitute generic UI for a certified implementation.
-    // The gate must validate the pack the compiler will actually use: when the
-    // Wizard sealed an explicit visual direction, coverage is measured against
-    // that pack, not the auto-resolved one.
-    const coveragePack = getArtDirectionPack(input.designSelection?.artDirectionPackId) ?? resolveArtDirectionPack({
-      industry: plan.industryOverlay,
-      themePresetId: input.theme.id,
-      seed: plan.seed,
-    });
-    const coverage = validateTwentyFirstGenerationCoverage({
-      pages: plan.requestedPages.map((role) => ({
-        role,
-        sectionTypes: composition.sections.filter((section) => !section.hidden).map((section) => section.type),
-      })),
-      artDirectionPack: coveragePack,
-      selectedVariants: Object.fromEntries((compositionPlan?.pages ?? []).flatMap((page) =>
-        Object.entries(page.variants || {}).map(([sectionType, variantId]) =>
-          [`${page.role}:${sectionType}`, variantId as VariantId] as const),
-      )),
-    });
-    if (!coverage.ok) {
-      run.degrade('seed', 'coverage.21st-incomplete', summarizeCoverageReport(coverage));
-      if (import.meta.env?.DEV) console.error('[launch] 21st coverage gate issues', coverage.issues);
-    }
     const result = await runWizardStage4b({
       selections: plan.selections,
       existingVfsFiles: {
         "/.unison/wizard-seed.json": JSON.stringify(wizardSeedFile, null, 2),
         [TEMPLATE_DESIGN_CONTRACT_PATH]: JSON.stringify(designContract, null, 2),
-        [WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(wizardRegistryContext, null, 2),
       },
       signal,
       yieldToHost: yieldToBrowser,
@@ -619,15 +492,10 @@ export async function runLaunchPipeline(
     uiFoundation,
     generationBrief: siteBundleSnapshot.meta.generationBrief,
     designIntervention: siteBundleSnapshot.meta.designIntervention,
-    designSelection: siteBundleSnapshot.meta.designSelection,
-    registryContext: wizardRegistryContext,
     bindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
       industry: plan.industryOverlay,
     }),
   };
-  if (siteBundleSnapshot?.meta) {
-    siteBundleSnapshot.meta.registryContext = wizardRegistryContext;
-  }
   const plannedDataBindings = planSectionDataBindings(siteBundleSnapshot);
   const businessRuntime = buildBusinessRuntimeContract({
     businessId: plan.confirmed.businessId,
@@ -663,164 +531,19 @@ export async function runLaunchPipeline(
   const intentSurfacesFile = buildIntentSurfacesFile(materializedPlayground);
 
   // ── Stage: enrich ─────────────────────────────────────────────────────────
-  // Lane B enrichment: AI proposes candidate page-body enrichments.
-  // All AI output remains a candidate until validated and accepted via
-  // canonical merge + preflight + commitMutation.
-  status("Art-directing your site…");
-
-  let enrichedVfsFiles = siteBundleSnapshot.vfsFiles;
-  const acceptedLaneBPagePaths = new Set<string>();
-
-  await run.stage("enrich", async (signal) => {
-      if (input.ai?.laneB === false) return;
-      const {
-        uiFoundationManifest: manifestData,
-        uiFoundationDirective,
-        designVocabularyReport,
-        implementationContext,
-        assetContext,
-        runtimeDependencies,
-        primitiveFamilies,
-        capabilityRequirements,
-      } = buildWizardLaneBRegistryContext(siteBundleSnapshot, wizardRegistryContext);
-
-      // Build the page registry for AI visibility
-      const pageRegistry = Object.entries(siteBundleSnapshot.pageRegistry.pages || {}).map(
-        ([id, page]: [string, any]) => ({
-          id,
-          filePath: page.filePath || `/src/pages/${id}.tsx`,
-          route: page.route || `/${id}`,
-          title: page.title || id,
-          requiredIntents: page.requiredIntents || [],
-          role: page.pageRole || page.pageType || (page.isHome ? 'home' : 'custom'),
-          pageNeed: `${page.title || id}: ${(plan.selections.secondaryGoals || []).join(', ') || 'support the primary business goal'}; preserve this route's distinct purpose and composition.`,
-        }),
-      );
-
-      const enrichmentRequest: WizardLaneBEnrichmentRequest = {
-        version: '1.0',
-        compositionPlan: plan.selections.compositionPlan,
-        wizardSeedId: plan.seed,
-        businessName: brand,
-        industryOverlay: plan.industryOverlay,
-        primaryGoal: plan.selections.primaryGoal as string,
-        selectedPages: Array.from(plan.selections.requestedPages || ['home']),
-        selectedTemplateId: input.template.id,
-        selectedThemeId: input.theme.id,
-        snapshotId: siteBundleSnapshot.snapshotId,
-        designRegistrySignature: designRegistrySignature(),
-        designIntervention: siteBundleSnapshot.meta.designIntervention || ({} as any),
-        pageRegistry,
-        currentPageSources: Object.fromEntries(
-          pageRegistry.map((page) => [
-            page.id,
-            {
-              filePath: page.filePath,
-              content: siteBundleSnapshot.vfsFiles[page.filePath] || '',
-            },
-          ]),
-        ),
-        uiFoundationDirective,
-        themeContractDirective: buildThemeContractDirectiveFromFiles(siteBundleSnapshot.vfsFiles),
-        designVocabularyReport,
-        implementationContext,
-        assetContext,
-        runtimeDependencies,
-        primitiveFamilies,
-        capabilityRequirements,
-        intentBindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
-          industry: plan.industryOverlay,
-        }),
-      };
-
-      // Homepage-first: the homepage is authored alone in the first turn and
-      // establishes the visual language every later page inherits.
-      const homePageEntry = Object.entries(siteBundleSnapshot.pageRegistry.pages || {}).find(
-        ([, page]: [string, any]) => page?.isHome,
-      );
-      const homePageId = homePageEntry?.[0]
-        ?? (siteBundleSnapshot.pageRegistry.homePageId as string | undefined)
-        ?? pageRegistry[0]?.id;
-      const homePagePath = pageRegistry.find((page) => page.id === homePageId)?.filePath;
-      const pagePaths = orderHomepageFirst(
-        pageRegistry.map((page) => page.filePath),
-        (path) => path === homePagePath,
-      );
-      const batchPlan = planLaneBBatches({
-        pages: pagePaths,
-        homeFirstPath: homePagePath,
-        basePayloadBytes: measurePayloadBytes({
-          ...enrichmentRequest,
-          pageRegistry: [],
-          currentPageSources: {},
-        }),
-      });
-      let acceptedBatchCount = 0;
-      let homepageVisualLanguage: HomepageVisualLanguage | undefined;
-
-      // Each batch is independently validated and merged. A failed batch leaves
-      // its deterministic Stage 4b pages untouched while later batches proceed.
-      for (const batchPaths of batchPlan.batches) {
-        signal.throwIfAborted();
-        const batchPathSet = new Set(batchPaths);
-        const batchRequest: WizardLaneBEnrichmentRequest = {
-          ...enrichmentRequest,
-          homepageVisualLanguage,
-          pageRegistry: pageRegistry.filter((page) => batchPathSet.has(page.filePath)),
-          currentPageSources: Object.fromEntries(
-            Object.entries(enrichmentRequest.currentPageSources)
-              .filter(([, source]) => batchPathSet.has(source.filePath)),
-          ),
-        };
-
-        const batch = await enrichWizardPageBatch({
-          request: batchRequest, files: enrichedVfsFiles, uiFoundationManifest: manifestData,
-          signal, onDegrade: (code, message) => run.degrade('enrich', code, message),
-        });
-        signal.throwIfAborted();
-        enrichedVfsFiles = batch.files;
-        for (const path of batch.acceptedPaths) acceptedLaneBPagePaths.add(path);
-        if (batch.acceptedPaths.length) acceptedBatchCount += 1;
-
-        // Once the homepage body exists, seal what it established so every
-        // later batch — and the page registry — inherits the same language.
-        if (!homepageVisualLanguage && homePagePath && batchPathSet.has(homePagePath)) {
-          const language = extractHomepageVisualLanguage(
-            enrichedVfsFiles[homePagePath] || '',
-            homePageId || 'home',
-          );
-          if (hasEstablishedVisualLanguage(language)) {
-            homepageVisualLanguage = language;
-            const registryPages = siteBundleSnapshot.pageRegistry.pages || {};
-            siteBundleSnapshot.pageRegistry.visualLanguage = {
-              sourcePageId: language.sourcePageId,
-              signature: language.signature,
-              establishedAt: new Date().toISOString(),
-            };
-            for (const [id, page] of Object.entries(registryPages) as [string, any][]) {
-              page.visualLanguageSourcePageId = language.sourcePageId;
-              page.visualLanguageSignature = language.signature;
-              void id;
-            }
-          }
-        }
-      }
-
-      console.log('[launch] Lane B enrichment complete:', {
-        batches: batchPlan.batches.length,
-        acceptedBatches: acceptedBatchCount,
-        pagesPerBatch: batchPlan.pagesPerBatch,
-        limitedBy: batchPlan.limitedBy,
-      });
-    }, { fallback: () => undefined, degradeCode: 'enrich.unavailable', degradeMessage: 'Optional AI enrichment did not complete; the compiled site was preserved.' });
+  // Launcher enrichment is deterministic compiler work. AI may consume this
+  // context after launch, but it never authors or replaces Launcher page files.
+  status("Finalizing your deterministic design…");
+  run.markStage("enrich", "done");
 
   // ── Stage: preflight (merge + seal + strict import contract) ──────────────
   status("Running preview gates…");
   const artifacts = await run.stage("preflight", async (signal) => {
     const built = await buildCanonicalLaunchArtifactsAsync(
       {
-        generatedFiles: enrichedVfsFiles,
-        acceptedLaneBPagePaths: [...acceptedLaneBPagePaths],
+        // Stage 4b's snapshot VFS is the authored source for the deterministic
+        // launcher. Pass it explicitly so merge never treats pages as fallback.
+        generatedFiles: siteBundleSnapshot.vfsFiles,
         preferredEntryPoint: "/src/App.tsx",
         siteBundleSnapshot,
         compileArtifact: stage4b.pipelineResult.compileArtifact,
@@ -914,7 +637,6 @@ export async function runLaunchPipeline(
     "/.unison/intent-surfaces.json": JSON.stringify(intentSurfacesFile, null, 2),
     "/.unison/gate-verdicts.json": JSON.stringify(gateVerdicts, null, 2),
     "/.unison/integrity-report.json": JSON.stringify(integrityReport, null, 2),
-    [WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(wizardRegistryContext, null, 2),
   };
   const draftClassification = classifyDraft(vfsFiles);
   vfsFiles["/.unison/draft-classification.json"] = JSON.stringify(
@@ -925,10 +647,16 @@ export async function runLaunchPipeline(
 
   // ── Stage: commit ─────────────────────────────────────────────────────────
   status("Saving your site workspace…");
+  if (callbacks.onReview && !await callbacks.onReview({ files: vfsFiles, entryPoint: artifacts.entryPoint })) {
+    const error = new Error('Site preview discarded');
+    error.name = 'LaunchReviewCancelled';
+    throw error;
+  }
   const commit = await run.stage("commit", async () => {
-    // Identity was registered in the plan stage; the commit writes the first
-    // revision of that already-real Unison site.
-    const confirmed: ConfirmedLaunchIds = plan.confirmed;
+    // Register the reviewed identity before writing its first revision.
+    const confirmed: ConfirmedLaunchIds = callbacks.onReview ? await plan.provision() : plan.confirmed;
+    if (Object.keys(plan.confirmed).some(key => confirmed[key as keyof ConfirmedLaunchIds] !== plan.confirmed[key as keyof ConfirmedLaunchIds])) throw new Error('Launch identity changed after review. Generate a fresh preview.');
+    try { localStorage.setItem('unison:lastBusinessId', confirmed.businessId); } catch { /* Best effort. */ }
     const identity: BuilderIdentity = {
       userId: plan.user.id,
       businessId: confirmed.businessId,

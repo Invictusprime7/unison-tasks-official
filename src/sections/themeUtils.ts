@@ -30,7 +30,8 @@ export const themeToCSS = (theme: ThemeTokens): React.CSSProperties => ({
 
 /** Inline style shorthand for hsl colors from theme */
 export const hsl = (token: string) => `hsl(${token})`;
-export const hsla = (token: string, alpha: number) => `hsla(${token}, ${alpha})`;
+// Theme tokens use space-separated HSL channels, which require slash alpha.
+export const hsla = (token: string, alpha: number) => `hsl(${token} / ${alpha})`;
 
 /** Container style from theme */
 export const containerStyle = (theme: ThemeTokens): React.CSSProperties => ({

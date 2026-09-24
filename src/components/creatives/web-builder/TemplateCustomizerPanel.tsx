@@ -60,6 +60,10 @@ function inferSectionType(section: SectionInfo): SectionType {
 interface TemplateCustomizerPanelProps {
   customizer: TemplateCustomizerReturn;
   onApply: () => void;
+  onCancel?: () => void;
+  saving?: boolean;
+  previewing?: boolean;
+  error?: string | null;
   /**
    * Canonical variant commit (WebBuilder → commitToPipeline). When provided,
    * layout variant selection writes to the SiteBundleSnapshot instead of the
@@ -104,6 +108,7 @@ const ColorSwatch: React.FC<{
 }> = ({ label, value, onChange }) => (
   <div className="flex items-center gap-1.5">
     <input
+      aria-label={`${label} color picker`}
       type="color"
       value={value}
       onChange={e => onChange(e.target.value)}
@@ -112,6 +117,7 @@ const ColorSwatch: React.FC<{
     <div className="flex-1 min-w-0">
       <Label className="text-[10px] text-white/50 block leading-tight">{label}</Label>
       <Input
+        aria-label={label}
         value={value}
         onChange={e => onChange(e.target.value)}
         className="h-5 text-[10px] px-1 font-mono"
@@ -125,6 +131,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
   customizer,
   onApply,
   onVariantCommit,
+  onCancel, saving = false, previewing = false, error,
   className,
 }) => {
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
@@ -137,9 +144,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
       const dataUrl = reader.result as string;
       customizer.replaceImage(imageId, dataUrl);
       setReplacingImageId(null);
-      // Don't call onApply() here - the overrideVersion useEffect in WebBuilder
-      // handles this automatically after React commits the new images state,
-      // avoiding a stale closure race condition.
+      // The parent compiles a scratch preview after React commits this state.
     };
     reader.readAsDataURL(file);
   }, [customizer]);
@@ -148,8 +153,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= customizer.sections.length) return;
     customizer.reorderSections(index, newIndex);
-    onApply();
-  }, [customizer, onApply]);
+  }, [customizer]);
 
   return (
     <div className={cn('w-full bg-[#0a0a12] shadow-[inset_0_0_30px_rgba(255,255,0,0.05)] flex flex-col h-full', className)}>
@@ -163,39 +167,42 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
         </div>
         <div className="flex gap-1.5">
           {customizer.isDirty && (
-            <Button variant="ghost" size="sm" onClick={() => { customizer.resetAll(); onApply(); }} className="h-7 text-xs gap-1 text-red-400 hover:bg-red-500/20">
+            <Button variant="ghost" size="sm" disabled={saving} onClick={() => { if (onCancel) onCancel(); else customizer.resetAll(); }} className="h-7 text-xs gap-1 text-red-400 hover:bg-red-500/20">
               <RotateCcw className="w-3 h-3" />
-              Reset
+              Cancel
             </Button>
           )}
           {customizer.isDirty && (
-            <Button size="sm" onClick={onApply} className="h-7 text-xs gap-1 bg-yellow-500 text-black hover:bg-yellow-400 shadow-[0_0_10px_rgba(255,255,0,0.4)]">
+            <Button size="sm" disabled={saving || previewing} onClick={onApply} className="h-7 text-xs gap-1 bg-yellow-500 text-black hover:bg-yellow-400 shadow-[0_0_10px_rgba(255,255,0,0.4)]">
               <Check className="w-3 h-3" />
-              Apply
+              {saving ? 'Saving?' : previewing ? 'Updating?' : 'Apply'}
             </Button>
           )}
         </div>
       </div>
 
+      <p className="px-3 py-1 text-xs text-white/50">Preview changes here. Apply saves them to your project.</p>
+      {error && <p role="alert" className="px-3 py-2 text-xs text-red-300">{error}</p>}
+      <fieldset disabled={saving} className="flex min-h-0 flex-1 flex-col border-0 p-0">
       {/* Tabs */}
       <Tabs defaultValue="theme" className="flex-1 flex flex-col min-h-0">
         <TabsList className="mx-2 mt-1.5 grid grid-cols-6 h-7 bg-[#0d0d18]">
-          <TabsTrigger value="theme" className="text-xs px-1 data-[state=active]:bg-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,255,0,0.5)] text-yellow-400/60 hover:text-yellow-300">
+          <TabsTrigger aria-label="Theme" value="theme" className="text-xs px-1 data-[state=active]:bg-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,255,0,0.5)] text-yellow-400/60 hover:text-yellow-300">
             <Sparkles className="w-3.5 h-3.5" />
           </TabsTrigger>
-          <TabsTrigger value="layouts" className="text-xs px-1 data-[state=active]:bg-violet-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(139,92,246,0.5)] text-violet-400/60 hover:text-violet-300">
+          <TabsTrigger aria-label="Layouts" value="layouts" className="text-xs px-1 data-[state=active]:bg-violet-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(139,92,246,0.5)] text-violet-400/60 hover:text-violet-300">
             <LayoutGrid className="w-3.5 h-3.5" />
           </TabsTrigger>
-          <TabsTrigger value="colors" className="text-xs px-1 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(0,255,255,0.5)] text-cyan-400/60 hover:text-cyan-300">
+          <TabsTrigger aria-label="Colors" value="colors" className="text-xs px-1 data-[state=active]:bg-cyan-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(0,255,255,0.5)] text-cyan-400/60 hover:text-cyan-300">
             <Palette className="w-3.5 h-3.5" />
           </TabsTrigger>
-          <TabsTrigger value="typography" className="text-xs px-1 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,0,255,0.5)] text-fuchsia-400/60 hover:text-fuchsia-300">
+          <TabsTrigger aria-label="Typography" value="typography" className="text-xs px-1 data-[state=active]:bg-fuchsia-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,0,255,0.5)] text-fuchsia-400/60 hover:text-fuchsia-300">
             <Type className="w-3.5 h-3.5" />
           </TabsTrigger>
-          <TabsTrigger value="sections" className="text-xs px-1 data-[state=active]:bg-lime-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(0,255,0,0.5)] text-lime-400/60 hover:text-lime-300">
+          <TabsTrigger aria-label="Sections" value="sections" className="text-xs px-1 data-[state=active]:bg-lime-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(0,255,0,0.5)] text-lime-400/60 hover:text-lime-300">
             <Layers className="w-3.5 h-3.5" />
           </TabsTrigger>
-          <TabsTrigger value="images" className="text-xs px-1 data-[state=active]:bg-orange-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,165,0,0.5)] text-orange-400/60 hover:text-orange-300">
+          <TabsTrigger aria-label="Images" value="images" className="text-xs px-1 data-[state=active]:bg-orange-500 data-[state=active]:text-black data-[state=active]:shadow-[0_0_8px_rgba(255,165,0,0.5)] text-orange-400/60 hover:text-orange-300">
             <Image className="w-3.5 h-3.5" />
           </TabsTrigger>
         </TabsList>
@@ -208,7 +215,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                 {customizer.presets.map(preset => (
                   <button
                     key={preset.id}
-                    onClick={() => { customizer.applyPreset(preset.id); onApply(); }}
+                    onClick={() => { customizer.applyPreset(preset.id); }}
                     className={cn(
                       'p-2 rounded-lg border text-left transition-all hover:shadow-md',
                       customizer.activePresetId === preset.id
@@ -246,8 +253,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                     return;
                   }
                   customizer.setActiveVariant(sectionId, variantId);
-                  onApply();
-                }}
+                              }}
               />
             </div>
           </ScrollArea>
@@ -258,22 +264,22 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
           <ScrollArea className="h-full">
             <Section title="Brand Colors" icon={<Palette className="w-4 h-4" />} badge={customizer.isDirty ? 'modified' : undefined}>
               <div className="space-y-3">
-                <ColorSwatch label="Primary" value={customizer.colors.primary} onChange={v => { customizer.updateColor('primary', v); onApply(); }} />
-                <ColorSwatch label="Secondary" value={customizer.colors.secondary} onChange={v => { customizer.updateColor('secondary', v); onApply(); }} />
-                <ColorSwatch label="Accent" value={customizer.colors.accent} onChange={v => { customizer.updateColor('accent', v); onApply(); }} />
+                <ColorSwatch label="Primary" value={customizer.colors.primary} onChange={v => { customizer.updateColor('primary', v); }} />
+                <ColorSwatch label="Secondary" value={customizer.colors.secondary} onChange={v => { customizer.updateColor('secondary', v); }} />
+                <ColorSwatch label="Accent" value={customizer.colors.accent} onChange={v => { customizer.updateColor('accent', v); }} />
               </div>
             </Section>
             <Section title="Background & Surface" icon={<Palette className="w-4 h-4" />} defaultOpen={false}>
               <div className="space-y-3">
-                <ColorSwatch label="Background" value={customizer.colors.background} onChange={v => { customizer.updateColor('background', v); onApply(); }} />
-                <ColorSwatch label="Surface" value={customizer.colors.surface} onChange={v => { customizer.updateColor('surface', v); onApply(); }} />
-                <ColorSwatch label="Border" value={customizer.colors.border} onChange={v => { customizer.updateColor('border', v); onApply(); }} />
+                <ColorSwatch label="Background" value={customizer.colors.background} onChange={v => { customizer.updateColor('background', v); }} />
+                <ColorSwatch label="Surface" value={customizer.colors.surface} onChange={v => { customizer.updateColor('surface', v); }} />
+                <ColorSwatch label="Border" value={customizer.colors.border} onChange={v => { customizer.updateColor('border', v); }} />
               </div>
             </Section>
             <Section title="Text Colors" icon={<Type className="w-4 h-4" />} defaultOpen={false}>
               <div className="space-y-3">
-                <ColorSwatch label="Primary Text" value={customizer.colors.text} onChange={v => { customizer.updateColor('text', v); onApply(); }} />
-                <ColorSwatch label="Muted Text" value={customizer.colors.textMuted} onChange={v => { customizer.updateColor('textMuted', v); onApply(); }} />
+                <ColorSwatch label="Primary Text" value={customizer.colors.text} onChange={v => { customizer.updateColor('text', v); }} />
+                <ColorSwatch label="Muted Text" value={customizer.colors.textMuted} onChange={v => { customizer.updateColor('textMuted', v); }} />
               </div>
             </Section>
           </ScrollArea>
@@ -287,10 +293,10 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                 <div>
                   <Label className="text-xs text-white/50">Heading Font</Label>
                   <Select
-                    value={customizer.typography.headingFont.split(',')[0].trim()}
-                    onValueChange={v => { customizer.updateTypography('headingFont', `${v}, sans-serif`); onApply(); }}
+                    value={customizer.typography.headingFont.split(',')[0].trim().replace(/^['"]|['"]$/g, '')}
+                    onValueChange={v => { customizer.updateTypography('headingFont', `${v}, sans-serif`); }}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Heading font" className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -303,10 +309,10 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                 <div>
                   <Label className="text-xs text-white/50">Body Font</Label>
                   <Select
-                    value={customizer.typography.bodyFont.split(',')[0].trim()}
-                    onValueChange={v => { customizer.updateTypography('bodyFont', `${v}, sans-serif`); onApply(); }}
+                    value={customizer.typography.bodyFont.split(',')[0].trim().replace(/^['"]|['"]$/g, '')}
+                    onValueChange={v => { customizer.updateTypography('bodyFont', `${v}, sans-serif`); }}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Body font" className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -336,7 +342,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                       min={min}
                       max={max}
                       step={step}
-                      onValueChange={([v]) => { customizer.updateTypography(key, `${v}rem`); onApply(); }}
+                      onValueChange={([v]) => { customizer.updateTypography(key, `${v}rem`); }}
                     />
                   </div>
                 ))}
@@ -354,16 +360,16 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                     min={1}
                     max={2.5}
                     step={0.1}
-                    onValueChange={([v]) => { customizer.updateTypography('lineHeight', String(v)); onApply(); }}
+                    onValueChange={([v]) => { customizer.updateTypography('lineHeight', String(v)); }}
                   />
                 </div>
                 <div>
                   <Label className="text-xs text-white/50">Heading Weight</Label>
                   <Select
                     value={customizer.typography.headingWeight}
-                    onValueChange={v => { customizer.updateTypography('headingWeight', v); onApply(); }}
+                    onValueChange={v => { customizer.updateTypography('headingWeight', v); }}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger aria-label="Heading weight" className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -387,7 +393,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                     min={20}
                     max={160}
                     step={10}
-                    onValueChange={([v]) => { customizer.updateSpacing('sectionPadding', `${v}px`); onApply(); }}
+                    onValueChange={([v]) => { customizer.updateSpacing('sectionPadding', `${v}px`); }}
                   />
                 </div>
                 <div>
@@ -400,7 +406,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                     min={800}
                     max={1920}
                     step={40}
-                    onValueChange={([v]) => { customizer.updateSpacing('containerMaxWidth', `${v}px`); onApply(); }}
+                    onValueChange={([v]) => { customizer.updateSpacing('containerMaxWidth', `${v}px`); }}
                   />
                 </div>
               </div>
@@ -435,6 +441,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                         <Button
                           variant="ghost" size="sm"
                           disabled={index === 0}
+                          aria-label={`Move ${section.label} up`}
                           onClick={() => handleSectionMove(index, 'up')}
                           className="h-6 w-6 p-0"
                         >
@@ -443,6 +450,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                         <Button
                           variant="ghost" size="sm"
                           disabled={index === customizer.sections.length - 1}
+                          aria-label={`Move ${section.label} down`}
                           onClick={() => handleSectionMove(index, 'down')}
                           className="h-6 w-6 p-0"
                         >
@@ -450,7 +458,9 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
                         </Button>
                         <Button
                           variant="ghost" size="sm"
-                          onClick={() => { customizer.toggleSectionVisibility(section.id); onApply(); }}
+                          aria-label={`${section.visible ? 'Hide' : 'Show'} ${section.label}`}
+                          aria-pressed={!section.visible}
+                          onClick={() => { customizer.toggleSectionVisibility(section.id); }}
                           className="h-6 w-6 p-0"
                         >
                           {section.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -533,6 +543,7 @@ export const TemplateCustomizerPanel: React.FC<TemplateCustomizerPanelProps> = (
           </ScrollArea>
         </TabsContent>
       </Tabs>
+      </fieldset>
     </div>
   );
 };

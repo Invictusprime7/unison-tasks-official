@@ -50,8 +50,8 @@ describe('Web Builder preview ownership', () => {
     expect(sharedPreview).toContain('dependencySignatureRef.current = null;');
     expect(sharedPreview).toContain('syncIntoOwner(snapshot)');
     expect(sharedPreview).toContain('importIntoOwner(changedFiles)');
-    expect(builder.match(/onImportFiles=\{virtualFS\.importFiles\}/g)).toHaveLength(1);
-    expect(builder.match(/onSyncFiles=\{virtualFS\.replaceFiles\}/g)).toHaveLength(1);
+    expect(builder.match(/onImportFiles=\{templateCustomizer\.isDirty \? undefined : virtualFS\.importFiles\}/g)).toHaveLength(1);
+    expect(builder.match(/onSyncFiles=\{templateCustomizer\.isDirty \? undefined : virtualFS\.replaceFiles\}/g)).toHaveLength(1);
   });
 
   it('keeps the connected Sandpack provider mounted during background recompiles', () => {
@@ -130,6 +130,7 @@ describe('Web Builder preview ownership', () => {
     const middleware = readSource('middleware.ts');
     expect(sharedPreview).toContain("bundlerURL: new URL('/sandpack/index.html', window.location.origin).toString()");
     expect(sharedPreview).toContain('bundlerTimeOut: 120_000');
+    expect(sharedPreview).toContain('startRoute="/sandpack/index.html"');
     expect(sharedPreview).toContain("if (status === 'timeout')");
     expect(sharedPreview).toContain('MAX_SANDPACK_TIMEOUT_RECOVERIES = 3');
     expect(sharedPreview).toContain('timeoutRecoveryCountRef.current >= MAX_SANDPACK_TIMEOUT_RECOVERIES');

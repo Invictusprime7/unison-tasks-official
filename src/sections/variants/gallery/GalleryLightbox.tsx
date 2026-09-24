@@ -62,6 +62,9 @@ export const GalleryLightbox: React.FC<GalleryLightboxProps> = ({ items, index, 
       }}
     >
       <Dialog.Title className="sr-only">{item.alt || item.caption || 'Gallery image'}</Dialog.Title>
+      <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        Image {(index ?? 0) + 1} of {items.length}: {item.alt || item.caption || 'Gallery image'}
+      </p>
       <Dialog.Close asChild><button
         type="button"
         aria-label="Close gallery"
@@ -100,12 +103,13 @@ export const GalleryLightbox: React.FC<GalleryLightboxProps> = ({ items, index, 
           className="max-h-[var(--ut-overlay-block)] w-auto object-contain"
           style={{ borderRadius: theme.radius }}
         />
-        {item.caption && (
+        {(item.caption || item.category) && (
           <figcaption
             className="mt-3 text-center text-sm"
             style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.background) }}
           >
             {item.caption}
+            {item.category && <span className="ml-2 text-xs uppercase tracking-widest">{item.category}</span>}
           </figcaption>
         )}
       </figure>

@@ -1,0 +1,3 @@
+# Reviewed component hashes use the LF bytes stored in Git. Preserve those
+# bytes on Windows checkouts as well as Linux/macOS, including new variants.
+src/sections/variants/**/*.tsx text eol=lf

@@ -80,30 +80,24 @@ describe('launch orchestrator canonical handoff', () => {
     const publicProfile = position('buildPublicBusinessContext(businessProfile)');
     const canonicalPages = position('const canonicalPages = Object.values(siteBundleSnapshot.pageRegistry.pages)');
     const bindingGuide = position('buildWizardBindingGuide(siteBundleSnapshot');
-    const enrichmentBatching = position('planLaneBBatches({');
+    const deterministicEnrichment = position('run.markStage("enrich", "done")');
     const preflight = position('await buildCanonicalLaunchArtifactsAsync(');
 
     expect(source).toContain('generationBrief: siteBundleSnapshot.meta.generationBrief');
     expect(source).toContain('designIntervention: siteBundleSnapshot.meta.designIntervention');
-    expect(source).toContain('generatedFiles: enrichedVfsFiles');
+    expect(source).toContain('generatedFiles: siteBundleSnapshot.vfsFiles');
     expect(source).toContain('compileArtifact: stage4b.pipelineResult.compileArtifact');
     expect(source).toContain('approvedExperienceCapabilities: resolveApprovedExperienceCapabilities({');
     expect(source).toContain('requiredCapabilities: resolveExperienceRequirement(');
     expect(source).toContain('webgl: siteBundleSnapshot.meta.designIntervention?.envelope?.webgl');
     expect(source).not.toContain('enrichWizardPagesWithAI');
-    expect(source).toContain('enrichWizardPageBatch({');
-    expect(source).toContain('request: batchRequest, files: enrichedVfsFiles');
-    expect(source).toContain('compositionPlan: plan.selections.compositionPlan');
-    expect(source).not.toContain('if (plan.selections.compositionPlan) return;');
-    expect(source).toContain('if (input.ai?.laneB === false) return;');
-    expect(source).toContain("run.degrade('seed', 'composition.' + compositionFailure");
-    expect(source).not.toContain('throw new LaunchFatalError(compositionFailureMessage');
-    expect(source).not.toContain('ai?.composition');
+    expect(source).not.toContain('runBuilderTurn');
+    expect(source).not.toContain('enrich.ai_rejected');
     expect(stage4bResult).toBeLessThan(canonicalPages);
     expect(canonicalPages).toBeLessThan(publicProfile);
     expect(publicProfile).toBeLessThan(bindingGuide);
-    expect(bindingGuide).toBeLessThan(enrichmentBatching);
-    expect(enrichmentBatching).toBeLessThan(preflight);
+    expect(bindingGuide).toBeLessThan(deterministicEnrichment);
+    expect(deterministicEnrichment).toBeLessThan(preflight);
   });
 
   it('plans forms and degrades embedded published-runtime readiness without blocking launch', () => {
@@ -130,7 +124,6 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).toContain('"/.unison/intent-surfaces.json": JSON.stringify(');
     expect(source).toContain('"/.unison/gate-verdicts.json": JSON.stringify(');
     expect(source).toContain('"/.unison/integrity-report.json": JSON.stringify(');
-    expect(source).toContain('[WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(wizardRegistryContext, null, 2)');
     expect(source).toContain('vfsFiles["/.unison/draft-classification.json"]');
     expect(source).toContain('wizardAudit,');
     expect(source).toContain('launchContract: plan.launchContract,');
@@ -187,31 +180,4 @@ describe('launch orchestrator canonical handoff', () => {
     expect(topology).toBeLessThan(preview);
     expect(preview).toBeLessThan(playground);
   });
-});
-// V4 M1: AI composition and Lane B are both optional. Every on/off combination
-// must launch successfully; only Stage 4b is mandatory.
-it('launches deterministically in all four composition/Lane B modes', () => {
-  const source = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
-  // Composition failure degrades instead of throwing — launch continues.
-  const degrade = source.indexOf("run.degrade('seed', 'composition.' + compositionFailure");
-  const stage4b = source.indexOf('const result = await runWizardStage4b(');
-  expect(degrade).toBeGreaterThan(-1);
-  expect(degrade).toBeLessThan(stage4b);
-  expect(source).not.toContain('throw new LaunchFatalError(compositionFailureMessage');
-  // Stage 4b runs unconditionally — not gated on a composition plan.
-  expect(source).not.toContain('if (plan.selections.compositionPlan) return;');
-  // Lane B is optional and independently degradable per batch.
-  expect(source).toContain('if (input.ai?.laneB === false) return;');
-  expect(source).toContain("onDegrade: (code, message) => run.degrade('enrich', code, message)");
-  // The composition plan is forwarded to Lane B as context when present.
-  expect(source).toContain('compositionPlan: plan.selections.compositionPlan');
-});
-
-// The accepted AI plan must survive both initial compile and final handoff seed writes.
-it('stamps the accepted composition into the seed before Stage 4b', () => {
-  const source = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
-  expect(source.indexOf('wizardSeedFile.compositionPlan = compositionPlan')).toBeGreaterThan(source.indexOf('if (!compositionPlan) {'));
-  expect(source.indexOf('wizardSeedFile.compositionPlan = compositionPlan')).toBeLessThan(source.indexOf('const result = await runWizardStage4b('));
-  expect(source).toContain('...wizardSeedFile,');
-  expect(source).toContain('wizardSeed: contextualWizardSeedFile');
 });
