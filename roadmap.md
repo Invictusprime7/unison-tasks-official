@@ -893,3 +893,15 @@ preview runtime — extend what exists.
 - [x] P1.1/P1.2 — Compiler-first wizard seed: `deriveDesignSeed()` + `computeRenderHash()` in `src/platform/core/generationSeed.ts`. The random per-launch `wizardSeedId` no longer participates in any visual or structural decision (launch orchestrator design seed, experience envelope seed, `buildWizardDesignIntervention`); it stays launch identity only. A new optional `regenerationNonce` (LaunchOrchestratorInput + WizardSelections) is the only token that intentionally moves the design. `snapshot.meta.renderHash` stamps a stable fingerprint of seed, art direction, theme, template, topology, routes and resolved variants. Tests: `src/test/renderHashAndSeedStability.test.ts` (5); `designSeedDeterminism` guards updated.
 
 - [x] Task 19 — Unison Affinity documentation: `docs/UNISON_AFFINITY.md` is the canonical internal spec for the deterministic design compiler (launch identity vs design seed, `renderHash` fingerprint, the four-tier path by which a new implementation reaches a launch, the design authority chain, non-negotiables, and the public communication boundary). README.md revised to current foundations (Node 22, Unison Affinity guarantees section, certified-registry framing, verified-transaction and SiteShell closure promises, refreshed code map incl. LauncherWizard/launchOrchestrator/generationSeed/siteDesignContract/compositionAffinity). Owner rule recorded: refresh README on every major update; never name upstream registries publicly (mem://process/readme-maintenance, mem://architecture/wizard-launcher/unison-affinity).
+
+- [x] Coverage Wave 1a: certified gallery masonry/cinematic-grid/lightbox-grid and before-after slider/grid from archived 21st sources (703, 285, 4746, 4869, 1358).
+- [ ] Coverage Wave 1b: remaining gallery (editorial-mosaic, feature-split, horizontal-reel) + before-after case-study.
+- [ ] Coverage Wave 2: menu, booking slot picker, donation panel, quote estimator.
+
+- [x] Task 20: Canonical Art Direction — Phase A (6 families, qualified child packs, aliases) + Phase B (ResolvedArtDirection sealed in snapshot meta.artDirection, in renderHash, family directive in Lane B brief). Next: Phase C completeness gate, D edge brief injection, E consumer migration, F erasure.
+- [x] Task 21: Phase C Pack Completeness gate (packCompleteness.ts; 12 surfaces; auto mode only picks complete packs and stays inside the selected family; CI test). Next: Phase D edge brief injection.
+
+- [x] Task 22 — Art Direction Phase D: resolved family/pack travels in the site design contract to the page composer; family switch refused at the service.
+
+- [x] Task 23 — Phase E (consumers): sealed `meta.artDirection` is the authority for preview, autosave, recompile, restyle and publish. Theme contract accepts the sealed record and prefers its storage pack; contract now carries familyId + qualified pack id; legacy revisions still resolve a family. Tests: src/test/sealedArtDirectionConsumers.test.ts (4).
+- [x] Task 23 — Art Direction Phase F: every consumer prefers the sealed artDirection record; erasure-gate test blocks direct legacy reads

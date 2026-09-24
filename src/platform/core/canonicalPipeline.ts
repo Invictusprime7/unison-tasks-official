@@ -81,6 +81,7 @@ import {
 } from '@/services/wizardDesignIntervention';
 import { designPlanSignature } from '@/utils/designVariation';
 import { computeRenderHash } from '@/platform/core/generationSeed';
+import { projectResolvedArtDirection } from '@/sections/variants/resolvedArtDirection';
 
 import {
   buildWizardGenerationBrief,
@@ -213,7 +214,12 @@ export interface SiteBundleSnapshotMeta {
    */
   renderHash?: string;
   /**
-   * Resolved ThemePreset id from the wizard Style-card. Persisted into the
+   * Sealed canonical art direction (family → pack → variants → profiles).
+   * Authoritative for every downstream consumer; never re-derived.
+   */
+  artDirection?: import('@/sections/variants/resolvedArtDirection').ResolvedArtDirection | null;
+  /**
+   * Art Direction Family id (compatibility name: themePresetId) from the wizard Style-card. Persisted into the
    * snapshot so recompiles/autosaves can re-emit themed /src/index.css
    * without re-passing wizard props (chain-of-custody after compile).
    */
@@ -592,11 +598,12 @@ export function recompileFromPlayground(
         meta?: {
           wizardSeedId?: string;
           artDirectionPackId?: string | null;
+          artDirection?: { storagePackId?: string } | null;
           designSelection?: import('@/services/wizardDesignSelection').WizardDesignSelection;
         };
       };
       recoveredSeedId = snap?.meta?.wizardSeedId;
-      sealedPackId = snap?.meta?.artDirectionPackId || undefined;
+      sealedPackId = snap?.meta?.artDirection?.storagePackId || snap?.meta?.artDirectionPackId || undefined;
       recoveredDesignSelection = snap?.meta?.designSelection;
     }
   } catch { /* ignore */ }
@@ -849,9 +856,20 @@ function projectToSiteBundleSnapshot(
         const seed = (designIntervention || selections.designIntervention)?.seed;
         return seed ? designPlanSignature(seed) : undefined;
       })(),
+      artDirection: (() => {
+        const intervention = designIntervention || selections.designIntervention;
+        return intervention
+          ? projectResolvedArtDirection({ ...intervention, themePresetId: resolvedThemePresetId })
+          : null;
+      })(),
       renderHash: (() => {
         const intervention = designIntervention || selections.designIntervention;
+        const artDirection = intervention
+          ? projectResolvedArtDirection({ ...intervention, themePresetId: resolvedThemePresetId })
+          : null;
         return computeRenderHash({
+          artDirectionFamilyId: artDirection?.familyId ?? null,
+          artDirectionQualifiedPackId: artDirection?.packId ?? null,
           seed: intervention?.seed ?? null,
           industry: resolvedIndustry,
           templateId: resolvedTemplateId ?? null,

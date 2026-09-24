@@ -16,6 +16,8 @@ export interface SiteDesignContractProjection {
   chromeFamilies: string[];
   summary: string;
   pages: Record<string, { required: string[]; min: number; max: number }>;
+  /** Resolved Art Direction (family → pack). Lanes compose inside it and never switch family. */
+  artDirection?: { familyId: string; packId: string; storagePackId: string; directive: string };
 }
 
 export function projectionDensityIssues(
