@@ -550,7 +550,7 @@ export async function runLaunchPipeline(
   const expectedCss = buildThemedIndexCssFromTokens(plan.themeTokens, {
     presetId: input.theme.id,
     label: input.theme.id,
-    artDirectionPackId: siteBundleSnapshot?.meta?.artDirectionPackId,
+    artDirectionPackId: siteBundleSnapshot?.meta?.artDirection?.storagePackId ?? siteBundleSnapshot?.meta?.artDirectionPackId,
   });
   if (compiledPlayground?.vfsFiles && compiledPlayground.vfsFiles["/src/index.css"] !== expectedCss) {
     compiledPlayground.vfsFiles["/src/index.css"] = expectedCss;
