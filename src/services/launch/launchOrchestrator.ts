@@ -1,3 +1,4 @@
+import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from '@/services/launch/twentyFirstCoverageGate';
 /**
  * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
  *
@@ -77,7 +78,7 @@ import {
   type LaunchRunSnapshot,
 } from "@/services/launch/launchRun";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
-import { resolveExperienceRequirement } from "@/sections/variants";
+import { resolveArtDirectionPack, resolveExperienceRequirement } from "@/sections/variants";
 import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
 import { runExperiencePreflight } from "@/services/experiencePreflightGate";
 import type { BuilderIdentity } from "@/types/builderIdentity";
@@ -289,6 +290,7 @@ export async function runLaunchPipeline(
 
     const themeTokens = themePresetToThemeTokens(input.theme);
     const selections: WizardSelections = {
+      regenerationNonce: input.regenerationNonce ?? null,
       visionPrompt: input.visionPrompt?.trim(),
       designSelection: input.designSelection,
       businessName: brand,
@@ -395,6 +397,11 @@ export async function runLaunchPipeline(
   // ── Stage: seed (canonical compile + Stage 4b theme tokens) ───────────────
   status("Compiling your themed site…");
   const stage4b = await run.stage("seed", async (signal) => {
+    const coverage = validateTwentyFirstGenerationCoverage({
+      pages: plan.requestedPages.map(role => ({ role, sectionTypes: composition.sections.filter(section => !section.hidden).map(section => section.type) })),
+      artDirectionPack: resolveArtDirectionPack({ sealedPackId: input.designSelection?.artDirectionPackId, industry: plan.industryOverlay, themePresetId: input.theme.id, seed: plan.seed }),
+    });
+    if (!coverage.ok) run.degrade('seed', 'coverage.21st-incomplete', summarizeCoverageReport(coverage));
     const result = await runWizardStage4b({
       selections: plan.selections,
       existingVfsFiles: {

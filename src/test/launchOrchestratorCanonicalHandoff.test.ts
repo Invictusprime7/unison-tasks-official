@@ -180,4 +180,13 @@ describe('launch orchestrator canonical handoff', () => {
     expect(topology).toBeLessThan(preview);
     expect(preview).toBeLessThan(playground);
   });
+  it('pauses review before provisioning or committing and propagates regeneration', () => {
+    expect(source).toContain('callbacks.onReview ? requestedIds : await provision()');
+    expect(position('await callbacks.onReview({ files: vfsFiles')).toBeLessThan(position('await plan.provision()'));
+    expect(position('await plan.provision()')).toBeLessThan(position('const result = await commitMutation({'));
+    expect(source).toContain("error.name = 'LaunchReviewCancelled'");
+    expect(source).toContain('regenerationNonce: input.regenerationNonce ?? null');
+    expect(source).toContain('designSelection: input.designSelection');
+  });
+
 });
