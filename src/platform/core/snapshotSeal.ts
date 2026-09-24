@@ -264,6 +264,7 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
     // The art-direction pack is sealed exactly as Stage 4b resolved it —
     // sealing must never re-derive it, or the aesthetic drifts on recompile.
     artDirectionPackId:
+      baseline.meta?.artDirection?.storagePackId ??
       baseline.meta?.artDirectionPackId ??
       baseline.meta?.designIntervention?.artDirectionPackId ??
       null,

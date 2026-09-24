@@ -4,7 +4,7 @@ import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
 import { resolveArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
-import { projectResolvedArtDirection } from '@/sections/variants/resolvedArtDirection';
+import { projectResolvedArtDirection, readSealedArtDirection } from '@/sections/variants/resolvedArtDirection';
 import { readThemeContract, buildThemeContract, buildThemeContractFiles } from '@/platform/core/themeContract';
 import { isEditableThemeToken, readCompiledTokenValues, validateThemeTypography, isLegalThemeTokenValue, readThemeOverrides, serializeThemeOverrides, THEME_OVERRIDES_PATH } from './themeTokenOverrides';
 
@@ -36,7 +36,7 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
   const presetId = edit.presetId ?? snapshot.meta.themePresetId;
   const preset = THEME_PRESETS.find((p) => p.id === presetId);
   if (!preset) throw new Error('The saved site has no recognized preset. Select a theme before restyling.');
-  const packId = edit.presetId ? resolveArtDirectionPackId({ themePresetId: preset.id, seed: snapshot.meta.designIntervention?.seed ?? snapshot.meta.renderHash ?? preset.id }) : snapshot.meta.artDirectionPackId;
+  const packId = edit.presetId ? resolveArtDirectionPackId({ themePresetId: preset.id, seed: snapshot.meta.designIntervention?.seed ?? snapshot.meta.renderHash ?? preset.id }) : (readSealedArtDirection(snapshot.meta)?.storagePackId ?? snapshot.meta.artDirectionPackId);
   const contract = buildThemeContract({ themePresetId: preset.id, artDirectionPackId: packId });
   const overrides = edit.presetId ? {} : readThemeOverrides(files);
   for (const name of edit.reset) {
