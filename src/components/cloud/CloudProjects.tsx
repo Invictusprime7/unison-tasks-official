@@ -202,6 +202,9 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   const [recoveredProjectsOpen, setRecoveredProjectsOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [projectSelectionMode, setProjectSelectionMode] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [bulkProjectDeleteOpen, setBulkProjectDeleteOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'business' | 'project'; item: Business | Project } | null>(null);
   const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -790,6 +793,50 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
     }
   };
 
+  const exitProjectSelectionMode = () => {
+    setProjectSelectionMode(false);
+    setSelectedProjectIds([]);
+  };
+
+  const toggleProjectSelection = (projectId: string) => {
+    setSelectedProjectIds((current) =>
+      current.includes(projectId) ? current.filter((id) => id !== projectId) : [...current, projectId]
+    );
+  };
+
+  const executeBulkDeleteProjects = async () => {
+    if (selectedProjectIds.length === 0) return;
+    const selectedIds = new Set(selectedProjectIds);
+    const targets = projects.filter((p) => selectedIds.has(p.id));
+    const draftOnlyIds = targets.filter((p) => p.draft_only).map((p) => p.draft_id || p.id);
+    const projectIds = targets.filter((p) => !p.draft_only).map((p) => p.id);
+    try {
+      if (draftOnlyIds.length > 0) {
+        const { error } = await supabase.from('builder_drafts').delete().in('id', draftOnlyIds);
+        if (error) throw error;
+      }
+      if (projectIds.length > 0) {
+        const { error } = await supabase.from('projects').delete().in('id', projectIds);
+        if (error) throw error;
+      }
+      const updatedProjects = projects.filter((p) => !selectedIds.has(p.id));
+      setProjects(updatedProjects);
+      setSelectedProjectScopeId((current) =>
+        current && selectedIds.has(current) ? updatedProjects[0]?.id || null : current
+      );
+      if (selectedProject && selectedIds.has(selectedProject.id)) {
+        setSelectedProject(null);
+        setProjectSettingsOpen(false);
+      }
+      toast({ title: `${targets.length} project${targets.length === 1 ? '' : 's'} deleted` });
+      exitProjectSelectionMode();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to delete projects.', variant: 'destructive' });
+    } finally {
+      setBulkProjectDeleteOpen(false);
+    }
+  };
+
   const duplicateProject = async (project: Project) => {
     try {
       const newSlug = `${project.slug || 'project'}-copy-${Date.now().toString(36)}`;
@@ -1372,6 +1419,24 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                         Recovered {recoveredProjects.length}
                       </Button>
                     )}
+                    {projectSelectionMode ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedProjectIds(
+                          selectedProjectIds.length === filteredProjects.length ? [] : filteredProjects.map((p) => p.id)
+                        )}>
+                          {selectedProjectIds.length === filteredProjects.length && filteredProjects.length > 0 ? 'Clear all' : 'Select all'}
+                        </Button>
+                        <Button variant="destructive" size="sm" disabled={selectedProjectIds.length === 0} onClick={() => setBulkProjectDeleteOpen(true)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete {selectedProjectIds.length || ''}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={exitProjectSelectionMode}>Cancel</Button>
+                      </>
+                    ) : filteredProjects.length > 0 && (
+                      <Button variant="outline" size="sm" onClick={() => setProjectSelectionMode(true)}>
+                        Select
+                      </Button>
+                    )}
                     <Button onClick={() => setCreateProjectOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       New Project
@@ -1404,11 +1469,23 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                       {filteredProjects.map((project) => (
                         <Card 
                           key={project.id}
-                          className="bg-white/[0.02] border-white/5 hover:border-cyan-500/30 transition-all group cursor-pointer"
-                          onClick={() => openInBuilder(project)}
+                          className={cn(
+                            "bg-white/[0.02] border-white/5 hover:border-cyan-500/30 transition-all group cursor-pointer",
+                            projectSelectionMode && selectedProjectIds.includes(project.id) && "border-red-500/50 ring-1 ring-red-500/30"
+                          )}
+                          onClick={() => projectSelectionMode ? toggleProjectSelection(project.id) : openInBuilder(project)}
                         >
                           {/* Thumbnail */}
-                          <div className="h-32 bg-gradient-to-br from-white/[0.04] to-white/[0.01] flex items-center justify-center border-b border-white/5">
+                          <div className="relative h-32 bg-gradient-to-br from-white/[0.04] to-white/[0.01] flex items-center justify-center border-b border-white/5">
+                            {projectSelectionMode && (
+                              <Checkbox
+                                className="absolute left-3 top-3"
+                                checked={selectedProjectIds.includes(project.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                onCheckedChange={() => toggleProjectSelection(project.id)}
+                                aria-label={`Select ${project.name}`}
+                              />
+                            )}
                             <Palette className="h-8 w-8 text-white/20" />
                           </div>
                           
@@ -1514,13 +1591,23 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                           {filteredProjects.map((project) => (
                             <tr 
                               key={project.id} 
-                              className="hover:bg-white/5 cursor-pointer"
-                              onClick={() => openInBuilder(project)}
+                              className={cn("hover:bg-white/5 cursor-pointer", projectSelectionMode && selectedProjectIds.includes(project.id) && "bg-red-500/10")}
+                              onClick={() => projectSelectionMode ? toggleProjectSelection(project.id) : openInBuilder(project)}
                             >
                               <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  {projectSelectionMode && (
+                                    <Checkbox
+                                      checked={selectedProjectIds.includes(project.id)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onCheckedChange={() => toggleProjectSelection(project.id)}
+                                      aria-label={`Select ${project.name}`}
+                                    />
+                                  )}
                                 <div>
                                   <p className="font-medium">{project.name}</p>
                                   <p className="text-xs text-white/30 font-mono">/{project.slug}</p>
+                                </div>
                                 </div>
                               </td>
                               <td className="px-4 py-3">
@@ -2397,6 +2484,24 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={bulkProjectDeleteOpen} onOpenChange={setBulkProjectDeleteOpen}>
+        <AlertDialogContent className="bg-[#0d0d18] border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete selected projects?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedProjectIds.length} project{selectedProjectIds.length === 1 ? '' : 's'}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeBulkDeleteProjects} className="bg-red-600 hover:bg-red-700">
+              Delete Selected
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <ProjectSettingsPanel
         projectId={selectedProject?.id || ''}
