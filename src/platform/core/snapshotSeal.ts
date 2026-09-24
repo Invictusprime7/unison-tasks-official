@@ -267,6 +267,16 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
       baseline.meta?.artDirectionPackId ??
       baseline.meta?.designIntervention?.artDirectionPackId ??
       null,
+    // Phase E: the resolved Art Direction record is sealed with the revision so
+    // Preview, autosave, recompile and publish read one answer instead of
+    // re-deriving a family. Legacy revisions are projected from the sealed pack.
+    artDirection: readSealedArtDirection({
+      artDirection: baseline.meta?.artDirection,
+      artDirectionPackId:
+        baseline.meta?.artDirectionPackId ?? baseline.meta?.designIntervention?.artDirectionPackId ?? null,
+      themePresetId: input.appContext.themePresetId || baseline.meta?.themePresetId || null,
+      designIntervention: baseline.meta?.designIntervention,
+    }),
     designSelection: baseline.meta?.designSelection,
     industry: input.appContext.industry || baseline.meta?.industry || baseline.industry,
     verticalContractId: baseline.meta?.verticalContractId || input.appContext.systemType || null,
