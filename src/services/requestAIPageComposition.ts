@@ -1,3 +1,4 @@
+import { projectResolvedArtDirection } from '@/sections/variants/resolvedArtDirection';
 import { describeCompositionFailure, type CompositionFailureDetails } from './compositionFailure';
 import { normalizeCompositionResponse, renderCompositionCanonicalContract } from './launch/compositionCanonicalContract';
 import { runBuilderTurn } from './builderBrainClient';
@@ -36,6 +37,18 @@ export async function requestAIPageComposition(selections: WizardSelections, sig
     experience: experiencePreference,
     mode: selections.designSelection?.mode ?? 'auto',
   }));
+  // Phase D: the resolved Art Direction (family → pack) travels inside the
+  // contract so the composer composes within the family grammar only.
+  const resolvedArt = projectResolvedArtDirection({
+    themePresetId: selections.themePresetId || 'modern',
+    artDirectionPackId: pack.id,
+    aiDirective: design.aiDirective,
+  });
+  if (resolvedArt) {
+    const directive = `ART DIRECTION: family ${resolvedArt.familyId}, pack ${resolvedArt.packId} (v${resolvedArt.packVersion}). Compose creatively inside this grammar; never switch family. Final tokens are projected by the compiler after composition.`;
+    designContract.artDirection = { familyId: resolvedArt.familyId, packId: resolvedArt.packId, storagePackId: resolvedArt.storagePackId, directive };
+    designContract.summary = `${designContract.summary}\n  ${directive}`;
+  }
   const variants = [...new Map(Object.keys(VARIANT_REGISTRY).flatMap(type => roles.flatMap(role =>
     getGenerationVariantsForSection(type as import('@/sections/types').SectionType, pack, role))).map(variant => [variant.id, variant])).values()]
     .filter(variant => isImplementationExperienceCompatible(deriveImplementationVisualSignature(variant), experiencePreference))
