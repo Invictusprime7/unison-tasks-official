@@ -223,6 +223,8 @@ export interface BuildThemeContractInput {
   artDirectionPackId?: string | null;
   /** The style card id, carried through for traceability. */
   themePresetId?: string | null;
+  /** Sealed `meta.artDirection` — the authority when present (Phase E). */
+  artDirection?: ResolvedArtDirection | null;
 }
 
 /**
@@ -230,7 +232,8 @@ export interface BuildThemeContractInput {
  * that should be used to produce theme context for an AI turn.
  */
 export function buildThemeContract(input: BuildThemeContractInput): ThemeContract {
-  const pack = resolvePack(input.artDirectionPackId);
+  const sealed = input.artDirection ?? null;
+  const pack = resolvePack(sealed?.storagePackId ?? input.artDirectionPackId);
   const tokens = { ...buildArtDirectionTokens(pack), '--font-heading': '', '--font-body': '' };
 
   const grouped = new Map<ThemeContractGroup['id'], ThemeContractToken[]>();
