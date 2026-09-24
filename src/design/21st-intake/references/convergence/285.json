@@ -1,0 +1,18 @@
+{
+  "source": {
+    "origin": "21st",
+    "sourceId": "21st:285",
+    "sourceUrl": "https://21st.dev/manuarora700/compare",
+    "author": "manuarora700",
+    "derivation": "visual-reference",
+    "adaptationVersion": "1"
+  },
+  "componentId": 285,
+  "retrievedVia": "21st registry API (TWENTYFIRST_TOKEN)",
+  "retrievedAt": "2026-09-24T04:29:16.953086Z",
+  "sourceSha256": "f797c5c3b1d92555a88c72383b3a94c5aa4219b9a7f24b39c5806da622f235a6",
+  "archivePath": "src/design/21st-intake/archive/convergence-285",
+  "implementation": "before-after:grid",
+  "adaptation": "Paired comparison cards for multiple transformations",
+  "notes": "Original Unison implementation informed by the published layout; theme tokens, canonical slots and Radix lightbox replace source styling and dependencies. No copied-source license asserted."
+}
