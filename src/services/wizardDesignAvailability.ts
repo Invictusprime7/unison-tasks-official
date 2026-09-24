@@ -1,3 +1,5 @@
+import { isCanonicalPack } from '@/sections/variants/packCompleteness';
+import { familyOfPack, familyPackIds } from '@/sections/variants/artDirectionFamilies';
 /**
  * Wizard design availability — a projection, never a registry.
  *
@@ -178,8 +180,14 @@ export function resolveAvailableAutoArtDirectionPackId(
   input: WizardDesignAvailabilityInput & { seed?: string },
 ): ArtDirectionPackId {
   const options = getWizardVisualDirections(input);
-  if (options.some(option => option.id === preferred && option.available)) return preferred;
-  const available = options.filter(option => option.available).map(option => option.id);
+  const eligible = (id: ArtDirectionPackId) => isCanonicalPack(id);
+  if (eligible(preferred) && options.some(option => option.id === preferred && option.available)) return preferred;
+  const allAvailable = options.filter(option => option.available && eligible(option.id)).map(option => option.id);
+  // Stay inside the selected Art Direction Family whenever a sibling is complete.
+  const familyId = familyOfPack(preferred);
+  const siblings = familyId ? new Set(familyPackIds(familyId)) : null;
+  const inFamily = siblings ? allAvailable.filter(id => siblings.has(id)) : [];
+  const available = inFamily.length ? inFamily : allAvailable;
   if (!available.length) return preferred;
   const seed = `${input.seed ?? ''}:${preferred}`;
   let hash = 0;
