@@ -897,3 +897,5 @@ preview runtime — extend what exists.
 - [x] Coverage Wave 1a: certified gallery masonry/cinematic-grid/lightbox-grid and before-after slider/grid from archived 21st sources (703, 285, 4746, 4869, 1358).
 - [ ] Coverage Wave 1b: remaining gallery (editorial-mosaic, feature-split, horizontal-reel) + before-after case-study.
 - [ ] Coverage Wave 2: menu, booking slot picker, donation panel, quote estimator.
+
+- [x] Task 20: Canonical Art Direction — Phase A (6 families, qualified child packs, aliases) + Phase B (ResolvedArtDirection sealed in snapshot meta.artDirection, in renderHash, family directive in Lane B brief). Next: Phase C completeness gate, D edge brief injection, E consumer migration, F erasure.
