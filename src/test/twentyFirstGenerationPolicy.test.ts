@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
-import { getAllSections } from '@/sections/registry';
+import { getAllSections, getSiteSectionTypes } from '@/sections/registry';
 import { getGenerationVariantsForSection, getVariantById, getVariantsForSection as getVariantsForSectionAll, ART_DIRECTION_PACKS } from '@/sections/variants';
 import { COMPOSITION_ROLES, validateAIPageComposition } from '@/sections/aiPageComposition';
 import type { SectionType } from '@/sections/types';
@@ -11,7 +11,7 @@ import recipes from '@/sections/recipes/stylexRecipes.generated.json';
 
 describe('21st-only generation closure', () => {
  it('covers every section family in every art direction with a real 21st recipe', () => {
-  for(const pack of Object.values(ART_DIRECTION_PACKS)) for(const type of Object.keys(getAllSections()) as SectionType[]) {
+  for(const pack of Object.values(ART_DIRECTION_PACKS)) for(const type of getSiteSectionTypes()) {
    const variants=getGenerationVariantsForSection(type,pack);
    expect(variants.length,pack.id+':'+type).toBeGreaterThan(0);
    for(const variant of variants) {
@@ -24,7 +24,7 @@ describe('21st-only generation closure', () => {
  });
  it('accepts only eligible advertised IDs for each planner role', () => {
   const pack=ART_DIRECTION_PACKS['soft-editorial'];
-  for(const role of COMPOSITION_ROLES) for(const type of Object.keys(getAllSections()) as SectionType[]) {
+  for(const role of COMPOSITION_ROLES) for(const type of getSiteSectionTypes()) {
    for(const variant of getGenerationVariantsForSection(type,pack,role)) {
     const plan={version:'1.0',pages:[{role,sectionOrder:[type],variants:{[type]:variant.id}}]};
     expect(validateAIPageComposition(plan,pack.id,[role]),role+':'+variant.id).not.toBeNull();

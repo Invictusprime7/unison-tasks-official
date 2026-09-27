@@ -11,7 +11,7 @@
  *   21st provenance + portable recipe + approved certification + preferred.
  */
 
-import { getAllSections } from '@/sections/registry';
+import { getSiteSectionTypes } from '@/sections/registry';
 import type { SectionType } from '@/sections/types';
 import {
   ART_DIRECTION_PACKS,
@@ -97,7 +97,7 @@ function packsDeclaring(id: VariantId, sectionType: SectionType): ArtDirectionPa
 }
 
 export function buildEquivalenceLedger(): EquivalenceLedgerReport {
-  const sectionTypes = Object.keys(getAllSections()) as SectionType[];
+  const sectionTypes = getSiteSectionTypes();
   const entries: EquivalenceLedgerEntry[] = [];
 
   for (const sectionType of sectionTypes) {

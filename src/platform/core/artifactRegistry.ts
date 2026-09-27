@@ -464,6 +464,38 @@ const ARTIFACTS: ArtifactDef[] = [
     aiEditScope: 'full',
   },
 
+  // ── App surfaces (account pages; Builder-selectable, not Wizard-compiled) ──
+  {
+    artifactId: 'auth-form',
+    name: 'Sign In / Sign Up',
+    description: 'Account sign-in or registration form for member areas',
+    sectionType: 'auth-form',
+    componentType: 'AuthFormSection',
+    aliases: ['AuthForm', 'SignIn', 'SignUp', 'LoginForm', 'auth_form'],
+    category: 'conversion',
+    dataSource: { kind: 'behavioral', minRows: 0, fallbackMode: 'show_placeholder' },
+    capabilities: ['auth'],
+    supportedSlots: ['auth.brand', 'auth.heading', 'auth.subheading', 'auth.panel-copy', 'auth.footer-note', 'auth.alt-action'],
+    intentBindings: ['auth.login', 'auth.register'],
+    toolbarActions: AUTHORED_TOOLBAR,
+    aiEditScope: 'content',
+  },
+  {
+    artifactId: 'data-table',
+    name: 'Data Table',
+    description: 'Tabular records and dashboard summary for signed-in users',
+    sectionType: 'data-table',
+    componentType: 'DataTableSection',
+    aliases: ['DataTable', 'Dashboard', 'DashboardOverview', 'Table', 'data_table'],
+    category: 'content',
+    dataSource: { kind: 'authored', minRows: 0, fallbackMode: 'show_placeholder' },
+    capabilities: [],
+    supportedSlots: ['table.heading', 'table.rows', 'dashboard.heading', 'dashboard.stats', 'dashboard.table'],
+    intentBindings: [],
+    toolbarActions: AUTHORED_TOOLBAR,
+    aiEditScope: 'content',
+  },
+
   // ── Behavioral ────────────────────────────────────────────────────────────
   {
     artifactId: 'cta',

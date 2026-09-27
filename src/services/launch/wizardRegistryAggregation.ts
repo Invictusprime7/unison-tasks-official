@@ -13,7 +13,7 @@
  * AI, Preview, Playground, and runtime data binding all share the same truth.
  */
 
-import { getAllSections } from '@/sections/registry';
+import { getAllSections, isAppSurfaceSection } from '@/sections/registry';
 import {
   VARIANT_REGISTRY,
   getGenerationVariantsForSection,
@@ -187,7 +187,7 @@ export function buildWizardAggregatedRegistryContext(options: {
   const allSections = getAllSections();
   const sections: WizardRegistrySectionSummary[] = (
     Object.entries(allSections) as Array<[SectionType, (typeof allSections)[SectionType]]>
-  ).map(([type, entry]) => {
+  ).filter(([type]) => !isAppSurfaceSection(type)).map(([type, entry]) => {
     const artifact = getArtifact(type);
     const executable = getGenerationVariantsForSection(type, pack);
     const allowedVariantIds = executable.map(variant => variant.id);
