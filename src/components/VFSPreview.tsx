@@ -38,7 +38,7 @@ import { buildPreviewArtifactsAsync } from '@/utils/previewArtifacts';
 import { PreviewPipelineError, isPreviewPipelineError } from '@/services/previewPipelineError';
 import { createVfsHandoffSignature } from '@/services/vfsHandoffSignature';
 import { PreviewRuntimeError } from '@/components/PreviewRuntimeError';
-import { reportPreviewError, reportPreviewRunning } from '@/services/builder/previewVerification';
+import { attachPreviewListener, reportPreviewError, reportPreviewRunning } from '@/services/builder/previewVerification';
 import { LaunchGateNotice } from '@/components/creatives/web-builder/LaunchGateNotice';
 import { isCanonicalRuntimeError } from '@/platform/core/canonicalRuntimeContract';
 import { resolveSnapshot } from '@/services/snapshotProjector';
@@ -197,6 +197,8 @@ const SandpackErrorListener: React.FC<{
 }> = ({ onError, onTimeout, onRunning, dependencies }) => {
   const { sandpack } = useSandpack();
   const lastReportedRef = useRef<string>('');
+
+  useEffect(() => attachPreviewListener(), []);
 
   useEffect(() => {
     if (sandpack.status === 'running' || sandpack.status === 'timeout' || sandpack.error) return;

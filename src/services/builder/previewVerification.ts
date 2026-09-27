@@ -34,6 +34,14 @@ let state: PreviewVerificationState = 'idle';
 let lastError: string | undefined;
 let revision = 0;
 const waiters = new Set<Waiter>();
+/** Number of mounted preview listeners; 0 when the user is in code view. */
+let attachedPreviews = 0;
+
+/** Called by VFSPreview on mount/unmount so callers never wait for a preview that is not running. */
+export function attachPreviewListener(): () => void {
+  attachedPreviews += 1;
+  return () => { attachedPreviews = Math.max(0, attachedPreviews - 1); };
+}
 
 function settle(result: PreviewVerificationResult): void {
   if (waiters.size === 0) return;
@@ -74,6 +82,7 @@ export function resetPreviewVerification(): void {
   state = 'idle';
   lastError = undefined;
   revision = 0;
+  attachedPreviews = 0;
   waiters.clear();
 }
 
@@ -87,10 +96,14 @@ export function resetPreviewVerification(): void {
 export function awaitPreviewVerification(
   options: { timeoutMs?: number } = {},
 ): Promise<PreviewVerificationResult> {
-  if (state === 'running') return Promise.resolve({ verified: true });
   if (state === 'error') {
     return Promise.resolve({ verified: false, reason: lastError ?? 'The preview reported an error.' });
   }
+
+  // No preview mounted (code view): nothing can confirm or refute the change;
+  // the commit already passed every gate, so don't stall or warn.
+  if (attachedPreviews === 0) return Promise.resolve({ verified: true });
+  if (state === 'running') return Promise.resolve({ verified: true });
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   return new Promise<PreviewVerificationResult>((resolve) => {
