@@ -48,6 +48,7 @@ import {
 import {
   buildSiteShellTopology,
   assertSiteShellClosure,
+  projectSiteShellLinks,
   type SiteShellClosureViolation,
 } from '@/services/siteShellTopology';
 import { resolveApprovedExperienceCapabilities } from './experienceCapabilityResolver';
@@ -606,6 +607,24 @@ export async function commitMutation(
             `[VFSCommitService] This edit breaks the site's design language: ${touched[0]}`,
           );
         }
+      }
+    }
+  }
+
+  // 6c. Site-shell link projection ------------------------------------------
+  // The PageRegistry (Builder page tabs) owns which links the site chrome
+  // carries. Project it into every page's navbar link list so the live preview
+  // menu always matches the tabs, whatever the AI or template wrote.
+  if (!restoredRevision && !reviewedArtifact && !reviewedComposition) {
+    const shellRegistry = (snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry;
+    if (shellRegistry && Object.keys(shellRegistry.pages ?? {}).length > 0) {
+      const projected = projectSiteShellLinks(buildSiteShellTopology(shellRegistry), files);
+      if (projected.changed.length) {
+        files = projected.files;
+        if (snapshotForPersistence) {
+          snapshotForPersistence = mergeWizardLaunchSnapshot(snapshotForPersistence as SiteBundleSnapshot, files);
+        }
+        log('siteShell', 'info', `projected registry navigation into ${projected.changed.length} file(s)`, projected.changed);
       }
     }
   }
