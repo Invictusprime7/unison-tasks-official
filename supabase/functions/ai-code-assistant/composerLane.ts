@@ -4,7 +4,7 @@
 import {
   aiComposerRequestSchema,
   aiComposerResponseSchema,
-  isProtectedComposerPath,
+  composerScopeViolations,
   type AIComposerRequest,
 } from '../_shared/aiComposerContract.ts';
 
@@ -16,7 +16,8 @@ const BASE_PROMPT = `You are the Unison AI Composer: a senior React/TypeScript e
 
 CREATIVE AUTHORITY
 - Reuse canonical Unison components when they strongly fit; recompose primitives when useful.
-- Author new project-local components (under /src/project-components/) whenever they materially improve the page.
+- Author new project-local components ONLY under /src/project-components/ (shared chrome in /src/project-components/site/).
+- WRITE SCOPE: you may write only the TARGET PAGE file and files under /src/project-components/. Canonical /src/components/** and /src/unison/** are the read-only Unison design system — import them, never recreate or overwrite them.
 - Follow the ART DIRECTION, INDUSTRY, EXPERIENCE and PREFERRED VOCABULARY in the brief. Never use NEGATIVE / FORBIDDEN vocabulary.
 - Avoid generic AI patterns: centered hero + three equal cards, repeated equal-width grids, gratuitous gradients/glassmorphism, excessive pills.
 
@@ -95,12 +96,12 @@ export async function runComposerLane(context: string, headers: Record<string, s
       });
       continue;
     }
-    const protectedOps = checked.data.fileOps.filter((op) => isProtectedComposerPath(op.path));
-    if (protectedOps.length) {
-      lastError = 'Composer tried to modify protected files';
+    const scope = composerScopeViolations(req.task, req.page.filePath, checked.data.fileOps);
+    if (scope.length) {
+      lastError = 'Composer wrote outside its allowed scope';
       messages.push({ role: 'assistant', content: (result.content ?? '').slice(0, 4000) }, {
         role: 'user',
-        content: `These paths are protected and must not appear in fileOps: ${protectedOps.map((o) => o.path).join(', ')}. Return the corrected JSON object.`,
+        content: `Scope violations:\n${scope.join('\n')}\nReturn the corrected JSON object.`,
       });
       continue;
     }

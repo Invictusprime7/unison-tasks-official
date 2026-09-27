@@ -25,6 +25,31 @@ export function isProtectedComposerPath(path: string): boolean {
   return PROTECTED.some((re) => re.test(path));
 }
 
+// Design-system write scope (workspace rules: never edit managed Unison source).
+// Page authoring may write only its own page file and project-local
+// components; canonical /src/components/** sections are read-only vocabulary.
+export const PROJECT_COMPONENTS_DIR = '/src/project-components/';
+
+export function composerScopeViolations(
+  task: AIComposerTask,
+  pageFilePath: string,
+  ops: ReadonlyArray<{ type: string; path: string }>,
+): string[] {
+  const errors: string[] = [];
+  for (const op of ops) {
+    if (isProtectedComposerPath(op.path)) errors.push(`${op.path}: protected file`);
+    else if (task !== 'builder_source_edit' && op.path !== pageFilePath && !op.path.startsWith(PROJECT_COMPONENTS_DIR)) {
+      errors.push(`${op.path}: outside page scope — write only ${pageFilePath} or ${PROJECT_COMPONENTS_DIR}**; import canonical components instead of rewriting them`);
+    }
+  }
+  if (task !== 'builder_source_edit' && !ops.some((op) => op.path === pageFilePath && op.type !== 'delete')) {
+    errors.push(`${pageFilePath}: the target page file must be authored`);
+  }
+  return errors;
+}
+
+export const AI_AUTHORED_MARKER = '// @unison-ai-authored';
+
 const pathSchema = z.string().regex(/^\/src\/[A-Za-z0-9_\-./]+\.(tsx|ts|css)$/).refine((p) => !p.includes('..'));
 
 export const aiComposerFileOpSchema = z.discriminatedUnion('type', [
