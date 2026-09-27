@@ -8,6 +8,13 @@
       "when": 1789951630824,
       "tag": "0000_restrict_public_business_fields_and_fix_bookings_owner_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790548999025,
+      "tag": "0001_raise_commit_revision_timeout",
+      "breakpoints": true
     }
   ]
 }

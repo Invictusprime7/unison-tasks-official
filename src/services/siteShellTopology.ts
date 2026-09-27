@@ -214,3 +214,106 @@ export function describeSiteShellNavigation(topology: SiteShellTopology): string
     .filter(Boolean)
     .join(' ');
 }
+
+// ---------------------------------------------------------------------------
+// Deterministic chrome-link projection
+// ---------------------------------------------------------------------------
+
+function findMatchingBracket(source: string, open: number): number {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = open; i < source.length; i += 1) {
+    const ch = source[i];
+    if (quote) {
+      if (ch === '\\') { i += 1; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+    if (ch === '[') depth += 1;
+    else if (ch === ']') { depth -= 1; if (depth === 0) return i; }
+  }
+  return -1;
+}
+
+function navArrayLiteral(routes: SiteShellRoute[], indent: string, jsonStyle: boolean): string {
+  if (routes.length === 0) return '[]';
+  const q = (value: string) => JSON.stringify(value);
+  const key = (name: string) => (jsonStyle ? q(name) : name);
+  const items = routes.map(
+    (route) => `${indent}  { ${key('label')}: ${q(route.label)}, ${key('href')}: ${q(route.href)} }`,
+  );
+  return `[\n${items.join(',\n')}\n${indent}]`;
+}
+
+const LINK_ITEM = /\{\s*["']?(label|name|title)["']?\s*:\s*(["'])([^"']*)\2\s*,\s*["']?(href|to|path)["']?\s*:\s*(["'])([^"']*)\5\s*,?\s*\}/g;
+
+/**
+ * Rewrite every navbar/footer link list in page sources so it carries exactly
+ * the registry's primary navigation (labels, hrefs, order). Design keeps how
+ * the chrome looks; the registry keeps which links it carries. Idempotent.
+ */
+export function projectSiteShellLinks(
+  topology: SiteShellTopology,
+  files: Record<string, string>,
+): { files: Record<string, string>; changed: string[] } {
+  const routes = topology.primaryNav;
+  if (routes.length === 0) return { files, changed: [] };
+  const known = new Set(topology.routes.map((route) => normalizeLinkPath(route.path)));
+  const out: Record<string, string> = { ...files };
+  const changed: string[] = [];
+
+  for (const [path, original] of Object.entries(files)) {
+    if (!/^\/src\/(pages|project-components)\/.*\.(tsx|jsx)$/.test(path)) continue;
+    let source = original;
+
+    // 1. Section-composition chrome: { type: "navbar" | "footer", props: { links: [...] } }
+    const typeRe = /["']?type["']?\s*:\s*["'](navbar|header)["']/g;
+    let match: RegExpExecArray | null;
+    while ((match = typeRe.exec(source))) {
+      const nextType = source.slice(match.index + match[0].length).search(/["']?type["']?\s*:\s*["']/);
+      const windowEnd = nextType === -1 ? source.length : match.index + match[0].length + nextType;
+      const linksRe = /(["']?)links\1\s*:\s*\[/g;
+      linksRe.lastIndex = match.index;
+      const linksMatch = linksRe.exec(source);
+      if (!linksMatch || linksMatch.index > windowEnd) continue;
+      const open = linksMatch.index + linksMatch[0].length - 1;
+      const close = findMatchingBracket(source, open);
+      if (close === -1) continue;
+      const lineStart = source.lastIndexOf('\n', linksMatch.index) + 1;
+      const indent = source.slice(lineStart, linksMatch.index).match(/^\s*/)?.[0] ?? '';
+      const replacement = navArrayLiteral(routes, indent, linksMatch[1] === '"');
+      source = source.slice(0, open) + replacement + source.slice(close + 1);
+      typeRe.lastIndex = open + replacement.length;
+    }
+
+    // 2. Hand-authored link arrays: [{ label, href }, ...] pointing at site routes.
+    source = source.replace(/\[\s*(?:\{[^\[\]{}]*\}\s*,?\s*){2,}\]/g, (block, offset: number, whole: string) => {
+      const context = whole.slice(Math.max(0, offset - 60), offset);
+      if (!/(nav|menu|links)\w*\s*[:=]\s*(\([^)]*\)\s*)?$/i.test(context)) return block;
+      const items = Array.from(block.matchAll(LINK_ITEM));
+      const count = (block.match(/\{/g) ?? []).length;
+      if (items.length !== count) return block;
+      const hrefs = items.map((item) => item[6]);
+      if (!hrefs.every((href) => /^#?\//.test(href))) return block;
+      const matching = hrefs.filter((href) => known.has(normalizeLinkPath(href))).length;
+      if (matching < 2) return block;
+      const labelKey = items[0][1];
+      const hrefKey = items[0][4];
+      const jsonStyle = /^\[\s*\{\s*"/.test(block);
+      const k = (name: string) => (jsonStyle ? JSON.stringify(name) : name);
+      const useHash = hrefs.some((href) => href.startsWith('#'));
+      const lineIndent = '  ';
+      const body = routes
+        .map((route) => `${lineIndent}{ ${k(labelKey)}: ${JSON.stringify(route.label)}, ${k(hrefKey)}: ${JSON.stringify(useHash ? route.href : route.path)} }`)
+        .join(',\n');
+      return `[\n${body}\n]`;
+    });
+
+    if (source !== original) {
+      out[path] = source;
+      changed.push(path);
+    }
+  }
+  return { files: out, changed };
+}
