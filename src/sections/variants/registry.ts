@@ -885,7 +885,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Showcase Panel',
       description: 'Centered copy above a framed product panel with a trust row',
       component: HeroShowcasePanel,
-      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      vfs: { mode: 'portable-recipe' } /* certification withheld: source URL incomplete */,
       generationStatus: 'preferred',
       source: {
         origin: '21st',
@@ -1253,7 +1253,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Bento Grid',
       description: 'Asymmetric bento tiles with a tall lead card and wide closer',
       component: FeaturesBentoGrid,
-      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      vfs: { mode: 'portable-recipe' } /* certification withheld: source URL incomplete */,
       generationStatus: 'preferred',
       source: {
         origin: '21st',
@@ -2062,7 +2062,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Wordmark Row',
       description: 'Quiet rule-topped band of centred client wordmarks',
       component: LogoCloudWordmarkRow,
-      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      vfs: { mode: 'portable-recipe' } /* certification withheld: source URL incomplete */,
       generationStatus: 'preferred',
       source: {
         origin: '21st',
