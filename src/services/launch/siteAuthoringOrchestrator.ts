@@ -170,7 +170,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       continue;
     }
     try {
-      const nextFiles = stampAuthoredPage(loop.prepared.nextFiles, page, input.designContext.fingerprint);
+      const nextFiles = stampAuthoredPage(loop.prepared.nextFiles, page, input.designContext?.fingerprint);
       const committed = await input.commitPage(nextFiles, page, files);
       files = committed.files;
       revisionId = committed.revisionId ?? revisionId;
