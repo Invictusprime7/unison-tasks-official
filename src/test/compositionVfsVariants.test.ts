@@ -39,7 +39,7 @@ describe('composition VFS variants', () => {
     const template = getCompositionById('salon-premium')!;
     const hero = template.sections.find((section): section is SectionEntry<'hero'> => section.type === 'hero')!;
     const expected = {
-      about: 'hero:split-image', services: 'hero:split-image', pricing: 'hero:page-title',
+      about: 'hero:variable-type', services: 'hero:split-image', pricing: 'hero:page-title',
       gallery: 'hero:full-bleed', booking: 'hero:editorial-banner', contact: 'hero:editorial-banner', faq: 'hero:page-title',
     } as const;
     for (const [role, variantId] of Object.entries(expected)) {
