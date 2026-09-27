@@ -7235,17 +7235,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     });
                     if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
                   }
-                  let candidate = firstCandidate;
-                if (!firstCandidate.ok && firstCandidate.gates.failures.length) {
-                  toast.message('Repairing the AI edit…');
-                  const repaired = await repairBuilderCandidate({
-                    rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
-                    baseRevisionId: currentRevisionId ?? undefined,
-                    prompt: applyMeta?.prompt,
-                    preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry }).files,
-                  });
-                  if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
-                }
                 if (!candidate.ok) {
                     console.warn('[WebBuilder] AI candidate blocked:', candidate.gates.failures);
                     toast.error('AI edit blocked before preview', { description: candidate.errors[0], duration: 8000 });
@@ -7770,6 +7759,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     industry: snapshotForPreflight?.industry,
                   }).files,
                 });
+                  let candidate = firstCandidate;
+                if (!firstCandidate.ok && firstCandidate.gates.failures.length) {
+                  toast.message('Repairing the AI edit…');
+                  const repaired = await repairBuilderCandidate({
+                    rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
+                    baseRevisionId: currentRevisionId ?? undefined,
+                    prompt: applyMeta?.prompt,
+                    preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry }).files,
+                  });
+                  if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
+                }
                 if (!candidate.ok) {
                   toast.error('AI edit blocked before preview', { description: candidate.errors[0], duration: 8000 });
                   return { success: false, errors: candidate.errors };
