@@ -40,3 +40,11 @@ Pieces exist separately: compileSiteDesignContract (deterministic, Lane B only),
 
 ## Phase 3 (first cut) + live wiring — done
 `src/services/builder/aiCandidateGates.ts` → `prepareAICandidate()` = candidate build → preflight on changed files → blocking gates (parse via TypeScript, empty-file, import-graph closure incl. imports of deleted files). Both WebBuilder AI apply paths (desktop + mobile) now run it; a failing candidate is refused before `runBuilderAiMutation`, so preview and VFS are untouched. Passing candidates commit through the existing single writer and mirror into the live preview. Tests: `src/test/aiCandidateGates.test.ts`. Still missing: full TypeScript type-check, build and isolated-render gates; blocking design validation.
+
+## Phase 4/5 + Wizard authoring — done
+- Edge: `ai-code-assistant` modes `site-page-author` / `site-page-repair` / `builder-source-edit` (`composerLane.ts`) return `AIComposerResponse` (contract byte-mirrored, protected paths refused server-side). Live-verified: salon Home authored (page + SiteNav/SiteFooter + local component) and passed candidate gates.
+- `aiRepairLoop.ts`: author → gates → diagnostics → repair, max 3; 402/403 terminal.
+- `siteAuthoringOrchestrator.ts`: Home first, page-by-page commits, baseline kept on failure, 280s budget.
+- Launch stage `author` between `commit` and `handoff` (degrades, never fails).
+- Builder: gate failures trigger `repairBuilderCandidate` before refusing.
+Remaining: full TypeScript/build/isolated-render gates, blocking design validation, per-page preview swap inside the Wizard progress screen.
