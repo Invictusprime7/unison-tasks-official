@@ -2412,7 +2412,13 @@ export function preferredVariantForSection(
   pack: ArtDirectionPack,
   sectionType: SectionType,
 ): VariantId | undefined {
-  return familyForSection(pack, sectionType)[0];
+  return leadVariant(pack, sectionType, familyForSection(pack, sectionType));
+}
+
+/** First generation-eligible (certified 21st) member of the family, else its first member. */
+function leadVariant(pack: ArtDirectionPack, sectionType: SectionType, family: VariantId[]): VariantId | undefined {
+  const eligible = new Set(getGenerationVariantsForSection(sectionType, pack).map(variant => variant.id));
+  return family.find(id => eligible.has(id)) ?? family[0];
 }
 
 export function isVariantInFamily(
@@ -2436,7 +2442,7 @@ export function clampVariantToPack(
   const family = familyForSection(pack, sectionType);
   if (!family.length) return variantId;
   if (variantId && family.includes(variantId)) return variantId;
-  return family[0];
+  return leadVariant(pack, sectionType, family);
 }
 
 /**
