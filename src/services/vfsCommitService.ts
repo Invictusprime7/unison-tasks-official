@@ -616,6 +616,7 @@ export async function commitMutation(
   // carries. Project it into every page's navbar link list so the live preview
   // menu always matches the tabs, whatever the AI or template wrote.
   if ((input.source === 'ai-builder' || input.source === 'playground-edit')
+    && !(input.options as { compositionUpgrade?: boolean } | undefined)?.compositionUpgrade
     && !restoredRevision && !reviewedArtifact && !reviewedComposition) {
     const shellRegistry = (snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry;
     if (shellRegistry && Object.keys(shellRegistry.pages ?? {}).length > 0) {
