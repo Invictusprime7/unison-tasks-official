@@ -110,6 +110,9 @@ import {
   resolveWizardIndustryOverlay,
 } from '@/services/wizardMergeContext';
 import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
+import { authorSitePages } from '@/services/launch/siteAuthoringOrchestrator';
+import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
+import { persistAiCommit } from '@/services/aiApplyGate';
 
 export interface LaunchOrchestratorInput {
   systemId: BusinessSystemType;
@@ -131,6 +134,10 @@ export interface LaunchOrchestratorCallbacks {
   onReview?: (candidate: { files: Record<string, string>; entryPoint: string }) => Promise<boolean>;
   onStatus?: (status: string) => void;
   onProgress?: (snapshot: LaunchRunSnapshot) => void;
+  /** Set false to skip AI page authoring (deterministic launch only). */
+  aiAuthoring?: boolean;
+  /** Fired after each AI-authored page is committed. */
+  onAuthoredPage?: (event: { files: Record<string, string>; pageTitle: string }) => void;
 }
 
 export interface LaunchOrchestratorResult {
@@ -728,6 +735,81 @@ export async function runLaunchPipeline(
       "Your form settings will finish saving in the builder.",
       error instanceof Error ? error.message : String(error),
     );
+  }
+
+  // ── Stage: author (AI Composer, milestone §3/§18) ─────────────────────────
+  // AI authors pages page-by-page on top of the committed deterministic
+  // substrate. Each accepted page is its own canonical commit; a failed page
+  // keeps its last-known-good version. This stage degrades, never fails.
+  if (callbacks.aiAuthoring !== false && import.meta.env.MODE !== 'test') {
+    try {
+      const committed = commit.result;
+      const registry = committed.siteBundleSnapshot!.pageRegistry;
+      const pages = Object.values(registry.pages)
+        .filter((page) => page.filePath && committed.vfsFiles[page.filePath])
+        .map((page) => ({
+          pageId: page.pageId,
+          title: page.title,
+          route: page.path,
+          filePath: page.filePath!,
+          role: String(page.pageRole ?? page.pageType ?? 'page'),
+        }));
+      const snapshotMeta = committed.siteBundleSnapshot!.meta as { artDirection?: { storagePackId?: string }; artDirectionPackId?: string } | undefined;
+      const designContext = compileResolvedSiteDesignContext({
+        industry: plan.industryOverlay,
+        roles: pages.map((p) => p.role),
+        artDirectionPackId: (snapshotMeta?.artDirection?.storagePackId ?? snapshotMeta?.artDirectionPackId ?? null) as never,
+        experience: input.designSelection?.experience,
+        mode: input.designSelection?.mode,
+        designSeed: plan.seed,
+        businessModel: (SYSTEM_TO_BUSINESS_MODEL[input.systemId] || 'general') as never,
+      });
+      const authored = await run.stage("author", async (signal) => authorSitePages({
+        pages,
+        homePageId: registry.homePageId,
+        designContext,
+        businessName: brand,
+        files: committed.vfsFiles,
+        revisionId: committed.persistedRevisionId,
+        signal,
+        budgetMs: 280_000,
+        preflight: (changed) => runFullPreflight(changed, {
+          siteBundleSnapshot: committed.siteBundleSnapshot ?? null,
+          industry: plan.industryOverlay,
+        }).files,
+        onProgress: (event) => {
+          if (event.phase === 'authoring') status(`Designing ${event.page.title}…`);
+        },
+        commitPage: async (nextFiles, page, beforeFiles) => {
+          const result = await persistAiCommit({
+            businessId: commit.confirmed.businessId,
+            projectId: commit.confirmed.projectId,
+            draftId: commit.confirmed.draftId,
+            revisionId: commit.result.persistedRevisionId,
+            beforeFiles,
+            nextFiles,
+            snapshotForPreflight: commit.result.siteBundleSnapshot ?? null,
+            playground: commit.result.playground ?? materializedPlayground ?? null,
+            activePagePath: page.route,
+          });
+          if (!result.vfsFiles) throw new Error('The authored page commit returned no files.');
+          commit.result = { ...commit.result, ...result, persistedRevisionId: result.persistedRevisionId ?? commit.result.persistedRevisionId };
+          callbacks.onAuthoredPage?.({ files: result.vfsFiles, pageTitle: page.title });
+          return { files: result.vfsFiles, revisionId: result.persistedRevisionId };
+        },
+      }), { timeoutMs: 300_000 });
+      const kept = authored.outcomes.filter((o) => o.status !== 'authored');
+      if (kept.length) {
+        run.degrade('author', 'author.kept_baseline',
+          `${kept.map((o) => o.page.title).join(', ')} kept the standard design.`,
+          kept.map((o) => `${o.page.title}: ${o.reason}`).join('; '));
+      }
+    } catch (error) {
+      run.degrade('author', 'author.unavailable', 'AI page design was unavailable; your site uses the standard design.',
+        error instanceof Error ? error.message : String(error));
+    }
+  } else {
+    run.markStage('author', 'done');
   }
 
   // ── Stage: handoff ────────────────────────────────────────────────────────
