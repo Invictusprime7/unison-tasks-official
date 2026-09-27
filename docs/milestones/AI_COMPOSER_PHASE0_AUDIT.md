@@ -34,3 +34,6 @@ Pieces exist separately: compileSiteDesignContract (deterministic, Lane B only),
 
 ## Phase 1 — done
 `src/services/launch/resolvedSiteDesignContext.ts` → `compileResolvedSiteDesignContext()` joins the contract, experience envelope and legality into one deterministic context with a fingerprint. It splits hard legality (forbidden ids) from creative recommendation (preferred ids; local components permitted). Tests: `src/test/resolvedSiteDesignContext.test.ts`.
+
+## Phase 2 — done (candidate transaction)
+`src/services/builder/aiCandidateChangeSet.ts` → `buildAICandidateChangeSet()` normalizes AI output (path canonicalization, protected-path/slot guards, JSX typo repair, dependency resolution — all reused from `aiVFSOrchestrator.ts`) into an `AICandidateChangeSet` of create/replace/delete ops, applied in memory to a copy of the last committed VFS. No VFS write, no preview event, no persistence. Deterministic id. Tests: `src/test/aiCandidateChangeSet.test.ts`. Next: Phase 3 gates consume `candidateFiles`; wiring the Builder path to the candidate happens with the first slice.
