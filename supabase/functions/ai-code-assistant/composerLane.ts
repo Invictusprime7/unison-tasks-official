@@ -119,7 +119,7 @@ export async function runComposerLane(context: string, headers: Record<string, s
     try { value = extractJson(result.content); } catch {
       lastError = 'Composer response was not JSON';
       messages.push({ role: 'assistant', content: (result.content ?? '').slice(0, 4000) },
-        { role: 'user', content: 'That was not valid JSON. Return ONLY the JSON object.' });
+        { role: 'user', content: 'That output could not be parsed. Return ONLY the file-block format (SUMMARY line, then <<<FILE ... >>>END blocks with complete raw files).' });
       continue;
     }
     const checked = aiComposerResponseSchema.safeParse(value);
@@ -127,7 +127,7 @@ export async function runComposerLane(context: string, headers: Record<string, s
       lastError = 'Composer response failed its schema';
       messages.push({ role: 'assistant', content: (result.content ?? '').slice(0, 4000) }, {
         role: 'user',
-        content: 'Schema errors: ' + checked.error.issues.slice(0, 6).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') + '. Return ONLY the corrected JSON object.',
+        content: 'Schema errors: ' + checked.error.issues.slice(0, 6).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') + '. Return the corrected output in the file-block format.',
       });
       continue;
     }
@@ -136,7 +136,7 @@ export async function runComposerLane(context: string, headers: Record<string, s
       lastError = 'Composer wrote outside its allowed scope';
       messages.push({ role: 'assistant', content: (result.content ?? '').slice(0, 4000) }, {
         role: 'user',
-        content: `Scope violations:\n${scope.join('\n')}\nReturn the corrected JSON object.`,
+        content: `Scope violations:\n${scope.join('\n')}\nReturn the corrected output in the file-block format.`,
       });
       continue;
     }
