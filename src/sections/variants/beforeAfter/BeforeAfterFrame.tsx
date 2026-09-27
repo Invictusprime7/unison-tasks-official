@@ -23,7 +23,7 @@ export const normalizePairs = (items: unknown): TransformationPair[] => {
       const entry = (raw || {}) as Record<string, unknown>;
       const before = String(entry.before ?? entry.beforeImage ?? '').trim();
       const after = String(entry.after ?? entry.afterImage ?? '').trim();
-      if (!before && !after) return null;
+      if (!before || !after) return null;
       return {
         before,
         after,
