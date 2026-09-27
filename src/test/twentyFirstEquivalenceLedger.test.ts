@@ -1,3 +1,4 @@
+import { getSiteSectionTypes } from '@/sections/registry';
 /**
  * Phase A gate — 21st equivalence ledger.
  *
@@ -30,7 +31,7 @@ describe('21st equivalence ledger (Phase A)', () => {
   const report = buildEquivalenceLedger();
 
   it('agrees exactly with the generation eligibility rule', () => {
-    for (const type of Object.keys(getAllSections()) as SectionType[]) {
+    for (const type of getSiteSectionTypes()) {
       const fromRegistry = getGenerationVariantsForSection(type).map((v) => v.id).sort();
       const fromLedger = report.entries.filter((e) => e.sectionType === type && e.eligible)
         .map((e) => e.id).sort();

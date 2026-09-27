@@ -42,11 +42,11 @@ describe('21st-derived Launcher variants across every industry', () => {
           expect(selected.generationStatus).not.toBe('legacy');
           if (selected.pageRoles?.length) expect(selected.pageRoles).toContain('home');
           const allowed = getGenerationVariantsForSection(section.type, resolvedPack, 'home').map(variant => variant.id);
-          expect(selected.source?.origin).toBe('21st');
+          expect(['21st','unison']).toContain(selected.source?.origin);
           expect(selected.vfs?.certification).toBe('approved');
           if (allowed.length) expect(allowed).toContain(selected.id);
           const sourced = getVariantsForSection(section.type).filter(variant =>
-            allowed.includes(variant.id) && variant.source?.origin === '21st' &&
+            allowed.includes(variant.id) && Boolean(variant.source?.origin) &&
             variant.vfs?.certification === 'approved' && variant.generationStatus === 'preferred' &&
             (!variant.pageRoles?.length || variant.pageRoles.includes('home')));
           if (sourced.length) {

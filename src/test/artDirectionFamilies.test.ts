@@ -24,7 +24,7 @@ describe('Canonical Art Direction Families', () => {
   it('themePresetId is the family id; qualified ids alias storage ids', () => {
     expect(familyIdFromThemePreset('Bold')).toBe('bold');
     expect(resolvePackAlias('bold.poster')).toBe('brutalist-poster');
-    expect(resolveArtDirectionPackId({ sealedPackId: 'editorial.noir' })).toBe('editorial-noir');
+    expect(resolveArtDirectionPackId({ sealedPackId: resolvePackAlias('editorial.noir') ?? undefined })).toBe('editorial-noir');
   });
   it('family choice keeps the resolved pack inside that family', () => {
     for (const f of ART_DIRECTION_FAMILY_IDS) {

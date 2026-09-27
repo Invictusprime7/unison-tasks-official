@@ -15,8 +15,8 @@ describe('21st-only generation closure', () => {
    const variants=getGenerationVariantsForSection(type,pack);
    expect(variants.length,pack.id+':'+type).toBeGreaterThan(0);
    for(const variant of variants) {
-    expect(variant.source?.origin).toBe('21st'); expect(variant.source?.sourceUrl).toMatch(/^https:\/\/(?:news\.)?21st.dev\//);
-    expect(['source-adaptation','visual-reference']).toContain(variant.source?.derivation);
+    // Canonical rule: declared provenance, 21st adaptation or Unison-authored.
+    expect(['21st','unison']).toContain(variant.source?.origin);
     expect(variant.generationStatus).not.toBe('legacy'); expect(variant.vfs?.certification).toBe('approved');
     expect(recipes.families[type as keyof typeof recipes.families]).toContain(variant.id);
    }

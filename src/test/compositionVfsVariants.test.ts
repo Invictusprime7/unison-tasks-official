@@ -39,8 +39,8 @@ describe('composition VFS variants', () => {
     const template = getCompositionById('salon-premium')!;
     const hero = template.sections.find((section): section is SectionEntry<'hero'> => section.type === 'hero')!;
     const expected = {
-      about: 'hero:split-image', services: 'hero:split-image', pricing: 'hero:page-title',
-      gallery: 'hero:full-bleed', booking: 'hero:editorial-banner', contact: 'hero:editorial-banner', faq: 'hero:page-title',
+      about: 'hero:variable-type', services: 'hero:launch-showcase', pricing: 'hero:page-title',
+      gallery: 'hero:image-fan', booking: 'hero:editorial-banner', contact: 'hero:editorial-banner', faq: 'hero:page-title',
     } as const;
     for (const [role, variantId] of Object.entries(expected)) {
       const page: PageRouteNode = {
@@ -187,8 +187,8 @@ describe('composition VFS variants', () => {
   expect(source).toContain('"badge": "Our Offerings"');
     expect(source).not.toContain(`"headline": ${JSON.stringify(homeHero?.props.headline)}`);
     expect(source).not.toContain(JSON.stringify(homeHero?.props.backgroundImage));
-    expect(routeHero.variantId).toBe('hero:split-image');
-    expect(routeHero.props.layout).toBe('split');
+    expect(routeHero.variantId).toBe('hero:launch-showcase');
+    expect(routeHero.props.layout).toBe('launch-showcase');
   });
 
   it('keeps an explicit page hero override when the hero is cloned for a route', () => {

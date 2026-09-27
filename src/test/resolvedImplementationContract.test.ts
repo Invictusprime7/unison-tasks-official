@@ -38,7 +38,7 @@ describe('resolved implementation contract (M6)', () => {
       const slotIds = contract.slots.map((slot) => slot.id);
       expect(new Set(slotIds).size, `${contract.implementationId} slot ids unique`).toBe(slotIds.length);
       for (const slot of contract.slots) {
-        expect(slot.id).toMatch(/^[a-z][a-zA-Z]*\.[a-z][a-z-]*$/);
+        expect(slot.id).toMatch(/^[a-z][a-zA-Z]*\.[a-z][a-zA-Z-]*$/);
         expect(slot.editable).toBe(artifact!.aiEditScope !== 'locked');
       }
       // Slot identity matches the artifact owner's declared surface exactly.

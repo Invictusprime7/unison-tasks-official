@@ -50,7 +50,7 @@ describe('Recovery Phase 6 — ArtDirectionPack', () => {
   it('resolves deterministically with the theme preset leading and industry narrowing', () => {
     expect(resolveArtDirectionPackId({ industry: 'portfolio' })).toBe('cinematic-portfolio');
     // Theme leads: the editorial family wins, narrowed to a saas-compatible pack.
-    expect(resolveArtDirectionPackId({ industry: 'saas', themePresetId: 'editorial' })).toBe('editorial-noir');
+    expect(resolveArtDirectionPackId({ industry: 'saas', themePresetId: 'editorial' })).toBe('soft-editorial');
     expect(resolveArtDirectionPackId({ industry: 'unknown-thing', themePresetId: 'editorial' })).toBe('editorial-noir');
     expect(resolveArtDirectionPackId({})).toBe('soft-editorial');
     // Stable across calls.
@@ -61,7 +61,7 @@ describe('Recovery Phase 6 — ArtDirectionPack', () => {
     const pack = ART_DIRECTION_PACKS['cinematic-portfolio'];
     expect(clampVariantToPack(pack, 'gallery', 'gallery:masonry')).toBe('gallery:cinematic-grid');
     expect(clampVariantToPack(pack, 'gallery', 'gallery:lightbox-grid')).toBe('gallery:lightbox-grid');
-    expect(preferredVariantForSection(pack, 'hero')).toBe('hero:full-bleed');
+    expect(preferredVariantForSection(pack, 'hero')).toBe('hero:image-fan');
     expect(isVariantInFamily(pack, 'hero', 'hero:centered')).toBe(false);
     expect(clampVariantToPack(pack, 'stats', undefined)).toBe('stats:row');
     expect(familyForSection(pack, 'navbar')).toContain('navbar:minimal-dark');

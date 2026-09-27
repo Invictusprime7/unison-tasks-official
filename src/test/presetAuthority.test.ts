@@ -1,3 +1,4 @@
+import { packsForThemeFamily } from '@/sections/variants/themeFamily';
 import { describe, it, expect } from 'vitest';
 import { THEME_PRESETS } from '@/components/onboarding/themePresets';
 import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToTokens';
@@ -21,8 +22,8 @@ describe('Selected preset authority', () => {
   });
   it('never escapes the selected family when an industry has no matching pack', () => {
     for (let seed = 0; seed < 30; seed++) {
-      expect(['bold-commercial', 'brutalist-poster']).toContain(resolveArtDirectionPackId({ themePresetId: 'bold', industry: 'portfolio', seed: String(seed) }));
-      expect(['editorial-noir', 'print-serif', 'noir-atelier', 'cinematic-portfolio']).toContain(resolveArtDirectionPackId({ themePresetId: 'editorial', industry: 'saas', seed: String(seed) }));
+      expect(packsForThemeFamily('bold')).toContain(resolveArtDirectionPackId({ themePresetId: 'bold', industry: 'portfolio', seed: String(seed) }));
+      expect(packsForThemeFamily('editorial')).toContain(resolveArtDirectionPackId({ themePresetId: 'editorial', industry: 'saas', seed: String(seed) }));
     }
   });
   it('corrects legacy style once without losing overrides or mutating history', () => {

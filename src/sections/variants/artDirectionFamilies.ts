@@ -14,6 +14,7 @@
  * saved snapshots, so nothing previously saved changes meaning.
  */
 import type { ArtDirectionPackId } from './artDirectionPacks';
+import { packsForThemeFamily, themeFamiliesForPack } from './themeFamily';
 
 export const ART_DIRECTION_FAMILY_IDS = [
   'modern',
@@ -190,6 +191,16 @@ export const ART_DIRECTION_FAMILIES: Record<ArtDirectionFamilyId, ArtDirectionFa
   },
 };
 
+// Membership is owned by the canonical Theme Family registry (themeFamily.ts).
+// Every member pack gets a qualified ref here; hand-named slugs stay as aliases.
+const LEGACY_QUALIFIED_ALIASES = new Map(
+  Object.values(ART_DIRECTION_FAMILIES).flatMap((f) => f.packs.map((p) => [p.qualifiedId, p.packId] as const)),
+);
+for (const family of Object.values(ART_DIRECTION_FAMILIES)) {
+  const known = new Map(family.packs.map((p) => [p.packId, p]));
+  family.packs = packsForThemeFamily(family.id).map((packId) => known.get(packId) ?? ref(family.id, packId, packId));
+}
+
 export function isArtDirectionFamilyId(id: string | null | undefined): id is ArtDirectionFamilyId {
   return Boolean(id && (ART_DIRECTION_FAMILY_IDS as readonly string[]).includes(id));
 }
@@ -202,7 +213,7 @@ export function familyIdFromThemePreset(themePresetId: string | null | undefined
 
 /** Child storage pack ids of a family, in family order. */
 export function familyPackIds(familyId: ArtDirectionFamilyId): ArtDirectionPackId[] {
-  return ART_DIRECTION_FAMILIES[familyId].packs.map((p) => p.packId);
+  return packsForThemeFamily(familyId);
 }
 
 /** Qualified `family.slug` id for a storage pack id (family-scoped when known). */
@@ -227,10 +238,10 @@ export function resolvePackAlias(id: string | null | undefined): ArtDirectionPac
     const hit = family.packs.find((p) => p.qualifiedId === id || p.packId === id);
     if (hit) return hit.packId;
   }
-  return null;
+  return LEGACY_QUALIFIED_ALIASES.get(id) ?? null;
 }
 
 /** The family that primarily owns a storage pack (first declaring family). */
 export function familyOfPack(packId: string): ArtDirectionFamilyId | null {
-  return qualifiedPackRef(packId)?.qualifiedId.split('.')[0] as ArtDirectionFamilyId ?? null;
+  return (themeFamiliesForPack(packId as ArtDirectionPackId)[0] as ArtDirectionFamilyId | undefined) ?? null;
 }

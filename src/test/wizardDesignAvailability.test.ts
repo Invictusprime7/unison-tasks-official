@@ -40,7 +40,7 @@ describe('V5 P3: Wizard design availability is registry-derived', () => {
       for (const option of options) {
         const variant = getVariantById(option.variantId);
         expect(variant).toBeDefined();
-        expect(variant?.source?.origin).toBe('21st');
+        expect(['21st','unison']).toContain(variant?.source?.origin);
         expect(variant?.vfs?.certification).toBe('approved');
         expect(variant?.generationStatus).toBe('preferred');
         const level = deriveImplementationVisualSignature(variant!).experienceLevel;
