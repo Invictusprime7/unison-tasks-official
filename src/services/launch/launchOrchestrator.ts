@@ -110,7 +110,8 @@ import {
   resolveWizardIndustryOverlay,
 } from '@/services/wizardMergeContext';
 import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
-import { runFullPreflight } from "@/utils/aiSitePreflightRepair";
+import { runFullPreflight } from "@/services/runFullPreflight";
+import type { CommitMutationResult } from "@/services/vfsCommitService";
 import { authorSitePages } from '@/services/launch/siteAuthoringOrchestrator';
 import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { persistAiCommit } from '@/services/aiApplyGate';
