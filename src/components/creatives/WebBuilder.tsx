@@ -6717,9 +6717,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [activePagePath, activePublishedRevisionId, builderRuntimeContext?.workspaceId, hydratedRevision, runtimeProjectionRevisionId]);
 
   const hasCanonicalIdentity = Boolean((resolvedProjectId || projectId) && currentDraftId);
-  const hasRenderableLauncherHandoff = !isExplicitProjectResume
-    && hasNonEmptyVfsFiles(effectiveRouteState?.vfsFiles)
-    && Boolean(effectiveRouteState?.siteBundleSnapshot?.meta?.seal?.version);
   const canonicalRuntimeError = canonicalHydrationError
     || (hasCanonicalIdentity
       && hydratedRevision
