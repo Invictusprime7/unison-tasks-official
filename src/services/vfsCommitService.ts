@@ -615,7 +615,8 @@ export async function commitMutation(
   // The PageRegistry (Builder page tabs) owns which links the site chrome
   // carries. Project it into every page's navbar link list so the live preview
   // menu always matches the tabs, whatever the AI or template wrote.
-  if (!restoredRevision && !reviewedArtifact && !reviewedComposition) {
+  if ((input.source === 'ai-builder' || input.source === 'playground-edit')
+    && !restoredRevision && !reviewedArtifact && !reviewedComposition) {
     const shellRegistry = (snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry;
     if (shellRegistry && Object.keys(shellRegistry.pages ?? {}).length > 0) {
       const projected = projectSiteShellLinks(buildSiteShellTopology(shellRegistry), files);
