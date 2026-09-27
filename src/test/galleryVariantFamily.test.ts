@@ -1,3 +1,4 @@
+import { portableRecipeOnly } from '@/sections/variants/portableRecipeOnly';
 import { describe, it, expect } from 'vitest';
 import { getVariantsForSection, getVariantById, getVariantIdForLayout } from '@/sections/variants/registry';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
@@ -21,7 +22,8 @@ describe('Phase 4 — gallery premium variant family', () => {
     for (const id of REQUIRED) {
       const variant = getVariantById(id as never);
       expect(variant?.component).toBeTypeOf('function');
-      expect(variant?.renderJSX({ heading: 'Work', listItems: ['One', 'Two'] })).toContain(`data-variant="${id}"`);
+      // Portable-recipe variants compile only through the canonical recipe path.
+      if (variant?.renderJSX !== portableRecipeOnly) expect(variant?.renderJSX({ heading: 'Work', listItems: ['One', 'Two'] })).toContain(`data-variant="${id}"`);
     }
   });
 

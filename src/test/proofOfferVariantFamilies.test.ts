@@ -1,3 +1,4 @@
+import { portableRecipeOnly } from '@/sections/variants/portableRecipeOnly';
 import { describe, it, expect } from 'vitest';
 import { compositionToReactFileSet } from '@/sections/compositionToFileSet';
 import { getVariantById, getVariantsForSection, getDefaultVariant, getVariantIdForLayout } from '@/sections/variants';
@@ -20,7 +21,7 @@ describe('Phase 3 — testimonials and pricing are first-class variant families'
     variants.forEach((variant) => {
       expect(variant.component).toBeTruthy();
       expect(typeof variant.renderJSX).toBe('function');
-      if (variant.id !== 'testimonials:columns') expect(variant.renderJSX({ heading: 'Proof', listItems: ['Great work'] })).toContain(variant.id);
+      if (variant.id !== 'testimonials:columns' && variant.renderJSX !== portableRecipeOnly) expect(variant.renderJSX({ heading: 'Proof', listItems: ['Great work'] })).toContain(variant.id);
     });
     expect(getDefaultVariant('testimonials')?.id).toBe('testimonials:grid');
   });
