@@ -23,6 +23,7 @@ export type LaunchStageName =
   | 'enrich'
   | 'preflight'
   | 'commit'
+  | 'author'
   | 'handoff';
 
 export type LaunchStageStatus = 'pending' | 'active' | 'done' | 'degraded' | 'failed';
@@ -59,6 +60,7 @@ export const LAUNCH_STAGE_LABELS: Record<LaunchStageName, string> = {
   enrich: 'AI crafting bespoke content',
   preflight: 'Polishing interactive details',
   commit: 'Building your live workspace',
+  author: 'AI designing your pages',
   handoff: 'Opening your visual studio',
 };
 
@@ -68,6 +70,7 @@ const DEFAULT_STAGE_TIMEOUTS: Record<LaunchStageName, number> = {
   enrich: 240_000,
   preflight: 120_000,
   commit: 60_000,
+  author: 300_000,
   handoff: 20_000,
 };
 
@@ -223,7 +226,7 @@ const STAGE_TELEMETRY_EVENT: Partial<Record<LaunchStageName, LaunchTelemetryEven
 export function createLaunchRun(options: LaunchRunOptions = {}): LaunchRun {
   const controller = new AbortController();
   const telemetry = startLaunchTelemetry();
-  const stageOrder: LaunchStageName[] = ['plan', 'seed', 'enrich', 'preflight', 'commit', 'handoff'];
+  const stageOrder: LaunchStageName[] = ['plan', 'seed', 'enrich', 'preflight', 'commit', 'author', 'handoff'];
   const stages: LaunchStageState[] = stageOrder.map((name) => ({
     name,
     status: 'pending',
