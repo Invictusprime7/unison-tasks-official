@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import { ART_DIRECTION_PACKS, getGenerationVariantsForSection } from '@/sections/variants';
-import { getAllSections } from '@/sections/registry';
+import { getAllSections, getSiteSectionTypes } from '@/sections/registry';
 import {
   resolveComponentStateContract,
   componentStateContractIssues,
@@ -11,7 +11,7 @@ import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from '
 import { buildWizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 import type { SectionType } from '@/sections/types';
 
-const SECTION_TYPES = Object.keys(getAllSections()) as SectionType[];
+const SECTION_TYPES = getSiteSectionTypes();
 
 describe('V4 M5 — 21st generation coverage gate', () => {
   it('passes for every art direction pack across every registered section', () => {

@@ -166,6 +166,17 @@ export const getSectionComponent = (type: SectionType) => {
   return SECTION_REGISTRY[type]?.component;
 };
 
+/**
+ * App-surface families (sign-in, dashboards) power account pages, not the
+ * Wizard-compiled marketing site. They are Unison-authored and Builder
+ * selectable, so they sit outside 21st-only generation coverage.
+ */
+export const APP_SURFACE_SECTION_TYPES: readonly SectionType[] = ['auth-form', 'data-table'];
+export const isAppSurfaceSection = (type: SectionType): boolean => APP_SURFACE_SECTION_TYPES.includes(type);
+/** Section families the Wizard compiles into a generated site. */
+export const getSiteSectionTypes = (): SectionType[] =>
+  (Object.keys(getAllSections()) as SectionType[]).filter(type => !isAppSurfaceSection(type));
+
 export const getAllSections = (): Record<SectionType, SectionRegistryEntry> => {
   return SECTION_REGISTRY;
 };
