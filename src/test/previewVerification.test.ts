@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
+  attachPreviewListener,
   awaitPreviewVerification,
   getPreviewVerificationSnapshot,
   markPreviewPending,
@@ -10,7 +11,13 @@ import {
 import { transactionVerdictLine } from '@/services/builder/builderTransactionState';
 
 describe('preview verification (P0.4)', () => {
-  beforeEach(() => resetPreviewVerification());
+  beforeEach(() => { resetPreviewVerification(); attachPreviewListener(); });
+
+  it('does not stall or warn when no preview is mounted (code view)', async () => {
+    resetPreviewVerification();
+    markPreviewPending();
+    await expect(awaitPreviewVerification({ timeoutMs: 50 })).resolves.toEqual({ verified: true });
+  });
 
   it('verifies only once the preview reports a running runtime', async () => {
     markPreviewPending();
