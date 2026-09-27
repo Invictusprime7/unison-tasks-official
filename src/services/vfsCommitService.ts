@@ -594,9 +594,16 @@ export async function commitMutation(
       }
       if (designContract.violations.length) {
         log('siteDesignContract', 'warn', 'site design contract violations', designContract.violations);
-        if (input.source === 'ai-builder') {
+        // Only pages this edit actually changed may block it; pre-existing
+        // drift on untouched pages must never reject an unrelated edit.
+        const previousFiles = (input.current?.vfsFiles ?? {}) as Record<string, string>;
+        const touched = designContract.violations.filter((violation) => {
+          const path = violation.split(' ')[0];
+          return previousFiles[path] !== files[path] || !(path in previousFiles);
+        });
+        if (input.source === 'ai-builder' && touched.length) {
           throw new Error(
-            `[VFSCommitService] This edit breaks the site's design language: ${designContract.violations[0]}`,
+            `[VFSCommitService] This edit breaks the site's design language: ${touched[0]}`,
           );
         }
       }

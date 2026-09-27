@@ -126,7 +126,9 @@ export function validateRenderableComponentImports(options: {
         path: options.path, symbol: binding.local, importSource: binding.source, reason: 'default-export-unavailable',
         message: `${options.path} renders ${binding.local}, but "${binding.source}" has no default export.`,
       });
-    } else if (binding.kind === 'named' && !exports.named.has(binding.imported)) {
+    } else if (binding.kind === 'named' && !exports.named.has(binding.imported) && !/export\s*\*\s*from\s*['"]/.test(files[resolved] ?? '')) {
+      // `export * from '...'` barrels (icons → lucide-react, motion, forms…)
+      // can re-export any name; they are not statically enumerable here.
       violations.push({
         path: options.path, symbol: binding.local, importSource: binding.source, reason: 'named-export-unavailable',
         message: `${options.path} renders ${binding.local}, but "${binding.source}" does not export ${binding.imported}.`,
