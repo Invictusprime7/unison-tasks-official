@@ -26,7 +26,7 @@ export const AuthSignIn: React.FC<BaseSectionProps<'auth-form'>> = ({ section, t
         <span data-ut-slot="auth.brand" className="text-lg font-semibold tracking-tight">
           Unison
         </span>
-        <p data-ut-slot="auth.panelCopy" className="max-w-sm text-2xl font-medium leading-snug">
+        <p data-ut-slot="auth.panel-copy" className="max-w-sm text-2xl font-medium leading-snug">
           Everything you need, one sign-in away.
         </p>
       </div>
@@ -98,7 +98,7 @@ export const AuthSignIn: React.FC<BaseSectionProps<'auth-form'>> = ({ section, t
           >
             {submitLabel}
           </button>
-          <p data-ut-slot="auth.footerNote" className="text-center text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
+          <p data-ut-slot="auth.footer-note" className="text-center text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
             {footerNote}
           </p>
         </form>

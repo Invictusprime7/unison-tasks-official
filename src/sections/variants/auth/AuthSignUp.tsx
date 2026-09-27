@@ -79,14 +79,14 @@ export const AuthSignUp: React.FC<BaseSectionProps<'auth-form'>> = ({ section, t
         </button>
         <a
           href={altHref}
-          data-ut-slot="auth.altAction"
+          data-ut-slot="auth.alt-action"
           data-ut-intent="auth.login"
           className="block text-center text-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2"
           style={{ color: hsl(theme.colors.primary) }}
         >
           {altLabel}
         </a>
-        <p data-ut-slot="auth.footerNote" className="text-center text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
+        <p data-ut-slot="auth.footer-note" className="text-center text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
           {footerNote}
         </p>
       </form>
