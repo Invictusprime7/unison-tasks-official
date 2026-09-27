@@ -198,6 +198,8 @@ const SandpackErrorListener: React.FC<{
   const { sandpack } = useSandpack();
   const lastReportedRef = useRef<string>('');
 
+  useEffect(() => attachPreviewListener(), []);
+
   useEffect(() => {
     if (sandpack.status === 'running' || sandpack.status === 'timeout' || sandpack.error) return;
     const watchdog = window.setTimeout(() => {
