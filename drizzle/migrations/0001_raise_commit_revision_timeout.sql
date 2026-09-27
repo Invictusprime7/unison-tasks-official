@@ -1,0 +1,1 @@
+ALTER FUNCTION public.commit_canonical_site_revision SET statement_timeout = '60s';
