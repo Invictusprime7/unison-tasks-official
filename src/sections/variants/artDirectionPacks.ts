@@ -1,3 +1,4 @@
+import { THEME_FAMILY_IDS, packsForThemeFamily, INDUSTRY_PACK_CAPABILITY } from "./themeFamily";
 /**
  * Art Direction Packs — the cohesion contract above theme tokens.
  *
@@ -19,8 +20,6 @@
 
 import type { SectionType } from '../types';
 import type { VariantId } from './types';
-
-import { ART_DIRECTION_FAMILY_IDS, familyPackIds, resolvePackAlias } from './artDirectionFamilies';
 
 export type ArtDirectionPackId =
   | 'editorial-noir'
@@ -374,7 +373,7 @@ export function buildArtDirectionTokens(pack: ArtDirectionPack): Record<string, 
 
     // ── Theme-led signature: typography, gradients, density, hero, pills ──
     '--ut-font-display-stack': sig.typography.displayStack,
-    '--ut-font-body-stack': sig.typography.bodyStack,
+    '--ut-font-sans-stack': sig.typography.bodyStack,
     '--ut-weight-display': String(sig.typography.displayWeight),
     '--ut-weight-body': String(sig.typography.bodyWeight),
     '--ut-display-leading': sig.typography.displayLineHeight,
@@ -1355,36 +1354,14 @@ export const ART_DIRECTION_PACK_IDS = Object.keys(ART_DIRECTION_PACKS) as ArtDir
 export const DEFAULT_ART_DIRECTION_PACK_ID: ArtDirectionPackId = 'soft-editorial';
 
 /**
- * Theme preset → aesthetic family, most-preferred first.
- * The STYLE CARD LEADS: this is the primary axis of resolution.
+ * Theme preset (compat alias of ThemeFamilyId) → packs, and industry → packs.
+ * Both derive from the canonical Theme Family registry — no second table.
  */
 const THEME_PRESET_TO_PACKS: Record<string, ArtDirectionPackId[]> = Object.fromEntries(
-  ART_DIRECTION_FAMILY_IDS.map((familyId) => [familyId, familyPackIds(familyId)]),
+  THEME_FAMILY_IDS.map((family) => [family, packsForThemeFamily(family)]),
 );
 
-/**
- * Industry → packs whose section families support what the site must DO
- * (catalog grids, booking proof, gallery inspection). Industry CONSTRAINS
- * the theme's family; it no longer overrides it.
- */
-const INDUSTRY_TO_PACKS: Record<string, ArtDirectionPackId[]> = {
-  portfolio: ['cinematic-portfolio', 'print-serif', 'editorial-noir', 'luxury-minimal', 'warm-craft', 'swiss-grid'],
-  photography: ['cinematic-portfolio', 'editorial-noir', 'print-serif', 'luxury-minimal', 'warm-craft'],
-  content: ['editorial-noir', 'print-serif', 'swiss-grid', 'soft-editorial'],
-  restaurant: ['editorial-noir', 'warm-craft', 'print-serif', 'organic-studio', 'cinematic-portfolio'],
-  realestate: ['luxury-minimal', 'cinematic-portfolio', 'swiss-grid', 'soft-editorial'],
-  salon: ['noir-atelier', 'organic-studio', 'warm-craft', 'luxury-minimal', 'soft-editorial'],
-  coaching: ['organic-studio', 'warm-craft', 'soft-editorial', 'print-serif'],
-  nonprofit: ['organic-studio', 'warm-craft', 'print-serif', 'soft-editorial'],
-  agency: ['soft-editorial', 'swiss-grid', 'editorial-noir', 'glass-tech', 'brutalist-poster'],
-  contractor: ['bold-commercial', 'brutalist-poster', 'soft-editorial', 'swiss-grid'],
-  landing: ['bold-commercial', 'brutalist-poster', 'glass-tech', 'neon-grid', 'soft-editorial'],
-  saas: ['glass-tech', 'neon-grid', 'mono-terminal', 'swiss-grid', 'soft-editorial'],
-  store: ['commerce-editorial', 'bold-commercial', 'soft-editorial', 'swiss-grid', 'brutalist-poster'],
-  ecommerce: ['commerce-editorial', 'bold-commercial', 'soft-editorial', 'swiss-grid'],
-  saved: ['soft-editorial', 'swiss-grid'],
-  general: ['soft-editorial', 'swiss-grid', 'glass-tech'],
-};
+const INDUSTRY_TO_PACKS = INDUSTRY_PACK_CAPABILITY;
 
 export interface ArtDirectionResolutionInput {
   industry?: string | null;
@@ -1418,9 +1395,9 @@ function stableIndex(seed: string, size: number): number {
  * capability) → industry capability → neutral default.
  */
 export function resolveArtDirectionPackId(input: ArtDirectionResolutionInput): ArtDirectionPackId {
-  const sealed = resolvePackAlias((input.sealedPackId || '').trim());
-  if (sealed && ART_DIRECTION_PACKS[sealed]) {
-    return sealed;
+  const sealed = (input.sealedPackId || '').trim();
+  if (sealed && ART_DIRECTION_PACKS[sealed as ArtDirectionPackId]) {
+    return sealed as ArtDirectionPackId;
   }
 
   const preset = (input.themePresetId || '').trim().toLowerCase();
@@ -1450,7 +1427,7 @@ export function resolveArtDirectionPack(input: ArtDirectionResolutionInput): Art
 
 export function getArtDirectionPack(id: string | null | undefined): ArtDirectionPack | undefined {
   if (!id) return undefined;
-  return ART_DIRECTION_PACKS[(resolvePackAlias(id) ?? id) as ArtDirectionPackId];
+  return ART_DIRECTION_PACKS[id as ArtDirectionPackId];
 }
 
 export function isArtDirectionPackId(id: string | null | undefined): id is ArtDirectionPackId {

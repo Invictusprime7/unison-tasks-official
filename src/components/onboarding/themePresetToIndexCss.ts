@@ -182,7 +182,7 @@ export function buildThemedIndexCssFromTokens(
   /* The style card picks the family; the art-direction pack owns the fallback
      character (serif / grotesk / mono), weights and display leading. */
   --font-heading: ${tokens.typography.headingFont}, var(--ut-font-display-stack);
-  --font-body: ${tokens.typography.bodyFont}, var(--ut-font-body-stack);
+  --font-body: ${tokens.typography.bodyFont}, var(--ut-font-sans-stack);
 }
 
 /* ${SHADCN_LIBRARY_CSS_MARKER}

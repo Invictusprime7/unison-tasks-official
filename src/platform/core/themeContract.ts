@@ -111,7 +111,7 @@ const TOKEN_ROLES: Record<string, { group: ThemeContractGroup['id']; role: strin
   '--ut-heading-transform': { group: 'typography', role: 'heading text-transform', usage: '[text-transform:var(--ut-heading-transform)]' },
   '--ut-measure': { group: 'typography', role: 'optimal body line length', usage: 'max-w-[var(--ut-measure)]' },
   '--ut-font-display-stack': { group: 'typography', role: 'display font stack', usage: 'font-[var(--ut-font-display-stack)] — already applied to headings globally' },
-  '--ut-font-body-stack': { group: 'typography', role: 'body font stack', usage: 'applied globally; do not re-declare' },
+  '--ut-font-sans-stack': { group: 'typography', role: 'body font stack', usage: 'applied globally; do not re-declare' },
   '--ut-weight-display': { group: 'typography', role: 'display weight', usage: 'font-[number:var(--ut-weight-display)]' },
   '--ut-weight-body': { group: 'typography', role: 'body weight', usage: 'font-[number:var(--ut-weight-body)]' },
   '--ut-display-leading': { group: 'typography', role: 'display line-height', usage: 'leading-[var(--ut-display-leading)]' },
