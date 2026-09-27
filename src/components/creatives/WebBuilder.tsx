@@ -2018,7 +2018,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (projected.changed.length === 0) return;
     const payload: Record<string, string> = {};
     for (const path of projected.changed) payload[path] = projected.files[path];
-    // canonical-vfs-exempt: registry-owned navigation projection; persistence happens on autosave commit
+    // canonical-vfs-exempt: deterministic navigation projection from the page registry
     virtualFSRef.current.importFiles(payload);
     if (payload[activePagePath]) setPreviewCode(payload[activePagePath]);
   }, [creatorPlayground.pageRegistry, virtualFS.nodes, activePagePath]);
