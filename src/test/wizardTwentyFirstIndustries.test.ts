@@ -46,7 +46,7 @@ describe('21st-derived Launcher variants across every industry', () => {
           expect(selected.vfs?.certification).toBe('approved');
           if (allowed.length) expect(allowed).toContain(selected.id);
           const sourced = getVariantsForSection(section.type).filter(variant =>
-            allowed.includes(variant.id) && variant.source?.origin === '21st' &&
+            allowed.includes(variant.id) && Boolean(variant.source?.origin) &&
             variant.vfs?.certification === 'approved' && variant.generationStatus === 'preferred' &&
             (!variant.pageRoles?.length || variant.pageRoles.includes('home')));
           if (sourced.length) {
