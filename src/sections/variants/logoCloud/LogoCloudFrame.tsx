@@ -45,7 +45,7 @@ export const LogoMark: React.FC<{ theme: ThemeTokens; logo: LogoEntry; height?: 
       style={{ height, width: 'auto', objectFit: 'contain' }}
     />
   ) : (
-    <span
+    <span data-ut-slot={`logo-cloud.name`}
       style={{
         fontFamily: theme.typography.headingFont,
         fontWeight: theme.typography.headingWeight,
@@ -74,9 +74,9 @@ export const LogoCloudFrame: React.FC<{
       borderBottom: `1px solid ${hsl(theme.colors.border)}`,
     }}
   >
-    <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+    <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
       {headline && (
-        <p
+        <p data-ut-slot="logo-cloud.headline"
           className="mb-10 text-center text-xs uppercase"
           style={{
             fontFamily: theme.typography.bodyFont,

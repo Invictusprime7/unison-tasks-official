@@ -37,12 +37,12 @@ export const FAQFrame: React.FC<{
       background: hsl(surface === 'muted' ? theme.colors.muted : theme.colors.background),
     }}
   >
-    <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+    <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
       {(headline || subheadline) && (
-        <div className="mb-12 text-center">
+        <div className="mb-8 text-center md:mb-12">
           {headline && (
-            <h2
-              className="mb-3 text-3xl"
+            <h2 data-ut-slot="faq.headline"
+              className="mb-3 text-2xl sm:text-3xl md:text-4xl"
               style={{
                 fontFamily: theme.typography.headingFont,
                 fontWeight: theme.typography.headingWeight,
@@ -53,7 +53,7 @@ export const FAQFrame: React.FC<{
             </h2>
           )}
           {subheadline && (
-            <p
+            <p data-ut-slot="faq.subheadline"
               className="mx-auto max-w-2xl text-base"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >

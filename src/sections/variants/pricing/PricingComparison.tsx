@@ -27,8 +27,8 @@ export const PricingComparison: React.FC<BaseSectionProps<'pricing'>> = ({ secti
               <th scope="col" className="p-4" style={{ fontFamily: theme.typography.headingFont }}>Features</th>
               {tiers.map((tier, i) => (
                 <th key={i} scope="col" className="p-4" style={{ fontFamily: theme.typography.headingFont }}>
-                  <span className="block">{tier.name}</span>
-                  <span className="block text-base font-semibold">{tier.price}{tier.period ? `/${tier.period}` : ''}</span>
+                  <span data-ut-slot={`pricing.name`} className="block">{tier.name}</span>
+                  <span data-ut-slot={`pricing.price`} className="block text-base font-semibold">{tier.price}{tier.period ? `/${tier.period}` : ''}</span>
                 </th>
               ))}
             </tr>

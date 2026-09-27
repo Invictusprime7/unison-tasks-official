@@ -24,9 +24,10 @@ export const FooterCenteredMinimal: React.FC<BaseSectionProps<'footer'>> = ({ se
         textAlign: 'center',
       }}
     >
-      <div className="mx-auto" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6" style={{ maxWidth: theme.containerWidth }}>
         <h3
-          className="text-lg mb-4"
+          data-ut-slot="footer.brand"
+          className="mb-4 text-lg md:text-xl"
           style={{
             fontFamily: theme.typography.headingFont,
             fontWeight: theme.typography.headingWeight,
@@ -37,9 +38,9 @@ export const FooterCenteredMinimal: React.FC<BaseSectionProps<'footer'>> = ({ se
         </h3>
 
         {allLinks.length > 0 && (
-          <nav className="flex gap-5 justify-center flex-wrap mb-5">
+          <nav aria-label="Footer" data-ut-slot="footer.links" className="mb-5 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-5">
             {allLinks.map((l, i) => (
-              <a
+              <a data-ut-intent="nav.goto"
                 key={i}
                 href={l.href}
                 className="text-sm hover:opacity-80 transition-opacity"
@@ -56,7 +57,7 @@ export const FooterCenteredMinimal: React.FC<BaseSectionProps<'footer'>> = ({ se
             {socials.map((s, i) => {
               const hasUrl = s.url && s.url !== '#';
               return (
-                <a
+                <a data-ut-intent="nav.goto"
                   key={i}
                   href={hasUrl ? s.url : undefined}
                   target={hasUrl ? '_blank' : undefined}
@@ -72,7 +73,7 @@ export const FooterCenteredMinimal: React.FC<BaseSectionProps<'footer'>> = ({ se
           </div>
         )}
 
-        <p className="text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
+        <p data-ut-slot="footer.copyright" className="text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
           {copyright || `© ${new Date().getFullYear()} ${brand}. All rights reserved.`}
         </p>
       </div>

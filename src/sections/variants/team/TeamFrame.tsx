@@ -58,14 +58,14 @@ export const MemberIdentity: React.FC<{ member: TeamMember; theme: ThemeTokens; 
   align = 'start',
 }) => (
   <div className={align === 'center' ? 'text-center' : ''}>
-    <span
+    <span data-ut-slot={`team.name`}
       className="mt-4 block text-base font-semibold"
       style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.foreground) }}
     >
       {member.name}
     </span>
     {member.role && (
-      <span
+      <span data-ut-slot={`team.role`}
         className="mt-1 block text-sm"
         style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
       >
@@ -90,12 +90,12 @@ export const TeamFrame: React.FC<{
       background: hsl(surface === 'muted' ? theme.colors.muted : theme.colors.background),
     }}
   >
-    <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+    <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
       {(headline || subheadline) && (
-        <div className="mb-12 text-center">
+        <div className="mb-8 text-center md:mb-12">
           {headline && (
-            <h2
-              className="mb-3 text-3xl"
+            <h2 data-ut-slot="team.headline"
+              className="mb-3 text-2xl sm:text-3xl md:text-4xl"
               style={{
                 fontFamily: theme.typography.headingFont,
                 fontWeight: theme.typography.headingWeight,
@@ -106,7 +106,7 @@ export const TeamFrame: React.FC<{
             </h2>
           )}
           {subheadline && (
-            <p
+            <p data-ut-slot="team.subheadline"
               className="mx-auto max-w-2xl text-base"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >

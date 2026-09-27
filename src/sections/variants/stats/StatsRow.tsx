@@ -21,7 +21,7 @@ export const StatsRow: React.FC<BaseSectionProps<'stats'>> = ({ section, theme }
             style={{ borderLeft: i === 0 ? 'none' : `1px solid ${hsl(theme.colors.border)}` }}
           >
             <StatValue theme={theme} value={item.value} />
-            <span
+            <span data-ut-slot={`stats.label`}
               className="mt-2 block text-sm"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >

@@ -22,12 +22,12 @@ export const ServicesProductCards: React.FC<BaseSectionProps<'services'>> = ({ s
       data-ut-slot="products"
       style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         {(headline || subheadline) && (
-          <div className="mb-12 text-center">
+          <div className="mb-8 text-center md:mb-12">
             {headline && (
-              <h2
-                className="mb-3 text-3xl"
+              <h2 data-ut-slot="services.headline"
+                className="mb-3 text-2xl sm:text-3xl md:text-4xl"
                 style={{
                   fontFamily: theme.typography.headingFont,
                   fontWeight: theme.typography.headingWeight,
@@ -38,7 +38,7 @@ export const ServicesProductCards: React.FC<BaseSectionProps<'services'>> = ({ s
               </h2>
             )}
             {subheadline && (
-              <p className="mx-auto max-w-xl text-base" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot="services.subheadline" className="mx-auto max-w-xl text-base" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {subheadline}
               </p>
             )}
@@ -81,14 +81,14 @@ export const ServicesProductCards: React.FC<BaseSectionProps<'services'>> = ({ s
 
               <div className="flex flex-grow flex-col items-center gap-1">
                 {item.badge && (
-                  <span
+                  <span data-ut-slot={`services.badge`}
                     className="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
                     style={{ background: hsla(theme.colors.primary, 0.12), color: hsl(theme.colors.primary) }}
                   >
                     {item.badge}
                   </span>
                 )}
-                <h3
+                <h3 data-ut-slot={`services.title`}
                   className="text-base"
                   style={{
                     fontFamily: theme.typography.headingFont,
@@ -97,7 +97,7 @@ export const ServicesProductCards: React.FC<BaseSectionProps<'services'>> = ({ s
                 >
                   {item.title}
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                <p data-ut-slot={`services.description`} className="text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
                   {item.description}
                 </p>
               </div>
@@ -105,7 +105,7 @@ export const ServicesProductCards: React.FC<BaseSectionProps<'services'>> = ({ s
               {(item.price || item.duration) && (
                 <div className="mt-4 flex flex-col items-center gap-2">
                   {item.price && (
-                    <span
+                    <span data-ut-slot={`services.price`}
                       className="text-2xl"
                       style={{
                         fontFamily: theme.typography.headingFont,

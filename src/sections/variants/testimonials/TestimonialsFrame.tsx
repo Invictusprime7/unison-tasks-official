@@ -44,7 +44,7 @@ export const TestimonialCard: React.FC<{
   emphasis?: boolean;
 }> = ({ item, theme, className = '', emphasis }) => (
   <figure
-    className={`m-0 flex h-full flex-col justify-between p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${className}`}
+    className={`m-0 flex h-full flex-col justify-between p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${className}`}
     style={{
       background: hsl(theme.colors.card),
       color: hsl(theme.colors.cardForeground),
@@ -75,11 +75,11 @@ export const TestimonialCard: React.FC<{
         />
       )}
       <span>
-        <span className="block text-sm font-semibold" style={{ fontFamily: theme.typography.headingFont }}>
+        <span data-ut-slot={`testimonials.author`} className="block text-sm font-semibold" style={{ fontFamily: theme.typography.headingFont }}>
           {item.author}
         </span>
         {item.role && (
-          <span className="block text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
+          <span data-ut-slot={`testimonials.role`} className="block text-xs" style={{ color: hsl(theme.colors.mutedForeground) }}>
             {item.role}
           </span>
         )}
@@ -103,12 +103,12 @@ export const TestimonialsFrame: React.FC<{
       background: hsl(surface === 'muted' ? theme.colors.muted : theme.colors.background),
     }}
   >
-    <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+    <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
       {(headline || subheadline) && (
-        <div className="mb-12 text-center">
+        <div className="mb-8 text-center md:mb-12">
           {headline && (
-            <h2
-              className="mb-3 text-3xl"
+            <h2 data-ut-slot="testimonials.headline"
+              className="mb-3 text-2xl sm:text-3xl md:text-4xl"
               style={{
                 fontFamily: theme.typography.headingFont,
                 fontWeight: theme.typography.headingWeight,
@@ -119,7 +119,7 @@ export const TestimonialsFrame: React.FC<{
             </h2>
           )}
           {subheadline && (
-            <p
+            <p data-ut-slot="testimonials.subheadline"
               className="mx-auto max-w-2xl text-base"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >

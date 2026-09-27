@@ -65,7 +65,9 @@ export type SectionType =
   | 'about'
   | 'logo-cloud'
   | 'blog-preview'
-  | 'before-after';
+  | 'before-after'
+  | 'auth-form'
+  | 'data-table';
 
 /** A single section in a template composition */
 export interface SectionEntry<T extends SectionType = SectionType> {
@@ -289,6 +291,21 @@ export interface SectionPropsMap {
     subheadline?: string;
     items: { before: string; after: string; label?: string }[];
   };
+  'auth-form': {
+    heading?: string;
+    subheading?: string;
+    submitLabel?: string;
+    footerNote?: string;
+    altActionLabel?: string;
+    altActionHref?: string;
+  };
+  'data-table': {
+    heading?: string;
+    columns?: Array<{ key: string; label: string }>;
+    rows?: Array<Record<string, string>>;
+    emptyMessage?: string;
+    stats?: Array<{ label: string; value: string; change?: string }>;
+  };
 }
 
 // ============================================================================
@@ -332,6 +349,8 @@ export type TemplatePageRole =
   | 'blog'
   | 'shop'
   | 'immersive'
+  | 'auth'
+  | 'dashboard'
   | 'custom';
 
 /** A complete template definition — just data, no JSX */

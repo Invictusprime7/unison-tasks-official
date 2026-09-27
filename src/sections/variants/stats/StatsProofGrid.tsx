@@ -20,10 +20,10 @@ export function StatsProofGrid({ section, theme }: BaseSectionProps<'stats'>) {
               } as React.CSSProperties
             }
           >
-            <dt className="text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+            <dt data-ut-slot={`stats.label`} className="text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
               {item.label}
             </dt>
-            <dd
+            <dd data-ut-slot={`stats.value`}
               className="break-words text-5xl tracking-tight tabular-nums"
               style={{ fontFamily: theme.typography.headingFont }}
             >

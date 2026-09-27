@@ -1,0 +1,4409 @@
+{
+  "about:editorial-split": {
+    "certifiedAt": "2026-09-26T18:47:45.315Z",
+    "sourceHash": "26476706cc3c55e9",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 948 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: about.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (948 chars)",
+      "at": "2026-09-26T18:47:45.315Z"
+    }
+  },
+  "about:image-story": {
+    "certifiedAt": "2026-09-26T18:47:45.312Z",
+    "sourceHash": "de9475301cff6903",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1813 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: image, headline, description, cta"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "5 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1813 chars)",
+      "at": "2026-09-26T18:47:45.312Z"
+    }
+  },
+  "about:statement": {
+    "certifiedAt": "2026-09-26T18:47:45.316Z",
+    "sourceHash": "27d60f3c568d2dbf",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 790 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: about.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (790 chars)",
+      "at": "2026-09-26T18:47:45.316Z"
+    }
+  },
+  "about:story-panel": {
+    "certifiedAt": "2026-09-26T18:47:45.318Z",
+    "sourceHash": "5ae7c753ab99849f",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1123 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: about.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1123 chars)",
+      "at": "2026-09-26T18:47:45.318Z"
+    }
+  },
+  "auth-form:sign-up-card": {
+    "certifiedAt": "2026-09-26T19:25:03.869Z",
+    "sourceHash": "ee021832e3a208b8",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2918 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: auth.heading, auth.subheading, auth.altAction, auth.footerNote"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2918 chars)",
+      "at": "2026-09-26T19:25:03.869Z"
+    }
+  },
+  "auth-form:split-panel": {
+    "certifiedAt": "2026-09-26T19:21:33.666Z",
+    "sourceHash": "ba5b106b71df2243",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2319 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: auth.brand, auth.panelCopy, auth.heading, auth.subheading, auth.footerNote"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2319 chars)",
+      "at": "2026-09-26T19:21:33.666Z"
+    }
+  },
+  "before-after:case-study": {
+    "certifiedAt": "2026-09-26T18:47:45.384Z",
+    "sourceHash": "8db7817bab71f445",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3167 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: before-after.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3167 chars)",
+      "at": "2026-09-26T18:47:45.384Z"
+    }
+  },
+  "before-after:grid": {
+    "certifiedAt": "2026-09-26T18:47:45.382Z",
+    "sourceHash": "3405e7e21420ed12",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2782 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: before-after.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2782 chars)",
+      "at": "2026-09-26T18:47:45.382Z"
+    }
+  },
+  "before-after:reveal-panel": {
+    "certifiedAt": "2026-09-26T18:47:45.378Z",
+    "sourceHash": "80a5efcf20fbed73",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1686 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: before-after.headline, before-after.label"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1686 chars)",
+      "at": "2026-09-26T18:47:45.378Z"
+    }
+  },
+  "before-after:slider": {
+    "certifiedAt": "2026-09-26T18:47:45.381Z",
+    "sourceHash": "4aacbe5c4bb4a36b",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1623 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: before-after.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1623 chars)",
+      "at": "2026-09-26T18:47:45.381Z"
+    }
+  },
+  "blog-preview:editorial": {
+    "certifiedAt": "2026-09-26T18:47:45.371Z",
+    "sourceHash": "11b11c5a76c0b360",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3442 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: blog-preview.headline, blog-preview.title, blog-preview.excerpt"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3442 chars)",
+      "at": "2026-09-26T18:47:45.371Z"
+    }
+  },
+  "blog-preview:featured-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.373Z",
+    "sourceHash": "44b2619ab1919d25",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4168 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: blog-preview.headline, blog-preview.title, blog-preview.excerpt"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4168 chars)",
+      "at": "2026-09-26T18:47:45.373Z"
+    }
+  },
+  "blog-preview:four-columns": {
+    "certifiedAt": "2026-09-26T18:47:45.365Z",
+    "sourceHash": "373791831f80a7a7",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3173 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: blog-preview.headline, blog-preview.excerpt"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "8 intent bindings across 8 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3173 chars)",
+      "at": "2026-09-26T18:47:45.365Z"
+    }
+  },
+  "blog-preview:horizontal-rail": {
+    "certifiedAt": "2026-09-26T18:47:45.375Z",
+    "sourceHash": "be6c1469e3fc50fc",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4420 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: blog-preview.headline, blog-preview.title, blog-preview.excerpt"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4420 chars)",
+      "at": "2026-09-26T18:47:45.375Z"
+    }
+  },
+  "contact:centered": {
+    "certifiedAt": "2026-09-26T18:47:45.300Z",
+    "sourceHash": "9012184fbdd9772f",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2067 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: contact.headline, contact.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "5 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2067 chars)",
+      "at": "2026-09-26T18:47:45.300Z"
+    }
+  },
+  "contact:checkout-panel": {
+    "certifiedAt": "2026-09-26T18:47:45.294Z",
+    "sourceHash": "00f7a28546b92941",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3450 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: headline, description, form, checkout"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "6 intent bindings across 5 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "6 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3450 chars)",
+      "at": "2026-09-26T18:47:45.294Z"
+    }
+  },
+  "contact:compact-card": {
+    "certifiedAt": "2026-09-26T19:10:01.131Z",
+    "sourceHash": "b233b164b23dd344",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1555 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: contact.headline, contact.description, contact.email, contact.phone, contact.address"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1555 chars)",
+      "at": "2026-09-26T19:10:01.131Z"
+    }
+  },
+  "contact:editorial-form": {
+    "certifiedAt": "2026-09-26T18:47:45.298Z",
+    "sourceHash": "3334ef2eb3aacec1",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2846 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: headline, description, form"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "5 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "6 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2846 chars)",
+      "at": "2026-09-26T18:47:45.298Z"
+    }
+  },
+  "contact:map-studio": {
+    "certifiedAt": "2026-09-26T18:47:45.296Z",
+    "sourceHash": "0b3a70afb3c00db5",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2957 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: headline, description, form"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "5 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "6 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2957 chars)",
+      "at": "2026-09-26T18:47:45.296Z"
+    }
+  },
+  "contact:minimal-inline": {
+    "certifiedAt": "2026-09-26T18:47:45.303Z",
+    "sourceHash": "c09abe6492af6180",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2120 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: contact.headline, contact.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "5 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2120 chars)",
+      "at": "2026-09-26T18:47:45.303Z"
+    }
+  },
+  "contact:split-card": {
+    "certifiedAt": "2026-09-26T18:47:45.302Z",
+    "sourceHash": "ea59ddf496503010",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2804 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: contact.headline, contact.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "5 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2804 chars)",
+      "at": "2026-09-26T18:47:45.302Z"
+    }
+  },
+  "cta:centered": {
+    "certifiedAt": "2026-09-26T18:47:45.229Z",
+    "sourceHash": "69c92e0a82ebc919",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1010 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: cta.headline, cta.description, cta.actions"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1010 chars)",
+      "at": "2026-09-26T18:47:45.229Z"
+    }
+  },
+  "cta:editorial": {
+    "certifiedAt": "2026-09-26T19:09:59.635Z",
+    "sourceHash": "bb20ecf93c9352e7",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1080 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: cta.headline, cta.description, cta.actions"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1080 chars)",
+      "at": "2026-09-26T19:09:59.635Z"
+    }
+  },
+  "cta:gradient-banner": {
+    "certifiedAt": "2026-09-26T18:47:45.230Z",
+    "sourceHash": "c9ad52a5a4659291",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1230 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: cta.headline, cta.description, cta.actions"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1230 chars)",
+      "at": "2026-09-26T18:47:45.230Z"
+    }
+  },
+  "cta:inset-panel": {
+    "certifiedAt": "2026-09-26T18:47:45.226Z",
+    "sourceHash": "d43f7dfa782061e5",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 886 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: cta.headline, cta.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (886 chars)",
+      "at": "2026-09-26T18:47:45.226Z"
+    }
+  },
+  "cta:signal-banner": {
+    "certifiedAt": "2026-09-26T18:47:45.227Z",
+    "sourceHash": "569b313f79c92c3f",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2277 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: cta.headline, cta.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2277 chars)",
+      "at": "2026-09-26T18:47:45.227Z"
+    }
+  },
+  "cta:split-card": {
+    "certifiedAt": "2026-09-26T18:47:45.231Z",
+    "sourceHash": "b7b2cfa03abcaffb",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1422 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: cta.headline, cta.description, cta.actions"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1422 chars)",
+      "at": "2026-09-26T18:47:45.231Z"
+    }
+  },
+  "data-table:dashboard-overview": {
+    "certifiedAt": "2026-09-26T19:25:05.089Z",
+    "sourceHash": "2910f7f683520f04",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1744 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: dashboard.heading, dashboard.stats, dashboard.table"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1744 chars)",
+      "at": "2026-09-26T19:25:05.089Z"
+    }
+  },
+  "data-table:striped-rows": {
+    "certifiedAt": "2026-09-26T19:21:41.234Z",
+    "sourceHash": "03fcb82a11af5d14",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1350 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: table.heading, table.rows"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1350 chars)",
+      "at": "2026-09-26T19:21:41.234Z"
+    }
+  },
+  "faq:accordion": {
+    "certifiedAt": "2026-09-26T18:47:45.325Z",
+    "sourceHash": "3528686294cc3c43",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1642 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: faq.headline, faq.answer"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1642 chars)",
+      "at": "2026-09-26T18:47:45.325Z"
+    }
+  },
+  "faq:cards": {
+    "certifiedAt": "2026-09-26T18:47:45.328Z",
+    "sourceHash": "0c721f159eed2004",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1607 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: faq.headline, faq.question, faq.answer"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1607 chars)",
+      "at": "2026-09-26T18:47:45.328Z"
+    }
+  },
+  "faq:editorial": {
+    "certifiedAt": "2026-09-26T18:47:45.323Z",
+    "sourceHash": "6b81452fd2831ca2",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2100 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: headline, question-0, faq.answer, question-1, question-2"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "5 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2100 chars)",
+      "at": "2026-09-26T18:47:45.323Z"
+    }
+  },
+  "faq:searchable": {
+    "certifiedAt": "2026-09-26T18:47:45.321Z",
+    "sourceHash": "fe2d3f4366e57ba9",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2620 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: headline, question-0, faq.answer, question-1, question-2"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "6 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2620 chars)",
+      "at": "2026-09-26T18:47:45.321Z"
+    }
+  },
+  "faq:two-column": {
+    "certifiedAt": "2026-09-26T18:47:45.327Z",
+    "sourceHash": "c58e33bba77305a9",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1499 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: faq.headline, faq.question, faq.answer"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1499 chars)",
+      "at": "2026-09-26T18:47:45.327Z"
+    }
+  },
+  "features:bento-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.273Z",
+    "sourceHash": "61e7028d74b0a893",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3284 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "6 slots: features, features.headline, features.subheadline, features.item, features.title, features.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3284 chars)",
+      "at": "2026-09-26T18:47:45.273Z"
+    }
+  },
+  "features:bento-mosaic": {
+    "certifiedAt": "2026-09-26T19:09:58.697Z",
+    "sourceHash": "bd5d6bc2250c2333",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2276 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "10 slots: features.headline, features.subheadline, feature-0.title, feature-0.description, feature-1.title, feature-1.description…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2276 chars)",
+      "at": "2026-09-26T19:09:58.697Z"
+    }
+  },
+  "features:grid": {
+    "certifiedAt": "2026-09-26T18:47:45.267Z",
+    "sourceHash": "279a69c1ffba087a",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2149 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: features.headline, features.subheadline, features.title, features.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2149 chars)",
+      "at": "2026-09-26T18:47:45.267Z"
+    }
+  },
+  "features:icon-left": {
+    "certifiedAt": "2026-09-26T18:47:45.269Z",
+    "sourceHash": "c2e735a7e454f2f2",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2494 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: features.headline, features.subheadline, features.title, features.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2494 chars)",
+      "at": "2026-09-26T18:47:45.269Z"
+    }
+  },
+  "features:integrations": {
+    "certifiedAt": "2026-09-26T19:09:57.828Z",
+    "sourceHash": "ff0fbd107f9a0646",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2785 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "10 slots: features.headline, features.subheadline, feature-0.title, feature-0.description, feature-1.title, feature-1.description…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2785 chars)",
+      "at": "2026-09-26T19:09:57.828Z"
+    }
+  },
+  "features:minimal-centered": {
+    "certifiedAt": "2026-09-26T18:47:45.271Z",
+    "sourceHash": "e854c971bdd9eca9",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1880 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: features.headline, features.subheadline, features.title, features.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1880 chars)",
+      "at": "2026-09-26T18:47:45.271Z"
+    }
+  },
+  "features:spotlight-cards": {
+    "certifiedAt": "2026-09-26T18:47:45.266Z",
+    "sourceHash": "ac14af4a4310a38a",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3933 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "8 slots: headline, description, feature-0, features.title, features.description, feature-1…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3933 chars)",
+      "at": "2026-09-26T18:47:45.266Z"
+    }
+  },
+  "footer:brand-social": {
+    "certifiedAt": "2026-09-26T18:47:45.305Z",
+    "sourceHash": "77cdacdf42645203",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1561 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: social-instagram, footer.title"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1561 chars)",
+      "at": "2026-09-26T18:47:45.305Z"
+    }
+  },
+  "footer:centered-minimal": {
+    "certifiedAt": "2026-09-26T18:47:45.309Z",
+    "sourceHash": "21806bd13b1e76ba",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1328 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: footer.brand, footer.links, footer.copyright"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1328 chars)",
+      "at": "2026-09-26T18:47:45.309Z"
+    }
+  },
+  "footer:columns": {
+    "certifiedAt": "2026-09-26T18:47:45.307Z",
+    "sourceHash": "b177838d1dcfa692",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1601 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: footer.title"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1601 chars)",
+      "at": "2026-09-26T18:47:45.307Z"
+    }
+  },
+  "footer:dark-band": {
+    "certifiedAt": "2026-09-26T18:47:45.310Z",
+    "sourceHash": "926c282af48bc885",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1547 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: footer.title"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1547 chars)",
+      "at": "2026-09-26T18:47:45.310Z"
+    }
+  },
+  "footer:multi-column": {
+    "certifiedAt": "2026-09-26T19:10:00.388Z",
+    "sourceHash": "f91e81c31d617683",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1218 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: footer.brand, footer.links, footer.copyright"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1218 chars)",
+      "at": "2026-09-26T19:10:00.388Z"
+    }
+  },
+  "gallery:case-study": {
+    "certifiedAt": "2026-09-26T18:47:45.168Z",
+    "sourceHash": "c58296d1a1e80e9b",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 10247 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: gallery.headline, project-0, project-1, project-2, project-3, project-4…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "15 intent bindings across 15 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (10247 chars)",
+      "at": "2026-09-26T18:47:45.168Z"
+    }
+  },
+  "gallery:cinematic-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.186Z",
+    "sourceHash": "2031d179312dfd71",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6873 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: gallery.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "9 intent bindings across 9 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6873 chars)",
+      "at": "2026-09-26T18:47:45.186Z"
+    }
+  },
+  "gallery:collection-tiles": {
+    "certifiedAt": "2026-09-26T18:47:45.205Z",
+    "sourceHash": "7aa88530ae7c9154",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 10838 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: gallery.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "9 intent bindings across 9 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (10838 chars)",
+      "at": "2026-09-26T18:47:45.205Z"
+    }
+  },
+  "gallery:editorial-mosaic": {
+    "certifiedAt": "2026-09-26T18:47:45.176Z",
+    "sourceHash": "c10cee81fd1c1381",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6825 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: gallery.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "9 intent bindings across 9 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6825 chars)",
+      "at": "2026-09-26T18:47:45.176Z"
+    }
+  },
+  "gallery:feature-split": {
+    "certifiedAt": "2026-09-26T18:47:45.196Z",
+    "sourceHash": "c6bd81758ff6608f",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6892 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: gallery.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "9 intent bindings across 9 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6892 chars)",
+      "at": "2026-09-26T18:47:45.196Z"
+    }
+  },
+  "gallery:horizontal-reel": {
+    "certifiedAt": "2026-09-26T18:47:45.201Z",
+    "sourceHash": "5121fb021dd00c41",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 7289 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: gallery.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "9 intent bindings across 9 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (7289 chars)",
+      "at": "2026-09-26T18:47:45.201Z"
+    }
+  },
+  "gallery:lightbox-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.189Z",
+    "sourceHash": "65aab9c3b1e81360",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6866 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: gallery.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "9 intent bindings across 9 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6866 chars)",
+      "at": "2026-09-26T18:47:45.189Z"
+    }
+  },
+  "gallery:masonry": {
+    "certifiedAt": "2026-09-26T18:47:45.182Z",
+    "sourceHash": "496271a07f431bfd",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 7130 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: gallery.headline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "9 intent bindings across 9 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "7 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (7130 chars)",
+      "at": "2026-09-26T18:47:45.182Z"
+    }
+  },
+  "hero:centered": {
+    "certifiedAt": "2026-09-26T18:47:45.216Z",
+    "sourceHash": "10f485c079181384",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3057 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "6 slots: hero, hero.badge, hero.headline, hero.subheadline, hero.value, hero.label"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3057 chars)",
+      "at": "2026-09-26T18:47:45.216Z"
+    }
+  },
+  "hero:commerce-gradient": {
+    "certifiedAt": "2026-09-26T18:47:45.223Z",
+    "sourceHash": "db96680c156675ff",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2763 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: hero, hero.badge, hero.headline, hero.subheadline, hero.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2763 chars)",
+      "at": "2026-09-26T18:47:45.223Z"
+    }
+  },
+  "hero:editorial-banner": {
+    "certifiedAt": "2026-09-26T18:47:45.221Z",
+    "sourceHash": "34134e12163c225c",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1807 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: hero, hero-media, hero.headline, hero.subheadline, hero.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "2 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1807 chars)",
+      "at": "2026-09-26T18:47:45.221Z"
+    }
+  },
+  "hero:full-bleed": {
+    "certifiedAt": "2026-09-26T18:47:45.219Z",
+    "sourceHash": "97ccd14c32b85ae3",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3616 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "6 slots: hero, hero.badge, hero.headline, hero.subheadline, hero.value, hero.label"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3616 chars)",
+      "at": "2026-09-26T18:47:45.219Z"
+    }
+  },
+  "hero:image-fan": {
+    "certifiedAt": "2026-09-26T19:09:47.704Z",
+    "sourceHash": "da189bbf30650d7d",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2897 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: hero.badge, hero.headline, hero.description, hero.actions, hero.media"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2897 chars)",
+      "at": "2026-09-26T19:09:47.704Z"
+    }
+  },
+  "hero:image-stream": {
+    "certifiedAt": "2026-09-26T18:47:45.209Z",
+    "sourceHash": "649dc2ee6dfbf794",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 14476 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: hero, hero.badge, hero.headline, hero.subheadline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (14476 chars)",
+      "at": "2026-09-26T18:47:45.209Z"
+    }
+  },
+  "hero:launch-showcase": {
+    "certifiedAt": "2026-09-26T18:47:45.212Z",
+    "sourceHash": "1f7b3b3d9c5e3993",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1479 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: hero.badge, hero.headline, hero.subheadline, hero.image"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1479 chars)",
+      "at": "2026-09-26T18:47:45.212Z"
+    }
+  },
+  "hero:page-title": {
+    "certifiedAt": "2026-09-26T18:47:45.220Z",
+    "sourceHash": "34134e12163c225c",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1796 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: hero, hero.headline, hero.subheadline, hero.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 3 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "2 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1796 chars)",
+      "at": "2026-09-26T18:47:45.220Z"
+    }
+  },
+  "hero:prisma-cinematic": {
+    "certifiedAt": "2026-09-26T18:47:45.214Z",
+    "sourceHash": "4e296404c8493d54",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3363 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: hero, hero.badge, hero.headline, hero.subheadline"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3363 chars)",
+      "at": "2026-09-26T18:47:45.214Z"
+    }
+  },
+  "hero:showcase-panel": {
+    "certifiedAt": "2026-09-26T18:47:45.224Z",
+    "sourceHash": "b1a6eb34628c57d4",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3574 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "8 slots: hero, hero.badge, hero.headline, hero.subheadline, hero.description, hero.media…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3574 chars)",
+      "at": "2026-09-26T18:47:45.224Z"
+    }
+  },
+  "hero:split-image": {
+    "certifiedAt": "2026-09-26T18:47:45.217Z",
+    "sourceHash": "024e5cd7a70c6e6c",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2555 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: hero, hero.badge, hero.headline, hero.subheadline, hero.value, hero.label…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2555 chars)",
+      "at": "2026-09-26T18:47:45.217Z"
+    }
+  },
+  "hero:underline": {
+    "certifiedAt": "2026-09-26T19:09:49.391Z",
+    "sourceHash": "57789947a6775359",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1727 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: hero.headline, hero.description, hero.actions"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1727 chars)",
+      "at": "2026-09-26T19:09:49.391Z"
+    }
+  },
+  "hero:variable-type": {
+    "certifiedAt": "2026-09-26T19:09:48.594Z",
+    "sourceHash": "b813bee397b8b075",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2590 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: hero.badge, hero.headline, hero.description, hero.actions"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2590 chars)",
+      "at": "2026-09-26T19:09:48.594Z"
+    }
+  },
+  "logo-cloud:brand-lockup": {
+    "certifiedAt": "2026-09-26T18:47:45.359Z",
+    "sourceHash": "96f97cb34245485a",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1675 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "1 slots: logo-cloud.name"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1675 chars)",
+      "at": "2026-09-26T18:47:45.359Z"
+    }
+  },
+  "logo-cloud:cinematic": {
+    "certifiedAt": "2026-09-26T19:09:52.615Z",
+    "sourceHash": "16d44776882aff26",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2494 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: logo-cloud.headline, logo-cloud.name"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2494 chars)",
+      "at": "2026-09-26T19:09:52.615Z"
+    }
+  },
+  "logo-cloud:grid": {
+    "certifiedAt": "2026-09-26T18:47:45.353Z",
+    "sourceHash": "473b67f2c9c3f1c4",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1655 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: logo-cloud.headline, logo-cloud.name"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1655 chars)",
+      "at": "2026-09-26T18:47:45.353Z"
+    }
+  },
+  "logo-cloud:marquee": {
+    "certifiedAt": "2026-09-26T18:47:45.358Z",
+    "sourceHash": "c02842cb2e52221d",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2939 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: logo-cloud.headline, logo-cloud.name"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2939 chars)",
+      "at": "2026-09-26T18:47:45.358Z"
+    }
+  },
+  "logo-cloud:reveal-tiles": {
+    "certifiedAt": "2026-09-26T18:47:45.351Z",
+    "sourceHash": "82139d624edfe26e",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2087 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: logo-cloud.headline, logo-cloud.name"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2087 chars)",
+      "at": "2026-09-26T18:47:45.351Z"
+    }
+  },
+  "logo-cloud:static-grid": {
+    "certifiedAt": "2026-09-26T19:09:53.403Z",
+    "sourceHash": "f3f50ddb156b7db5",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1339 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: logo-cloud.headline, logo-cloud.name"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1339 chars)",
+      "at": "2026-09-26T19:09:53.403Z"
+    }
+  },
+  "logo-cloud:wordmark-row": {
+    "certifiedAt": "2026-09-26T18:47:45.363Z",
+    "sourceHash": "fee16277189506de",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1496 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: logo-cloud.headline, logo-cloud.name"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1496 chars)",
+      "at": "2026-09-26T18:47:45.363Z"
+    }
+  },
+  "navbar:catalog-bar": {
+    "certifiedAt": "2026-09-26T18:47:45.238Z",
+    "sourceHash": "d5ebe99e47519c02",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1922 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: navbar.brand, navbar.links, navbar.cta"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "6 intent bindings across 6 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1922 chars)",
+      "at": "2026-09-26T18:47:45.238Z"
+    }
+  },
+  "navbar:centered-logo": {
+    "certifiedAt": "2026-09-26T18:47:45.253Z",
+    "sourceHash": "4990b21f1638131f",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2413 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: navigation, brand"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "6 intent bindings across 6 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2413 chars)",
+      "at": "2026-09-26T18:47:45.253Z"
+    }
+  },
+  "navbar:floating-pill": {
+    "certifiedAt": "2026-09-26T18:47:45.242Z",
+    "sourceHash": "71aec4d37ad22f03",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2422 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: navbar.brand, navbar.links, navbar.cta"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "6 intent bindings across 6 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2422 chars)",
+      "at": "2026-09-26T18:47:45.242Z"
+    }
+  },
+  "navbar:minimal-dark": {
+    "certifiedAt": "2026-09-26T18:47:45.259Z",
+    "sourceHash": "a643c37500f603b8",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2616 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: navigation, brand"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "7 intent bindings across 7 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2616 chars)",
+      "at": "2026-09-26T18:47:45.259Z"
+    }
+  },
+  "navbar:standard": {
+    "certifiedAt": "2026-09-26T18:47:45.248Z",
+    "sourceHash": "60ad9a21524c5c3f",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2905 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "2 slots: navigation, brand"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "6 intent bindings across 6 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react, @radix-ui/react-dialog, lucide-react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2905 chars)",
+      "at": "2026-09-26T18:47:45.248Z"
+    }
+  },
+  "pricing:accordion": {
+    "certifiedAt": "2026-09-26T18:47:45.160Z",
+    "sourceHash": "6fa4007e2c6b3f1a",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3061 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: pricing.headline, pricing.name, pricing.price, pricing.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3061 chars)",
+      "at": "2026-09-26T18:47:45.160Z"
+    }
+  },
+  "pricing:billing-toggle": {
+    "certifiedAt": "2026-09-26T18:47:45.147Z",
+    "sourceHash": "8d99bea71dd87e17",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 8328 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: pricing.headline, plan-1, pricing.name, pricing.description, pricing.value, plan-2…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "5 intent bindings across 5 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (8328 chars)",
+      "at": "2026-09-26T18:47:45.147Z"
+    }
+  },
+  "pricing:comparison": {
+    "certifiedAt": "2026-09-26T18:47:45.156Z",
+    "sourceHash": "a19c4ee5fe131171",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3234 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: pricing.headline, pricing.name, pricing.price"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 3 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3234 chars)",
+      "at": "2026-09-26T18:47:45.156Z"
+    }
+  },
+  "pricing:comparison-table": {
+    "certifiedAt": "2026-09-26T19:09:54.251Z",
+    "sourceHash": "77d187a64617c1fa",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3713 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: pricing.headline, tier-0.name, tier-0.price, tier-1.name, tier-1.price, tier-2.name…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 3 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3713 chars)",
+      "at": "2026-09-26T19:09:54.251Z"
+    }
+  },
+  "pricing:creative": {
+    "certifiedAt": "2026-09-26T19:09:55.178Z",
+    "sourceHash": "8844ef90cdf73e92",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3087 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: pricing.headline, tier-0.name, tier-0.price, tier-1.name, tier-1.price, tier-2.name…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 3 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3087 chars)",
+      "at": "2026-09-26T19:09:55.178Z"
+    }
+  },
+  "pricing:feature-table": {
+    "certifiedAt": "2026-09-26T18:47:45.140Z",
+    "sourceHash": "646e75e3fff163ad",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6028 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: pricing.headline, plan-1, pricing.name, pricing.price, pricing.description, plan-2…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 3 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6028 chars)",
+      "at": "2026-09-26T18:47:45.140Z"
+    }
+  },
+  "pricing:spotlight": {
+    "certifiedAt": "2026-09-26T18:47:45.137Z",
+    "sourceHash": "b151ce5a91893aa7",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4589 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: headline, tier-0, pricing.name, pricing.price, pricing.description, tier-1…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 3 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "6 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4589 chars)",
+      "at": "2026-09-26T18:47:45.137Z"
+    }
+  },
+  "pricing:tiers": {
+    "certifiedAt": "2026-09-26T18:47:45.153Z",
+    "sourceHash": "fbe2dd5e133101b1",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3915 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: pricing.headline, pricing.name, pricing.price, pricing.description"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "3 intent bindings across 3 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3915 chars)",
+      "at": "2026-09-26T18:47:45.153Z"
+    }
+  },
+  "services:alternating": {
+    "certifiedAt": "2026-09-26T18:47:45.288Z",
+    "sourceHash": "9dd14d7ef192e8b9",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4486 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: services.headline, services.subheadline, services.title, services.description, services.price"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4486 chars)",
+      "at": "2026-09-26T18:47:45.288Z"
+    }
+  },
+  "services:bento-spotlight": {
+    "certifiedAt": "2026-09-26T18:47:45.281Z",
+    "sourceHash": "d934a98b6ab39213",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6587 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "9 slots: headline, description, service-0, services.title, services.description, cta…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "5 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6587 chars)",
+      "at": "2026-09-26T18:47:45.281Z"
+    }
+  },
+  "services:card-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.286Z",
+    "sourceHash": "338219795245b132",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3791 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: services.headline, services.subheadline, services.title, services.description, services.price"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3791 chars)",
+      "at": "2026-09-26T18:47:45.286Z"
+    }
+  },
+  "services:compact-list": {
+    "certifiedAt": "2026-09-26T18:47:45.290Z",
+    "sourceHash": "94303d52bb279f47",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4463 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "5 slots: services.headline, services.subheadline, services.title, services.description, services.price"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4463 chars)",
+      "at": "2026-09-26T18:47:45.290Z"
+    }
+  },
+  "services:editorial-rows": {
+    "certifiedAt": "2026-09-26T18:47:45.279Z",
+    "sourceHash": "9e70806a3a04ff48",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 5348 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "9 slots: headline, description, service-0, services.title, services.description, cta…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (5348 chars)",
+      "at": "2026-09-26T18:47:45.279Z"
+    }
+  },
+  "services:expandable": {
+    "certifiedAt": "2026-09-26T18:47:45.276Z",
+    "sourceHash": "faf34036b9219a7b",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 5329 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "9 slots: headline, description, service-0, services.price, services.description, cta…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "5 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (5329 chars)",
+      "at": "2026-09-26T18:47:45.276Z"
+    }
+  },
+  "services:product-cards": {
+    "certifiedAt": "2026-09-26T18:47:45.283Z",
+    "sourceHash": "ac68c3690c2df2d7",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6738 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "10 slots: products, services.headline, services.subheadline, product-1, services.title, services.description…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "4 intent bindings across 4 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6738 chars)",
+      "at": "2026-09-26T18:47:45.283Z"
+    }
+  },
+  "stats:banded-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.335Z",
+    "sourceHash": "54aa6947f8781fc0",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1581 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: stats.headline, stats.value, stats.label"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1581 chars)",
+      "at": "2026-09-26T18:47:45.335Z"
+    }
+  },
+  "stats:bold": {
+    "certifiedAt": "2026-09-26T19:09:56.075Z",
+    "sourceHash": "08467fe174052d38",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1232 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "7 slots: stats.headline, stat-0.label, stat-0.value, stat-1.label, stat-1.value, stat-2.label…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1232 chars)",
+      "at": "2026-09-26T19:09:56.075Z"
+    }
+  },
+  "stats:highlight": {
+    "certifiedAt": "2026-09-26T18:47:45.337Z",
+    "sourceHash": "e9d6b5bf5de9a1fe",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1512 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: stats.headline, stats.value, stats.label"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1512 chars)",
+      "at": "2026-09-26T18:47:45.337Z"
+    }
+  },
+  "stats:metric-cards": {
+    "certifiedAt": "2026-09-26T18:47:45.332Z",
+    "sourceHash": "19b58323b11c8842",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2393 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "6 slots: stats.headline, stat-1, stats.value, stats.label, stat-2, stat-3"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2393 chars)",
+      "at": "2026-09-26T18:47:45.332Z"
+    }
+  },
+  "stats:proof-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.330Z",
+    "sourceHash": "a4322e23c0ff7c96",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2202 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "6 slots: headline, metric-0, stats.label, stats.value, metric-1, metric-2"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2202 chars)",
+      "at": "2026-09-26T18:47:45.330Z"
+    }
+  },
+  "stats:row": {
+    "certifiedAt": "2026-09-26T18:47:45.333Z",
+    "sourceHash": "c5810a8d3640da12",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1426 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: stats.headline, stats.value, stats.label"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1426 chars)",
+      "at": "2026-09-26T18:47:45.333Z"
+    }
+  },
+  "team:editorial": {
+    "certifiedAt": "2026-09-26T19:09:56.927Z",
+    "sourceHash": "f44fc75be87cfd5e",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2373 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "10 slots: team.headline, member-0.name, member-0.role, member-0.bio, member-1.name, member-1.role…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2373 chars)",
+      "at": "2026-09-26T19:09:56.927Z"
+    }
+  },
+  "team:lead-spotlight": {
+    "certifiedAt": "2026-09-26T18:47:45.350Z",
+    "sourceHash": "844471c7cd227859",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2066 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: team.headline, team.name, team.role, team.bio"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2066 chars)",
+      "at": "2026-09-26T18:47:45.350Z"
+    }
+  },
+  "team:portrait-grid": {
+    "certifiedAt": "2026-09-26T18:47:45.340Z",
+    "sourceHash": "d9f00969c0e643f1",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1810 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: team.headline, team.name, team.role"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1810 chars)",
+      "at": "2026-09-26T18:47:45.340Z"
+    }
+  },
+  "team:profile-cards": {
+    "certifiedAt": "2026-09-26T18:47:45.339Z",
+    "sourceHash": "882764e7023b5958",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3151 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: team.headline, team.name, team.role, team.bio"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3151 chars)",
+      "at": "2026-09-26T18:47:45.339Z"
+    }
+  },
+  "team:roster-rail": {
+    "certifiedAt": "2026-09-26T18:47:45.342Z",
+    "sourceHash": "1c095cdc86f1aef8",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 1994 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "3 slots: team.headline, team.name, team.role"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (1994 chars)",
+      "at": "2026-09-26T18:47:45.342Z"
+    }
+  },
+  "testimonials:columns": {
+    "certifiedAt": "2026-09-26T18:47:45.114Z",
+    "sourceHash": "80b57b7784a0e014",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 9024 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "8 slots: testimonials.headline, testimonials.subheadline, testimonial-0, testimonials.author, testimonials.role, testimonial-3…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "1 intent bindings across 1 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (9024 chars)",
+      "at": "2026-09-26T18:47:45.114Z"
+    }
+  },
+  "testimonials:editorial": {
+    "certifiedAt": "2026-09-26T19:09:50.169Z",
+    "sourceHash": "2ddb70c985fc0711",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 2100 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "10 slots: testimonials.headline, testimonials.subheadline, testimonial-0.quote, testimonial-0.author, testimonial-1.quote, testimonial-1.author…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (2100 chars)",
+      "at": "2026-09-26T19:09:50.169Z"
+    }
+  },
+  "testimonials:grid": {
+    "certifiedAt": "2026-09-26T18:47:45.126Z",
+    "sourceHash": "2ae84e9a19d53dfa",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4290 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "8 slots: testimonials.headline, testimonials.subheadline, testimonial-0, testimonials.author, testimonials.role, testimonial-1…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4290 chars)",
+      "at": "2026-09-26T18:47:45.126Z"
+    }
+  },
+  "testimonials:marquee": {
+    "certifiedAt": "2026-09-26T18:47:45.120Z",
+    "sourceHash": "4e1c3b5a81150c61",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 9303 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: testimonials.headline, testimonials.subheadline, testimonials.author, testimonials.role"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (9303 chars)",
+      "at": "2026-09-26T18:47:45.120Z"
+    }
+  },
+  "testimonials:rail": {
+    "certifiedAt": "2026-09-26T18:47:45.131Z",
+    "sourceHash": "2b44078a6413e9f8",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4849 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: testimonials.headline, testimonials.subheadline, testimonials.author, testimonials.role"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "2 intent bindings across 2 actions"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4849 chars)",
+      "at": "2026-09-26T18:47:45.131Z"
+    }
+  },
+  "testimonials:spotlight": {
+    "certifiedAt": "2026-09-26T18:47:45.134Z",
+    "sourceHash": "f1ea4529d1509aa0",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 4164 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "4 slots: testimonials.headline, testimonials.subheadline, testimonials.author, testimonials.role"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "4 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (4164 chars)",
+      "at": "2026-09-26T18:47:45.134Z"
+    }
+  },
+  "testimonials:vertical-marquee": {
+    "certifiedAt": "2026-09-26T19:09:50.942Z",
+    "sourceHash": "6fec960fea84795b",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 3915 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "10 slots: testimonials.headline, testimonials.subheadline, testimonial-0-0.quote, testimonial-0-0.author, testimonial-0-1.quote, testimonial-0-1.author…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "Motion guarded by reduced-motion rules"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (3915 chars)",
+      "at": "2026-09-26T19:09:50.942Z"
+    }
+  },
+  "testimonials:voice": {
+    "certifiedAt": "2026-09-26T19:09:51.765Z",
+    "sourceHash": "29e4ee83ca436aa7",
+    "checks": {
+      "render": {
+        "pass": true,
+        "detail": "rendered 6324 chars"
+      },
+      "slots": {
+        "pass": true,
+        "detail": "10 slots: testimonials.headline, testimonials.subheadline, testimonial-0.quote, testimonial-0.author, testimonial-1.quote, testimonial-1.author…"
+      },
+      "intents": {
+        "pass": true,
+        "detail": "No interactive actions; intents not applicable"
+      },
+      "accessibility": {
+        "pass": true,
+        "detail": "alt text, named buttons, real links, heading structure (static markup)"
+      },
+      "responsive": {
+        "pass": true,
+        "detail": "breakpoint rules present in rendered output"
+      },
+      "reduced-motion": {
+        "pass": true,
+        "detail": "No motion in the implementation"
+      },
+      "dependencies": {
+        "pass": true,
+        "detail": "3 local files; packages: react"
+      }
+    },
+    "consumer": {
+      "pass": true,
+      "detail": "Rendered via public barrel (6324 chars)",
+      "at": "2026-09-26T19:09:51.765Z"
+    }
+  }
+}

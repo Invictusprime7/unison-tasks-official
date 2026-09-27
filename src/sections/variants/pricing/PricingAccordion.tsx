@@ -35,7 +35,7 @@ export const PricingAccordion: React.FC<BaseSectionProps<'pricing'>> = ({ sectio
               }}
             >
               <h3 className="m-0">
-                <button
+                <button data-ut-intent="ui.toggle"
                   type="button"
                   aria-expanded={expanded}
                   onClick={() => setOpen(expanded ? -1 : i)}
@@ -43,14 +43,14 @@ export const PricingAccordion: React.FC<BaseSectionProps<'pricing'>> = ({ sectio
                   style={{ fontFamily: theme.typography.headingFont, color: 'inherit' }}
                 >
                   <span className="flex items-center gap-3">
-                    <span className="text-base font-semibold">{tier.name}</span>
+                    <span data-ut-slot={`pricing.name`} className="text-base font-semibold">{tier.name}</span>
                     {tier.badge && (
-                      <span className="px-2 py-0.5 text-xs" style={{ borderRadius: theme.radius, background: hsl(theme.colors.accent), color: hsl(theme.colors.accentForeground) }}>
+                      <span data-ut-slot={`pricing.badge`} className="px-2 py-0.5 text-xs" style={{ borderRadius: theme.radius, background: hsl(theme.colors.accent), color: hsl(theme.colors.accentForeground) }}>
                         {tier.badge}
                       </span>
                     )}
                   </span>
-                  <span className="text-base font-semibold">
+                  <span data-ut-slot={`pricing.price`} className="text-base font-semibold">
                     {tier.price}
                     {tier.period && <span className="text-xs font-normal" style={{ color: hsl(theme.colors.mutedForeground) }}> /{tier.period}</span>}
                   </span>
@@ -59,7 +59,7 @@ export const PricingAccordion: React.FC<BaseSectionProps<'pricing'>> = ({ sectio
               {expanded && (
                 <div className="px-5 pb-5">
                   {tier.description && (
-                    <p className="mb-3 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>{tier.description}</p>
+                    <p data-ut-slot={`pricing.description`} className="mb-3 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>{tier.description}</p>
                   )}
                   <ul className="list-none space-y-2 p-0 text-sm">
                     {tier.features.map((feature, fi) => (

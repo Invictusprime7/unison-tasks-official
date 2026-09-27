@@ -53,7 +53,7 @@ export const PricingFeatureTable: React.FC<BaseSectionProps<'pricing'>> = ({ sec
             }}
           >
             <div className="flex items-center justify-between gap-3">
-              <h3
+              <h3 data-ut-slot={`pricing.name`}
                 className="text-lg"
                 style={{ fontFamily: theme.typography.headingFont, fontWeight: theme.typography.headingWeight }}
               >
@@ -70,7 +70,7 @@ export const PricingFeatureTable: React.FC<BaseSectionProps<'pricing'>> = ({ sec
             </div>
 
             <div className="mt-4 flex items-baseline gap-1">
-              <span
+              <span data-ut-slot={`pricing.price`}
                 className="text-4xl"
                 style={{ fontFamily: theme.typography.headingFont, fontWeight: theme.typography.headingWeight }}
               >
@@ -84,7 +84,7 @@ export const PricingFeatureTable: React.FC<BaseSectionProps<'pricing'>> = ({ sec
             </div>
 
             {tier.description && (
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot={`pricing.description`} className="mt-3 text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {tier.description}
               </p>
             )}

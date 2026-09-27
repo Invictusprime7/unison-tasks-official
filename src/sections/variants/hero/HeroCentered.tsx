@@ -51,6 +51,7 @@ export const HeroCentered: React.FC<BaseSectionProps<'hero'>> = ({ section, them
 
         {badge && (
           <span
+            data-ut-slot="hero.badge"
             className="mb-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide"
             style={{
               color: hsl(theme.colors.primary),
@@ -64,7 +65,7 @@ export const HeroCentered: React.FC<BaseSectionProps<'hero'>> = ({ section, them
           </span>
         )}
 
-        <h1
+        <h1 data-ut-slot="hero.headline"
           className="mx-auto mb-6 max-w-3xl text-balance leading-[1.05] tracking-tight"
           style={{
             fontFamily: theme.typography.headingFont,
@@ -77,7 +78,7 @@ export const HeroCentered: React.FC<BaseSectionProps<'hero'>> = ({ section, them
         </h1>
 
         {subheadline && (
-          <p
+          <p data-ut-slot="hero.subheadline"
             className="mx-auto mb-9 max-w-xl text-lg leading-relaxed"
             style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
           >
@@ -91,7 +92,7 @@ export const HeroCentered: React.FC<BaseSectionProps<'hero'>> = ({ section, them
               <a
                 key={i}
                 href={c.href || '#'}
-                data-ut-intent={c.intent}
+                data-ut-intent={c.intent ?? 'nav.goto'}
                 data-ut-cta={i === 0 ? 'cta.hero' : 'cta.hero-secondary'}
                 className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={
@@ -124,13 +125,13 @@ export const HeroCentered: React.FC<BaseSectionProps<'hero'>> = ({ section, them
           >
             {stats.map((s, i) => (
               <div key={i} className="text-center">
-                <div
+                <div data-ut-slot={`hero.value`}
                   className="text-3xl font-bold"
                   style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.primary) }}
                 >
                   {s.value}
                 </div>
-                <div className="mt-1 text-xs uppercase tracking-widest" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                <div data-ut-slot={`hero.label`} className="mt-1 text-xs uppercase tracking-widest" style={{ color: hsl(theme.colors.mutedForeground) }}>
                   {s.label}
                 </div>
               </div>

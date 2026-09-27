@@ -33,20 +33,20 @@ export const PricingTiers: React.FC<BaseSectionProps<'pricing'>> = ({ section, t
             }}
           >
             {tier.badge && (
-              <span
+              <span data-ut-slot={`pricing.badge`}
                 className="mb-3 inline-flex w-fit px-2 py-1 text-xs font-semibold"
                 style={{ borderRadius: theme.radius, background: hsl(theme.colors.accent), color: hsl(theme.colors.accentForeground) }}
               >
                 {tier.badge}
               </span>
             )}
-            <h3 className="text-lg font-semibold" style={{ fontFamily: theme.typography.headingFont }}>{tier.name}</h3>
-            <p className="mt-2 text-3xl font-semibold" style={{ fontFamily: theme.typography.headingFont }}>
+            <h3 data-ut-slot={`pricing.name`} className="text-lg font-semibold" style={{ fontFamily: theme.typography.headingFont }}>{tier.name}</h3>
+            <p data-ut-slot={`pricing.price`} className="mt-2 text-3xl font-semibold" style={{ fontFamily: theme.typography.headingFont }}>
               {tier.price}
               {tier.period && <span className="text-sm font-normal" style={{ color: hsl(theme.colors.mutedForeground) }}> /{tier.period}</span>}
             </p>
             {tier.description && (
-              <p className="mt-2 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>{tier.description}</p>
+              <p data-ut-slot={`pricing.description`} className="mt-2 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>{tier.description}</p>
             )}
             <ul className="mt-6 flex-1 list-none space-y-2 p-0 text-sm">
               {tier.features.map((feature, fi) => (

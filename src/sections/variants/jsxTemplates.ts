@@ -47,10 +47,10 @@ export function heroCenteredJSX(c: ExtractedSectionContent): string {
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-16 -z-10 h-80 bg-[radial-gradient(35%_80%_at_50%_0%,hsl(var(--primary)/0.12),transparent)]" />
         <div className="relative mx-auto max-w-4xl px-4 text-center">
 ${c.badge ? `          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-primary">${esc(c.badge)}</span>\n` : ''}\
-${c.heading ? `          <h1 className="mb-6 text-balance font-heading text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl lg:text-6xl">${esc(c.heading)}</h1>\n` : ''}\
-${c.subheading ? `          <p className="mx-auto mb-9 max-w-2xl font-body text-lg leading-relaxed text-muted-foreground md:text-xl">${esc(c.subheading)}</p>\n` : ''}\
+${c.heading ? `          <h1 className="mb-6 text-balance font-serif text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl lg:text-6xl">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `          <p className="mx-auto mb-9 max-w-2xl font-sans text-lg leading-relaxed text-muted-foreground md:text-xl">${esc(c.subheading)}</p>\n` : ''}\
 ${c.ctaButtons?.length ? `          <div className="flex flex-wrap justify-center gap-3">
-${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary px-6 py-3 font-body font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-border px-6 py-3 font-body font-medium text-foreground motion-safe:transition-colors hover:bg-muted')}
+${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary px-6 py-3 font-sans font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-border px-6 py-3 font-sans font-medium text-foreground motion-safe:transition-colors hover:bg-muted')}
           </div>\n` : ''}\
 ${c.imageSrc ? `          <div className="mt-12"><img src="${c.imageSrc}" alt="${esc(c.imageAlt || '')}" className="mx-auto w-full max-w-3xl rounded-[var(--radius)] shadow-lg" /></div>\n` : ''}\
         </div>
@@ -62,10 +62,10 @@ export function heroSplitImageJSX(c: ExtractedSectionContent): string {
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 md:grid-cols-2">
           <div className="flex flex-col gap-6">
 ${c.badge ? `            <span className="inline-flex w-fit items-center rounded-full border border-border px-3 py-1 text-xs font-medium uppercase tracking-wide text-foreground">${esc(c.badge)}</span>\n` : ''}\
-${c.heading ? `            <h1 className="max-w-xl font-heading text-3xl font-bold leading-[1.05] tracking-tighter text-foreground md:text-4xl lg:text-5xl">${esc(c.heading)}</h1>\n` : ''}\
-${c.subheading ? `            <p className="max-w-md font-body text-xl leading-relaxed tracking-tight text-muted-foreground">${esc(c.subheading)}</p>\n` : ''}\
+${c.heading ? `            <h1 className="max-w-xl font-serif text-3xl font-bold leading-[1.05] tracking-tighter text-foreground md:text-4xl lg:text-5xl">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `            <p className="max-w-md font-sans text-xl leading-relaxed tracking-tight text-muted-foreground">${esc(c.subheading)}</p>\n` : ''}\
 ${c.ctaButtons?.length ? `            <div className="flex flex-wrap gap-3">
-${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary px-6 py-3 font-body font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-border px-6 py-3 font-body font-medium text-foreground motion-safe:transition-colors hover:bg-muted')}
+${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary px-6 py-3 font-sans font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-border px-6 py-3 font-sans font-medium text-foreground motion-safe:transition-colors hover:bg-muted')}
             </div>\n` : ''}\
           </div>
           <div className="relative aspect-square w-full overflow-hidden rounded-[var(--radius)] bg-muted">
@@ -90,10 +90,10 @@ export function heroFullBleedJSX(c: ExtractedSectionContent): string {
         </div>
         <div className="relative z-10 mx-auto max-w-4xl px-4 py-20 text-center">
 ${c.badge ? `          <span className="mb-4 inline-block rounded-full border border-primary-foreground/25 bg-primary-foreground/15 px-3 py-1 text-xs font-medium uppercase tracking-wide text-primary-foreground backdrop-blur-sm">${esc(c.badge)}</span>\n` : ''}\
-${c.heading ? `          <h1 className="mb-6 text-balance font-heading text-4xl font-bold leading-tight tracking-tight text-primary-foreground md:text-5xl lg:text-6xl">${esc(c.heading)}</h1>\n` : ''}\
-${c.subheading ? `          <p className="mx-auto mb-9 max-w-2xl font-body text-lg leading-relaxed text-primary-foreground/80 md:text-xl">${esc(c.subheading)}</p>\n` : ''}\
+${c.heading ? `          <h1 className="mb-6 text-balance font-serif text-4xl font-bold leading-tight tracking-tight text-primary-foreground md:text-5xl lg:text-6xl">${esc(c.heading)}</h1>\n` : ''}\
+${c.subheading ? `          <p className="mx-auto mb-9 max-w-2xl font-sans text-lg leading-relaxed text-primary-foreground/80 md:text-xl">${esc(c.subheading)}</p>\n` : ''}\
 ${c.ctaButtons?.length ? `          <div className="flex flex-wrap justify-center gap-3">
-${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary-foreground px-6 py-3 font-body font-semibold text-primary motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-primary-foreground/30 px-6 py-3 font-body font-medium text-primary-foreground backdrop-blur-sm motion-safe:transition-colors')}
+${renderButtons(c.ctaButtons, 'inline-flex items-center rounded-[var(--radius)] bg-primary-foreground px-6 py-3 font-sans font-semibold text-primary motion-safe:transition-transform motion-safe:hover:-translate-y-0.5', 'inline-flex items-center rounded-[var(--radius)] border border-primary-foreground/30 px-6 py-3 font-sans font-medium text-primary-foreground backdrop-blur-sm motion-safe:transition-colors')}
           </div>\n` : ''}\
         </div>
       </section>`;

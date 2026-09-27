@@ -26,7 +26,7 @@ export const StatsHighlight: React.FC<BaseSectionProps<'stats'>> = ({ section, t
             }}
           >
             <StatValue theme={theme} value={lead.value} emphasis />
-            <span className="mt-3 block text-base" style={{ fontFamily: theme.typography.bodyFont }}>
+            <span data-ut-slot={`stats.label`} className="mt-3 block text-base" style={{ fontFamily: theme.typography.bodyFont }}>
               {lead.label}
             </span>
           </div>
@@ -35,7 +35,7 @@ export const StatsHighlight: React.FC<BaseSectionProps<'stats'>> = ({ section, t
           {rest.map((item, i) => (
             <div key={i} style={{ borderTop: `1px solid ${hsl(theme.colors.border)}`, paddingTop: '1rem' }}>
               <StatValue theme={theme} value={item.value} />
-              <span
+              <span data-ut-slot={`stats.label`}
                 className="mt-1 block text-sm"
                 style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
               >

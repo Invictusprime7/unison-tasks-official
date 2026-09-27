@@ -32,10 +32,10 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
       data-ut-variant="contact:split-card"
       style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-12">
-            <h2
+            <h2 data-ut-slot="contact.headline"
               className="text-3xl sm:text-4xl mb-3 font-semibold tracking-tight"
               style={{
                 fontFamily: theme.typography.headingFont,
@@ -46,7 +46,7 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
               {headline}
             </h2>
             {description && (
-              <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot="contact.description" className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {description}
               </p>
             )}
@@ -67,9 +67,9 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
               ) : (
                 <input key={field.name} name={field.name} type={field.type || 'text'} placeholder={field.placeholder || field.name} required={field.required} style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
               ))}
-              <button
+              <button data-ut-intent="contact.submit"
                 type="submit"
-                className="w-full text-sm font-semibold py-3.5 transition-all hover:opacity-90 active:scale-[0.99] cursor-pointer shadow-sm"
+                className="w-full text-sm font-semibold py-3.5 motion-safe:transition-opacity hover:opacity-90 active:scale-[0.99] cursor-pointer shadow-sm"
                 style={{
                   background: hsl(theme.colors.primary),
                   color: hsl(theme.colors.primaryForeground),
@@ -104,19 +104,19 @@ export const ContactSplitCard: React.FC<BaseSectionProps<'contact'>> = ({ sectio
             {email && (
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{ color: hsl(theme.colors.mutedForeground) }}>Email</p>
-                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`mailto:${email}`} data-ut-cta="cta.email" style={{ color: 'inherit', textDecoration: 'none' }}>{email}</a></p>
+                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a data-ut-intent="nav.goto" href={`mailto:${email}`} data-ut-cta="cta.email" style={{ color: 'inherit', textDecoration: 'none' }}>{email}</a></p>
               </div>
             )}
             {phone && (
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{ color: hsl(theme.colors.mutedForeground) }}>Phone</p>
-                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`tel:${phone}`} data-ut-cta="cta.phone" style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></p>
+                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a data-ut-intent="nav.goto" href={`tel:${phone}`} data-ut-cta="cta.phone" style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></p>
               </div>
             )}
             {address && (
               <div>
                 <p className="text-xs uppercase tracking-wider mb-1 font-semibold" style={{ color: hsl(theme.colors.mutedForeground) }}>Address</p>
-                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" data-ut-cta="cta.address" style={{ color: 'inherit', textDecoration: 'none' }}>{address}</a></p>
+                <p className="text-sm font-medium" style={{ color: hsl(theme.colors.cardForeground) }}><a data-ut-intent="nav.goto" href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" data-ut-cta="cta.address" style={{ color: 'inherit', textDecoration: 'none' }}>{address}</a></p>
               </div>
             )}
           </div>

@@ -11,7 +11,7 @@ import { COMPILER_OWNED_FAMILIES, resolvePageArchetype } from '@/sections/pageAr
 import { isAdditiveUnderContract, type SiteDesignContract } from '@/services/launch/siteDesignContract';
 
 export const COMPOSITION_ROLES = ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'checkout', 'thank_you', 'blog', 'immersive', 'custom'] as const;
-const family = z.enum(['navbar', 'hero', 'about', 'services', 'features', 'gallery', 'pricing', 'logo-cloud', 'blog-preview', 'before-after', 'testimonials', 'cta', 'contact', 'footer', 'stats', 'team', 'faq']);
+const family = z.enum(['navbar', 'hero', 'about', 'services', 'features', 'gallery', 'pricing', 'logo-cloud', 'blog-preview', 'before-after', 'testimonials', 'cta', 'contact', 'footer', 'stats', 'team', 'faq', 'auth-form', 'data-table']);
 const sectionCopy = z.object({
   items: z.array(z.union([z.object({ title: z.string().max(140), description: z.string().max(600) }).strict(), z.object({ question: z.string().max(240), answer: z.string().max(1000) }).strict()])).min(1).max(8).optional(),
   headline: z.string().max(240).optional(),
@@ -52,7 +52,7 @@ export function validateAIPageComposition(value: unknown, packId: ArtDirectionPa
     for (const [type, id] of Object.entries(page.variants)) {
       if (!page.sectionOrder.includes(type as SectionType)) return null;
       const variant = getVariantById(id as VariantId);
-      if (!variant || variant.sectionType !== type || variant.vfs?.mode !== 'portable-recipe' || variant.generationStatus === 'legacy') return null;
+      if (!variant || variant.sectionType !== type || variant.vfs?.mode !== 'portable-recipe' || variant.generationStatus === 'legacy' || variant.generationStatus === 'retired') return null;
       // Role eligibility is owned by getGenerationVariantsForSection below, which
       // treats pageRoles as a preference and falls back to the certified set.
       const allowed = getGenerationVariantsForSection(variant.sectionType, ART_DIRECTION_PACKS[packId], page.role).map(candidate => candidate.id);

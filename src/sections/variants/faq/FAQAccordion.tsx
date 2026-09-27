@@ -36,7 +36,7 @@ export const FAQAccordion: React.FC<BaseSectionProps<'faq'>> = ({ section, theme
             >
               {item.question}
             </summary>
-            <p
+            <p data-ut-slot={`faq.answer`}
               className="mt-3 text-sm leading-relaxed"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >

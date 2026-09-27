@@ -20,7 +20,7 @@ export const TestimonialsGrid: React.FC<BaseSectionProps<'testimonials'>> = ({ s
     >
       <div className={`grid gap-6 ${cols}`}>
         {items.map((item, i) => (
-          <TestimonialCard key={i} item={item} theme={theme} />
+          <div key={i} data-ut-slot={`testimonial-${i}`}><TestimonialCard item={item} theme={theme} /></div>
         ))}
       </div>
     </TestimonialsFrame>

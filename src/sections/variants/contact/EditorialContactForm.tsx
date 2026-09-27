@@ -57,7 +57,7 @@ export function EditorialContactForm({
           )}
         </div>
       ))}
-      <button
+      <button data-ut-intent="contact.submit"
         type="submit"
         className="min-h-12 px-6 py-3 text-sm font-semibold sm:col-span-2 motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
         style={{
@@ -78,7 +78,7 @@ export function EditorialContactDetails({ props }: { props: SectionPropsMap['con
       {props.email && (
         <div>
           <span className="mb-1 block text-xs uppercase tracking-widest">Email</span>
-          <a href={`mailto:${props.email}`} data-ut-cta="cta.email">
+          <a data-ut-intent="nav.goto" href={`mailto:${props.email}`} data-ut-cta="cta.email">
             {props.email}
           </a>
         </div>
@@ -86,7 +86,7 @@ export function EditorialContactDetails({ props }: { props: SectionPropsMap['con
       {props.phone && (
         <div>
           <span className="mb-1 block text-xs uppercase tracking-widest">Phone</span>
-          <a href={`tel:${props.phone}`} data-ut-cta="cta.phone">
+          <a data-ut-intent="nav.goto" href={`tel:${props.phone}`} data-ut-cta="cta.phone">
             {props.phone}
           </a>
         </div>
@@ -94,7 +94,7 @@ export function EditorialContactDetails({ props }: { props: SectionPropsMap['con
       {props.address && (
         <div>
           <span className="mb-1 block text-xs uppercase tracking-widest">Visit</span>
-          <a
+          <a data-ut-intent="nav.goto"
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(props.address)}`}
             target="_blank"
             rel="noopener noreferrer"

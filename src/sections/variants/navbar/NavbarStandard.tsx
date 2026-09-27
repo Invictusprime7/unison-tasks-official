@@ -34,7 +34,7 @@ export const NavbarStandard: React.FC<BaseSectionProps<'navbar'>> = ({ section, 
           <span aria-hidden="true" className="absolute -left-px -top-px h-2 w-2" style={{ borderLeft: rule, borderTop: rule }} />
           <span aria-hidden="true" className="absolute -right-px -top-px h-2 w-2" style={{ borderRight: rule, borderTop: rule }} />
 
-          <a
+          <a data-ut-intent="nav.goto"
             href="#"
             data-ut-slot="brand"
             className="flex items-center py-4 text-lg font-semibold tracking-tight"
@@ -48,7 +48,7 @@ export const NavbarStandard: React.FC<BaseSectionProps<'navbar'>> = ({ section, 
               <a
                 key={i}
                 href={link.href}
-                data-ut-intent={link.intent}
+                data-ut-intent={link.intent ?? 'nav.goto'}
                 className="flex items-center px-4 text-sm font-medium motion-safe:transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.foreground), borderLeft: rule }}
               >
@@ -59,7 +59,7 @@ export const NavbarStandard: React.FC<BaseSectionProps<'navbar'>> = ({ section, 
               <span className="flex items-center pl-4" style={{ borderLeft: rule }}>
                 <a
                   href={cta.href || '#'}
-                  data-ut-intent={cta.intent}
+                  data-ut-intent={cta.intent ?? 'nav.goto'}
                   data-ut-cta="cta.nav"
                   className="px-4 py-2 text-sm font-medium motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
                   style={{

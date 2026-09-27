@@ -34,10 +34,10 @@ export const ContactMinimalInline: React.FC<BaseSectionProps<'contact'>> = ({ se
         background: `linear-gradient(135deg, ${hsla(theme.colors.primary, 0.04)}, ${hsla(theme.colors.secondary, 0.04)})`,
       }}
     >
-      <div className="mx-auto px-6 text-center" style={{ maxWidth: '48rem' }}>
+      <div className="mx-auto px-5 text-center sm:px-6" style={{ maxWidth: '48rem' }}>
         {headline && (
-          <h2
-            className="text-3xl mb-3"
+          <h2 data-ut-slot="contact.headline"
+            className="mb-3 text-2xl sm:text-3xl"
             style={{
               fontFamily: theme.typography.headingFont,
               fontWeight: theme.typography.headingWeight,
@@ -48,7 +48,7 @@ export const ContactMinimalInline: React.FC<BaseSectionProps<'contact'>> = ({ se
           </h2>
         )}
         {description && (
-          <p className="text-base mb-8 max-w-md mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
+          <p data-ut-slot="contact.description" className="text-base mb-8 max-w-md mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
             {description}
           </p>
         )}
@@ -56,15 +56,15 @@ export const ContactMinimalInline: React.FC<BaseSectionProps<'contact'>> = ({ se
         <form
           data-demo-form="true"
           data-ut-intent={submitIntent}
-          className="flex gap-3 mb-6"
+          className="mb-6 flex flex-col gap-3 sm:flex-row"
           style={{ maxWidth: '36rem', margin: '0 auto' }}
         >
           {formFields.map((field) => (
             <input key={field.name} name={field.name} type={field.type || 'text'} placeholder={field.placeholder || field.name} required={field.required} style={inputStyle} />
           ))}
-          <button
+          <button data-ut-intent="contact.submit"
             type="submit"
-            className="text-sm font-medium px-6 py-2.5 transition-all hover:opacity-90 cursor-pointer flex-shrink-0"
+            className="text-sm font-medium px-6 py-2.5 motion-safe:transition-opacity hover:opacity-90 cursor-pointer flex-shrink-0"
             style={{
               background: hsl(theme.colors.primary),
               color: hsl(theme.colors.primaryForeground),
@@ -84,7 +84,7 @@ export const ContactMinimalInline: React.FC<BaseSectionProps<'contact'>> = ({ se
               phone ? { value: phone, href: `tel:${phone}`, cta: 'cta.phone' } : null,
               address ? { value: address, href: `https://maps.google.com/?q=${encodeURIComponent(address)}`, cta: 'cta.address' } : null,
             ].filter(Boolean) as Array<{ value: string; href: string; cta: string }>).map((info, i) => (
-              <a
+              <a data-ut-intent="nav.goto"
                 key={i}
                 href={info.href}
                 data-ut-cta={info.cta}

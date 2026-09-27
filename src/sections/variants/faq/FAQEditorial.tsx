@@ -29,7 +29,7 @@ export function FAQEditorial({ section, theme }: BaseSectionProps<'faq'>) {
               </span>
               {item.question}
             </summary>
-            <p
+            <p data-ut-slot={`faq.answer`}
               className="mt-5 whitespace-pre-line leading-relaxed"
               style={{ color: hsl(theme.colors.mutedForeground) }}
             >

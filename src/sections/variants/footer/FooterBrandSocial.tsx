@@ -36,7 +36,7 @@ export const FooterBrandSocial: React.FC<BaseSectionProps<'footer'>> = ({ sectio
             {socials.length > 0 && (
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 {socials.map((social, i) => (
-                  <a
+                  <a data-ut-intent="nav.goto"
                     key={i}
                     href={social.url}
                     aria-label={social.platform}
@@ -59,7 +59,7 @@ export const FooterBrandSocial: React.FC<BaseSectionProps<'footer'>> = ({ sectio
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {columns.map((column, i) => (
               <div key={i}>
-                <span
+                <span data-ut-slot={`footer.title`}
                   className="mb-3 block text-sm font-semibold"
                   style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.foreground) }}
                 >
@@ -70,7 +70,7 @@ export const FooterBrandSocial: React.FC<BaseSectionProps<'footer'>> = ({ sectio
                     <li key={j}>
                       <a
                         href={link.href}
-                        data-ut-intent={link.intent}
+                        data-ut-intent={link.intent ?? 'nav.goto'}
                         className="text-sm no-underline transition-opacity hover:opacity-80"
                         style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
                       >

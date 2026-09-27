@@ -64,7 +64,7 @@ export interface InspectorVariantOption {
   id: VariantId;
   name: string;
   description: string;
-  generationStatus: 'preferred' | 'supported' | 'legacy';
+  generationStatus: 'preferred' | 'supported' | 'legacy' | 'retired';
   /** True when the implementation carries certified 21st-derived provenance. */
   certified: boolean;
   current: boolean;

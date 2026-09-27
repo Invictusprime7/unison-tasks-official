@@ -27,7 +27,7 @@ export const StatValue: React.FC<{ theme: ThemeTokens; value: string; emphasis?:
   value,
   emphasis,
 }) => (
-  <span
+  <span data-ut-slot="stats.value"
     className={emphasis ? 'block text-5xl' : 'block text-4xl'}
     style={{
       fontFamily: theme.typography.headingFont,
@@ -55,9 +55,9 @@ export const StatsFrame: React.FC<{
       ),
     }}
   >
-    <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+    <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
       {headline && (
-        <h2
+        <h2 data-ut-slot="stats.headline"
           className="mb-10 text-center text-3xl"
           style={{
             fontFamily: theme.typography.headingFont,

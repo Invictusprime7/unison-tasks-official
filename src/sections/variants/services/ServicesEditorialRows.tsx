@@ -23,7 +23,7 @@ export function ServicesEditorialRows({ section, theme }: BaseSectionProps<'serv
             {String(index + 1).padStart(2, '0')}
           </span>
           <div>
-            <h3 className="text-2xl sm:text-3xl" style={{ fontFamily: theme.typography.headingFont }}>
+            <h3 data-ut-slot={`services.title`} className="text-2xl sm:text-3xl" style={{ fontFamily: theme.typography.headingFont }}>
               {item.title}
             </h3>
             {item.image && (
@@ -37,7 +37,7 @@ export function ServicesEditorialRows({ section, theme }: BaseSectionProps<'serv
             )}
           </div>
           <div>
-            <p className="text-base leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+            <p data-ut-slot={`services.description`} className="text-base leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
               {item.description}
             </p>
             {(item.price || item.duration) && (

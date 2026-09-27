@@ -44,7 +44,7 @@ export const StatsMetricCards: React.FC<BaseSectionProps<'stats'>> = ({ section,
               </span>
             )}
             <StatValue theme={theme} value={stat.value} />
-            <span
+            <span data-ut-slot={`stats.label`}
               className="mt-2 block text-sm"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >

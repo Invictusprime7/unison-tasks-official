@@ -12,10 +12,10 @@ export const ServicesAlternating: React.FC<BaseSectionProps<'services'>> = ({ se
 
   return (
     <section data-ut-variant="services:alternating" style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}>
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-14">
-            <h2
+            <h2 data-ut-slot="services.headline"
               className="text-3xl mb-3"
               style={{
                 fontFamily: theme.typography.headingFont,
@@ -26,7 +26,7 @@ export const ServicesAlternating: React.FC<BaseSectionProps<'services'>> = ({ se
               {headline}
             </h2>
             {subheadline && (
-              <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot="services.subheadline" className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {subheadline}
               </p>
             )}
@@ -44,14 +44,14 @@ export const ServicesAlternating: React.FC<BaseSectionProps<'services'>> = ({ se
             >
               <div style={{ direction: 'ltr' }}>
                 {item.badge && (
-                  <span
+                  <span data-ut-slot={`services.badge`}
                     className="inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-3"
                     style={{ background: hsla(theme.colors.primary, 0.1), color: hsl(theme.colors.primary) }}
                   >
                     {item.badge}
                   </span>
                 )}
-                <h3
+                <h3 data-ut-slot={`services.title`}
                   className="text-2xl mb-3"
                   style={{
                     fontFamily: theme.typography.headingFont,
@@ -61,13 +61,13 @@ export const ServicesAlternating: React.FC<BaseSectionProps<'services'>> = ({ se
                 >
                   {item.title}
                 </h3>
-                <p className="text-sm leading-relaxed mb-4" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                <p data-ut-slot={`services.description`} className="text-sm leading-relaxed mb-4" style={{ color: hsl(theme.colors.mutedForeground) }}>
                   {item.description}
                 </p>
                 {(item.price || item.duration) && (
                   <div className="flex items-baseline gap-2 mb-4">
                     {item.price && (
-                      <span className="text-xl font-semibold" style={{ color: hsl(theme.colors.primary) }}>
+                      <span data-ut-slot={`services.price`} className="text-xl font-semibold" style={{ color: hsl(theme.colors.primary) }}>
                         {item.price}
                       </span>
                     )}
@@ -81,9 +81,9 @@ export const ServicesAlternating: React.FC<BaseSectionProps<'services'>> = ({ se
                 {item.cta && (
                   <a
                     href={item.cta.href || '#'}
-                    data-ut-intent={item.cta.intent}
+                    data-ut-intent={item.cta.intent ?? 'nav.goto'}
                     data-ut-cta="cta.card"
-                    className="inline-block text-sm font-medium px-5 py-2.5 transition-all hover:opacity-90"
+                    className="inline-block text-sm font-medium px-5 py-2.5 motion-safe:transition-opacity hover:opacity-90"
                     style={{
                       background: hsl(theme.colors.primary),
                       color: hsl(theme.colors.primaryForeground),

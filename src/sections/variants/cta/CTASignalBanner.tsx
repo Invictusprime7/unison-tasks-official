@@ -30,7 +30,7 @@ export const CTASignalBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, th
       style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
     >
       <style>{SWEEP_CSS}</style>
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         <div
           className="relative overflow-hidden px-6 py-12 text-center"
           style={{
@@ -49,7 +49,7 @@ export const CTASignalBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, th
           </div>
 
           <div className="relative">
-            <h2
+            <h2 data-ut-slot="cta.headline"
               className="text-2xl md:text-3xl"
               style={{
                 fontFamily: theme.typography.headingFont,
@@ -61,7 +61,7 @@ export const CTASignalBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, th
               {headline}
             </h2>
             {description && (
-              <p
+              <p data-ut-slot="cta.description"
                 className="mx-auto mt-3 max-w-xl text-base"
                 style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
               >
@@ -77,9 +77,9 @@ export const CTASignalBanner: React.FC<BaseSectionProps<'cta'>> = ({ section, th
                     <a
                       key={i}
                       href={c.href || '#'}
-                      data-ut-intent={c.intent}
+                      data-ut-intent={c.intent ?? 'nav.goto'}
                       data-ut-cta={i === 0 ? 'cta.banner' : 'cta.banner-secondary'}
-                      className="inline-flex items-center px-6 py-3 text-sm font-semibold uppercase tracking-widest no-underline transition-all hover:opacity-90"
+                      className="inline-flex items-center px-6 py-3 text-sm font-semibold uppercase tracking-widest no-underline motion-safe:transition-opacity hover:opacity-90"
                       style={{
                         borderRadius: theme.radius,
                         fontFamily: theme.typography.bodyFont,
