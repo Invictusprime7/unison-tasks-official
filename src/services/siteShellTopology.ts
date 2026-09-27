@@ -288,7 +288,9 @@ export function projectSiteShellLinks(
     }
 
     // 2. Hand-authored link arrays: [{ label, href }, ...] pointing at site routes.
-    source = source.replace(/\[\s*(?:\{[^\[\]{}]*\}\s*,?\s*){2,}\]/g, (block) => {
+    source = source.replace(/\[\s*(?:\{[^\[\]{}]*\}\s*,?\s*){2,}\]/g, (block, offset: number, whole: string) => {
+      const context = whole.slice(Math.max(0, offset - 60), offset);
+      if (!/(nav|menu|links)\w*\s*[:=]\s*(\([^)]*\)\s*)?$/i.test(context)) return block;
       const items = Array.from(block.matchAll(LINK_ITEM));
       const count = (block.match(/\{/g) ?? []).length;
       if (items.length !== count) return block;
