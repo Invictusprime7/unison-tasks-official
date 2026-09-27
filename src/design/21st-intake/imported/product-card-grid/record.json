@@ -64,7 +64,7 @@
   "archivedAt": "2026-09-18T04:05:14.514Z",
   "reviewEvidence": {
     "sourceSha256": "0ea06cd365762dcae4ad402f65eef0ae15afdaaa08346ca33681294069dcdfd4",
-    "componentSha256": "e4c77bd27e1971689a65284452900a6c54e1387eb95930beeb3afd65384296da",
+    "componentSha256": "993a2f2b8d37213bd9f8d8cab4247eef54c704b2e0ddea0a5b14e77297fe9c2d",
     "checks": ["dependency-allowlist", "react19-vite-tailwind3", "motion-css-adaptation", "token-normalization", "reduced-motion", "canonical-identity-and-intents", "portable-recipe"],
     "reviewedAt": "2026-09-18T08:00:00.000Z"
   }

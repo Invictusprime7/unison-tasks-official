@@ -254,7 +254,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/testimonials-marquee.svg',
       tags: ['testimonials', 'marquee', 'social-proof', 'motion'],
       pageRoles: ['home', 'about', 'services'],
-      renderJSX: portableRecipeOnly,
+      renderJSX: testimonialsMarqueeJSX,
     },
     {
       id: 'testimonials:editorial',
@@ -393,8 +393,8 @@ const VARIANT_REGISTRY: VariantRegistry = {
       },
       thumbnail: '/variants/pricing-feature-table.svg',
       tags: ['pricing', 'table', 'plans', 'commerce'],
-      pageRoles: ['pricing', 'services', 'home', 'checkout', 'faq', 'about'],
-      renderJSX: portableRecipeOnly,
+      pageRoles: ['home', 'pricing', 'services'],
+      renderJSX: pricingFeatureTableJSX,
     },
     {
       id: 'pricing:billing-toggle',
@@ -672,7 +672,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/hero-image-stream.svg',
       tags: ['hero', 'image-stream', 'perspective', 'motion', 'gallery'],
       pageRoles: ['home'],
-      renderJSX: portableRecipeOnly,
+      renderJSX: heroImageStreamJSX,
     },
     { id: 'hero:launch-showcase', sectionType: 'hero', slug: 'launch-showcase', name: 'Centered headline and actions above a framed media showcase', description: 'Centered headline and actions above a framed media showcase', component: HeroLaunchShowcase, vfs: { mode: 'portable-recipe', certification: 'approved' }, source: {"origin":"21st","sourceId":"21st:1526","sourceUrl":"https://21st.dev/@mikolajdobrucki/components/hero-section","author":"mikolajdobrucki","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/hero-launch-showcase.svg', pageRoles: ['home', 'services', 'pricing'], renderJSX: portableRecipeOnly },
     {
@@ -697,7 +697,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/hero-prisma-cinematic.svg',
       tags: ['hero', 'cinematic', 'editorial', 'full-bleed', 'media'],
       pageRoles: ['home'],
-      renderJSX: portableRecipeOnly,
+      renderJSX: heroPrismaCinematicJSX,
     },
     {
       id: 'hero:image-fan',
@@ -742,6 +742,27 @@ const VARIANT_REGISTRY: VariantRegistry = {
       pageRoles: ['home', 'services', 'about'],
       thumbnail: '/variants/hero-underline.svg',
       tags: ['21st-inspired'],
+      renderJSX: portableRecipeOnly,
+    },
+    {
+      id: 'hero:editorial-banner', sectionType: 'hero', slug: 'editorial-banner',
+      vocabularyRefs: [{ category: 'hero', id: 'asymmetric-story' }],
+      name: 'Editorial Banner', description: 'Landscape image band above a tagline and right-aligned editorial headline',
+      component: HeroEditorialBanner,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
+      generationStatus: 'preferred',
+      source: {
+        origin: '21st',
+        derivation: 'source-adaptation',
+        sourceId: '21st:19077',
+        sourceUrl: 'https://21st.dev/felipemenezes098/hero-07',
+        author: 'felipemenezes098',
+        license: 'Owner-authorized source adaptation (approved for canonical Unison generation)',
+        adaptationVersion: '2',
+      },
+      thumbnail: '/variants/hero-full-bleed.svg',
+      vocabulary: { category: 'hero', id: 'oversized-editorial' },
+      tags: ['editorial', 'subpage', 'image', 'premium'], pageRoles: ['booking', 'contact', 'blog', 'custom'],
       renderJSX: portableRecipeOnly,
     },
     {
@@ -832,27 +853,6 @@ const VARIANT_REGISTRY: VariantRegistry = {
       },
       thumbnail: '/variants/hero-centered.svg',
       tags: ['compact', 'subpage'], pageRoles: ['pricing', 'faq', 'checkout', 'thank_you'],
-      renderJSX: portableRecipeOnly,
-    },
-    {
-      id: 'hero:editorial-banner', sectionType: 'hero', slug: 'editorial-banner',
-      vocabularyRefs: [{ category: 'hero', id: 'asymmetric-story' }],
-      name: 'Editorial Banner', description: 'Landscape image band above a tagline and right-aligned editorial headline',
-      component: HeroEditorialBanner,
-      vfs: { mode: 'portable-recipe', certification: 'approved' },
-      generationStatus: 'preferred',
-      source: {
-        origin: '21st',
-        derivation: 'source-adaptation',
-        sourceId: '21st:19077',
-        sourceUrl: 'https://21st.dev/felipemenezes098/hero-07',
-        author: 'felipemenezes098',
-        license: 'Owner-authorized source adaptation (approved for canonical Unison generation)',
-        adaptationVersion: '2',
-      },
-      thumbnail: '/variants/hero-full-bleed.svg',
-      vocabulary: { category: 'hero', id: 'oversized-editorial' },
-      tags: ['editorial', 'subpage', 'image', 'premium'], pageRoles: ['booking', 'contact', 'blog', 'custom'],
       renderJSX: portableRecipeOnly,
     },
     {
@@ -991,8 +991,8 @@ const VARIANT_REGISTRY: VariantRegistry = {
       },
       thumbnail: '/variants/cta-signal-banner.svg',
       tags: ['cta', 'banner', 'bold', 'conversion'],
-      pageRoles: ['home', 'services', 'pricing'],
-      renderJSX: portableRecipeOnly,
+      pageRoles: ['home', 'shop', 'services', 'contact'],
+      renderJSX: ctaSignalBannerJSX,
     },
     {
       id: 'cta:editorial',
@@ -1081,9 +1081,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       },
       thumbnail: '/variants/navbar-floating-pill.svg',
       tags: ['navbar', 'sticky', 'pill', 'modern'],
-      pageRoles: ['home', 'shop', 'services', 'contact', 'about', 'pricing', 'faq', 'checkout', 'booking', 'thank_you'],
+      pageRoles: ['home', 'shop', 'services', 'contact', 'about'],
       radixPrimitives: ['dialog'],
-      renderJSX: portableRecipeOnly,
+      renderJSX: navbarFloatingPillJSX,
     },
     {
       id: 'navbar:standard',
@@ -1368,7 +1368,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/services-product-cards.svg',
       tags: ['commerce', 'products', 'grid', 'shop'],
       pageRoles: ['home', 'shop', 'services'],
-      renderJSX: portableRecipeOnly,
+      renderJSX: servicesProductCardsJSX,
     },
     {
       id: 'services:card-grid',
@@ -1574,9 +1574,9 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/footer-brand-social.svg',
       tags: ['footer', 'social', 'columns', 'brand'],
       
-      pageRoles: ['home', 'services', 'pricing', 'about', 'contact', 'gallery', 'faq', 'booking', 'shop', 'blog'],
+      pageRoles: ['home', 'shop', 'services', 'contact', 'about'],
       
-      renderJSX: portableRecipeOnly,
+      renderJSX: footerBrandSocialJSX,
     },
     {
       id: 'footer:multi-column',
@@ -1855,7 +1855,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/stats-metric-cards.svg',
       tags: ['stats', 'metrics', 'cards', 'proof'],
       pageRoles: ['home', 'about', 'services'],
-      renderJSX: portableRecipeOnly,
+      renderJSX: statsMetricCardsJSX,
     },
     {
       id: 'stats:bold',
@@ -2081,7 +2081,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
 
   'blog-preview': [
     { id: 'blog-preview:four-columns', sectionType: 'blog-preview', slug: 'four-columns', name: 'Four-column article grid with image, metadata and linked title', description: 'Four-column article grid with image, metadata and linked title', component: BlogPreviewFourColumns, vfs: { mode: 'portable-recipe', certification: 'approved' },
-      source: {"origin":"21st","sourceId":"21st:1421","sourceUrl":"https://21st.dev/@tommyjepsen/components/blog-section","author":"tommyjepsen","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/blog-preview-four-columns.svg', pageRoles: ['blog', 'about'], renderJSX: portableRecipeOnly },
+      source: {"origin":"21st","sourceId":"21st:1421","sourceUrl":"https://21st.dev/@tommyjepsen/components/blog-section","author":"tommyjepsen","derivation":"source-adaptation","license":"MIT","adaptationVersion":"2"}, generationStatus: 'preferred', thumbnail: '/variants/blog-preview-four-columns.svg', pageRoles: ['home', 'blog', 'about'], renderJSX: portableRecipeOnly },
     {
       id: 'blog-preview:editorial',
       sectionType: 'blog-preview',
@@ -2093,7 +2093,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       generationStatus: 'preferred',
       thumbnail: '/variants/blog-preview-editorial.svg',
       tags: ['editorial', 'featured'],
-      pageRoles: ['blog', 'about'],
+      pageRoles: ['home', 'blog', 'about'],
       renderJSX: portableRecipeOnly,
     },
     {
@@ -2107,7 +2107,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       generationStatus: 'preferred',
       thumbnail: '/variants/blog-preview-featured-grid.svg',
       tags: ['grid', 'cards'],
-      pageRoles: ['blog', 'about'],
+      pageRoles: ['home', 'blog', 'about'],
       renderJSX: portableRecipeOnly,
     },
     {
@@ -2121,7 +2121,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       generationStatus: 'preferred',
       thumbnail: '/variants/blog-preview-horizontal-rail.svg',
       tags: ['rail', 'compact'],
-      pageRoles: ['blog', 'about'],
+      pageRoles: ['home', 'blog', 'about'],
       renderJSX: portableRecipeOnly,
     },
   ],
@@ -2458,7 +2458,7 @@ function hasCertificationClosure(variant: SectionVariant): boolean {
   if (!ev?.consumer?.pass || !(variant.id in PUBLIC_IMPLEMENTATIONS)) return false;
   const required = ['render', 'slots', 'intents', 'accessibility', 'responsive', 'reduced-motion', 'dependencies'];
   if (!required.every((k) => ev.checks?.[k]?.pass)) return false;
-  if (!variant.pageRoles?.length || variant.renderJSX !== portableRecipeOnly) return false;
+  if (!variant.pageRoles?.length) return false;
   return Object.values(PACKS_FOR_CLOSURE).some((pack) => familyForSection(pack, variant.sectionType).includes(variant.id));
 }
 

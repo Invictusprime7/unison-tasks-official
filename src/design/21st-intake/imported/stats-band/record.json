@@ -62,7 +62,7 @@
   "archivedAt": "2026-09-18T04:05:14.510Z",
   "reviewEvidence": {
     "sourceSha256": "e25cc9b6f1823b680a69b521ffeefc8cc31aad988deea81926ca44049281824e",
-    "componentSha256": "1d0e9f19a554d7ecdaf3510c5d2e90d64d04726588bda71308ea65991c79f25e",
+    "componentSha256": "48b66ee5cb7a77fbddea5e9219b2f28d49d45478c0b058ca4f46283642a94edd",
     "checks": [
       "portable compiler and renderer parity",
       "semantic theme bindings",
