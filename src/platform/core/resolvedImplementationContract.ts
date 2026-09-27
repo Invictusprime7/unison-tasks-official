@@ -91,7 +91,7 @@ export interface ResolvedImplementationContract {
   /** npm packages the generated runtime must install for this implementation. */
   runtimeDependencies: readonly string[];
 
-  generationStatus: 'preferred' | 'supported' | 'legacy';
+  generationStatus: 'preferred' | 'supported' | 'legacy' | 'retired';
   source?: SectionVariant['source'];
 
   /** Phase 8.1 — derived creative affinity; never hand-maintained. */
@@ -322,7 +322,7 @@ export function resolveLegalImplementation(
     return { legal: true, contract, migratedFrom: targetId === variantId ? undefined : variantId };
   }
 
-  if (contract.generationStatus === 'legacy') {
+  if ((contract.generationStatus === 'legacy' || contract.generationStatus === 'retired')) {
     return {
       legal: false,
       reason: `"${contract.implementationId}" is a retired design and cannot be used for new work.`,
