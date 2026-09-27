@@ -37,3 +37,6 @@ Pieces exist separately: compileSiteDesignContract (deterministic, Lane B only),
 
 ## Phase 2 — done (candidate transaction)
 `src/services/builder/aiCandidateChangeSet.ts` → `buildAICandidateChangeSet()` normalizes AI output (path canonicalization, protected-path/slot guards, JSX typo repair, dependency resolution — all reused from `aiVFSOrchestrator.ts`) into an `AICandidateChangeSet` of create/replace/delete ops, applied in memory to a copy of the last committed VFS. No VFS write, no preview event, no persistence. Deterministic id. Tests: `src/test/aiCandidateChangeSet.test.ts`. Next: Phase 3 gates consume `candidateFiles`; wiring the Builder path to the candidate happens with the first slice.
+
+## Phase 3 (first cut) + live wiring — done
+`src/services/builder/aiCandidateGates.ts` → `prepareAICandidate()` = candidate build → preflight on changed files → blocking gates (parse via TypeScript, empty-file, import-graph closure incl. imports of deleted files). Both WebBuilder AI apply paths (desktop + mobile) now run it; a failing candidate is refused before `runBuilderAiMutation`, so preview and VFS are untouched. Passing candidates commit through the existing single writer and mirror into the live preview. Tests: `src/test/aiCandidateGates.test.ts`. Still missing: full TypeScript type-check, build and isolated-render gates; blocking design validation.
