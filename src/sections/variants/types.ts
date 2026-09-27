@@ -59,7 +59,8 @@ export interface SectionVariant<T extends SectionType = SectionType> {
   /** Brief description of the layout style */
   description: string;
   /** The React component that renders this variant (used by PageRenderer) */
-  component: ComponentType<BaseSectionProps<T>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component: ComponentType<BaseSectionProps<any>>;
   vfs?: { mode: 'portable-recipe' | 'legacy-jsx'; certification?: 'approved' };
   /**
    * Development-time provenance for implementations adapted from an external
@@ -67,7 +68,9 @@ export interface SectionVariant<T extends SectionType = SectionType> {
    */
   source?: import('@/design/21st-intake/provenance').VisualSourceMetadata;
   /** `legacy` implementations stay resolvable but are excluded from preferred generation. */
-  generationStatus?: 'preferred' | 'supported' | 'legacy';
+  generationStatus?: 'preferred' | 'supported' | 'legacy' | 'retired';
+  /** Why an implementation was retired (required when generationStatus is 'retired'). */
+  retiredReason?: string;
   /** Static thumbnail path for the variant picker grid */
   thumbnail: string;
   /** Tags for filtering (e.g., "modern", "minimal", "bold") */
