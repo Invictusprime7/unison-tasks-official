@@ -96,7 +96,7 @@ export function compileResolvedSiteDesignContext(
   const forbidden: Partial<Record<SectionType, string[]>> = {};
 
   for (const family of families) {
-    const inPack = new Set(contract.allowedImplementations[family] ?? []);
+    const inPack = new Set<string>(contract.allowedImplementations[family] ?? []);
     const legal = listLegalImplementations(family, { industry: contract.industry }).map((c) => c.implementationId);
     const ranked = [...legal.filter((id) => inPack.has(id)), ...legal.filter((id) => !inPack.has(id))];
     if (ranked.length) preferred[family] = ranked;
