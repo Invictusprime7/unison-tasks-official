@@ -11,6 +11,7 @@ import { runBuilderTurn } from '@/services/builderBrainClient';
 import {
   AI_COMPOSER_MODES,
   aiComposerResponseSchema,
+  composerScopeViolations,
   type AIComposerRequest,
   type AIComposerResponse,
 } from '@/contracts/aiComposerContract';
@@ -95,6 +96,17 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       return { ok: false, reason: 'invalid_response', attempts: attempt, errors: ['AI returned an invalid composer response.'] };
     }
     lastResponse = response;
+    const scope = composerScopeViolations(request.task, request.page.filePath, response.fileOps);
+    if (scope.length) {
+      lastErrors = scope;
+      request = {
+        ...request,
+        task: request.task === 'builder_source_edit' ? 'builder_source_edit' : 'site_page_repair',
+        diagnostics: scope.slice(0, 30),
+        previousResponse: JSON.stringify(response).slice(0, 60000),
+      };
+      continue;
+    }
 
     const aiFiles: Record<string, string> = {};
     const deletions: string[] = [];

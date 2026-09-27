@@ -13,6 +13,7 @@
  * (launch orchestrator / Builder) and must go through commitMutation.
  */
 
+import { AI_AUTHORED_MARKER } from '@/contracts/aiComposerContract';
 import type { ResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { projectSiteDesignContract } from '@/services/launch/siteDesignContract';
 import type { AIComposerRequest } from '@/contracts/aiComposerContract';
@@ -169,7 +170,8 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       continue;
     }
     try {
-      const committed = await input.commitPage(loop.prepared.nextFiles, page, files);
+      const nextFiles = stampAuthoredPage(loop.prepared.nextFiles, page, input.designContext?.fingerprint);
+      const committed = await input.commitPage(nextFiles, page, files);
       files = committed.files;
       revisionId = committed.revisionId ?? revisionId;
       const summary = loop.response?.summary ?? '';
@@ -185,4 +187,17 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     }
   }
   return { files, revisionId, outcomes };
+}
+
+/** Provenance: the committed page carries a verifiable AI-authorship header. */
+export function stampAuthoredPage(
+  files: Record<string, string>,
+  page: { filePath: string; role: string },
+  fingerprint: string | undefined,
+): Record<string, string> {
+  const source = files[page.filePath];
+  if (typeof source !== 'string') return files;
+  const body = source.replace(/^\/\/ @unison-ai-authored[^\n]*\n/, '');
+  const header = `${AI_AUTHORED_MARKER} role=${page.role} design=${fingerprint ?? 'unknown'}\n`;
+  return { ...files, [page.filePath]: header + body };
 }
