@@ -129,3 +129,44 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
   }
   return { ok: false, reason: 'gates_exhausted', attempts: maxAttempts, response: lastResponse, prepared: lastPrepared, errors: lastErrors };
 }
+
+/**
+ * Builder edits (§24): when an AI Builder patch fails the candidate gates,
+ * hand the diagnostics back to the composer in `builder_source_edit` mode
+ * instead of refusing immediately. Same loop, same gates, smaller scope.
+ */
+export async function repairBuilderCandidate(input: {
+  rawFiles: Record<string, string>;
+  failed: PreparedCandidate;
+  baseFiles: Record<string, string>;
+  baseRevisionId?: string;
+  prompt?: string;
+  activeFilePath?: string;
+  preflight?: (changed: Record<string, string>) => Record<string, string>;
+  invoke?: ComposerInvoke;
+}): Promise<ComposerLoopResult> {
+  const target = input.activeFilePath && input.baseFiles[input.activeFilePath]
+    ? input.activeFilePath
+    : Object.keys(input.rawFiles).find((p) => /^\/src\/.+\.tsx$/.test(p)) ?? '/src/pages/Home.tsx';
+  const files: Record<string, string> = {};
+  for (const path of new Set([...Object.keys(input.rawFiles), target])) {
+    const content = input.rawFiles[path] ?? input.baseFiles[path];
+    if (typeof content === 'string' && content.length <= 60000) files[path] = content;
+  }
+  return runComposerRepairLoop({
+    request: {
+      task: 'builder_source_edit',
+      page: { role: 'page', title: target.split('/').pop() ?? target, route: '/', filePath: target },
+      brief: 'Builder edit. Keep the existing design direction, art direction and all intents.',
+      instruction: input.prompt?.slice(0, 4000),
+      files,
+      routes: [],
+      diagnostics: input.failed.errors.slice(0, 30),
+    },
+    baseFiles: input.baseFiles,
+    baseRevisionId: input.baseRevisionId,
+    preflight: input.preflight,
+    maxAttempts: 3,
+    invoke: input.invoke,
+  });
+}
