@@ -119,6 +119,7 @@ import {
   resolveProjectActivePagePath,
 } from '@/services/projectRuntimeEnvelope';
 import { runBuilderAiMutation } from "@/services/builder/builderMutationService";
+import { prepareAICandidate } from "@/services/builder/aiCandidateGates";
 import { emptyPatchPlan, legacyFilesToPatchPlan, type FileOp, type PatchSource } from "@/types/patchPlan";
 import type { BuilderIdentity } from "@/types/builderIdentity";
 import { normalizeUnisonRuntimeContext } from "@/platform/core/runtimeManifest";
@@ -7210,13 +7211,24 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   const snapshotForPreflight = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
                     ?? (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null)
                     ?? null;
-                  const canonicalFiles = canonicalizeAIFilePaths(rawFiles, beforeFiles);
-                  const preflight = runFullPreflight(canonicalFiles, {
-                    siteBundleSnapshot: snapshotForPreflight,
-                    industry: snapshotForPreflight?.industry,
+                  // AI Composer Phase 2+3 — candidate transaction + blocking gates.
+                  // The AI output is applied to an in-memory copy first; parse and
+                  // import-graph gates must pass before the canonical commit.
+                  const candidate = await prepareAICandidate({
+                    aiFiles: rawFiles,
+                    baseFiles: beforeFiles,
+                    baseRevisionId: currentRevisionId ?? undefined,
+                    preflight: (changed) => runFullPreflight(changed, {
+                      siteBundleSnapshot: snapshotForPreflight,
+                      industry: snapshotForPreflight?.industry,
+                    }).files,
                   });
-                  const files = preflight.files;
-                  const proposedFiles = { ...beforeFiles, ...files };
+                  if (!candidate.ok) {
+                    console.warn('[WebBuilder] AI candidate blocked:', candidate.gates.failures);
+                    toast.error('AI edit blocked before preview', { description: candidate.errors[0], duration: 8000 });
+                    return { success: false, errors: candidate.errors };
+                  }
+                  const proposedFiles = candidate.nextFiles;
 
                   // Pass 3 — VFSCommitService gate. Dry-run BEFORE mutating
                   // the working VFS so a preview-breaking AI patch never
@@ -7725,12 +7737,21 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 const snapshotForPreflight = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
                   ?? (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null)
                   ?? null;
-                const canonicalFiles = canonicalizeAIFilePaths(rawFiles, beforeFiles);
-                const files = runFullPreflight(canonicalFiles, {
-                  siteBundleSnapshot: snapshotForPreflight,
-                  industry: snapshotForPreflight?.industry,
-                }).files;
-                const proposedFiles = { ...beforeFiles, ...files };
+                // AI Composer Phase 2+3 — candidate transaction + blocking gates.
+                const candidate = await prepareAICandidate({
+                  aiFiles: rawFiles,
+                  baseFiles: beforeFiles,
+                  baseRevisionId: currentRevisionId ?? undefined,
+                  preflight: (changed) => runFullPreflight(changed, {
+                    siteBundleSnapshot: snapshotForPreflight,
+                    industry: snapshotForPreflight?.industry,
+                  }).files,
+                });
+                if (!candidate.ok) {
+                  toast.error('AI edit blocked before preview', { description: candidate.errors[0], duration: 8000 });
+                  return { success: false, errors: candidate.errors };
+                }
+                const proposedFiles = candidate.nextFiles;
 
                 // Pass 3 — VFSCommitService gate (mobile mount).
                 const projectIdForCommit = resolvedProjectId || currentDraftId || '';
