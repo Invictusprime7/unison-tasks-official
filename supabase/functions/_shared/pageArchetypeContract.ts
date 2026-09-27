@@ -30,6 +30,8 @@ export const PAGE_ARCHETYPES: Record<string, EdgePageArchetype> = {
   blog: { requiredFamilies: ['blog-preview'], forbiddenFamilies: ['pricing', 'before-after', 'gallery', 'team', 'logo-cloud'], forbiddenTags: ['immersive'], maxBodySections: 4 },
   immersive: { requiredFamilies: ['hero'], forbiddenFamilies: ['pricing', 'faq', 'blog-preview', 'logo-cloud', 'team', 'contact'], forbiddenTags: [], maxBodySections: 4 },
   custom: { requiredFamilies: [], forbiddenFamilies: [], forbiddenTags: [], maxBodySections: 6 },
+  auth: { requiredFamilies: ['auth-form'], forbiddenFamilies: ['hero', 'services', 'features', 'pricing', 'gallery', 'testimonials', 'stats', 'team', 'blog-preview', 'before-after', 'logo-cloud', 'cta', 'contact', 'faq', 'about', 'data-table'], forbiddenTags: ['marquee', 'immersive'], maxBodySections: 1 },
+  dashboard: { requiredFamilies: ['data-table'], forbiddenFamilies: ['hero', 'services', 'pricing', 'gallery', 'testimonials', 'team', 'blog-preview', 'before-after', 'logo-cloud', 'cta', 'contact', 'about', 'auth-form'], forbiddenTags: ['marquee', 'immersive'], maxBodySections: 4 },
 };
 
 export const pageArchetypeFor = (role: string): EdgePageArchetype =>
