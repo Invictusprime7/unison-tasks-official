@@ -1,3 +1,4 @@
+import { runComposerLane } from './composerLane.ts';
 import { runCanonicalEnrichmentLane } from './canonicalEnrichmentLane.ts';
 import { runCompositionLane } from '../_shared/compositionLane.ts';
 /**
@@ -217,6 +218,14 @@ export function runAssistantOrchestrator(
     const providerPlan = buildProviderPlan(task, true, { timeoutMs: 85000, maxTokens: 16000 }, 'simple', context);
     const enrichmentSignal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(100000)]);
     return runCanonicalEnrichmentLane(context, corsHeaders, buildWizardCanonicalEnrichmentBasePrompt(), aiMessages => runProviderLoop({ aiMessages, providerPlan, navPageGen: false, reasoningEffort: 'none', signal: enrichmentSignal }), followUps);
+  }
+
+  if (task.type === 'site_page_author' || task.type === 'site_page_repair' || task.type === 'builder_source_edit') {
+    const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
+    const providerPlan = buildProviderPlan(task, true, { timeoutMs: 110000, maxTokens: 24000 }, 'simple', context);
+    return runComposerLane(context, corsHeaders, aiMessages => runProviderLoop({
+      aiMessages, providerPlan, navPageGen: false, reasoningEffort: 'none', signal,
+    }));
   }
 
   if (task.type === 'wizard_composition') {
