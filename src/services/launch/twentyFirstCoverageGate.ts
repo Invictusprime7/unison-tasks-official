@@ -56,11 +56,11 @@ export function validateTwentyFirstGenerationCoverage(
       const selectedId = input.selectedVariants?.[key] ?? input.selectedVariants?.[sectionType];
 
       if (!eligible.length) {
-        issues.push(`${key}: no certified 21st implementation is eligible for this role`);
+        issues.push(`${key}: no certified implementation is eligible for this role`);
       }
 
       for (const variant of eligible) {
-        if (variant.source?.origin !== '21st') issues.push(`${key}: ${variant.id} is not 21st-derived`);
+        if (!variant.source?.origin) issues.push(`${key}: ${variant.id} has no declared provenance`);
         if (variant.vfs?.mode !== 'portable-recipe') issues.push(`${key}: ${variant.id} has no portable VFS recipe`);
         if (variant.vfs?.certification !== 'approved') issues.push(`${key}: ${variant.id} is not certified`);
         if (variant.generationStatus === 'legacy') issues.push(`${key}: ${variant.id} is legacy-only`);

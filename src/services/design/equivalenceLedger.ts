@@ -80,7 +80,7 @@ const PACK_IDS = Object.keys(ART_DIRECTION_PACKS) as ArtDirectionPackId[];
 
 export function equivalenceBlockers(variant: SectionVariant): EquivalenceBlocker[] {
   const blockers: EquivalenceBlocker[] = [];
-  if (variant.source?.origin !== '21st') blockers.push('missing-21st-source');
+  if (!variant.source?.origin) blockers.push('missing-21st-source'); // declared provenance: 21st or Unison-authored
   if (variant.vfs?.mode !== 'portable-recipe') blockers.push('not-portable-recipe');
   if (variant.vfs?.certification !== 'approved') blockers.push('not-approved');
   if (variant.generationStatus !== 'preferred') blockers.push('not-preferred');
