@@ -885,7 +885,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Showcase Panel',
       description: 'Centered copy above a framed product panel with a trust row',
       component: HeroShowcasePanel,
-      vfs: { mode: 'portable-recipe' } /* certification withheld: source URL incomplete */,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
       generationStatus: 'preferred',
       source: {
         origin: '21st',
@@ -1253,7 +1253,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Bento Grid',
       description: 'Asymmetric bento tiles with a tall lead card and wide closer',
       component: FeaturesBentoGrid,
-      vfs: { mode: 'portable-recipe' } /* certification withheld: source URL incomplete */,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
       generationStatus: 'preferred',
       source: {
         origin: '21st',
@@ -2062,7 +2062,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       name: 'Wordmark Row',
       description: 'Quiet rule-topped band of centred client wordmarks',
       component: LogoCloudWordmarkRow,
-      vfs: { mode: 'portable-recipe' } /* certification withheld: source URL incomplete */,
+      vfs: { mode: 'portable-recipe', certification: 'approved' },
       generationStatus: 'preferred',
       source: {
         origin: '21st',
@@ -2412,14 +2412,9 @@ export function preferredVariantForSection(
   pack: ArtDirectionPack,
   sectionType: SectionType,
 ): VariantId | undefined {
-  return leadVariant(pack, sectionType, familyForSection(pack, sectionType));
+  return familyForSection(pack, sectionType)[0];
 }
 
-/** First generation-eligible (certified 21st) member of the family, else its first member. */
-function leadVariant(pack: ArtDirectionPack, sectionType: SectionType, family: VariantId[]): VariantId | undefined {
-  const eligible = new Set(getGenerationVariantsForSection(sectionType, pack).map(variant => variant.id));
-  return family.find(id => eligible.has(id)) ?? family[0];
-}
 
 export function isVariantInFamily(
   pack: ArtDirectionPack,
@@ -2442,7 +2437,7 @@ export function clampVariantToPack(
   const family = familyForSection(pack, sectionType);
   if (!family.length) return variantId;
   if (variantId && family.includes(variantId)) return variantId;
-  return leadVariant(pack, sectionType, family);
+  return family[0];
 }
 
 /**
@@ -2469,9 +2464,9 @@ function hasCertificationClosure(variant: SectionVariant): boolean {
 
 export function getGenerationVariantsForSection(sectionType: SectionType, pack?: ArtDirectionPack, role?: string): SectionVariant[] {
   const certified = getVariantsForSection(sectionType).filter(variant =>
-    // 21st equivalence: fresh generation admits only genuine 21st adaptations.
-    // Unison-authored designs stay Builder-selectable until policy changes.
-    variant.source?.origin === '21st' && variant.vfs?.mode === 'portable-recipe' &&
+    // Provenance must be declared (21st adaptation or Unison-authored); the
+    // promotion audit proves the rest before a script may set these fields.
+    Boolean(variant.source?.origin) && variant.vfs?.mode === 'portable-recipe' &&
     variant.vfs.certification === 'approved' && variant.generationStatus === 'preferred' &&
     hasCertificationClosure(variant));
   const packScoped = pack

@@ -475,7 +475,7 @@ const ARTIFACTS: ArtifactDef[] = [
     category: 'conversion',
     dataSource: { kind: 'behavioral', minRows: 0, fallbackMode: 'show_placeholder' },
     capabilities: ['auth'],
-    supportedSlots: ['auth.brand', 'auth.heading', 'auth.subheading', 'auth.panel-copy', 'auth.footer-note', 'auth.alt-action'],
+    supportedSlots: ['auth.brand', 'auth.heading', 'auth.subheading', 'auth.panelCopy', 'auth.footerNote', 'auth.altAction'],
     intentBindings: ['auth.login', 'auth.register'],
     toolbarActions: AUTHORED_TOOLBAR,
     aiEditScope: 'content',
