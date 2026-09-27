@@ -193,6 +193,9 @@ export const ART_DIRECTION_FAMILIES: Record<ArtDirectionFamilyId, ArtDirectionFa
 
 // Membership is owned by the canonical Theme Family registry (themeFamily.ts).
 // Every member pack gets a qualified ref here; hand-named slugs stay as aliases.
+const LEGACY_QUALIFIED_ALIASES = new Map(
+  Object.values(ART_DIRECTION_FAMILIES).flatMap((f) => f.packs.map((p) => [p.qualifiedId, p.packId] as const)),
+);
 for (const family of Object.values(ART_DIRECTION_FAMILIES)) {
   const known = new Map(family.packs.map((p) => [p.packId, p]));
   family.packs = packsForThemeFamily(family.id).map((packId) => known.get(packId) ?? ref(family.id, packId, packId));
@@ -235,7 +238,7 @@ export function resolvePackAlias(id: string | null | undefined): ArtDirectionPac
     const hit = family.packs.find((p) => p.qualifiedId === id || p.packId === id);
     if (hit) return hit.packId;
   }
-  return null;
+  return LEGACY_QUALIFIED_ALIASES.get(id) ?? null;
 }
 
 /** The family that primarily owns a storage pack (first declaring family). */
