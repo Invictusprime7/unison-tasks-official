@@ -110,6 +110,7 @@ import {
   resolveWizardIndustryOverlay,
 } from '@/services/wizardMergeContext';
 import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
+import { runFullPreflight } from "@/utils/aiSitePreflightRepair";
 import { authorSitePages } from '@/services/launch/siteAuthoringOrchestrator';
 import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { persistAiCommit } from '@/services/aiApplyGate';
@@ -666,7 +667,7 @@ export async function runLaunchPipeline(
     error.name = 'LaunchReviewCancelled';
     throw error;
   }
-  const commit = await run.stage("commit", async () => {
+  const commit: { confirmed: ConfirmedLaunchIds; result: CommitMutationResult } = await run.stage("commit", async () => {
     // Register the reviewed identity before writing its first revision.
     const confirmed: ConfirmedLaunchIds = callbacks.onReview ? await plan.provision() : plan.confirmed;
     if (Object.keys(plan.confirmed).some(key => confirmed[key as keyof ConfirmedLaunchIds] !== plan.confirmed[key as keyof ConfirmedLaunchIds])) throw new Error('Launch identity changed after review. Generate a fresh preview.');
