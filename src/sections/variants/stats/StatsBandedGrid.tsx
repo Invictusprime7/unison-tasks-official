@@ -27,7 +27,7 @@ export const StatsBandedGrid: React.FC<BaseSectionProps<'stats'>> = ({ section, 
             }}
           >
             <StatValue theme={theme} value={item.value} />
-            <span className="mt-2 block text-sm" style={{ fontFamily: theme.typography.bodyFont }}>
+            <span data-ut-slot={`stats.label`} className="mt-2 block text-sm" style={{ fontFamily: theme.typography.bodyFont }}>
               {item.label}
             </span>
           </div>

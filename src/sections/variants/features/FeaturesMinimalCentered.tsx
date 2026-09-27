@@ -18,10 +18,10 @@ export const FeaturesMinimalCentered: React.FC<BaseSectionProps<'features'>> = (
         background: hsl(theme.colors.muted),
       }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-14">
-            <h2
+            <h2 data-ut-slot="features.headline"
               className="text-3xl mb-3"
               style={{
                 fontFamily: theme.typography.headingFont,
@@ -32,7 +32,7 @@ export const FeaturesMinimalCentered: React.FC<BaseSectionProps<'features'>> = (
               {headline}
             </h2>
             {subheadline && (
-              <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot="features.subheadline" className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {subheadline}
               </p>
             )}
@@ -52,7 +52,7 @@ export const FeaturesMinimalCentered: React.FC<BaseSectionProps<'features'>> = (
                   {item.icon}
                 </div>
               )}
-              <h3
+              <h3 data-ut-slot={`features.title`}
                 className="text-lg mb-2"
                 style={{
                   fontFamily: theme.typography.headingFont,
@@ -62,7 +62,7 @@ export const FeaturesMinimalCentered: React.FC<BaseSectionProps<'features'>> = (
               >
                 {item.title}
               </h3>
-              <p
+              <p data-ut-slot={`features.description`}
                 className="text-sm leading-relaxed max-w-xs mx-auto"
                 style={{ color: hsl(theme.colors.mutedForeground) }}
               >

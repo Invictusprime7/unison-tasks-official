@@ -18,8 +18,8 @@ export function FeaturesSpotlightCards({ section, theme }: BaseSectionProps<'fea
       {(section.props.items ?? []).map((item, index) => <article key={index} data-spotlight-card data-ut-slot={'feature-' + index} className="ut-spotlight-card min-w-0 border p-7 sm:p-9" style={{ '--spot-color': hsla(theme.colors.primary, 0.16), borderColor: hsl(theme.colors.border), background: hsl(theme.colors.card), borderRadius: theme.radius, overflowWrap: 'anywhere' } as React.CSSProperties}>
         <div className="relative">
           <span aria-hidden="true" className="mb-6 block text-3xl">{item.icon}</span>
-          <h3 className="text-xl font-semibold" style={{ fontFamily: theme.typography.headingFont }}>{item.title}</h3>
-          <p className="mt-3 text-sm leading-7" style={{ color: hsl(theme.colors.mutedForeground) }}>{item.description}</p>
+          <h3 data-ut-slot={`features.title`} className="text-xl font-semibold" style={{ fontFamily: theme.typography.headingFont }}>{item.title}</h3>
+          <p data-ut-slot={`features.description`} className="mt-3 text-sm leading-7" style={{ color: hsl(theme.colors.mutedForeground) }}>{item.description}</p>
         </div>
       </article>)}
     </div>

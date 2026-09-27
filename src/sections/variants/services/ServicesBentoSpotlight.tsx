@@ -44,15 +44,15 @@ export function ServicesBentoSpotlight({ section, theme }: BaseSectionProps<'ser
                 style={{ color: hsl(theme.colors.mutedForeground) }}
               >
                 <span>{String(index + 1).padStart(2, '0')}</span>
-                {item.badge && <span>{item.badge}</span>}
+                {item.badge && <span data-ut-slot={`services.badge`}>{item.badge}</span>}
               </div>
-              <h3
+              <h3 data-ut-slot={`services.title`}
                 className={index === 0 ? 'text-3xl tracking-tight' : 'text-xl tracking-tight'}
                 style={{ fontFamily: theme.typography.headingFont }}
               >
                 {item.title}
               </h3>
-              <p className="mt-3 flex-1 leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot={`services.description`} className="mt-3 flex-1 leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {item.description}
               </p>
               {(item.price || item.duration) && (

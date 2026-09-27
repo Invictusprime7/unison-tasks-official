@@ -38,7 +38,7 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
             <a
               key={i}
               href={link.href}
-              data-ut-intent={link.intent}
+              data-ut-intent={link.intent ?? 'nav.goto'}
               className="text-sm motion-safe:transition-colors hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2"
               style={{ fontFamily: theme.typography.bodyFont, color: hsla(theme.colors.background, 0.66) }}
             >
@@ -47,7 +47,7 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
           ))}
         </nav>
 
-        <a
+        <a data-ut-intent="nav.goto"
           href="#"
           data-ut-slot="brand"
           className="justify-self-center text-base font-semibold tracking-tight"
@@ -60,7 +60,7 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
           className="flex items-center justify-end gap-4 py-3 pl-6"
           style={{ borderLeft: `1px solid ${hsla(theme.colors.background, 0.12)}` }}
         >
-          <a
+          <a data-ut-intent="nav.goto"
             href="#contact"
             className="hidden text-sm motion-safe:transition-colors xl:inline"
             style={{ fontFamily: theme.typography.bodyFont, color: hsla(theme.colors.background, 0.66) }}
@@ -70,7 +70,7 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
           {cta && (
             <a
               href={cta.href || '#'}
-              data-ut-intent={cta.intent}
+              data-ut-intent={cta.intent ?? 'nav.goto'}
               data-ut-cta="cta.nav"
               className="px-5 py-1.5 text-sm font-medium motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
               style={{

@@ -68,7 +68,7 @@ export function EditorialCTA({ cta, theme }: { cta?: CTAButton; theme: ThemeToke
   return (
     <a
       href={cta.href || '#contact'}
-      data-ut-intent={cta.intent}
+      data-ut-intent={cta.intent ?? 'nav.goto'}
       data-ut-slot="cta"
       className="mt-6 inline-flex min-h-11 items-center justify-center gap-5 px-5 py-3 text-sm font-semibold motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
       style={{

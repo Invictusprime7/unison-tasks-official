@@ -98,7 +98,7 @@ export const HeroShowcasePanel: React.FC<BaseSectionProps<'hero'>> = ({ section,
           )}
 
           {description && (
-            <p
+            <p data-ut-slot="hero.description"
               data-ut-rise
               className="text-sm leading-relaxed"
               style={{
@@ -118,7 +118,7 @@ export const HeroShowcasePanel: React.FC<BaseSectionProps<'hero'>> = ({ section,
                 <a
                   key={`${c.label}-${i}`}
                   href={c.href || '#'}
-                  data-ut-intent={c.intent}
+                  data-ut-intent={c.intent ?? 'nav.goto'}
                   data-ut-cta={i === 0 ? 'cta.hero' : 'cta.hero-secondary'}
                   className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium transition-opacity hover:opacity-90"
                   style={
@@ -179,13 +179,13 @@ export const HeroShowcasePanel: React.FC<BaseSectionProps<'hero'>> = ({ section,
           >
             {stats.map((s, i) => (
               <div key={`${s.label}-${i}`} className="text-center">
-                <div
+                <div data-ut-slot={`hero.value`}
                   className="text-xl font-semibold tracking-tight"
                   style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.foreground) }}
                 >
                   {s.value}
                 </div>
-                <div
+                <div data-ut-slot={`hero.label`}
                   className="text-sm font-medium tracking-tight"
                   style={{ fontFamily: theme.typography.bodyFont, color: hsla(theme.colors.mutedForeground, 0.7) }}
                 >

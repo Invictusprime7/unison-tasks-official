@@ -65,7 +65,9 @@ export type SectionType =
   | 'about'
   | 'logo-cloud'
   | 'blog-preview'
-  | 'before-after';
+  | 'before-after'
+  | 'auth-form'
+  | 'data-table';
 
 /** A single section in a template composition */
 export interface SectionEntry<T extends SectionType = SectionType> {

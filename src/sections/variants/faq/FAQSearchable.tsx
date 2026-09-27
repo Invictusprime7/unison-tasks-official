@@ -48,7 +48,7 @@ export function FAQSearchable({ section, theme }: BaseSectionProps<'faq'>) {
                 style={editorialCardStyle(theme)}
               >
                 <summary className="cursor-pointer text-lg font-medium">{item.question}</summary>
-                <p
+                <p data-ut-slot={`faq.answer`}
                   className="mt-4 whitespace-pre-line leading-relaxed"
                   style={{ color: hsl(theme.colors.mutedForeground) }}
                 >

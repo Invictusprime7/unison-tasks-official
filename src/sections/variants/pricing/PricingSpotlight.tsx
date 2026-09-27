@@ -27,18 +27,18 @@ export function PricingSpotlight({ section, theme }: BaseSectionProps<'pricing'>
           >
             <div>
               {tier.badge && (
-                <p
+                <p data-ut-slot={`pricing.badge`}
                   className="mb-4 text-xs font-semibold uppercase tracking-widest"
                   style={{ color: hsl(theme.colors.primary) }}
                 >
                   {tier.badge}
                 </p>
               )}
-              <h3 className="text-2xl" style={{ fontFamily: theme.typography.headingFont }}>
+              <h3 data-ut-slot={`pricing.name`} className="text-2xl" style={{ fontFamily: theme.typography.headingFont }}>
                 {tier.name}
               </h3>
               <p className="mt-5">
-                <span className="text-5xl tracking-tight">{tier.price}</span>
+                <span data-ut-slot={`pricing.price`} className="text-5xl tracking-tight">{tier.price}</span>
                 {tier.period && (
                   <span className="ml-2 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>
                     /{tier.period}
@@ -46,7 +46,7 @@ export function PricingSpotlight({ section, theme }: BaseSectionProps<'pricing'>
                 )}
               </p>
               {tier.description && (
-                <p
+                <p data-ut-slot={`pricing.description`}
                   className="mt-4 text-sm leading-relaxed"
                   style={{ color: hsl(theme.colors.mutedForeground) }}
                 >

@@ -192,7 +192,7 @@ export const HeroImageStream: React.FC<BaseSectionProps<'hero'>> = ({ section, t
                 <a
                   key={`${cta.label}-${index}`}
                   href={cta.href || '#'}
-                  data-ut-intent={cta.intent}
+                  data-ut-intent={cta.intent ?? 'nav.goto'}
                   data-ut-cta={index === 0 ? 'cta.hero' : 'cta.hero-secondary'}
                   className="inline-flex min-h-11 items-center justify-center border px-6 py-3 text-sm font-semibold transition-opacity hover:opacity-80"
                   style={{

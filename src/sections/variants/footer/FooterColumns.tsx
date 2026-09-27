@@ -79,7 +79,7 @@ export const FooterColumns: React.FC<BaseSectionProps<'footer'>> = ({ section, t
                     outline: 'none',
                   }}
                 />
-                <button
+                <button data-ut-intent="lead.capture"
                   type="submit"
                   data-ut-cta="cta.newsletter-submit"
                   className="text-sm px-3 py-2 cursor-pointer hover:opacity-90"
@@ -98,7 +98,7 @@ export const FooterColumns: React.FC<BaseSectionProps<'footer'>> = ({ section, t
 
           {columns.map((col, i) => (
             <div key={i}>
-              <h4
+              <h4 data-ut-slot={`footer.title`}
                 className="text-xs uppercase tracking-widest mb-3 font-semibold"
                 style={{ color: hsl(theme.colors.cardForeground) }}
               >
@@ -136,7 +136,7 @@ export const FooterColumns: React.FC<BaseSectionProps<'footer'>> = ({ section, t
               {socials.map((s, i) => {
                 const hasUrl = s.url && s.url !== '#';
                 return (
-                  <a
+                  <a data-ut-intent="nav.goto"
                     key={i}
                     href={hasUrl ? s.url : undefined}
                     target={hasUrl ? '_blank' : undefined}

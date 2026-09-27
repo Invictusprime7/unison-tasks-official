@@ -107,7 +107,7 @@ export const HeroCommerceGradient: React.FC<BaseSectionProps<'hero'>> = ({ secti
           )}
 
           {description && (
-            <p
+            <p data-ut-slot="hero.description"
               data-ut-rise
               className="text-sm md:text-base leading-relaxed mx-auto mt-4"
               style={{
@@ -127,9 +127,9 @@ export const HeroCommerceGradient: React.FC<BaseSectionProps<'hero'>> = ({ secti
                 <a
                   key={`${c.label}-${i}`}
                   href={c.href || '#'}
-                  data-ut-intent={c.intent}
+                  data-ut-intent={c.intent ?? 'nav.goto'}
                   data-ut-cta={i === 0 ? 'cta.hero' : 'cta.hero-secondary'}
-                  className="inline-flex items-center gap-2 text-sm font-medium px-6 py-3 transition-all hover:opacity-90"
+                  className="inline-flex items-center gap-2 text-sm font-medium px-6 py-3 motion-safe:transition-opacity hover:opacity-90"
                   style={
                     i === 0 && c.variant !== 'outline'
                       ? {

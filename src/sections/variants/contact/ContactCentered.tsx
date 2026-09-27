@@ -32,10 +32,10 @@ export const ContactCentered: React.FC<BaseSectionProps<'contact'>> = ({ section
       data-ut-variant="contact:centered"
       style={{ padding: theme.sectionPadding, background: hsl(theme.colors.muted) }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: '44rem' }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: '44rem' }}>
         {headline && (
           <div className="text-center mb-8">
-            <h2
+            <h2 data-ut-slot="contact.headline"
               className="text-3xl sm:text-4xl mb-3 font-semibold tracking-tight"
               style={{
                 fontFamily: theme.typography.headingFont,
@@ -46,7 +46,7 @@ export const ContactCentered: React.FC<BaseSectionProps<'contact'>> = ({ section
               {headline}
             </h2>
             {description && (
-              <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot="contact.description" className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {description}
               </p>
             )}
@@ -67,9 +67,9 @@ export const ContactCentered: React.FC<BaseSectionProps<'contact'>> = ({ section
             ) : (
               <input key={field.name} name={field.name} type={field.type || 'text'} placeholder={field.placeholder || field.name} required={field.required} style={inputStyle} className="transition-all focus:ring-2 focus:ring-primary/20" />
             ))}
-            <button
+            <button data-ut-intent="contact.submit"
               type="submit"
-              className="w-full text-sm font-semibold py-3.5 transition-all hover:opacity-90 active:scale-[0.99] cursor-pointer shadow-sm"
+              className="w-full text-sm font-semibold py-3.5 motion-safe:transition-opacity hover:opacity-90 active:scale-[0.99] cursor-pointer shadow-sm"
               style={{
                 background: hsl(theme.colors.primary),
                 color: hsl(theme.colors.primaryForeground),
@@ -87,9 +87,9 @@ export const ContactCentered: React.FC<BaseSectionProps<'contact'>> = ({ section
               className="mt-8 pt-6 border-t flex flex-wrap gap-4 justify-center text-center text-sm"
               style={{ borderColor: hsla(theme.colors.border, 0.4), color: hsl(theme.colors.mutedForeground) }}
             >
-              {phone && <p><a href={`tel:${phone}`} data-ut-cta="cta.phone" style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></p>}
-              {email && <p><a href={`mailto:${email}`} data-ut-cta="cta.email" style={{ color: 'inherit', textDecoration: 'none' }}>{email}</a></p>}
-              {address && <p><a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" data-ut-cta="cta.address" style={{ color: 'inherit', textDecoration: 'none' }}>{address}</a></p>}
+              {phone && <p><a data-ut-intent="nav.goto" href={`tel:${phone}`} data-ut-cta="cta.phone" style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></p>}
+              {email && <p><a data-ut-intent="nav.goto" href={`mailto:${email}`} data-ut-cta="cta.email" style={{ color: 'inherit', textDecoration: 'none' }}>{email}</a></p>}
+              {address && <p><a data-ut-intent="nav.goto" href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" data-ut-cta="cta.address" style={{ color: 'inherit', textDecoration: 'none' }}>{address}</a></p>}
             </div>
           )}
         </div>

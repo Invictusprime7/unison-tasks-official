@@ -465,6 +465,8 @@ const UNIVERSAL_CERTIFIED_SECTION_FAMILIES = {
   'logo-cloud': ['logo-cloud:reveal-tiles'],
   'blog-preview': ['blog-preview:four-columns'],
   'before-after': ['before-after:reveal-panel'],
+  'auth-form': ['auth-form:split-panel', 'auth-form:sign-up-card'],
+  'data-table': ['data-table:striped-rows', 'data-table:dashboard-overview'],
 } satisfies Partial<Record<SectionType, VariantId[]>>;
 
 export const ART_DIRECTION_PACKS: Record<ArtDirectionPackId, ArtDirectionPack> = {

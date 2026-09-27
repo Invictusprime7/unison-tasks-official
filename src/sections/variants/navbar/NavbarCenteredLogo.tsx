@@ -43,7 +43,7 @@ export const NavbarCenteredLogo: React.FC<BaseSectionProps<'navbar'>> = ({ secti
         }}
       >
         <div className="relative flex items-center justify-between py-3">
-          <a
+          <a data-ut-intent="nav.goto"
             href="#"
             data-ut-slot="brand"
             aria-label="Home"
@@ -59,7 +59,7 @@ export const NavbarCenteredLogo: React.FC<BaseSectionProps<'navbar'>> = ({ secti
                 <li key={i}>
                   <a
                     href={link.href}
-                    data-ut-intent={link.intent}
+                    data-ut-intent={link.intent ?? 'nav.goto'}
                     className="block motion-safe:duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
                     style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
                   >
@@ -73,7 +73,7 @@ export const NavbarCenteredLogo: React.FC<BaseSectionProps<'navbar'>> = ({ secti
           {cta && (
             <a
               href={cta.href || '#'}
-              data-ut-intent={cta.intent}
+              data-ut-intent={cta.intent ?? 'nav.goto'}
               data-ut-cta="cta.nav"
               className="px-5 py-2 text-sm font-medium motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
               style={{

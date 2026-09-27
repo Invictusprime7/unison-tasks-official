@@ -138,7 +138,7 @@ export const HeroPrismaCinematic: React.FC<BaseSectionProps<'hero'>> = ({ sectio
                     <a
                       key={`${c.label}-${i}`}
                       href={c.href || '#'}
-                      data-ut-intent={c.intent}
+                      data-ut-intent={c.intent ?? 'nav.goto'}
                       data-ut-cta={i === 0 ? 'cta.hero' : 'cta.hero-secondary'}
                       className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium transition-opacity hover:opacity-90"
                       style={

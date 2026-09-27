@@ -24,12 +24,12 @@ function Actions({ ctas }: { ctas: SectionPropsMap['hero']['ctas'] }) {
         <a
           key={index}
           href={cta.href || '#'}
-          data-ut-intent={cta.intent}
+          data-ut-intent={cta.intent ?? 'nav.goto'}
           data-ut-cta={index === 0 ? 'cta.hero' : 'cta.hero-secondary'}
           className={
             cta.variant === 'outline'
-              ? 'inline-flex items-center rounded-[var(--radius)] border border-border px-5 py-3 font-body text-foreground motion-safe:transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2'
-              : 'inline-flex items-center rounded-[var(--radius)] bg-primary px-5 py-3 font-body text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2'
+              ? 'inline-flex items-center rounded-[var(--radius)] border border-border px-5 py-3 font-sans text-foreground motion-safe:transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2'
+              : 'inline-flex items-center rounded-[var(--radius)] bg-primary px-5 py-3 font-sans text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2'
           }
         >
           {cta.label}
@@ -63,15 +63,15 @@ export function HeroPageIntro({ props }: { props: SectionPropsMap['hero'] }) {
           />
         )}
         <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-10">
-          <p className="font-body text-sm uppercase tracking-[0.18em] text-muted-foreground">{badge || ''}</p>
+          <p className="font-sans text-sm uppercase tracking-[0.18em] text-muted-foreground">{badge || ''}</p>
           <div className="lg:text-right">
-            <h1 className="ml-auto max-w-3xl text-balance break-words font-heading text-3xl font-[number:var(--ut-weight-display)] leading-tight tracking-tight sm:text-4xl md:text-5xl">
+            <h1 data-ut-slot="hero.headline" className="ml-auto max-w-3xl text-balance break-words font-serif text-3xl font-[number:var(--ut-weight-display)] leading-tight tracking-tight sm:text-4xl md:text-5xl">
               {headline}
             </h1>
             {subheadline && (
-              <p className="ml-auto mt-5 max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>
+              <p data-ut-slot="hero.subheadline" className="ml-auto mt-5 max-w-2xl font-sans text-lg text-muted-foreground">{subheadline}</p>
             )}
-            {description && <p className="ml-auto mt-3 max-w-2xl font-body text-muted-foreground">{description}</p>}
+            {description && <p data-ut-slot="hero.description" className="ml-auto mt-3 max-w-2xl font-sans text-muted-foreground">{description}</p>}
             <div className="lg:flex lg:justify-end">
               <Actions ctas={ctas} />
             </div>
@@ -91,18 +91,18 @@ export function HeroPageIntro({ props }: { props: SectionPropsMap['hero'] }) {
     >
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
         <div className="flex flex-col gap-2 rounded-[calc(var(--radius)+0.5rem)] border border-border bg-card p-6 text-card-foreground shadow-lg sm:p-8">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 font-body text-sm text-muted-foreground">
-            <a href="#/" className="motion-safe:transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 font-sans text-sm text-muted-foreground">
+            <a data-ut-intent="nav.goto" href="#/" className="motion-safe:transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2">
               Home
             </a>
             <span aria-hidden="true">/</span>
             <span className="text-foreground">{badge || headline}</span>
           </nav>
-          <h1 className="max-w-4xl break-words font-heading text-3xl font-[number:var(--ut-weight-display)] leading-tight tracking-tight sm:text-4xl">
+          <h1 data-ut-slot="hero.headline" className="max-w-4xl break-words font-serif text-3xl font-[number:var(--ut-weight-display)] leading-tight tracking-tight sm:text-4xl">
             {headline}
           </h1>
-          {subheadline && <p className="mt-2 max-w-2xl font-body text-lg text-muted-foreground">{subheadline}</p>}
-          {description && <p className="mt-2 max-w-2xl font-body text-muted-foreground">{description}</p>}
+          {subheadline && <p data-ut-slot="hero.subheadline" className="mt-2 max-w-2xl font-sans text-lg text-muted-foreground">{subheadline}</p>}
+          {description && <p data-ut-slot="hero.description" className="mt-2 max-w-2xl font-sans text-muted-foreground">{description}</p>}
           <Actions ctas={ctas} />
         </div>
       </div>

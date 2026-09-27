@@ -54,12 +54,12 @@ export const FeaturesBentoGrid: React.FC<BaseSectionProps<'features'>> = ({ sect
     >
       <style>{revealStyles}</style>
 
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
-          <div className="mb-12 text-center">
+          <div className="mb-8 text-center md:mb-12">
             <h2
               data-ut-slot="features.headline"
-              className="mb-3 text-3xl"
+              className="mb-3 text-2xl sm:text-3xl md:text-4xl"
               style={{
                 fontFamily: theme.typography.headingFont,
                 fontWeight: theme.typography.headingWeight,
@@ -95,14 +95,14 @@ export const FeaturesBentoGrid: React.FC<BaseSectionProps<'features'>> = ({ sect
               }}
             >
               {item.icon && <span className="mb-3 block text-2xl">{item.icon}</span>}
-              <h3
+              <h3 data-ut-slot={`features.title`}
                 className="mb-2 text-lg"
                 style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.cardForeground) }}
               >
                 {item.title}
               </h3>
               {item.description && (
-                <p
+                <p data-ut-slot={`features.description`}
                   className="text-sm leading-relaxed"
                   style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
                 >

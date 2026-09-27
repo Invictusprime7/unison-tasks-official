@@ -46,14 +46,14 @@ export const BlogPreviewHorizontalRail: React.FC<BaseSectionProps<'blog-preview'
             )}
             <div className="flex flex-1 flex-col p-5">
               <PostMeta theme={theme} post={post} />
-              <h3
+              <h3 data-ut-slot={`blog-preview.title`}
                 className="mb-2 text-base"
                 style={{ fontFamily: theme.typography.headingFont, fontWeight: theme.typography.headingWeight }}
               >
                 {post.title}
               </h3>
               {post.excerpt && (
-                <p
+                <p data-ut-slot={`blog-preview.excerpt`}
                   className="mb-4 text-sm leading-relaxed"
                   style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
                 >

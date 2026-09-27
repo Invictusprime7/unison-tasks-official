@@ -51,7 +51,7 @@ export const PostMeta: React.FC<{ theme: ThemeTokens; post: PostEntry }> = ({ th
 };
 
 export const PostLink: React.FC<{ theme: ThemeTokens; href: string; label?: string }> = ({ theme, href, label }) => (
-  <a
+  <a data-ut-intent="nav.goto"
     href={href}
     className="mt-auto inline-block text-sm"
     style={{ fontFamily: theme.typography.bodyFont, fontWeight: 600, color: hsl(theme.colors.primary), textDecoration: 'none' }}
@@ -75,12 +75,12 @@ export const BlogPreviewFrame: React.FC<{
       background: hsl(surface === 'muted' ? theme.colors.muted : theme.colors.background),
     }}
   >
-    <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+    <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
       {(headline || subheadline) && (
-        <div className="mb-12 max-w-2xl">
+        <div className="mb-8 max-w-2xl md:mb-12">
           {headline && (
-            <h2
-              className="mb-3 text-3xl"
+            <h2 data-ut-slot="blog-preview.headline"
+              className="mb-3 text-2xl sm:text-3xl md:text-4xl"
               style={{
                 fontFamily: theme.typography.headingFont,
                 fontWeight: theme.typography.headingWeight,
@@ -91,7 +91,7 @@ export const BlogPreviewFrame: React.FC<{
             </h2>
           )}
           {subheadline && (
-            <p
+            <p data-ut-slot="blog-preview.subheadline"
               className="text-lg"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >

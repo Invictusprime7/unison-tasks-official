@@ -52,7 +52,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
                     outline: 'none',
                   }}
                 />
-                <button
+                <button data-ut-intent="lead.capture"
                   type="submit"
                   className="text-sm px-4 py-2 cursor-pointer hover:opacity-90"
                   style={{
@@ -71,7 +71,7 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
                 {socials.map((s, i) => {
                   const hasUrl = s.url && s.url !== '#';
                   return (
-                    <a
+                    <a data-ut-intent="nav.goto"
                       key={i}
                       href={hasUrl ? s.url : undefined}
                       target={hasUrl ? '_blank' : undefined}
@@ -90,13 +90,13 @@ export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, 
 
           {columns.map((col, i) => (
             <div key={i}>
-              <h4 className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: hsla(theme.colors.background, 0.7) }}>
+              <h4 data-ut-slot={`footer.title`} className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: hsla(theme.colors.background, 0.7) }}>
                 {col.title}
               </h4>
               <ul className="space-y-2">
                 {col.links.map((l, j) => (
                   <li key={j}>
-                    <a
+                    <a data-ut-intent="nav.goto"
                       href={l.href}
                       className="text-sm hover:opacity-80 transition-opacity"
                       style={{ color: hsla(theme.colors.background, 0.5), textDecoration: 'none' }}

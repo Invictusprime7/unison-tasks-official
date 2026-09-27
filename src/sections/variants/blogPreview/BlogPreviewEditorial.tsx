@@ -32,7 +32,7 @@ export const BlogPreviewEditorial: React.FC<BaseSectionProps<'blog-preview'>> = 
             )}
             <div className="mt-6 flex flex-1 flex-col">
               <PostMeta theme={theme} post={lead} />
-              <h3
+              <h3 data-ut-slot={`blog-preview.title`}
                 className="mb-3 text-2xl"
                 style={{
                   fontFamily: theme.typography.headingFont,
@@ -43,7 +43,7 @@ export const BlogPreviewEditorial: React.FC<BaseSectionProps<'blog-preview'>> = 
                 {lead.title}
               </h3>
               {lead.excerpt && (
-                <p
+                <p data-ut-slot={`blog-preview.excerpt`}
                   className="mb-5 text-base leading-relaxed"
                   style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
                 >
@@ -62,7 +62,7 @@ export const BlogPreviewEditorial: React.FC<BaseSectionProps<'blog-preview'>> = 
               style={{ borderTop: i === 0 ? 'none' : `1px solid ${hsl(theme.colors.border)}` }}
             >
               <PostMeta theme={theme} post={post} />
-              <h3
+              <h3 data-ut-slot={`blog-preview.title`}
                 className="mb-2 text-lg"
                 style={{
                   fontFamily: theme.typography.headingFont,
@@ -73,7 +73,7 @@ export const BlogPreviewEditorial: React.FC<BaseSectionProps<'blog-preview'>> = 
                 {post.title}
               </h3>
               {post.excerpt && (
-                <p
+                <p data-ut-slot={`blog-preview.excerpt`}
                   className="mb-3 text-sm leading-relaxed"
                   style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
                 >

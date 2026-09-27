@@ -60,9 +60,9 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
         />
       </div>
 
-      <div className="relative z-10 mx-auto px-6 py-20 text-center" style={{ maxWidth: '820px' }}>
+      <div className="relative z-10 mx-auto px-5 py-16 text-center sm:px-8 md:py-20" style={{ maxWidth: '820px' }}>
         {badge && (
-          <span
+          <span data-ut-slot="hero.badge"
             className="mb-6 inline-block rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide"
             style={{
               color: hsl(theme.colors.primaryForeground),
@@ -76,7 +76,7 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
           </span>
         )}
 
-        <h1
+        <h1 data-ut-slot="hero.headline"
           className="mb-6 text-balance leading-[1.05] tracking-tight"
           style={{
             fontFamily: theme.typography.headingFont,
@@ -90,7 +90,7 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
         </h1>
 
         {subheadline && (
-          <p
+          <p data-ut-slot="hero.subheadline"
             className="mx-auto mb-9 max-w-xl text-lg leading-relaxed"
             style={{ fontFamily: theme.typography.bodyFont, color: hsla(theme.colors.primaryForeground, 0.85) }}
           >
@@ -99,12 +99,12 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
         )}
 
         {ctas.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             {ctas.map((c, i) => (
               <a
                 key={i}
                 href={c.href || '#'}
-                data-ut-intent={c.intent}
+                data-ut-intent={c.intent ?? 'nav.goto'}
                 data-ut-cta={i === 0 ? 'cta.hero' : 'cta.hero-secondary'}
                 className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={
@@ -132,16 +132,16 @@ export const HeroFullBleed: React.FC<BaseSectionProps<'hero'>> = ({ section, the
         )}
 
         {stats && stats.length > 0 && (
-          <div className="mt-12 flex flex-wrap justify-center gap-10">
+          <div className="mt-10 grid grid-cols-2 gap-6 sm:mt-12 sm:flex sm:flex-wrap sm:justify-center sm:gap-10">
             {stats.map((s, i) => (
               <div key={i} className="text-center">
-                <div
+                <div data-ut-slot={`hero.value`}
                   className="text-3xl font-bold"
                   style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.primaryForeground) }}
                 >
                   {s.value}
                 </div>
-                <div className="mt-1 text-xs uppercase tracking-widest" style={{ color: hsla(theme.colors.primaryForeground, 0.7) }}>
+                <div data-ut-slot={`hero.label`} className="mt-1 text-xs uppercase tracking-widest" style={{ color: hsla(theme.colors.primaryForeground, 0.7) }}>
                   {s.label}
                 </div>
               </div>

@@ -27,7 +27,7 @@ export const TeamLeadSpotlight: React.FC<BaseSectionProps<'team'>> = ({ section,
           <div className="md:col-span-7">
             <MemberIdentity member={lead} theme={theme} />
             {lead.bio && (
-              <p
+              <p data-ut-slot={`team.bio`}
                 className="mt-4 text-base leading-relaxed"
                 style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
               >

@@ -26,14 +26,14 @@ export function ServicesExpandable({ section, theme }: BaseSectionProps<'service
             >
               {item.title}
               {item.price && (
-                <span className="ml-4 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                <span data-ut-slot={`services.price`} className="ml-4 text-sm" style={{ color: hsl(theme.colors.mutedForeground) }}>
                   {item.price}
                 </span>
               )}
             </summary>
             <div className={`mt-6 grid gap-6 ${item.image ? 'md:grid-cols-2' : ''}`}>
               <div>
-                <p className="leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                <p data-ut-slot={`services.description`} className="leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
                   {item.description}
                 </p>
                 {item.duration && <p className="mt-4 text-sm">{item.duration}</p>}

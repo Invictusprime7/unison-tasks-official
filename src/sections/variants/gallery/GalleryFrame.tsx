@@ -29,20 +29,19 @@ export const GalleryFrame: React.FC<GalleryFrameProps> = ({
   const categories = useMemo(() => galleryCategories(media), [media]);
   const [active, setActive] = useState('all');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const activeCategory = filterable === false || !categories.includes(active) ? 'all' : active;
-  const visible = activeCategory === 'all' ? media : media.filter((item) => item.category === activeCategory);
+  const visible = active === 'all' ? media : media.filter((item) => item.category === active);
 
   return (
     <section
       data-ut-variant={variantId}
       style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         {(headline || subheadline) && (
-          <div className="mb-12 text-center">
+          <div className="mb-8 text-center md:mb-12">
             {headline && (
-              <h2
-                className="mb-3 text-3xl"
+              <h2 data-ut-slot="gallery.headline"
+                className="mb-3 text-2xl sm:text-3xl md:text-4xl"
                 style={{
                   fontFamily: theme.typography.headingFont,
                   fontWeight: theme.typography.headingWeight,
@@ -53,7 +52,7 @@ export const GalleryFrame: React.FC<GalleryFrameProps> = ({
               </h2>
             )}
             {subheadline && (
-              <p
+              <p data-ut-slot="gallery.subheadline"
                 className="mx-auto max-w-xl text-base"
                 style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
               >
@@ -66,14 +65,14 @@ export const GalleryFrame: React.FC<GalleryFrameProps> = ({
         {filterable !== false && categories.length > 1 && (
           <div className="mb-10 flex flex-wrap justify-center gap-2">
             {['all', ...categories].map((category) => (
-              <button
+              <button data-ut-intent="ui.toggle"
                 key={category}
                 type="button"
-                aria-pressed={activeCategory === category}
-                onClick={() => { setActive(category); setLightboxIndex(null); }}
+                aria-pressed={active === category}
+                onClick={() => setActive(category)}
                 className="rounded-full border px-4 py-1.5 text-xs font-semibold capitalize transition-colors"
                 style={
-                  activeCategory === category
+                  active === category
                     ? {
                         background: hsl(theme.colors.primary),
                         color: hsl(theme.colors.primaryForeground),
@@ -122,11 +121,11 @@ export const GalleryFigure: React.FC<{
       aspectRatio: aspect,
     }}
   >
-    <button
+    <button data-ut-intent="ui.toggle"
       type="button"
       onClick={onOpen}
       aria-label={item.alt || item.caption || 'Open image'}
-      className="block h-full w-full cursor-zoom-in border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4"
+      className="block h-full w-full cursor-zoom-in border-0 bg-transparent p-0"
     >
       <GalleryImage
         src={item.src}
@@ -138,9 +137,9 @@ export const GalleryFigure: React.FC<{
     </button>
     {item.caption && (
       <figcaption
-        className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-sm opacity-0 transition-opacity motion-reduce:transition-none group-hover:opacity-100 group-focus-within:opacity-100"
+        className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-sm opacity-0 transition-opacity motion-reduce:transition-none group-hover:opacity-100"
         style={{
-          background: hsl(theme.colors.foreground),
+          background: `linear-gradient(to top, ${hsla(theme.colors.foreground, 0.82)}, transparent)`,
           color: hsl(theme.colors.background),
           fontFamily: theme.typography.bodyFont,
         }}

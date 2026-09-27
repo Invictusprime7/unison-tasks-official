@@ -15,10 +15,10 @@ export const FeaturesIconLeft: React.FC<BaseSectionProps<'features'>> = ({ secti
       data-ut-variant="features:icon-left"
       style={{ padding: theme.sectionPadding, background: hsl(theme.colors.background) }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
         {headline && (
           <div className="text-center mb-12">
-            <h2
+            <h2 data-ut-slot="features.headline"
               className="text-3xl mb-3"
               style={{
                 fontFamily: theme.typography.headingFont,
@@ -29,7 +29,7 @@ export const FeaturesIconLeft: React.FC<BaseSectionProps<'features'>> = ({ secti
               {headline}
             </h2>
             {subheadline && (
-              <p className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
+              <p data-ut-slot="features.subheadline" className="text-base max-w-lg mx-auto" style={{ color: hsl(theme.colors.mutedForeground) }}>
                 {subheadline}
               </p>
             )}
@@ -48,7 +48,7 @@ export const FeaturesIconLeft: React.FC<BaseSectionProps<'features'>> = ({ secti
                 {item.icon || '✦'}
               </div>
               <div>
-                <h3
+                <h3 data-ut-slot={`features.title`}
                   className="text-lg mb-1"
                   style={{
                     fontFamily: theme.typography.headingFont,
@@ -58,7 +58,7 @@ export const FeaturesIconLeft: React.FC<BaseSectionProps<'features'>> = ({ secti
                 >
                   {item.title}
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+                <p data-ut-slot={`features.description`} className="text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
                   {item.description}
                 </p>
               </div>

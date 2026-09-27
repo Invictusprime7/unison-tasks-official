@@ -25,7 +25,7 @@ export const AboutHeading: React.FC<{ theme: ThemeTokens; headline?: string; ali
 }) => {
   if (!headline) return null;
   return (
-    <h2
+    <h2 data-ut-slot="about.headline"
       className={`mb-5 text-3xl ${align === 'center' ? 'text-center' : ''}`}
       style={{
         fontFamily: theme.typography.headingFont,
@@ -69,7 +69,7 @@ export const AboutCta: React.FC<{ theme: ThemeTokens; cta?: CTAButton; className
   return (
     <a
       href={cta.href || '#contact'}
-      data-ut-intent={cta.intent}
+      data-ut-intent={cta.intent ?? 'nav.goto'}
       className={`mt-4 inline-block px-6 py-3 text-sm font-semibold ${className}`}
       style={{
         background: hsl(theme.colors.primary),
@@ -98,7 +98,7 @@ export const AboutFrame: React.FC<{
       ),
     }}
   >
-    <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
+    <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
       {children}
     </div>
   </section>

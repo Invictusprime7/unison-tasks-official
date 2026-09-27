@@ -50,7 +50,7 @@ const RollingPrice: React.FC<{ value: string; yearly: boolean; color: string }> 
       className="flex flex-col transition-transform duration-500 ease-out motion-reduce:transition-none"
       style={{ transform: yearly ? 'translateY(-50%)' : 'translateY(0)' }}
     >
-      <span className="leading-[1.1em]">{value}</span>
+      <span data-ut-slot="pricing.value" className="leading-[1.1em]">{value}</span>
       <span aria-hidden="true" className="leading-[1.1em]">
         {value}
       </span>
@@ -81,7 +81,7 @@ const PlanCard: React.FC<{ tier: PricingTier; index: number; theme: ThemeTokens;
       }}
     >
       <div className="flex items-center justify-between gap-3">
-        <h3
+        <h3 data-ut-slot={`pricing.name`}
           className="text-2xl"
           style={{ fontFamily: theme.typography.headingFont, fontWeight: theme.typography.headingWeight }}
         >
@@ -98,7 +98,7 @@ const PlanCard: React.FC<{ tier: PricingTier; index: number; theme: ThemeTokens;
       </div>
 
       {tier.description && (
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
+        <p data-ut-slot={`pricing.description`} className="mt-3 text-sm leading-relaxed" style={{ color: hsl(theme.colors.mutedForeground) }}>
           {tier.description}
         </p>
       )}
@@ -152,7 +152,7 @@ export const PricingBillingToggle: React.FC<BaseSectionProps<'pricing'>> = ({ se
           className="inline-flex gap-1 p-1"
           style={{ background: hsl(theme.colors.card), border: `1px solid ${hsla(theme.colors.border, 0.7)}`, borderRadius: '9999px' }}
         >
-          <button
+          <button data-ut-intent="ui.toggle"
             type="button"
             aria-pressed={!yearly}
             onClick={() => setYearly(false)}
@@ -161,7 +161,7 @@ export const PricingBillingToggle: React.FC<BaseSectionProps<'pricing'>> = ({ se
           >
             Monthly
           </button>
-          <button
+          <button data-ut-intent="ui.toggle"
             type="button"
             aria-pressed={yearly}
             onClick={() => setYearly(true)}

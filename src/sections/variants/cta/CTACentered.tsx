@@ -22,9 +22,9 @@ export const CTACentered: React.FC<BaseSectionProps<'cta'>> = ({ section, theme 
         borderBottom: `1px solid ${hsla(theme.colors.border, 0.4)}`,
       }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: theme.containerWidth }}>
-        <h2
-          className="text-3xl mb-4"
+      <div className="mx-auto px-5 sm:px-6 lg:px-8" style={{ maxWidth: theme.containerWidth }}>
+        <h2 data-ut-slot="cta.headline"
+          className="mb-4 text-2xl sm:text-3xl md:text-4xl"
           style={{
             fontFamily: theme.typography.headingFont,
             fontWeight: theme.typography.headingWeight,
@@ -34,21 +34,21 @@ export const CTACentered: React.FC<BaseSectionProps<'cta'>> = ({ section, theme 
           {headline}
         </h2>
         {description && (
-          <p
+          <p data-ut-slot="cta.description"
             className="text-base max-w-lg mx-auto mb-8"
             style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
           >
             {description}
           </p>
         )}
-        <div className="flex gap-3 justify-center flex-wrap">
+        <div data-ut-slot="cta.actions" className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           {ctas.map((c, i) => (
             <a
               key={i}
               href={c.href || '#'}
-              data-ut-intent={c.intent}
+              data-ut-intent={c.intent ?? 'nav.goto'}
               data-ut-cta={i === 0 ? 'cta.hero' : 'cta.hero-secondary'}
-              className="inline-block text-sm font-medium px-6 py-3 transition-all hover:opacity-90"
+              className="inline-block text-sm font-medium px-6 py-3 motion-safe:transition-opacity hover:opacity-90"
               style={
                 c.variant === 'outline'
                   ? {

@@ -31,10 +31,10 @@ export const FAQCards: React.FC<BaseSectionProps<'faq'>> = ({ section, theme }) 
               borderRadius: theme.radius,
             }}
           >
-            <h3 className="mb-3 text-base font-semibold" style={{ fontFamily: theme.typography.headingFont }}>
+            <h3 data-ut-slot={`faq.question`} className="mb-3 text-base font-semibold" style={{ fontFamily: theme.typography.headingFont }}>
               {item.question}
             </h3>
-            <p
+            <p data-ut-slot={`faq.answer`}
               className="text-sm leading-relaxed"
               style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
             >
