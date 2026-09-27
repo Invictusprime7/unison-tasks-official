@@ -6717,9 +6717,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [activePagePath, activePublishedRevisionId, builderRuntimeContext?.workspaceId, hydratedRevision, runtimeProjectionRevisionId]);
 
   const hasCanonicalIdentity = Boolean((resolvedProjectId || projectId) && currentDraftId);
-  const hasRenderableLauncherHandoff = !isExplicitProjectResume
-    && hasNonEmptyVfsFiles(effectiveRouteState?.vfsFiles)
-    && Boolean(effectiveRouteState?.siteBundleSnapshot?.meta?.seal?.version);
   const canonicalRuntimeError = canonicalHydrationError
     || (hasCanonicalIdentity
       && hydratedRevision
@@ -6727,10 +6724,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       && !builderRuntimeContext?.workspaceId
       ? 'Canonical revision is missing its persisted workspace runtime identity.'
       : null);
-  const canonicalHydrationPending = hasCanonicalIdentity
-    && !hasRenderableLauncherHandoff
-    && !canonicalRuntimeError
-    && (!hydratedRevision || runtimeProjectionRevisionId !== hydratedRevision.id);
 
   if (canonicalRuntimeError && emptyProjectDraft) {
     return (
@@ -6789,20 +6782,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     );
   }
 
-  if (canonicalHydrationPending) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#09090b] text-zinc-100">
-        <div className="flex items-center gap-3 text-sm text-zinc-400">
-          <RefreshCcw className="h-4 w-4 animate-spin" aria-hidden="true" />
-          {repairState === 'running'
-            ? 'Repairing project workspace link'
-            : repairState === 'repaired'
-              ? 'Reloading committed project state'
-              : 'Loading committed project state'}
-        </div>
-      </div>
-    );
-  }
+  // No full-screen "Loading committed project state" gate: the builder shell and
+  // live preview stay mounted while the committed revision (re)hydrates, so an
+  // AI commit or revision change never blanks the workspace. Autosave remains
+  // guarded by `hydratedRevisionRef` until hydration settles.
+
+
 
   return (
     <BuilderSessionProvider
