@@ -165,7 +165,7 @@
       },
       "slots": {
         "pass": true,
-        "detail": "4 slots: auth.heading, auth.subheading, auth.altAction, auth.footerNote"
+        "detail": "4 slots: auth.heading, auth.subheading, auth.alt-action, auth.footer-note"
       },
       "intents": {
         "pass": true,
@@ -204,7 +204,7 @@
       },
       "slots": {
         "pass": true,
-        "detail": "5 slots: auth.brand, auth.panelCopy, auth.heading, auth.subheading, auth.footerNote"
+        "detail": "5 slots: auth.brand, auth.panel-copy, auth.heading, auth.subheading, auth.footer-note"
       },
       "intents": {
         "pass": true,
