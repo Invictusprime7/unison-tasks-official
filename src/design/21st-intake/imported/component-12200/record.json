@@ -72,7 +72,7 @@
   "archivedAt": "2026-09-18T04:05:14.502Z",
   "reviewEvidence": {
     "sourceSha256": "0fddd24c3da4271f7b14088fee2f2ff68fa10354f8fcbeb31c96d39e18058550",
-    "componentSha256": "0c336ad61192d573a041b8402cee0d911e1bc57dca78586c2644539a458d839b",
+    "componentSha256": "e4b68cf682cb8460dc0e75b8dce523e971f9b54f153a9246eb8d25f34b1ec35c",
     "checks": [
       "dependency-allowlist",
       "token-normalization",

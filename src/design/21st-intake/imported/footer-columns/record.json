@@ -54,7 +54,7 @@
   "archivedAt": "2026-09-18T04:05:14.483Z",
   "reviewEvidence": {
     "sourceSha256": "4849a6cf225d0eb31e24264547da5d88b6d15d6207c8df3b169fbfda1a8253dd",
-    "componentSha256": "62f5a620218265bc8f519448af794f37f849ea67f5b890107cd276db498275d1",
+    "componentSha256": "b21a1a3bede511486b4230c568e5e869acf6110219210a5327b0e66119180d87",
     "checks": [
       "portable compiler and renderer parity",
       "semantic theme bindings",
