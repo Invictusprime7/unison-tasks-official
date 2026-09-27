@@ -2463,9 +2463,9 @@ function hasCertificationClosure(variant: SectionVariant): boolean {
 
 export function getGenerationVariantsForSection(sectionType: SectionType, pack?: ArtDirectionPack, role?: string): SectionVariant[] {
   const certified = getVariantsForSection(sectionType).filter(variant =>
-    // Provenance must be declared (21st adaptation or Unison-authored); the
-    // promotion audit proves the rest before a script may set these fields.
-    Boolean(variant.source?.origin) && variant.vfs?.mode === 'portable-recipe' &&
+    // 21st equivalence: fresh generation admits only genuine 21st adaptations.
+    // Unison-authored designs stay Builder-selectable until policy changes.
+    variant.source?.origin === '21st' && variant.vfs?.mode === 'portable-recipe' &&
     variant.vfs.certification === 'approved' && variant.generationStatus === 'preferred' &&
     hasCertificationClosure(variant));
   const packScoped = pack
