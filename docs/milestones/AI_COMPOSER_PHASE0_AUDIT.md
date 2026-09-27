@@ -31,3 +31,6 @@ Pieces exist separately: compileSiteDesignContract (deterministic, Lane B only),
 2. Phase 2: candidate changeset applied to a copy of committed VFS via commitMutation dry-run.
 3. Phase 3: make import/dependency blocking; add TypeScript-lite + router gates.
 4. First slice: one Home page AI edit through the candidate → gates → commit → preview.
+
+## Phase 1 — done
+`src/services/launch/resolvedSiteDesignContext.ts` → `compileResolvedSiteDesignContext()` joins the contract, experience envelope and legality into one deterministic context with a fingerprint. It splits hard legality (forbidden ids) from creative recommendation (preferred ids; local components permitted). Tests: `src/test/resolvedSiteDesignContext.test.ts`.
