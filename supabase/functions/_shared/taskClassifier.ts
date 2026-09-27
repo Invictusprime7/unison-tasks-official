@@ -8,6 +8,9 @@ export type AssistantTaskType =
   | "wizard_interaction_enrichment"
   | "wizard_content_enrichment"
   | "wizard_composition"
+  | "site_page_author"
+  | "site_page_repair"
+  | "builder_source_edit"
   | "nav_page_generation"
   | "template_json_generation"
   | "template_html_generation"
@@ -69,6 +72,11 @@ export function classifyTask(opts: {
     wizardSeed,
   } = opts;
 
+  // AI Composer (milestone §31): structured candidate file ops, page scope.
+  if (mode === 'site-page-author' || mode === 'site-page-repair' || mode === 'builder-source-edit') {
+    const type = mode === 'site-page-author' ? 'site_page_author' : mode === 'site-page-repair' ? 'site_page_repair' : 'builder_source_edit';
+    return { type, fastPath: true, shouldUseMemory: false, shouldUseCompactContext: false, prefersJsonOutput: true, skipResearch: true, skipThinking: true };
+  }
   if (mode === 'theme-edit') return { type: 'theme_edit', fastPath: true, shouldUseMemory: false, shouldUseCompactContext: true, prefersJsonOutput: true, skipResearch: true, skipThinking: true };
 
   // ── Legacy wizard-seed compatibility route. The deterministic Launcher no
