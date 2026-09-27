@@ -1,27 +1,24 @@
 ---
-name: Wizard is selection-only; launch is deterministic
-description: LauncherWizard gathers selections only; launchOrchestrator owns every launch stage; AI never authors wizard page bodies.
+name: Wizard UI selection-only; AI authors pages in the launch "author" stage
+description: LauncherWizard gathers selections only; launchOrchestrator owns every stage; AI authors pages only via the "author" stage and the shared candidate transaction (AI Composer milestone).
 type: feature
 ---
 
-`src/components/onboarding/wizard/LauncherWizard.tsx` is the ONLY launcher UI
-(the 5,285-line `SystemLauncher.tsx` is deleted). It gathers selections and
-renders awareness surfaces — nothing else. It never writes VFS, never calls a
-model, never authors a page.
+`src/components/onboarding/wizard/LauncherWizard.tsx` is the ONLY launcher UI.
+It gathers selections and renders awareness surfaces. It never writes VFS,
+never calls a model, never authors a page.
 
 `src/services/launch/launchOrchestrator.ts` is the ONLY launch pipeline:
-`plan → seed → enrich → preflight → commit → handoff`, every stage driven
-through `launchRun` so the timeline is honest.
+`plan → seed → enrich → preflight → commit → author → handoff`.
 
-Rules:
-- **AI page authorship is retired from the wizard.** The `enrich` stage is
-  marked done without a model call; page bodies come only from the canonical
-  compiler (Stage 4b). Lane B services still exist for the in-builder AI, not
-  for launch.
-- Static wizard vocabulary lives in `wizard/wizardCatalog.ts`. Every template
-  card must resolve to a registered `TemplateComposition` — no synthetic cards.
-- Awareness UI: `LaunchStageTimeline.tsx` (live stages + degradations) and
-  `DesignContractInspector.tsx` (seed, plan/contract signatures, resolved
-  implementation ids). Both are read-only projections.
-- Theme tokens and the router stay compiler-owned; the orchestrator repairs
-  `/src/index.css` from the preset rather than shipping un-themed tokens.
+Rules (user direction 2026-09-27: "AI must exist primarily in the Wizard infrastructure"):
+- Stage 4b produces the deterministic substrate; `commit` saves it as the
+  never-fail baseline revision.
+- `author` runs the AI Composer page-by-page (Home first): ResolvedSiteDesignContext
+  → edge `site-page-author` → candidate + blocking gates → repair (max 3,
+  `site-page-repair`) → canonical commit per page. A failed page keeps its
+  baseline. The stage degrades, never fails the launch. 402/403 pause the rest.
+- Builder AI edits use the same candidate/gates/repair loop (`builder-source-edit`).
+- Static wizard vocabulary lives in `wizard/wizardCatalog.ts`.
+- Theme tokens and the router stay compiler-owned; AI never edits App.tsx,
+  main.tsx, index.css, package.json, .unison/**, src/unison/**.
