@@ -36,7 +36,7 @@ import { detectSlotBindingViolations } from '@/services/aiBindingTool';
  *      <img className="..." ) />   →   <img className="..." />
  *      <Foo prop={x} ) />          →   <Foo prop={x} />
  */
-function repairAiJsxTypos(files: Record<string, string>): Record<string, string> {
+export function repairAiJsxTypos(files: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [path, source] of Object.entries(files)) {
     if (typeof source !== 'string' || !/\.(tsx|jsx)$/.test(path)) {
@@ -161,7 +161,7 @@ export function canonicalizeAIFilePaths(
   return canonical;
 }
 
-function validateAIFileEdits(
+export function validateAIFileEdits(
   aiFiles: Record<string, string>,
   currentFiles: Record<string, string>,
 ): { appliable: Record<string, string>; skipped: Array<{ path: string; reason: string }> } {
