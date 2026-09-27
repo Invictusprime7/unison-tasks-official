@@ -113,6 +113,10 @@ export async function runProviderLoop(opts: {
   // limit: every further call to that provider will fail the same way. Mark the
   // whole family dead so the remaining budget goes to providers that can answer.
   let geminiQuotaExhausted = false;
+  // Same for OpenAI: a 402 / billing-exhausted response means every further
+  // OpenAI model will fail identically, so skip them and give the remaining
+  // budget to Gemini and the managed gateway.
+  let openaiQuotaExhausted = false;
   const isQuotaExhausted = (detail: string) =>
     /credits are depleted|prepayment|quota|billing|insufficient|exceeded your current quota/i.test(detail);
   const isGeminiModelId = (id: string) => id.startsWith('google/') || id.startsWith('gemini-');
@@ -236,7 +240,8 @@ export async function runProviderLoop(opts: {
           // A 429 is per-model/tier, not terminal for the whole chain: keep
           // walking the remaining models (including other provider families)
           // instead of aborting generation on the first rate limit.
-          if (resp.status === 429) continue;
+          if (resp.status === 429 && !isQuotaExhausted(errText)) continue;
+          openaiQuotaExhausted = true;
           break;
         }
 
@@ -425,6 +430,10 @@ export async function runProviderLoop(opts: {
         console.warn(`[AI-Hybrid] Skipping ${model.label} — Gemini quota exhausted this turn.`);
         continue;
       }
+      if (openaiQuotaExhausted && !isGeminiModelId(model.id)) {
+        console.warn(`[AI-Hybrid] Skipping ${model.label} — OpenAI billing exhausted this turn.`);
+        continue;
+      }
       const remaining = budgetRemaining();
 
       if (remaining < 8000) {
@@ -481,6 +490,7 @@ export async function runProviderLoop(opts: {
             geminiQuotaExhausted = true;
             console.warn(`[AI-Hybrid] ${model.label} quota/billing exhausted; skipping all Gemini attempts this turn.`);
           } else {
+            if (exhausted) openaiQuotaExhausted = true;
             deferredEarlyError ??= earlyError;
           }
           console.warn(`[AI-Hybrid] ${model.label} returned ${resp.status}; trying next provider...`);
