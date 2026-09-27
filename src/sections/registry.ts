@@ -29,6 +29,8 @@ import { StatsSection } from './components/StatsSection';
 import { AboutSection } from './components/AboutSection';
 import { LogoCloudGrid } from './variants/logoCloud/LogoCloudGrid';
 import { BlogPreviewEditorial } from './variants/blogPreview/BlogPreviewEditorial';
+import { AuthSignIn } from './variants/auth/AuthSignIn';
+import { DataTable } from './variants/dataTable/DataTable';
 import { BeforeAfterSlider } from './variants/beforeAfter/BeforeAfterSlider';
 
 // ============================================================================
@@ -137,6 +139,18 @@ const SECTION_REGISTRY: Record<SectionType, SectionRegistryEntry> = {
     label: 'Before & After',
     category: 'content',
     description: 'Comparison of transformation results',
+  },
+  'auth-form': {
+    component: AuthSignIn,
+    label: 'Sign In / Sign Up',
+    category: 'content',
+    description: 'Account sign-in or sign-up form',
+  },
+  'data-table': {
+    component: DataTable,
+    label: 'Data Table',
+    category: 'content',
+    description: 'Tabular records with summary stats',
   },
 };
 

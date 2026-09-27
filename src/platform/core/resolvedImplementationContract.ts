@@ -226,7 +226,7 @@ export function resolveImplementationContract(
     source,
     creativeAffinity: deriveCreativeAffinity(implementationId, sectionType, signatureSource),
     visualSignature: signatureSource ? deriveImplementationVisualSignature(signatureSource) : null,
-    certified: isCertifiedSource(signatureSource) && generationStatus !== 'legacy',
+    certified: isCertifiedSource(signatureSource) && generationStatus !== 'legacy' && generationStatus !== 'retired',
   };
 }
 

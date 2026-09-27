@@ -549,6 +549,8 @@ const INTELLIGENCE_ENTRIES: Record<SectionType, ComponentIntelligence> = {
   'logo-cloud': PLACEHOLDER_INTELLIGENCE('logo-cloud', 'Logo Cloud', 'social-proof'),
   'blog-preview': PLACEHOLDER_INTELLIGENCE('blog-preview', 'Blog Preview', 'content'),
   'before-after': PLACEHOLDER_INTELLIGENCE('before-after', 'Before & After', 'content'),
+  'auth-form': PLACEHOLDER_INTELLIGENCE('auth-form', 'Sign In / Sign Up', 'content'),
+  'data-table': PLACEHOLDER_INTELLIGENCE('data-table', 'Data Table', 'content'),
 };
 
 // ============================================================================
