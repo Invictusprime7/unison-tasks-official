@@ -1,0 +1,174 @@
+/**
+ * AI Composer milestone, Phase 3 — blocking candidate gates.
+ *
+ * Runs against the in-memory candidate (Phase 2) BEFORE the canonical commit.
+ * Any failure blocks: the working VFS and preview are never touched.
+ *
+ *   parse         — every created/replaced TS/TSX file must parse cleanly
+ *   import-graph  — local imports (relative and "@/") in touched files resolve
+ *                   inside the candidate; no surviving file imports a deleted one
+ *
+ * Adds no writer. Callers hand the accepted candidate to runBuilderAiMutation
+ * (commitMutation remains the single durable writer).
+ */
+
+import { buildAICandidateChangeSet, type CandidateBuildResult } from './aiCandidateChangeSet';
+
+export interface CandidateGateFailure {
+  gate: 'parse' | 'import-graph' | 'empty';
+  path: string;
+  message: string;
+}
+
+export interface CandidateGateResult {
+  passed: boolean;
+  failures: CandidateGateFailure[];
+}
+
+const CODE_RE = /\.(tsx?|jsx?)$/;
+const EXTENSIONS = ['', '.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts', '/index.jsx', '/index.js'];
+const IMPORT_RE = /(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g;
+
+function dirname(path: string): string {
+  const i = path.lastIndexOf('/');
+  return i <= 0 ? '' : path.slice(0, i);
+}
+
+function normalize(path: string): string {
+  const out: string[] = [];
+  for (const seg of path.split('/')) {
+    if (!seg || seg === '.') continue;
+    if (seg === '..') out.pop();
+    else out.push(seg);
+  }
+  return '/' + out.join('/');
+}
+
+/** Resolve a local specifier to a candidate path; null = not local, undefined = unresolved. */
+export function resolveLocalImport(
+  fromPath: string,
+  spec: string,
+  files: Readonly<Record<string, string>>,
+): string | null | undefined {
+  let target: string;
+  if (spec.startsWith('@/')) target = '/src/' + spec.slice(2);
+  else if (spec.startsWith('.')) target = `${dirname(fromPath)}/${spec}`;
+  else return null;
+  const base = normalize(target);
+  for (const ext of EXTENSIONS) if (base + ext in files) return base + ext;
+  return undefined;
+}
+
+function localImports(content: string): string[] {
+  const specs: string[] = [];
+  for (const m of content.matchAll(IMPORT_RE)) {
+    const spec = m[1] ?? m[2] ?? m[3];
+    if (spec) specs.push(spec);
+  }
+  return specs;
+}
+
+async function parseFailures(paths: string[], files: Record<string, string>): Promise<CandidateGateFailure[]> {
+  const targets = paths.filter((p) => /\.(tsx?|jsx?)$/.test(p));
+  if (!targets.length) return [];
+  const ts = (await import('typescript')).default;
+  const failures: CandidateGateFailure[] = [];
+  for (const path of targets) {
+    const out = ts.transpileModule(files[path], {
+      fileName: path,
+      reportDiagnostics: true,
+      compilerOptions: { jsx: ts.JsxEmit.Preserve, target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
+    });
+    const first = out.diagnostics?.[0];
+    if (first) {
+      failures.push({ gate: 'parse', path, message: ts.flattenDiagnosticMessageText(first.messageText, '\n') });
+    }
+  }
+  return failures;
+}
+
+/** Run every blocking gate against a built candidate. Pure except for lazy parser load. */
+export async function runCandidateGates(build: CandidateBuildResult): Promise<CandidateGateResult> {
+  const files = build.candidateFiles;
+  const touched = build.changeSet.fileOps.filter((o) => o.type !== 'delete').map((o) => o.path);
+  const deleted = new Set(build.changeSet.fileOps.filter((o) => o.type === 'delete').map((o) => o.path));
+  const failures: CandidateGateFailure[] = [];
+
+  for (const path of touched) {
+    if (CODE_RE.test(path) && !files[path].trim()) {
+      failures.push({ gate: 'empty', path, message: 'File would be empty.' });
+    }
+  }
+  failures.push(...(await parseFailures(touched, files)));
+
+  for (const path of touched.filter((p) => CODE_RE.test(p))) {
+    for (const spec of localImports(files[path])) {
+      if (resolveLocalImport(path, spec, files) === undefined) {
+        failures.push({ gate: 'import-graph', path, message: `Import "${spec}" does not resolve.` });
+      }
+    }
+  }
+  if (deleted.size) {
+    const baseLike = { ...files, ...Object.fromEntries([...deleted].map((p) => [p, ''])) };
+    for (const [path, content] of Object.entries(files)) {
+      if (!CODE_RE.test(path)) continue;
+      for (const spec of localImports(content)) {
+        const hit = resolveLocalImport(path, spec, baseLike);
+        if (hit && deleted.has(hit)) {
+          failures.push({ gate: 'import-graph', path, message: `Imports deleted file ${hit}.` });
+        }
+      }
+    }
+  }
+  return { passed: failures.length === 0, failures };
+}
+
+export interface PreparedCandidate {
+  ok: boolean;
+  build: CandidateBuildResult;
+  gates: CandidateGateResult;
+  /** Full file map to hand to the canonical commit (only meaningful when ok). */
+  nextFiles: Record<string, string>;
+  errors: string[];
+}
+
+/**
+ * The live AI apply entry: raw AI files → candidate → preflight on changed
+ * files → blocking gates. Nothing is written here.
+ */
+export async function prepareAICandidate(input: {
+  aiFiles: Record<string, string>;
+  deletions?: string[];
+  baseFiles: Record<string, string>;
+  baseRevisionId?: string;
+  targetPages?: string[];
+  preflight?: (changed: Record<string, string>) => Record<string, string>;
+}): Promise<PreparedCandidate> {
+  let build = buildAICandidateChangeSet({
+    aiFiles: input.aiFiles,
+    deletions: input.deletions,
+    baseFiles: input.baseFiles,
+    baseRevisionId: input.baseRevisionId,
+    targetPages: input.targetPages,
+  });
+  if (input.preflight && build.changeSet.fileOps.length) {
+    const changed = Object.fromEntries(
+      build.changeSet.fileOps.filter((o) => o.type !== 'delete').map((o) => [o.path, (o as { content: string }).content]),
+    );
+    const repaired = input.preflight(changed);
+    // Rebuild so ops/id reflect the repaired bytes.
+    build = buildAICandidateChangeSet({
+      aiFiles: { ...input.aiFiles, ...repaired },
+      deletions: input.deletions,
+      baseFiles: input.baseFiles,
+      baseRevisionId: input.baseRevisionId,
+      targetPages: input.targetPages,
+    });
+  }
+  const gates = await runCandidateGates(build);
+  const errors = [
+    ...gates.failures.map((f) => `${f.path}: ${f.message}`),
+    ...(build.changeSet.fileOps.length ? [] : ['The AI response did not change any files.']),
+  ];
+  return { ok: gates.passed && build.changeSet.fileOps.length > 0, build, gates, nextFiles: build.candidateFiles, errors };
+}
