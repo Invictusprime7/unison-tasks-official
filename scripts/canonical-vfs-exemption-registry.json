@@ -1,5 +1,5 @@
 {
-  "_doc": "P0.5 — audited registry of every canonical VFS write exemption. Each exemption reason must map to an approved category, and every file's per-reason count is frozen here. Adding an exemption requires an explicit, reviewed entry.",
+  "_doc": "P0.5 \u2014 audited registry of every canonical VFS write exemption. Each exemption reason must map to an approved category, and every file's per-reason count is frozen here. Adding an exemption requires an explicit, reviewed entry.",
   "categories": {
     "hydration": "Loads already-persisted bytes (revision, draft, sealed snapshot, wizard handoff) into an empty or stale working set. Creates no new site state.",
     "adoption": "Projects the authoritative result of an accepted commitMutation / declared adoption record into the working set. The commit already happened.",
@@ -9,7 +9,7 @@
     "workspace-import": "Developer-workspace import of external code, a saved project or a scraped page into the editor buffer before any commit.",
     "editor-buffer": "Editor working-buffer projection; persistence happens on the next commit.",
     "runtime-manifest": "Non-content runtime plumbing (dependency manifest, canonical Unison runtime files).",
-    "optimistic-hmr": "Optimistic preview projection that MUST be chained to a commitMutation / saveDraft in the same code path. Highest-risk category — guarded by a proximity check."
+    "optimistic-hmr": "Optimistic preview projection that MUST be chained to a commitMutation / saveDraft in the same code path. Highest-risk category \u2014 guarded by a proximity check."
   },
   "reasons": {
     "hydration of a persisted revision into the working set": "hydration",
@@ -36,7 +36,8 @@
     "dependency manifest write, not site content": "runtime-manifest",
     "write-back of canonical Unison runtime files, not user content": "runtime-manifest",
     "optimistic HMR projection; the same mutation is chained through commitMutation below": "optimistic-hmr",
-    "optimistic HMR projection; the edit is persisted through saveDraft below": "optimistic-hmr"
+    "optimistic HMR projection; the edit is persisted through saveDraft below": "optimistic-hmr",
+    "deterministic navigation projection from the page registry": "router-projection"
   },
   "baseline": {
     "src/components/creatives/WebBuilder.tsx": {
@@ -55,7 +56,8 @@
       "local editor redo of a working-set snapshot": 1,
       "optimistic HMR projection; the edit is persisted through saveDraft below": 1,
       "AI edit-history revert of a recorded working-set snapshot": 1,
-      "AI edit-history reapply of a recorded working-set snapshot": 1
+      "AI edit-history reapply of a recorded working-set snapshot": 1,
+      "deterministic navigation projection from the page registry": 1
     },
     "src/components/creatives/code-editor/VFSCodeView.tsx": {
       "dependency manifest write, not site content": 1,

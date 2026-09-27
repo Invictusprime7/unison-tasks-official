@@ -356,6 +356,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { BuilderSessionProvider } from "@/builder/controllers/BuilderSessionProvider";
 import { BusinessPill } from "@/components/webbuilder/BusinessPill";
+import { buildSiteShellTopology, projectSiteShellLinks } from "@/services/siteShellTopology";
 
 
 // CodeViewErrorBoundary extracted to web-builder/CodeViewErrorBoundary.tsx
@@ -2004,6 +2005,24 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
     diagnosticsAggregator.ingestUnisonDiagnostics(items);
   }, [routeConflicts, creatorPlayground.pageRegistry, virtualFS.nodes]);
+
+  // Site-shell sync: the page tabs (PageRegistry) own which links every page's
+  // navbar carries. Whenever tabs or files change, project the registry into
+  // the live VFS so the preview menu always matches the tabs. Idempotent — a
+  // second pass changes nothing, so this cannot loop. Autosave persists it.
+  useEffect(() => {
+    const registry = creatorPlayground.pageRegistry;
+    if (!registry || Object.keys(registry.pages ?? {}).length === 0) return;
+    const files = virtualFSRef.current.getSandpackFiles();
+    const projected = projectSiteShellLinks(buildSiteShellTopology(registry), files);
+    if (projected.changed.length === 0) return;
+    const payload: Record<string, string> = {};
+    for (const path of projected.changed) payload[path] = projected.files[path];
+    // canonical-vfs-exempt: deterministic navigation projection from the page registry
+    virtualFSRef.current.importFiles(payload);
+    if (payload[activePagePath]) setPreviewCode(payload[activePagePath]);
+  }, [creatorPlayground.pageRegistry, virtualFS.nodes, activePagePath]);
+
 
   // ──────────────────────────────────────────────────────────────────────────
   // Canonical Router Sync — single source of truth for /src/App.tsx
