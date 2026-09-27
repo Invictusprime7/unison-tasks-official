@@ -56,6 +56,24 @@ export interface PageArchetype {
 }
 
 const ARCHETYPES = {
+  auth: {
+    purpose: 'Let a returning user sign in with as little friction as possible.',
+    rhythmShift: -1, densityShift: -1,
+    requiredFamilies: ['auth-form'],
+    recommendedFamilies: [],
+    forbiddenFamilies: ['hero', 'services', 'features', 'pricing', 'gallery', 'testimonials', 'stats', 'team', 'blog-preview', 'before-after', 'logo-cloud', 'cta', 'contact', 'faq', 'about', 'data-table'],
+    forbiddenTags: ['marquee', 'immersive'],
+    maxBodySections: 1,
+  },
+  dashboard: {
+    purpose: 'Present the user’s data and primary work at a glance.',
+    rhythmShift: -1, densityShift: -1,
+    requiredFamilies: ['data-table'],
+    recommendedFamilies: ['stats'],
+    forbiddenFamilies: ['hero', 'services', 'pricing', 'gallery', 'testimonials', 'team', 'blog-preview', 'before-after', 'logo-cloud', 'cta', 'contact', 'about', 'auth-form'],
+    forbiddenTags: ['marquee', 'immersive'],
+    maxBodySections: 4,
+  },
   home: {
     purpose: 'Establish the brand, the primary offer and one clear primary action.',
     rhythmShift: 0, densityShift: 0,
