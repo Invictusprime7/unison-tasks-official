@@ -100,6 +100,17 @@ export const GalleryLightbox: React.FC<GalleryLightboxProps> = ({ items, index, 
           className="max-h-[var(--ut-overlay-block)] w-auto object-contain"
           style={{ borderRadius: theme.radius }}
         />
+        <p role="status" aria-live="polite" className="sr-only">
+          {`Image ${(index ?? 0) + 1} of ${items.length}: ${item.alt || item.caption || 'Gallery image'}`}
+        </p>
+        {item.category && (
+          <p
+            className="mt-3 text-center text-xs uppercase tracking-widest"
+            style={{ fontFamily: theme.typography.bodyFont, color: hsla(theme.colors.background, 0.72) }}
+          >
+            {item.category}
+          </p>
+        )}
         {item.caption && (
           <figcaption
             className="mt-3 text-center text-sm"

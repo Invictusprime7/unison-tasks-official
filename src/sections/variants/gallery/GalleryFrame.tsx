@@ -27,7 +27,9 @@ export const GalleryFrame: React.FC<GalleryFrameProps> = ({
 }) => {
   const media = useMemo(() => normalizeGalleryItems(items), [items]);
   const categories = useMemo(() => galleryCategories(media), [media]);
-  const [active, setActive] = useState('all');
+  const [selected, setActive] = useState('all');
+  // A selected category that no longer exists (or disabled filtering) falls back to all images.
+  const active = filterable !== false && categories.length > 1 && categories.includes(selected) ? selected : 'all';
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const visible = active === 'all' ? media : media.filter((item) => item.category === active);
 
