@@ -76,7 +76,6 @@ async function parseFailures(paths: string[], files: Record<string, string>): Pr
   if (!targets.length) return [];
   const ts = (await import('typescript')).default;
   const failures: CandidateGateFailure[] = [];
-  const advisories: string[] = [];
   for (const path of targets) {
     const out = ts.transpileModule(files[path], {
       fileName: path,
@@ -100,6 +99,7 @@ export async function runCandidateGates(build: CandidateBuildResult, affinity?: 
   const touched = build.changeSet.fileOps.filter((o) => o.type !== 'delete').map((o) => o.path);
   const deleted = new Set(build.changeSet.fileOps.filter((o) => o.type === 'delete').map((o) => o.path));
   const failures: CandidateGateFailure[] = [];
+  const advisories: string[] = [];
 
   for (const path of touched) {
     if (CODE_RE.test(path) && !files[path].trim()) {
