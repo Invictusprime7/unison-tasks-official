@@ -37,6 +37,12 @@ export interface HomepageVisualLanguage {
     surfaceClasses: string[];
     contrastRoles: string[];
     mediaPosture: string[];
+    /** Imported visual primitives/components that can recur without copying the page. */
+    primitives: string[];
+    /** Alignment vocabulary is evidence, not an invariant; secondary pages may vary it. */
+    alignments: string[];
+    /** Homepage narrative order, exposed as a reference rather than an exact-match rule. */
+    sectionOrder: string[];
   };
   /** Stable fingerprint of the established language. */
   signature: string;
@@ -104,6 +110,14 @@ export function extractHomepageVisualLanguage(
     surfaceClasses: bounded(classNames.filter(value => /^ut-(?:surface|accent-wash|gradient-panel|divider)$/.test(value)), 12),
     contrastRoles: bounded(classNames.filter(value => /^(?:bg|text)-(?:background|foreground|card|card-foreground|primary|primary-foreground|secondary|secondary-foreground|muted|muted-foreground|accent|accent-foreground)$/.test(value)), 16),
     mediaPosture: bounded(classNames.filter(value => /^ut-(?:media|hero-media)$/.test(value)), 8),
+    primitives: bounded(Array.from(content.matchAll(/import\s*\{([^}]+)\}\s*from\s*['"][^'"]+['"]/g))
+      .flatMap(match => match[1].split(',').map(value => value.trim().split(/\s+as\s+/)[1] ?? value.trim().split(/\s+as\s+/)[0]))
+      .filter(value => /^[A-Z][A-Za-z0-9]*$/.test(value)), 20),
+    alignments: bounded(classNames.filter(value => /^(?:text-(?:left|center|right)|items-(?:start|center|end)|justify-(?:start|center|end|between))$/.test(value)), 12),
+    sectionOrder: bounded([
+      ...attributeValues(content, 'data-ut-section-id'),
+      ...attributeValues(content, 'data-ut-variant').map(familyOf),
+    ], 24),
   };
 
   return {
@@ -123,6 +137,9 @@ export function extractHomepageVisualLanguage(
       ...architecture.surfaceClasses.map(entry => `u:${entry}`),
       ...architecture.contrastRoles.map(entry => `c:${entry}`),
       ...architecture.mediaPosture.map(entry => `m:${entry}`),
+      ...architecture.primitives.map(entry => `p:${entry}`),
+      ...architecture.alignments.map(entry => `a:${entry}`),
+      ...architecture.sectionOrder.map(entry => `o:${entry}`),
     ]),
   };
 }
@@ -159,7 +176,7 @@ export function renderHomepageInheritanceContract(
     .filter((entry): entry is string => Boolean(entry));
 
   return [
-    'HOMEPAGE VISUAL LANGUAGE (established by the homepage, machine-checked; a violation discards that page):',
+    'HOMEPAGE VISUAL LANGUAGE (established by the homepage; invariants are checked and page-local variation remains open):',
     chrome.length
       ? `13. Site chrome must reuse the homepage design exactly — ${chrome.join('; ')}. Never select a different data-ut-variant for these families.`
       : '13. Do not introduce site chrome (navbar/footer) designs the homepage did not establish.',
@@ -170,9 +187,52 @@ export function renderHomepageInheritanceContract(
       ? `15. Inherit the homepage type scale; the established tiers are: ${language!.typography.join(', ')}. Reserve the largest tier for the homepage headline.`
       : '15. Inherit the homepage type scale; do not invent new heading tiers.',
     `16. Ground the page in the homepage business narrative without copying it. Homepage headings: ${listValues(language!.contentModel.headings)}. Canonical actions: ${listValues(language!.contentModel.intents)}.`,
-    `17. Reuse the homepage architecture, not its body composition. Spacing: ${listValues(language!.architecture.spacingClasses)}. Surfaces: ${listValues(language!.architecture.surfaceClasses)}. Contrast roles: ${listValues(language!.architecture.contrastRoles)}. Media posture: ${listValues(language!.architecture.mediaPosture)}.`,
-    '18. Select a distinct role-appropriate body section order and certified body variants. Only navbar and footer identities must match exactly.',
+    `17. Reuse the homepage architecture, not its body composition. Spacing: ${listValues(language!.architecture.spacingClasses)}. Surfaces: ${listValues(language!.architecture.surfaceClasses)}. Contrast roles: ${listValues(language!.architecture.contrastRoles)}. Media posture: ${listValues(language!.architecture.mediaPosture)}. Reusable primitives: ${listValues(language!.architecture.primitives)}.`,
+    `18. Homepage reference only — alignment: ${listValues(language!.architecture.alignments)}; section order: ${listValues(language!.architecture.sectionOrder)}. Select a distinct role-appropriate hero, alignment, body order and legal variants. Only navbar/footer identity and the sealed visual grammar are invariant.`,
   ].join('\n');
+}
+
+export interface SiteAffinityAudit {
+  /** True contract contradictions. These may enter the repair loop. */
+  violations: string[];
+  /** Weak signals only. These must never reject a legal page. */
+  advisories: string[];
+}
+
+/**
+ * Grade one candidate against the established language. Exact layout matching
+ * is intentionally absent: alignment, hero form, section order and body
+ * variants are page-local. The guard blocks only forbidden implementations and
+ * shared-chrome contradictions; weak visual overlap is advisory.
+ */
+export function auditSiteAffinity(options: {
+  path: string;
+  content: string;
+  language?: HomepageVisualLanguage;
+  forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
+}): SiteAffinityAudit {
+  const violations = validateHomepageInheritance(options);
+  const advisories: string[] = [];
+  const declared = attributeValues(options.content, 'data-ut-variant');
+  const forbidden = new Set(Object.values(options.forbiddenImplementations ?? {}).flatMap(ids => ids ?? []));
+  for (const variantId of declared) {
+    if (forbidden.has(variantId)) violations.push(`${options.path} uses forbidden or retired implementation "${variantId}".`);
+  }
+  if (!hasEstablishedVisualLanguage(options.language)) return { violations, advisories };
+  const candidate = extractHomepageVisualLanguage(options.content, options.path);
+  const established = options.language!;
+  if (established.typography.length && !candidate.typography.some(value => established.typography.includes(value))) {
+    advisories.push(`${options.path}: no established typography tier is visible; keep the homepage type character while fitting this page's purpose.`);
+  }
+  const architectureOverlap = [
+    ...candidate.architecture.spacingClasses.filter(value => established.architecture.spacingClasses.includes(value)),
+    ...candidate.architecture.surfaceClasses.filter(value => established.architecture.surfaceClasses.includes(value)),
+    ...candidate.architecture.primitives.filter(value => established.architecture.primitives.includes(value)),
+  ];
+  if (architectureOverlap.length === 0) {
+    advisories.push(`${options.path}: weak architectural overlap with the homepage; reuse its spacing, surfaces, or primitives without copying its composition.`);
+  }
+  return { violations: Array.from(new Set(violations)), advisories };
 }
 
 function listValues(values: readonly string[]): string {

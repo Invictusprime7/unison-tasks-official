@@ -30,5 +30,9 @@ describe('ResolvedSiteDesignContext', () => {
       for (const id of ids ?? []) expect(banned.has(id)).toBe(false);
     }
     expect(Object.keys(ctx.contract.pages)).toEqual(['home', 'services', 'contact']);
+    expect(ctx.affinity.invariants.artDirectionPackId).toBe(ctx.contract.artDirectionPackId);
+    expect(ctx.affinity.variants.about).toBeUndefined();
+    expect(ctx.affinity.looseFit.policy).toBe('inherit-invariants-expose-variants');
+    expect(ctx.affinity.looseFit.guidance).toContain('Never force an exact hero');
   });
 });

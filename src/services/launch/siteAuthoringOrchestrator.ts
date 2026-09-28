@@ -19,6 +19,11 @@ import { projectSiteDesignContract } from '@/services/launch/siteDesignContract'
 import type { AIComposerRequest } from '@/contracts/aiComposerContract';
 import { resolveLocalImport } from '@/services/builder/aiCandidateGates';
 import { runComposerRepairLoop, type ComposerInvoke, type ComposerStopReason } from '@/services/builder/aiRepairLoop';
+import {
+  extractHomepageVisualLanguage,
+  renderHomepageInheritanceContract,
+  type HomepageVisualLanguage,
+} from '@/services/launch/homepageFirstContract';
 
 export interface AuthoringPage {
   pageId: string;
@@ -82,7 +87,12 @@ export function orderAuthoringPages(pages: AuthoringPage[], homePageId?: string)
   });
 }
 
-export function renderPageBrief(ctx: ResolvedSiteDesignContext | null, page: AuthoringPage, businessName: string): string {
+export function renderPageBrief(
+  ctx: ResolvedSiteDesignContext | null,
+  page: AuthoringPage,
+  businessName: string,
+  establishedLanguage?: HomepageVisualLanguage,
+): string {
   const lines = [`BUSINESS: ${businessName}`, `PAGE ROLE: ${page.role}`];
   if (!ctx) return lines.join('\n');
   const projection = projectSiteDesignContract(ctx.contract);
@@ -98,6 +108,12 @@ export function renderPageBrief(ctx: ResolvedSiteDesignContext | null, page: Aut
     preferred.length ? `PREFERRED CANONICAL VOCABULARY:\n${preferred.join('\n')}` : '',
     forbidden.length ? `FORBIDDEN IMPLEMENTATIONS (never use):\n${forbidden.join('\n')}` : '',
     `CREATIVE AUTHORITY: ${ctx.creativeRecommendation.guidance}`,
+    `AFFINITY INVARIANTS: Preserve pack ${ctx.affinity.invariants.artDirectionPackId}; its typography, geometry, spacing cadence, media treatment, motion character, and shared chrome identity are site-wide.`,
+    `PAGE-LOCAL VARIANTS: ${ctx.affinity.looseFit.guidance}`,
+    ctx.affinity.variants[page.role]
+      ? `PAGE INTENT FIT: ${ctx.affinity.variants[page.role].purpose} Rhythm ${ctx.affinity.variants[page.role].rhythm}; density ${ctx.affinity.variants[page.role].density}; variation remains open for ${ctx.affinity.variants[page.role].allowedVariation.join(', ')}.`
+      : `LOOSE-FIT PAGE INTENT: Treat "${page.role}" as ${ctx.affinity.looseFit.fallbackRole}; preserve invariants and choose any legal, purpose-fit variants.`,
+    renderHomepageInheritanceContract(establishedLanguage),
     `DESIGN FINGERPRINT: ${ctx.fingerprint}`,
   );
   return lines.filter(Boolean).join('\n');
@@ -133,6 +149,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
   const outcomes: PageAuthoringOutcome[] = [];
   const priorPages: Array<{ role: string; summary: string }> = [];
   let paused: ComposerStopReason | null = null;
+  let establishedLanguage: HomepageVisualLanguage | undefined;
 
   for (const [index, page] of ordered.entries()) {
     if (paused || input.signal?.aborted) {
@@ -148,7 +165,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     const request: AIComposerRequest = {
       task: 'site_page_author',
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
-      brief: renderPageBrief(input.designContext, page, input.businessName).slice(0, 12000),
+      brief: renderPageBrief(input.designContext, page, input.businessName, establishedLanguage).slice(0, 12000),
       files: selectPageContextFiles(files, page),
       routes,
       priorPages: priorPages.slice(-20),
@@ -161,6 +178,10 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       signal: input.signal,
       timeoutMs: Math.max(15_000, Math.min(130_000, deadline - now())),
       invoke: input.invoke,
+      affinity: {
+        language: establishedLanguage,
+        forbiddenImplementations: input.designContext?.hardLegality.forbiddenImplementations,
+      },
     });
     if (loop.reason === 'credits' || loop.reason === 'denied') paused = loop.reason;
 
@@ -173,6 +194,9 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       const nextFiles = stampAuthoredPage(loop.prepared.nextFiles, page, input.designContext?.fingerprint);
       const committed = await input.commitPage(nextFiles, page, files);
       files = committed.files;
+      if (page.pageId === input.homePageId || page.route === '/') {
+        establishedLanguage = extractHomepageVisualLanguage(files[page.filePath], page.pageId);
+      }
       revisionId = committed.revisionId ?? revisionId;
       const summary = loop.response?.summary ?? '';
       priorPages.push({ role: page.role, summary: summary.slice(0, 2000) });
