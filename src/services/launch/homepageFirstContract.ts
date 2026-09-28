@@ -211,7 +211,9 @@ export function auditSiteAffinity(options: {
   language?: HomepageVisualLanguage;
   forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
 }): SiteAffinityAudit {
-  const violations = validateHomepageInheritance(options);
+  const violations = options.language
+    ? validateHomepageInheritance({ path: options.path, content: options.content, language: options.language })
+    : [];
   const advisories: string[] = [];
   const declared = attributeValues(options.content, 'data-ut-variant');
   const forbidden = new Set(Object.values(options.forbiddenImplementations ?? {}).flatMap(ids => ids ?? []));
