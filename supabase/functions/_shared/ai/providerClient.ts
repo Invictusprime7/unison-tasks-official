@@ -141,6 +141,11 @@ export async function createImageGeneration(
   return withProviderHeader(response, "openai");
 }
 
+export function normalizeOpenAIModel(model: string): string {
+  const bare = model.replace(/^openai\//, '');
+  return /^gpt-5/.test(bare) ? 'gpt-4.1' : bare;
+}
+
 function modelFor(provider: Provider, requestedModel?: string): string {
   const model = requestedModel ?? "";
 
@@ -154,10 +159,7 @@ function modelFor(provider: Provider, requestedModel?: string): string {
   }
 
   if (provider === "openai") {
-    if (Deno.env.get("OPENAI_MODEL")) return Deno.env.get("OPENAI_MODEL")!;
-    const bare = model.startsWith("openai/") ? model.slice("openai/".length) : model;
-    if (bare === "gpt-4.1" || bare === "gpt-5") return "gpt-4o";
-    if (bare === "gpt-5-mini") return "gpt-4o-mini";
+    const bare = normalizeOpenAIModel(Deno.env.get("OPENAI_MODEL") || model);
     if (bare.startsWith("gpt-")) return bare;
     return "gpt-4o-mini";
   }
@@ -196,9 +198,25 @@ async function callOpenAICompatible(
 
   const model = modelFor(provider, request.model);
   const body: Record<string, unknown> = { ...request, model };
+  // Apply limits to the actual wire model, including deployment overrides.
+  if (/^(?:openai\/)?gpt-4o(?:-|$)/.test(model)) {
+    const tokens = body.max_completion_tokens ?? body.max_tokens;
+    if (typeof tokens === "number") body.max_tokens = Math.min(tokens, 16_384);
+    delete body.max_completion_tokens;
+    delete body.reasoning_effort;
+  }
+  if (/^(?:openai\/)?gpt-4\.1(?:-|$)/.test(model)) {
+    const tokens = body.max_completion_tokens ?? body.max_tokens;
+    if (typeof tokens === "number") body.max_tokens = Math.min(tokens, 32_768);
+    delete body.max_completion_tokens;
+    delete body.reasoning_effort;
+  }
   if (/(^|\/)gpt-5/.test(String(model)) && body.max_tokens !== undefined) {
     body.max_completion_tokens = body.max_completion_tokens ?? body.max_tokens;
     delete body.max_tokens;
+  }
+  if (/(^|\/)gpt-5/.test(model) && typeof body.max_completion_tokens === "number") {
+    body.max_completion_tokens = Math.min(body.max_completion_tokens, 128_000);
   }
 
   const url = provider === "lovable"

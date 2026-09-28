@@ -1,15 +1,26 @@
 import {
   buildUnisonContextDirective,
+  resolveBuilderInstruction,
   resolveReasoningEffort,
   resolveUnisonComplexity,
 } from './unisonContext.ts';
 import { buildPlannedChatCompletionRequest } from '../_shared/aiProviderLoop.ts';
+import { preprocessPrompt } from '../_shared/promptPreprocessor.ts';
 
 function assertEquals(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`);
   }
 }
+
+Deno.test('project context does not inflate the user instruction complexity', () => {
+  const instruction = 'build navigation redirect pages';
+  const enriched = instruction + '\n' + 'Implement API integration, routing, authentication and database migrations. '.repeat(100);
+  const selected = resolveBuilderInstruction(enriched, instruction);
+  assertEquals(preprocessPrompt(selected).complexity.tier, preprocessPrompt(instruction).complexity.tier);
+  assertEquals(selected.includes('database migrations'), false);
+  assertEquals(resolveBuilderInstruction(enriched, ''), enriched);
+});
 
 const context = {
   route: 'builder.edit',

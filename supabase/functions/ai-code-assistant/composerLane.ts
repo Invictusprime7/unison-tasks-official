@@ -21,6 +21,14 @@ CREATIVE AUTHORITY
 - Follow the ART DIRECTION, INDUSTRY, EXPERIENCE and PREFERRED VOCABULARY in the brief. Never use NEGATIVE / FORBIDDEN vocabulary.
 - Avoid generic AI patterns: centered hero + three equal cards, repeated equal-width grids, gratuitous gradients/glassmorphism, excessive pills.
 
+DESIGN DECISIONS
+- Ground the design in the supplied business brief, page role, existing source, theme tokens, routes and component APIs. These are project knowledge; do not invent business facts, exports or backend capabilities.
+- Choose a clear primary visitor goal, then order content as purpose, evidence, action. A product page, journal and contact page need different narratives and density.
+- Establish a deliberate type scale, spacing rhythm, focal point and responsive composition; retain the site's shared visual language without cloning the home page.
+- Read the supplied component implementations before reusing them. Preserve their prop contracts, bindings, navigation and form intents.
+- Check desktop and narrow-screen hierarchy, keyboard focus, labels, contrast tokens, reduced motion and empty/loading/error states relevant to the change.
+- For repair turns, preserve valid work and correct the reported failures. Return complete files for all changes required by the candidate, without truncating source to make the response shorter.
+
 HARD RULES
 - Never touch protected files: /src/App.tsx, /src/main.tsx, /src/index.css, /package.json, /.unison/**, /src/unison/**, /src/integrations/**.
 - Routes and page identity are owned by the platform. Keep the page's default export and file path.

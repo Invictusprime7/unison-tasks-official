@@ -11,6 +11,11 @@ const COMPLEXITY_RANK: Record<PromptComplexity, number> = {
   advanced: 3,
 };
 
+/** Classify the user's instruction, not the source/context appended by Builder. */
+export function resolveBuilderInstruction(enrichedMessage: string, originalPrompt?: string | null): string {
+  return originalPrompt?.trim() || enrichedMessage;
+}
+
 export function resolveUnisonComplexity(
   serverComplexity: PromptComplexity,
   unisonContext?: UnisonContext,

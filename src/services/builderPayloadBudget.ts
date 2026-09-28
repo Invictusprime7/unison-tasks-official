@@ -64,6 +64,40 @@ export function shrinkBuilderTurnPayload<T extends Record<string, unknown>>(
 
   const fits = () => byteLength(payload) <= budgetBytes;
 
+  // Composer messages contain a structured request, not prose. Cutting its
+  // string in the generic fallback corrupts JSON as project knowledge grows.
+  if (['site-page-author', 'site-page-repair', 'builder-source-edit'].includes(String(payload.mode))) {
+    const messages = payload.messages as Array<{ role: string; content: unknown }> | undefined;
+    const last = messages?.[messages.length - 1];
+    if (last && typeof last.content === 'string') {
+      try {
+        const context = JSON.parse(last.content);
+        if (context?.files && typeof context.files === 'object' && context.page?.filePath) {
+          const sync = () => { payload.messages = [{ ...last, content: JSON.stringify(context) }]; };
+          sync();
+          const optional = Object.keys(context.files)
+            .filter((path) => path !== context.page.filePath)
+            .sort((a, b) => String(context.files[b]).length - String(context.files[a]).length);
+          for (const path of optional) {
+            if (fits()) break;
+            delete context.files[path];
+            trimmed.push(`composer.files:${path}(dropped)`);
+            sync();
+          }
+          for (const key of ['priorPages', 'previousResponse']) {
+            if (fits()) break;
+            delete context[key];
+            trimmed.push(`composer.${key}(dropped)`);
+            sync();
+          }
+          // Preserve the target source, instructions and diagnostics even if
+          // they exceed a smaller retry budget; never corrupt the request.
+          return done();
+        }
+      } catch { /* Let the server report an already-invalid request. */ }
+    }
+  }
+
   // 1. Attachments / diagnostics — pure extras.
   for (const key of ['attachments', 'previewDiagnostics', 'previewSnapshot', 'componentBehaviorContext']) {
     if (fits()) return done();

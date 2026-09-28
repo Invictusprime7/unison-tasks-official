@@ -43,16 +43,15 @@ const ThinkingPipeline: React.FC<{ steps: ThinkingStep[] }> = ({ steps }) => {
   if (!steps.length) return null;
 
   const lastStep = steps[steps.length - 1];
-  const isComplete = lastStep.type === 'complete';
-  const hasError = steps.some((step) => step.type === 'error');
+  const lastError = [...steps].reverse().find((step) => step.type === 'error');
+  const hasError = Boolean(lastError);
+  const isComplete = !hasError && lastStep.type === 'complete';
   const doneCount = steps.filter((step) => step.type === 'complete').length;
-  const activeCount = steps.filter(
-    (step) => step.type === 'analyzing' || step.type === 'planning' || step.type === 'generating' || step.type === 'validating' || step.type === 'reasoning',
-  ).length;
+  const activeCount = hasError || isComplete ? 0 : 1;
   const stepIcons: Record<string, React.ReactNode> = {
     analyzing: <Sparkles className="w-3 h-3 text-muted-foreground" />,
     planning: <FileCode className="w-3 h-3 text-muted-foreground" />,
-    generating: <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" />,
+    generating: <Loader2 className={cn('w-3 h-3 text-muted-foreground', activeCount > 0 && 'animate-spin')} />,
     validating: <CheckCircle2 className="w-3 h-3 text-muted-foreground" />,
     complete: <CheckCircle2 className="w-3 h-3 text-emerald-500" />,
     error: <XCircle className="w-3 h-3 text-destructive" />,
@@ -121,10 +120,10 @@ const ThinkingPipeline: React.FC<{ steps: ThinkingStep[] }> = ({ steps }) => {
               <p className="mt-2 text-[10px] text-muted-foreground">Current: {lastStep.message}</p>
             )}
             {hasError && (
-              <p className="mt-2 text-[10px] text-destructive">Last issue: {lastStep.message}</p>
+              <p className="mt-2 text-[10px] text-destructive">Last issue: {lastError?.message}</p>
             )}
             {isComplete && (
-              <p className="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400">Ready to apply changes.</p>
+              <p className="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400">{lastStep.message}</p>
             )}
           </div>
         </div>

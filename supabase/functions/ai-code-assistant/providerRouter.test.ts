@@ -47,6 +47,30 @@ const geminiOnlyMode = (name: string): string | undefined => ({
   AI_PROVIDER_MODE: "gemini-only",
 }[name]);
 
+Deno.test("complex and advanced edits use capable models with larger bounded budgets", () => {
+  for (const [tier, budget] of [['complex', 48000], ['advanced', 64000]] as const) {
+    const plan = buildProviderPlan(task, true, undefined, tier, 'edit',
+      (name) => name === 'OPENAI_API_KEY' ? 'test-key' : undefined);
+    assertEquals(plan.gatewayModels[0].id, 'openai/gpt-4.1');
+    assertEquals(plan.gatewayModels[0].maxTokens, 32768);
+    assertEquals(plan.gatewayModels.some((model) => model.id.includes('gpt-5')), false);
+    assertEquals(plan.gatewayModels.find((model) => model.id.startsWith('google/'))?.maxTokens, budget);
+    assertEquals(plan.gatewayModels.find((model) => model.id === 'openai/gpt-4.1')?.maxTokens, 32768);
+    assertEquals(plan.preferLongLeadAttempt, true);
+  }
+});
+
+Deno.test("Composer has a dedicated 48k budget and honors explicit lower caps", () => {
+  const authorTask = { ...task, type: 'site_page_author' as const };
+  const readEnv = (name: string) => name === 'OPENAI_API_KEY' ? 'test-key' : undefined;
+  const plan = buildProviderPlan(authorTask, true, undefined, 'simple', 'author', readEnv);
+  assertEquals(plan.gatewayModels[0].id, 'openai/gpt-4.1');
+  assertEquals(plan.gatewayModels[0].maxTokens, 32768);
+  const capped = buildProviderPlan(authorTask, true, { maxTokens: 8000, timeoutMs: 20000 }, 'advanced', 'author', readEnv);
+  assertEquals(capped.gatewayModels.every((model) => model.maxTokens <= 8000), true);
+  assertEquals(capped.perModelTimeoutMs, 20000);
+});
+
 Deno.test("parses explicit Gemini/OpenAI traffic weights", () => {
   assertEquals(parseProviderDistribution("gemini=70,openai=30"), { gemini: 70, openai: 30 });
   assertEquals(parseProviderDistribution("invalid"), { gemini: 20, openai: 80 });
@@ -89,7 +113,7 @@ Deno.test("moves the selected provider models to the front of the plan", () => {
   assertEquals(openAIPlan.gatewayModels[0]?.id.startsWith("openai/"), true);
 });
 
-Deno.test("keeps an explicit model ahead of weighted routing", () => {
+Deno.test("migrates a stale GPT-5 selection to GPT-4.1 ahead of weighted routing", () => {
   const plan = buildProviderPlan(
     task,
     true,
@@ -100,7 +124,20 @@ Deno.test("keeps an explicit model ahead of weighted routing", () => {
   );
 
   assertEquals(plan.primaryProvider, undefined);
-  assertEquals(plan.gatewayModels[0]?.id, "openai/gpt-5");
+  assertEquals(plan.gatewayModels[0]?.id, "openai/gpt-4.1");
+  assertEquals(plan.gatewayModels.some((model) => model.id.includes('gpt-5')), false);
+});
+
+Deno.test("Builder and Wizard plans never select GPT-5 and respect OpenAI limits", () => {
+  for (const type of ['single_file_edit', 'multi_file_edit', 'debug_fix', 'site_page_author', 'site_page_repair', 'builder_source_edit', 'wizard_seed_generation'] as const) {
+    for (const tier of ['simple', 'moderate', 'complex', 'advanced'] as const) {
+      const plan = buildProviderPlan({ ...task, type }, true, undefined, tier, 'test', bothProviders);
+      assertEquals(plan.gatewayModels.some((model) => model.id.includes('gpt-5')), false);
+      for (const model of plan.gatewayModels.filter((model) => model.id.startsWith('openai/'))) {
+        assertEquals(model.maxTokens <= (model.id.includes('gpt-4.1') ? 32768 : 16384), true);
+      }
+    }
+  }
 });
 
 Deno.test("uses the only configured text provider", () => {

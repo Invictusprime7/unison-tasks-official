@@ -16,6 +16,7 @@ import {
   type AIComposerResponse,
 } from '@/contracts/aiComposerContract';
 import { prepareAICandidate, type PreparedCandidate } from './aiCandidateGates';
+import { selectSourceKnowledge } from './sourceKnowledgeContext';
 import type { HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 
 export type ComposerInvoke = typeof runBuilderTurn;
@@ -166,11 +167,10 @@ export async function repairBuilderCandidate(input: {
   const target = input.activeFilePath && input.baseFiles[input.activeFilePath]
     ? input.activeFilePath
     : Object.keys(input.rawFiles).find((p) => /^\/src\/.+\.tsx$/.test(p)) ?? '/src/pages/Home.tsx';
-  const files: Record<string, string> = {};
-  for (const path of new Set([...Object.keys(input.rawFiles), target])) {
-    const content = input.rawFiles[path] ?? input.baseFiles[path];
-    if (typeof content === 'string' && content.length <= 60000) files[path] = content;
-  }
+  const files = selectSourceKnowledge(
+    { ...input.baseFiles, ...input.rawFiles },
+    [target, ...Object.keys(input.rawFiles)],
+  );
   return runComposerRepairLoop({
     request: {
       task: 'builder_source_edit',

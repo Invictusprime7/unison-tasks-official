@@ -14,8 +14,9 @@ const AVAILABLE_MODELS: GatewayModel[] = [
   { id: "google/gemini-2.5-flash-lite", label: "Flash Lite", provider: "google", tier: "lite", supportsReasoning: false },
   { id: "google/gemini-2.5-flash", label: "Flash", provider: "google", tier: "fast", supportsReasoning: true },
   { id: "google/gemini-2.5-pro", label: "Pro", provider: "google", tier: "pro", supportsReasoning: true },
-  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "openai", tier: "standard", supportsReasoning: true },
-  { id: "openai/gpt-4o", label: "GPT-4o", provider: "openai", tier: "pro", supportsReasoning: true },
+  { id: "openai/gpt-4.1", label: "GPT-4.1", provider: "openai", tier: "standard", supportsReasoning: false },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "openai", tier: "lite", supportsReasoning: false },
+  { id: "openai/gpt-4o", label: "GPT-4o", provider: "openai", tier: "standard", supportsReasoning: false },
 ];
 
 export type ReasoningEffort = "none" | "low" | "medium" | "high";
@@ -30,12 +31,12 @@ export interface GatewayConfig {
 }
 
 const DEFAULT_CONFIG: GatewayConfig = {
-  selectedModelId: "google/gemini-2.5-flash",
+  selectedModelId: "openai/gpt-4.1",
   reasoningEffort: "none",
-  timeoutMs: 45000,
+  timeoutMs: 110000,
   autoModelSelection: true,
   streamResponse: true,
-  maxTokens: 32000,
+  maxTokens: 32768,
 };
 
 interface AIGatewayOptionsProps {
@@ -128,7 +129,7 @@ export const AIGatewayOptions = ({ config: ext, onChange, className }: AIGateway
                 key={m.id}
                 type="button"
                 disabled={cfg.autoModelSelection}
-                onClick={() => update({ selectedModelId: m.id, maxTokens: m.supportsReasoning ? 32000 : 12000 })}
+                onClick={() => update({ selectedModelId: m.id, maxTokens: m.id.includes('gpt-4o') ? 16384 : m.id.includes('gpt-4.1') ? 32768 : 64000 })}
                 className={cn(
                   "w-full flex items-center gap-2 px-1.5 py-1 rounded text-[11px] transition-colors text-left",
                   cfg.selectedModelId === m.id && !cfg.autoModelSelection

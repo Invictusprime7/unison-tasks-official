@@ -25,6 +25,8 @@ export interface ProviderPlan {
   preferLongLeadAttempt?: boolean;
   /** Split a bounded focused turn across compatible provider attempts. */
   balancedProviderAttempts?: boolean;
+  /** Keep a usable window for the non-reasoning fallback after a slow lead. */
+  fallbackReserveMs?: number;
 }
 
 export interface GatewayOverrides {
@@ -132,8 +134,8 @@ const MODELS = {
   geminiFlashLite: { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
   geminiPro: { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   gpt41: { id: "openai/gpt-4.1", label: "GPT-4.1" },
-  gpt4oMini: { id: "openai/gpt-5-mini", label: "GPT-5 Mini" },
-  gpt4o: { id: "openai/gpt-5", label: "GPT-5" },
+  gpt4oMini: { id: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
+  gpt4o: { id: "openai/gpt-4o", label: "GPT-4o" },
 } as const;
 
 function m(spec: typeof MODELS[keyof typeof MODELS], maxTokens: number): ModelSpec {
@@ -150,36 +152,28 @@ function m(spec: typeof MODELS[keyof typeof MODELS], maxTokens: number): ModelSp
 function applyComplexityUpgrade(
   models: ModelSpec[],
   complexity: PromptComplexity,
-  baseMaxTokens: number,
 ): { models: ModelSpec[]; timeoutBoostMs: number } {
   if (complexity === "simple" || complexity === "moderate") {
     return { models, timeoutBoostMs: 0 };
   }
 
   if (complexity === "advanced") {
-    // Advanced: lead with FAST Gemini, then GPT-5 family as fallback.
-    const advancedTokens = Math.min(baseMaxTokens + 8000, 48000);
+    const advancedTokens = 64_000;
     const advancedModels: ModelSpec[] = [
+      m(MODELS.gpt41, 32_768),
+      m(MODELS.gpt4o, 16_384),
       m(MODELS.geminiFlash, advancedTokens),
-      m(MODELS.gpt41, advancedTokens),
       m(MODELS.gpt4oMini, advancedTokens),
-      m(MODELS.gpt4o, advancedTokens),
     ];
-    return { models: advancedModels, timeoutBoostMs: 5000 };
+    return { models: advancedModels, timeoutBoostMs: 45000 };
   }
 
-  // Complex: append Pro-tier as fallback (don't prepend — fast models first)
-  const hasPro = models.some(mm => mm.id === MODELS.geminiPro.id || mm.id === MODELS.gpt4o.id);
-  if (!hasPro) {
-    const complexTokens = Math.min(baseMaxTokens + 4000, 40000);
-    const upgraded: ModelSpec[] = [
-      ...models,
-      m(MODELS.geminiPro, complexTokens),
-    ];
-    return { models: upgraded, timeoutBoostMs: 5000 };
-  }
-
-  return { models, timeoutBoostMs: 5000 };
+  return { models: [
+    m(MODELS.gpt41, 32_768),
+    m(MODELS.gpt4o, 16_384),
+    m(MODELS.geminiFlash, 48_000),
+    m(MODELS.gpt4oMini, 48_000),
+  ], timeoutBoostMs: 30000 };
 }
 
 /**
@@ -209,6 +203,21 @@ export function buildProviderPlan(
   let plan: ProviderPlan;
 
   switch (task.type) {
+    case "site_page_author":
+    case "site_page_repair":
+    case "builder_source_edit":
+      plan = {
+        gatewayModels: [
+          m(MODELS.gpt41, 32_768),
+          m(MODELS.gpt4o, 16_384),
+          m(MODELS.geminiFlash, 48_000),
+        ],
+        perModelTimeoutMs: 110_000,
+        fallbackMaxTokens: 48_000,
+        preferLongLeadAttempt: true,
+        fallbackReserveMs: 60_000,
+      };
+      break;
     // ── Lane B: Wizard seed (full builder-brain path — sole wizard lane) ──
     case "wizard_seed_generation":
       // Two-model lineup so a single provider blip (prose leak, soft-fail,
@@ -327,12 +336,19 @@ export function buildProviderPlan(
   const usesProtectedWizardPlan = task.type === "wizard_seed_generation"
     || task.type === "wizard_composition"
     || task.type === "wizard_content_enrichment"
-    || task.type === "wizard_interaction_enrichment";
+    || task.type === "wizard_interaction_enrichment"
+    || task.type === "site_page_author"
+    || task.type === "site_page_repair"
+    || task.type === "builder_source_edit";
   if (!usesProtectedWizardPlan) {
-    const baseTokens = plan.gatewayModels[0]?.maxTokens ?? 32000;
-    const upgrade = applyComplexityUpgrade(plan.gatewayModels, complexity, baseTokens);
+    const upgrade = applyComplexityUpgrade(plan.gatewayModels, complexity);
     plan.gatewayModels = upgrade.models;
     plan.perModelTimeoutMs += upgrade.timeoutBoostMs;
+    if (complexity === 'complex' || complexity === 'advanced') {
+      plan.fallbackMaxTokens = complexity === 'advanced' ? 64_000 : 48_000;
+      plan.preferLongLeadAttempt = true;
+      plan.fallbackReserveMs = 60_000;
+    }
   }
 
   // Wizard seed generation is protected from model swaps, but focused page
@@ -352,7 +368,9 @@ export function buildProviderPlan(
       && overrides.selectedModelId
     ) {
       const tokens = overrides.maxTokens ?? plan.gatewayModels[0]?.maxTokens ?? 32000;
-      const modelId = overrides.selectedModelId;
+      // Older tabs can retain a GPT-5 selection after the menu is updated.
+      const modelId = /^(?:openai\/)?gpt-5/.test(overrides.selectedModelId)
+        ? 'openai/gpt-4.1' : overrides.selectedModelId;
       const label = modelId.split("/").pop() ?? modelId;
       const userModel: ModelSpec = { id: modelId, maxTokens: tokens, label };
       // A focused isolated-page completion gets ONE model with its FULL
@@ -417,5 +435,12 @@ export function buildProviderPlan(
     plan.primaryProvider = plan.gatewayModels.length > 0 ? 'gemini' : undefined;
   }
 
+  plan.gatewayModels = plan.gatewayModels.map((model) => ({
+    ...model,
+    maxTokens: /^(?:openai\/)?gpt-4o(?:-|$)/.test(model.id)
+      ? Math.min(model.maxTokens, 16_384)
+      : /^(?:openai\/)?gpt-4\.1(?:-|$)/.test(model.id)
+        ? Math.min(model.maxTokens, 32_768) : model.maxTokens,
+  }));
   return plan;
 }

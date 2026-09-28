@@ -17,7 +17,7 @@ import { AI_AUTHORED_MARKER } from '@/contracts/aiComposerContract';
 import type { ResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { projectSiteDesignContract } from '@/services/launch/siteDesignContract';
 import type { AIComposerRequest } from '@/contracts/aiComposerContract';
-import { resolveLocalImport } from '@/services/builder/aiCandidateGates';
+import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
 import { runComposerRepairLoop, type ComposerInvoke, type ComposerStopReason } from '@/services/builder/aiRepairLoop';
 import {
   extractHomepageVisualLanguage,
@@ -75,8 +75,6 @@ export interface SiteAuthoringResult {
   outcomes: PageAuthoringOutcome[];
 }
 
-const SHARED_CHROME_DIR = '/src/project-components/site/';
-const CONTEXT_BUDGET = 120_000;
 
 /** Deterministic order: home first, then by route. */
 export function orderAuthoringPages(pages: AuthoringPage[], homePageId?: string): AuthoringPage[] {
@@ -119,24 +117,9 @@ export function renderPageBrief(
   return lines.filter(Boolean).join('\n');
 }
 
-/** Target page + shared chrome + its direct local imports, within a size budget. */
+/** Target page, theme, shared chrome and transitive component APIs. */
 export function selectPageContextFiles(files: Record<string, string>, page: AuthoringPage): Record<string, string> {
-  const picked: Record<string, string> = {};
-  let size = 0;
-  const add = (path: string) => {
-    if (picked[path] !== undefined || files[path] === undefined) return;
-    if (size + files[path].length > CONTEXT_BUDGET) return;
-    picked[path] = files[path];
-    size += files[path].length;
-  };
-  add(page.filePath);
-  Object.keys(files).filter((p) => p.startsWith(SHARED_CHROME_DIR)).sort().forEach(add);
-  const re = /from\s*['"]([^'"]+)['"]/g;
-  for (const m of (files[page.filePath] ?? '').matchAll(re)) {
-    const hit = resolveLocalImport(page.filePath, m[1], files);
-    if (hit && !hit.startsWith('/src/unison/')) add(hit);
-  }
-  return picked;
+  return selectSourceKnowledge(files, [page.filePath]);
 }
 
 export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAuthoringResult> {

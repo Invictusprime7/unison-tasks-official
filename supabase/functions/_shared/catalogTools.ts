@@ -17,6 +17,11 @@ import { CATALOG_SURFACE_SUMMARY } from "./catalogSurfaceSummary.ts";
 
 const SURFACE_IDS = CATALOG_SURFACE_SUMMARY.map((s) => s.surfaceId);
 
+/** Designing page layouts requires source files, not catalog-row mutations. */
+export function isPageDesignRequest(prompt: string): boolean {
+  return /\b(?:design|redesign|build|finish|complete)\b[^.!?]{0,70}\b(?:pages?|website|site)\b/i.test(prompt);
+}
+
 const LOCATOR_SCHEMA = {
   type: "object",
   description:

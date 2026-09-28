@@ -1,8 +1,68 @@
 import {
+  createPlannedChatCompletion,
   fetchWithShortRateLimitRetry,
   getShortRateLimitRetryMs,
   resolveConfiguredProviders,
 } from "./providerClient.ts";
+
+Deno.test("preserves capable OpenAI models and applies actual model output limits", async () => {
+  const originalFetch = globalThis.fetch;
+  const names = ["OPENAI_API_KEY", "OPENAI_MODEL"];
+  const saved = new Map(names.map((name) => [name, Deno.env.get(name)]));
+  const sent: Array<Record<string, unknown>> = [];
+  Deno.env.set("OPENAI_API_KEY", "test-key");
+  Deno.env.delete("OPENAI_MODEL");
+  globalThis.fetch = (async (_url, init) => {
+    sent.push(JSON.parse(String(init?.body)));
+    return new Response('{"choices":[{"message":{"content":"ok"}}]}');
+  }) as typeof fetch;
+  try {
+    for (const model of ["openai/gpt-4.1", "openai/gpt-5", "openai/gpt-5-mini"]) {
+      await createPlannedChatCompletion({
+        model, messages: [{ role: "user", content: "Edit this page" }],
+        ...(model.includes("gpt-5") ? { max_completion_tokens: 40_000 } : { max_tokens: 40_000 }),
+        reasoning_effort: "medium", tools: [],
+      });
+    }
+    assertEquals(sent.map((body) => body.model), ["gpt-4.1", "gpt-4.1", "gpt-4.1"]);
+    assertEquals(sent[0].max_tokens, 32_768);
+    assertEquals(sent[0].reasoning_effort, undefined);
+    for (const body of sent.slice(1)) {
+      assertEquals(body.max_tokens, 32_768);
+      assertEquals(body.max_completion_tokens, undefined);
+      assertEquals(body.reasoning_effort, undefined);
+      assertEquals(body.tools, []);
+    }
+    Deno.env.set("OPENAI_MODEL", "gpt-5-mini");
+    await createPlannedChatCompletion({
+      model: "openai/gpt-4.1", messages: [{ role: "user", content: "Edit" }],
+      max_tokens: 24_000, reasoning_effort: "low",
+    });
+    assertEquals(sent[3].model, "gpt-4.1");
+    assertEquals(sent[3].max_tokens, 24_000);
+    assertEquals(sent[3].reasoning_effort, undefined);
+    Deno.env.set("OPENAI_MODEL", "gpt-4o-mini");
+    await createPlannedChatCompletion({
+      model: "openai/gpt-5", messages: [{ role: "user", content: "Edit" }],
+      max_completion_tokens: 2_000, reasoning_effort: "low",
+    });
+    assertEquals(sent[4].max_tokens, 2_000);
+    assertEquals(sent[4].reasoning_effort, undefined);
+    await createPlannedChatCompletion({
+      model: "openai/gpt-5", messages: [{ role: "user", content: "Edit" }],
+      max_completion_tokens: 64_000, reasoning_effort: "high",
+    });
+    assertEquals(sent[5].model, "gpt-4o-mini");
+    assertEquals(sent[5].max_tokens, 16_384);
+    assertEquals(sent[5].max_completion_tokens, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [name, value] of saved) {
+      if (value === undefined) Deno.env.delete(name);
+      else Deno.env.set(name, value);
+    }
+  }
+});
 
 function env(values: Record<string, string>): (name: string) => string | undefined {
   return (name) => values[name];

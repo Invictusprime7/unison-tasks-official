@@ -8,6 +8,7 @@ import { extractThinkingTags } from "./responseNormalizer.ts";
 import {
   createLastResortGatewayChatCompletion,
   createPlannedChatCompletion,
+  normalizeOpenAIModel,
 } from "../_shared/ai/providerClient.ts";
 import type { ChatCompletionRequest } from "../_shared/ai/providerClient.ts";
 import type { ModelSpec } from './providerRouter.ts';
@@ -39,6 +40,10 @@ export interface ProviderCallResult {
 }
 
 export const PROVIDER_LOOP_TOTAL_BUDGET_MS = 135_000;
+
+export function reserveFallbackWindow(attemptMs: number, remainingMs: number, reserveMs: number): number {
+  return Math.min(attemptMs, Math.max(1000, remainingMs - reserveMs - 2000));
+}
 
 export function buildPlannedChatCompletionRequest(opts: {
   model: ModelSpec;
@@ -93,6 +98,8 @@ export async function runProviderLoop(opts: {
   let modelUsed: string | undefined;
   let providerUsed: string | undefined;
   let toolCalls: RawToolCall[] | undefined;
+  // Tool-only completions are valid responses and must stop failover as well.
+  const hasResponse = () => Boolean(content.trim() || toolCalls?.length);
 
   // Hard server deadline. Keep enough headroom for validation, one targeted
   // repair, persistence and the response trip before the browser deadline.
@@ -178,7 +185,8 @@ export async function runProviderLoop(opts: {
     const role = 'direct';
     console.log(`[AI-Hybrid] Direct OpenAI configured as ${role} provider`);
     
-    const configuredOpenAIModel = Deno.env.get('OPENAI_MODEL');
+    const configuredOpenAIModel = Deno.env.get('OPENAI_MODEL')
+      ? normalizeOpenAIModel(Deno.env.get('OPENAI_MODEL')!) : undefined;
     const fallbackTokens = providerPlan.fallbackMaxTokens;
     // Model-specific output token limits (max_completion_tokens caps).
     // gpt-4.1 supports 32 768 — enough for a full wizard seed (9+ pages).
@@ -454,16 +462,23 @@ export async function runProviderLoop(opts: {
       const leadShare = Math.max(30000, Math.floor(headroom * 0.6));
       const remainingModels = providerPlan.gatewayModels.length - modelIndex;
       const balancedAttemptMs = Math.max(12000, Math.floor(cap / remainingModels));
-      const perModelMs = providerPlan.balancedProviderAttempts
+      let perModelMs = providerPlan.balancedProviderAttempts
         ? Math.min(cap, headroom, balancedAttemptMs)
         : isLeadModel
           ? Math.min(cap, headroom, providerPlan.preferLongLeadAttempt ? headroom : leadShare)
           : Math.min(cap, Math.max(12000, headroom));
 
+      // Earlier billing failures must not let a later reasoning model consume
+      // the fallback's window. Apply this by remaining model, not list index.
+      const hasFastFallback = providerPlan.gatewayModels.slice(modelIndex + 1)
+        .some((candidate) => /(?:^|\/)gpt-4\.1(?:-|$)/.test(candidate.id));
+      if (providerPlan.fallbackReserveMs && hasFastFallback && !openaiQuotaExhausted) {
+        perModelMs = reserveFallbackWindow(perModelMs, remaining, providerPlan.fallbackReserveMs);
+      }
 
+      const attempt = createAttemptSignal(perModelMs);
       try {
         console.log(`[AI-Hybrid] Trying planned direct model ${model.label} (timeout: ${perModelMs / 1000}s, budget left: ${remaining / 1000}s)...`);
-        const attempt = createAttemptSignal(perModelMs);
 
         const reqBody = buildPlannedChatCompletionRequest({
           model,
@@ -474,7 +489,6 @@ export async function runProviderLoop(opts: {
         });
 
         const resp = await createPlannedChatCompletion(reqBody, attempt.signal);
-        attempt.cleanup();
 
         if (resp.status === 429 || resp.status === 402) {
           const errText = await resp.text().catch(() => '');
@@ -561,6 +575,8 @@ export async function runProviderLoop(opts: {
         console.warn(`[AI-Hybrid] ${model.label} failed:`, err);
         recordProviderError(model.label, err instanceof Error ? err.message : 'unknown');
         continue;
+      } finally {
+        attempt.cleanup();
       }
     }
   }
@@ -575,13 +591,13 @@ export async function runProviderLoop(opts: {
     model.id.startsWith('google/') || model.id.startsWith('gemini-') ? 'gemini' :
     'other'
   )));
-  if (!content && allowDirectFallbacks && !geminiExclusive) {
+  if (!hasResponse() && allowDirectFallbacks && !geminiExclusive) {
     if (hasDirectOpenAI && !plannedProviders.has('openai')) await runDirectOpenAI();
-    if (!content && hasDirectGemini && !plannedProviders.has('gemini')) await runDirectGemini();
+    if (!hasResponse() && hasDirectGemini && !plannedProviders.has('gemini')) await runDirectGemini();
   }
 
   // ── Phase 4: Direct Anthropic API ─────────────────────────────────────
-  if (!content && allowDirectFallbacks) {
+  if (!hasResponse() && allowDirectFallbacks) {
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     if (ANTHROPIC_API_KEY) {
       const remaining = budgetRemaining();
@@ -643,7 +659,7 @@ export async function runProviderLoop(opts: {
   // provider models (and Anthropic, when present) have failed. It prevents a
   // temporary direct-provider 429 from blocking the Wizard while preserving
   // the product rule that the managed gateway is never primary.
-  if (!content && hasLastResortGateway) {
+  if (!hasResponse() && hasLastResortGateway) {
     const remaining = budgetRemaining();
     if (remaining >= 8_000) {
       // The gateway needs ~30 s for large wizard-seed prompts. When the direct
@@ -699,7 +715,7 @@ export async function runProviderLoop(opts: {
     }
   }
 
-  if (!content) {
+  if (!hasResponse()) {
 
     // Only surface a deferred 429/402 as the early error when every provider
     // failed for rate-limit / billing reasons. If any provider failed for a

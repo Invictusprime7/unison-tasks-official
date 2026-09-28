@@ -53,12 +53,13 @@ import { checkEditScope } from "./reviewScope.ts";
 import { buildApplyState, type ApplyState } from "./applyState.ts";
 import { preprocessPrompt } from "../_shared/promptPreprocessor.ts";
 import { buildLaunchDeskSystemPrompt, buildLaunchDeskUserMessage } from "./prompts/launchDeskPrompt.ts";
-import { CATALOG_CHAT_TOOLS, renderCatalogToolDirective } from "../_shared/catalogTools.ts";
+import { CATALOG_CHAT_TOOLS, renderCatalogToolDirective, isPageDesignRequest } from "../_shared/catalogTools.ts";
 import { buildEnvelopeDirective, type EnvelopeShape } from "./envelopeContext.ts";
 import { verifyAgainstEnvelope, buildRepairInstruction } from "./envelopeVerifier.ts";
 import { recordEnvelopeRun, type EnvelopeRunContext } from "./envelopeRunLog.ts";
 import {
   buildUnisonContextDirective,
+  resolveBuilderInstruction,
   resolveReasoningEffort,
   resolveUnisonComplexity,
 } from "./unisonContext.ts";
@@ -222,9 +223,10 @@ export function runAssistantOrchestrator(
 
   if (task.type === 'site_page_author' || task.type === 'site_page_repair' || task.type === 'builder_source_edit') {
     const context = extractTextContent(parsed.messages[parsed.messages.length - 1]?.content);
-    const providerPlan = buildProviderPlan(task, true, { timeoutMs: 110000, maxTokens: 24000 }, 'simple', context);
+    const providerPlan = buildProviderPlan(task, true, { timeoutMs: 110000, maxTokens: 48000, ...parsed.gatewayOptions }, 'complex', context);
     return runComposerLane(context, corsHeaders, aiMessages => runProviderLoop({
-      aiMessages, providerPlan, navPageGen: false, reasoningEffort: 'none', signal,
+      aiMessages, providerPlan, navPageGen: false,
+      reasoningEffort: parsed.gatewayOptions?.reasoningEffort ?? 'medium', signal,
     }));
   }
 
@@ -381,7 +383,10 @@ async function runBuilderLane(
   const wizardSeed = (parsed as { wizardSeed?: WizardSeedShape }).wizardSeed;
 
   // ── 0. Prompt preprocessing (typo fix, intent extraction, keyword distillation)
-  const rawUserPromptText = extractTextContent(messages[messages.length - 1]?.content);
+  const rawUserPromptText = resolveBuilderInstruction(
+    extractTextContent(messages[messages.length - 1]?.content),
+    parsed.runContext?.prompt,
+  );
   const preprocessed = preprocessPrompt(rawUserPromptText);
   const userPromptText = preprocessed.normalized;
   if (preprocessed.wasNormalized) {
@@ -480,14 +485,20 @@ async function runBuilderLane(
   const researchContext = formatResearchContext(research);
 
   // ── 6. Compact messages + builder context ──────────────────────────────
-  const processedMessages = compactMessages(messages);
+  const effectiveComplexity = resolveUnisonComplexity(
+    preprocessed.complexity.tier,
+    parsed.unisonContext,
+  );
+  const complexContext = effectiveComplexity === 'complex' || effectiveComplexity === 'advanced';
+  const processedMessages = compactMessages(messages, complexContext ? 10 : 6, complexContext ? 30000 : 15000);
 
   // Builder-priority VFS compaction (issue-aware)
   const issueHint = detectIssueHint(previewDiagnostics ?? undefined, memory?.goalCategory);
   const builderContext = task.shouldUseCompactContext
     ? buildCompactBuilderContext({
         vfsFiles,
-        changedFiles: memory?.recentChangedFiles,
+        changedFiles: [...(parsed.unisonContext?.targetFiles ?? []), ...(memory?.recentChangedFiles ?? [])],
+        maxChars: complexContext ? 140_000 : 80_000,
         currentCode: currentCode ?? undefined,
         previewDiagnostics: previewDiagnostics ?? undefined,
         issueHint,
@@ -656,10 +667,6 @@ async function runBuilderLane(
   ];
 
   // ── 8. Call AI providers (complexity-aware model selection) ─────────────
-  const effectiveComplexity = resolveUnisonComplexity(
-    preprocessed.complexity.tier,
-    parsed.unisonContext,
-  );
   const effectiveReasoningEffort = resolveReasoningEffort(
     gatewayOptions?.reasoningEffort,
     effectiveComplexity,
@@ -674,7 +681,13 @@ async function runBuilderLane(
     providerRoutingKey,
   );
   console.log(`[orchestrator] provider primary=${providerPlan.primaryProvider || 'unavailable'} models=${providerPlan.gatewayModels.map((model) => model.id).join(',')}`);
-  const enableCatalogTools = BUILDER_EDIT_TASKS.has(task.type);
+  const pageDesignRequest = isPageDesignRequest(rawUserPromptText);
+  const enableCatalogTools = BUILDER_EDIT_TASKS.has(task.type) && !pageDesignRequest;
+  if (pageDesignRequest) {
+    // These requests can include several page bodies even when their wording is short.
+    providerPlan.perModelTimeoutMs = Math.max(providerPlan.perModelTimeoutMs, 90_000);
+    providerPlan.fallbackReserveMs = 40_000;
+  }
   if (enableCatalogTools) {
     finalSystemPrompt += renderCatalogToolDirective();
   }

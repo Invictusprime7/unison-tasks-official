@@ -2082,8 +2082,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         });
       }
 
-      // Add final thinking step — include a reasoning summary badge if AI thinking was returned
-      thinkingSteps.push({
+      // Preserve a failed apply/preview verdict instead of appending a success step.
+      const executionFailed = thinkingSteps.some(step => step.type === 'error');
+      if (!executionFailed) thinkingSteps.push({
         id: generateId(),
         type: structuredContractExtractionFailed ? 'error' : aiReasoning ? 'reasoning' : 'complete',
         message: structuredContractExtractionFailed
@@ -2096,7 +2097,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           ? 'The response contained a files contract that could not be parsed.'
           : aiReasoning ? aiReasoning.slice(0, 500) + (aiReasoning.length > 500 ? '…' : '') : undefined,
       });
-      if (aiReasoning && !structuredContractExtractionFailed) {
+      if (aiReasoning && !structuredContractExtractionFailed && !executionFailed) {
         thinkingSteps.push({
           id: generateId(),
           type: 'complete',
@@ -2105,7 +2106,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         });
       }
 
-      if (structuredContractExtractionFailed) {
+      if (structuredContractExtractionFailed || executionFailed) {
         advancePlanStep(taskPlan, 'patch', 'failed');
         advancePlanStep(taskPlan, 'refresh_preview', 'failed');
       } else {
@@ -2223,6 +2224,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               }
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated file.';
+              advancePlanStep(taskPlan, 'patch', 'failed');
               advancePlanStep(taskPlan, 'refresh_preview', 'failed');
               liveStep('error', 'AI edit was not applied', applyError);
               vfsEventBus.emit('ai:apply:error', { message: applyError, source: 'single-file' });
