@@ -7,6 +7,8 @@ its registry-to-runtime closure tests and required runtime evidence pass.
 
 ## Protected Architecture
 
+- [x] Site affinity guard — Home now establishes a reusable visual-language reference for later AI-authored pages; the candidate gate blocks only invariant contradictions while hero, alignment, section order, legal variants, loose-fit intents, and local components remain open.
+
 ```text
 LauncherWizard
 	-> runLaunchPipeline

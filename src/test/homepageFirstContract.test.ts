@@ -7,6 +7,7 @@ import {
   renderHomepageInheritanceContract,
   validateHomepageInheritance,
   enforceSiteDesignContract,
+  auditSiteAffinity,
 } from '@/services/launch/homepageFirstContract';
 import { planLaneBBatches } from '@/services/laneBBatchPlanner';
 import { normalizeCompositionResponse } from '@/services/launch/compositionCanonicalContract';
@@ -34,6 +35,7 @@ describe('homepage-first visual language', () => {
     expect(language.tokens).toContain('--ut-type-hero');
     expect(language.typography).toEqual(expect.arrayContaining(['ut-hero', 'ut-body']));
     expect(hasEstablishedVisualLanguage(language)).toBe(true);
+    expect(language.architecture.sectionOrder).toEqual(expect.arrayContaining(['navbar', 'hero', 'footer']));
   });
 
   it('never throws and establishes nothing for an empty source', () => {
@@ -49,7 +51,7 @@ describe('homepage-first visual language', () => {
     expect(contract).toContain('footer: footer:dark-band');
     expect(contract).toContain('--ut-type-hero');
     expect(contract).toContain('Homepage headings: Welcome');
-    expect(contract).toContain('distinct role-appropriate body section order');
+    expect(contract).toContain('distinct role-appropriate hero, alignment, body order and legal variants');
   });
 
   it('rejects drifting site chrome but allows a different body design', () => {
@@ -58,6 +60,28 @@ describe('homepage-first visual language', () => {
     expect(validateHomepageInheritance({ path: '/src/pages/About.tsx', content: drifted, language })).toHaveLength(1);
     const body = '<section data-ut-variant="gallery:masonry" />';
     expect(validateHomepageInheritance({ path: '/src/pages/About.tsx', content: body, language })).toEqual([]);
+  });
+
+  it('treats different heroes, alignments, and section order as legal variants', () => {
+    const language = extractHomepageVisualLanguage(HOME_SOURCE, 'home');
+    const audit = auditSiteAffinity({
+      path: '/src/pages/About.tsx',
+      content: '<main className="text-left"><section data-ut-variant="about:statement"><h1 className="ut-display">Our Story</h1></section><section data-ut-variant="hero:centered" /></main>',
+      language,
+    });
+    expect(audit.violations).toEqual([]);
+  });
+
+  it('blocks only a forbidden implementation while leaving loose-fit variants open', () => {
+    const language = extractHomepageVisualLanguage(HOME_SOURCE, 'home');
+    const audit = auditSiteAffinity({
+      path: '/src/pages/Journal.tsx',
+      content: '<main><section data-ut-variant="blog-preview:retired-wall"><h1>Journal</h1></section></main>',
+      language,
+      forbiddenImplementations: { 'blog-preview': ['blog-preview:retired-wall'] },
+    });
+    expect(audit.violations).toEqual([expect.stringContaining('forbidden or retired')]);
+    expect(audit.advisories.length).toBeGreaterThan(0);
   });
 
   it('repairs drifting chrome deterministically instead of discarding the page', () => {

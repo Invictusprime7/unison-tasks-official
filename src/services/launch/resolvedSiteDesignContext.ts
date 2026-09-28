@@ -52,6 +52,32 @@ export interface ResolvedSiteDesignContext {
     localComponentsPermitted: true;
     guidance: string;
   };
+  /** Site grammar that every authored page inherits from the sealed pack. */
+  affinity: {
+    invariants: {
+      artDirectionPackId: string;
+      typography: SiteDesignContract['typography'];
+      geometry: SiteDesignContract['geometry'];
+      spacing: SiteDesignContract['spacing'];
+      media: SiteDesignContract['media'];
+      motion: SiteDesignContract['motion'];
+      chromeImplementations: SiteDesignContract['chromeImplementations'];
+    };
+    /** Deliberately broad page-local choices. These guide composition; they are not exact-match gates. */
+    variants: Readonly<Record<string, {
+      purpose: string;
+      rhythm: string;
+      density: string;
+      requiredFamilies: readonly SectionType[];
+      recommendedFamilies: readonly SectionType[];
+      allowedVariation: readonly string[];
+    }>>;
+    looseFit: {
+      policy: 'inherit-invariants-expose-variants';
+      fallbackRole: 'custom';
+      guidance: string;
+    };
+  };
   /** Stable fingerprint: identical inputs ⇒ identical value. */
   fingerprint: string;
 }
@@ -59,6 +85,16 @@ export interface ResolvedSiteDesignContext {
 const GUIDANCE =
   'Prefer these implementations when they strongly satisfy the composition. ' +
   'You may author project-local components when they do not. Never use forbidden implementations.';
+
+const ALLOWED_PAGE_VARIATION = [
+  'hero composition',
+  'content alignment',
+  'section order',
+  'media dominance',
+  'page rhythm and density',
+  'compatible implementation variants',
+  'project-local components',
+] as const;
 
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
@@ -118,6 +154,30 @@ export function compileResolvedSiteDesignContext(
       preferredImplementations: preferred,
       localComponentsPermitted: true as const,
       guidance: GUIDANCE,
+    },
+    affinity: {
+      invariants: {
+        artDirectionPackId: contract.artDirectionPackId,
+        typography: contract.typography,
+        geometry: contract.geometry,
+        spacing: contract.spacing,
+        media: contract.media,
+        motion: contract.motion,
+        chromeImplementations: contract.chromeImplementations,
+      },
+      variants: Object.fromEntries(Object.entries(contract.pages).map(([role, page]) => [role, {
+        purpose: page.purpose,
+        rhythm: page.rhythm,
+        density: page.density,
+        requiredFamilies: page.requiredFamilies,
+        recommendedFamilies: page.recommendedFamilies,
+        allowedVariation: ALLOWED_PAGE_VARIATION,
+      }])),
+      looseFit: {
+        policy: 'inherit-invariants-expose-variants' as const,
+        fallbackRole: 'custom' as const,
+        guidance: 'When a page intent only loosely matches a known role, preserve the site invariants and expose the full legal page-local variant range. Never force an exact hero, alignment, section order, or component match.',
+      },
     },
   };
   return { ...body, fingerprint: fnv1a(stableStringify(body)) };

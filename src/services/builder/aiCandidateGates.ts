@@ -13,9 +13,10 @@
  */
 
 import { buildAICandidateChangeSet, type CandidateBuildResult } from './aiCandidateChangeSet';
+import { auditSiteAffinity, type HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 
 export interface CandidateGateFailure {
-  gate: 'parse' | 'import-graph' | 'empty';
+  gate: 'parse' | 'import-graph' | 'empty' | 'affinity';
   path: string;
   message: string;
 }
@@ -23,6 +24,8 @@ export interface CandidateGateFailure {
 export interface CandidateGateResult {
   passed: boolean;
   failures: CandidateGateFailure[];
+  /** Quality guidance that never changes `passed`. */
+  advisories: string[];
 }
 
 const CODE_RE = /\.(tsx?|jsx?)$/;
@@ -88,11 +91,15 @@ async function parseFailures(paths: string[], files: Record<string, string>): Pr
 }
 
 /** Run every blocking gate against a built candidate. Pure except for lazy parser load. */
-export async function runCandidateGates(build: CandidateBuildResult): Promise<CandidateGateResult> {
+export async function runCandidateGates(build: CandidateBuildResult, affinity?: {
+  language?: HomepageVisualLanguage;
+  forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
+}): Promise<CandidateGateResult> {
   const files = build.candidateFiles;
   const touched = build.changeSet.fileOps.filter((o) => o.type !== 'delete').map((o) => o.path);
   const deleted = new Set(build.changeSet.fileOps.filter((o) => o.type === 'delete').map((o) => o.path));
   const failures: CandidateGateFailure[] = [];
+  const advisories: string[] = [];
 
   for (const path of touched) {
     if (CODE_RE.test(path) && !files[path].trim()) {
@@ -120,7 +127,14 @@ export async function runCandidateGates(build: CandidateBuildResult): Promise<Ca
       }
     }
   }
-  return { passed: failures.length === 0, failures };
+  if (affinity) {
+    for (const path of touched.filter((p) => /\/src\/pages\/.+\.(?:tsx|jsx)$/.test(p))) {
+      const audit = auditSiteAffinity({ path, content: files[path], ...affinity });
+      failures.push(...audit.violations.map(message => ({ gate: 'affinity' as const, path, message })));
+      advisories.push(...audit.advisories);
+    }
+  }
+  return { passed: failures.length === 0, failures, advisories };
 }
 
 export interface PreparedCandidate {
@@ -143,6 +157,10 @@ export async function prepareAICandidate(input: {
   baseRevisionId?: string;
   targetPages?: string[];
   preflight?: (changed: Record<string, string>) => Record<string, string>;
+  affinity?: {
+    language?: HomepageVisualLanguage;
+    forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
+  };
 }): Promise<PreparedCandidate> {
   let build = buildAICandidateChangeSet({
     aiFiles: input.aiFiles,
@@ -165,7 +183,7 @@ export async function prepareAICandidate(input: {
       targetPages: input.targetPages,
     });
   }
-  const gates = await runCandidateGates(build);
+  const gates = await runCandidateGates(build, input.affinity);
   const errors = [
     ...gates.failures.map((f) => `${f.path}: ${f.message}`),
     ...(build.changeSet.fileOps.length ? [] : ['The AI response did not change any files.']),

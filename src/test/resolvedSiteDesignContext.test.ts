@@ -22,6 +22,15 @@ describe('ResolvedSiteDesignContext', () => {
     expect(a.fingerprint).not.toBe(b.fingerprint);
   });
 
+  it('exposes broad variants for a loosely-fit page intent', () => {
+    const ctx = compileResolvedSiteDesignContext({ ...input, roles: ['home', 'journal'] });
+    expect(ctx.affinity.variants.journal.purpose).toContain('registered route purpose');
+    expect(ctx.affinity.variants.journal.allowedVariation).toEqual(expect.arrayContaining([
+      'hero composition', 'content alignment', 'section order', 'project-local components',
+    ]));
+    expect(ctx.affinity.variants.journal.requiredFamilies).toEqual([]);
+  });
+
   it('keeps recommendation and hard legality disjoint and permits local components', () => {
     const ctx = compileResolvedSiteDesignContext(input);
     expect(ctx.creativeRecommendation.localComponentsPermitted).toBe(true);
@@ -30,5 +39,9 @@ describe('ResolvedSiteDesignContext', () => {
       for (const id of ids ?? []) expect(banned.has(id)).toBe(false);
     }
     expect(Object.keys(ctx.contract.pages)).toEqual(['home', 'services', 'contact']);
+    expect(ctx.affinity.invariants.artDirectionPackId).toBe(ctx.contract.artDirectionPackId);
+    expect(ctx.affinity.variants.about).toBeUndefined();
+    expect(ctx.affinity.looseFit.policy).toBe('inherit-invariants-expose-variants');
+    expect(ctx.affinity.looseFit.guidance).toContain('Never force an exact hero');
   });
 });

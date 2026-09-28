@@ -16,6 +16,7 @@ import {
   type AIComposerResponse,
 } from '@/contracts/aiComposerContract';
 import { prepareAICandidate, type PreparedCandidate } from './aiCandidateGates';
+import type { HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 
 export type ComposerInvoke = typeof runBuilderTurn;
 
@@ -47,6 +48,10 @@ export interface ComposerLoopInput {
   signal?: AbortSignal;
   timeoutMs?: number;
   invoke?: ComposerInvoke;
+  affinity?: {
+    language?: HomepageVisualLanguage;
+    forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
+  };
 }
 
 function classifyError(error: unknown): ComposerStopReason {
@@ -121,6 +126,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       baseRevisionId: input.baseRevisionId,
       targetPages: [request.page.role],
       preflight: input.preflight,
+      affinity: input.affinity,
     });
     lastPrepared = prepared;
     if (prepared.ok) {
