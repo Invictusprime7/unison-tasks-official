@@ -24,6 +24,8 @@ export interface CandidateGateFailure {
 export interface CandidateGateResult {
   passed: boolean;
   failures: CandidateGateFailure[];
+  /** Quality guidance that never changes `passed`. */
+  advisories: string[];
 }
 
 const CODE_RE = /\.(tsx?|jsx?)$/;
@@ -74,6 +76,7 @@ async function parseFailures(paths: string[], files: Record<string, string>): Pr
   if (!targets.length) return [];
   const ts = (await import('typescript')).default;
   const failures: CandidateGateFailure[] = [];
+  const advisories: string[] = [];
   for (const path of targets) {
     const out = ts.transpileModule(files[path], {
       fileName: path,
@@ -128,9 +131,10 @@ export async function runCandidateGates(build: CandidateBuildResult, affinity?: 
     for (const path of touched.filter((p) => /\/src\/pages\/.+\.(?:tsx|jsx)$/.test(p))) {
       const audit = auditSiteAffinity({ path, content: files[path], ...affinity });
       failures.push(...audit.violations.map(message => ({ gate: 'affinity' as const, path, message })));
+      advisories.push(...audit.advisories);
     }
   }
-  return { passed: failures.length === 0, failures };
+  return { passed: failures.length === 0, failures, advisories };
 }
 
 export interface PreparedCandidate {

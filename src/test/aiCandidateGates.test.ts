@@ -54,6 +54,7 @@ describe('AI candidate gates', () => {
       affinity: { language },
     });
     expect(varied.ok).toBe(true);
+    expect(varied.gates.advisories).toEqual(expect.arrayContaining([expect.stringContaining('weak architectural overlap')]));
 
     const forbidden = await prepareAICandidate({
       aiFiles: { '/src/pages/Home.tsx': 'export default function Home(){return <main><h1>Story</h1><section data-ut-variant="hero:retired" /></main>}' },

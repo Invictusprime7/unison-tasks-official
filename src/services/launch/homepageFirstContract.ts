@@ -218,9 +218,9 @@ export function auditSiteAffinity(options: {
   for (const variantId of declared) {
     if (forbidden.has(variantId)) violations.push(`${options.path} uses forbidden or retired implementation "${variantId}".`);
   }
-  if (!hasEstablishedVisualLanguage(options.language)) return { violations, advisories };
+  const established = options.language;
+  if (!established || !hasEstablishedVisualLanguage(established)) return { violations, advisories };
   const candidate = extractHomepageVisualLanguage(options.content, options.path);
-  const established = options.language!;
   if (established.typography.length && !candidate.typography.some(value => established.typography.includes(value))) {
     advisories.push(`${options.path}: no established typography tier is visible; keep the homepage type character while fitting this page's purpose.`);
   }

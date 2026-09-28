@@ -51,7 +51,7 @@ describe('homepage-first visual language', () => {
     expect(contract).toContain('footer: footer:dark-band');
     expect(contract).toContain('--ut-type-hero');
     expect(contract).toContain('Homepage headings: Welcome');
-    expect(contract).toContain('distinct role-appropriate body section order');
+    expect(contract).toContain('distinct role-appropriate hero, alignment, body order and legal variants');
   });
 
   it('rejects drifting site chrome but allows a different body design', () => {
