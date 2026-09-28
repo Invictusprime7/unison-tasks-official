@@ -101,6 +101,8 @@ const SOCIAL_PATH = '/src/components/SocialIcon.tsx';
 const SECTION_MAP_PATH = '/src/components/SectionMap.ts';
 
 const SECTION_FILES: Record<string, string> = {
+  AuthForm: '/src/components/AuthForm.tsx',
+  DataTable: '/src/components/DataTable.tsx',
   Navbar: '/src/components/Navbar.tsx',
   Hero: '/src/components/Hero.tsx',
   About: '/src/components/About.tsx',
@@ -275,6 +277,7 @@ export default SocialIcon;
  * repaired by Lane B — it is never silently rendered as something else.
  */
 const SECTION_COMPONENT_BY_TYPE: Record<string, keyof typeof SECTION_FILES> = {
+  'auth-form': 'AuthForm', 'data-table': 'DataTable',
   navbar: 'Navbar', hero: 'Hero', about: 'About',
   services: 'Services', features: 'Features', pricing: 'Pricing', gallery: 'Gallery',
   'blog-preview': 'BlogPreview', 'before-after': 'BeforeAfter', testimonials: 'Testimonials',
@@ -872,6 +875,12 @@ export function compositionToReactFileSet(
   };
   for (const component of sectionMap.components) {
     files[SECTION_FILES[component]] = SECTION_MODULE_SOURCE[component];
+  }
+  if (sectionMap.components.has('AuthForm')) {
+    files['/src/components/recipes/AuthForm.ts'] = stylexRecipes.families['auth-form'];
+  }
+  if (sectionMap.components.has('DataTable')) {
+    files['/src/components/recipes/DataTable.ts'] = stylexRecipes.families['data-table'];
   }
   if (sectionMap.components.has('Navbar')) {
     files['/src/components/MobileNavigation.tsx'] = stylexRecipes.mobileNavigationModule;

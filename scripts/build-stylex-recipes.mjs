@@ -104,7 +104,7 @@ const output = JSON.stringify({
 }, null, 2) + '\n';
 
 if (process.argv.includes('--check')) {
-  if (readFileSync(outputPath, 'utf8') !== output) throw new Error('StyleX recipes are stale. Run npm run recipes:build.');
+  if (readFileSync(outputPath, 'utf8').replace(/\r\n/g, '\n') !== output) throw new Error('StyleX recipes are stale. Run npm run recipes:build.');
   console.log('StyleX recipes match their source.');
 } else {
   writeFileSync(outputPath, output);

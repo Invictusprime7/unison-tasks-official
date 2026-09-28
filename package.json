@@ -7,6 +7,7 @@
     "node": ">=22.0.0 <23"
   },
   "scripts": {
+    "unison": "node scripts/unison.mjs",
     "recipes:build": "node scripts/build-stylex-recipes.mjs",
     "recipes:check": "node scripts/build-stylex-recipes.mjs --check",
     "prebuild": "npm run recipes:check",

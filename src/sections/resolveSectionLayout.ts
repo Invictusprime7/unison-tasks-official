@@ -28,6 +28,8 @@ export function isCertifiedImplementation(variantId: string | undefined): boolea
 }
 
 export const SECTION_FAMILY_EMIT = {
+  AuthForm: { sectionType: 'auth-form', defaultVariantId: 'auth-form:split-panel' },
+  DataTable: { sectionType: 'data-table', defaultVariantId: 'data-table:striped-rows' },
   Navbar: { sectionType: 'navbar', defaultLayout: 'standard', defaultVariantId: 'navbar:standard' },
   Hero: {
     sectionType: 'hero',

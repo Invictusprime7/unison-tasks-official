@@ -462,6 +462,15 @@ export function createIndustryStarterSection(
   type: SectionType,
   context: { businessName: string; pageTitle?: string; idPrefix: string },
 ): SectionEntry | null {
+  // Application screens have useful defaults even without a marketing starter kit.
+  if (type === 'auth-form') return {
+    id: `${context.idPrefix}-${type}`, type,
+    props: { heading: context.pageTitle || 'Welcome back', subheading: `Sign in to ${context.businessName || 'your account'}.`, submitLabel: 'Sign in', footerNote: 'Authorized users only.' },
+  };
+  if (type === 'data-table') return {
+    id: `${context.idPrefix}-${type}`, type,
+    props: { heading: context.pageTitle || 'Records', columns: [{ key: 'name', label: 'Name' }, { key: 'status', label: 'Status' }], rows: [], emptyMessage: 'No records yet.' },
+  };
   const kit = starterKitFor(industry);
   if (!kit) return null;
   const brand = context.businessName?.trim() || kit.brand;
