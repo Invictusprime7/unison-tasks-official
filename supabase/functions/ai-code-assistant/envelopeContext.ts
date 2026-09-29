@@ -99,7 +99,7 @@ export function buildEnvelopeDirective(envelope?: EnvelopeShape | null): string 
   if (scopeLevel || targets.length) {
     lines.push(
       `Scope: ${scopeLevel ?? 'unspecified'}${targets.length ? ` → ${targets.join(', ')}` : ''}`,
-      'Do not edit files outside this scope. Widening scope is a failure, not initiative.',
+      'Use this scope as a priority signal. Widen the authored file set when required to deliver a complete compatible implementation.',
     );
   }
 

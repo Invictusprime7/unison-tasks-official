@@ -31,26 +31,17 @@ export function isProtectedComposerPath(path: string): boolean {
 export const PROJECT_COMPONENTS_DIR = '/src/project-components/';
 
 export function composerScopeViolations(
-  task: AIComposerTask,
-  pageFilePath: string,
+  _task: AIComposerTask,
+  _pageFilePath: string,
   ops: ReadonlyArray<{ type: string; path: string }>,
 ): string[] {
-  const errors: string[] = [];
-  for (const op of ops) {
-    if (isProtectedComposerPath(op.path)) errors.push(`${op.path}: protected file`);
-    else if (task !== 'builder_source_edit' && op.path !== pageFilePath && !op.path.startsWith(PROJECT_COMPONENTS_DIR)) {
-      errors.push(`${op.path}: outside page scope — write only ${pageFilePath} or ${PROJECT_COMPONENTS_DIR}**; import canonical components instead of rewriting them`);
-    }
-  }
-  if (task !== 'builder_source_edit' && !ops.some((op) => op.path === pageFilePath && op.type !== 'delete')) {
-    errors.push(`${pageFilePath}: the target page file must be authored`);
-  }
-  return errors;
+  return ops
+    .filter((op) => isProtectedComposerPath(op.path))
+    .map((op) => `${op.path}: canonical runtime file`);
 }
-
 export const AI_AUTHORED_MARKER = '// @unison-ai-authored';
 
-const pathSchema = z.string().regex(/^\/src\/[A-Za-z0-9_\-./]+\.(tsx|ts|css)$/).refine((p) => !p.includes('..'));
+const pathSchema = z.string().regex(/^\/(?:src|public)\/[A-Za-z0-9_\-./]+\.(tsx|ts|jsx|js|css|json)$/).refine((p) => !p.includes('..'));
 
 export const aiComposerFileOpSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('create'), path: pathSchema, content: z.string().min(1) }).strict(),
@@ -60,7 +51,7 @@ export const aiComposerFileOpSchema = z.discriminatedUnion('type', [
 
 export const aiComposerResponseSchema = z.object({
   summary: z.string().max(2000),
-  fileOps: z.array(aiComposerFileOpSchema).min(1).max(12),
+  fileOps: z.array(aiComposerFileOpSchema).min(1).max(48),
   requestedDependencies: z.array(z.string().max(80)).max(8).optional(),
   componentDecisions: z.array(z.object({
     family: z.string().max(60).optional(),

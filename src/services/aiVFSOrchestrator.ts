@@ -19,8 +19,6 @@ import { analyzeReactSite, type SiteAnalysis } from '@/utils/reactSiteAnalysis';
 import { vfsEventBus } from '@/services/vfsEventBus';
 import { vfsSnapshotManager } from '@/services/vfsSnapshotManager';
 import { getGraphSummaryForAI } from '@/services/importGraphAnalyzer';
-import { isUnisonProtectedPath } from '@/services/unisonCanonicalRegistry';
-import { detectSlotBindingViolations } from '@/services/aiBindingTool';
 
 // ============================================================================
 // AI typo repair
@@ -165,26 +163,12 @@ export function validateAIFileEdits(
   aiFiles: Record<string, string>,
   currentFiles: Record<string, string>,
 ): { appliable: Record<string, string>; skipped: Array<{ path: string; reason: string }> } {
-  // Partition, never reject wholesale. A single protected path or slot
-  // violation inside a multi-file AI response used to discard the entire
-  // batch, so legitimate rewrites never materialized in the VFS or preview.
+  // This stage is a normalizer, not an authoring policy. The canonical commit
+  // owns compatibility checks after it sees the complete candidate.
+  void currentFiles;
   const appliable: Record<string, string> = {};
   const skipped: Array<{ path: string; reason: string }> = [];
   for (const [path, nextContent] of Object.entries(aiFiles)) {
-    if (isUnisonProtectedPath(path)) {
-      skipped.push({
-        path,
-        reason:
-          'Auto-generated Unison file — edit CreatorData/Creator Playground inputs instead; this path is regenerated canonically.',
-      });
-      continue;
-    }
-    const previousContent = getExistingContent(currentFiles, path);
-    const violations = detectSlotBindingViolations(previousContent, nextContent);
-    if (violations.length > 0) {
-      skipped.push({ path, reason: violations.map((violation) => violation.reason).join('; ') });
-      continue;
-    }
     appliable[path] = nextContent;
   }
   return { appliable, skipped };

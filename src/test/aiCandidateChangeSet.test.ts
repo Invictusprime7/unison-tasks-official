@@ -33,4 +33,15 @@ describe('AICandidateChangeSet', () => {
     const r = buildAICandidateChangeSet({ aiFiles: { ...base }, baseFiles: base, resolveDependencies: false });
     expect(r.changeSet.fileOps).toHaveLength(0);
   });
+
+  it('keeps freeform navigation and slotted interaction rewrites in the candidate', () => {
+    const source = '<a data-ut-slot="navbar.primary" data-ut-intent="nav.goto" href="#/about">About</a>';
+    const r = buildAICandidateChangeSet({
+      aiFiles: { '/src/components/Navbar.tsx': source.replace('#/about', '#/contact').replace('nav.goto', 'nav.contact') },
+      baseFiles: { '/src/components/Navbar.tsx': source },
+      resolveDependencies: false,
+    });
+    expect(r.refused).toEqual([]);
+    expect(r.changeSet.fileOps).toEqual([expect.objectContaining({ type: 'replace', path: '/src/components/Navbar.tsx' })]);
+  });
 });
