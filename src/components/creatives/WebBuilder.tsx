@@ -1,4 +1,5 @@
 /* cache-bust: 20260309 */
+import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import TemplateFeedback from "./TemplateFeedback";
@@ -2193,23 +2194,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Tab `path` field carries pageId so selection can route through
   // navigateToBuilderPage (registry-first, single source of truth).
   // ──────────────────────────────────────────────────────────────────────
-  const pageTabs = useMemo<PageTab[]>(() => {
-    const pages = Object.values(creatorPlayground.pageRegistry.pages);
-    return pages
-      .slice()
-      .sort((a, b) => {
-        if (a.isHome) return -1;
-        if (b.isHome) return 1;
-        return (a.navOrder ?? 0) - (b.navOrder ?? 0);
-      })
-      .map((p) => ({
-        path: p.pageId,
-        label: p.title || p.path.replace(/^\//, '') || 'Home',
-        isMain: !!p.isHome,
-      }));
-  }, [creatorPlayground.pageRegistry]);
+  const pageTabs = useMemo<PageTab[]>(() => (
+    // Tabs mirror exactly the routes the Live Preview renders from /src/App.tsx.
+    buildPreviewRouteTabs(
+      Object.values(creatorPlayground.pageRegistry.pages),
+      virtualFS.getSandpackFiles()['/src/App.tsx'],
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [creatorPlayground.pageRegistry, virtualFS.nodes]);
 
   const activePageTabId = useMemo(() => {
+    const routeTab = `${ROUTE_TAB_PREFIX}${activePreviewRoute}`;
+    if (pageTabs.some((t) => t.path === routeTab)) return routeTab;
     if (activePageId && creatorPlayground.pageRegistry.pages[activePageId]) {
       return activePageId;
     }
@@ -2218,9 +2214,15 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       (p) => p.filePath && p.filePath === activePagePath,
     );
     return match?.pageId ?? (creatorPlayground.pageRegistry.homePageId || '');
-  }, [activePageId, activePagePath, creatorPlayground.pageRegistry]);
+  }, [activePageId, activePagePath, activePreviewRoute, pageTabs, creatorPlayground.pageRegistry]);
 
   const handlePageTabSelect = useCallback((pageId: string) => {
+    if (pageId.startsWith(ROUTE_TAB_PREFIX)) {
+      const route = pageId.slice(ROUTE_TAB_PREFIX.length) || '/';
+      setActivePreviewRoute(route);
+      livePreviewRef.current?.navigateToRoute(route);
+      return;
+    }
     navigateToBuilderPage(pageId);
   }, [navigateToBuilderPage]);
 
@@ -2230,6 +2232,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, []);
 
   const handlePageTabRemove = useCallback((pageId: string) => {
+    if (pageId.startsWith(ROUTE_TAB_PREFIX)) return;
     const page = creatorPlayground.pageRegistry.pages[pageId];
     if (!page) return;
     if (page.isHome) {
