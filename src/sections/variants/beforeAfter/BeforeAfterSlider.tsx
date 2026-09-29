@@ -161,8 +161,6 @@ export const BeforeAfterSlider: React.FC<BaseSectionProps<'before-after'>> = ({ 
           >
             Drag the handle to compare
           </p>
-
-          </div>
           {(pair.label || pair.description) && (
             <figcaption
               className="mt-4 text-center text-sm"
