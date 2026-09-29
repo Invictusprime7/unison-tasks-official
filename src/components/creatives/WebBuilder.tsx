@@ -357,7 +357,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { BuilderSessionProvider } from "@/builder/controllers/BuilderSessionProvider";
 import { BusinessPill } from "@/components/webbuilder/BusinessPill";
-import { buildSiteShellTopology, projectSiteShellLinks } from "@/services/siteShellTopology";
 
 
 // CodeViewErrorBoundary extracted to web-builder/CodeViewErrorBoundary.tsx
@@ -2022,33 +2021,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     diagnosticsAggregator.ingestUnisonDiagnostics(items);
   }, [routeConflicts, creatorPlayground.pageRegistry, virtualFS.nodes]);
 
-  // Site-shell sync: the page tabs (PageRegistry) own which links every page's
-  // navbar carries. Whenever tabs or files change, project the registry into
-  // the live VFS so the preview menu always matches the tabs. Idempotent — a
-  // second pass changes nothing, so this cannot loop. Autosave persists it.
-  useEffect(() => {
-    const registry = creatorPlayground.pageRegistry;
-    if (!registry || Object.keys(registry.pages ?? {}).length === 0) return;
-    const files = virtualFSRef.current.getSandpackFiles();
-    const projected = projectSiteShellLinks(buildSiteShellTopology(registry), files);
-    if (projected.changed.length === 0) return;
-    const payload: Record<string, string> = {};
-    for (const path of projected.changed) payload[path] = projected.files[path];
-    // canonical-vfs-exempt: deterministic navigation projection from the page registry
-    virtualFSRef.current.importFiles(payload);
-    if (payload[activePagePath]) setPreviewCode(payload[activePagePath]);
-  }, [creatorPlayground.pageRegistry, virtualFS.nodes, activePagePath]);
-
-
   // ──────────────────────────────────────────────────────────────────────────
   // Canonical Router Sync — single source of truth for /src/App.tsx
   //
-  // The Creator Playground PageRegistry is authoritative. Every structural
-  // mutation (add / remove / rename / reorder / setHome / showInNav) bumps
-  // pageRegistry.version. This effect re-emits the deterministic router from
-  // topologyRouterGenerator into the VFS so navigation, intent bindings, and
-  // the preview stay perfectly in sync. No AI, no fallback — pure derivation.
-  // ──────────────────────────────────────────────────────────────────────────
+  // Builder page selections receive a generated fallback router. An authored`r`n  // router takes precedence and supplies the live preview route graph.`r`n  // ──────────────────────────────────────────────────────────────────────────
   // Key the sync ref by draftId:registryVersion so switching drafts ALWAYS
   // re-derives the canonical router for the new draft. A bare version counter
   // would bleed across drafts (draft A v3 → draft B v3 would no-op and leave
@@ -2066,6 +2042,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     try {
       const currentFiles = virtualFS.getSandpackFiles();
       const filesToImport: Record<string, string> = {};
+      const currentRouter = currentFiles[launchEntryPoint] || currentFiles['/src/App.tsx'] || '';
+
+      // An AI/Wizard-authored router owns its route graph. The registry remains
+      // useful for Builder tabs and generation context, but must not overwrite
+      // authored HashRouter routes, labels, or navigation decisions.
+      const isGeneratedRouter = /@unison-canonical-router|unison-runtime-glass/.test(currentRouter);
+      const isRouterCompatible = /(?:HashRouter|BrowserRouter|MemoryRouter|createHashRouter|<Routes\b)/.test(currentRouter);
+      if (isRouterCompatible && !isGeneratedRouter) {
+        lastSyncedRouterKeyRef.current = syncKey;
+        return;
+      }
 
       // A committed Wizard router may carry Stage 4b route chrome and is part
       // of the sealed runtime. During first hydration the PageRegistry effect
@@ -2215,7 +2202,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       Object.values(creatorPlayground.pageRegistry.pages),
       virtualFS.getSandpackFiles()['/src/App.tsx'],
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [creatorPlayground.pageRegistry, virtualFS.nodes]);
 
   const activePageTabId = useMemo(() => {

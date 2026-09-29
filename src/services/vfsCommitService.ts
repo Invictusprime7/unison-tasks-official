@@ -50,8 +50,6 @@ import {
 import {
   buildSiteShellTopology,
   assertSiteShellClosure,
-  projectSiteShellLinks,
-  type SiteShellClosureViolation,
 } from '@/services/siteShellTopology';
 import { resolveApprovedExperienceCapabilities } from './experienceCapabilityResolver';
 import { runExperiencePreflight } from './experiencePreflightGate';
@@ -248,8 +246,10 @@ function isProtectedPath(path: string, protectedPaths: Set<string>): boolean {
  */
 function isGovernedAiSourceRewrite(path: string, op: PatchPlan['fileOps'][number]): boolean {
   if (op.type === 'delete') return false;
+  if (path === '/src/App.tsx') {
+    return /(?:HashRouter|BrowserRouter|MemoryRouter|createHashRouter|<Routes\b)/.test(op.contents);
+  }
   return /^\/src\/(?:pages\/[^/]+|components\/[^/]+)\.(?:tsx|jsx|ts|js)$/.test(path)
-    && path !== '/src/App.tsx'
     && !path.startsWith('/src/unison/ui/');
 }
 
@@ -659,26 +659,6 @@ export async function commitMutation(
     }
   }
 
-  // 6c. Site-shell link projection ------------------------------------------
-  // The PageRegistry (Builder page tabs) owns which links the site chrome
-  // carries. Project it into every page's navbar link list so the live preview
-  // menu always matches the tabs, whatever the AI or template wrote.
-  if ((input.source === 'ai-builder' || input.source === 'playground-edit')
-    && !(input.options as { compositionUpgrade?: boolean } | undefined)?.compositionUpgrade
-    && !restoredRevision && !reviewedArtifact && !reviewedComposition) {
-    const shellRegistry = (snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry;
-    if (shellRegistry && Object.keys(shellRegistry.pages ?? {}).length > 0) {
-      const projected = projectSiteShellLinks(buildSiteShellTopology(shellRegistry), files);
-      if (projected.changed.length) {
-        files = projected.files;
-        if (snapshotForPersistence) {
-          snapshotForPersistence = mergeWizardLaunchSnapshot(snapshotForPersistence as SiteBundleSnapshot, files);
-        }
-        log('siteShell', 'info', `projected registry navigation into ${projected.changed.length} file(s)`, projected.changed);
-      }
-    }
-  }
-
   const requirePreview = input.options?.requirePreviewPass !== false;
   const requireReadiness = input.options?.requireReadinessPass !== false;
 
@@ -922,13 +902,8 @@ export async function commitMutation(
     }
   }
 
-  // P0.2 — SiteShell closure hard gate. The PageRegistry owns which routes
-  // exist; the router and the page chrome are projections of it. Structural
-  // divergence (a link to an unregistered route, a route the router never
-  // renders, a router route with no registry page, competing navbars/footers)
-  // is a broken site, so it rejects the candidate instead of shipping. A page
-  // that merely omits a nav link is recorded as a publish blocker — it is
-  // incomplete chrome, not a broken route graph.
+  // Registry comparison is advisory: authored route graphs and navigation are valid
+  // when they pass executable preview and module checks.
   const shellClosureBlockers: PublishBlockerSummary[] = [];
   if (status === 'committed') {
     const registry = (snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry;
@@ -947,9 +922,6 @@ export async function commitMutation(
       // router actually declares paths.
       const routerRoutes = parsedRouterRoutes.length > 0 ? parsedRouterRoutes : undefined;
       const violations = assertSiteShellClosure(topology, { pageSources, routerRoutes });
-      const fatal = violations.filter(
-        (violation: SiteShellClosureViolation) => violation.code !== 'missing-nav-link',
-      );
       for (const violation of violations) {
         shellClosureBlockers.push({
           source: 'preview',
@@ -958,16 +930,8 @@ export async function commitMutation(
           meta: { pageId: violation.pageId, path: violation.path },
         });
       }
-      if (fatal.length > 0 && requirePreview) {
-        status = 'rejected';
-        preExecutionReady = false;
-        log('gate', 'error', 'site shell closure gate rejected the candidate', {
-          fatal: fatal.length,
-          advisory: violations.length - fatal.length,
-          first: fatal.slice(0, 5).map((violation) => violation.message),
-        });
-      } else if (violations.length > 0) {
-        log('gate', 'warn', 'site shell closure defects retained as publish blockers', {
+      if (violations.length > 0) {
+        log('siteShell', 'warn', 'registry comparison recorded as authoring guidance', {
           total: violations.length,
         });
       }
@@ -1043,7 +1007,7 @@ export async function commitMutation(
   }
 
   // Move D — compute publish readiness + blockers aggregate.
-  const publishBlockers: PublishBlockerSummary[] = [...moduleClosureBlockers, ...shellClosureBlockers];
+  const publishBlockers: PublishBlockerSummary[] = [...moduleClosureBlockers];
   if (runtimeReconciliationError) {
     publishBlockers.push({
       source: 'backendOps',

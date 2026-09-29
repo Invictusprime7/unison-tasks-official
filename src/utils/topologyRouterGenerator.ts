@@ -211,7 +211,8 @@ function UnisonPendingPage({ title, route }) {
 `
     : '';
 
-  return `import React from 'react';
+  return `// @unison-canonical-router
+import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 ${imports}
 ${pendingComponent}

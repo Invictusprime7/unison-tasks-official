@@ -584,13 +584,10 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     }
 
 
-    // App.tsx is always a deterministic registry router and index.css must stay
-    // on the launcher-resolved theme token chain (Stage 4b writes themed
-    // /src/index.css from the wizard's ThemePreset). Generated page/component
-    // files may win; generated routers and generated CSS may NOT — otherwise
-    // AI-emitted default Tailwind CSS silently overrides the wizard theme
-    // tokens and every industry renders un-themed.
+    // Preserve an authored router when it is compatible with the preview runtime.
+    // The selected Style-card stylesheet remains pipeline-owned.
     if (normalizedPath === '/src/App.tsx' || normalizedPath === '/App.tsx') {
+      if (looksLikeCanonicalRouter(content)) merged['/src/App.tsx'] = content;
       continue;
     }
 
@@ -672,17 +669,12 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
   // injects chrome, so whatever navigation a page renders is the only chrome
   // that exists. Nothing to strip, nothing to count.
 
-  // Ensure a canonical router exists at /src/App.tsx. Without this the
-  // preview's Sandpack bundle has no entry composition and renders blank.
-  // We regenerate from the page registry whenever:
-  //   • no App.tsx survived the merge, or
-  //   • the surviving App.tsx is not a recognizable router (e.g. an AI
-  //     composition that slipped through outside the rebase branch).
+  // Generate a registry router only when no compatible authored router exists.
   const generatedRouter = generateCanonicalRouter(
     snapshot.pageRegistry,
     snapshot.businessName,
   );
-  if (generatedRouter) {
+  if (!looksLikeCanonicalRouter(merged['/src/App.tsx'] || '') && generatedRouter) {
     merged['/src/App.tsx'] = generatedRouter;
   } else if (!looksLikeCanonicalRouter(merged['/src/App.tsx'] || '')) {
     throw new PreviewPipelineError(

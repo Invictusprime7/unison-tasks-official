@@ -12,7 +12,6 @@ export const AI_COMPOSER_MODES: Record<AIComposerTask, string> = {
 };
 
 const PROTECTED = [
-  /^\/src\/App\.tsx$/,
   /^\/src\/main\.tsx$/,
   /^\/src\/index\.css$/,
   /^\/package\.json$/,

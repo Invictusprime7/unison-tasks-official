@@ -109,6 +109,19 @@ describe("buildCanonicalLaunchArtifacts", () => {
     expect(merged["/src/App.tsx"]).not.toContain("<SiteFooter />");
   });
 
+  it("preserves an authored HashRouter instead of replacing its route graph", () => {
+    const snapshot = createSnapshot();
+    const authoredRouter = `import { HashRouter, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+export default function App(){ return <HashRouter><Routes><Route path="/" element={<Home />} /></Routes></HashRouter>; }`;
+    const merged = mergeGeneratedVfsWithCanonicalSnapshot(
+      { '/src/App.tsx': authoredRouter },
+      snapshot.vfsFiles,
+      snapshot,
+    );
+    expect(merged['/src/App.tsx']).toBe(authoredRouter);
+  });
+
   it("uses the snapshot fallback policy when accepting generated wizard pages", () => {
     const snapshot = createSnapshot();
     snapshot.vfsFiles["/src/pages/Home.tsx"] =

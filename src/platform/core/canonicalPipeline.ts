@@ -664,7 +664,7 @@ export function recompileFromPlayground(
       if (page.filePath && existingVfsFiles[page.filePath]) compileResult.vfsFiles[page.filePath] = existingVfsFiles[page.filePath];
     }
     for (const [path, content] of Object.entries(existingVfsFiles)) {
-      if (path.startsWith('/.unison/compositions/') || path.startsWith('/src/components/')) compileResult.vfsFiles[path] = content;
+      if (path === '/src/App.tsx' || path.startsWith('/.unison/compositions/') || path.startsWith('/src/components/')) compileResult.vfsFiles[path] = content;
     }
   }
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
