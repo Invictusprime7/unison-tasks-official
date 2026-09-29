@@ -97,6 +97,9 @@ export const BeforeAfterSlider: React.FC<BaseSectionProps<'before-after'>> = ({ 
               />
             </div>
             <StageTag theme={theme} tone="after">After</StageTag>
+            <span style={{ position: 'absolute', top: 0, right: 0, width: '5.5rem', height: '3rem', pointerEvents: 'none' }}>
+              <StageTag theme={theme} tone="before">Before</StageTag>
+            </span>
             <div
               aria-hidden
               style={{
@@ -105,9 +108,35 @@ export const BeforeAfterSlider: React.FC<BaseSectionProps<'before-after'>> = ({ 
                 bottom: 0,
                 left: `${position}%`,
                 width: '2px',
+                transform: 'translateX(-1px)',
                 background: hsl(theme.colors.background),
+                pointerEvents: 'none',
               }}
-            />
+            >
+              <span
+                className="ba-knob"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '2.75rem',
+                  height: '2.75rem',
+                  borderRadius: '999px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  background: hsl(theme.colors.background),
+                  color: hsl(theme.colors.foreground),
+                  border: `1px solid ${hsl(theme.colors.border)}`,
+                  boxShadow: `0 2px 10px ${hsl(theme.colors.foreground)}33`,
+                }}
+              >
+                ↔
+              </span>
+            </div>
             <input
               type="range"
               min={0}
@@ -116,9 +145,22 @@ export const BeforeAfterSlider: React.FC<BaseSectionProps<'before-after'>> = ({ 
               aria-label="Reveal the finished result"
               aria-valuetext={`${position}% after`}
               onChange={(event) => setPosition(Number(event.target.value))}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize' }}
+              className="ba-range"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize', margin: 0 }}
+            />
+            <style>{`.ba-range:focus-visible ~ .ba-focus{opacity:1}`}</style>
+            <span
+              aria-hidden
+              className="ba-focus"
+              style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0, outline: `2px solid ${hsl(theme.colors.primary)}`, outlineOffset: '-4px', borderRadius: theme.radius }}
             />
           </div>
+          <p
+            className="mt-2 text-center text-xs"
+            style={{ fontFamily: theme.typography.bodyFont, color: hsl(theme.colors.mutedForeground) }}
+          >
+            Drag the handle to compare
+          </p>
           {(pair.label || pair.description) && (
             <figcaption
               className="mt-4 text-center text-sm"
