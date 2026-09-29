@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 vi.mock('@/services/builderBrainClient', () => ({ runBuilderTurn: vi.fn() }));
 
 import { repairBuilderCandidate, runComposerRepairLoop } from '@/services/builder/aiRepairLoop';
+import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { authorSitePages, orderAuthoringPages } from '@/services/launch/siteAuthoringOrchestrator';
 
 const base = {
@@ -32,6 +33,44 @@ describe('AI composer repair loop', () => {
     const second = JSON.parse(invoke.mock.calls[1][0].messages[0].content);
     expect(second.task).toBe('site_page_repair');
     expect(second.diagnostics[0]).toMatch(/does not resolve/);
+  }, 20000);
+
+  it('accumulates valid files across repair attempts', async () => {
+    const first = {
+      data: {
+        content: JSON.stringify({
+          summary: 'Card plus broken home',
+          fileOps: [
+            { type: 'create', path: '/src/project-components/Card.tsx', content: 'export default function Card(){return <article>Card</article>}' },
+            { type: 'replace', path: '/src/pages/Home.tsx', content: "import Missing from './Missing'; export default function Home(){return <Missing/>}" },
+          ],
+        }),
+      },
+      error: null,
+    };
+    const second = {
+      data: {
+        content: JSON.stringify({
+          summary: 'Repair home only',
+          fileOps: [{
+            type: 'replace',
+            path: '/src/pages/Home.tsx',
+            content: "import Card from '../project-components/Card'; export default function Home(){return <main><Card/></main>}",
+          }],
+        }),
+      },
+      error: null,
+    };
+    const invoke = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    const result = await runComposerRepairLoop({ request, baseFiles: base, invoke: invoke as never });
+
+    expect(result.ok).toBe(true);
+    expect(result.attempts).toBe(2);
+    expect(result.prepared!.nextFiles['/src/project-components/Card.tsx']).toContain('<article>Card</article>');
+    expect(result.prepared!.nextFiles['/src/pages/Home.tsx']).toContain("../project-components/Card");
+    const repairRequest = JSON.parse(invoke.mock.calls[1][0].messages[0].content);
+    expect(repairRequest.files['/src/project-components/Card.tsx']).toContain('<article>Card</article>');
   }, 20000);
 
   it('gives up after 3 attempts', async () => {
@@ -65,7 +104,12 @@ describe('site authoring orchestrator', () => {
       const req = JSON.parse(input.messages[0].content);
       return req.page.role === 'home' ? good('/src/pages/Home.tsx', 'AI Home') : bad('/src/pages/About.tsx');
     });
-    const commitPage = vi.fn(async (next: Record<string, string>) => ({ files: next, revisionId: 'rev' }));
+    const commitPage = vi.fn(async (
+      next: Record<string, string>,
+      _page: unknown,
+      _beforeFiles: Record<string, string>,
+      _candidate: AICandidateChangeSet,
+    ) => ({ files: next, revisionId: 'rev' }));
     const r = await authorSitePages({ pages, homePageId: 'home', designContext: null, businessName: 'B', files: base, commitPage, invoke: invoke as never });
     expect(commitPage).toHaveBeenCalledTimes(1);
     expect(commitPage.mock.calls[0][3]).toMatchObject({

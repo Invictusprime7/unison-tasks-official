@@ -35,6 +35,8 @@ export interface SnapshotResolution {
   themePresetId: string | null;
   /** Draft/project identity prevents one editor's pending writes affecting another. */
   projectionScope?: string | null;
+  /** Accepted revision whose files are carried by `snapshot`. */
+  acceptedRevisionId?: string | null;
 }
 
 const MINIMAL_PREVIEW_FALLBACK_RE = /return\s+<div>\s*Placeholder|return\s+<main>\s*Placeholder|Canonical\s+\w+\s+Stub|Canonical\s+\w+\s+Fallback|Generated\s+Home|Preview recovered|safe fallback was injected|AI-generated code will appear here|Welcome to AI Web Builder|New site preview|Coming soon|fallback keeps the experience polished/i;
@@ -165,7 +167,10 @@ export function resolveSnapshot(
     : typeof state?.projectId === 'string' && state.projectId
       ? state.projectId
       : null;
-  return { snapshot, isWizardDraft, themePresetId: themePresetId ?? null, projectionScope };
+  const acceptedRevisionId = typeof state?.revisionId === 'string' && state.revisionId.trim()
+    ? state.revisionId.trim()
+    : null;
+  return { snapshot, isWizardDraft, themePresetId: themePresetId ?? null, projectionScope, acceptedRevisionId };
 }
 
 
@@ -413,8 +418,16 @@ export function assertSnapshotPreviewFileCoverage(
  * skipped because business/draft context wasn't set).
  */
 export type PendingVfsChange =
-  | { type: 'create' | 'replace'; path: string; contents: string }
-  | { type: 'delete'; path: string };
+  | { type: 'create' | 'replace'; path: string; contents: string; baseContents?: string | null }
+  | { type: 'delete'; path: string; baseContents?: string | null };
+
+export interface PendingVfsConflict {
+  path: string;
+  baseContents: string | null | undefined;
+  acceptedContents: string | null;
+  intendedContents: string | null;
+  reason: 'overlapping-change' | 'unknown-base';
+}
 
 export interface PendingVfsOperation {
   operationId: string;
@@ -423,6 +436,12 @@ export interface PendingVfsOperation {
   scope: string | null;
   baseRevisionId: string | null;
   candidateRevisionId: string | null;
+  /** Direct operation ancestors included by this candidate. */
+  supersedesOperationIds: string[];
+  acknowledgementState: 'pending' | 'conflicted';
+  conflicts: PendingVfsConflict[];
+  touchedPaths: string[];
+  deletedPaths: string[];
   createdAt: number;
   changes: PendingVfsChange[];
 }
@@ -446,11 +465,63 @@ function operationScopeKey(scope?: string | null): string {
 function normalizedChanges(changes: readonly PendingVfsChange[]): PendingVfsChange[] {
   const paths = new Set<string>();
   return changes.map((change) => {
+    if (!change || typeof change !== 'object' || typeof change.path !== 'string') {
+      throw new Error('Malformed pending VFS change.');
+    }
+    if (change.type !== 'create' && change.type !== 'replace' && change.type !== 'delete') {
+      throw new Error(`Unsupported pending VFS change type at ${change.path}.`);
+    }
+    if (change.type !== 'delete' && typeof change.contents !== 'string') {
+      throw new Error(`Pending VFS write is missing contents at ${change.path}.`);
+    }
+    if (change.baseContents !== undefined && change.baseContents !== null && typeof change.baseContents !== 'string') {
+      throw new Error(`Pending VFS change has an invalid base at ${change.path}.`);
+    }
     const path = normalizeVfsPath(change.path);
     if (paths.has(path)) throw new Error(`Duplicate pending VFS operation path: ${path}`);
     paths.add(path);
     return change.type === 'delete' ? { type: 'delete', path } : { ...change, path };
   });
+}
+
+function operationIntendedContents(change: PendingVfsChange): string | null {
+  return change.type === 'delete' ? null : change.contents;
+}
+
+function fileContents(files: ReadonlyMap<string, string>, path: string): string | null {
+  return files.has(path) ? files.get(path)! : null;
+}
+
+function sameContents(left: string | null | undefined, right: string | null | undefined): boolean {
+  return left === right;
+}
+
+function operationIsComplete(operation: PendingVfsOperation, files: ReadonlyMap<string, string>): boolean {
+  return operation.changes.every((change) => sameContents(
+    fileContents(files, change.path),
+    operationIntendedContents(change),
+  ));
+}
+
+function collectSupersededOperationIds(operationIds: readonly string[], scope?: string | null): Set<string> {
+  const collected = new Set<string>();
+  const visit = (operationId: string) => {
+    if (collected.has(operationId)) return;
+    const operation = pendingVfsOperations.get(operationId);
+    if (!operation || operationScopeKey(operation.scope) !== operationScopeKey(scope)) return;
+    collected.add(operationId);
+    for (const ancestorId of operation.supersedesOperationIds) visit(ancestorId);
+  };
+  for (const operationId of operationIds) visit(operationId);
+  return collected;
+}
+
+function removeOperationLineage(operationIds: readonly string[], scope?: string | null): string[] {
+  const removed: string[] = [];
+  for (const operationId of collectSupersededOperationIds(operationIds, scope)) {
+    if (pendingVfsOperations.delete(operationId)) removed.push(operationId);
+  }
+  return removed;
 }
 
 /** Records exact changes until a later snapshot acknowledges every one. */
@@ -460,6 +531,7 @@ export function recordPendingVfsOperation(input: {
   candidateRevisionId?: string | null;
   changes: readonly PendingVfsChange[];
   operationId?: string;
+  supersedesOperationIds?: readonly string[];
   createdAt?: number;
   sequence?: number;
 }): PendingVfsOperation | null {
@@ -471,12 +543,31 @@ export function recordPendingVfsOperation(input: {
   pendingVfsSequence = Math.max(pendingVfsSequence, sequence);
   const operationId = input.operationId?.trim() || `pending-vfs-${Date.now()}-${sequence}`;
   if (pendingVfsOperations.has(operationId)) throw new Error(`Duplicate pending VFS operation ID: ${operationId}`);
+  const scopeKey = operationScopeKey(input.scope);
+  const baseRevisionId = input.baseRevisionId?.trim() || null;
+  const inferredAncestors = baseRevisionId
+    ? [...pendingVfsOperations.values()]
+        .filter((pending) => operationScopeKey(pending.scope) === scopeKey && pending.candidateRevisionId === baseRevisionId)
+        .map((pending) => pending.operationId)
+    : [];
+  const supersedesOperationIds = [...new Set([
+    ...(Array.isArray(input.supersedesOperationIds) ? input.supersedesOperationIds : [])
+      .filter((id) => typeof id === 'string' && id.trim())
+      .map((id) => id.trim())
+      .filter((id) => operationScopeKey(pendingVfsOperations.get(id)?.scope) === scopeKey),
+    ...inferredAncestors,
+  ])].filter((id) => id !== operationId);
   const operation: PendingVfsOperation = {
     operationId,
     sequence,
     scope: normalizedScope(input.scope),
-    baseRevisionId: input.baseRevisionId?.trim() || null,
+    baseRevisionId,
     candidateRevisionId: input.candidateRevisionId?.trim() || null,
+    supersedesOperationIds,
+    acknowledgementState: 'pending',
+    conflicts: [],
+    touchedPaths: changes.map((change) => change.path),
+    deletedPaths: changes.filter((change) => change.type === 'delete').map((change) => change.path),
     createdAt: typeof input.createdAt === 'number' && Number.isFinite(input.createdAt)
       ? input.createdAt
       : Date.now(),
@@ -502,8 +593,8 @@ export function recordPendingVfsMutation(input: {
     const previous = before.get(path);
     const next = after.get(path);
     if (previous === next) continue;
-    if (next === undefined) changes.push({ type: 'delete', path });
-    else changes.push({ type: previous === undefined ? 'create' : 'replace', path, contents: next });
+    if (next === undefined) changes.push({ type: 'delete', path, baseContents: previous ?? null });
+    else changes.push({ type: previous === undefined ? 'create' : 'replace', path, contents: next, baseContents: previous ?? null });
   }
   return recordPendingVfsOperation({ ...input, changes });
 }
@@ -512,22 +603,29 @@ export function recordPendingVfsMutation(input: {
 export function acknowledgePendingVfsOperations(
   snapshotFiles: Record<string, string>,
   scope?: string | null,
-  options?: { operationIds?: readonly string[] },
+  options?: { operationIds?: readonly string[]; acceptedRevisionId?: string | null },
 ): string[] {
   const files = new Map(Object.entries(snapshotFiles).map(([path, contents]) => [normalizeVfsPath(path), contents]));
   const operationIds = options?.operationIds ? new Set(options.operationIds) : null;
   const acknowledged: string[] = [];
+  const acceptedRevisionId = options?.acceptedRevisionId?.trim() || null;
+  const acceptedRoots: string[] = [];
   for (const [operationId, operation] of pendingVfsOperations) {
     if (operationScopeKey(operation.scope) !== operationScopeKey(scope)) continue;
     if (operationIds && !operationIds.has(operationId)) continue;
-    const complete = operation.changes.every((change) => change.type === 'delete'
-      ? !files.has(change.path)
-      : files.get(change.path) === change.contents);
-    if (complete) {
-      pendingVfsOperations.delete(operationId);
-      acknowledged.push(operationId);
-    }
+    const revisionAccepted = Boolean(
+      acceptedRevisionId && (
+        operation.candidateRevisionId === acceptedRevisionId ||
+        (operationIds?.has(operationId) && operationIsComplete(operation, files))
+      ),
+    );
+    const legacyContentAcknowledged = !acceptedRevisionId
+      && !operation.baseRevisionId
+      && !operation.candidateRevisionId
+      && operationIsComplete(operation, files);
+    if (revisionAccepted || legacyContentAcknowledged) acceptedRoots.push(operationId);
   }
+  acknowledged.push(...removeOperationLineage(acceptedRoots, scope));
   return acknowledged;
 }
 
@@ -573,6 +671,7 @@ export function restorePendingVfsOperations(serialized: unknown, scope?: string 
         scope,
         baseRevisionId: operation.baseRevisionId,
         candidateRevisionId: operation.candidateRevisionId,
+        supersedesOperationIds: operation.supersedesOperationIds,
         createdAt: operation.createdAt,
         sequence: operation.sequence,
         changes: operation.changes,
@@ -622,6 +721,90 @@ export function isLiveEditedVfsPath(path: string, scope?: string | null): boolea
   return false;
 }
 
+function reconcilePendingVfsOperations(
+  snapshotFiles: Record<string, string>,
+  scope?: string | null,
+  acceptedRevisionId?: string | null,
+): { operations: PendingVfsOperation[]; conflicts: PendingVfsConflict[] } {
+  const acceptedId = acceptedRevisionId?.trim() || null;
+  const files = new Map(Object.entries(snapshotFiles).map(([path, contents]) => [normalizeVfsPath(path), contents]));
+
+  // An accepted descendant proves that its operation and every explicitly
+  // linked ancestor are already represented by the accepted revision. Their
+  // bytes must never be replayed merely because an older operation differs.
+  if (acceptedId) {
+    const accepted = getPendingVfsOperations(scope)
+      .filter((operation) => operation.candidateRevisionId === acceptedId)
+      .map((operation) => operation.operationId);
+    removeOperationLineage(accepted, scope);
+  }
+
+  const operations = getPendingVfsOperations(scope).sort((left, right) => left.sequence - right.sequence);
+  const projectedRevisionIds = new Set<string>(acceptedId ? [acceptedId] : []);
+  const conflicts: PendingVfsConflict[] = [];
+
+  for (const operation of operations) {
+    const lineageEstablished = Boolean(
+      !operation.baseRevisionId ||
+      (acceptedId && projectedRevisionIds.has(operation.baseRevisionId)),
+    );
+    const operationConflicts: PendingVfsConflict[] = [];
+
+    for (const change of operation.changes) {
+      const acceptedContents = fileContents(files, change.path);
+      const intendedContents = operationIntendedContents(change);
+      if (sameContents(acceptedContents, intendedContents)) continue;
+
+      if (!lineageEstablished && change.baseContents === undefined) {
+        operationConflicts.push({
+          path: change.path,
+          baseContents: undefined,
+          acceptedContents,
+          intendedContents,
+          reason: 'unknown-base',
+        });
+        continue;
+      }
+      if (change.baseContents !== undefined && !sameContents(acceptedContents, change.baseContents)) {
+        operationConflicts.push({
+          path: change.path,
+          baseContents: change.baseContents,
+          acceptedContents,
+          intendedContents,
+          reason: 'overlapping-change',
+        });
+      }
+    }
+
+    const stored = pendingVfsOperations.get(operation.operationId);
+    if (operationConflicts.length > 0) {
+      conflicts.push(...operationConflicts);
+      if (stored) pendingVfsOperations.set(operation.operationId, {
+        ...stored,
+        acknowledgementState: 'conflicted',
+        conflicts: operationConflicts,
+      });
+      continue;
+    }
+
+    if (stored && (stored.acknowledgementState !== 'pending' || stored.conflicts.length > 0)) {
+      pendingVfsOperations.set(operation.operationId, {
+        ...stored,
+        acknowledgementState: 'pending',
+        conflicts: [],
+      });
+    }
+    for (const change of operation.changes) {
+      const intendedContents = operationIntendedContents(change);
+      if (intendedContents === null) files.delete(change.path);
+      else files.set(change.path, intendedContents);
+    }
+    if (operation.candidateRevisionId) projectedRevisionIds.add(operation.candidateRevisionId);
+  }
+
+  return { operations: getPendingVfsOperations(scope).sort((left, right) => left.sequence - right.sequence), conflicts };
+}
+
 /**
  * Snapshot-as-primary projection bridge. A wizard SiteBundleSnapshot owns the
  * entire executable VFS, not only files that resemble a minimal placeholder.
@@ -651,9 +834,24 @@ export function projectSnapshotVfsFiles(
   if (Object.keys(snapshotFiles).length === 0) return files;
   // Acknowledgment is operation-level: a partial snapshot refresh cannot clear
   // a sibling create/delete from the same accepted candidate.
-  acknowledgePendingVfsOperations(snapshotFiles, resolution.projectionScope);
+  acknowledgePendingVfsOperations(snapshotFiles, resolution.projectionScope, {
+    acceptedRevisionId: resolution.acceptedRevisionId,
+  });
+  const reconciliation = reconcilePendingVfsOperations(
+    snapshotFiles,
+    resolution.projectionScope,
+    resolution.acceptedRevisionId,
+  );
+  if (reconciliation.conflicts.length > 0) {
+    const paths = [...new Set(reconciliation.conflicts.map((conflict) => conflict.path))].sort();
+    throw new PreviewPipelineError(
+      'vfs',
+      `Pending source conflicts with accepted revision ${resolution.acceptedRevisionId ?? '(unknown)'} at ${paths.join(', ')}. Reload or re-author the pending change from the accepted revision.`,
+      { blockedFiles: paths, recoverableByRelaunch: true },
+    );
+  }
   const pendingChanges = new Map<string, PendingVfsChange>();
-  for (const operation of getPendingVfsOperations(resolution.projectionScope)) {
+  for (const operation of reconciliation.operations) {
     for (const change of operation.changes) pendingChanges.set(change.path, change);
   }
 
@@ -671,18 +869,18 @@ export function projectSnapshotVfsFiles(
 
   for (const [rawPath, content] of Object.entries(snapshotFiles)) {
     const path = normalizeVfsPath(rawPath);
-    const live = files[path] ?? files[rawPath];
     const pending = pendingChanges.get(path);
 
-    // A pending deletion wins over a stale snapshot. Replacements use the
-    // exact live byte when present; if projection is recovering from a VFS
-    // without that path, use the recorded accepted candidate byte.
+    // A pending deletion wins over a stale snapshot. Versioned operations use
+    // the exact recorded candidate byte; only the legacy empty-content marker
+    // falls back to the live VFS byte.
     if (pending?.type === 'delete') {
       preserved.push(path);
       continue;
     }
-    if (pending && typeof live === 'string' && (pending.contents === '' || live !== content)) {
-      next[path] = live;
+    if (pending && pending.contents === '') {
+      const live = files[path] ?? files[rawPath];
+      next[path] = typeof live === 'string' ? live : content;
       preserved.push(path);
       continue;
     }
@@ -706,7 +904,7 @@ export function projectSnapshotVfsFiles(
       continue;
     } else {
       const live = files[path] ?? files[path.slice(1)];
-      next[path] = typeof live === 'string' ? live : pending.contents;
+      next[path] = pending.contents === '' && typeof live === 'string' ? live : pending.contents;
     }
     if (!preserved.includes(path)) preserved.push(path);
   }

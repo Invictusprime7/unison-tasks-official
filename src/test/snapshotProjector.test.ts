@@ -60,7 +60,7 @@ describe('snapshot projector', () => {
       '/src/pages/Home.tsx': 'old home',
       '/src/pages/Removed.tsx': 'old removed page',
     });
-    const resolution: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-a' };
+    const resolution: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-a', acceptedRevisionId: 'rev-1' };
     const before = { ...snapshot.vfsFiles };
     const live = { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new home', '/src/pages/New.tsx': 'new page' };
     try {
@@ -96,10 +96,12 @@ describe('snapshot projector', () => {
 
   it('round-trips pending operations through a matching draft recovery journal', () => {
     const snapshot = snapshotWith({ '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'old' });
-    const resolution: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-recovery' };
+    const resolution: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-recovery', acceptedRevisionId: 'revision-1' };
     try {
       recordPendingVfsMutation({
         scope: 'draft-recovery',
+        baseRevisionId: 'revision-1',
+        candidateRevisionId: 'revision-2',
         beforeFiles: snapshot.vfsFiles,
         afterFiles: { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'recovered' },
         operationId: 'recovery-operation',
@@ -130,6 +132,128 @@ describe('snapshot projector', () => {
       expect(getPendingVfsOperations('draft-ack').map(({ operationId }) => operationId)).toEqual(['newer-operation']);
     } finally {
       clearPendingVfsOperations('draft-ack');
+    }
+  });
+
+  it('never replays an ancestor after its accepted descendant', () => {
+    const revisionZero = { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'R0' };
+    const revisionOne = { ...revisionZero, '/src/pages/Home.tsx': 'older-A' };
+    const revisionTwo = { ...revisionOne, '/src/pages/Home.tsx': 'newer-B' };
+    const snapshot = snapshotWith(revisionTwo);
+    const resolution: SnapshotResolution = {
+      snapshot,
+      isWizardDraft: true,
+      themePresetId: 'restaurant-warm',
+      projectionScope: 'draft-lineage',
+      acceptedRevisionId: 'R2',
+    };
+    try {
+      recordPendingVfsMutation({ scope: 'draft-lineage', baseRevisionId: 'R0', candidateRevisionId: 'R1', beforeFiles: revisionZero, afterFiles: revisionOne, operationId: 'A' });
+      recordPendingVfsMutation({ scope: 'draft-lineage', baseRevisionId: 'R1', candidateRevisionId: 'R2', beforeFiles: revisionOne, afterFiles: revisionTwo, operationId: 'B' });
+
+      expect(projectSnapshotVfsFiles(revisionTwo, resolution)['/src/pages/Home.tsx']).toBe('newer-B');
+      expect(getPendingVfsOperations('draft-lineage')).toEqual([]);
+    } finally {
+      clearPendingVfsOperations('draft-lineage');
+    }
+  });
+
+  it('rebases a stale non-overlapping operation and blocks overlapping source', () => {
+    const revisionZero = { '/src/App.tsx': 'router R0', '/src/pages/About.tsx': 'about R0' };
+    const revisionNine = { '/src/App.tsx': 'router R9', '/src/pages/About.tsx': 'about R0' };
+    const snapshot = snapshotWith(revisionNine);
+    const resolution: SnapshotResolution = {
+      snapshot,
+      isWizardDraft: true,
+      themePresetId: 'restaurant-warm',
+      projectionScope: 'draft-rebase',
+      acceptedRevisionId: 'R9',
+    };
+    try {
+      recordPendingVfsMutation({
+        scope: 'draft-rebase',
+        baseRevisionId: 'R0',
+        beforeFiles: revisionZero,
+        afterFiles: { ...revisionZero, '/src/pages/About.tsx': 'pending about' },
+        operationId: 'non-overlap',
+      });
+      expect(projectSnapshotVfsFiles(revisionNine, resolution)).toMatchObject({
+        '/src/App.tsx': 'router R9',
+        '/src/pages/About.tsx': 'pending about',
+      });
+
+      clearPendingVfsOperations('draft-rebase');
+      recordPendingVfsMutation({
+        scope: 'draft-rebase',
+        baseRevisionId: 'R0',
+        beforeFiles: revisionZero,
+        afterFiles: { ...revisionZero, '/src/App.tsx': 'pending router' },
+        operationId: 'overlap',
+      });
+      expect(() => projectSnapshotVfsFiles(revisionNine, resolution)).toThrow(/Pending source conflicts/);
+      expect(getPendingVfsOperations('draft-rebase')[0]).toMatchObject({
+        acknowledgementState: 'conflicted',
+        conflicts: [{ path: '/src/App.tsx', reason: 'overlapping-change' }],
+      });
+    } finally {
+      clearPendingVfsOperations('draft-rebase');
+    }
+  });
+
+  it('treats delete versus accepted edit as an explicit conflict', () => {
+    const revisionZero = { '/src/App.tsx': 'router', '/src/pages/About.tsx': 'old about' };
+    const revisionNine = { ...revisionZero, '/src/pages/About.tsx': 'accepted edit' };
+    const snapshot = snapshotWith(revisionNine);
+    try {
+      recordPendingVfsMutation({
+        scope: 'draft-delete-conflict',
+        baseRevisionId: 'R0',
+        beforeFiles: revisionZero,
+        afterFiles: { '/src/App.tsx': 'router' },
+        operationId: 'delete-about',
+      });
+      expect(() => projectSnapshotVfsFiles(revisionNine, {
+        snapshot,
+        isWizardDraft: true,
+        themePresetId: 'restaurant-warm',
+        projectionScope: 'draft-delete-conflict',
+        acceptedRevisionId: 'R9',
+      })).toThrow(/\/src\/pages\/About\.tsx/);
+    } finally {
+      clearPendingVfsOperations('draft-delete-conflict');
+    }
+  });
+
+  it('blocks an entire multi-file operation when only one path overlaps', () => {
+    const revisionZero = {
+      '/src/App.tsx': 'router',
+      '/src/pages/Home.tsx': 'home R0',
+      '/src/pages/About.tsx': 'about R0',
+    };
+    const revisionNine = { ...revisionZero, '/src/pages/Home.tsx': 'accepted home' };
+    const snapshot = snapshotWith(revisionNine);
+    try {
+      recordPendingVfsMutation({
+        scope: 'draft-partial-overlap',
+        baseRevisionId: 'R0',
+        beforeFiles: revisionZero,
+        afterFiles: {
+          ...revisionZero,
+          '/src/pages/Home.tsx': 'pending home',
+          '/src/pages/About.tsx': 'pending about',
+        },
+        operationId: 'two-file-edit',
+      });
+      expect(() => projectSnapshotVfsFiles(revisionNine, {
+        snapshot,
+        isWizardDraft: true,
+        themePresetId: 'restaurant-warm',
+        projectionScope: 'draft-partial-overlap',
+        acceptedRevisionId: 'R9',
+      })).toThrow(/Pending source conflicts/);
+      expect(snapshot.vfsFiles['/src/pages/About.tsx']).toBe('about R0');
+    } finally {
+      clearPendingVfsOperations('draft-partial-overlap');
     }
   });
 

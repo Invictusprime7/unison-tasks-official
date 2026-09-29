@@ -4502,6 +4502,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           ));
         acknowledgePendingVfsOperations(currentVfsFiles, pendingProjectionScope, {
           operationIds: acknowledgedOperationIds,
+          acceptedRevisionId: commit.persistedRevisionId,
         });
         markBuilderRecoveryPersisted(snapshot, existingDraftId, undefined, commit.persistedRevisionId);
         lastSavedCodeRef.current = codeForSave;

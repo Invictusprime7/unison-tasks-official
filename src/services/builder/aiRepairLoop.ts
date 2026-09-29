@@ -86,6 +86,8 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
   let lastErrors: string[] = [];
   let lastResponse: AIComposerResponse | undefined;
   let lastPrepared: PreparedCandidate | undefined;
+  const accumulatedFiles: Record<string, string> = {};
+  const accumulatedDeletes = new Set<string>();
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (input.signal?.aborted) return { ok: false, reason: 'aborted', attempts: attempt - 1, errors: ['Cancelled.'] };
@@ -120,9 +122,16 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
     const aiFiles: Record<string, string> = {};
     const deletions: string[] = [];
     for (const op of response.fileOps) {
-      if (op.type === 'delete') deletions.push(op.path);
-      else aiFiles[op.path] = op.content;
+      if (op.type === 'delete') {
+        delete accumulatedFiles[op.path];
+        accumulatedDeletes.add(op.path);
+      } else {
+        accumulatedFiles[op.path] = op.content;
+        accumulatedDeletes.delete(op.path);
+      }
     }
+    Object.assign(aiFiles, accumulatedFiles);
+    deletions.push(...accumulatedDeletes);
     const prepared = await prepareAICandidate({
       aiFiles,
       deletions,
@@ -140,11 +149,16 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
     }
     lastErrors = prepared.errors;
     const failingPaths = new Set(prepared.gates.failures.map((f) => f.path));
+    const repairFiles = { ...request.files, ...accumulatedFiles };
+    for (const path of accumulatedDeletes) delete repairFiles[path];
     request = {
       ...request,
       task: request.task === 'builder_source_edit' ? 'builder_source_edit' : 'site_page_repair',
       diagnostics: prepared.errors.slice(0, 30),
-      // Only echo failing files back; valid files are already in `files`.
+      // Repair receives the complete accumulated candidate. A later response
+      // may return only the failing file without discarding valid files from
+      // earlier attempts.
+      files: repairFiles,
       previousResponse: JSON.stringify({
         ...response,
         fileOps: response.fileOps.filter((op) => failingPaths.has(op.path) || failingPaths.size === 0),
