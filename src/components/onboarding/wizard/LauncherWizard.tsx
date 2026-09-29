@@ -402,8 +402,6 @@ export const LauncherWizard = ({
   };
 
   const currentStepIndex = STEP_ORDER.indexOf(step);
-  const selectedThemeIndex = Math.max(0, THEME_PRESETS.findIndex((preset) => preset.id === theme?.id));
-
   return (
     <Dialog
       open={open}
