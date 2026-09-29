@@ -1,0 +1,120 @@
+{
+    "referenceId":  "aria",
+    "archive":  "ariastudios (1).zip",
+    "archiveSha256":  "1b0018442361824c5b21c1b6eade50a4a768c1997d4d4d23552d5becc5785442",
+    "inspectedAt":  "2026-09-29",
+    "files":  [
+                  {
+                      "path":  "package.json",
+                      "sha256":  "1600f1fd82820cbb91b6e7c9919248eeccc9ec82808626fb126b85d4b1172714"
+                  },
+                  {
+                      "path":  "src/routes/index.tsx",
+                      "sha256":  "424e39123d576f71d47fe884565d185c94a97389e67b9e5f113846c2c4521e74"
+                  },
+                  {
+                      "path":  "src/routes/work.tsx",
+                      "sha256":  "b2936a43fa03f9e3f8e4608c153586da680ae2c4d14eed62bd851514ef3d59aa"
+                  },
+                  {
+                      "path":  "src/routes/contact.tsx",
+                      "sha256":  "c068283b24a72a2ae5282c52b877ad7a7da3eb7811c6b9cb0d29f65ea7ffce60"
+                  },
+                  {
+                      "path":  "src/routes/process.$slug.tsx",
+                      "sha256":  "a5249b8f88d1e587cf9473398379b6c23eece9d3d723c39ca50ae628ce914064"
+                  },
+                  {
+                      "path":  "src/routes/__root.tsx",
+                      "sha256":  "659a374b3d2519468ad3065f120aa67e9a368a20e449f3e0ad38feff0a34573e"
+                  },
+                  {
+                      "path":  "src/styles.css",
+                      "sha256":  "57fa23ddefebb886ae121b4e9d7b7b866cab0120c826eb60156bc1d20d0f0a07"
+                  },
+                  {
+                      "path":  "src/components/SiteChrome.tsx",
+                      "sha256":  "ca03db26cf87c4c5c4d43730dec4d90e36221ce7ae61ff4625daf00373b53064"
+                  },
+                  {
+                      "path":  "src/components/AtmosphericBackground.tsx",
+                      "sha256":  "bb9283a44a6d93551d1ded5c3d52bc90a9d87276ee8e66e8c77abcc1d08bd7f4"
+                  },
+                  {
+                      "path":  "src/lib/portfolio-data.ts",
+                      "sha256":  "d88d3c13f964f7e2bf3bbd429336fcf9ce34d3324d5dd758a4ac90e0dd55c728"
+                  },
+                  {
+                      "path":  "src/lib/unison-brief.ts",
+                      "sha256":  "87081bf0707430f3e6b213ed2167fb1e35341cb21d72a07d80dd855945a3bbdf"
+                  },
+                  {
+                      "path":  "src/design-system/unison-x-loveable-design-d5be96/design-system/unison/styles/tokens.css",
+                      "sha256":  "99a3b74b4914d1776392b6c22de4b5ec64dd49a83ca68bf27c5f9cb74a7e6d48"
+                  }
+              ],
+    "assets":  [
+                   {
+                       "path":  "src/assets/hero-studio.jpg",
+                       "bytes":  152363,
+                       "sha256":  "9668477990bebcf9c93fa20fea525e1a5ba7fe3efa756772d0b8f7f8fc88bd20"
+                   },
+                   {
+                       "path":  "src/assets/portrait.jpg",
+                       "bytes":  86516,
+                       "sha256":  "1049346e4fb186dee4b84258d84afc1a50efa62cc777c1dcde50312ebf9823f8"
+                   },
+                   {
+                       "path":  "src/assets/studio-desk.jpg",
+                       "bytes":  144867,
+                       "sha256":  "e771509acaf5c5b3e7042c6bc89db0999168670a0d5224ff77fa4d0b9ef422a8"
+                   },
+                   {
+                       "path":  "src/assets/work-bloom.jpg",
+                       "bytes":  186215,
+                       "sha256":  "5300c76c920bb63846ac9d4abfb94a5d4fa487e22ee1ea01157fc988aa5f1292"
+                   },
+                   {
+                       "path":  "src/assets/work-halftone.jpg",
+                       "bytes":  218127,
+                       "sha256":  "cb5cb7806ba31ea6023b755b022405a23b18e5b1e0714fe2ddfec4c5b13489af"
+                   },
+                   {
+                       "path":  "src/assets/work-papermoon.jpg",
+                       "bytes":  107554,
+                       "sha256":  "900561d1b48e1b9fe90b3518873f9210d6b965fce7c1b42228a8f2719acdd27c"
+                   },
+                   {
+                       "path":  "src/assets/work-verdant.jpg",
+                       "bytes":  74654,
+                       "sha256":  "f7da6a426cec3f48bdd2639b12c39ad0ec300c9f3005e54ae045447deb50b0e7"
+                   }
+               ],
+    "screenshots":  [
+                        {
+                            "path":  "screenshots/aria-contact-mobile.png",
+                            "bytes":  64654,
+                            "sha256":  "1b77cddbbfdfd4e2e71740da2f24d624f856f863470e790e19d8da1ad776b34c"
+                        },
+                        {
+                            "path":  "screenshots/aria-home-mobile.png",
+                            "bytes":  346843,
+                            "sha256":  "ddacc068f5f01d22c3ab086a229bd613bd71b035ba178d8b4e95cf72244af30f"
+                        },
+                        {
+                            "path":  "screenshots/aria-home-viewport.png",
+                            "bytes":  1326345,
+                            "sha256":  "d0557c35afbce4a8a4443dae2415ed73ed8e6870101c5920795b633adcfc9b73"
+                        },
+                        {
+                            "path":  "screenshots/aria-process-desktop.png",
+                            "bytes":  859210,
+                            "sha256":  "5d65547c79481a10fd1ed33a3b98311b68bf90ea6ad8137404747650e21e2dee"
+                        },
+                        {
+                            "path":  "screenshots/aria-work-desktop.png",
+                            "bytes":  1550649,
+                            "sha256":  "13e0824ead05da160beacefda5b9a85d132f0a5ed9641e77ee5a5e7a26e15b2a"
+                        }
+                    ]
+}

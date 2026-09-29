@@ -1,0 +1,204 @@
+@import "tailwindcss";
+@import "./design-system/unison-x-loveable-design-d5be96/design-system/unison/styles/tokens.css";
+
+@source "./design-system/unison-x-loveable-design-d5be96/**/*.{ts,tsx,css}";
+@source "./**/*.{ts,tsx}";
+
+/* Project theme layer — ARIA, sealed Art Direction Pack: cinematic-portfolio.
+   Gallery Paper palette and the approved Libre Baskerville / IBM Plex Sans pairing.
+   The design system owns the token roles; these are the user-selected brand values. */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 330 6% 14%;
+  --primary: 312 22% 62%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 97%;
+  --secondary-foreground: 330 6% 14%;
+  --accent: 312 22% 62%;
+  --accent-foreground: 330 6% 14%;
+  --muted: 0 0% 97%;
+  --muted-foreground: 320 5% 42%;
+  --card: 0 0% 100%;
+  --card-foreground: 330 6% 14%;
+  --border: 0 0% 90%;
+  --spot: 312 22% 62%;
+  --hero-pink: 332 45% 72%;
+
+  --ut-font-display: "Libre Baskerville", Georgia, serif;
+  --ut-font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --ut-font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@theme {
+  --font-display: var(--ut-font-display);
+  --font-serif: var(--ut-font-display);
+  --font-sans: var(--ut-font-sans);
+  --font-mono: var(--ut-font-mono);
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-border: hsl(var(--border));
+  --color-spot: hsl(var(--spot));
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: var(--font-sans);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  section[id] {
+    scroll-margin-top: 5rem;
+  }
+}
+
+/* Cinematic-portfolio motion: gallery-inspection, slow-pan entrances.
+   760ms / cubic-bezier(0.22,1,0.36,1) per the sealed pack; tokens.css
+   already disables these under prefers-reduced-motion. */
+@keyframes ut-rise {
+  from { opacity: 0; transform: translateY(2rem); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ut-kenburns {
+  from { transform: scale(1.08); }
+  to   { transform: scale(1); }
+}
+.ut-rise { animation: ut-rise var(--ut-motion-duration) var(--ut-motion-ease) both; }
+.ut-kenburns { animation: ut-kenburns 14s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.ut-process-frame { animation: ut-rise var(--ut-motion-duration) var(--ut-motion-ease) both; }
+
+/* Hero veil: dark contrast layer for legible white type, with subtle
+   vibrant orchid/mist gradient washes layered over the photograph.
+   All color is drawn from semantic tokens — no raw values. */
+.aria-hero-veil {
+  background-color: hsl(var(--foreground) / 0.40);
+  background-image:
+    radial-gradient(120% 90% at 78% 18%, hsl(var(--hero-pink) / 0.26), transparent 58%),
+    radial-gradient(110% 80% at 12% 88%, hsl(var(--hero-pink) / 0.18), transparent 54%),
+    linear-gradient(115deg, hsl(var(--hero-pink) / 0.14) 0%, transparent 40%, hsl(var(--hero-pink) / 0.20) 100%);
+  background-blend-mode: screen, screen, normal;
+}
+
+/* Hero frame: matches the gallery-card treatment used across ARIA's
+   work grid — full-color image in a bordered surface card. */
+.aria-hero-frame {
+  border: var(--ut-border-weight) solid hsl(var(--border));
+}
+
+
+/* Preserve high-contrast hero typography when external preview browsers
+   apply automatic color adjustments over photographic backgrounds. */
+.aria-hero-foreground {
+  color: hsl(var(--primary-foreground));
+  -webkit-text-fill-color: hsl(var(--primary-foreground));
+  forced-color-adjust: none;
+}
+
+.aria-hero-action {
+  background-color: hsl(var(--primary-foreground));
+  color: hsl(var(--foreground));
+  -webkit-text-fill-color: hsl(var(--foreground));
+  forced-color-adjust: none;
+}
+
+.aria-hero-action:hover {
+  background-color: transparent;
+  color: hsl(var(--primary-foreground));
+  -webkit-text-fill-color: hsl(var(--primary-foreground));
+}
+
+/* underline-caps link treatment — the pack's pill replacement */
+.ut-link-caps {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 0.35em;
+  text-decoration-thickness: 1px;
+}
+
+/* ARIA's project-level atmospheric overlay. Unison exposes no ambient-motion
+   primitive, so these low-amplitude drift values are a deliberate local extension. */
+@keyframes aria-plane-one {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); opacity: 0.26; }
+  to { transform: translate3d(3%, 2%, 0) scale(1.04); opacity: 0.34; }
+}
+@keyframes aria-plane-two {
+  from { transform: translate3d(2%, 2%, 0) scale(1.03); opacity: 0.18; }
+  to { transform: translate3d(-3%, -2%, 0) scale(0.98); opacity: 0.26; }
+}
+@keyframes aria-plane-three {
+  from { transform: translate3d(1%, -2%, 0) scale(0.98); opacity: 0.12; }
+  to { transform: translate3d(-2%, 3%, 0) scale(1.02); opacity: 0.2; }
+}
+.aria-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: hsl(var(--background));
+}
+.aria-atmosphere__field {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(135deg, hsl(var(--primary) / 0.035), transparent 45%, hsl(var(--secondary) / 0.12));
+}
+.aria-atmosphere__plane {
+  position: absolute;
+  width: 72%;
+  height: 68%;
+  border-radius: 100%;
+  background-color: hsl(var(--primary) / 0.09);
+  filter: blur(9rem);
+  will-change: transform, opacity;
+}
+.aria-atmosphere__plane--one {
+  top: -28%;
+  left: -30%;
+  animation: aria-plane-one 54s ease-in-out infinite alternate;
+}
+.aria-atmosphere__plane--two {
+  top: 18%;
+  right: -34%;
+  background-color: hsl(var(--accent) / 0.065);
+  animation: aria-plane-two 68s ease-in-out 7s infinite alternate;
+}
+.aria-atmosphere__plane--three {
+  bottom: -34%;
+  left: 8%;
+  background-color: hsl(var(--foreground) / 0.035);
+  animation: aria-plane-three 61s ease-in-out 3s infinite alternate;
+}
+.aria-atmosphere__veil {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to bottom, hsl(var(--background) / 0.42), hsl(var(--background) / 0.78));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ut-process-frame,
+  .aria-atmosphere__plane {
+    animation: none;
+  }
+}

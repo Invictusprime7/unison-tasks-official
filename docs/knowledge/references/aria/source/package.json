@@ -1,0 +1,50 @@
+{
+  "dependencies": {
+    "@cloudflare/vite-plugin": "^1.25.5",
+    "@lovable.dev/mcp-js": "^3.0.4",
+    "@radix-ui/react-dialog": "1.1.23",
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/react-query": "^5.101.1",
+    "@tanstack/react-router": "^1.170.16",
+    "@tanstack/react-start": "^1.168.26",
+    "@tanstack/router-plugin": "^1.168.18",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "13.4.2",
+    "lucide-react": "1.47.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "recharts": "^2.15.4",
+    "tailwind-merge": "3.7.0",
+    "tailwindcss": "4.3.3",
+    "vite-tsconfig-paths": "^6.0.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@types/node": "^22.16.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^15.15.0",
+    "lovable-tagger": "^1.2.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^8.0.16"
+  },
+  "name": "custom_design_system_tanstack",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
+    "dev": "vite dev",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "sideEffects": false,
+  "type": "module"
+}

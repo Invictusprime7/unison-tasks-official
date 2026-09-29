@@ -481,10 +481,15 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     const reviewedFiles = {
       '/src/App.tsx': 'export default function Reviewed(){return <main>Reviewed</main>}',
       '/src/pages/Home.tsx': 'export default function Home(){return <h1>Exact AI output</h1>}',
+      '/src/project-components/Gallery.tsx': 'export const Gallery = () => <div>Original layout</div>;',
+      '/src/hooks/useGallery.ts': 'export const useGallery = () => 1;',
+      '/src/styles/gallery.css': '.gallery { gap: 3rem; }',
+      '/public/cover.svg': '<svg/>',
     };
     const launcherFiles = {
       ...reviewedFiles,
       '/src/pages/Home.tsx': 'export default function Home(){return <h1>Auxiliary launcher copy</h1>}',
+      '/src/hooks/useGallery.ts': 'export const useGallery = () => 0;',
       '/.unison/wizard-seed.json': '{"version":1}',
     };
     const snapshot = {
@@ -516,6 +521,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
 
     expect(commitToPipeline).not.toHaveBeenCalled();
     expect(launch.vfsFiles['/src/pages/Home.tsx']).toBe(reviewedFiles['/src/pages/Home.tsx']);
+    expect(launch.vfsFiles['/src/hooks/useGallery.ts']).toBe(reviewedFiles['/src/hooks/useGallery.ts']);
     expect(launch.vfsFiles['/.unison/wizard-seed.json']).toBe('{"version":1}');
     expect(revisionStore[0]?.vfs_files['/.unison/wizard-seed.json']).toBe('{"version":1}');
     expect((revisionStore[0]?.site_bundle_snapshot as { vfsFiles?: Record<string, string> }).vfsFiles)
@@ -527,6 +533,35 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       message: expect.stringContaining('regeneration skipped'),
     }));
   });
+
+  it.each(['replace', 'delete', 'create', 'mutate-in-place'] as const)(
+    'rejects %s of reviewed non-page source before backend effects or persistence', async (mutation) => {
+      const reviewedFiles = {
+        '/src/App.tsx': 'export default function App(){return null}',
+        '/src/hooks/useGallery.ts': 'export const useGallery = () => 1;',
+        '/public/cover.svg': '<svg/>',
+      };
+      const snapshot = { vfsFiles: reviewedFiles, routerFile: { path: '/src/App.tsx', content: reviewedFiles['/src/App.tsx'] }, meta: {} } as never;
+      vi.mocked(runFullPreflight).mockImplementation((incoming) => {
+        const changed: Record<string, string> = mutation === 'mutate-in-place' ? incoming : { ...incoming };
+        if (mutation === 'delete') delete changed['/public/cover.svg'];
+        else if (mutation === 'create') changed['/src/styles/surprise.css'] = '.surprise{}';
+        else changed['/src/hooks/useGallery.ts'] = 'export const useGallery = () => 9;';
+        return { files: changed, stages: { earlyRepair: 'ok', finalRepair: 'ok' } } as never;
+      });
+      mockIntents();
+      await expect(commitMutation({
+        source: 'wizard-launch', identity: IDENTITY, current: { vfsFiles: {} },
+        patch: { ...legacyFilesToPatchPlan(reviewedFiles), backendOps: [{ type: 'provision', capability: 'booking' }] as never },
+        options: { reviewedArtifact: { siteBundleSnapshot: snapshot, runtimeManifest: { version: 1 } as never } },
+      })).rejects.toThrow('before backend effects changed reviewed source');
+      expect(executeBackendOps).not.toHaveBeenCalled();
+      expect(runtimeReconcileInvoke).not.toHaveBeenCalled();
+      expect(revisionStore).toHaveLength(0);
+      expect(draftProjectionUpdates).toHaveLength(0);
+      expect(reviewedFiles['/src/hooks/useGallery.ts']).toContain('=> 1');
+    },
+  );
 
   it('hard-fails when the atomic canonical revision transaction fails', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return null}' };

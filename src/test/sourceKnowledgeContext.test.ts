@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
+import { selectSourceKnowledge, selectSourceKnowledgeWithReport } from '@/services/builder/sourceKnowledgeContext';
 import { shrinkBuilderTurnPayload } from '@/services/builderPayloadBudget';
 import { aiComposerRequestSchema } from '@/contracts/aiComposerContract';
 
 describe('source knowledge for authoring and complex repairs', () => {
+  it('reports missing targets, whole-file omissions and unresolved local imports', () => {
+    const result = selectSourceKnowledgeWithReport({
+      '/src/page.ts': "import './absent';",
+      '/src/large.ts': 'x'.repeat(60001),
+      '/src/index.css': 'x'.repeat(400),
+    }, ['/src/page.ts', '/src/large.ts', '/src/missing.ts'], 100);
+    expect(result.completeTargets).toBe(false);
+    expect(result.omitted).toEqual(expect.arrayContaining([
+      { path: '/src/large.ts', reason: 'per-file-limit' },
+      { path: '/src/missing.ts', reason: 'missing' },
+      { path: '/src/index.css', reason: 'transport-budget' },
+    ]));
+    expect(result.unresolvedImports).toContainEqual({ path: '/src/page.ts', specifier: './absent' });
+    expect(result.encodedBytes).toBeLessThanOrEqual(100);
+    expect(result.files['/src/page.ts']).toBe("import './absent';");
+  });
   it('includes theme and transitive canonical APIs without unrelated pages or cycles', () => {
     const files = {
       '/src/pages/Home.tsx': "import { Card } from '@/unison/ui'; export default Card;",

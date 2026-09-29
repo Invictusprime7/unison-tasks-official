@@ -1,0 +1,200 @@
+{
+  "packageVersion": "2026-09-29.2",
+  "source": {
+    "path": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+    "sha256": "133409051a11fdaa5de48953e597e451c34f363651bb8852d74366b88b577ff0"
+  },
+  "references": [
+    {
+      "id": "aria",
+      "manifest": "docs/knowledge/references/aria/provenance.json",
+      "sha256": "82789eed99c61d3400f1b1c5af4f37e765da8f9e3e4b62703962a112872f9f0c"
+    }
+  ],
+  "evidence": "Curated requirements; M0-M5 acceptance is not certified. ARIA source and limited local browser evidence are recorded separately; not production certification.",
+  "entries": [
+    {
+      "id": "creative-authority",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "core-policy",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "author",
+        "design"
+      ],
+      "supersedes": [],
+      "text": "Author original executable React/TSX pages and project-local components. Registry examples are a quality floor and optional vocabulary, never a whitelist. Certification and aesthetic audit metadata do not prohibit original composition. Preserve explicit sealed site decisions while varying layout, hierarchy, density and narrative by page purpose.",
+      "contentHash": "649bd31b48215119c1abb9777ea4f7c04333c2010d8a0ffc29318763abd67c44"
+    },
+    {
+      "id": "source-authority",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "core-policy",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "preservation",
+        "edit"
+      ],
+      "supersedes": [],
+      "text": "The accepted revision plus explicit candidate operations defines authored source. Preserve untouched bytes, paths, deletions and renames across pages, components, hooks, utilities, styles and assets. Save, navigation, hydration, theme reconciliation and publish do not authorize regeneration. Repairs that change source must become explicit candidate operations and pass validation. Reject stale bases; retain the last good revision.",
+      "contentHash": "da026ec5372fe01809234cb22a96b4fa9a145919c7433ea1547e12fa6222ca57"
+    },
+    {
+      "id": "runtime-contracts",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "core-policy",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "imports",
+        "runtime"
+      ],
+      "supersedes": [],
+      "text": "Use actual project exports and supported runtime bindings; never invent registry identifiers, imports or business capabilities. Compiler-owned router, topology, metadata, foundation and theme-token contracts remain protected. Original local components are valid. Do not claim a booking, checkout or other interaction works without its runtime evidence.",
+      "contentHash": "b8062b4d597598212a82221c6020af3a4e0b5cff98211dd8a9ac3a5313b26476"
+    },
+    {
+      "id": "honest-evidence",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "core-policy",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "evidence",
+        "context"
+      ],
+      "supersedes": [],
+      "text": "Missing source or omitted context is unknown, not evidence of absence. Request exact source or reduce scope when required context is unavailable. Unknown components can be source-editable without visual controls. Report fallback as degraded recovery, not successful authoring. Reference observations apply only to the source, visuals and interactions actually inspected; they do not certify production behavior.",
+      "contentHash": "5bd64c37c7989286b17dfbbc2cb8bbcff450ffe7e86bd176335614411dbd763e"
+    },
+    {
+      "id": "page-narrative",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "design-guidance",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "pages",
+        "navigation",
+        "design",
+        "layout"
+      ],
+      "supersedes": [],
+      "text": "Give each route a distinct user job and narrative. Reuse brand typography, shared chrome and approved visual language without cloning the Home hero into every route. Connect navigation to real route IDs; preserve existing Home when editing other pages. Choose composition by intent, not a fixed section recipe.",
+      "contentHash": "d5087ee035b8f4914fa53c297e0b15210e76592840291bd2adc58de574ece808"
+    },
+    {
+      "id": "salon-journey",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "design-guidance",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "salon",
+        "beauty",
+        "services",
+        "booking",
+        "about"
+      ],
+      "supersedes": [],
+      "text": "For a salon, Home establishes identity and trust; Services explains offerings and decision criteria; Booking supports selecting a real service and appointment flow; About establishes people and credibility. Vary composition by those jobs. Do not fabricate availability, prices, testimonials or successful booking state.",
+      "contentHash": "f70b1aa55a67cfe245b910372b5205fb3adf9836d2752c0101d210f877973ea2"
+    },
+    {
+      "id": "interaction-design",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "design-guidance",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "interaction",
+        "form",
+        "responsive",
+        "accessibility"
+      ],
+      "supersedes": [],
+      "text": "Design mobile and desktop hierarchy deliberately. Use semantic controls, keyboard access, visible focus and legible contrast. Provide honest loading, empty, validation, error and success states tied to actual behavior. Motion should support orientation and respect reduced-motion preferences.",
+      "contentHash": "08cdc311364abda7d483cd834781065edd95476b4aaedd4affd686ed65d97e9e"
+    },
+    {
+      "id": "aria-reference",
+      "version": "2026-09-29.1",
+      "status": "superseded",
+      "scope": "reference",
+      "source": "docs/milestones/UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md",
+      "compatibility": {
+        "composer": "existing composer tasks",
+        "registry": "verify actual exports per request",
+        "runtime": "verify accepted project revision per request"
+      },
+      "tags": [
+        "aria"
+      ],
+      "supersedes": [],
+      "text": "ARIA source, screenshots and runtime behavior have not been inspected. No executable or visual certification is available.",
+      "contentHash": "0e327a852c516eb39d8caf7ba396a813da5de5e5c00a2d98089af9aa180ef651"
+    },
+    {
+      "id": "aria-editorial-composition",
+      "version": "2026-09-29.2",
+      "status": "active",
+      "scope": "reference",
+      "source": "docs/knowledge/references/aria/REFERENCE.md",
+      "compatibility": {
+        "composer": "design inspiration only; adapt routing and source paths",
+        "registry": "local components, not canonical registry exports",
+        "runtime": "TanStack Router / Tailwind 4 reference; not a drop-in Builder runtime"
+      },
+      "tags": [
+        "aria",
+        "portfolio",
+        "editorial",
+        "cinematic",
+        "gallery",
+        "work"
+      ],
+      "supersedes": [
+        "aria-reference@2026-09-29.1"
+      ],
+      "text": "Inspected ARIA reference: Home uses a full-height image-led hero and staggered 7/5 project grid; Work uses an editorial introduction and 8/4 grid; project detail uses a full-width image and challenge/approach/outcome narrative; Contact uses a 5/7 split that stacks on mobile. Shared local SiteChrome components and semantic tokens maintain identity while original TSX determines page composition. Preserve that principle, not a mandatory recipe. White gallery surfaces, orchid accents, italic Libre Baskerville display, IBM Plex Sans body and JetBrains Mono labels are reference choices, not global rules. Source and local browser views inspected; no production certification. Do not copy hover-only navigation, global arrow-key interception or email-preparation forms as working backend submissions.",
+      "contentHash": "5b59c8b8d34b29d3c4451405b6581acedac4715451f0e43b6522fd11bbf81cc3"
+    }
+  ]
+}

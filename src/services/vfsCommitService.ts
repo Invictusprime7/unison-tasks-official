@@ -1,5 +1,6 @@
 import { updateResolvedCompositionVariants } from '@/sections/compositionToFileSet';
 import { isCustomizerPageEdit } from '@/services/builder/customizerDraft';
+import { verifyAuthoredSourcePreservation } from '@/services/builder/authoredSourcePreservation';
 /**
  * VFSCommitService — the SINGLE legal writer of Web Builder state.
  *
@@ -553,16 +554,15 @@ export async function commitMutation(
   // 6. Full preflight --------------------------------------------------------
   const snapshot = finalizedArtifact?.siteBundleSnapshot ?? reviewedArtifact?.siteBundleSnapshot ?? canonicalResult?.siteBundleSnapshot ?? null;
   let files: Record<string, string> =
-    restoredRevision ? restoredRevision.vfsFiles : reviewedComposition ? reviewedComposition.candidate.vfsFiles : finalizedArtifact ? preserveWizardMetadataFiles(finalizedArtifact.files, workingFiles) : input.source === 'wizard-launch'
+    restoredRevision ? { ...restoredRevision.vfsFiles } : reviewedComposition ? { ...reviewedComposition.candidate.vfsFiles } : input.options?.reviewedArtifact
+      ? preserveWizardMetadataFiles(input.options.reviewedArtifact.siteBundleSnapshot.vfsFiles, workingFiles)
+      : finalizedArtifact ? preserveWizardMetadataFiles(finalizedArtifact.files, workingFiles) : input.source === 'wizard-launch'
       ? mergeWizardLaunchFiles(workingFiles, (snapshot as SiteBundleSnapshot | null) ?? null)
       : ((snapshot as { vfsFiles?: Record<string, string> } | null)?.vfsFiles ?? workingFiles);
-  if (reviewedArtifact) {
-    assertReviewedWizardPageBodiesUnchanged(
-      reviewedArtifact.siteBundleSnapshot,
-      files,
-      'wizard commit input',
-    );
-  }
+  // A reviewed artifact is already a complete candidate, not a page template.
+  // Capture before preflight can mutate even the input map in place. Protect
+  // hooks, styles, assets and original components as well as registered pages.
+  const reviewedSourceBaseline = reviewedArtifact ? { ...files } : null;
   let snapshotForPersistence = input.source === 'wizard-launch'
     ? mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files)
     : snapshot;
@@ -927,6 +927,10 @@ export async function commitMutation(
   }
 
 
+  if (reviewedSourceBaseline) {
+    assertReviewedSourcesUnchanged(reviewedSourceBaseline, files, 'before backend effects');
+  }
+
   // Move C: execute transactional backend ops only after the candidate VFS
   // has survived preview and readiness checks. This is intentionally after
   // the auto-repair decision: a rejected revision must never provision or
@@ -1035,12 +1039,8 @@ export async function commitMutation(
     publishBlockers.length === 0 &&
     (!publishVerdict || publishVerdict.ok);
 
-  if (reviewedArtifact) {
-    assertReviewedWizardPageBodiesUnchanged(
-      reviewedArtifact.siteBundleSnapshot,
-      files,
-      'wizard durable revision',
-    );
+  if (reviewedSourceBaseline) {
+    assertReviewedSourcesUnchanged(reviewedSourceBaseline, files, 'durable revision');
   }
   const vfsHash = await hashVfsFiles(files);
   if (reviewedComposition && vfsHash !== reviewedComposition.candidate.vfsHash) {
@@ -1232,19 +1232,20 @@ function mergeWizardLaunchSnapshot(
   };
 }
 
-function assertReviewedWizardPageBodiesUnchanged(
-  snapshot: SiteBundleSnapshot,
+function assertReviewedSourcesUnchanged(
+  expected: Record<string, string>,
   files: Record<string, string>,
   boundary: string,
 ): void {
-  const changedPages = Object.values(snapshot.pageRegistry?.pages || {})
-    .map((page) => page.filePath)
-    .filter((path): path is string => Boolean(path))
-    .map((path) => (path.startsWith('/') ? path : `/${path}`))
-    .filter((path) => snapshot.vfsFiles[path] !== files[path]);
-  if (changedPages.length > 0) {
+  const violations = verifyAuthoredSourcePreservation({
+    acceptedFiles: expected, operations: [], finalizedFiles: files,
+    // All reviewed bytes are sealed here, including compiler artifacts.
+    // This is acceptance, not an authorization to reconcile or regenerate.
+    compilerOwnedPaths: [], stage: boundary,
+  });
+  if (violations.length > 0) {
     throw new Error(
-      `[VFSCommitService] ${boundary} amended sealed Wizard page bodies: ${changedPages.join(', ')}.`,
+      `[VFSCommitService] ${boundary} changed reviewed source: ${violations.map(item => `${item.path} (${item.kind})`).join(', ')}. Reviewed source was not persisted.`,
     );
   }
 }
