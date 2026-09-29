@@ -6,7 +6,9 @@ import {
   getPendingVfsOperations,
   projectSnapshotVfsFiles,
   recordPendingVfsMutation,
+  restorePendingVfsOperations,
   resolveSnapshot,
+  serializePendingVfsOperations,
   type SnapshotResolution,
 } from '@/services/snapshotProjector';
 
@@ -89,6 +91,32 @@ describe('snapshot projector', () => {
     } finally {
       clearPendingVfsOperations('draft-a');
       clearPendingVfsOperations('draft-b');
+    }
+  });
+
+  it('round-trips pending operations through a matching draft recovery journal', () => {
+    const snapshot = snapshotWith({ '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'old' });
+    const resolution: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-recovery' };
+    try {
+      recordPendingVfsMutation({
+        scope: 'draft-recovery',
+        beforeFiles: snapshot.vfsFiles,
+        afterFiles: { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'recovered' },
+        operationId: 'recovery-operation',
+      });
+      const journal = serializePendingVfsOperations('draft-recovery');
+      clearPendingVfsOperations('draft-recovery');
+
+      expect(restorePendingVfsOperations(journal, 'another-draft')).toEqual([]);
+      expect(restorePendingVfsOperations(journal, 'draft-recovery')).toEqual(['recovery-operation']);
+      expect(getPendingVfsOperations('draft-recovery')).toMatchObject([{
+        operationId: 'recovery-operation',
+        changes: [{ type: 'replace', path: '/src/pages/Home.tsx', contents: 'recovered' }],
+      }]);
+      expect(projectSnapshotVfsFiles(snapshot.vfsFiles, resolution)['/src/pages/Home.tsx']).toBe('recovered');
+    } finally {
+      clearPendingVfsOperations('draft-recovery');
+      clearPendingVfsOperations('another-draft');
     }
   });
 

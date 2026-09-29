@@ -21,6 +21,8 @@ export interface BuilderRecoverySnapshot {
   templateId: string | null;
   vfsSignature: string;
   vfsFiles: Record<string, string>;
+  /** Pending VFS operations preserve preview projection while a cloud revision catches up. */
+  pendingVfsOperations?: unknown[];
   reason: BuilderSaveReason;
   pendingRemote: boolean;
 }
@@ -93,7 +95,8 @@ export function readBuilderRecoverySnapshot(
       typeof parsed.savedAt !== 'string' ||
       typeof parsed.vfsSignature !== 'string' ||
       typeof parsed.pendingRemote !== 'boolean' ||
-      !isFileMap(parsed.vfsFiles)
+      !isFileMap(parsed.vfsFiles) ||
+      (parsed.pendingVfsOperations !== undefined && !Array.isArray(parsed.pendingVfsOperations))
     ) {
       return null;
     }

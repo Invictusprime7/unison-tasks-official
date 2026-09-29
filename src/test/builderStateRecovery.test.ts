@@ -50,7 +50,17 @@ describe('builderStateRecovery', () => {
 
   it('journals the complete VFS synchronously before remote persistence', () => {
     const storage = createStorage();
-    const pending = snapshot();
+    const pending: BuilderRecoverySnapshot = {
+      ...snapshot(),
+      pendingVfsOperations: [{
+        operationId: 'pending-revision-2',
+        scope: null,
+        baseRevisionId: 'revision-1',
+        candidateRevisionId: 'revision-2',
+        createdAt: 1,
+        changes: [{ type: 'replace', path: '/src/App.tsx', contents: 'Recovered AI edit' }],
+      }],
+    };
 
     expect(writeBuilderRecoverySnapshot(pending, storage)).toBe(true);
     expect(readBuilderRecoverySnapshot(null, storage)).toEqual(pending);

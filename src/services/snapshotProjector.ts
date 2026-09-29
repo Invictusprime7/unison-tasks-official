@@ -458,6 +458,7 @@ export function recordPendingVfsOperation(input: {
   candidateRevisionId?: string | null;
   changes: readonly PendingVfsChange[];
   operationId?: string;
+  createdAt?: number;
 }): PendingVfsOperation | null {
   const changes = normalizedChanges(input.changes);
   if (!changes.length) return null;
@@ -468,7 +469,9 @@ export function recordPendingVfsOperation(input: {
     scope: normalizedScope(input.scope),
     baseRevisionId: input.baseRevisionId?.trim() || null,
     candidateRevisionId: input.candidateRevisionId?.trim() || null,
-    createdAt: Date.now(),
+    createdAt: typeof input.createdAt === 'number' && Number.isFinite(input.createdAt)
+      ? input.createdAt
+      : Date.now(),
     changes,
   };
   pendingVfsOperations.set(operationId, operation);
@@ -528,6 +531,43 @@ export function getPendingVfsOperations(scope?: string | null): PendingVfsOperat
   return [...pendingVfsOperations.values()]
     .filter((operation) => operationScopeKey(operation.scope) === operationScopeKey(scope))
     .map((operation) => ({ ...operation, changes: [...operation.changes] }));
+}
+
+/** A JSON-safe recovery payload for one draft's unacknowledged VFS writes. */
+export function serializePendingVfsOperations(scope?: string | null): PendingVfsOperation[] {
+  return getPendingVfsOperations(scope);
+}
+
+/**
+ * Restores only operations belonging to the requested draft scope. Invalid or
+ * duplicate entries are ignored so a stale browser journal cannot break load.
+ */
+export function restorePendingVfsOperations(serialized: unknown, scope?: string | null): string[] {
+  if (!Array.isArray(serialized)) return [];
+  const restored: string[] = [];
+  for (const item of serialized) {
+    if (!item || typeof item !== 'object') continue;
+    const operation = item as Partial<PendingVfsOperation>;
+    if (
+      typeof operation.operationId !== 'string' ||
+      !Array.isArray(operation.changes) ||
+      operationScopeKey(operation.scope) !== operationScopeKey(scope)
+    ) continue;
+    try {
+      const recorded = recordPendingVfsOperation({
+        operationId: operation.operationId,
+        scope,
+        baseRevisionId: operation.baseRevisionId,
+        candidateRevisionId: operation.candidateRevisionId,
+        createdAt: operation.createdAt,
+        changes: operation.changes,
+      });
+      if (recorded) restored.push(recorded.operationId);
+    } catch {
+      // A duplicate or malformed operation is already safely represented or unusable.
+    }
+  }
+  return restored;
 }
 
 /** Mark paths as edited in the live VFS ahead of the next snapshot commit. */
@@ -641,10 +681,14 @@ export function projectSnapshotVfsFiles(
   }
 
   // Pending creates and deletes may have no corresponding stale snapshot path.
+  // Replacements already handled above must not be overwritten here by the
+  // stale input VFS used during a reload recovery.
   for (const [path, pending] of pendingChanges) {
     if (path.startsWith('/.unison/')) continue;
     if (pending.type === 'delete') {
       delete next[path];
+    } else if (Object.prototype.hasOwnProperty.call(snapshotFiles, path)) {
+      continue;
     } else {
       const live = files[path] ?? files[path.slice(1)];
       next[path] = typeof live === 'string' ? live : pending.contents;

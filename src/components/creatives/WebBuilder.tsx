@@ -201,7 +201,7 @@ import { loadCanonicalComponentGraph } from '@/services/componentGraphPersistenc
 import { inferCanonicalComponentSlug } from '@/services/canonicalComponentRegistry';
 import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
 import { clearLauncherHandoff, readLauncherHandoff } from '@/services/launcherHandoffPersistence';
-import { assertNoMinimalFallbackPreview, projectSnapshotVfsFiles, resolveSnapshot, recordPendingVfsMutation, clearPendingVfsOperations } from '@/services/snapshotProjector';
+import { assertNoMinimalFallbackPreview, projectSnapshotVfsFiles, resolveSnapshot, recordPendingVfsMutation, clearPendingVfsOperations, restorePendingVfsOperations, serializePendingVfsOperations } from '@/services/snapshotProjector';
 import { projectCommittedWizardRuntime } from '@/services/committedWizardRuntime';
 import { createVfsHandoffSignature } from '@/services/vfsHandoffSignature';
 import { isPreviewPipelineError } from '@/services/previewPipelineError';
@@ -1227,10 +1227,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
     if (canvasData?.vfsFiles && Object.keys(canvasData.vfsFiles).length > 0) {
       const recovery = readBuilderRecoverySnapshot(template.id);
+      const hasPendingRecovery = Boolean(
+        recovery?.pendingRemote && recovery.templateId === template.id,
+      );
+      // Restore the projection journal before import so a stale canonical
+      // snapshot cannot overwrite an interrupted, newer candidate revision.
+      if (hasPendingRecovery && recovery) {
+        restorePendingVfsOperations(recovery.pendingVfsOperations, template.id);
+      }
       const shouldReplayRecovery = Boolean(
         !canvasData.siteBundleSnapshot &&
-        recovery?.pendingRemote &&
-        recovery.templateId === template.id &&
+        hasPendingRecovery &&
+        recovery &&
         Object.keys(recovery.vfsFiles).length > 0,
       );
       const vfsFiles = shouldReplayRecovery ? recovery!.vfsFiles : canvasData.vfsFiles;
@@ -4385,6 +4393,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       templateId: currentDraftIdRef.current || null,
       vfsSignature,
       vfsFiles: currentVfsFiles,
+      pendingVfsOperations: serializePendingVfsOperations(pendingProjectionScope),
       reason,
       pendingRemote: true,
     };
@@ -4519,6 +4528,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     playgroundCalendars,
     playgroundPopups,
     currentTemplateName,
+    pendingProjectionScope,
   ]);
 
   // Keep latest saveDraft in a ref so unload/visibility handlers always call the freshest version.
@@ -4582,6 +4592,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             ? readBuilderRecoverySnapshot(currentDraftIdRef.current)
             : readBuilderRecoverySnapshot(null);
           if (!hydratedRevision && recovery?.pendingRemote && Object.keys(recovery.vfsFiles).length > 0) {
+            restorePendingVfsOperations(recovery.pendingVfsOperations, currentDraftIdRef.current || null);
             void saveDraftRef.current({
               force: true,
               reason: 'ai_recovery',
@@ -4663,9 +4674,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       // Also skip if incoming route state already carries structured project files.
       if (routeStateHasStructuredProject) return;
 
-      const savedDraft = localStorage.getItem('webbuilder_autosave_draft');
-      if (savedDraft) {
-        const draft = JSON.parse(savedDraft);
+      const draft = readBuilderRecoverySnapshot(null);
+      if (draft) {
         const savedTime = new Date(draft.savedAt);
         const now = new Date();
         const hoursSinceLastSave = (now.getTime() - savedTime.getTime()) / (1000 * 60 * 60);
@@ -4678,6 +4688,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           if (!isDefaultContent) {
             setShowLauncher(false);
             if (hasRecoveredVfs) {
+              if (draft.pendingRemote) restorePendingVfsOperations(draft.pendingVfsOperations, null);
               // canonical-vfs-exempt: hydration of a saved draft into the working set
               importBuilderFiles(draft.vfsFiles, {
                 preferredPath: activePagePath,

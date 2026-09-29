@@ -40,6 +40,7 @@ describe('WebBuilder canonical recovery authority', () => {
       creatorPlayground: { hydrateCanonicalState: vi.fn() },
       setPlaygroundBindings: vi.fn(), setPlaygroundCalendars: vi.fn(), setPlaygroundPopups: vi.fn(),
       readBuilderRecoverySnapshot, importBuilderFiles, launchEntryPoint: '/src/App.tsx',
+      restorePendingVfsOperations: vi.fn(),
       setPreviewCode, setEditorCode: vi.fn(), toast: { info: vi.fn() },
       setActivePagePath: vi.fn(), setCurrentTemplateName: vi.fn(), setSaveProjectName: vi.fn(),
       setProjectDisplayName: vi.fn(), setSaveProjectDescription: vi.fn(),
@@ -67,6 +68,7 @@ describe('WebBuilder canonical recovery authority', () => {
       hydratedRevision: state === 'loaded' ? { id: 'revision-1' } : null,
       hydratedRevisionRef: { current: canonical ? 'draft:project-1:draft-1:current#0' : null },
       readBuilderRecoverySnapshot: vi.fn(() => recovery),
+      restorePendingVfsOperations: vi.fn(),
       saveDraftRef: { current: saveDraft }, computeVfsSignature: JSON.stringify,
     });
     expect(saveDraft).toHaveBeenCalledTimes(canonical ? 0 : 1);
