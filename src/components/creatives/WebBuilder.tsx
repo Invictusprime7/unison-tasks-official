@@ -2514,6 +2514,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     importedRouteStateRef.current = options.context || 'committed-wizard-runtime';
     vfsReplaceFiles(committed.files);
     lastSavedVfsSignatureRef.current = computeBuilderVfsSignature(committed.files);
+    lastPersistedVfsFilesRef.current = { ...committed.files };
     const syncedEntry = syncBuilderFromFiles(
       committed.files,
       options.preferredPath || launchEntryPoint,
@@ -3487,6 +3488,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // Track VFS file map signature so we persist multi-file AI edits even when
   // the legacy single-file `previewCode` blob did not change.
   const lastSavedVfsSignatureRef = useRef<string>('');
+  // Exact accepted VFS baseline for edits that originate outside the AI panel
+  // (code editor, history actions, import helpers, and direct tools).
+  const lastPersistedVfsFilesRef = useRef<Record<string, string>>({});
+  const lastRecordedPendingVfsSignatureRef = useRef<string>('');
   const computeVfsSignature = useCallback(computeBuilderVfsSignature, []);
   // Keep the current template id in a ref so callbacks always read the
   // latest value without stale-closure issues (avoids re-creating intervals).
@@ -4384,6 +4389,25 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
     if (!options?.force && !previewCodeChanged && !vfsChanged) return Promise.resolve(true);
 
+    // Every working-set edit needs an operation record before its recovery
+    // journal is written. AI apply paths may already have a more descriptive
+    // operation; this generic delta closes the same protection gap for direct
+    // editor, history, import, and toolbar mutations.
+    const pendingMutationKey = `${pendingProjectionScope ?? 'unscoped'}:${currentRevisionIdRef.current ?? 'initial'}:${vfsSignature}`;
+    if (
+      vfsChanged &&
+      Object.keys(lastPersistedVfsFilesRef.current).length > 0 &&
+      lastRecordedPendingVfsSignatureRef.current !== pendingMutationKey
+    ) {
+      recordPendingVfsMutation({
+        scope: pendingProjectionScope,
+        baseRevisionId: currentRevisionIdRef.current || null,
+        beforeFiles: lastPersistedVfsFilesRef.current,
+        afterFiles: currentVfsFiles,
+      });
+      lastRecordedPendingVfsSignatureRef.current = pendingMutationKey;
+    }
+
     const reason = options?.reason || 'interval_autosave';
     const snapshot: BuilderRecoverySnapshot = {
       version: 2,
@@ -4496,6 +4520,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         markBuilderRecoveryPersisted(snapshot, existingDraftId, undefined, commit.persistedRevisionId);
         lastSavedCodeRef.current = codeForSave;
         lastSavedVfsSignatureRef.current = vfsSignature;
+        lastPersistedVfsFilesRef.current = { ...currentVfsFiles };
+        lastRecordedPendingVfsSignatureRef.current = '';
         setLastSavedAt(new Date());
         setAutoSaveStatus('saved');
         setTimeout(() => setAutoSaveStatus('idle'), 2000);
@@ -4610,6 +4636,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             return;
           }
           lastSavedVfsSignatureRef.current = computeVfsSignature(files);
+          lastPersistedVfsFilesRef.current = { ...files };
         }
         return;
       }

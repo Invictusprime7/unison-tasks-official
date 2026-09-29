@@ -67,6 +67,7 @@ describe('WebBuilder canonical recovery authority', () => {
       currentDraftIdRef: { current: 'draft-1' },
       hydratedRevision: state === 'loaded' ? { id: 'revision-1' } : null,
       hydratedRevisionRef: { current: canonical ? 'draft:project-1:draft-1:current#0' : null },
+      lastPersistedVfsFilesRef: { current: {} },
       readBuilderRecoverySnapshot: vi.fn(() => recovery),
       restorePendingVfsOperations: vi.fn(),
       saveDraftRef: { current: saveDraft }, computeVfsSignature: JSON.stringify,
