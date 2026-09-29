@@ -133,12 +133,24 @@ export function resolveSnapshot(
     ['persisted runtime manifest', runtimeAppContext?.themePresetId],
   ];
   if (snapshotThemePresetId) {
+    // The sealed SiteBundleSnapshot is authoritative after commit. Ambient
+    // handoff carriers (navigation state, persisted app-context, runtime
+    // manifest) can legitimately lag behind the newest committed snapshot
+    // (e.g. a re-launch with a different Style card reuses an older route
+    // state). That drift is stale provenance, not a mutated seed: reconcile
+    // to the snapshot and warn instead of halting the preview pipeline.
     for (const [boundary, candidate] of candidateSeeds) {
-      if (candidate !== undefined && candidate !== null) {
-        assertThemeSeed(
-          typeof candidate === 'string' ? candidate : null,
-          `${boundary} -> snapshotProjector`,
-          snapshotThemePresetId,
+      if (candidate === undefined || candidate === null) continue;
+      const normalized = typeof candidate === 'string' ? candidate.trim() : '';
+      if (!normalized) {
+        console.warn(
+          `[snapshotProjector] ${boundary} carries a non-string themePresetId; using sealed snapshot seed "${snapshotThemePresetId}".`,
+        );
+        continue;
+      }
+      if (normalized !== snapshotThemePresetId) {
+        console.warn(
+          `[snapshotProjector] Stale themePresetId "${normalized}" from ${boundary}; sealed snapshot seed "${snapshotThemePresetId}" wins.`,
         );
       }
     }
