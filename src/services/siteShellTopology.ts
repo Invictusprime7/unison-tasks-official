@@ -332,8 +332,16 @@ export function projectSiteShellLinks(
     const typeRe = /["']?type["']?\s*:\s*["'](navbar|header)["']/g;
     let match: RegExpExecArray | null;
     while ((match = typeRe.exec(source))) {
-      const nextType = source.slice(match.index + match[0].length).search(/["']?type["']?\s*:\s*["']/);
-      const windowEnd = nextType === -1 ? source.length : match.index + match[0].length + nextType;
+      const nextTypeFor = () => source.slice(match!.index + match![0].length).search(/["']?type["']?\s*:\s*["']/);
+      let nextType = nextTypeFor();
+      let windowEnd = nextType === -1 ? source.length : match.index + match[0].length + nextType;
+      // Navbar CTA must open a page the user selected, never a template anchor.
+      const ctaResult = projectNavbarCta(source, match.index, windowEnd, topology);
+      if (ctaResult.delta !== 0 || ctaResult.source !== source) {
+        source = ctaResult.source;
+        nextType = nextTypeFor();
+        windowEnd = nextType === -1 ? source.length : match.index + match[0].length + nextType;
+      }
       const linksRe = /(["']?)links\1\s*:\s*\[/g;
       linksRe.lastIndex = match.index;
       const linksMatch = linksRe.exec(source);
