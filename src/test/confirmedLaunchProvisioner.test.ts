@@ -118,4 +118,27 @@ describe('provisionConfirmedLaunchSite', () => {
 
     await expect(provisionConfirmedLaunchSite(shellInput)).resolves.toEqual(ids);
   });
+
+  it('retries a transient PostgREST schema-cache read instead of failing a persisted launch', async () => {
+    invoke.mockResolvedValueOnce({ data: { data: ids }, error: null });
+    maybeSingle
+      .mockResolvedValueOnce({ data: null, error: { message: 'Could not query the database for the schema cache. Retrying.' } })
+      .mockResolvedValueOnce({
+        data: {
+          id: ids.draftId,
+          project_id: ids.projectId,
+          business_id: ids.businessId,
+          site_id: ids.siteId,
+          last_revision_id: null,
+          vfs_files: {},
+          metadata: {},
+        },
+        error: null,
+      });
+    mockOwnership();
+
+    await expect(provisionConfirmedLaunchSite(shellInput)).resolves.toEqual(ids);
+    // Two draft reads plus the ownership membership read.
+    expect(maybeSingle).toHaveBeenCalledTimes(3);
+  });
 });

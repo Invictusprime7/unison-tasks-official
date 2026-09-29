@@ -32,6 +32,21 @@ export function createConfirmedLaunchIds(existingBusinessId?: string | null): Co
   };
 }
 
+const SCHEMA_CACHE_RETRY_DELAYS_MS = [250, 750, 1_500] as const;
+
+function isTransientSchemaCacheError(error: unknown): boolean {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message?: unknown }).message || '')
+      : String(error || '');
+  return /schema cache|could not query the database/i.test(message);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, ms));
+}
+
 export async function provisionConfirmedLaunchSite(
   input: ConfirmedLaunchProvisionInput,
 ): Promise<ConfirmedLaunchIds> {
@@ -46,15 +61,40 @@ export async function provisionConfirmedLaunchSite(
   }
 
   // Provisioning owns identity only. Any site content present before the
-  // platform-core commit would create a competing source of truth.
-  const { data: draftRow, error: verifyError } = await supabase
-    .from('builder_drafts')
-    .select('id, project_id, business_id, site_id, last_revision_id, vfs_files, metadata')
-    .eq('id', result.draftId)
-    .maybeSingle();
-  if (verifyError) {
-    throw new Error(`Launch persisted but could not be verified: ${verifyError.message}`);
+  // platform-core commit would create a competing source of truth. The edge
+  // function inserts this shell atomically through Postgres; this REST read is
+  // a verification step and must not turn a completed launch into a failure
+  // while PostgREST is refreshing its schema cache.
+  let draftRow: {
+    id: string;
+    project_id: string;
+    business_id: string;
+    site_id: string;
+    last_revision_id: string | null;
+    vfs_files: unknown;
+    metadata: unknown;
+  } | null = null;
+  let verificationUnavailable = false;
+  for (let attempt = 0; attempt <= SCHEMA_CACHE_RETRY_DELAYS_MS.length; attempt += 1) {
+    const { data: candidate, error: verifyError } = await supabase
+      .from('builder_drafts')
+      .select('id, project_id, business_id, site_id, last_revision_id, vfs_files, metadata')
+      .eq('id', result.draftId)
+      .maybeSingle();
+    if (!verifyError) {
+      draftRow = candidate;
+      break;
+    }
+    if (!isTransientSchemaCacheError(verifyError)) {
+      throw new Error(`Launch persisted but could not be verified: ${verifyError.message}`);
+    }
+    if (attempt === SCHEMA_CACHE_RETRY_DELAYS_MS.length) {
+      verificationUnavailable = true;
+      break;
+    }
+    await delay(SCHEMA_CACHE_RETRY_DELAYS_MS[attempt]);
   }
+  if (verificationUnavailable) return result as ConfirmedLaunchIds;
   if (!draftRow
     || draftRow.project_id !== result.projectId
     || draftRow.business_id !== result.businessId
