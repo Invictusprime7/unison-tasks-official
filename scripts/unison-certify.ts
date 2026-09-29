@@ -81,7 +81,8 @@ for (const id of ids) {
   } else if (prev.sourceHash && prev.sourceHash !== entry.sourceHash) entry.consumer = undefined; // stale
   evidence[id] = entry;
   const failed = Object.entries(checks).filter(([, c]) => !c.pass).map(([k, c]) => `${k}: ${c.detail}`);
-  hasFailures ||= failed.length > 0 || (consumer && !entry.consumer?.pass);
+  // Static quality heuristics are advice, not a freestyle-generation veto.
+  hasFailures ||= !checks.render.pass || !checks.dependencies.pass;
   console.log(`${failed.length ? '✗' : '✓'} ${id}${failed.length ? '\n    ' + failed.join('\n    ') : ''}${consumer ? `\n    consumer: ${entry.consumer.pass ? 'pass' : 'FAIL'} — ${entry.consumer.detail}` : ''}`);
 }
 writeEvidence(evidence);

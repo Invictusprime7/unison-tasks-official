@@ -39,6 +39,7 @@ export interface PromotionAudit {
   registryState: { certification?: string; generationStatus?: string; recipeMode?: string };
   gates: Gate[];
   blockers: Gate[];
+  advisories: Gate[];
   themeFamilies: ThemeFamilyId[];
   packs: ArtDirectionPackId[];
   experiences: string[];
@@ -47,6 +48,19 @@ export interface PromotionAudit {
 
 const EVIDENCE = evidenceFile as Record<string, ImplementationEvidence>;
 const SAFE: GateId[] = ['portable-recipe', 'artifact', 'dependencies'];
+
+// Only proven implementation defects block. Missing evidence and creative
+// compatibility metadata guide authoring; they are not generation permissions.
+// Legacy renderJSX linkage is maintenance advice: the canonical compiler emits
+// portable recipes directly, so that unused linkage must not veto its output.
+const IMPLEMENTATION_GATES: GateId[] = ['identity', 'react-implementation', 'dependencies'];
+export function partitionAuditGates(gates: Gate[]): { blockers: Gate[]; advisories: Gate[] } {
+  const isBlocking = (gate: Gate) => gate.result === 'fail' && IMPLEMENTATION_GATES.includes(gate.id);
+  return {
+    blockers: gates.filter(isBlocking),
+    advisories: gates.filter(gate => gate.result !== 'pass' && !isBlocking(gate)),
+  };
+}
 
 const fromEvidence = (ev: ImplementationEvidence | undefined, key: keyof ImplementationEvidence['checks'], label: string): Pick<Gate, 'result' | 'detail'> => {
   const check = ev?.checks[key];
@@ -94,11 +108,11 @@ export function auditImplementation(id: VariantId): PromotionAudit | undefined {
       : { result: 'pass', detail: v.source.origin === '21st' ? `21st ${v.source.sourceId}${v.source.license ? ` (${v.source.license})` : ''}` : 'Unison-authored' }),
     g('consumer-build', 'Consumer-build verification', !ev?.consumer ? { result: 'unproven', detail: 'Consumer smoke test not run' } : { result: ev.consumer.pass ? 'pass' : 'fail', detail: ev.consumer.detail }),
   ];
-  const blockers = gates.filter((gate) => gate.result !== 'pass');
+  const { blockers, advisories } = partitionAuditGates(gates);
   return {
     id, family: v.sectionType, status: deriveStatusFrom(v, blockers.length),
     registryState: { certification: v.vfs?.certification, generationStatus: v.generationStatus, recipeMode: v.vfs?.mode },
-    gates, blockers, themeFamilies, packs, experiences, evidence: ev,
+    gates, blockers, advisories, themeFamilies, packs, experiences, evidence: ev,
   };
 }
 

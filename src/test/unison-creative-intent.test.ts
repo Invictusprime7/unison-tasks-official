@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { partitionAuditGates, type Gate } from '@/sections/unison/runtime/promotion-audit';
 import {
   interpretCreativeIntent, resolveCreativeDesignContext, validateOpenComposition, projectArtifactIssues,
   type ProjectArtifact,
@@ -55,9 +56,23 @@ describe('open composition', () => {
     const r = validateOpenComposition(ctx, { pages: { home: [{ family: 'features', artifact: artifact() }] } });
     expect(r.blocking).toEqual([]);
   });
-  test('quarantined / unknown Unison design is still blocked', () => {
+  test('an unknown registry reference still needs a project-authored artifact', () => {
     const r = validateOpenComposition(ctx, { pages: { home: [{ family: 'hero', variantId: 'hero:not-real' as never }] } });
     expect(r.blocking.length).toBe(1);
+  });
+  test('registered variants with audit advice remain available for composition', () => {
+    const r = validateOpenComposition(ctx, { pages: { home: [{ family: 'hero', variantId: 'hero:image-stream' }] } });
+    expect(r.blocking).toEqual([]);
+  });
+  test('missing certification and creative compatibility evidence are advisory', () => {
+    const gate = (id: Gate['id'], result: Gate['result']): Gate => ({ id, result, label: id, detail: id, safeRepair: false });
+    const result = partitionAuditGates([
+      gate('art-direction', 'fail'), gate('page-archetype', 'unproven'),
+      gate('react-implementation', 'unproven'), gate('consumer-build', 'unproven'),
+      gate('dependencies', 'fail'), gate('react-implementation', 'fail'),
+    ]);
+    expect(result.blockers.map(g => g.id)).toEqual(['dependencies', 'react-implementation']);
+    expect(result.advisories).toHaveLength(4);
   });
   test('app screen on a marketing page is blocked', () => {
     const r = validateOpenComposition(ctx, { pages: { auth: [{ family: 'hero', artifact: artifact({ family: 'hero' }) }] } });

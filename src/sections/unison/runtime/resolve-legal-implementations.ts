@@ -6,7 +6,7 @@ import { childSeed, seededPick } from '../../../platform/core/generationSeed';
 import { deriveStatus } from './promotion-audit';
 
 export function listLegalImplementations(family: SectionType, pack?: ArtDirectionPack, pageRole?: string): SectionVariant[] {
-  return getGenerationVariantsForSection(family, pack, pageRole).filter(v => isCanonicalImplementation(v.id));
+  return getGenerationVariantsForSection(family, pack, pageRole);
 }
 
 export function resolveLegalImplementation(input: { family: SectionType; pack?: ArtDirectionPack; pageRole?: string; designSeed: string }): SectionVariant | undefined {

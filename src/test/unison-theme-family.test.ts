@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'vitest';
+import { getGenerationVariantsForSection as registryVariants } from '@/sections/variants/registry';
 import {
   ART_DIRECTION_PACK_IDS, ART_DIRECTION_PACKS, ART_DIRECTION_FAMILY_REGISTRY, THEME_FAMILY_IDS, INDUSTRY_PACK_CAPABILITY,
   packsForThemeFamily, themeFamiliesForPack, resolveUnisonArtDirection, orphanedArtDirectionPacks,
   compileUnisonDesignContext, validateComposition, applyPostCompositionTheme, applyBrandTokens,
-  getGenerationVariantsForSection, isCanonicalImplementation, getSectionTypesWithVariants,
+  getGenerationVariantsForSection, getSectionTypesWithVariants,
 } from '../sections/unison';
 
 const brief = { projectName: 'Northline', industry: 'restaurant', audience: ['locals'], goals: ['bookings'], pageRoles: ['home', 'contact'] };
@@ -17,9 +18,10 @@ describe('Theme Family → Art Direction Pack invariants', () => {
     const refs = [...Object.keys(ART_DIRECTION_FAMILY_REGISTRY), ...THEME_FAMILY_IDS.flatMap(packsForThemeFamily), ...Object.values(INDUSTRY_PACK_CAPABILITY).flat()];
     for (const id of refs) expect(ART_DIRECTION_PACKS[id as keyof typeof ART_DIRECTION_PACKS]).toBeDefined();
   });
-  test('every released pack resolves only certified implementations', () => {
+  test('the toolkit preserves the registry selection rules without extra audit gates', () => {
     for (const id of ART_DIRECTION_PACK_IDS) for (const family of getSectionTypesWithVariants())
-      for (const v of getGenerationVariantsForSection(family, ART_DIRECTION_PACKS[id])) expect(isCanonicalImplementation(v.id)).toBe(true);
+      expect(getGenerationVariantsForSection(family, ART_DIRECTION_PACKS[id]).map(v => v.id))
+        .toEqual(registryVariants(family, ART_DIRECTION_PACKS[id]).map(v => v.id));
   });
   test('explicit and sealed pack selections remain sealed', () => {
     for (const id of ART_DIRECTION_PACK_IDS) {
@@ -49,7 +51,7 @@ describe('Theme Family → Art Direction Pack invariants', () => {
     expect(tokens.artDirectionPackId).toBe(plain.resolution.packId);
     expect(tokens.tokens['--primary']).toBe('200 80% 40%');
   });
-  test('page composition cannot select implementations outside the resolved vocabulary', () => {
+  test('recommended choices remain usable and unknown references are rejected', () => {
     const ctx = compileUnisonDesignContext({ ...brief, themeFamilyId: 'editorial', designSeed: 's' });
     const legal = Object.entries(ctx.seededChoices).map(([key, id]) => ({ family: key.split(':')[1] as never, variantId: id as never }));
     expect(validateComposition(ctx, { pages: { home: legal } })).toEqual([]);

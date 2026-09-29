@@ -5,7 +5,7 @@ import { projectArtifactIssues, type ProjectArtifact } from '../contracts/projec
 import { buildProjectOverlay, type ProjectArtDirectionOverlay } from '../contracts/project-overlay';
 import { industryPackCapability } from '../contracts/theme-family';
 import { getVariantById } from '../../variants/registry';
-import { isCanonicalImplementation } from './resolve-legal-implementations';
+import { auditImplementation } from './promotion-audit';
 import { interpretCreativeIntent, type CreativeInterpretation } from './interpret-creative-intent';
 import { applyBrandTokens, type BrandedTokenSet, type UnisonBrandOverrides } from '../contracts/brand';
 import { industryCreativeProfile } from '../../templates/industryCreativeVocabulary';
@@ -64,7 +64,7 @@ export function compileUnisonDesignContext(brief: UnisonProjectBrief): ResolvedU
   const seededChoices: Record<string, string> = {};
   for (const [role, page] of Object.entries(contract.pages)) {
     for (const family of [...page.requiredFamilies, ...page.recommendedFamilies]) {
-      const legal = (contract.allowedImplementations[family] ?? []).filter(id => isCanonicalImplementation(id as VariantId));
+      const legal = contract.allowedImplementations[family] ?? [];
       if (legal.length) seededChoices[`${role}:${family}`] = seededPick(childSeed(designSeed, role, family), legal);
     }
   }
@@ -93,7 +93,7 @@ export interface UnisonPageComposition {
 }
 
 export interface CompositionReport {
-  /** Must be fixed: forbidden page family/tag, non-canonical Unison design, unknown variant, broken hard limits. */
+  /** Must be fixed: forbidden page family/tag, broken implementation, unknown variant, broken hard limits. */
   blocking: string[];
   /** Guidance only: a recommended Unison design exists or a canonical design sits outside the pack's recommended set. */
   advisory: string[];
@@ -116,7 +116,11 @@ export function validateOpenComposition(context: ResolvedUnisonDesignContext, co
       }
       const variant = getVariantById(section.variantId);
       if (!variant) { blocking.push(`pages.${role}: ${section.variantId} is not a Unison design`); continue; }
-      if (!isCanonicalImplementation(section.variantId)) { blocking.push(`pages.${role}: ${section.variantId} is not canonical (experimental/quarantined designs never reach client composition)`); continue; }
+      if (variant.sectionType !== family) blocking.push(`pages.${role}: ${section.variantId} does not implement ${family}`);
+      if (variant.generationStatus === 'retired') blocking.push(`pages.${role}: ${section.variantId} is retired`);
+      const audit = auditImplementation(section.variantId);
+      blocking.push(...(audit?.blockers ?? []).map(gate => `pages.${role}: ${section.variantId}: ${gate.detail}`));
+      advisory.push(...(audit?.advisories ?? []).map(gate => `pages.${role}: ${section.variantId}: ${gate.detail}`));
       const badTag = (variant.tags ?? []).find((t) => archetype.forbiddenTags.includes(t));
       if (badTag) blocking.push(`pages.${role}: ${section.variantId} carries "${badTag}", forbidden on ${role} pages`);
       if (!recommended.includes(section.variantId)) advisory.push(`pages.${role}: ${section.variantId} is outside the recommended ${family} vocabulary for ${context.resolution.packId}`);
@@ -125,10 +129,9 @@ export function validateOpenComposition(context: ResolvedUnisonDesignContext, co
   return { blocking, advisory };
 }
 
-/** Back-compatible flat list: blocking issues first, then advisory notes. */
+/** Validation callers receive blockers only; use validateOpenComposition for guidance. */
 export function validateComposition(context: ResolvedUnisonDesignContext, composition: UnisonPageComposition): string[] {
-  const { blocking, advisory } = validateOpenComposition(context, composition);
-  return [...blocking, ...advisory.map((a) => `advisory: ${a}`)];
+  return validateOpenComposition(context, composition).blocking;
 }
 
 export interface CreativeDesignContext extends ResolvedUnisonDesignContext {

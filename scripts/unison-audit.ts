@@ -8,6 +8,7 @@ if (id) {
   console.log(`${a.id}  [${a.status.toUpperCase()}]  registry: ${JSON.stringify(a.registryState)}`);
   for (const g of a.gates) console.log(`  ${g.result === 'pass' ? '✓' : g.result === 'fail' ? '✗' : '?'} ${g.label.padEnd(32)} ${g.detail}${g.safeRepair ? '  [safe repair]' : ''}`);
   console.log(`  blockers: ${a.blockers.length}`);
+  console.log(`  advisories: ${a.advisories.length} (do not block freestyle generation)`);
 } else {
   const all = auditAll(); const t: Record<string, number> = {};
   for (const a of all) t[a.status] = (t[a.status] ?? 0) + 1;
