@@ -206,12 +206,16 @@ const PREVIEW_ONLY_ARTIFACT_PATTERNS: RegExp[] = [
   /\b__AnimatePresenceFallback\b/,
 ];
 
-const COMPILER_OWNED_SECTION_MODULE_RE = /^\/src\/components\/(?:Navbar|Hero|About|Services|Features|Gallery|Pricing|LogoCloud|BlogPreview|BeforeAfter|Testimonials|CTA|Contact|Footer|Stats|Team|FAQ)\.tsx$/;
-const COMPILER_OWNED_RECIPE_MODULE_RE = /^\/src\/components\/recipes\/[^/]+\.ts$/;
-
-function isCompilerOwnedGeneratedModule(path: string): boolean {
-  return COMPILER_OWNED_SECTION_MODULE_RE.test(path)
-    || COMPILER_OWNED_RECIPE_MODULE_RE.test(path);
+function compilerOwnedGeneratedPaths(files: Record<string, string>): Set<string> {
+  const owned = new Set<string>();
+  for (const composition of Object.values(collectResolvedCompositions(files))) {
+    for (const [rawPath, fingerprint] of Object.entries(composition.compilerOwnership ?? {})) {
+      const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      const source = files[path] ?? files[rawPath];
+      if (typeof source === 'string' && compilerOwnershipHash(source) === fingerprint) owned.add(path);
+    }
+  }
+  return owned;
 }
 
 function sealedCompilerOwnedPaths(snapshot: SiteBundleSnapshot | null | undefined): Set<string> {
@@ -277,8 +281,7 @@ function assertOrdinaryAiCandidatePreserved(
   const compilerOwned = [
     '/src/App.tsx', '/src/main.tsx', '/src/index.css',
     '/.unison/**', '/src/unison/**', '/src/integrations/**',
-    ...[...new Set([...Object.keys(expected), ...Object.keys(actual)])]
-      .filter(isCompilerOwnedGeneratedModule),
+    ...compilerOwnedGeneratedPaths(expected),
   ];
   const violations = verifyAuthoredSourcePreservation({
     acceptedFiles: expected, operations: [], finalizedFiles: actual,
@@ -405,13 +408,14 @@ export async function commitMutation(
     const sealedPaths = input.source === 'theme-change'
       ? new Set<string>()
       : sealedCompilerOwnedPaths(input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined);
+    const compilerOwnedPaths = compilerOwnedGeneratedPaths(input.current.vfsFiles);
     for (const op of patch.fileOps) {
       const path = op.path.startsWith('/') ? op.path : `/${op.path}`;
       if (op.path.startsWith(`${RESOLVED_COMPOSITION_ROOT}/`)
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Resolved composition metadata is compiler-owned. Use a presentation operation or reviewed upgrade.');
       }
-      if (isCompilerOwnedGeneratedModule(path)
+      if (compilerOwnedPaths.has(path)
         && !(input.source === 'ai-builder' && isGovernedAiSourceRewrite(path, op))
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');

@@ -202,6 +202,7 @@ import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlane
 import { executeBackendOps } from '@/services/backendOpExecutor';
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import { emptyPatchPlan, legacyFilesToPatchPlan } from '@/types/patchPlan';
+import { compilerOwnershipHash, resolvedCompositionPathFor } from '@/platform/core/resolvedComposition';
 
 const IDENTITY: BuilderIdentity = {
   userId: '11111111-1111-1111-1111-111111111111',
@@ -264,11 +265,37 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
   });
   it('rejects legacy replacements of compiler-owned portable recipes', async () => {
     const path = '/src/components/recipes/Features.ts';
+    const pagePath = '/src/pages/Home.tsx';
+    const source = 'export const REGISTERED_VARIANTS = {};';
+    const descriptorPath = resolvedCompositionPathFor(pagePath);
+    const descriptor = JSON.stringify({
+      version: '1.0',
+      compiledBy: 'stage-4b',
+      pageFilePath: pagePath,
+      sections: [],
+      compilerOwnership: { [path]: compilerOwnershipHash(source) },
+    });
     await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
-      current: { vfsFiles: { [path]: 'export const REGISTERED_VARIANTS = {};' } },
+      current: { vfsFiles: { [path]: source, [descriptorPath]: descriptor } },
       patch: legacyFilesToPatchPlan({ [path]: 'export const REGISTERED_VARIANTS = { legacy: true };' }),
     })).rejects.toThrow('compiler-owned');
     expect(revisionStore).toHaveLength(0);
+  });
+  it('does not infer compiler ownership from conventional component filenames', async () => {
+    const path = '/src/components/Hero.tsx';
+    const before = { [path]: 'export default function Hero(){return <section>Before</section>}' };
+    const after = { [path]: 'export default function Hero(){return <section>Authored</section>}' };
+    mockPipeline(after); mockPreflight(after); mockIntents();
+
+    const result = await commitMutation({
+      source: 'playground-edit',
+      identity: IDENTITY,
+      current: { vfsFiles: before },
+      patch: legacyFilesToPatchPlan(after, 'edit conventional component'),
+      options: { requireReadinessPass: false },
+    });
+
+    expect(result.vfsFiles[path]).toContain('Authored');
   });
   it('allows authenticated AI rewrites of sealed page source while retaining the canonical router boundary', async () => {
     const routerPath = '/src/App.tsx';
