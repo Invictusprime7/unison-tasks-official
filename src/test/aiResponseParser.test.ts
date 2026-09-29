@@ -75,6 +75,22 @@ describe('AI response file extraction', () => {
     });
   });
 
+  it('extracts explicit VFS deletions with the changed source files', () => {
+    const response = JSON.stringify({
+      files: {
+        '/src/pages/Booking.tsx': 'export default function Booking() { return <main>Updated flow</main>; }',
+      },
+      deletions: ['/src/components/LegacyBookingForm.tsx'],
+    });
+
+    expect(extractMultiFileOutput(response)).toEqual({
+      files: {
+        '/src/pages/Booking.tsx': 'export default function Booking() { return <main>Updated flow</main>; }',
+      },
+      deletions: ['/src/components/LegacyBookingForm.tsx'],
+    });
+  });
+
   it('routes a prose-wrapped CSS theme response to the canonical stylesheet', () => {
     const response = [
       'Here is the updated theme:',

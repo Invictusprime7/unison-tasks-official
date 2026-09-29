@@ -7284,6 +7284,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   // import-graph gates must pass before the canonical commit.
                   const firstCandidate = await prepareAICandidate({
                     aiFiles: rawFiles,
+                    deletions: applyMeta?.deletions,
                     baseFiles: beforeFiles,
                     baseRevisionId: currentRevisionId ?? undefined,
                     origin: 'builder',
@@ -7828,6 +7829,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 // AI Composer Phase 2+3 — candidate transaction + blocking gates.
                 const firstCandidate = await prepareAICandidate({
                   aiFiles: rawFiles,
+                  deletions: applyMeta?.deletions,
                   baseFiles: beforeFiles,
                   baseRevisionId: currentRevisionId ?? undefined,
                   origin: 'builder',

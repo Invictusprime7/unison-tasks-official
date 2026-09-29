@@ -4,6 +4,8 @@ export interface AIBuilderApplyMeta {
   summary?: string;
   actionType?: string;
   origin?: string;
+  /** Explicit file removals, executed by the same candidate + VFS transaction. */
+  deletions?: string[];
   requiresApproval?: boolean;
   warnings?: Array<{ severity?: string; message?: string }>;
 }
@@ -35,7 +37,7 @@ export async function applyAIBuilderFiles(
   files: Record<string, string>,
   meta?: AIBuilderApplyMeta,
 ): Promise<AIBuilderApplyOutcome> {
-  if (Object.keys(files).length === 0) {
+  if (Object.keys(files).length === 0 && !meta?.deletions?.length) {
     return { success: false, errors: ['The AI response did not contain any valid files to apply.'] };
   }
 

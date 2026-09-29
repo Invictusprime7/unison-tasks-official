@@ -45,6 +45,12 @@ describe('applyAIBuilderFiles', () => {
     expect(apply).not.toHaveBeenCalled();
   });
 
+  it('allows a deletion-only AI candidate through the canonical VFS callback', async () => {
+    const apply = vi.fn(async () => ({ success: true }));
+    await expect(applyAIBuilderFiles(apply, {}, { deletions: ['/src/components/LegacyCard.tsx'] })).resolves.toEqual({ success: true });
+    expect(apply).toHaveBeenCalledWith({}, { deletions: ['/src/components/LegacyCard.tsx'] });
+  });
+
   it('turns thrown callback failures into a visible failure outcome', async () => {
     await expect(applyAIBuilderFiles(
       async () => { throw new Error('VFS write failed'); },

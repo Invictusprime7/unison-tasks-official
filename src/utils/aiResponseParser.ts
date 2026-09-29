@@ -81,16 +81,20 @@ export interface AIResponseParseResult {
 
 export interface ExtractedMultiFileOutput {
   files: Record<string, string>;
+  /** Files the model explicitly asks the VFS transaction to remove. */
+  deletions?: string[];
   explanation?: string;
 }
 
 function parseMultiFileCandidate(candidate: string): ExtractedMultiFileOutput | null {
   try {
-    const parsed = JSON.parse(candidate) as { files?: unknown; explanation?: unknown };
-    if (!parsed.files || typeof parsed.files !== 'object' || Array.isArray(parsed.files)) return null;
+    const parsed = JSON.parse(candidate) as { files?: unknown; deletions?: unknown; deletedFiles?: unknown; explanation?: unknown };
+    if ((!parsed.files || typeof parsed.files !== 'object' || Array.isArray(parsed.files))
+      && !Array.isArray(parsed.deletions)
+      && !Array.isArray(parsed.deletedFiles)) return null;
 
     const files: Record<string, string> = {};
-    for (const [path, value] of Object.entries(parsed.files)) {
+    for (const [path, value] of Object.entries(parsed.files ?? {})) {
       const content = typeof value === 'string'
         ? value
         : value && typeof value === 'object' && 'content' in value && typeof value.content === 'string'
@@ -99,10 +103,13 @@ function parseMultiFileCandidate(candidate: string): ExtractedMultiFileOutput | 
       if (content === null) return null;
       files[path] = content;
     }
-    if (Object.keys(files).length === 0) return null;
+    const deletionSource = Array.isArray(parsed.deletions) ? parsed.deletions : parsed.deletedFiles;
+    const deletions = [...new Set((deletionSource ?? []).filter((path): path is string => typeof path === 'string' && isGeneratedFilePath(path)))];
+    if (Object.keys(files).length === 0 && deletions.length === 0) return null;
 
     return {
       files,
+      ...(deletions.length ? { deletions } : {}),
       ...(typeof parsed.explanation === 'string' ? { explanation: parsed.explanation } : {}),
     };
   } catch {
@@ -262,7 +269,7 @@ export function extractMultiFileOutput(input: string): ExtractedMultiFileOutput 
   }
 
   for (const candidate of findBalancedJsonObjects(input)) {
-    if (!candidate.includes('"files"')) continue;
+    if (!candidate.includes('"files"') && !candidate.includes('"deletions"') && !candidate.includes('"deletedFiles"')) continue;
     const parsed = parseMultiFileCandidate(candidate);
     if (parsed) return parsed;
   }

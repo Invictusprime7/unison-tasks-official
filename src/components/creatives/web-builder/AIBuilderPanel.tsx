@@ -442,7 +442,9 @@ interface AIBuilderPanelProps {
   systemType?: BusinessSystemType | null;
   templateName?: string | null;
   defaultTargetFile?: string | null;
+  /** @deprecated Ignored. AI output must go through onApplyToVFS. */
   onCodeGenerated?: (code: string) => void;
+  /** @deprecated Ignored. AI output must go through onApplyToVFS. */
   onFilesPatch?: (files: Record<string, string>) => boolean;
   onViewEdits?: (edits: VFSEdit[]) => void;
   iframeErrors?: IframeError[];
@@ -475,7 +477,7 @@ interface AIBuilderPanelProps {
   vfsFiles?: Record<string, string> | null;
   /** Direct VFS apply callback — bypasses legacy onCodeGenerated pipeline, uses AI→VFS orchestrator */
   onThemeEdit?: (prompt: string) => Promise<boolean>;
-  onApplyToVFS?: AIBuilderApplyCallback;
+  onApplyToVFS: AIBuilderApplyCallback;
   /** Preview handle ref for building component behavior maps (DOM inspection) */
   previewRef?: React.RefObject<{ getIframe?: () => HTMLIFrameElement | null } | null>;
   /** Active project id — used to scope persisted prompt + edit history. */
@@ -550,8 +552,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   systemType,
   templateName,
   defaultTargetFile,
-  onCodeGenerated,
-  onFilesPatch,
   onViewEdits,
   iframeErrors = [],
   onClearErrors,
@@ -597,7 +597,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'code' | 'debug' | 'backend'>('code');
   // Files the auto-apply guard held back. Without this the AI "resolved" a
   // rewrite that never materialized anywhere — now the user can still apply it.
-  const [heldFiles, setHeldFiles] = useState<{ files: Record<string, string>; reason: string } | null>(null);
+  const [heldFiles, setHeldFiles] = useState<{ files: Record<string, string>; deletions?: string[]; reason: string } | null>(null);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [gatewayConfig, setGatewayConfig] = useState<GatewayConfig | undefined>(undefined);
@@ -1351,13 +1351,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             siteAnalysisContext ? `\nSite component map:\n${siteAnalysisContext.slice(0, 1500)}` : '',
             '',
             '⚠️ MANDATORY: You MUST output the modified code, not just explain the change.',
-            'For multi-file React projects: output JSON {"files": {"/path/file.tsx": "...content..."}, "explanation": "..."}',
+            'For multi-file React projects: output JSON {"files": {"/path/file.tsx": "...content..."}, "deletions": ["/path/obsolete.tsx"], "explanation": "..."}. Omit empty fields.',
             'For single-file: output the full modified file in a ```tsx code fence.',
             '',
             '⚠️ CRITICAL SURGICAL EDIT RULES:',
             '1. Output ONLY the file(s) that need to change — do NOT regenerate the entire project',
             '2. If the edit targets a specific component, output ONLY that component file with the change applied',
-            '3. For multi-file projects, use JSON format: {"files": {"/path/file.tsx": "...content..."}}',
+            '3. For multi-file projects, use JSON format: {"files": {"/path/file.tsx": "...content..."}, "deletions": ["/path/obsolete.tsx"]}',
             '4. Every section, style, and data attribute NOT mentioned MUST stay IDENTICAL',
             '5. DO NOT re-generate, rephrase, or "improve" unmentioned sections or components',
             '6. DO NOT change colors, fonts, layout, or content outside the targeted element',
@@ -1375,7 +1375,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         : (() => {
             // Budget the prompt to stay within the 50k message content limit
             const MAX_PROMPT_CHARS = 40_000;
-            let prompt = `${intelligentPrompt}${_fileContext}`;
+            let prompt = `${intelligentPrompt}${_fileContext}\n\n[Execution contract]\nReturn concrete VFS source changes, never instructions or prose in place of code. Use a JSON file map for multi-file work. You may create or replace components, pages, hooks, state, elements, sections, typography, and behavior. To remove a file, include its canonical path in "deletions". Preserve HashRouter ownership: edit route page files and links, not the generated router shell.`;
             if (prompt.length + richContext.length <= MAX_PROMPT_CHARS) {
               prompt += richContext;
             } else {
@@ -1758,6 +1758,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       let generatedCode: string | null = null;
       let explanationText = '';
       let multiFileOutput: Record<string, string> | null = null;
+      let multiFileDeletions: string[] = [];
       let structuredContractExtractionFailed = false;
       // P0.5: the authoritative verdict line, set only by the transaction layer.
       let transactionVerdict: string | null = null;
@@ -1768,6 +1769,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         const structuredOutput = extractMultiFileOutput(trimmed);
         if (structuredOutput) {
           multiFileOutput = structuredOutput.files;
+          multiFileDeletions = structuredOutput.deletions ?? [];
           explanationText = neutralizeModelSuccessClaim(structuredOutput.explanation) || CANDIDATE_GENERATED_NOTICE;
           console.log('[AIBuilderPanel] Parsed multi-file output:', Object.keys(multiFileOutput));
         }
@@ -1971,7 +1973,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
         if (scopeBlockReason) {
           console.warn('[AIBuilderPanel] SCOPE BLOCK:', scopeBlockReason);
-          setHeldFiles({ files: normalizedFiles, reason: `Edit held back: ${scopeBlockReason}` });
+          setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, reason: `Edit held back: ${scopeBlockReason}` });
           toast.warning(`⚠️ Edit held for review: ${scopeBlockReason}`);
           transactionVerdict = transactionVerdictLine('held-for-review', scopeBlockReason);
         } else if (shouldBlock) {
@@ -1979,13 +1981,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           console.warn('[AIBuilderPanel] Patch requires approval — NOT auto-applying');
           const heldReason = responseMeta?.warnings?.map((warning) => warning.message).filter(Boolean).join('; ')
             || 'The reviewer flagged this patch. Review the warnings, then apply.';
-          setHeldFiles({ files: normalizedFiles, reason: heldReason });
+          setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, reason: heldReason });
           toast.warning('⚠️ AI patch flagged for review — apply it from the review card when ready');
           transactionVerdict = transactionVerdictLine('held-for-review', heldReason);
         } else {
 
-          if (onApplyToVFS) {
-            console.log('[AIBuilderPanel] Calling onApplyToVFS with normalized paths:', Object.keys(normalizedFiles));
+          {
+            console.log('[AIBuilderPanel] Applying candidate to VFS:', Object.keys(normalizedFiles));
             vfsEventBus.emit('ai:apply:start', { source: 'multi-file' });
             markPreviewPending();
             const applyOutcome = await applyAIBuilderFiles(onApplyToVFS, normalizedFiles, {
@@ -1994,6 +1996,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               summary: responseMeta?.reviewSummary,
               actionType: responseMeta?.actionType,
               origin: 'multi-file',
+              deletions: multiFileDeletions,
               requiresApproval: responseMeta?.requiresApproval,
               warnings: responseMeta?.warnings,
             });
@@ -2001,13 +2004,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               envelopeRunId,
               applyOutcome.success ? 'applied' : 'failed',
               {
-                appliedPaths: Object.keys(normalizedFiles),
+                appliedPaths: [...Object.keys(normalizedFiles), ...multiFileDeletions],
                 error: applyOutcome.success ? undefined : applyOutcome.errors?.[0],
                 note: 'multi-file',
               },
             );
             if (applyOutcome.success) {
-              vfsEventBus.emit('ai:apply:complete', { filesWritten: Object.keys(normalizedFiles), source: 'multi-file' });
+              vfsEventBus.emit('ai:apply:complete', { filesWritten: [...Object.keys(normalizedFiles), ...multiFileDeletions], source: 'multi-file' });
               // P0.4: the commit is not the verdict — the preview is.
               const verification = await awaitPreviewVerification();
               if (verification.verified) {
@@ -2031,17 +2034,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               transactionVerdict = transactionVerdictLine('failed', applyError);
             }
 
-          } else if (onFilesPatch) {
-            // No verified commit path here — never claim the edit landed.
-            onFilesPatch(normalizedFiles);
-            toast.warning('Files handed to the editor — not verified in the preview yet');
-            transactionVerdict = transactionVerdictLine(
-              'held-for-review',
-              'This workspace has no verified save path, so the change is unconfirmed.',
-            );
-          } else {
-            console.warn('[AIBuilderPanel] No VFS callback available for multi-file output!');
-          }
+
         }
       }
 
@@ -2072,6 +2065,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             linesChanged: multiFileOutput![path].split('\n').length,
             preview: multiFileOutput![path].substring(0, 200),
           });
+        });
+        multiFileDeletions.forEach(path => {
+          edits.push({ path, type: 'delete' });
         });
       } else if (generatedCode) {
         edits.push({
@@ -2175,7 +2171,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             void recordRunOutcome(envelopeRunId, 'rejected', { note: 'single-file requires-approval' });
             console.warn('[AIBuilderPanel] Single-file patch flagged — not auto-applying');
             toast.warning('⚠️ Patch flagged for review — check warnings');
-          } else if (onApplyToVFS && !multiFileOutput) {
+          } else if (!multiFileOutput) {
             console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
             vfsEventBus.emit('ai:apply:start', { source: 'single-file' });
             markPreviewPending();
@@ -2233,10 +2229,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('failed', applyError)}` }
                 : m));
             }
-
-          } else if (onCodeGenerated) {
-            onCodeGenerated(generatedCode);
-            toast.success(isSurgicalEdit ? '✓ Edit applied to preview' : '✓ Code applied to preview');
           }
 
           // Notify about removed/blocked files from review
@@ -2246,6 +2238,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
 
+    }
     } catch (error) {
       console.error('[AIBuilderPanel] Error:', error);
       
@@ -2689,17 +2682,16 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   <div className="mt-2 flex gap-2">
                     <Button
                       size="sm"
-                      disabled={!onApplyToVFS}
                       onClick={async () => {
-                        if (!onApplyToVFS) return;
                         const pending = heldFiles.files;
+                        const deletions = heldFiles.deletions;
                         setHeldFiles(null);
-                        const outcome = await applyAIBuilderFiles(onApplyToVFS, pending, { origin: 'held-review' });
+                        const outcome = await applyAIBuilderFiles(onApplyToVFS, pending, { origin: 'held-review', deletions });
                         if (outcome.success) {
                           toast.success('Held changes applied to your project');
                         } else {
                           toast.error('Apply failed', { description: outcome.errors?.[0] });
-                          setHeldFiles({ files: pending, reason: outcome.errors?.[0] ?? 'Apply failed.' });
+                          setHeldFiles({ files: pending, deletions, reason: outcome.errors?.[0] ?? 'Apply failed.' });
                         }
                       }}
                     >
