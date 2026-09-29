@@ -142,7 +142,7 @@ export const BeforeAfterSlider: React.FC<BaseSectionProps<'before-after'>> = ({ 
               min={0}
               max={100}
               value={position}
-              aria-label="Drag to compare before and after"
+              aria-label="Reveal the finished result"
               aria-valuetext={`${position}% after`}
               onChange={(event) => setPosition(Number(event.target.value))}
               className="ba-range"
