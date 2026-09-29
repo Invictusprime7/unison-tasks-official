@@ -1,6 +1,9 @@
 import { updateResolvedCompositionVariants } from '@/sections/compositionToFileSet';
 import { isCustomizerPageEdit } from '@/services/builder/customizerDraft';
-import { verifyAuthoredSourcePreservation } from '@/services/builder/authoredSourcePreservation';
+import {
+  verifyAuthoredSourcePreservation,
+  type AuthoredSourceOperation,
+} from '@/services/builder/authoredSourcePreservation';
 /**
  * VFSCommitService — the SINGLE legal writer of Web Builder state.
  *
@@ -257,39 +260,36 @@ function isGovernedAiSourceRewrite(path: string, op: PatchPlan['fileOps'][number
     && !path.startsWith('/src/unison/ui/');
 }
 
-function shouldPreserveOrdinaryAiCandidate(
-  input: CommitMutationInput,
-  patch: PatchPlan,
-  customizerPagePath?: string,
-  themeCorrectionApplied = false,
-): boolean {
-  return input.source === 'ai-builder'
-    && !input.options?.compositionUpgrade
-    && !customizerPagePath
-    && !themeCorrectionApplied
-    && !patch.themeEdit
-    && patch.presentationOps.length === 0
-    && patch.playgroundOps.length === 0
-    && patch.bindingOps.length === 0;
+function sourceOperationsBetween(
+  accepted: Record<string, string>,
+  candidate: Record<string, string>,
+): AuthoredSourceOperation[] {
+  const operations: AuthoredSourceOperation[] = [];
+  for (const path of [...new Set([...Object.keys(accepted), ...Object.keys(candidate)])].sort()) {
+    if (!(path in candidate)) operations.push({ type: 'delete', path });
+    else if (!(path in accepted)) operations.push({ type: 'create', path, contents: candidate[path] });
+    else if (accepted[path] !== candidate[path]) operations.push({ type: 'replace', path, contents: candidate[path] });
+  }
+  return operations;
 }
 
-function assertOrdinaryAiCandidatePreserved(
-  expected: Record<string, string>,
+function assertCandidateSourcePreserved(
+  accepted: Record<string, string>,
+  operations: readonly AuthoredSourceOperation[],
   actual: Record<string, string>,
   stage: string,
 ): void {
   const compilerOwned = [
-    '/src/App.tsx', '/src/main.tsx', '/src/index.css',
     '/.unison/**', '/src/unison/**', '/src/integrations/**',
-    ...compilerOwnedGeneratedPaths(expected),
+    ...compilerOwnedGeneratedPaths(actual),
   ];
   const violations = verifyAuthoredSourcePreservation({
-    acceptedFiles: expected, operations: [], finalizedFiles: actual,
+    acceptedFiles: accepted, operations, finalizedFiles: actual,
     compilerOwnedPaths: compilerOwned, stage,
   });
   if (violations.length) {
     throw new Error(
-      `[VFSCommitService] ${stage} changed ordinary AI candidate source: ${violations.map((item) => `${item.path} (${item.kind})`).join(', ')}. Generate an explicit follow-up candidate.`,
+      `[VFSCommitService] ${stage} changed source outside the explicit candidate: ${violations.map((item) => `${item.path} (${item.kind})`).join(', ')}. Generate an explicit follow-up candidate.`,
     );
   }
 }
@@ -468,11 +468,9 @@ export async function commitMutation(
   if (patch.themeEdit && (input.source !== 'theme-change' || patch.fileOps.length || patch.playgroundOps.length || patch.presentationOps.length || patch.bindingOps.length || patch.backendOps.length || patch.businessSystem || input.options?.restoreRevisionId || input.options?.reviewedArtifact || reviewedComposition)) {
     throw new Error('Theme edits must be isolated from content, composition and backend changes.');
   }
-  let themeCorrectionApplied = false;
   let themeSnapshot = input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
   if (themeSnapshot && !patch.themeEdit?.presetId && !restoredRevision && !reviewedComposition && !input.options?.reviewedArtifact && input.source !== 'wizard-launch') {
     const corrected = prepareThemeCorrection(workingFiles, themeSnapshot, input.identity.revisionId || null);
-    themeCorrectionApplied = corrected.snapshot !== themeSnapshot;
     Object.assign(workingFiles, corrected.files);
     themeSnapshot = corrected.snapshot;
   }
@@ -482,9 +480,7 @@ export async function commitMutation(
     Object.assign(workingFiles, prepared.files);
     themeSnapshot = prepared.snapshot;
   }
-  const preservePageSources = Boolean(customizerPagePath) || input.source === 'theme-change'
-    || input.source === 'ai-builder'
-    || (themeCorrectionApplied && !patch.presentationOps.length && !patch.playgroundOps.length);
+  const preservePageSources = input.source !== 'wizard-launch';
   const presentationSnapshot = applyPresentationOps(
     themeSnapshot,
     workingFiles,
@@ -500,12 +496,16 @@ export async function commitMutation(
     workingFiles[resolvedCompositionPathFor(customizerPagePath)] = serializeResolvedComposition(updated.composition);
     refreshEditedCompositionOwnership(input.current.vfsFiles, workingFiles);
   }
-  const ordinaryAiSourceBaseline = shouldPreserveOrdinaryAiCandidate(
-    input,
-    patch,
-    customizerPagePath,
-    themeCorrectionApplied,
-  ) ? { ...workingFiles } : null;
+  // Everything that intentionally changed before acceptance is the candidate.
+  // Downstream projection, validation and readiness stages may inspect these
+  // bytes, but may not silently author additional user-source changes.
+  const sourcePreservationBaseline = input.source !== 'wizard-launch'
+    && !restoredRevision && !reviewedComposition && !input.options?.compositionUpgrade
+    ? { ...input.current.vfsFiles }
+    : null;
+  const sourcePreservationOperations = sourcePreservationBaseline
+    ? sourceOperationsBetween(sourcePreservationBaseline, workingFiles)
+    : [];
 
   // 5. Resolve the canonical projection -------------------------------------
   // Confirmation is a persistence boundary, not another generation stage.
@@ -612,8 +612,8 @@ export async function commitMutation(
   // Capture before preflight can mutate even the input map in place. Protect
   // hooks, styles, assets and original components as well as registered pages.
   const reviewedSourceBaseline = reviewedArtifact ? { ...files } : null;
-  if (ordinaryAiSourceBaseline) {
-    assertOrdinaryAiCandidatePreserved(ordinaryAiSourceBaseline, files, 'canonical projection');
+  if (sourcePreservationBaseline) {
+    assertCandidateSourcePreserved(sourcePreservationBaseline, sourcePreservationOperations, files, 'canonical projection');
   }
   let snapshotForPersistence = input.source === 'wizard-launch'
     ? mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files)
@@ -946,8 +946,8 @@ export async function commitMutation(
   if (reviewedSourceBaseline) {
     assertReviewedSourcesUnchanged(reviewedSourceBaseline, files, 'before backend effects');
   }
-  if (ordinaryAiSourceBaseline) {
-    assertOrdinaryAiCandidatePreserved(ordinaryAiSourceBaseline, files, 'before backend effects');
+  if (sourcePreservationBaseline) {
+    assertCandidateSourcePreserved(sourcePreservationBaseline, sourcePreservationOperations, files, 'before backend effects');
   }
 
   // Move C: execute transactional backend ops only after the candidate VFS
@@ -1061,8 +1061,8 @@ export async function commitMutation(
   if (reviewedSourceBaseline) {
     assertReviewedSourcesUnchanged(reviewedSourceBaseline, files, 'durable revision');
   }
-  if (ordinaryAiSourceBaseline) {
-    assertOrdinaryAiCandidatePreserved(ordinaryAiSourceBaseline, files, 'durable revision');
+  if (sourcePreservationBaseline) {
+    assertCandidateSourcePreserved(sourcePreservationBaseline, sourcePreservationOperations, files, 'durable revision');
   }
   // The persisted snapshot must prove the exact final bytes, after every
   // preflight and explicit transform. This is a metadata stamp only; it never

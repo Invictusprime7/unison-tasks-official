@@ -398,7 +398,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     expect((await loadLatestRevisionForProject(IDENTITY.projectId))?.vfsFiles).toEqual(before);
     expect(revisionStore).toHaveLength(3);
   });
-  it('persists repaired Playground files in the same snapshot projection', async () => {
+  it('rejects a Playground projection that rewrites source outside the candidate', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return null}' };
     const repairedFiles = { '/src/App.tsx': 'export default function App(){return <main>Repaired</main>}' };
     mockPipeline(files);
@@ -415,18 +415,16 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       generatedSiteRuntimeManifest: { siteId: '55555555-5555-4555-8555-555555555555', agents: [] },
     } as unknown as ReturnType<typeof buildCanonicalLaunchArtifacts>));
 
-    const result = await commitMutation({
+    await expect(commitMutation({
       source: 'playground-edit',
       identity: IDENTITY,
       current: { vfsFiles: files },
       patch: emptyPatchPlan(),
       options: { requireReadinessPass: false },
-    });
+    })).rejects.toThrow(/canonical projection changed source outside the explicit candidate/);
 
-    expect(result.siteBundleSnapshot?.vfsFiles).toEqual(result.vfsFiles);
-    expect(result.siteBundleSnapshot?.routerFile.content).toBe(repairedFiles['/src/App.tsx']);
-    expect(revisionStore[0].site_bundle_snapshot.vfsFiles).toEqual(revisionStore[0].vfs_files);
-    expect(runFullPreflight).toHaveBeenCalledWith(repairedFiles, expect.objectContaining({ mode: 'acceptance' }));
+    expect(revisionStore).toEqual([]);
+    expect(executeBackendOps).not.toHaveBeenCalled();
   });
 
   it('rejects runtime incompatibility even when both repair stages report success', async () => {
@@ -456,7 +454,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     expect(revisionStore).toEqual([]);
   });
 
-  it('accepts an AI edit after deterministic preflight normalization converges', async () => {
+  it('rejects deterministic preflight normalization unless it is a new explicit candidate', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return <main data-ut-intent="nav.goto">Safe</main>}' };
     const normalized = { '/src/App.tsx': 'export default function App(){return <main data-ut-intent="nav.goto" data-ut-slot="primary">Safe</main>}' };
     mockPipeline(files);
@@ -487,18 +485,64 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
         stages: { earlyRepair: 'ok', finalRepair: 'ok', runtimeCompatibility: { ok: true } },
       } as unknown as ReturnType<typeof runFullPreflight>);
 
-    const result = await commitMutation({
+    await expect(commitMutation({
       source: 'ai-builder',
       identity: IDENTITY,
       current: { vfsFiles: files },
       patch: emptyPatchPlan(),
       options: { dryRun: true, requireReadinessPass: false },
-    });
+    })).rejects.toThrow(/before backend effects changed source outside the explicit candidate/);
 
-    expect(result.status).toBe('committed');
-    expect(result.vfsFiles).toEqual(normalized);
     expect(runFullPreflight).toHaveBeenCalledTimes(3);
     expect(revisionStore).toEqual([]);
+  });
+
+  it.each(['playground-edit', 'binding-fast-path', 'preview-toolbar'] as const)(
+    'enforces source preservation for %s commits', async (source) => {
+      const files = {
+        '/src/App.tsx': 'export default function App(){return null}',
+        '/src/hooks/useBooking.ts': 'export const useBooking = () => "accepted";',
+        '/src/styles/custom.css': '.hero { display: grid; }',
+        '/public/logo.svg': '<svg><title>Accepted</title></svg>',
+      };
+      const projected = { ...files, '/src/hooks/useBooking.ts': 'export const useBooking = () => "hidden rewrite";' };
+      mockPipeline(projected);
+      mockPreflight(projected);
+      mockIntents();
+
+      await expect(commitMutation({
+        source,
+        identity: IDENTITY,
+        current: { vfsFiles: files },
+        patch: emptyPatchPlan(),
+      })).rejects.toThrow(/canonical projection changed source outside the explicit candidate/);
+      expect(revisionStore).toEqual([]);
+    },
+  );
+
+  it('preserves arbitrary source and assets byte-for-byte when they are outside an explicit edit', async () => {
+    const files = {
+      '/src/App.tsx': 'export default function App(){return null}',
+      '/src/components/Hero.tsx': 'export const Hero = () => <section>Exact</section>;',
+      '/src/features/gallery/useGallery.ts': 'export const useGallery = () => 1;',
+      '/src/styles/custom.css': '.gallery { gap: 3rem; }',
+      '/public/logo.svg': '<svg><title>Exact</title></svg>',
+    };
+    const changedApp = 'export default function App(){return <main>Explicit</main>}';
+    const candidate = { ...files, '/src/App.tsx': changedApp };
+    mockPipeline(candidate);
+    mockPreflight(candidate);
+    mockIntents();
+
+    const result = await commitMutation({
+      source: 'playground-edit',
+      identity: IDENTITY,
+      current: { vfsFiles: files },
+      patch: legacyFilesToPatchPlan({ '/src/App.tsx': changedApp }, 'explicit app edit'),
+    });
+
+    expect(result.vfsFiles).toEqual(candidate);
+    expect(revisionStore[0]?.vfs_files).toEqual(candidate);
   });
 
   it('records Wizard capabilities without provisioning before revision persistence', async () => {
@@ -834,8 +878,16 @@ describe('Guard 1 — preview artifact leakage', () => {
       '}',
     ].join('\n');
     const files = { '/src/pages/Contact.tsx': contactWithPreviewArtifact };
-    mockPipeline(files);
-    mockPreflight(files);
+    const sanitizedFiles = {
+      '/src/pages/Contact.tsx': [
+        "import { MapPin } from 'lucide-react';",
+        'export default function Contact(){',
+        '  return <main><MapPin /></main>;',
+        '}',
+      ].join('\n'),
+    };
+    mockPipeline(sanitizedFiles);
+    mockPreflight(sanitizedFiles);
     mockIntents();
 
     const result = await commitMutation({

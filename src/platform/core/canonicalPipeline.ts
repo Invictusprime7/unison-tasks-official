@@ -660,11 +660,12 @@ export function recompileFromPlayground(
   });
 
   if (options.preservePageSources) {
-    for (const page of Object.values(playground.pageRegistry.pages)) {
-      if (page.filePath && existingVfsFiles[page.filePath]) compileResult.vfsFiles[page.filePath] = existingVfsFiles[page.filePath];
-    }
+    // Recompilation may rebuild the compiler projection, but an accepted VFS
+    // is the source baseline for every non-launch mutation. Restore every
+    // existing byte here; the explicit Stage 4b/system-owned writes below are
+    // the only paths allowed to replace it.
     for (const [path, content] of Object.entries(existingVfsFiles)) {
-      if (path === '/src/App.tsx' || path.startsWith('/.unison/compositions/') || path.startsWith('/src/components/')) compileResult.vfsFiles[path] = content;
+      compileResult.vfsFiles[path] = content;
     }
   }
   const normalizedThemeFiles = normalizeWizardThemeTokens(compileResult.vfsFiles);
