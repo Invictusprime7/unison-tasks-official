@@ -103,7 +103,11 @@ function parseMultiFileCandidate(candidate: string): ExtractedMultiFileOutput | 
       if (content === null) return null;
       files[path] = content;
     }
-    const deletionSource = Array.isArray(parsed.deletions) ? parsed.deletions : parsed.deletedFiles;
+    const deletionSource: unknown[] = Array.isArray(parsed.deletions)
+      ? parsed.deletions
+      : Array.isArray(parsed.deletedFiles)
+        ? parsed.deletedFiles
+        : [];
     const deletions = [...new Set((deletionSource ?? []).filter((path): path is string => typeof path === 'string' && isGeneratedFilePath(path)))];
     if (Object.keys(files).length === 0 && deletions.length === 0) return null;
 
