@@ -569,9 +569,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // template imports). Threaded into normalizeLauncherFiles so non-store industries
   // never silently land on the 'modern' default.
   const resolvedThemePresetId = useMemo<string | null>(() => {
-    const raw = effectiveRouteState?.themePresetId
-      || effectiveRouteState?.siteBundleSnapshot?.meta?.themePresetId
+    // Sealed snapshot meta is authoritative after commit; ambient route state
+    // can lag behind a newer launch and must never override it.
+    const raw = effectiveRouteState?.siteBundleSnapshot?.meta?.themePresetId
       || effectiveRouteState?.siteBundleSnapshot?.appContext?.themePresetId
+      || effectiveRouteState?.themePresetId
       || effectiveRouteState?.designPreset
       || effectiveRouteState?.aesthetic
       || (effectiveRouteState?.runtimeManifest?.appContext as { themePresetId?: string } | undefined)?.themePresetId
