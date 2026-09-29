@@ -35,7 +35,7 @@ export const NavbarStandard: React.FC<BaseSectionProps<'navbar'>> = ({ section, 
           <span aria-hidden="true" className="absolute -right-px -top-px h-2 w-2" style={{ borderRight: rule, borderTop: rule }} />
 
           <a data-ut-intent="nav.goto"
-            href="#"
+            href="#/"
             data-ut-slot="brand"
             className="flex items-center py-4 text-lg font-semibold tracking-tight"
             style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.foreground) }}

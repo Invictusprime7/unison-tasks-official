@@ -44,7 +44,7 @@ export const NavbarFloatingPill: React.FC<BaseSectionProps<'navbar'>> = ({ secti
           }}
         >
           <a data-ut-intent="nav.goto" data-ut-slot="navbar.brand"
-            href="#"
+            href="#/"
             className="text-base font-semibold tracking-tight no-underline"
             style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.foreground) }}
           >

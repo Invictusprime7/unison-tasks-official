@@ -48,7 +48,7 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
         </nav>
 
         <a data-ut-intent="nav.goto"
-          href="#"
+          href="#/"
           data-ut-slot="brand"
           className="justify-self-center text-base font-semibold tracking-tight"
           style={{ fontFamily: theme.typography.headingFont, color: hsl(theme.colors.background) }}
@@ -60,13 +60,6 @@ export const NavbarMinimalDark: React.FC<BaseSectionProps<'navbar'>> = ({ sectio
           className="flex items-center justify-end gap-4 py-3 pl-6"
           style={{ borderLeft: `1px solid ${hsla(theme.colors.background, 0.12)}` }}
         >
-          <a data-ut-intent="nav.goto"
-            href="#contact"
-            className="hidden text-sm motion-safe:transition-colors xl:inline"
-            style={{ fontFamily: theme.typography.bodyFont, color: hsla(theme.colors.background, 0.66) }}
-          >
-            Contact
-          </a>
           {cta && (
             <a
               href={cta.href || '#'}
