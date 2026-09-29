@@ -25,6 +25,13 @@ const ctx = {
   beforeFiles: { '/src/pages/Home.tsx': 'old' },
   nextFiles: { '/src/pages/Home.tsx': 'new' },
   activePagePath: '/',
+  candidate: {
+    id: 'candidate-home',
+    baseRevisionId: 'rev-1',
+    fileOps: [{ type: 'replace', path: '/src/pages/Home.tsx', content: 'new' }],
+    targetPages: ['/src/pages/Home.tsx'],
+    attempt: 1,
+  },
 } as never as Parameters<typeof runBuilderAiMutation>[0];
 
 beforeEach(() => { persistAiCommit.mockReset(); });

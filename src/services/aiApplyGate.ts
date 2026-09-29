@@ -29,6 +29,8 @@ import { legacyFilesToPatchPlan } from '@/types/patchPlan';
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import type { PlaygroundState } from '@/platform/core/playground';
+import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
+import type { PatchPlan } from '@/types/patchPlan';
 
 export interface AiCommitContext {
   businessId: string;
@@ -45,6 +47,26 @@ export interface AiCommitContext {
    */
   playground?: PlaygroundState | null;
   activePagePath: string;
+  /** Exact isolated candidate accepted by the Composer gates. */
+  candidate?: AICandidateChangeSet;
+}
+
+export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
+  const candidate = ctx.candidate;
+  if (!candidate) return legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder legacy candidate');
+  if (candidate.baseRevisionId && ctx.revisionId && candidate.baseRevisionId !== ctx.revisionId) {
+    throw new Error('[aiApplyGate] candidate base revision is stale; regenerate from the current revision.');
+  }
+  return {
+    summary: `AI candidate ${candidate.id}`,
+    fileOps: candidate.fileOps.map((operation) => operation.type === 'delete'
+      ? { type: 'delete' as const, path: operation.path }
+      : { type: operation.type, path: operation.path, contents: operation.content }),
+    playgroundOps: [],
+    bindingOps: [],
+    backendOps: [],
+    presentationOps: [],
+  };
 }
 
 function canonicalSnapshot(ctx: AiCommitContext): SiteBundleSnapshot | null {
@@ -118,7 +140,7 @@ export async function dryRunAiCommit(ctx: AiCommitContext): Promise<AiCommitDryR
       };
     }
     const snapshot = canonicalSnapshot(ctx);
-    const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
+    const patch = buildAiCandidatePatch(ctx);
     const commit = await commitMutation({
       source: 'ai-builder',
       identity,
@@ -167,7 +189,7 @@ export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutat
     throw new Error('[aiApplyGate] authenticated canonical identity is unavailable');
   }
   const snapshot = canonicalSnapshot(ctx);
-  const patch = legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder');
+  const patch = buildAiCandidatePatch(ctx);
   return commitMutation({
     source: 'ai-builder',
     identity,

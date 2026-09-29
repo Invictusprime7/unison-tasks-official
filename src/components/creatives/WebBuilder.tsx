@@ -7331,6 +7331,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                           popups: playgroundPopups,
                         },
                         activePagePath,
+                        candidate: candidate.build.changeSet,
                       }
                     : null;
                   if (!commitCtx) {
@@ -7868,6 +7869,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         popups: playgroundPopups,
                       },
                       activePagePath,
+                      candidate: candidate.build.changeSet,
                     }
                   : null;
                 if (!commitCtx) {
