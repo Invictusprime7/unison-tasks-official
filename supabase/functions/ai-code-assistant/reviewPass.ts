@@ -260,7 +260,7 @@ function validateStructuralPreservation(
     // Heuristic: if the new file is significantly shorter and has fewer sections, flag it
     if (newCounts.sections === 0 && newContent.length < 500) {
       warnings.push({
-        severity: "error",
+        severity: "warning",
         message: `${path}: Output appears to be a stub/skeleton (${newContent.length} chars, 0 sections) — likely a destructive regeneration`,
       });
     }
@@ -279,7 +279,7 @@ function validateStructuralPreservation(
   const fileCount = Object.keys(newFiles).length;
   if (fileCount > 2 && totalOutputChars < 2000) {
     warnings.push({
-      severity: "error",
+      severity: "warning",
       message: `Patch contains ${fileCount} files but only ${totalOutputChars} total chars — likely a destructive regeneration`,
     });
   }

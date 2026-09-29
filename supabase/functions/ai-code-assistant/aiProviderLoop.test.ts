@@ -10,6 +10,7 @@ import { buildResponseBody } from '../_shared/responseNormalizer.ts';
 Deno.test('page design requests cannot be diverted into catalog mutations', () => {
   assert(isPageDesignRequest('home is complete. design the other nav pages.'), 'remaining pages require file output');
   assert(isPageDesignRequest('redesign the Services page'), 'page layout needs file output');
+  assert(isPageDesignRequest('wire the in-preview navigation page routes'), 'route wiring requires VFS source output');
   assert(!isPageDesignRequest('change the haircut price to $45'), 'catalog edits retain tools');
 });
 

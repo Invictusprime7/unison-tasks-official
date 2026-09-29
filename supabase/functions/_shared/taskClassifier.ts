@@ -196,6 +196,16 @@ export function classifyTask(opts: {
     };
   }
 
+  // The Builder intentionally uses template-react for all React projects.
+  // Explicit edit modes must take precedence over that transport mode so
+  // surgical and behavioral work receives its VFS-focused prompt and review.
+  if (surgicalEdit) {
+    return { type: "surgical_edit", fastPath: false, shouldUseMemory: true, shouldUseCompactContext: true, prefersJsonOutput: true, skipResearch: true, skipThinking: false };
+  }
+  if (behavioralEdit) {
+    return { type: "behavioral_edit", fastPath: false, shouldUseMemory: true, shouldUseCompactContext: true, prefersJsonOutput: true, skipResearch: true, skipThinking: false };
+  }
+
   if (mode === "template-react") {
     return {
       type: "template_react_edit",
@@ -209,31 +219,7 @@ export function classifyTask(opts: {
   }
 
   // ── Surgical edit ─────────────────────────────────────────────────────
-  if (surgicalEdit) {
-    return {
-      type: "surgical_edit",
-      fastPath: false,
-      shouldUseMemory: true,
-      shouldUseCompactContext: true,
-      prefersJsonOutput: true,
-      skipResearch: true,
-      skipThinking: false,
-    };
-  }
-
   // ── Behavioral edit (functional changes: hooks, state, handlers) ──────
-  if (behavioralEdit) {
-    return {
-      type: "behavioral_edit",
-      fastPath: false,
-      shouldUseMemory: true,
-      shouldUseCompactContext: true,
-      prefersJsonOutput: true,
-      skipResearch: true,
-      skipThinking: false,
-    };
-  }
-
   // ── Debug mode ────────────────────────────────────────────────────────
   if (debugMode) {
     return {

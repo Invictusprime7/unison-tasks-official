@@ -58,6 +58,13 @@ export function checkEditScope(opts: {
 
   const patchPaths = Object.keys(patchFiles).map(normalizeVfsPath);
 
+  // Freeform Builder edits may span page files, local components, and shared
+  // navigation. Without an explicit toolbar range, file-count and target-file
+  // heuristics are advisory only; syntax/import validation remains mandatory.
+  if (!editScope) {
+    return { inScope: true, reason: null, outOfScopeFiles: [], blockAutoApply: false };
+  }
+
   // Rule 1: If we have a resolved target file, patch MUST include it
   if (targetFile) {
     const normTarget = normalizeVfsPath(targetFile);

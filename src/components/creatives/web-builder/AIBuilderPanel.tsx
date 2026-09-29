@@ -253,19 +253,10 @@ function getScopedEditAutoApplyBlockReason(opts: {
     }
   }
 
-  // Scoped edits should not produce more than 3 files
-  if (paths.length > 3) {
-    return `Scoped edit produced ${paths.length} files — likely a full regeneration.`;
-  }
-
-  // Should not create more than 1 new file
-  const existingNorm = opts.existingFileKeys.map(normalizePath);
-  const newFiles = paths.filter((p) => !existingNorm.includes(p));
-  if (newFiles.length > 1) {
-    return `Scoped edit created ${newFiles.length} new files — expected at most 1.`;
-  }
-
+  // File counts are not an execution boundary. A valid freeform edit may
+  // touch routes, page bodies, hooks, and shared components in one commit.
   return null;
+
 }
 
 interface LaunchBriefPayload {
@@ -290,6 +281,15 @@ const LAUNCH_PLANNING_KEYWORDS = [
 function detectLaunchPlanningIntent(prompt: string): boolean {
   const normalized = prompt.toLowerCase();
   return LAUNCH_PLANNING_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
+/** Catalog tools are for persisted catalog data, never source-level UI work. */
+function isCatalogMutationRequest(prompt: string): boolean {
+  const sourceEdit = /\b(?:nav(?:igation)?|menu|route(?:s|r)?|hashrouter|link(?:s|ing)?|redirect|hook|state|handler|component|section|typography|layout)\b/i;
+  if (sourceEdit.test(prompt)) return false;
+  const catalogEntity = /\b(?:service|product|menu item|price|pricing plan|offer|testimonial|portfolio)\b/i;
+  const mutation = /\b(?:add|create|change|update|edit|remove|delete|sort|filter|limit)\b/i;
+  return catalogEntity.test(prompt) && mutation.test(prompt);
 }
 
 function extractLaunchBriefFromPrompt(prompt: string): LaunchBriefPayload {
@@ -1088,7 +1088,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       const rawInput = _userContent;
       const { enhancedPrompt: intelligentPrompt, analysis: promptAnalysis, isSurgical: detectedSurgical, isBehavioral: detectedBehavioral, isFullGen: isFullGeneration, isDebug: detectedDebug } = enhancePromptForAI(rawInput);
       const isSurgicalEdit = detectedSurgical && !!currentCode;
-      const isBehavioralEdit = detectedBehavioral && !!currentCode;
+      const isRouteWiringRequest = /\b(?:nav(?:igation)?|menu|route(?:s|r)?|hashrouter|link(?:s|ing)?|redirect)\b/i.test(rawInput);
+      const isBehavioralEdit = (detectedBehavioral || isRouteWiringRequest) && !!currentCode;
       const isDebugMode = detectedDebug && !!currentCode;
       const isThemeEdit = promptAnalysis.intent === 'restyle' || promptAnalysis.secondaryIntents.includes('restyle');
       const isImageEdit = /\b(add|insert|include|place|replace|swap|change|generate|create|use)\b[\s\S]{0,80}\b(image|images|photo|photos|picture|pictures|visual|visuals)\b/i.test(rawInput);
@@ -1684,7 +1685,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           (response.data as any)?.tool_calls ??
           (response.data as any)?.catalogToolCalls ??
           null;
-        if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
+        if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0 && isCatalogMutationRequest(userContent)) {
           const normalized: RawToolCall[] = rawToolCalls
             .map((tc: any) => {
               const fn = tc?.function ?? tc;
@@ -1713,6 +1714,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               console.warn('[AIBuilderPanel] Catalog tool failures:', failed);
             }
           }
+        } else if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
+          console.warn('[AIBuilderPanel] Ignored catalog tool calls for a VFS source-edit request.');
         }
       } catch (err) {
         console.warn('[AIBuilderPanel] catalog tool execution failed', err);

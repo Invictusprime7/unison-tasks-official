@@ -19,7 +19,8 @@ const SURFACE_IDS = CATALOG_SURFACE_SUMMARY.map((s) => s.surfaceId);
 
 /** Designing page layouts requires source files, not catalog-row mutations. */
 export function isPageDesignRequest(prompt: string): boolean {
-  return /\b(?:design|redesign|build|finish|complete)\b[^.!?]{0,70}\b(?:pages?|website|site)\b/i.test(prompt);
+  return /\b(?:design|redesign|build|finish|complete)\b[^.!?]{0,70}\b(?:pages?|website|site)\b/i.test(prompt)
+    || /\b(?:nav(?:igation)?|menu|route(?:s|r)?|hashrouter|link(?:s|ing)?|redirect)\b/i.test(prompt);
 }
 
 const LOCATOR_SCHEMA = {

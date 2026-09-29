@@ -49,3 +49,10 @@ Deno.test("routes theme edits to isolated structured output", () => {
   assertEquals(task.skipResearch, true);
   assertEquals(task.skipThinking, true);
 });
+
+Deno.test("keeps surgical and behavioral intent ahead of the template-react transport", () => {
+  const surgical = classifyTask({ mode: "template-react", editMode: true, navPageGen: false, surgicalEdit: true, behavioralEdit: false, debugMode: false });
+  const behavioral = classifyTask({ mode: "template-react", editMode: true, navPageGen: false, surgicalEdit: false, behavioralEdit: true, debugMode: false });
+  assertEquals(surgical.type, "surgical_edit");
+  assertEquals(behavioral.type, "behavioral_edit");
+});
