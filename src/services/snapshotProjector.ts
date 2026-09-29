@@ -33,6 +33,8 @@ export interface SnapshotResolution {
   snapshot: SiteBundleSnapshot | null;
   isWizardDraft: boolean;
   themePresetId: string | null;
+  /** Draft/project identity prevents one editor's pending writes affecting another. */
+  projectionScope?: string | null;
 }
 
 const MINIMAL_PREVIEW_FALLBACK_RE = /return\s+<div>\s*Placeholder|return\s+<main>\s*Placeholder|Canonical\s+\w+\s+Stub|Canonical\s+\w+\s+Fallback|Generated\s+Home|Preview recovered|safe fallback was injected|AI-generated code will appear here|Welcome to AI Web Builder|New site preview|Coming soon|fallback keeps the experience polished/i;
@@ -157,7 +159,13 @@ export function resolveSnapshot(
   }
   const themePresetId = snapshotThemePresetId;
 
-  return { snapshot, isWizardDraft, themePresetId: themePresetId ?? null };
+  const state = launchState as (LaunchState & { draftId?: unknown; projectId?: unknown }) | null | undefined;
+  const projectionScope = typeof state?.draftId === 'string' && state.draftId
+    ? state.draftId
+    : typeof state?.projectId === 'string' && state.projectId
+      ? state.projectId
+      : null;
+  return { snapshot, isWizardDraft, themePresetId: themePresetId ?? null, projectionScope };
 }
 
 
@@ -192,7 +200,7 @@ export function ensureSnapshotTokens(
     return existing;
   }
 
-  if (existing && isLiveEditedVfsPath('/src/index.css')) {
+  if (existing && isLiveEditedVfsPath('/src/index.css', resolution.projectionScope)) {
     return existing;
   }
 
@@ -399,24 +407,134 @@ export function assertSnapshotPreviewFileCoverage(
 
 /**
  * Live-edit registry — paths written by the AI Builder (or any in-builder edit)
- * after the current snapshot was produced. The snapshot stays authoritative for
+ * after the current snapshot was produced. They remain revision-scoped and the snapshot stays authoritative for
  * every other path, but it must never resurrect the pre-edit version of a file
  * the user just changed while the durable commit is still in flight (or was
  * skipped because business/draft context wasn't set).
  */
-const liveEditedPaths = new Map<string, number>();
+export type PendingVfsChange =
+  | { type: 'create' | 'replace'; path: string; contents: string }
+  | { type: 'delete'; path: string };
+
+export interface PendingVfsOperation {
+  operationId: string;
+  scope: string | null;
+  baseRevisionId: string | null;
+  candidateRevisionId: string | null;
+  createdAt: number;
+  changes: PendingVfsChange[];
+}
+
+const LEGACY_PROJECTION_SCOPE = '__legacy_unscoped__';
+const pendingVfsOperations = new Map<string, PendingVfsOperation>();
+let pendingVfsSequence = 0;
 
 function normalizeVfsPath(path: string): string {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
+function normalizedScope(scope?: string | null): string | null {
+  return scope?.trim() || null;
+}
+
+function operationScopeKey(scope?: string | null): string {
+  return normalizedScope(scope) ?? LEGACY_PROJECTION_SCOPE;
+}
+
+function normalizedChanges(changes: readonly PendingVfsChange[]): PendingVfsChange[] {
+  const paths = new Set<string>();
+  return changes.map((change) => {
+    const path = normalizeVfsPath(change.path);
+    if (paths.has(path)) throw new Error(`Duplicate pending VFS operation path: ${path}`);
+    paths.add(path);
+    return change.type === 'delete' ? { type: 'delete', path } : { ...change, path };
+  });
+}
+
+/** Records exact changes until a later snapshot acknowledges every one. */
+export function recordPendingVfsOperation(input: {
+  scope?: string | null;
+  baseRevisionId?: string | null;
+  candidateRevisionId?: string | null;
+  changes: readonly PendingVfsChange[];
+  operationId?: string;
+}): PendingVfsOperation | null {
+  const changes = normalizedChanges(input.changes);
+  if (!changes.length) return null;
+  const operationId = input.operationId?.trim() || `pending-vfs-${Date.now()}-${++pendingVfsSequence}`;
+  if (pendingVfsOperations.has(operationId)) throw new Error(`Duplicate pending VFS operation ID: ${operationId}`);
+  const operation: PendingVfsOperation = {
+    operationId,
+    scope: normalizedScope(input.scope),
+    baseRevisionId: input.baseRevisionId?.trim() || null,
+    candidateRevisionId: input.candidateRevisionId?.trim() || null,
+    createdAt: Date.now(),
+    changes,
+  };
+  pendingVfsOperations.set(operationId, operation);
+  return operation;
+}
+
+/** Builds explicit creates, replacements and deletes from a complete file map. */
+export function recordPendingVfsMutation(input: {
+  scope?: string | null;
+  baseRevisionId?: string | null;
+  candidateRevisionId?: string | null;
+  beforeFiles: Record<string, string>;
+  afterFiles: Record<string, string>;
+  operationId?: string;
+}): PendingVfsOperation | null {
+  const before = new Map(Object.entries(input.beforeFiles).map(([path, contents]) => [normalizeVfsPath(path), contents]));
+  const after = new Map(Object.entries(input.afterFiles).map(([path, contents]) => [normalizeVfsPath(path), contents]));
+  const changes: PendingVfsChange[] = [];
+  for (const path of [...new Set([...before.keys(), ...after.keys()])].sort()) {
+    const previous = before.get(path);
+    const next = after.get(path);
+    if (previous === next) continue;
+    if (next === undefined) changes.push({ type: 'delete', path });
+    else changes.push({ type: previous === undefined ? 'create' : 'replace', path, contents: next });
+  }
+  return recordPendingVfsOperation({ ...input, changes });
+}
+
+/** Acknowledges only whole operations included by this snapshot. */
+export function acknowledgePendingVfsOperations(snapshotFiles: Record<string, string>, scope?: string | null): string[] {
+  const files = new Map(Object.entries(snapshotFiles).map(([path, contents]) => [normalizeVfsPath(path), contents]));
+  const acknowledged: string[] = [];
+  for (const [operationId, operation] of pendingVfsOperations) {
+    if (operationScopeKey(operation.scope) !== operationScopeKey(scope)) continue;
+    const complete = operation.changes.every((change) => change.type === 'delete'
+      ? !files.has(change.path)
+      : files.get(change.path) === change.contents);
+    if (complete) {
+      pendingVfsOperations.delete(operationId);
+      acknowledged.push(operationId);
+    }
+  }
+  return acknowledged;
+}
+
+export function clearPendingVfsOperations(scope?: string | null): void {
+  if (scope === undefined) {
+    pendingVfsOperations.clear();
+    return;
+  }
+  for (const [operationId, operation] of pendingVfsOperations) {
+    if (operationScopeKey(operation.scope) === operationScopeKey(scope)) pendingVfsOperations.delete(operationId);
+  }
+}
+
+export function getPendingVfsOperations(scope?: string | null): PendingVfsOperation[] {
+  return [...pendingVfsOperations.values()]
+    .filter((operation) => operationScopeKey(operation.scope) === operationScopeKey(scope))
+    .map((operation) => ({ ...operation, changes: [...operation.changes] }));
+}
+
 /** Mark paths as edited in the live VFS ahead of the next snapshot commit. */
 export function markLiveEditedVfsPaths(paths: string[]): void {
-  const now = Date.now();
-  for (const path of paths) {
-    if (!path) continue;
-    liveEditedPaths.set(normalizeVfsPath(path), now);
-  }
+  recordPendingVfsOperation({
+    changes: paths.filter(Boolean).map((path) => ({ type: 'replace' as const, path, contents: '' })),
+  });
 }
 
 /**
@@ -425,21 +543,27 @@ export function markLiveEditedVfsPaths(paths: string[]): void {
  */
 export function clearLiveEditedVfsPaths(paths?: string[]): void {
   if (!paths) {
-    liveEditedPaths.clear();
+    clearPendingVfsOperations();
     return;
   }
-  for (const path of paths) liveEditedPaths.delete(normalizeVfsPath(path));
+  const wanted = new Set(paths.map(normalizeVfsPath));
+  for (const [operationId, operation] of pendingVfsOperations) {
+    const retained = operation.changes.filter((change) => !wanted.has(change.path));
+    if (!retained.length) pendingVfsOperations.delete(operationId);
+    else if (retained.length !== operation.changes.length) pendingVfsOperations.set(operationId, { ...operation, changes: retained });
+  }
 }
 
-export function getLiveEditedVfsPaths(): string[] {
-  return [...liveEditedPaths.keys()];
+export function getLiveEditedVfsPaths(scope?: string | null): string[] {
+  return [...new Set(getPendingVfsOperations(scope).flatMap((operation) => operation.changes.map((change) => change.path)))];
 }
 
-export function isLiveEditedVfsPath(path: string): boolean {
+export function isLiveEditedVfsPath(path: string, scope?: string | null): boolean {
   const normalized = normalizeVfsPath(path);
-  if (liveEditedPaths.has(normalized)) return true;
-  if (normalized === '/index.css') return liveEditedPaths.has('/src/index.css');
-  if (normalized === '/src/index.css') return liveEditedPaths.has('/index.css');
+  const paths = new Set(getLiveEditedVfsPaths(scope));
+  if (paths.has(normalized)) return true;
+  if (normalized === '/index.css') return paths.has('/src/index.css');
+  if (normalized === '/src/index.css') return paths.has('/index.css');
   return false;
 }
 
@@ -470,6 +594,13 @@ export function projectSnapshotVfsFiles(
 
   const snapshotFiles = (resolution.snapshot as { vfsFiles?: Record<string, string> }).vfsFiles || {};
   if (Object.keys(snapshotFiles).length === 0) return files;
+  // Acknowledgment is operation-level: a partial snapshot refresh cannot clear
+  // a sibling create/delete from the same accepted candidate.
+  acknowledgePendingVfsOperations(snapshotFiles, resolution.projectionScope);
+  const pendingChanges = new Map<string, PendingVfsChange>();
+  for (const operation of getPendingVfsOperations(resolution.projectionScope)) {
+    for (const change of operation.changes) pendingChanges.set(change.path, change);
+  }
 
   // A sealed Wizard snapshot is a complete runtime projection, not an overlay.
   // Retain only non-executable Unison metadata from the incoming VFS, then add
@@ -486,31 +617,38 @@ export function projectSnapshotVfsFiles(
   for (const [rawPath, content] of Object.entries(snapshotFiles)) {
     const path = normalizeVfsPath(rawPath);
     const live = files[path] ?? files[rawPath];
-    const isLiveEdited = liveEditedPaths.has(path);
+    const pending = pendingChanges.get(path);
 
-    // A live edit wins only while it differs from the snapshot copy. Once the
-    // durable commit lands, contents match and the protection is dropped.
-    if (isLiveEdited && typeof live === 'string' && live !== content) {
+    // A pending deletion wins over a stale snapshot. Replacements use the
+    // exact live byte when present; if projection is recovering from a VFS
+    // without that path, use the recorded accepted candidate byte.
+    if (pending?.type === 'delete') {
       preserved.push(path);
       continue;
     }
-    if (isLiveEdited) liveEditedPaths.delete(path);
+    if (pending && typeof live === 'string' && (pending.contents === '' || live !== content)) {
+      next[path] = live;
+      preserved.push(path);
+      continue;
+    }
+    if (pending) {
+      next[path] = pending.contents;
+      preserved.push(path);
+      continue;
+    }
 
     next[path] = content;
   }
 
-  // Live builder writes are the sole exception to snapshot ownership while a
-  // newer durable snapshot is still being committed. This also preserves a
-  // newly created file which is not present in the previous snapshot yet.
-  for (const [rawPath, content] of Object.entries(files)) {
-    const path = normalizeVfsPath(rawPath);
-    if (!liveEditedPaths.has(path) || path.startsWith('/.unison/')) continue;
-    const snapshotContent = snapshotFiles[path] ?? snapshotFiles[rawPath];
-    if (snapshotContent === content) {
-      liveEditedPaths.delete(path);
-      continue;
+  // Pending creates and deletes may have no corresponding stale snapshot path.
+  for (const [path, pending] of pendingChanges) {
+    if (path.startsWith('/.unison/')) continue;
+    if (pending.type === 'delete') {
+      delete next[path];
+    } else {
+      const live = files[path] ?? files[path.slice(1)];
+      next[path] = typeof live === 'string' ? live : pending.contents;
     }
-    next[path] = content;
     if (!preserved.includes(path)) preserved.push(path);
   }
 

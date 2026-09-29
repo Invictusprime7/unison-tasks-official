@@ -201,7 +201,7 @@ import { loadCanonicalComponentGraph } from '@/services/componentGraphPersistenc
 import { inferCanonicalComponentSlug } from '@/services/canonicalComponentRegistry';
 import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
 import { clearLauncherHandoff, readLauncherHandoff } from '@/services/launcherHandoffPersistence';
-import { assertNoMinimalFallbackPreview, projectSnapshotVfsFiles, resolveSnapshot, markLiveEditedVfsPaths, clearLiveEditedVfsPaths } from '@/services/snapshotProjector';
+import { assertNoMinimalFallbackPreview, projectSnapshotVfsFiles, resolveSnapshot, recordPendingVfsMutation, clearPendingVfsOperations } from '@/services/snapshotProjector';
 import { projectCommittedWizardRuntime } from '@/services/committedWizardRuntime';
 import { createVfsHandoffSignature } from '@/services/vfsHandoffSignature';
 import { isPreviewPipelineError } from '@/services/previewPipelineError';
@@ -589,6 +589,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       || (effectiveRouteState?.runtimeManifest?.appContext as { templateId?: string } | undefined)?.templateId
       || null
   );
+  const pendingProjectionScope = currentDraftId
+    ?? effectiveRouteState?.projectId
+    ?? effectiveRouteState?.returnProjectId
+    ?? null;
   // Launcher context, persisted handoff, and navigation state can settle on
   // adjacent renders. Keep canonical identity synchronized after mount rather
   // than pinning commits to whichever source won the first render.
@@ -599,10 +603,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         : effectiveRouteState.draftId || null);
     }
   }, [effectiveRouteState?.draftId]);
-  // Live-edit protection is scoped to one project identity; drop it on switch.
+  // Pending preview mutations are scoped to one draft. Clear only the scope
+  // being unmounted; another open project must retain its own pending candidate.
   useEffect(() => {
-    clearLiveEditedVfsPaths();
-  }, [currentDraftId]);
+    return () => { clearPendingVfsOperations(pendingProjectionScope); };
+  }, [pendingProjectionScope]);
   const [currentManifestId, setCurrentManifestId] = useState<string | null>(
     effectiveRouteState?.manifestId || null
   );
@@ -2578,9 +2583,15 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         ...existingFiles,
         ...normalizedFiles,
       };
-      let snapshotResolution = resolveSnapshot(candidateFiles, effectiveRouteState as any);
+      let snapshotResolution = {
+        ...resolveSnapshot(candidateFiles, effectiveRouteState as any),
+        projectionScope: pendingProjectionScope,
+      };
       candidateFiles = projectSnapshotVfsFiles(candidateFiles, snapshotResolution);
-      snapshotResolution = resolveSnapshot(candidateFiles, effectiveRouteState as any);
+      snapshotResolution = {
+        ...resolveSnapshot(candidateFiles, effectiveRouteState as any),
+        projectionScope: pendingProjectionScope,
+      };
       Object.assign(normalizedFiles, candidateFiles);
       assertNoMinimalFallbackPreview(candidateFiles, snapshotResolution, 'Builder VFS import');
 
@@ -2612,7 +2623,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       });
       return null;
     }
-  }, [syncBuilderFromFiles, vfsImportFiles, vfsResetToEmpty, launchEntryPoint, resolvedThemePresetId, effectiveRouteState, currentDraftId]);
+  }, [syncBuilderFromFiles, vfsImportFiles, vfsResetToEmpty, launchEntryPoint, resolvedThemePresetId, effectiveRouteState, currentDraftId, pendingProjectionScope]);
 
   // ── Move 3: revisionId-first hydration ──
   // When the route state carries a `revisionId` (persisted by VFSCommitService at
@@ -7303,7 +7314,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   }
 
                   const mergedFiles = outcome.committedFiles ?? beforeSnapshotFiles;
-                  markLiveEditedVfsPaths(outcome.changedPaths);
+                  recordPendingVfsMutation({
+                    scope: pendingProjectionScope,
+                    baseRevisionId: currentRevisionIdRef.current || null,
+                    candidateRevisionId: outcome.revisionId ?? null,
+                    beforeFiles: beforeSnapshotFiles,
+                    afterFiles: mergedFiles,
+                  });
                   const syncedEntry = syncBuilderFromFiles(mergedFiles, activePagePath);
                   console.log('[WebBuilder] Entry file for preview:', syncedEntry?.entryPath || 'NOT FOUND');
                   setViewMode('canvas');
@@ -7831,7 +7848,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 }
 
                 const mergedFiles = outcome.committedFiles ?? beforeFiles;
-                markLiveEditedVfsPaths(outcome.changedPaths);
+                recordPendingVfsMutation({
+                  scope: pendingProjectionScope,
+                  baseRevisionId: currentRevisionIdRef.current || null,
+                  candidateRevisionId: outcome.revisionId ?? null,
+                  beforeFiles,
+                  afterFiles: mergedFiles,
+                });
                 syncBuilderFromFiles(mergedFiles, activePagePath);
                 setViewMode('canvas');
                 setAiPanelOpen(false);

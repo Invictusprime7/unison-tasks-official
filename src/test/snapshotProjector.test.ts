@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import {
+  acknowledgePendingVfsOperations,
+  clearPendingVfsOperations,
+  getPendingVfsOperations,
   projectSnapshotVfsFiles,
+  recordPendingVfsMutation,
   resolveSnapshot,
   type SnapshotResolution,
 } from '@/services/snapshotProjector';
@@ -48,6 +52,46 @@ function snapshotWith(files: Record<string, string>): SiteBundleSnapshot {
 }
 
 describe('snapshot projector', () => {
+  it('keeps scoped pending creates, replacements and deletes over a stale snapshot', () => {
+    const snapshot = snapshotWith({
+      '/src/App.tsx': 'router',
+      '/src/pages/Home.tsx': 'old home',
+      '/src/pages/Removed.tsx': 'old removed page',
+    });
+    const resolution: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-a' };
+    const before = { ...snapshot.vfsFiles };
+    const live = { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new home', '/src/pages/New.tsx': 'new page' };
+    try {
+      recordPendingVfsMutation({ scope: 'draft-a', baseRevisionId: 'rev-1', candidateRevisionId: 'rev-2', beforeFiles: before, afterFiles: live, operationId: 'candidate-2' });
+      const projected = projectSnapshotVfsFiles(live, resolution);
+      expect(projected['/src/pages/Home.tsx']).toBe('new home');
+      expect(projected['/src/pages/New.tsx']).toBe('new page');
+      expect(projected['/src/pages/Removed.tsx']).toBeUndefined();
+      expect(getPendingVfsOperations('draft-a')).toHaveLength(1);
+    } finally {
+      clearPendingVfsOperations('draft-a');
+    }
+  });
+
+  it('does not leak a pending operation between drafts and only acknowledges a complete operation', () => {
+    const snapshot = snapshotWith({ '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'old', '/src/pages/Removed.tsx': 'old removed' });
+    const draftA: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-a' };
+    const draftB: SnapshotResolution = { snapshot, isWizardDraft: true, themePresetId: 'restaurant-warm', projectionScope: 'draft-b' };
+    try {
+      recordPendingVfsMutation({ scope: 'draft-a', beforeFiles: snapshot.vfsFiles, afterFiles: { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new' }, operationId: 'operation-a' });
+      expect(projectSnapshotVfsFiles(snapshot.vfsFiles, draftB)['/src/pages/Home.tsx']).toBe('old');
+      // The snapshot contains the replacement but still resurrects the delete,
+      // so it cannot acknowledge the entire candidate.
+      expect(acknowledgePendingVfsOperations({ '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new', '/src/pages/Removed.tsx': 'old removed' }, 'draft-a')).toEqual([]);
+      expect(getPendingVfsOperations('draft-a')).toHaveLength(1);
+      expect(acknowledgePendingVfsOperations({ '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new' }, 'draft-a')).toEqual(['operation-a']);
+      expect(getPendingVfsOperations('draft-a')).toEqual([]);
+    } finally {
+      clearPendingVfsOperations('draft-a');
+      clearPendingVfsOperations('draft-b');
+    }
+  });
+
   it('replaces a fully formed template preset with the authoritative snapshot VFS', () => {
     const snapshot = snapshotWith({
       '/src/App.tsx': 'export default function App() { return <main>Deterministic manifest</main>; }',
@@ -131,6 +175,12 @@ describe('snapshot projector', () => {
 
     expect(resolution.snapshot).toBeNull();
     expect(resolution.isWizardDraft).toBe(true);
+  });
+
+  it('derives projection scope from a draft before applying pending operations', () => {
+    const snapshot = snapshotWith({ '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'old' });
+    const resolution = resolveSnapshot(snapshot.vfsFiles, { siteBundleSnapshot: snapshot, draftId: 'draft-scoped' } as never);
+    expect(resolution.projectionScope).toBe('draft-scoped');
   });
 
   it('rejects preview hydration from an unsealed Wizard snapshot', () => {
