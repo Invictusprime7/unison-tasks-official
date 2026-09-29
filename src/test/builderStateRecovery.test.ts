@@ -72,11 +72,12 @@ describe('builderStateRecovery', () => {
     const draftId = '80df1c0d-bf83-49aa-bc50-851e0f2d3a63';
     writeBuilderRecoverySnapshot(pending, storage);
 
-    expect(markBuilderRecoveryPersisted(pending, draftId, storage)).toBe(true);
+    expect(markBuilderRecoveryPersisted(pending, draftId, storage, 'revision-acknowledged')).toBe(true);
     expect(storage.getItem(getBuilderRecoveryKey(null))).toBeNull();
     expect(readBuilderRecoverySnapshot(draftId, storage)).toMatchObject({
       templateId: draftId,
       pendingRemote: false,
+      acknowledgedRevisionId: 'revision-acknowledged',
       vfsFiles: pending.vfsFiles,
     });
   });

@@ -201,7 +201,7 @@ import { loadCanonicalComponentGraph } from '@/services/componentGraphPersistenc
 import { inferCanonicalComponentSlug } from '@/services/canonicalComponentRegistry';
 import { buildCanonicalLaunchArtifacts } from '@/services/canonicalLaunchVfs';
 import { clearLauncherHandoff, readLauncherHandoff } from '@/services/launcherHandoffPersistence';
-import { assertNoMinimalFallbackPreview, projectSnapshotVfsFiles, resolveSnapshot, recordPendingVfsMutation, clearPendingVfsOperations, restorePendingVfsOperations, serializePendingVfsOperations } from '@/services/snapshotProjector';
+import { acknowledgePendingVfsOperations, assertNoMinimalFallbackPreview, projectSnapshotVfsFiles, resolveSnapshot, recordPendingVfsMutation, clearPendingVfsOperations, restorePendingVfsOperations, serializePendingVfsOperations } from '@/services/snapshotProjector';
 import { projectCommittedWizardRuntime } from '@/services/committedWizardRuntime';
 import { createVfsHandoffSignature } from '@/services/vfsHandoffSignature';
 import { isPreviewPipelineError } from '@/services/previewPipelineError';
@@ -4484,7 +4484,16 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         currentRevisionIdRef.current = commit.persistedRevisionId;
         setCurrentRevisionId(commit.persistedRevisionId);
         currentDraftIdRef.current = existingDraftId;
-        markBuilderRecoveryPersisted(snapshot, existingDraftId);
+        const acknowledgedOperationIds = snapshot.pendingVfsOperations
+          ?.flatMap((operation) => (
+            operation && typeof operation === 'object' && typeof (operation as { operationId?: unknown }).operationId === 'string'
+              ? [(operation as { operationId: string }).operationId]
+              : []
+          ));
+        acknowledgePendingVfsOperations(currentVfsFiles, pendingProjectionScope, {
+          operationIds: acknowledgedOperationIds,
+        });
+        markBuilderRecoveryPersisted(snapshot, existingDraftId, undefined, commit.persistedRevisionId);
         lastSavedCodeRef.current = codeForSave;
         lastSavedVfsSignatureRef.current = vfsSignature;
         setLastSavedAt(new Date());

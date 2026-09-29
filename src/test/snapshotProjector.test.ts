@@ -120,6 +120,19 @@ describe('snapshot projector', () => {
     }
   });
 
+  it('acknowledges only operations captured by the successful server transaction', () => {
+    const files = { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new', '/src/pages/About.tsx': 'new' };
+    try {
+      recordPendingVfsMutation({ scope: 'draft-ack', beforeFiles: { '/src/App.tsx': 'router' }, afterFiles: { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new' }, operationId: 'server-acknowledged' });
+      recordPendingVfsMutation({ scope: 'draft-ack', beforeFiles: { '/src/App.tsx': 'router', '/src/pages/Home.tsx': 'new' }, afterFiles: files, operationId: 'newer-operation' });
+
+      expect(acknowledgePendingVfsOperations(files, 'draft-ack', { operationIds: ['server-acknowledged'] })).toEqual(['server-acknowledged']);
+      expect(getPendingVfsOperations('draft-ack').map(({ operationId }) => operationId)).toEqual(['newer-operation']);
+    } finally {
+      clearPendingVfsOperations('draft-ack');
+    }
+  });
+
   it('replaces a fully formed template preset with the authoritative snapshot VFS', () => {
     const snapshot = snapshotWith({
       '/src/App.tsx': 'export default function App() { return <main>Deterministic manifest</main>; }',

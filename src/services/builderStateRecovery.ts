@@ -18,6 +18,8 @@ export interface BuilderRecoverySnapshot {
   editorCode: string;
   savedAt: string;
   persistedAt?: string;
+  /** Canonical revision returned by the server for this exact journal snapshot. */
+  acknowledgedRevisionId?: string;
   templateId: string | null;
   vfsSignature: string;
   vfsFiles: Record<string, string>;
@@ -127,6 +129,7 @@ export function markBuilderRecoveryPersisted(
   snapshot: BuilderRecoverySnapshot,
   resolvedDraftId: string | null,
   storage: StorageLike | null = defaultStorage(),
+  acknowledgedRevisionId?: string | null,
 ): boolean {
   if (!storage) return false;
   const previousKey = getBuilderRecoveryKey(snapshot.templateId);
@@ -147,6 +150,7 @@ export function markBuilderRecoveryPersisted(
     templateId: resolvedDraftId,
     pendingRemote: false,
     persistedAt: new Date().toISOString(),
+    acknowledgedRevisionId: acknowledgedRevisionId || undefined,
   };
   try {
     storage.setItem(getBuilderRecoveryKey(resolvedDraftId), JSON.stringify(persisted));

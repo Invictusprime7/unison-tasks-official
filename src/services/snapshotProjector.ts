@@ -418,6 +418,8 @@ export type PendingVfsChange =
 
 export interface PendingVfsOperation {
   operationId: string;
+  /** Monotonic local order; never used as last-write-wins authority. */
+  sequence: number;
   scope: string | null;
   baseRevisionId: string | null;
   candidateRevisionId: string | null;
@@ -459,13 +461,19 @@ export function recordPendingVfsOperation(input: {
   changes: readonly PendingVfsChange[];
   operationId?: string;
   createdAt?: number;
+  sequence?: number;
 }): PendingVfsOperation | null {
   const changes = normalizedChanges(input.changes);
   if (!changes.length) return null;
-  const operationId = input.operationId?.trim() || `pending-vfs-${Date.now()}-${++pendingVfsSequence}`;
+  const sequence = typeof input.sequence === 'number' && Number.isSafeInteger(input.sequence) && input.sequence > 0
+    ? input.sequence
+    : ++pendingVfsSequence;
+  pendingVfsSequence = Math.max(pendingVfsSequence, sequence);
+  const operationId = input.operationId?.trim() || `pending-vfs-${Date.now()}-${sequence}`;
   if (pendingVfsOperations.has(operationId)) throw new Error(`Duplicate pending VFS operation ID: ${operationId}`);
   const operation: PendingVfsOperation = {
     operationId,
+    sequence,
     scope: normalizedScope(input.scope),
     baseRevisionId: input.baseRevisionId?.trim() || null,
     candidateRevisionId: input.candidateRevisionId?.trim() || null,
@@ -501,11 +509,17 @@ export function recordPendingVfsMutation(input: {
 }
 
 /** Acknowledges only whole operations included by this snapshot. */
-export function acknowledgePendingVfsOperations(snapshotFiles: Record<string, string>, scope?: string | null): string[] {
+export function acknowledgePendingVfsOperations(
+  snapshotFiles: Record<string, string>,
+  scope?: string | null,
+  options?: { operationIds?: readonly string[] },
+): string[] {
   const files = new Map(Object.entries(snapshotFiles).map(([path, contents]) => [normalizeVfsPath(path), contents]));
+  const operationIds = options?.operationIds ? new Set(options.operationIds) : null;
   const acknowledged: string[] = [];
   for (const [operationId, operation] of pendingVfsOperations) {
     if (operationScopeKey(operation.scope) !== operationScopeKey(scope)) continue;
+    if (operationIds && !operationIds.has(operationId)) continue;
     const complete = operation.changes.every((change) => change.type === 'delete'
       ? !files.has(change.path)
       : files.get(change.path) === change.contents);
@@ -560,6 +574,7 @@ export function restorePendingVfsOperations(serialized: unknown, scope?: string 
         baseRevisionId: operation.baseRevisionId,
         candidateRevisionId: operation.candidateRevisionId,
         createdAt: operation.createdAt,
+        sequence: operation.sequence,
         changes: operation.changes,
       });
       if (recorded) restored.push(recorded.operationId);
