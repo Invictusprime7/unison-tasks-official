@@ -168,7 +168,6 @@ import {
 import { detectRouteConflicts } from "./web-builder/PageRouteBar";
 import { useUserDesignProfile } from "@/hooks/useUserDesignProfile";
 import type { SystemsBuildContext } from "@/types/systemsBuildContext";
-import { useSiteBuilder, type UseSiteBuilderReturn } from "@/hooks/useSiteBuilder";
 import { useAIVFS } from '@/hooks/useAIVFS';
 import { canonicalizeAIFilePaths } from '@/services/aiVFSOrchestrator';
 import { extractEmbeddedCSS } from '@/utils/templateToVFS';
@@ -1792,22 +1791,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   
   // Site builder orchestrator — provides site graph navigation, brand system, and intent routing
   // Uses project/business IDs from location state; no-ops if unavailable
-  const siteBuilderBusinessId = businessId || getOrCreatePreviewBusinessId(systemType);
-  const siteBuilderIndustry = (systemType as any) || 'general';
-  const siteBuilderRef = useRef<UseSiteBuilderReturn | null>(null);
-  const siteBuilderOnReady = useCallback(() => {
-    console.log('[WebBuilder] Site builder ready');
-  }, []);
-  const siteBuilder = useSiteBuilder({
-    projectId: projectId || 'preview',
-    businessId: siteBuilderBusinessId,
-    industry: siteBuilderIndustry,
-    autoGenerateAll: false,
-    debug: false,
-    onReady: siteBuilderOnReady,
-  });
-  siteBuilderRef.current = siteBuilder;
-  
   // User design profile for personalized AI generation
   const { profile: userDesignProfile, fetchProfile: fetchDesignProfile, hasProfile: hasDesignProfile } = useUserDesignProfile();
   

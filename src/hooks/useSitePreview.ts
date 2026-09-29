@@ -22,6 +22,9 @@ import { type BrandColors } from "@/types/brand";
  * Options for site preview hook
  */
 interface UseSitePreviewOptions {
+  /** This generator writes page HTML and is intentionally legacy-only. */
+  projectFormat: "legacy-html";
+
   projectId: string;
   businessId: string;
   industry: Industry;
@@ -341,6 +344,7 @@ const defaultBrand: BrandColors = {
  */
 export function useSitePreview(options: UseSitePreviewOptions): UseSitePreviewReturn {
   const {
+    projectFormat,
     projectId,
     businessId,
     industry,
@@ -375,6 +379,7 @@ export function useSitePreview(options: UseSitePreviewOptions): UseSitePreviewRe
    * Sync a page to VFS
    */
   const syncPageToVFS = useCallback((page: PageNode) => {
+    if (projectFormat !== 'legacy-html') return;
     if (!vfs) return;
     
     const fileName = page.navKey === "home" ? "index.html" : `${page.navKey}.html`;
@@ -393,7 +398,7 @@ export function useSitePreview(options: UseSitePreviewOptions): UseSitePreviewRe
     if (debug) {
       console.log("[SitePreview] Synced to VFS:", fileName);
     }
-  }, [vfs, brand, navigation.navItems, debug]);
+  }, [projectFormat, vfs, brand, navigation.navItems, debug]);
   
   /**
    * Navigate to a page and sync to VFS

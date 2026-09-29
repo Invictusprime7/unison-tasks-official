@@ -43,6 +43,9 @@ export interface SiteBuilderState {
  * Site builder options
  */
 export interface UseSiteBuilderOptions {
+  /** Explicit legacy boundary. Canonical TSX projects must not mount this HTML writer. */
+  projectFormat: "legacy-html";
+
   /** Project ID */
   projectId: string;
   
@@ -140,6 +143,7 @@ const DEFAULT_BRAND: BrandColors = {
  */
 export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderReturn {
   const {
+    projectFormat,
     projectId,
     businessId,
     industry,
@@ -188,6 +192,7 @@ export function useSiteBuilder(options: UseSiteBuilderOptions): UseSiteBuilderRe
   
   // Preview hook
   const previewHook = useSitePreview({
+    projectFormat,
     projectId,
     businessId,
     industry,
