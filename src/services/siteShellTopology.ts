@@ -357,7 +357,7 @@ export function projectSiteShellLinks(
     }
 
     // 2. Hand-authored link arrays: [{ label, href }, ...] pointing at site routes.
-    source = source.replace(/\[\s*(?:\{[^\[\]{}]*\}\s*,?\s*){2,}\]/g, (block, offset: number, whole: string) => {
+    source = source.replace(/\[\s*(?:\{[^{}]*\}\s*,?\s*){2,}\]/g, (block, offset: number, whole: string) => {
       const context = whole.slice(Math.max(0, offset - 60), offset);
       if (!/(nav|menu|links)\w*\s*[:=]\s*(\([^)]*\)\s*)?$/i.test(context)) return block;
       const items = Array.from(block.matchAll(LINK_ITEM));
@@ -371,10 +371,11 @@ export function projectSiteShellLinks(
       const hrefKey = items[0][4];
       const jsonStyle = /^\[\s*\{\s*"/.test(block);
       const k = (name: string) => (jsonStyle ? JSON.stringify(name) : name);
-      const useHash = hrefs.some((href) => href.startsWith('#'));
       const lineIndent = '  ';
       const body = routes
-        .map((route) => `${lineIndent}{ ${k(labelKey)}: ${JSON.stringify(route.label)}, ${k(hrefKey)}: ${JSON.stringify(useHash ? route.href : route.path)} }`)
+        // Generated runtime navigation is HashRouter-based. A legacy plain
+        // internal path reloads the preview instead of selecting this route.
+        .map((route) => `${lineIndent}{ ${k(labelKey)}: ${JSON.stringify(route.label)}, ${k(hrefKey)}: ${JSON.stringify(route.href)} }`)
         .join(',\n');
       return `[\n${body}\n]`;
     });

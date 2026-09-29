@@ -44,6 +44,8 @@ describe('generated UI foundation', () => {
     expect(foundation.files['/src/unison/ui/button.tsx']).toContain("destructive:");
     expect(foundation.files['/src/unison/ui/icons.ts']).toContain("export const Linkedin = brandIcon('Linkedin');");
     expect(foundation.files['/src/unison/ui/navigation.tsx']).toContain("from './radix/dialog'");
+    expect(foundation.files['/src/unison/ui/navigation.tsx']).toContain("const toNavigationHref = (href: string) => href.startsWith('/') ? '#' + href : href;");
+    expect(foundation.files['/src/unison/ui/navigation.tsx']).toContain('href={toNavigationHref(link.href)}');
     expect(foundation.files['/src/unison/ui/radix/dialog.ts']).toContain("@radix-ui/react-dialog");
     expect(foundation.files['/src/unison/ui/icon.tsx']).toContain('LucideIcon');
     expect(foundation.files['/src/unison/ui/button.tsx']).toContain('React.isValidElement(child) && !child.type ? null : child');

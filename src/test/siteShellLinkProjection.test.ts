@@ -28,4 +28,11 @@ describe('projectSiteShellLinks', () => {
     expect(out).toContain('{ label: "Our Story", href: "#/about" }');
     expect(out).toContain("const ctas = [{ label: 'Shop'");
   });
+
+  it('upgrades legacy plain internal navbar paths to HashRouter links', () => {
+    const src = `const navLinks = [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }];`;
+    const out = projectSiteShellLinks(buildSiteShellTopology(registry), { '/src/pages/Home.tsx': src }).files['/src/pages/Home.tsx'];
+    expect(out).toContain('{ label: "Our Story", href: "#/about" }');
+    expect(out).not.toContain("href: '/shop'");
+  });
 });
