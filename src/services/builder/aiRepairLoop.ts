@@ -17,6 +17,7 @@ import {
 } from '@/contracts/aiComposerContract';
 import { prepareAICandidate, type PreparedCandidate } from './aiCandidateGates';
 import { selectSourceKnowledge } from './sourceKnowledgeContext';
+import { appendDesignKnowledge } from '@/services/knowledge/designKnowledge';
 import type { HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 
 export type ComposerInvoke = typeof runBuilderTurn;
@@ -175,7 +176,10 @@ export async function repairBuilderCandidate(input: {
     request: {
       task: 'builder_source_edit',
       page: { role: 'page', title: target.split('/').pop() ?? target, route: '/', filePath: target },
-      brief: 'Builder edit. Keep the existing design direction, art direction and all intents.',
+      brief: appendDesignKnowledge(
+        'Builder edit. Keep the existing design direction, art direction and all intents.',
+        `${input.prompt ?? ''} ${target}`,
+      ),
       instruction: input.prompt?.slice(0, 4000),
       files,
       routes: [],

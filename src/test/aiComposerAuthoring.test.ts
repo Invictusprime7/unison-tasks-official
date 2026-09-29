@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 vi.mock('@/services/builderBrainClient', () => ({ runBuilderTurn: vi.fn() }));
 
-import { runComposerRepairLoop } from '@/services/builder/aiRepairLoop';
+import { repairBuilderCandidate, runComposerRepairLoop } from '@/services/builder/aiRepairLoop';
 import { authorSitePages, orderAuthoringPages } from '@/services/launch/siteAuthoringOrchestrator';
 
 const base = {
@@ -118,6 +118,7 @@ describe('site authoring orchestrator', () => {
     expect(requests[1].brief).toContain('HOMEPAGE VISUAL LANGUAGE');
     expect(requests[1].brief).toContain('navbar: navbar:editorial-minimal');
     expect(requests[1].brief).toContain('Select a distinct role-appropriate hero');
+    expect(requests[0].brief).toContain('never a whitelist');
     expect(result.files['/src/pages/Home.tsx']).toContain('hero:fashion-cinematic');
     expect(result.files['/src/pages/About.tsx']).toContain('hero:editorial-intro');
     expect(result.files['/src/pages/About.tsx']).toContain('navbar:editorial-minimal');
@@ -128,6 +129,22 @@ describe('site authoring orchestrator', () => {
     const r = await authorSitePages({ pages, designContext: null, businessName: 'B', files: base, commitPage: vi.fn(), invoke: invoke as never });
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(r.outcomes.map((o) => o.status)).toEqual(['kept-baseline', 'skipped']);
+  });
+
+  it('uses the same mandatory knowledge policy for a Builder repair request', async () => {
+    const invoke = vi.fn().mockResolvedValue(good('/src/pages/Home.tsx', 'Recovered'));
+    await repairBuilderCandidate({
+      rawFiles: { '/src/pages/Home.tsx': 'bad source' },
+      failed: { errors: ['Import failed'], ok: false } as never,
+      baseFiles: base,
+      activeFilePath: '/src/pages/Home.tsx',
+      prompt: 'Create an Aria-inspired editorial portfolio home',
+      invoke: invoke as never,
+    });
+    const sent = JSON.parse(invoke.mock.calls[0][0].messages[0].content);
+    expect(sent.brief).toContain('never a whitelist');
+    expect(sent.brief).toContain('ARIA');
+    expect(sent.brief).toContain('not a mandatory recipe');
   });
 });
 

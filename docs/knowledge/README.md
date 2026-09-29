@@ -19,7 +19,7 @@ Regenerate the portable artifact with `node --experimental-strip-types scripts/b
 
 ## Rollout boundary
 
-Retrieval is not yet wired into live Composer prompts. Live callers still use the compatibility source selector without presenting its new omission report. No expanded authoring rollout has occurred.
+The curated policy/design layer is wired into existing Wizard page authoring and Builder repair Composer requests. Live callers still use the compatibility source selector without presenting its new omission report or a persisted five-layer context manifest. No expanded authoring rollout has occurred.
 
 Preservation is now enforced at the commit boundary for reviewed Wizard artifacts, reviewed composition acceptance and historical restore: the complete reviewed file set is checked before backend effects and again before persistence. Wizard source comes from the reviewed snapshot, with launcher metadata retained separately; auxiliary launcher hooks/components cannot replace reviewed source. This does not yet cover all ordinary edit, autosave or projection paths, and does not certify M0.
 

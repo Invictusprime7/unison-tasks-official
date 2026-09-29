@@ -18,6 +18,7 @@ import type { ResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDe
 import { projectSiteDesignContract } from '@/services/launch/siteDesignContract';
 import type { AIComposerRequest } from '@/contracts/aiComposerContract';
 import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
+import { appendDesignKnowledge } from '@/services/knowledge/designKnowledge';
 import { runComposerRepairLoop, type ComposerInvoke, type ComposerStopReason } from '@/services/builder/aiRepairLoop';
 import {
   extractHomepageVisualLanguage,
@@ -172,10 +173,10 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     const buildRequest = (redundancy: RedundancyIssue | null): AIComposerRequest => ({
       task: 'site_page_author',
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
-      brief: [
+      brief: appendDesignKnowledge([
         renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
         renderCompositionBrief(planned, visualMemory.entries(), redundancy),
-      ].filter(Boolean).join('\n').slice(0, 12000),
+      ].filter(Boolean).join('\n').slice(0, 6500), `${input.businessName} ${page.role} ${page.title} ${page.route}`),
       files: selectPageContextFiles(baseFiles, page),
       routes,
       priorPages: priorPages.slice(-20),
