@@ -92,7 +92,7 @@ export function renderPageBrief(
   establishedLanguage?: HomepageVisualLanguage,
 ): string {
   const lines = [`BUSINESS: ${businessName}`, `PAGE ROLE: ${page.role}`];
-  if (!ctx) return lines.join('\n');
+  if (!ctx) return [...lines, renderHomepageInheritanceContract(establishedLanguage)].filter(Boolean).join('\n');
   const projection = projectSiteDesignContract(ctx.contract);
   const preferred = Object.entries(ctx.creativeRecommendation.preferredImplementations)
     .map(([family, ids]) => `${family}: ${(ids ?? []).slice(0, 4).join(', ')}`);

@@ -73,6 +73,56 @@ describe('site authoring orchestrator', () => {
     expect(r.outcomes.map((o) => o.status)).toEqual(['authored', 'kept-baseline']);
   }, 30000);
 
+  it('carries the accepted Home language into a distinct loose-fit fashion page', async () => {
+    const fashionPages = [
+      { pageId: 'story', title: 'Our Story', route: '/our-story', filePath: '/src/pages/About.tsx', role: 'brand-story' },
+      { pageId: 'home', title: 'Home', route: '/', filePath: '/src/pages/Home.tsx', role: 'home' },
+    ];
+    const homeSource = `
+      import { ArrowRight } from 'lucide-react';
+      export default function Home(){return <main>
+        <nav data-ut-variant="navbar:editorial-minimal" className="ut-surface text-foreground" />
+        <section data-ut-variant="hero:fashion-cinematic" className="ut-section text-left">
+          <h1 className="ut-hero">STYLE THAT SPEAKS FOR ITSELF.</h1><ArrowRight />
+        </section>
+      </main>}`;
+    const storySource = `
+      import { ArrowRight } from 'lucide-react';
+      export default function Story(){return <main>
+        <nav data-ut-variant="navbar:editorial-minimal" className="ut-surface text-foreground" />
+        <section data-ut-variant="hero:editorial-intro" className="ut-section text-center">
+          <p className="ut-eyebrow">ABOUT OUR TEAM</p><h1 className="ut-title">OUR STORY</h1><ArrowRight />
+        </section>
+      </main>}`;
+    const requests: Array<Record<string, unknown>> = [];
+    const invoke = vi.fn(async (input: { messages: Array<{ content: string }> }) => {
+      const req = JSON.parse(input.messages[0].content);
+      requests.push(req);
+      const path = req.page.filePath;
+      const content = req.page.role === 'home' ? homeSource : storySource;
+      return { data: { content: JSON.stringify({ summary: `Authored ${req.page.title}`, fileOps: [{ type: 'replace', path, content }] }) }, error: null };
+    });
+    const commitPage = vi.fn(async (next: Record<string, string>) => ({ files: next, revisionId: 'rev' }));
+
+    const result = await authorSitePages({
+      pages: fashionPages,
+      homePageId: 'home',
+      designContext: null,
+      businessName: 'Dream Fashion',
+      files: base,
+      commitPage,
+      invoke: invoke as never,
+    });
+
+    expect(result.outcomes.map((outcome) => outcome.status)).toEqual(['authored', 'authored']);
+    expect(requests[1].brief).toContain('HOMEPAGE VISUAL LANGUAGE');
+    expect(requests[1].brief).toContain('navbar: navbar:editorial-minimal');
+    expect(requests[1].brief).toContain('Select a distinct role-appropriate hero');
+    expect(result.files['/src/pages/Home.tsx']).toContain('hero:fashion-cinematic');
+    expect(result.files['/src/pages/About.tsx']).toContain('hero:editorial-intro');
+    expect(result.files['/src/pages/About.tsx']).toContain('navbar:editorial-minimal');
+  }, 30000);
+
   it('pauses remaining pages after a credit error', async () => {
     const invoke = vi.fn().mockResolvedValue({ data: null, error: { context: { status: 402 } } });
     const r = await authorSitePages({ pages, designContext: null, businessName: 'B', files: base, commitPage: vi.fn(), invoke: invoke as never });
