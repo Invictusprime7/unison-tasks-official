@@ -438,7 +438,7 @@ export async function runLaunchPipeline(
   // Theme tokens are compiler-owned. Repair rather than ship un-themed CSS.
   const expectedCss = buildThemedIndexCssFromTokens(plan.themeTokens, {
     presetId: input.theme.id,
-    label: input.theme.id,
+    label: input.theme.label ?? input.theme.id,
     artDirectionPackId: siteBundleSnapshot?.meta?.artDirection?.storagePackId ?? siteBundleSnapshot?.meta?.artDirectionPackId,
   });
   if (compiledPlayground?.vfsFiles && compiledPlayground.vfsFiles["/src/index.css"] !== expectedCss) {
