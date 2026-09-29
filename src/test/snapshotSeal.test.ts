@@ -119,6 +119,23 @@ describe('snapshot seal Wizard ownership proof', () => {
     expect(verifySealedSourceAuthority(restamped)).toEqual([]);
   });
 
+  it('ignores handoff metadata sidecars when reopening sealed source authority', () => {
+    const snapshot = createSnapshot();
+    const sealed = sealSnapshot({ artifact: snapshot, vfsFiles: snapshot.vfsFiles, appContext: appContext(), sealedBy: 'recompile' });
+    const handedOff = {
+      ...sealed,
+      vfsFiles: {
+        ...sealed.vfsFiles,
+        '/.unison/canonical-playground.json': '{}',
+        '/.unison/runtime-manifest.json': '{}',
+        '/.unison/site-bundle-snapshot.json': '{}',
+        '/.unison/wizard-seed.json': '{}',
+      },
+    };
+
+    expect(verifySealedSourceAuthority(handedOff)).toEqual([]);
+  });
+
   it('preserves the canonical Wizard design selection through sealing', () => {
     const snapshot = createSnapshot();
     snapshot.meta.designSelection = {

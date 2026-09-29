@@ -166,7 +166,13 @@ export function verifySealedSourceAuthority(snapshot: SiteBundleSnapshot): strin
   const authority = snapshot.meta?.seal?.fileAuthority;
   // Legacy sealed revisions remain readable; new seals always carry a ledger.
   if (!authority) return [];
-  const runtimePaths = Object.keys(snapshot.vfsFiles).map(normalizeVfsPath).sort();
+  // `/.unison/*` is sidecar metadata re-emitted during handoff. It is not
+  // runtime source and is intentionally excluded by sealSnapshot(), so it
+  // must never be compared against the runtime authority ledger on reopen.
+  const runtimeFiles = Object.fromEntries(
+    Object.entries(snapshot.vfsFiles).filter(([path]) => !normalizeVfsPath(path).startsWith('/.unison/')),
+  );
+  const runtimePaths = Object.keys(runtimeFiles).map(normalizeVfsPath).sort();
   const authorityPaths = Object.keys(authority).map(normalizeVfsPath).sort();
   const violations: string[] = [];
   if (!equalStringArrays(runtimePaths, authorityPaths)) {
@@ -176,7 +182,7 @@ export function verifySealedSourceAuthority(snapshot: SiteBundleSnapshot): strin
       else if (!(path in snapshot.vfsFiles) && !(path.slice(1) in snapshot.vfsFiles)) violations.push(`missing sealed file: ${path}`);
     }
   }
-  for (const [rawPath, contents] of Object.entries(snapshot.vfsFiles)) {
+  for (const [rawPath, contents] of Object.entries(runtimeFiles)) {
     const path = normalizeVfsPath(rawPath);
     const recorded = authority[path];
     if (!recorded) continue;
