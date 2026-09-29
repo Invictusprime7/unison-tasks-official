@@ -207,7 +207,7 @@ async function callOpenAICompatible(
   }
   if (/^(?:openai\/)?gpt-4\.1(?:-|$)/.test(model)) {
     const tokens = body.max_completion_tokens ?? body.max_tokens;
-    if (typeof tokens === "number") body.max_tokens = Math.min(tokens, 32_768);
+    if (typeof tokens === "number") body.max_tokens = Math.min(tokens, 16_384);
     delete body.max_completion_tokens;
     delete body.reasoning_effort;
   }

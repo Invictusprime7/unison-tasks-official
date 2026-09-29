@@ -39,6 +39,9 @@ export interface ProviderCallResult {
   earlyError?: ProviderEarlyError;
 }
 
+const providerForRace = (id: string) =>
+  id.startsWith('google/') || id.startsWith('gemini-') ? 'gemini' : 'openai';
+
 export const PROVIDER_LOOP_TOTAL_BUDGET_MS = 135_000;
 
 export function reserveFallbackWindow(attemptMs: number, remainingMs: number, reserveMs: number): number {
@@ -162,6 +165,11 @@ export async function runProviderLoop(opts: {
     const timeoutId = setTimeout(() => controller.abort(new DOMException('Provider attempt timed out', 'TimeoutError')), timeoutMs);
     return {
       signal: controller.signal,
+      abort: () => {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener('abort', onOuterAbort);
+        if (!controller.signal.aborted) controller.abort(new DOMException('Race lost', 'AbortError'));
+      },
       cleanup: () => {
         clearTimeout(timeoutId);
         signal?.removeEventListener('abort', onOuterAbort);
@@ -426,8 +434,72 @@ export async function runProviderLoop(opts: {
     }
   };
 
+  // ── Phase 0: Hybrid race (lead OpenAI model vs managed gateway) ────────
+  // Composer tasks start both at once; the first usable answer wins and the
+  // other request is aborted. A quick failure on one side leaves the other
+  // running, so a dead key never costs a sequential fallback round.
+  if (providerPlan.raceGateway && allowDirectFallbacks && hasLastResortGateway && providerPlan.gatewayModels.length > 0) {
+    const lead = providerPlan.gatewayModels[0];
+    const gatewayModel: ModelSpec = {
+      id: 'google/gemini-3.6-flash',
+      maxTokens: Math.min(providerPlan.fallbackMaxTokens, 32_000),
+      label: 'Managed gateway (race)',
+    };
+    const raceMs = Math.min(providerPlan.perModelTimeoutMs, Math.max(8_000, budgetRemaining() - 5_000));
+    const attempts = [
+      { model: lead, provider: providerForRace(lead.id), call: createPlannedChatCompletion, sig: createAttemptSignal(raceMs) },
+      { model: gatewayModel, provider: 'lovable', call: createLastResortGatewayChatCompletion, sig: createAttemptSignal(raceMs) },
+    ];
+    console.log(`[AI-Hybrid] Racing ${lead.label} against managed gateway (timeout: ${raceMs / 1000}s)...`);
+    const runOne = async (a: typeof attempts[number]) => {
+      try {
+        const resp = await a.call(buildPlannedChatCompletionRequest({
+          model: a.model, aiMessages, reasoningEffort,
+          tools: hasTools ? tools : undefined, toolChoice: effectiveToolChoice,
+        }), a.sig.signal);
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          recordProviderError(a.model.label, `${resp.status} ${errText.substring(0, 200)}`);
+          if (a.provider === 'lovable' && resp.status === 402) {
+            deferredEarlyError ??= { status: 402, error: 'AI credits are exhausted. Please add workspace credits and try again.' };
+          }
+          if (a.provider === 'openai' && (resp.status === 402 || isQuotaExhausted(errText))) openaiQuotaExhausted = true;
+          throw new Error('failed');
+        }
+        const data = await resp.json();
+        const message = data.choices?.[0]?.message ?? {};
+        const text = message.content || '';
+        const calls = Array.isArray(message.tool_calls) ? (message.tool_calls as RawToolCall[]) : undefined;
+        if (!text && !calls?.length) {
+          recordProviderError(a.model.label, 'empty response');
+          throw new Error('empty');
+        }
+        return { a, text: text as string, calls };
+      } finally {
+        a.sig.cleanup();
+      }
+    };
+    try {
+      const winner = await Promise.any(attempts.map(runOne));
+      for (const other of attempts) if (other !== winner.a) other.sig.cleanup();
+      const extracted = extractThinkingTags(winner.text);
+      content = extracted.content;
+      reasoning = extracted.reasoning || reasoning;
+      if (winner.calls?.length) toolCalls = winner.calls;
+      modelUsed = winner.a.model.id;
+      providerUsed = winner.a.provider;
+      console.log(`[AI-Hybrid] Race won by ${winner.a.model.label}`);
+    } catch {
+      throwIfCancelled();
+      console.warn('[AI-Hybrid] Both race legs failed; continuing with sequential fallbacks.');
+    } finally {
+      // Abort the losing leg so it stops generating (and billing).
+      for (const a of attempts) a.sig.abort();
+    }
+  }
+
   // ── Phase 1: Planned direct-provider attempts ──────────────────────────
-  if (allowDirectFallbacks) {
+  if (!hasResponse() && allowDirectFallbacks) {
     // Log total prompt size for debugging
     const totalChars = aiMessages.reduce((sum, m) => sum + (typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length), 0);
     console.log(`[AI-Hybrid] Total prompt size: ${totalChars} chars across ${aiMessages.length} messages`);
