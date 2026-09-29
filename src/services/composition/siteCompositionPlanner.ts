@@ -4,7 +4,7 @@
  * the design seed. Industry behaviour comes only from registry data.
  */
 import { hashSeed } from '@/platform/core/generationSeed';
-import { resolvePageCompositionProfile } from './industryCompositionRegistry';
+import { normalizePageRole, resolvePageCompositionProfile } from './industryCompositionRegistry';
 import type { HeroPattern, LayoutGeometry, PlannedPage, SiteCompositionPlan } from './types';
 
 export interface PlannerPageInput { pageId: string; role: string }
@@ -21,10 +21,10 @@ export function planSiteComposition(industryId: string, pages: PlannerPageInput[
   const planned: PlannedPage[] = [];
 
   // Home first, then remaining pages in input order — stable and seed-driven.
-  const ordered = [...pages].sort((a, b) => (a.role === 'home' ? -1 : b.role === 'home' ? 1 : 0));
+  const ordered = [...pages].sort((a, b) => (normalizePageRole(a.role) === 'home' ? -1 : normalizePageRole(b.role) === 'home' ? 1 : 0));
   for (const page of ordered) {
     const profile = resolvePageCompositionProfile(industryId, page.role);
-    const heroes = profile.heroCandidates.length > 1 && page.role !== 'home'
+    const heroes = profile.heroCandidates.length > 1 && profile.pageRole !== 'home'
       ? rotate(profile.heroCandidates, `${seed}:${page.pageId}:hero`)
       : profile.heroCandidates;
     const geometries = rotate(profile.geometryCandidates, `${seed}:${page.pageId}:geo`);

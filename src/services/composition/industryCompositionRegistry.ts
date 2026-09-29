@@ -14,14 +14,17 @@ const BASE: Omit<CompositionCharacter, 'density'> = {
 };
 
 function build(industryId: string, roles: Record<string, ProfileSeed>): IndustryPageCompositionProfile[] {
-  return Object.entries(roles).map(([pageRole, { character, ...rest }]) => ({
-    industryId,
-    pageRole,
-    compositionCharacter: { ...BASE, ...character },
-    customCompositionAllowed: true,
-    customComponentsAllowed: rest.noveltyBudget >= 0.5,
-    ...rest,
-  }));
+  return Object.entries(roles).map(([pageRole, { character, ...rest }]) => {
+    const { industryId: _i, pageRole: _r, compositionCharacter: _c, ...clean } = rest as typeof rest & Partial<IndustryPageCompositionProfile>;
+    return {
+      ...clean,
+      industryId,
+      pageRole,
+      compositionCharacter: { ...BASE, ...character },
+      customCompositionAllowed: true,
+      customComponentsAllowed: clean.noveltyBudget >= 0.5,
+    };
+  });
 }
 
 const SALON = build('salon', {

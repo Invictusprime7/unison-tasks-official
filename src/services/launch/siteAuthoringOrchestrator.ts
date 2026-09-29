@@ -25,6 +25,15 @@ import {
   type HomepageVisualLanguage,
 } from '@/services/launch/homepageFirstContract';
 
+import {
+  createSiteVisualMemory,
+  extractCompositionSignature,
+  findRedundancy,
+  planSiteComposition,
+  renderCompositionBrief,
+  type RedundancyIssue,
+} from '@/services/composition';
+
 export interface AuthoringPage {
   pageId: string;
   title: string;
@@ -135,6 +144,13 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
   const priorPages: Array<{ role: string; summary: string }> = [];
   let paused: ComposerStopReason | null = null;
   let establishedLanguage: HomepageVisualLanguage | undefined;
+  // One universal planner assigns each page a distinct narrative + topology job.
+  const compositionPlan = planSiteComposition(
+    input.designContext?.contract.industry ?? 'generic',
+    ordered.map((p) => ({ pageId: p.pageId, role: p.role })),
+    input.designContext?.fingerprint ?? input.businessName,
+  );
+  const visualMemory = createSiteVisualMemory();
 
   const outcomeSlots: Array<PageAuthoringOutcome | undefined> = new Array(ordered.length);
   // Commits are serialized so each page lands on the latest committed files.
@@ -152,15 +168,19 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     }
     input.onProgress?.({ page, index, total: ordered.length, phase: 'authoring' });
     const baseFiles = files;
-    const request: AIComposerRequest = {
+    const planned = compositionPlan.pages.find((p) => p.pageId === page.pageId);
+    const buildRequest = (redundancy: RedundancyIssue | null): AIComposerRequest => ({
       task: 'site_page_author',
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
-      brief: renderPageBrief(input.designContext, page, input.businessName, establishedLanguage).slice(0, 12000),
+      brief: [
+        renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
+        renderCompositionBrief(planned, visualMemory.entries(), redundancy),
+      ].filter(Boolean).join('\n').slice(0, 12000),
       files: selectPageContextFiles(baseFiles, page),
       routes,
       priorPages: priorPages.slice(-20),
-    };
-    const loop = await runComposerRepairLoop({
+    });
+    const runLoop = (request: AIComposerRequest) => runComposerRepairLoop({
       request,
       baseFiles,
       baseRevisionId: revisionId ?? undefined,
@@ -173,6 +193,15 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
         forbiddenImplementations: input.designContext?.hardLegality.forbiddenImplementations,
       },
     });
+    let loop = await runLoop(buildRequest(null));
+    // Redundancy check: one targeted recomposition when this page repeats another page's topology.
+    if (loop.ok && loop.prepared && now() < deadline) {
+      const issue = findRedundancy(page.pageId, extractCompositionSignature(loop.prepared.nextFiles[page.filePath]), visualMemory.entries());
+      if (issue) {
+        const retry = await runLoop(buildRequest(issue));
+        if (retry.ok && retry.prepared) loop = retry;
+      }
+    }
     if (loop.reason === 'credits' || loop.reason === 'denied') paused = loop.reason;
 
     if (!loop.ok || !loop.prepared) {
@@ -195,6 +224,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
         }
         const committed = await input.commitPage(nextFiles, page, files);
         files = committed.files;
+        visualMemory.record(page.pageId, page.role, extractCompositionSignature(files[page.filePath]));
         if (page.pageId === input.homePageId || page.route === '/') {
           establishedLanguage = extractHomepageVisualLanguage(files[page.filePath], page.pageId);
         }
