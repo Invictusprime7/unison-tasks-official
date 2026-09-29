@@ -3,6 +3,8 @@ import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import {
   createWizardCompileArtifact,
   sealSnapshot,
+  restampSealedSourceAuthority,
+  verifySealedSourceAuthority,
   WIZARD_LANE_A_PROTECTED_FILES,
   WIZARD_LAUNCH_AUTHORITY_PATH,
 } from '@/platform/core/snapshotSeal';
@@ -92,6 +94,29 @@ describe('snapshot seal Wizard ownership proof', () => {
     expect(sealed.routerFile.content).toBe(sealed.vfsFiles['/src/App.tsx']);
     expect(snapshot.routerFile.content).toBe(originalRouter);
     expect(snapshot.vfsFiles['/src/App.tsx']).toBe(originalRouter);
+  });
+
+  it('seals every runtime file with source authority and detects reopened source drift', () => {
+    const snapshot = createSnapshot();
+    const sealed = sealSnapshot({ artifact: snapshot, vfsFiles: snapshot.vfsFiles, appContext: appContext(), sealedBy: 'recompile' });
+    const reopened = JSON.parse(JSON.stringify(sealed)) as SiteBundleSnapshot;
+
+    expect(Object.keys(reopened.meta.seal!.fileAuthority || {})).toEqual(Object.keys(reopened.vfsFiles).sort());
+    expect(verifySealedSourceAuthority(reopened)).toEqual([]);
+
+    reopened.vfsFiles['/src/pages/Home.tsx'] = 'export default function Home(){ return <main>Drift</main>; }';
+    expect(verifySealedSourceAuthority(reopened)).toEqual(['source hash mismatch: /src/pages/Home.tsx']);
+  });
+
+  it('restamps accepted Builder bytes without regenerating source', () => {
+    const snapshot = createSnapshot();
+    const sealed = sealSnapshot({ artifact: snapshot, vfsFiles: snapshot.vfsFiles, appContext: appContext(), sealedBy: 'recompile' });
+    const acceptedFiles = { ...sealed.vfsFiles, '/src/pages/Home.tsx': 'export default function Home(){ return <main>Accepted Builder edit</main>; }' };
+    const restamped = restampSealedSourceAuthority(sealed, acceptedFiles);
+
+    expect(restamped.vfsFiles['/src/pages/Home.tsx']).toContain('Accepted Builder edit');
+    expect(restamped.meta.seal?.fileAuthority?.['/src/pages/Home.tsx']?.authoringOrigin).toBe('builder-commit');
+    expect(verifySealedSourceAuthority(restamped)).toEqual([]);
   });
 
   it('preserves the canonical Wizard design selection through sealing', () => {

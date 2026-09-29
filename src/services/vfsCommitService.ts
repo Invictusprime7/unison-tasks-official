@@ -34,6 +34,7 @@ import {
   type CommitSource as CanonicalCommitSource,
 } from '@/platform/core/commitToPipeline';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
+import { restampSealedSourceAuthority } from '@/platform/core/snapshotSeal';
 import { collectResolvedCompositions, compilerOwnershipHash, resolvedCompositionPathFor, serializeResolvedComposition, RESOLVED_COMPOSITION_ROOT } from '@/platform/core/resolvedComposition';
 import type { RuntimeManifest } from '@/platform/core/runtimeManifest';
 import type { PlaygroundState } from '@/platform/core/playground';
@@ -1094,6 +1095,16 @@ export async function commitMutation(
   }
   if (ordinaryAiSourceBaseline) {
     assertOrdinaryAiCandidatePreserved(ordinaryAiSourceBaseline, files, 'durable revision');
+  }
+  // The persisted snapshot must prove the exact final bytes, after every
+  // preflight and explicit transform. This is a metadata stamp only; it never
+  // regenerates or substitutes authored source.
+  if (snapshotForPersistence && status === 'committed') {
+    snapshotForPersistence = restampSealedSourceAuthority(
+      snapshotForPersistence as SiteBundleSnapshot,
+      files,
+      input.source === 'wizard-launch' ? 'wizard-launch' : 'builder-commit',
+    );
   }
   const vfsHash = await hashVfsFiles(files);
   if (reviewedComposition && vfsHash !== reviewedComposition.candidate.vfsHash) {

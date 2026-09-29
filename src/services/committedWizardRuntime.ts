@@ -1,5 +1,5 @@
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
-import { isSealedSnapshot } from '@/platform/core/snapshotSeal';
+import { isSealedSnapshot, verifySealedSourceAuthority } from '@/platform/core/snapshotSeal';
 import {
   assertNoMinimalFallbackPreview,
   ensureSnapshotTokens,
@@ -33,6 +33,10 @@ export function projectCommittedWizardRuntime(
 
   if (!resolution.isWizardDraft || !resolution.snapshot || !isSealedSnapshot(resolution.snapshot)) {
     throw new Error(`[${context}] requires a sealed SiteBundleSnapshot.`);
+  }
+  const authorityViolations = verifySealedSourceAuthority(resolution.snapshot);
+  if (authorityViolations.length > 0) {
+    throw new Error(`[${context}] sealed source authority check failed: ${authorityViolations.join('; ')}`);
   }
 
   const files = projectSnapshotVfsFiles(input.files, resolution);

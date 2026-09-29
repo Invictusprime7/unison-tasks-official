@@ -341,6 +341,11 @@ export interface SiteBundleSnapshotMeta {
     laneAProtectedFiles?: string[];
     /** Registered pages with no VFS file at seal time (report policy only). */
     missingPageFiles?: string[];
+    /** Exact-byte authority ledger for the runtime files sealed in this revision. */
+    fileAuthority?: Record<string, {
+      sourceHash: string;
+      authoringOrigin: 'wizard-launch' | 'recompile' | 'builder-commit' | 'import';
+    }>;
   };
 
 }

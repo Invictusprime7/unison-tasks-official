@@ -133,6 +133,89 @@ function equalStringArrays(left: readonly string[], right: readonly string[]): b
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+/**
+ * Stable byte fingerprint for source authority records. The algorithm label is
+ * persisted with each value so a future SHA migration can coexist with old
+ * sealed revisions without reinterpreting their historical proof.
+ */
+function sourceHash(contents: string): string {
+  const bytes = new TextEncoder().encode(contents);
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+  const mask = 0xffffffffffffffffn;
+  for (const byte of bytes) hash = (hash ^ BigInt(byte)) * prime & mask;
+  return `fnv1a64:${hash.toString(16).padStart(16, '0')}`;
+}
+
+function createFileAuthority(
+  files: Record<string, string>,
+  authoringOrigin: NonNullable<SealSnapshotInput['sealedBy']>,
+): NonNullable<SiteBundleSnapshotMeta['seal']>['fileAuthority'] {
+  return Object.fromEntries(
+    Object.entries(files)
+      .map(([path, contents]) => [normalizeVfsPath(path), {
+        sourceHash: sourceHash(contents),
+        authoringOrigin,
+      }] as const)
+      .sort(([left], [right]) => left.localeCompare(right)),
+  );
+}
+
+/** Validates the exact runtime bytes against a per-file authority ledger. */
+export function verifySealedSourceAuthority(snapshot: SiteBundleSnapshot): string[] {
+  const authority = snapshot.meta?.seal?.fileAuthority;
+  // Legacy sealed revisions remain readable; new seals always carry a ledger.
+  if (!authority) return [];
+  const runtimePaths = Object.keys(snapshot.vfsFiles).map(normalizeVfsPath).sort();
+  const authorityPaths = Object.keys(authority).map(normalizeVfsPath).sort();
+  const violations: string[] = [];
+  if (!equalStringArrays(runtimePaths, authorityPaths)) {
+    const allPaths = new Set([...runtimePaths, ...authorityPaths]);
+    for (const path of [...allPaths].sort()) {
+      if (!(path in authority)) violations.push(`missing authority record: ${path}`);
+      else if (!(path in snapshot.vfsFiles) && !(path.slice(1) in snapshot.vfsFiles)) violations.push(`missing sealed file: ${path}`);
+    }
+  }
+  for (const [rawPath, contents] of Object.entries(snapshot.vfsFiles)) {
+    const path = normalizeVfsPath(rawPath);
+    const recorded = authority[path];
+    if (!recorded) continue;
+    if (recorded.sourceHash !== sourceHash(contents)) violations.push(`source hash mismatch: ${path}`);
+  }
+  return violations;
+}
+
+/**
+ * Updates byte authority only after a canonical candidate has completed all
+ * transforms. It does not regenerate source or infer a component whitelist.
+ */
+export function restampSealedSourceAuthority(
+  snapshot: SiteBundleSnapshot,
+  files: Record<string, string>,
+  authoringOrigin: NonNullable<SealSnapshotInput['sealedBy']> = 'builder-commit',
+): SiteBundleSnapshot {
+  if (!isSealedSnapshot(snapshot)) return snapshot;
+  const runtimeVfsFiles = Object.fromEntries(
+    Object.entries(files).filter(([path]) => !path.startsWith('/.unison/')),
+  );
+  return {
+    ...snapshot,
+    vfsFiles: runtimeVfsFiles,
+    routerFile: {
+      path: snapshot.routerFile.path,
+      content: runtimeVfsFiles[snapshot.routerFile.path] ?? runtimeVfsFiles['/src/App.tsx'] ?? snapshot.routerFile.content,
+    },
+    meta: {
+      ...snapshot.meta,
+      seal: {
+        ...snapshot.meta.seal!,
+        fileCount: Object.keys(runtimeVfsFiles).length,
+        fileAuthority: createFileAuthority(runtimeVfsFiles, authoringOrigin),
+      },
+    },
+  };
+}
+
 function readWizardLaunchAuthorityProof(
   files: Record<string, string>,
   artifact: WizardCompileArtifact,
@@ -300,6 +383,7 @@ export function sealSnapshot(input: SealSnapshotInput): SiteBundleSnapshot {
       sealedBy: input.sealedBy || 'wizard-launch',
       compileArtifactId: baseline.snapshotId,
       fileCount: Object.keys(runtimeVfsFiles).length,
+      fileAuthority: createFileAuthority(runtimeVfsFiles, input.sealedBy || 'wizard-launch'),
       ...(authorityProof
         ? {
             pipeline: authorityProof.pipeline,
