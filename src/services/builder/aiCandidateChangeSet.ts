@@ -27,6 +27,11 @@ export type CandidateFileOp =
 export interface AICandidateChangeSet {
   id: string;
   baseRevisionId?: string;
+  provenance: {
+    origin: 'builder' | 'wizard' | 'repair';
+    intent?: string;
+    knowledgeVersion: string;
+  };
   fileOps: CandidateFileOp[];
   requestedDependencies?: string[];
   targetPages: string[];
@@ -43,6 +48,8 @@ export interface BuildCandidateInput {
   baseRevisionId?: string;
   targetPages?: string[];
   attempt?: number;
+  origin?: AICandidateChangeSet['provenance']['origin'];
+  intent?: string;
   /** Resolve deps and regenerate package.json in the candidate (default true). */
   resolveDependencies?: boolean;
 }
@@ -105,6 +112,12 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
     changeSet: {
       id,
       baseRevisionId: input.baseRevisionId,
+      provenance: {
+        origin: input.origin ?? 'builder',
+        intent: input.intent?.slice(0, 240),
+        // Kept in the durable patch record without storing prompt text.
+        knowledgeVersion: '2026-09-29.2',
+      },
       fileOps,
       requestedDependencies,
       targetPages: [...(input.targetPages ?? [])].sort(),

@@ -7286,6 +7286,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     aiFiles: rawFiles,
                     baseFiles: beforeFiles,
                     baseRevisionId: currentRevisionId ?? undefined,
+                    origin: 'builder',
+                    intent: applyMeta?.actionType ?? 'builder-ai-edit',
                     preflight: (changed) => runFullPreflight(changed, {
                       siteBundleSnapshot: snapshotForPreflight,
                       industry: snapshotForPreflight?.industry,
@@ -7828,6 +7830,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   aiFiles: rawFiles,
                   baseFiles: beforeFiles,
                   baseRevisionId: currentRevisionId ?? undefined,
+                  origin: 'builder',
+                  intent: applyMeta?.actionType ?? 'builder-ai-edit',
                   preflight: (changed) => runFullPreflight(changed, {
                     siteBundleSnapshot: snapshotForPreflight,
                     industry: snapshotForPreflight?.industry,

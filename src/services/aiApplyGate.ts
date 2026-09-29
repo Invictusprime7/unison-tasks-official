@@ -66,6 +66,16 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
     bindingOps: [],
     backendOps: [],
     presentationOps: [],
+    candidate: {
+      id: candidate.id,
+      baseRevisionId: candidate.baseRevisionId,
+      origin: candidate.provenance.origin,
+      intent: candidate.provenance.intent,
+      knowledgeVersion: candidate.provenance.knowledgeVersion,
+      targetPages: candidate.targetPages,
+      requestedDependencies: candidate.requestedDependencies,
+      attempt: candidate.attempt,
+    },
   };
 }
 

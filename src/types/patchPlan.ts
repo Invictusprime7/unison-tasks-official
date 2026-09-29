@@ -91,6 +91,17 @@ export interface PatchPlan {
   bindingOps: BindingOp[];
   backendOps: BackendOp[];
   presentationOps: PresentationOp[];
+  /** Immutable context for an AI candidate; persisted with the revision patch. */
+  candidate?: {
+    id: string;
+    baseRevisionId?: string;
+    origin: 'builder' | 'wizard' | 'repair';
+    intent?: string;
+    knowledgeVersion: string;
+    targetPages: string[];
+    requestedDependencies?: string[];
+    attempt: number;
+  };
   /** Approved capability state to stamp into the resulting SiteBundleSnapshot. */
   businessSystem?: BusinessSystemState;
 }

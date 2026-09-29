@@ -194,6 +194,8 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
         language: establishedLanguage,
         forbiddenImplementations: input.designContext?.hardLegality.forbiddenImplementations,
       },
+      candidateOrigin: 'wizard',
+      candidateIntent: `author:${page.role}`,
     });
     let loop = await runLoop(buildRequest(null));
     // Redundancy check: one targeted recomposition when this page repeats another page's topology.
@@ -232,6 +234,8 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
           baseRevisionId: revisionId ?? undefined,
           targetPages: [page.filePath],
           resolveDependencies: false,
+          origin: 'wizard',
+          intent: `author:${page.role}`,
         }).changeSet;
         const committed = await input.commitPage(nextFiles, page, files, finalCandidate);
         files = committed.files;

@@ -156,6 +156,8 @@ export async function prepareAICandidate(input: {
   baseFiles: Record<string, string>;
   baseRevisionId?: string;
   targetPages?: string[];
+  origin?: import('./aiCandidateChangeSet').AICandidateChangeSet['provenance']['origin'];
+  intent?: string;
   preflight?: (changed: Record<string, string>) => Record<string, string>;
   affinity?: {
     language?: HomepageVisualLanguage;
@@ -168,6 +170,8 @@ export async function prepareAICandidate(input: {
     baseFiles: input.baseFiles,
     baseRevisionId: input.baseRevisionId,
     targetPages: input.targetPages,
+    origin: input.origin,
+    intent: input.intent,
   });
   if (input.preflight && build.changeSet.fileOps.length) {
     const changed = Object.fromEntries(
@@ -181,6 +185,8 @@ export async function prepareAICandidate(input: {
       baseFiles: input.baseFiles,
       baseRevisionId: input.baseRevisionId,
       targetPages: input.targetPages,
+      origin: input.origin,
+      intent: input.intent,
     });
   }
   const gates = await runCandidateGates(build, input.affinity);

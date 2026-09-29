@@ -13,6 +13,7 @@ function context(): AiCommitContext {
     candidate: {
       id: 'candidate-1',
       baseRevisionId: 'revision-1',
+      provenance: { origin: 'builder', intent: 'navigation', knowledgeVersion: '2026-09-29.2' },
       targetPages: ['/src/App.tsx'],
       attempt: 1,
       fileOps: [
@@ -27,6 +28,10 @@ describe('AI candidate commit protocol', () => {
   it('preserves exact candidate creates, replacements, and deletions in the commit plan', () => {
     expect(buildAiCandidatePatch(context())).toMatchObject({
       summary: 'AI candidate candidate-1',
+      candidate: {
+        id: 'candidate-1', origin: 'builder', intent: 'navigation', knowledgeVersion: '2026-09-29.2',
+        targetPages: ['/src/App.tsx'],
+      },
       fileOps: [
         { type: 'replace', path: '/src/App.tsx', contents: 'new' },
         { type: 'delete', path: '/src/pages/Removed.tsx' },

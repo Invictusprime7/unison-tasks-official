@@ -54,6 +54,8 @@ export interface ComposerLoopInput {
     language?: HomepageVisualLanguage;
     forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
   };
+  candidateOrigin?: 'builder' | 'wizard' | 'repair';
+  candidateIntent?: string;
 }
 
 function classifyError(error: unknown): ComposerStopReason {
@@ -127,6 +129,8 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       baseFiles: input.baseFiles,
       baseRevisionId: input.baseRevisionId,
       targetPages: [request.page.role],
+      origin: input.candidateOrigin ?? 'builder',
+      intent: input.candidateIntent ?? request.task,
       preflight: input.preflight,
       affinity: input.affinity,
     });
@@ -187,6 +191,8 @@ export async function repairBuilderCandidate(input: {
     },
     baseFiles: input.baseFiles,
     baseRevisionId: input.baseRevisionId,
+    candidateOrigin: 'repair',
+    candidateIntent: input.prompt?.slice(0, 240) ?? 'builder-repair',
     preflight: input.preflight,
     maxAttempts: 3,
     invoke: input.invoke,
