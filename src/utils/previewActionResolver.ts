@@ -14,6 +14,7 @@
  */
 
 import type { ClassificationResult } from './redirectLabelClassifier';
+import { extractRenderedRoutes } from '@/components/creatives/web-builder/previewRouteTabs';
 import {
   hasInlineIntentTarget,
   resolveDeterministicIntentSurface,
@@ -175,17 +176,21 @@ export function resolvePreviewAction(
   inPreviewHandled: boolean,
   payload?: Record<string, unknown>,
 ): ResolvedAction {
-  const inv = inventory ?? { sectionIntents: [], presentIds: [], formIntents: [], navHrefs: [] };
+  let inv: PageInventory = inventory ?? { sectionIntents: [], presentIds: [], formIntents: [], navHrefs: [] };
 
   // ── 1. Already handled in-preview (cart.add, form.submit, scroll done) ──────
-  if (inPreviewHandled) {
-    // For form-type intents the bridge scrolled/focused — nothing more needed
-    const formIntents = ['contact.submit', 'newsletter.subscribe', 'quote.request',
-                         'lead.capture', 'form.submit'];
-    if (formIntents.includes(intent)) return { action: 'acknowledge' };
-    // For booking/auth the bridge scrolled too — parent just needs to know
-    const scrolledIntents = ['booking.create', 'auth.login', 'auth.register'];
-    if (scrolledIntents.includes(intent)) return { action: 'acknowledge' };
+  // Only trust "handled" when the target section really is on this page;
+  // otherwise the bridge had nothing to scroll to and we must navigate.
+  if (inPreviewHandled && hasInlineIntentTarget(intent, inv)) {
+    const handledIntents = ['contact.submit', 'newsletter.subscribe', 'quote.request',
+                            'lead.capture', 'form.submit', 'booking.create', 'auth.login', 'auth.register'];
+    if (handledIntents.includes(intent)) return { action: 'acknowledge' };
+  }
+
+  // Routes the preview actually renders count as existing pages.
+  const renderedRoutes = extractRenderedRoutes(vfsFiles['/src/App.tsx']).filter((r) => r !== '/');
+  if (renderedRoutes.length) {
+    inv = { ...inv, navHrefs: Array.from(new Set([...inv.navHrefs, ...renderedRoutes])) };
   }
 
   // ── 2. Scroll — section exists on current page ────────────────────────────
