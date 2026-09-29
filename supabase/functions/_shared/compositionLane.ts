@@ -156,7 +156,7 @@ export async function runCompositionLane(context: string, headers: Record<string
       const content = result.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
       const parsed = resultSchema.safeParse(JSON.parse(content));
       const normalized = parsed.success ? normalizeCompositionPlan(parsed.data, options.brief) : null;
-      issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : parsed.error.issues.map(issue => issue.path.join('.') + ': ' + issue.message);
+      issues = normalized ? (options.brief ? compositionCatalogIssues(normalized, options.brief) : []) : (parsed as { error: { issues: Array<{ path: Array<string | number>; message: string }> } }).error.issues.map((issue) => issue.path.join('.') + ': ' + issue.message);
       const advisory = normalized && options.brief ? compositionAdvisoryIssues(normalized, options.brief) : [];
       errorType = parsed.success ? 'composition_catalog' : 'composition_contract';
       if (normalized && !issues.length) {
