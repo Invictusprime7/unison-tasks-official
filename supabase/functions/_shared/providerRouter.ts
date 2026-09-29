@@ -27,6 +27,8 @@ export interface ProviderPlan {
   balancedProviderAttempts?: boolean;
   /** Keep a usable window for the non-reasoning fallback after a slow lead. */
   fallbackReserveMs?: number;
+  /** Run the lead model and the managed gateway simultaneously; first valid answer wins. */
+  raceGateway?: boolean;
 }
 
 export interface GatewayOverrides {
@@ -208,14 +210,16 @@ export function buildProviderPlan(
     case "builder_source_edit":
       plan = {
         gatewayModels: [
-          m(MODELS.gpt41, 32_768),
+          m(MODELS.gpt41, 16_384),
           m(MODELS.gpt4o, 16_384),
           m(MODELS.geminiFlash, 48_000),
         ],
         perModelTimeoutMs: 110_000,
-        fallbackMaxTokens: 48_000,
+        fallbackMaxTokens: 32_000,
         preferLongLeadAttempt: true,
         fallbackReserveMs: 60_000,
+        // OpenAI leads; the managed gateway races it in parallel.
+        raceGateway: true,
       };
       break;
     // ── Lane B: Wizard seed (full builder-brain path — sole wizard lane) ──
@@ -406,7 +410,11 @@ export function buildProviderPlan(
   const hasExplicitModel = overrides?.autoModelSelection === false && Boolean(overrides.selectedModelId);
   const wizardGeminiConfigured = task.type === "wizard_seed_generation"
     && Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'));
-  if (!hasExplicitModel) {
+  const isComposerTask = task.type === "site_page_author" || task.type === "site_page_repair" || task.type === "builder_source_edit";
+  if (!hasExplicitModel && isComposerTask) {
+    plan.primaryProvider = 'openai';
+    plan.gatewayModels = prioritizeProviderModels(plan.gatewayModels, 'openai');
+  } else if (!hasExplicitModel) {
     plan.primaryProvider = wizardGeminiConfigured
       ? 'gemini'
       : selectPrimaryProvider(routingKey, readEnv);
@@ -440,7 +448,7 @@ export function buildProviderPlan(
     maxTokens: /^(?:openai\/)?gpt-4o(?:-|$)/.test(model.id)
       ? Math.min(model.maxTokens, 16_384)
       : /^(?:openai\/)?gpt-4\.1(?:-|$)/.test(model.id)
-        ? Math.min(model.maxTokens, 32_768) : model.maxTokens,
+        ? Math.min(model.maxTokens, 16_384) : model.maxTokens,
   }));
   return plan;
 }

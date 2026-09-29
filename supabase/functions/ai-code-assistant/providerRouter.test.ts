@@ -52,10 +52,10 @@ Deno.test("complex and advanced edits use capable models with larger bounded bud
     const plan = buildProviderPlan(task, true, undefined, tier, 'edit',
       (name) => name === 'OPENAI_API_KEY' ? 'test-key' : undefined);
     assertEquals(plan.gatewayModels[0].id, 'openai/gpt-4.1');
-    assertEquals(plan.gatewayModels[0].maxTokens, 32768);
+    assertEquals(plan.gatewayModels[0].maxTokens, 16384);
     assertEquals(plan.gatewayModels.some((model) => model.id.includes('gpt-5')), false);
     assertEquals(plan.gatewayModels.find((model) => model.id.startsWith('google/'))?.maxTokens, budget);
-    assertEquals(plan.gatewayModels.find((model) => model.id === 'openai/gpt-4.1')?.maxTokens, 32768);
+    assertEquals(plan.gatewayModels.find((model) => model.id === 'openai/gpt-4.1')?.maxTokens, 16384);
     assertEquals(plan.preferLongLeadAttempt, true);
   }
 });
@@ -65,7 +65,7 @@ Deno.test("Composer has a dedicated 48k budget and honors explicit lower caps", 
   const readEnv = (name: string) => name === 'OPENAI_API_KEY' ? 'test-key' : undefined;
   const plan = buildProviderPlan(authorTask, true, undefined, 'simple', 'author', readEnv);
   assertEquals(plan.gatewayModels[0].id, 'openai/gpt-4.1');
-  assertEquals(plan.gatewayModels[0].maxTokens, 32768);
+  assertEquals(plan.gatewayModels[0].maxTokens, 16384);
   const capped = buildProviderPlan(authorTask, true, { maxTokens: 8000, timeoutMs: 20000 }, 'advanced', 'author', readEnv);
   assertEquals(capped.gatewayModels.every((model) => model.maxTokens <= 8000), true);
   assertEquals(capped.perModelTimeoutMs, 20000);

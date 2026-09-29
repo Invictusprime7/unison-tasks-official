@@ -3,7 +3,7 @@
  *
  * Page-by-page AI authoring on top of the committed deterministic substrate:
  *
- *   for each page (Home first, then route order):
+ *   Home first, then remaining pages in parallel (bounded concurrency):
  *     build page brief from ResolvedSiteDesignContext
  *     composer repair loop (candidate + blocking gates, max 3)
  *     accepted -> caller commits through the single legal writer
@@ -64,6 +64,8 @@ export interface SiteAuthoringInput {
   /** Total wall-clock budget; pages past it keep their baseline. */
   budgetMs?: number;
   maxPages?: number;
+  /** Pages authored in parallel after Home (default 3). */
+  concurrency?: number;
   signal?: AbortSignal;
   invoke?: ComposerInvoke;
   now?: () => number;
@@ -134,28 +136,33 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
   let paused: ComposerStopReason | null = null;
   let establishedLanguage: HomepageVisualLanguage | undefined;
 
-  for (const [index, page] of ordered.entries()) {
+  const outcomeSlots: Array<PageAuthoringOutcome | undefined> = new Array(ordered.length);
+  // Commits are serialized so each page lands on the latest committed files.
+  let commitChain: Promise<void> = Promise.resolve();
+
+  const authorOne = async (page: AuthoringPage, index: number): Promise<void> => {
     if (paused || input.signal?.aborted) {
-      outcomes.push({ page, status: 'skipped', reason: 'paused', attempts: 0, errors: [] });
-      continue;
+      outcomeSlots[index] = { page, status: 'skipped', reason: 'paused', attempts: 0, errors: [] };
+      return;
     }
     if (now() >= deadline) {
-      outcomes.push({ page, status: 'kept-baseline', reason: 'budget', attempts: 0, errors: ['Time budget reached.'] });
+      outcomeSlots[index] = { page, status: 'kept-baseline', reason: 'budget', attempts: 0, errors: ['Time budget reached.'] };
       input.onProgress?.({ page, index, total: ordered.length, phase: 'kept-baseline' });
-      continue;
+      return;
     }
     input.onProgress?.({ page, index, total: ordered.length, phase: 'authoring' });
+    const baseFiles = files;
     const request: AIComposerRequest = {
       task: 'site_page_author',
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
       brief: renderPageBrief(input.designContext, page, input.businessName, establishedLanguage).slice(0, 12000),
-      files: selectPageContextFiles(files, page),
+      files: selectPageContextFiles(baseFiles, page),
       routes,
       priorPages: priorPages.slice(-20),
     };
     const loop = await runComposerRepairLoop({
       request,
-      baseFiles: files,
+      baseFiles,
       baseRevisionId: revisionId ?? undefined,
       preflight: input.preflight,
       signal: input.signal,
@@ -169,30 +176,58 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     if (loop.reason === 'credits' || loop.reason === 'denied') paused = loop.reason;
 
     if (!loop.ok || !loop.prepared) {
-      outcomes.push({ page, status: 'kept-baseline', reason: loop.reason, attempts: loop.attempts, errors: loop.errors });
+      outcomeSlots[index] = { page, status: 'kept-baseline', reason: loop.reason, attempts: loop.attempts, errors: loop.errors };
       input.onProgress?.({ page, index, total: ordered.length, phase: 'kept-baseline' });
-      continue;
+      return;
     }
-    try {
-      const nextFiles = stampAuthoredPage(loop.prepared.nextFiles, page, input.designContext?.fingerprint);
-      const committed = await input.commitPage(nextFiles, page, files);
-      files = committed.files;
-      if (page.pageId === input.homePageId || page.route === '/') {
-        establishedLanguage = extractHomepageVisualLanguage(files[page.filePath], page.pageId);
+    const prepared = loop.prepared;
+    const run = commitChain.then(async () => {
+      try {
+        // Rebase only the keys this candidate changed onto the latest commit,
+        // so pages authored in parallel never overwrite each other.
+        const candidate = stampAuthoredPage(prepared.nextFiles, page, input.designContext?.fingerprint);
+        const nextFiles: Record<string, string> = { ...files };
+        for (const [path, content] of Object.entries(candidate)) {
+          if (baseFiles[path] !== content) nextFiles[path] = content;
+        }
+        for (const path of Object.keys(baseFiles)) {
+          if (!(path in candidate)) delete nextFiles[path];
+        }
+        const committed = await input.commitPage(nextFiles, page, files);
+        files = committed.files;
+        if (page.pageId === input.homePageId || page.route === '/') {
+          establishedLanguage = extractHomepageVisualLanguage(files[page.filePath], page.pageId);
+        }
+        revisionId = committed.revisionId ?? revisionId;
+        const summary = loop.response?.summary ?? '';
+        priorPages.push({ role: page.role, summary: summary.slice(0, 2000) });
+        outcomeSlots[index] = { page, status: 'authored', reason: 'accepted', attempts: loop.attempts, summary, errors: [], revisionId: committed.revisionId };
+        input.onProgress?.({ page, index, total: ordered.length, phase: 'committed' });
+      } catch (error) {
+        outcomeSlots[index] = {
+          page, status: 'kept-baseline', reason: 'commit_failed', attempts: loop.attempts,
+          errors: [error instanceof Error ? error.message : String(error)],
+        };
+        input.onProgress?.({ page, index, total: ordered.length, phase: 'kept-baseline' });
       }
-      revisionId = committed.revisionId ?? revisionId;
-      const summary = loop.response?.summary ?? '';
-      priorPages.push({ role: page.role, summary: summary.slice(0, 2000) });
-      outcomes.push({ page, status: 'authored', reason: 'accepted', attempts: loop.attempts, summary, errors: [], revisionId: committed.revisionId });
-      input.onProgress?.({ page, index, total: ordered.length, phase: 'committed' });
-    } catch (error) {
-      outcomes.push({
-        page, status: 'kept-baseline', reason: 'commit_failed', attempts: loop.attempts,
-        errors: [error instanceof Error ? error.message : String(error)],
-      });
-      input.onProgress?.({ page, index, total: ordered.length, phase: 'kept-baseline' });
+    });
+    commitChain = run;
+    await run;
+  };
+
+  // Home first (it establishes the site's visual language), then the rest
+  // in parallel with bounded concurrency.
+  if (ordered.length > 0) await authorOne(ordered[0], 0);
+  const concurrency = Math.max(1, input.concurrency ?? 3);
+  let cursor = 1;
+  const worker = async () => {
+    while (cursor < ordered.length) {
+      const index = cursor++;
+      await authorOne(ordered[index], index);
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(0, ordered.length - 1)) }, worker));
+  outcomes.push(...outcomeSlots.filter((o): o is PageAuthoringOutcome => Boolean(o)));
   return { files, revisionId, outcomes };
 }
 
