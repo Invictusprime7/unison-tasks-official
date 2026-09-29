@@ -144,9 +144,11 @@ function resolveToExistingPage(
   for (const candidate of candidates) {
     const norm = normalise(candidate);
     // Check nav hrefs first (page is already in the site)
-    if (navHrefs.some(h => normalise(h) === norm || normalise(h).startsWith(norm))) {
-      const vfsPath = findVfsPath(norm, vfsFiles) ?? `/src/pages/${candidate.replace(/^\w/, c => c.toUpperCase())}.tsx`;
-      return { route: `/${norm}`, vfsPath };
+    const href = navHrefs.find(h => normalise(h) === norm) ?? navHrefs.find(h => normalise(h).startsWith(norm));
+    if (href) {
+      const hrefNorm = normalise(href);
+      const vfsPath = findVfsPath(hrefNorm, vfsFiles) ?? findVfsPath(norm, vfsFiles) ?? `/src/pages/${candidate.replace(/^\w/, c => c.toUpperCase())}.tsx`;
+      return { route: `/${hrefNorm}`, vfsPath };
     }
     // Check VFS directly
     const vfsPath = findVfsPath(norm, vfsFiles);
