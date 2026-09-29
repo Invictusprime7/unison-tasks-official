@@ -159,6 +159,7 @@ import { buildSectionTypeMap } from "@/services/autoEmitSectionBindings";
 import { SEOSettingsPanel } from "./web-builder/SEOSettingsPanel";
 import { usePageSEO } from "@/hooks/usePageSEO";
 import { generateUUID } from "@/utils/uuid";
+import { isActiveBuilderCommitScope, type BuilderCommitScope } from '@/services/builderCommitScope';
 import {
   mutateJSXStyles,
   mutateJSXText,
@@ -3466,6 +3467,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // latest value without stale-closure issues (avoids re-creating intervals).
   const currentDraftIdRef = useRef<string | null>(templateFiles.currentDraftId);
   currentDraftIdRef.current = templateFiles.currentDraftId;
+  const activeCommitScopeRef = useRef<BuilderCommitScope>({ projectId: null, draftId: null });
+  activeCommitScopeRef.current = {
+    projectId: resolvedProjectId || projectId || null,
+    draftId: templateFiles.currentDraftId || null,
+  };
   useEffect(() => {
     setCurrentDraftId(templateFiles.currentDraftId || null);
   }, [templateFiles.currentDraftId]);
@@ -4438,6 +4444,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         }
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) throw new Error('Authenticated project identity is required before cloud autosave.');
+        const capturedCommitScope: BuilderCommitScope = {
+          projectId: canonicalProjectId,
+          draftId: existingDraftId,
+        };
 
         const acknowledgedOperationIds = snapshot.pendingVfsOperations
           ?.flatMap((operation) => (
@@ -4491,14 +4501,19 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         if (!commit.persistedRevisionId) {
           throw new Error('Canonical autosave did not persist a revision.');
         }
-        currentRevisionIdRef.current = commit.persistedRevisionId;
-        setCurrentRevisionId(commit.persistedRevisionId);
-        currentDraftIdRef.current = existingDraftId;
         acknowledgePendingVfsOperations(currentVfsFiles, pendingProjectionScope, {
           operationIds: acknowledgedOperationIds,
           acceptedRevisionId: commit.persistedRevisionId,
         });
         markBuilderRecoveryPersisted(snapshot, existingDraftId, undefined, commit.persistedRevisionId);
+        if (!isActiveBuilderCommitScope(activeCommitScopeRef.current, capturedCommitScope)) {
+          // The old project's durable commit succeeded, but its completion must
+          // not overwrite the revision/baseline state of the newly active project.
+          return true;
+        }
+        currentRevisionIdRef.current = commit.persistedRevisionId;
+        setCurrentRevisionId(commit.persistedRevisionId);
+        currentDraftIdRef.current = existingDraftId;
         lastSavedCodeRef.current = codeForSave;
         lastSavedVfsSignatureRef.current = vfsSignature;
         lastPersistedVfsFilesRef.current = { ...currentVfsFiles };
