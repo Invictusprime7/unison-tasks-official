@@ -2204,6 +2204,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   ), [creatorPlayground.pageRegistry, virtualFS.nodes]);
 
   const activePageTabId = useMemo(() => {
+    const routeTab = `${ROUTE_TAB_PREFIX}${activePreviewRoute}`;
+    if (pageTabs.some((t) => t.path === routeTab)) return routeTab;
     if (activePageId && creatorPlayground.pageRegistry.pages[activePageId]) {
       return activePageId;
     }
@@ -2212,7 +2214,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       (p) => p.filePath && p.filePath === activePagePath,
     );
     return match?.pageId ?? (creatorPlayground.pageRegistry.homePageId || '');
-  }, [activePageId, activePagePath, creatorPlayground.pageRegistry]);
+  }, [activePageId, activePagePath, activePreviewRoute, pageTabs, creatorPlayground.pageRegistry]);
 
   const handlePageTabSelect = useCallback((pageId: string) => {
     if (pageId.startsWith(ROUTE_TAB_PREFIX)) {
