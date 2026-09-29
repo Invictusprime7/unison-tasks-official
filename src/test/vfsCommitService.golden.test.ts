@@ -295,6 +295,29 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       patch: legacyFilesToPatchPlan({ [routerPath]: 'export default function App(){return <main>Unauthorized router</main>}' }),
     })).rejects.toThrow('Canonical router and metadata files are compiler-owned');
   });
+  it.each(['canonical projection', 'preflight'] as const)(
+    'rejects an undeclared ordinary AI source rewrite from %s before persistence', async (stage) => {
+      const pagePath = '/src/pages/Home.tsx';
+      const hookPath = '/src/hooks/useBooking.ts';
+      const before = {
+        '/src/App.tsx': 'export default function App(){return null}',
+        [pagePath]: 'export default function Home(){return <main>Before</main>}',
+        [hookPath]: 'export const useBooking = () => "original";',
+      };
+      const requested = 'export default function Home(){return <main>Requested</main>}';
+      const mutated = { ...before, [pagePath]: requested, [hookPath]: 'export const useBooking = () => "rewritten";' };
+      mockPipeline(stage === 'canonical projection' ? mutated : { ...before, [pagePath]: requested });
+      mockPreflight(stage === 'preflight' ? mutated : { ...before, [pagePath]: requested });
+      mockIntents();
+      await expect(commitMutation({
+        source: 'ai-builder', identity: IDENTITY,
+        current: { vfsFiles: before },
+        patch: legacyFilesToPatchPlan({ [pagePath]: requested }),
+      })).rejects.toThrow(stage === 'canonical projection' ? /canonical projection/ : /before backend effects/);
+      expect(revisionStore).toHaveLength(0);
+      expect(executeBackendOps).not.toHaveBeenCalled();
+    },
+  );
   it('accepts the exact scratch composition without regenerating and rejects stale reviews', async () => {
     const before = { '/src/App.tsx': 'export default function App(){return <main>Before</main>}' };
     const after = { '/src/App.tsx': 'export default function App(){return <main>Enhanced</main>}' };
@@ -838,8 +861,9 @@ describe('VFS commit Stage 4b handoff', () => {
       radius: '0.5rem', sectionPadding: '5rem 1rem', containerWidth: '1200px',
     };
     const files = { '/src/App.tsx': 'export default function App(){ return null; }' };
-    mockPipeline(files);
-    mockPreflight(files);
+    const canonicalFiles = { ...files, '/src/pages/Home.tsx': 'export default function Home(){ return null; }' };
+    mockPipeline(canonicalFiles);
+    mockPreflight(canonicalFiles);
     mockIntents();
 
     await commitMutation({

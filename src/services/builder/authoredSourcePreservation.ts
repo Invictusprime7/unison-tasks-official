@@ -42,7 +42,7 @@ export function verifyAuthoredSourcePreservation(input: {
 }): SourcePreservationViolation[] {
   const expected = normalizeFiles(input.acceptedFiles);
   const actual = normalizeFiles(input.finalizedFiles);
-  const compilerOwned = new Set(input.compilerOwnedPaths.map(normalizeAuthoredPath));
+  const compilerOwned = input.compilerOwnedPaths.map(normalizeAuthoredPath);
   const operated = new Set<string>();
   for (const operation of input.operations) {
     const path = normalizeAuthoredPath(operation.path);
@@ -53,7 +53,7 @@ export function verifyAuthoredSourcePreservation(input: {
   }
   const violations: SourcePreservationViolation[] = [];
   for (const path of [...new Set([...expected.keys(), ...actual.keys()])].sort()) {
-    if (compilerOwned.has(path)) continue;
+    if (compilerOwned.some((owned) => owned === path || (owned.endsWith('/**') && path.startsWith(owned.slice(0, -2))))) continue;
     const kind = !expected.has(path) ? 'unexpected' : !actual.has(path) ? 'missing'
       : expected.get(path) !== actual.get(path) ? 'changed' : null;
     if (kind) violations.push({ path, stage: input.stage, kind });

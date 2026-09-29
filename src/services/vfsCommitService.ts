@@ -252,6 +252,44 @@ function isGovernedAiSourceRewrite(path: string, op: PatchPlan['fileOps'][number
     && !path.startsWith('/src/unison/ui/');
 }
 
+function shouldPreserveOrdinaryAiCandidate(
+  input: CommitMutationInput,
+  patch: PatchPlan,
+  customizerPagePath?: string,
+  themeCorrectionApplied = false,
+): boolean {
+  return input.source === 'ai-builder'
+    && !input.options?.compositionUpgrade
+    && !customizerPagePath
+    && !themeCorrectionApplied
+    && !patch.themeEdit
+    && patch.presentationOps.length === 0
+    && patch.playgroundOps.length === 0
+    && patch.bindingOps.length === 0;
+}
+
+function assertOrdinaryAiCandidatePreserved(
+  expected: Record<string, string>,
+  actual: Record<string, string>,
+  stage: string,
+): void {
+  const compilerOwned = [
+    '/src/App.tsx', '/src/main.tsx', '/src/index.css',
+    '/.unison/**', '/src/unison/**', '/src/integrations/**',
+    ...[...new Set([...Object.keys(expected), ...Object.keys(actual)])]
+      .filter(isCompilerOwnedGeneratedModule),
+  ];
+  const violations = verifyAuthoredSourcePreservation({
+    acceptedFiles: expected, operations: [], finalizedFiles: actual,
+    compilerOwnedPaths: compilerOwned, stage,
+  });
+  if (violations.length) {
+    throw new Error(
+      `[VFSCommitService] ${stage} changed ordinary AI candidate source: ${violations.map((item) => `${item.path} (${item.kind})`).join(', ')}. Generate an explicit follow-up candidate.`,
+    );
+  }
+}
+
 function refreshEditedCompositionOwnership(
   beforeFiles: Record<string, string>,
   afterFiles: Record<string, string>,
@@ -457,6 +495,12 @@ export async function commitMutation(
     workingFiles[resolvedCompositionPathFor(customizerPagePath)] = serializeResolvedComposition(updated.composition);
     refreshEditedCompositionOwnership(input.current.vfsFiles, workingFiles);
   }
+  const ordinaryAiSourceBaseline = shouldPreserveOrdinaryAiCandidate(
+    input,
+    patch,
+    customizerPagePath,
+    themeCorrectionApplied,
+  ) ? { ...workingFiles } : null;
 
   // 5. Resolve the canonical projection -------------------------------------
   // Confirmation is a persistence boundary, not another generation stage.
@@ -563,6 +607,9 @@ export async function commitMutation(
   // Capture before preflight can mutate even the input map in place. Protect
   // hooks, styles, assets and original components as well as registered pages.
   const reviewedSourceBaseline = reviewedArtifact ? { ...files } : null;
+  if (ordinaryAiSourceBaseline) {
+    assertOrdinaryAiCandidatePreserved(ordinaryAiSourceBaseline, files, 'canonical projection');
+  }
   let snapshotForPersistence = input.source === 'wizard-launch'
     ? mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files)
     : snapshot;
@@ -930,6 +977,9 @@ export async function commitMutation(
   if (reviewedSourceBaseline) {
     assertReviewedSourcesUnchanged(reviewedSourceBaseline, files, 'before backend effects');
   }
+  if (ordinaryAiSourceBaseline) {
+    assertOrdinaryAiCandidatePreserved(ordinaryAiSourceBaseline, files, 'before backend effects');
+  }
 
   // Move C: execute transactional backend ops only after the candidate VFS
   // has survived preview and readiness checks. This is intentionally after
@@ -1041,6 +1091,9 @@ export async function commitMutation(
 
   if (reviewedSourceBaseline) {
     assertReviewedSourcesUnchanged(reviewedSourceBaseline, files, 'durable revision');
+  }
+  if (ordinaryAiSourceBaseline) {
+    assertOrdinaryAiCandidatePreserved(ordinaryAiSourceBaseline, files, 'durable revision');
   }
   const vfsHash = await hashVfsFiles(files);
   if (reviewedComposition && vfsHash !== reviewedComposition.candidate.vfsHash) {

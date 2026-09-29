@@ -38,4 +38,9 @@ describe('authored-source preservation primitive', () => {
       { type: 'delete', path: '/public/logo.svg' }, { type: 'delete', path: 'public/logo.svg' },
     ] })).toThrow('Duplicate');
   });
+  it('supports explicit compiler-owned directory contracts without exempting adjacent authored paths', () => {
+    const finalizedFiles = { ...acceptedFiles, '/.unison/state.json': '{}', '/src/project-components/Card.tsx': 'changed' };
+    const result = verify({ ...base, compilerOwnedPaths: ['/.unison/**'], finalizedFiles });
+    expect(result).toEqual([{ path: '/src/project-components/Card.tsx', stage: 'finalized-before-persistence', kind: 'unexpected' }]);
+  });
 });
