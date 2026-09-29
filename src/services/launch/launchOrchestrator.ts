@@ -802,6 +802,7 @@ export async function runLaunchPipeline(
       }), { timeoutMs: 300_000 });
       const kept = authored.outcomes.filter((o) => o.status !== 'authored');
       if (kept.length) {
+        console.warn('[launchOrchestrator] AI pages kept baseline:', kept.map((o) => ({ page: o.page.title, status: o.status, reason: o.reason })));
         run.degrade('author', 'author.kept_baseline',
           `${kept.map((o) => o.page.title).join(', ')} kept the standard design.`,
           kept.map((o) => `${o.page.title}: ${o.reason}`).join('; '));
