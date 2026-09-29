@@ -4,3 +4,4 @@
 - The AI Composer response contract lives in `supabase/functions/_shared/aiComposerContract.ts`, byte-mirrored at `src/contracts/aiComposerContract.ts` (test-enforced); why: client and edge must validate the same shape.
 - AI Composer edge modes (`site-page-author`, `site-page-repair`, `builder-source-edit`) live in the existing `ai-code-assistant` function (`composerLane.ts`), not a new endpoint; why: the milestone forbids parallel pipelines.
 - Site affinity is a graded projection of `SiteDesignContract`: sealed pack/chrome/legality are invariants, while hero, alignment, section order, density, legal variants, and local components remain page-local; why: coherence must not collapse page intent or creative range.
+- Page composition intelligence lives in `src/services/composition/` (one universal planner + data-only industry profiles, consumed by `authorSitePages`); why: industries differ by data, never by engine.
