@@ -159,7 +159,7 @@ export function navbarStandardJSX(c: ExtractedSectionContent): string {
   return `      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md" data-variant="navbar:standard">
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex items-stretch justify-between border-y border-border">
-            <a href="/" className="flex items-center py-4 text-lg font-semibold tracking-tight text-foreground">${esc(brand)}</a>
+            <a href="#/" className="flex items-center py-4 text-lg font-semibold tracking-tight text-foreground">${esc(brand)}</a>
             <nav aria-label="Main navigation" className="hidden items-stretch md:flex">
 ${renderLinks(navLinks, 'flex items-center border-l border-border px-4 text-sm font-medium text-foreground motion-safe:transition-colors hover:opacity-80')}
 ${ctaButton ? `              <span className="flex items-center border-l border-border pl-4"><a href="${ctaButton.href}" className="rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">${esc(ctaButton.text)}</a></span>\n` : ''}\
@@ -177,7 +177,7 @@ export function navbarCenteredLogoJSX(c: ExtractedSectionContent): string {
   return `      <header className="sticky top-0 z-50 w-full px-2 pt-2" data-variant="navbar:centered-logo">
         <div className="mx-auto max-w-6xl rounded-2xl border border-border/60 bg-background/70 px-6 backdrop-blur-lg">
           <div className="relative flex items-center justify-between py-3">
-            <a href="/" aria-label="Home" className="text-xl font-semibold tracking-tight text-foreground">${esc(brand)}</a>
+            <a href="#/" aria-label="Home" className="text-xl font-semibold tracking-tight text-foreground">${esc(brand)}</a>
             <nav aria-label="Main navigation" className="absolute inset-0 m-auto hidden size-fit md:block">
               <ul className="flex gap-8 text-sm">
 ${renderLinks(navLinks, 'block text-muted-foreground motion-safe:duration-150 hover:opacity-80')}
@@ -199,7 +199,7 @@ export function navbarMinimalDarkJSX(c: ExtractedSectionContent): string {
           <nav aria-label="Main navigation" className="hidden items-center justify-start gap-6 md:flex">
 ${renderLinks(navLinks, 'text-sm text-background/70 motion-safe:transition-colors hover:text-background')}
           </nav>
-          <a href="/" className="justify-self-center text-base font-semibold tracking-tight text-background">${esc(brand)}</a>
+          <a href="#/" className="justify-self-center text-base font-semibold tracking-tight text-background">${esc(brand)}</a>
           <div className="flex items-center justify-end gap-4 border-l border-background/10 py-3 pl-6">
 ${ctaButton ? `            <a href="${ctaButton.href}" className="rounded-[var(--radius)] bg-primary px-5 py-1.5 text-sm font-medium text-primary-foreground motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">${esc(ctaButton.text)}</a>\n` : ''}\
           </div>

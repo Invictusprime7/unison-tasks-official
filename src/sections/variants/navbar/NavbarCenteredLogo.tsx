@@ -44,7 +44,7 @@ export const NavbarCenteredLogo: React.FC<BaseSectionProps<'navbar'>> = ({ secti
       >
         <div className="relative flex items-center justify-between py-3">
           <a data-ut-intent="nav.goto"
-            href="#"
+            href="#/"
             data-ut-slot="brand"
             aria-label="Home"
             className="text-xl font-semibold tracking-tight"

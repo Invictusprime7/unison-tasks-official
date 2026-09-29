@@ -29,7 +29,7 @@ export function MobileNavbarNavigation({ brand, links, cta, tone = 'light' }: Mo
 
   return (
     <div data-ut-mobile-navigation="radix" className={`flex min-h-[var(--ut-nav-block)] items-center gap-4 px-6 lg:hidden ${shellClass}`}>
-      <a data-ut-intent="nav.goto" href="#" className="min-w-0 flex-1 overflow-wrap-anywhere font-serif text-xl font-[number:var(--ut-weight-display)] no-underline">{brand}</a>
+      <a data-ut-intent="nav.goto" href="#/" className="min-w-0 flex-1 overflow-wrap-anywhere font-serif text-xl font-[number:var(--ut-weight-display)] no-underline">{brand}</a>
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger asChild>
           <button data-ut-intent="ui.toggle" type="button" aria-label="Open navigation" className={`inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] border ${buttonClass}`}><Menu aria-hidden="true" size={20} /></button>

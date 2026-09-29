@@ -248,6 +248,67 @@ function navArrayLiteral(routes: SiteShellRoute[], indent: string, jsonStyle: bo
 
 const LINK_ITEM = /\{\s*["']?(label|name|title)["']?\s*:\s*(["'])([^"']*)\2\s*,\s*["']?(href|to|path)["']?\s*:\s*(["'])([^"']*)\5\s*,?\s*\}/g;
 
+const CTA_KEYWORDS: Array<[RegExp, string[]]> = [
+  [/book|appoint|schedul|reserv/i, ['book', 'appointment', 'schedule', 'reserv']],
+  [/contact|quote|lead|call|message|touch/i, ['contact', 'quote']],
+  [/shop|cart|buy|order|product|checkout/i, ['shop', 'product', 'store', 'order', 'menu']],
+  [/donat|give/i, ['donat', 'give']],
+  [/pric|plan|subscri/i, ['pric', 'plan']],
+];
+
+/**
+ * Resolve the registered route a navbar CTA should open, from its intent and
+ * label. Returns null when the site has no matching page (the CTA is dropped
+ * rather than pointing at a template default anchor).
+ */
+export function resolveCtaRoute(
+  topology: SiteShellTopology,
+  intent: string | undefined,
+  label: string | undefined,
+  href: string | undefined,
+): SiteShellRoute | null {
+  const known = topology.routes.filter((route) => !route.isHome);
+  const byHref = href ? known.find((route) => normalizeLinkPath(route.path) === normalizeLinkPath(href)) : undefined;
+  if (byHref) return byHref;
+  const probe = `${intent ?? ''} ${label ?? ''} ${href ?? ''}`;
+  for (const [test, keywords] of CTA_KEYWORDS) {
+    if (!test.test(probe)) continue;
+    const hit = known.find((route) => keywords.some((k) => route.path.toLowerCase().includes(k) || route.label.toLowerCase().includes(k)));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function projectNavbarCta(source: string, from: number, to: number, topology: SiteShellTopology): { source: string; delta: number } {
+  const ctaRe = /(["']?)cta\1\s*:\s*\{/g;
+  ctaRe.lastIndex = from;
+  const m = ctaRe.exec(source);
+  if (!m || m.index > to) return { source, delta: 0 };
+  const open = m.index + m[0].length - 1;
+  let depth = 0; let close = -1; let quote: string | null = null;
+  for (let i = open; i < source.length; i += 1) {
+    const ch = source[i];
+    if (quote) { if (ch === '\\') { i += 1; continue; } if (ch === quote) quote = null; continue; }
+    if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+    if (ch === '{') depth += 1;
+    else if (ch === '}') { depth -= 1; if (depth === 0) { close = i; break; } }
+  }
+  if (close === -1) return { source, delta: 0 };
+  const body = source.slice(open, close + 1);
+  const read = (key: string) => body.match(new RegExp(`["']?${key}["']?\\s*:\\s*["']([^"']*)["']`))?.[1];
+  const route = resolveCtaRoute(topology, read('intent'), read('label'), read('href'));
+  let next: string;
+  if (!route) {
+    next = 'null';
+  } else if (/["']?href["']?\s*:/.test(body)) {
+    next = body.replace(/(["']?href["']?\s*:\s*)(["'])[^"']*\2/, (_s, pre: string, q: string) => `${pre}${q}${route.href}${q}`);
+  } else {
+    return { source, delta: 0 };
+  }
+  if (next === body) return { source, delta: 0 };
+  return { source: source.slice(0, open) + next + source.slice(close + 1), delta: next.length - body.length };
+}
+
 /**
  * Rewrite every navbar/footer link list in page sources so it carries exactly
  * the registry's primary navigation (labels, hrefs, order). Design keeps how
@@ -271,8 +332,16 @@ export function projectSiteShellLinks(
     const typeRe = /["']?type["']?\s*:\s*["'](navbar|header)["']/g;
     let match: RegExpExecArray | null;
     while ((match = typeRe.exec(source))) {
-      const nextType = source.slice(match.index + match[0].length).search(/["']?type["']?\s*:\s*["']/);
-      const windowEnd = nextType === -1 ? source.length : match.index + match[0].length + nextType;
+      const nextTypeFor = () => source.slice(match!.index + match![0].length).search(/["']?type["']?\s*:\s*["']/);
+      let nextType = nextTypeFor();
+      let windowEnd = nextType === -1 ? source.length : match.index + match[0].length + nextType;
+      // Navbar CTA must open a page the user selected, never a template anchor.
+      const ctaResult = projectNavbarCta(source, match.index, windowEnd, topology);
+      if (ctaResult.delta !== 0 || ctaResult.source !== source) {
+        source = ctaResult.source;
+        nextType = nextTypeFor();
+        windowEnd = nextType === -1 ? source.length : match.index + match[0].length + nextType;
+      }
       const linksRe = /(["']?)links\1\s*:\s*\[/g;
       linksRe.lastIndex = match.index;
       const linksMatch = linksRe.exec(source);
