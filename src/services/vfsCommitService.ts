@@ -1,6 +1,7 @@
 import { updateResolvedCompositionVariants } from '@/sections/compositionToFileSet';
 import { isCustomizerPageEdit } from '@/services/builder/customizerDraft';
 import {
+  normalizeAuthoredPath,
   verifyAuthoredSourcePreservation,
   type AuthoredSourceOperation,
 } from '@/services/builder/authoredSourcePreservation';
@@ -84,6 +85,12 @@ import {
 import { applySemanticPresentationOps } from '@/services/builder/semanticPresentationOps';
 import { enforceSiteDesignContract } from '@/services/launch/homepageFirstContract';
 import { recordCommitOutcome } from '@/services/mutationLedger';
+import {
+  buildFileProvenance,
+  stampAcceptedRevision,
+  type FileProvenanceMap,
+} from '@/services/fileProvenance';
+import { generateUUID } from '@/utils/uuid';
 
 
 
@@ -165,6 +172,9 @@ export interface CommitMutationResult {
   publishBlockers: PublishBlockerSummary[];
   /** SHA-256 hex of the canonical file map at commit time (drift detection). */
   vfsHash: string;
+  candidateId: string | null;
+  operationIds: string[];
+  fileProvenance: FileProvenanceMap;
 }
 
 export interface PublishBlockerSummary {
@@ -1438,8 +1448,44 @@ async function finalize(args: {
 
   let persistedRevisionId: string | null = null;
   const dryRun = input.options?.dryRun === true;
+  const candidateId = input.patch.candidate?.id ?? null;
+  const requestedOperationIds = input.patch.operationIds
+    ?.map((id) => id.trim())
+    .filter(Boolean) ?? [];
+  const operationIds = [...new Set(requestedOperationIds.length > 0
+    ? requestedOperationIds
+    : [candidateId ? `ai-candidate:${candidateId}` : `mutation:${generateUUID()}`])];
+  const parentRevision = parentRevisionId ? await loadRevision(parentRevisionId) : null;
+  const explicitlyAuthoredPaths = new Set(input.patch.fileOps.map((operation) => normalizeAuthoredPath(operation.path)));
+  let fileProvenance = await buildFileProvenance({
+    // The durable parent, not a potentially overlaid local VFS, defines the
+    // prior bytes and hashes for this accepted revision.
+    previousFiles: parentRevision?.vfsFiles ?? input.current.vfsFiles,
+    files: vfsFiles,
+    previousProvenance: parentRevision?.fileProvenance,
+    parentRevisionId,
+    source: input.source,
+    operationIds,
+    candidateId,
+    compilerOwnedPaths: [
+      '/.unison/**',
+      '/src/unison/**',
+      '/src/integrations/**',
+      ...[...compilerOwnedGeneratedPaths({ ...input.current.vfsFiles, ...vfsFiles })]
+        .filter((path) => !explicitlyAuthoredPaths.has(normalizeAuthoredPath(path))),
+    ],
+  });
 
   if (!dryRun) {
+    const patchForPersistence = {
+      ...input.patch,
+      operationIds,
+      _commitMetadata: {
+        candidateId,
+        operationIds,
+        fileProvenance,
+      },
+    };
     const { data, error } = await (supabase.rpc as any)('commit_canonical_site_revision', {
       p_project_id: input.identity.projectId,
       p_business_id: input.identity.businessId,
@@ -1447,7 +1493,7 @@ async function finalize(args: {
       p_parent_revision_id: parentRevisionId,
       p_source: input.source,
       p_status: status,
-      p_patch_json: input.patch,
+      p_patch_json: patchForPersistence,
       p_vfs_files: vfsFiles,
       p_site_bundle_snapshot: siteBundleSnapshot ?? {},
       p_runtime_manifest: runtimeManifest ?? {},
@@ -1480,6 +1526,7 @@ async function finalize(args: {
     }
 
     persistedRevisionId = data;
+    fileProvenance = stampAcceptedRevision(fileProvenance, persistedRevisionId);
 
     // Move F #1 — fire-and-forget commit telemetry. Never block on failure.
     try {
@@ -1497,6 +1544,8 @@ async function finalize(args: {
           publishReady,
           publishBlockerCount: publishBlockers.length,
           vfsHash,
+          candidateId,
+          operationIds,
           diagnostics: diagnostics.slice(-20),
         } as unknown as Record<string, unknown>,
       });
@@ -1556,6 +1605,9 @@ async function finalize(args: {
     publishReady,
     publishBlockers,
     vfsHash,
+    candidateId,
+    operationIds,
+    fileProvenance,
   };
 
   if (status === 'rejected') {
@@ -1584,6 +1636,9 @@ export interface LoadedRevision {
   publishReady: boolean;
   publishBlockers: PublishBlockerSummary[];
   vfsHash: string | null;
+  candidateId: string | null;
+  operationIds: string[];
+  fileProvenance: FileProvenanceMap;
   createdAt: string;
 }
 
@@ -1702,6 +1757,11 @@ function mapRevisionRow(row: Record<string, unknown>): LoadedRevision {
     publishReady: row.publish_ready === true,
     publishBlockers: (row.publish_blockers ?? []) as PublishBlockerSummary[],
     vfsHash: (row.vfs_hash as string | null) ?? null,
+    candidateId: (row.candidate_id as string | null) ?? null,
+    operationIds: Array.isArray(row.operation_ids)
+      ? row.operation_ids.filter((id): id is string => typeof id === 'string')
+      : [],
+    fileProvenance: (row.file_provenance ?? {}) as FileProvenanceMap,
     createdAt: String(row.created_at),
   };
 }

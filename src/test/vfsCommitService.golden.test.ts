@@ -57,12 +57,16 @@ type RevisionRow = {
   parent_revision_id: string | null;
   source: string;
   status: 'committed' | 'rejected' | 'quarantined';
+  patch_json: Record<string, unknown>;
   vfs_files: Record<string, unknown>;
   site_bundle_snapshot: Record<string, unknown>;
   runtime_manifest: Record<string, unknown>;
   playground_state: Record<string, unknown>;
   readiness_report: Record<string, unknown>;
   diagnostics: unknown[];
+  candidate_id: string | null;
+  operation_ids: string[];
+  file_provenance: Record<string, unknown>;
   created_by: string;
   created_at: string;
 };
@@ -81,12 +85,16 @@ vi.mock('@/integrations/supabase/client', () => {
           id,
           parent_revision_id: null,
           status: 'committed',
+          patch_json: {},
           vfs_files: {},
           site_bundle_snapshot: {},
           runtime_manifest: {},
           playground_state: {},
           readiness_report: {},
           diagnostics: [],
+          candidate_id: null,
+          operation_ids: [],
+          file_provenance: {},
           created_at: new Date().toISOString(),
           ...(payload as Partial<RevisionRow>),
         } as RevisionRow;
@@ -151,6 +159,16 @@ vi.mock('@/integrations/supabase/client', () => {
         if (canonicalCommitRpcError) return { data: null, error: canonicalCommitRpcError };
         const seq = String(revisionStore.length + 1).padStart(12, '0');
         const id = `00000000-0000-0000-0000-${seq}`;
+        const patchJson = { ...((payload.p_patch_json ?? {}) as Record<string, unknown>) };
+        const commitMetadata = (patchJson._commitMetadata ?? {}) as {
+          candidateId?: string | null;
+          operationIds?: string[];
+          fileProvenance?: Record<string, Record<string, unknown>>;
+        };
+        delete patchJson._commitMetadata;
+        const stampedProvenance = Object.fromEntries(Object.entries(commitMetadata.fileProvenance ?? {}).map(
+          ([path, record]) => [path, record.authoredRevisionId ? record : { ...record, authoredRevisionId: id }],
+        ));
         const row: RevisionRow = {
           id,
           project_id: String(payload.p_project_id),
@@ -159,12 +177,16 @@ vi.mock('@/integrations/supabase/client', () => {
           parent_revision_id: (payload.p_parent_revision_id as string | null) ?? null,
           source: String(payload.p_source),
           status: payload.p_status as RevisionRow['status'],
+          patch_json: patchJson,
           vfs_files: (payload.p_vfs_files ?? {}) as Record<string, unknown>,
           site_bundle_snapshot: (payload.p_site_bundle_snapshot ?? {}) as Record<string, unknown>,
           runtime_manifest: (payload.p_runtime_manifest ?? {}) as Record<string, unknown>,
           playground_state: (payload.p_playground_state ?? {}) as Record<string, unknown>,
           readiness_report: (payload.p_readiness_report ?? {}) as Record<string, unknown>,
           diagnostics: (payload.p_diagnostics ?? []) as unknown[],
+          candidate_id: commitMetadata.candidateId ?? null,
+          operation_ids: commitMetadata.operationIds ?? [],
+          file_provenance: stampedProvenance,
           created_by: IDENTITY.userId,
           created_at: new Date().toISOString(),
           publish_ready: payload.p_publish_ready,
@@ -310,11 +332,34 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     const afterPage = 'export default function Home(){return <main>Governed AI rewrite</main>}';
     const files = { ...before, [pagePath]: afterPage };
     mockPipeline(files); mockPreflight(files); mockIntents();
+    const aiPatch = legacyFilesToPatchPlan({ [pagePath]: afterPage });
+    aiPatch.operationIds = ['pending-ai-operation'];
+    aiPatch.candidate = {
+      id: 'candidate-governed-rewrite',
+      origin: 'builder',
+      knowledgeVersion: '2026-09-29.2',
+      targetPages: [pagePath],
+      attempt: 1,
+    };
     const rewritten = await commitMutation({ source: 'ai-builder', identity: IDENTITY,
       current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
-      patch: legacyFilesToPatchPlan({ [pagePath]: afterPage }),
+      patch: aiPatch,
     });
     expect(rewritten.vfsFiles[pagePath]).toBe(afterPage);
+    expect(rewritten.candidateId).toBe('candidate-governed-rewrite');
+    expect(rewritten.operationIds).toEqual(['pending-ai-operation']);
+    expect(rewritten.fileProvenance[pagePath]).toMatchObject({
+      ownership: 'ai',
+      candidateId: 'candidate-governed-rewrite',
+      lastOperationIds: ['pending-ai-operation'],
+      authoredRevisionId: rewritten.persistedRevisionId,
+    });
+    expect(revisionStore[0]).toMatchObject({
+      candidate_id: 'candidate-governed-rewrite',
+      operation_ids: ['pending-ai-operation'],
+    });
+    expect(revisionStore[0].file_provenance[pagePath]).toEqual(rewritten.fileProvenance[pagePath]);
+    expect(revisionStore[0].patch_json).not.toHaveProperty('_commitMetadata');
     expect(revisionStore).toHaveLength(1);
 
     await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
@@ -543,6 +588,41 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
 
     expect(result.vfsFiles).toEqual(candidate);
     expect(revisionStore[0]?.vfs_files).toEqual(candidate);
+  });
+
+  it('carries unchanged provenance forward while stamping changed files with the new revision', async () => {
+    const original = {
+      '/src/App.tsx': 'export default function App(){return null}',
+      '/src/hooks/useStable.ts': 'export const useStable = () => true;',
+    };
+    mockPipeline(original);
+    mockPreflight(original);
+    mockIntents();
+    const first = await commitMutation({
+      source: 'playground-edit', identity: IDENTITY,
+      current: { vfsFiles: {} },
+      patch: { ...legacyFilesToPatchPlan(original), operationIds: ['operation-1'] },
+    });
+
+    const next = { ...original, '/src/App.tsx': 'export default function App(){return <main>Next</main>}' };
+    mockPipeline(next);
+    mockPreflight(next);
+    const second = await commitMutation({
+      source: 'playground-edit',
+      identity: { ...IDENTITY, revisionId: first.persistedRevisionId! },
+      // Autosave's local VFS already contains the pending mutation. The
+      // durable parent revision still defines provenance's prior hash.
+      current: { vfsFiles: next },
+      patch: { ...legacyFilesToPatchPlan(next), operationIds: ['operation-2'] },
+    });
+
+    expect(second.fileProvenance['/src/hooks/useStable.ts'].authoredRevisionId).toBe(first.persistedRevisionId);
+    expect(second.fileProvenance['/src/App.tsx']).toMatchObject({
+      authoredRevisionId: second.persistedRevisionId,
+      lastOperationIds: ['operation-2'],
+      priorHash: first.fileProvenance['/src/App.tsx'].currentHash,
+    });
+    expect(revisionStore[1].file_provenance).toEqual(second.fileProvenance);
   });
 
   it('records Wizard capabilities without provisioning before revision persistence', async () => {

@@ -77,6 +77,9 @@ function revision(siteBundleSnapshot = snapshot()): LoadedRevision {
     publishReady: false,
     publishBlockers: [],
     vfsHash: null,
+    candidateId: null,
+    operationIds: ['operation-1'],
+    fileProvenance: {},
     createdAt: '2026-08-12T00:00:00.000Z',
   };
 }

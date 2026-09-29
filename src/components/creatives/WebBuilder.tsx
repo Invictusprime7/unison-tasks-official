@@ -4456,6 +4456,23 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) throw new Error('Authenticated project identity is required before cloud autosave.');
 
+        const acknowledgedOperationIds = snapshot.pendingVfsOperations
+          ?.flatMap((operation) => (
+            operation && typeof operation === 'object'
+              && typeof (operation as { operationId?: unknown }).operationId === 'string'
+              && (operation as { acknowledgementState?: unknown }).acknowledgementState !== 'conflicted'
+              && Array.isArray((operation as { changes?: unknown }).changes)
+              && (operation as { changes: Array<{ type?: unknown; path?: unknown; contents?: unknown }> }).changes.every((change) => (
+                typeof change.path === 'string'
+                && (change.type === 'delete'
+                  ? !(change.path in currentVfsFiles)
+                  : typeof change.contents === 'string' && currentVfsFiles[change.path] === change.contents)
+              ))
+              ? [(operation as { operationId: string }).operationId]
+              : []
+          ));
+        const autosavePatch = legacyFilesToPatchPlan(currentVfsFiles, `Autosave: ${reason}`);
+        autosavePatch.operationIds = acknowledgedOperationIds;
         const commit = await commitMutation({
           source: 'playground-edit',
           identity: buildCommitIdentity({
@@ -4474,7 +4491,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             playground: autosavePlayground ?? undefined,
             activePagePath,
           },
-          patch: legacyFilesToPatchPlan(currentVfsFiles, `Autosave: ${reason}`),
+          patch: autosavePatch,
           options: {
             requirePreviewPass: true,
             requireReadinessPass: false,
@@ -4494,12 +4511,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         currentRevisionIdRef.current = commit.persistedRevisionId;
         setCurrentRevisionId(commit.persistedRevisionId);
         currentDraftIdRef.current = existingDraftId;
-        const acknowledgedOperationIds = snapshot.pendingVfsOperations
-          ?.flatMap((operation) => (
-            operation && typeof operation === 'object' && typeof (operation as { operationId?: unknown }).operationId === 'string'
-              ? [(operation as { operationId: string }).operationId]
-              : []
-          ));
         acknowledgePendingVfsOperations(currentVfsFiles, pendingProjectionScope, {
           operationIds: acknowledgedOperationIds,
           acceptedRevisionId: commit.persistedRevisionId,

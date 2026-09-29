@@ -86,6 +86,8 @@ export type PresentationOp =
 export interface PatchPlan {
   themeEdit?: import('@/services/theme/themeEdit').ThemeEdit;
   summary: string;
+  /** Local mutation identities atomically acknowledged by this revision. */
+  operationIds?: string[];
   fileOps: FileOp[];
   playgroundOps: PlaygroundOp[];
   bindingOps: BindingOp[];
@@ -163,6 +165,13 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
     if ((op.type === 'create' || op.type === 'replace') && typeof (op as { contents?: unknown }).contents !== 'string') {
       throw new Error(`[${context}] FileOp.contents required for ${op.type}`);
     }
+  }
+  if (p.operationIds !== undefined && (
+    !Array.isArray(p.operationIds)
+    || p.operationIds.some((id) => typeof id !== 'string' || !id.trim())
+    || new Set(p.operationIds).size !== p.operationIds.length
+  )) {
+    throw new Error(`[${context}] PatchPlan.operationIds must contain unique non-empty strings`);
   }
   for (const op of p.presentationOps as PresentationOp[]) {
     if (!op || typeof op !== 'object' || !isValidPresentationOp(op)) {

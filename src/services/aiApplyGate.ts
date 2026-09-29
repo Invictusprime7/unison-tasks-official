@@ -59,6 +59,7 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
   }
   return {
     summary: `AI candidate ${candidate.id}`,
+    operationIds: [`ai-candidate:${candidate.id}`],
     fileOps: candidate.fileOps.map((operation) => operation.type === 'delete'
       ? { type: 'delete' as const, path: operation.path }
       : { type: operation.type, path: operation.path, contents: operation.content }),
