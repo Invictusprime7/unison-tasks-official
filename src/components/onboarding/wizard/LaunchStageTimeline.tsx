@@ -15,12 +15,12 @@ import type {
 } from "@/services/launch/launchRun";
 
 const STAGE_HINT: Record<string, string> = {
-  plan: "Curating your pages, navigation, and customer journey",
-  seed: "Setting up your visual theme, custom fonts, and palette",
-  enrich: "Adding finishing touches to your content and design",
-  preflight: "Checking that your pages are ready to open",
-  commit: "Saving your project so you can edit and share it anytime",
-  handoff: "Get ready to see and customize your new website!",
+  plan: "Planning pages",
+  seed: "Setting the visual system",
+  enrich: "Composing content",
+  preflight: "Checking every page",
+  commit: "Saving your project",
+  handoff: "Opening the builder",
 };
 
 function statusIcon(status: LaunchStageStatus) {
@@ -84,113 +84,28 @@ export const LaunchStageTimeline = ({
     (stage) => stage.status === "done" || stage.status === "degraded",
   );
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-[#0c0f1d] to-[#07080f] p-5 shadow-2xl backdrop-blur-xl",
-        className,
-      )}
-    >
-      <div className="mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-cyan-400">
-            <Sparkles className="h-3.5 w-3.5 motion-safe:animate-pulse text-cyan-400" />
-            <span>AI Design Studio</span>
-          </div>
-          <div role="status" className="mt-2 text-sm text-slate-300">
-            {failedStage
-              ? "Your build paused. Review the message and try again."
-              : finished
-                ? "Your website is ready"
-                : activeStage
-                  ? STAGE_HINT[activeStage.name]
-                  : "Getting your website ready"}
-          </div>
-        </div>
-        {snapshot.degradations.length > 0 && (
-          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-400/20">
-            {snapshot.degradations.length} note
-            {snapshot.degradations.length === 1 ? "" : "s"}
-          </span>
-        )}
+    <div className={cn("space-y-8", className)}>
+      <div>
+        <div className="flex items-center gap-2 text-xs font-medium text-primary"><Sparkles className="h-3.5 w-3.5 motion-safe:animate-pulse" />Creating your site</div>
+        <h2 role="status" className="mt-3 text-2xl font-semibold">
+          {failedStage ? "Creation paused" : finished ? "Ready to review" : activeStage ? STAGE_HINT[activeStage.name] : "Preparing your project"}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">{failedStage ? "Review the message and try again." : "Each step appears as it completes."}</p>
       </div>
-
-      <ol className="space-y-3">
-        {snapshot.stages.map((stage) => {
+      <ol className="relative space-y-1 before:absolute before:bottom-4 before:left-[15px] before:top-4 before:w-px before:bg-border">
+        {snapshot.stages.map((stage, index) => {
           const time = duration(stage);
-          const isActive = stage.status === "active";
-          const isDone = stage.status === "done";
+          const visible = stage.status !== "pending" || index <= Math.max(0, snapshot.stages.findIndex((entry) => entry.status === "active") + 1);
+          if (!visible) return null;
           return (
-            <li
-              key={stage.name}
-              className={cn(
-                "flex items-start gap-3 rounded-xl p-2 transition-all duration-300",
-                isActive && "bg-cyan-950/30 ring-1 ring-cyan-500/20",
-              )}
-            >
-              <span
-                className={cn(
-                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300",
-                  statusRing(stage.status),
-                )}
-              >
-                {statusIcon(stage.status)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span
-                    className={cn(
-                      "text-[12px] font-medium leading-tight",
-                      isActive
-                        ? "text-cyan-200 font-semibold"
-                        : isDone
-                          ? "text-white/90"
-                          : "text-white/30",
-                    )}
-                  >
-                    {stage.label}
-                  </span>
-                  {time && (
-                    <span className="shrink-0 font-mono text-[10px] text-white/25">
-                      {time}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-0.5 text-[10px] leading-relaxed text-white/40">
-                  {STAGE_HINT[stage.name]}
-                </div>
-              </div>
+            <li key={stage.name} className={cn("relative flex items-center gap-3 rounded-md px-1 py-3 transition-all duration-300", stage.status === "active" && "translate-x-1 bg-muted/50")}>
+              <span className={cn("z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border bg-background", statusRing(stage.status))}>{statusIcon(stage.status)}</span>
+              <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><span className={cn("text-sm", stage.status === "active" ? "font-semibold text-foreground" : stage.status === "done" ? "text-foreground/70" : "text-muted-foreground")}>{STAGE_HINT[stage.name] ?? stage.label}</span>{time && <span className="text-[10px] tabular-nums text-muted-foreground">{time}</span>}</div></div>
             </li>
           );
         })}
       </ol>
-
-      {(snapshot.degradations.length > 0 || statusText) && (
-        <details className="mt-4 text-xs text-slate-400">
-          <summary className="cursor-pointer">
-            Build details
-            {snapshot.degradations.length > 0
-              ? ` (${snapshot.degradations.length} notes)`
-              : ""}
-          </summary>
-          {statusText && <p className="mt-3">{statusText}</p>}
-          <ul className="mt-3 space-y-1 border-t border-white/[0.06] pt-3">
-            {snapshot.degradations.map((degradation, index) => (
-              <li
-                key={`${degradation.code}-${index}`}
-                className="flex items-start gap-2 text-[11px] text-amber-200/70"
-              >
-                <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
-                <span className="min-w-0">
-                  <span className="font-mono text-[10px] text-amber-300/60">
-                    {degradation.code}
-                  </span>{" "}
-                  {degradation.message}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      {(snapshot.degradations.length > 0 || statusText) && <details className="border-t border-border pt-4 text-xs text-muted-foreground"><summary className="cursor-pointer font-medium">Launch details{snapshot.degradations.length ? ` · ${snapshot.degradations.length} notes` : ''}</summary>{statusText && <p className="mt-3">{statusText}</p>}{snapshot.degradations.length > 0 && <ul className="mt-3 space-y-2">{snapshot.degradations.map((degradation,index) => <li key={`${degradation.code}-${index}`}>{degradation.message}</li>)}</ul>}</details>}
     </div>
   );
 };
