@@ -68,6 +68,13 @@ describe('site authoring orchestrator', () => {
     const commitPage = vi.fn(async (next: Record<string, string>) => ({ files: next, revisionId: 'rev' }));
     const r = await authorSitePages({ pages, homePageId: 'home', designContext: null, businessName: 'B', files: base, commitPage, invoke: invoke as never });
     expect(commitPage).toHaveBeenCalledTimes(1);
+    expect(commitPage.mock.calls[0][3]).toMatchObject({
+      baseRevisionId: undefined,
+      targetPages: ['/src/pages/Home.tsx'],
+    });
+    expect(commitPage.mock.calls[0][3].fileOps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'replace', path: '/src/pages/Home.tsx' }),
+    ]));
     expect(r.files['/src/pages/Home.tsx']).toContain('AI Home');
     expect(r.files['/src/pages/About.tsx']).toBe(base['/src/pages/About.tsx']);
     expect(r.outcomes.map((o) => o.status)).toEqual(['authored', 'kept-baseline']);

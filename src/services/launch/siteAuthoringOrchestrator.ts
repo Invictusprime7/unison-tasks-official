@@ -20,6 +20,7 @@ import type { AIComposerRequest } from '@/contracts/aiComposerContract';
 import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
 import { appendDesignKnowledge } from '@/services/knowledge/designKnowledge';
 import { runComposerRepairLoop, type ComposerInvoke, type ComposerStopReason } from '@/services/builder/aiRepairLoop';
+import { buildAICandidateChangeSet, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import {
   extractHomepageVisualLanguage,
   renderHomepageInheritanceContract,
@@ -67,7 +68,7 @@ export interface SiteAuthoringInput {
   businessName: string;
   files: Record<string, string>;
   revisionId?: string | null;
-  commitPage: (nextFiles: Record<string, string>, page: AuthoringPage, beforeFiles: Record<string, string>) =>
+  commitPage: (nextFiles: Record<string, string>, page: AuthoringPage, beforeFiles: Record<string, string>, candidate: AICandidateChangeSet) =>
     Promise<{ files: Record<string, string>; revisionId?: string | null }>;
   preflight?: (changed: Record<string, string>) => Record<string, string>;
   onProgress?: (event: SiteAuthoringProgress) => void;
@@ -223,7 +224,16 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
         for (const path of Object.keys(baseFiles)) {
           if (!(path in candidate)) delete nextFiles[path];
         }
-        const committed = await input.commitPage(nextFiles, page, files);
+        // Rebuild after the authorship stamp so the committed operation record
+        // describes the exact bytes handed to the canonical writer.
+        const finalCandidate = buildAICandidateChangeSet({
+          aiFiles: nextFiles,
+          baseFiles: files,
+          baseRevisionId: revisionId ?? undefined,
+          targetPages: [page.filePath],
+          resolveDependencies: false,
+        }).changeSet;
+        const committed = await input.commitPage(nextFiles, page, files, finalCandidate);
         files = committed.files;
         visualMemory.record(page.pageId, page.role, extractCompositionSignature(files[page.filePath]));
         if (page.pageId === input.homePageId || page.route === '/') {

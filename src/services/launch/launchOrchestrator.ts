@@ -782,7 +782,7 @@ export async function runLaunchPipeline(
         onProgress: (event) => {
           if (event.phase === 'authoring') status(`Designing ${event.page.title}…`);
         },
-        commitPage: async (nextFiles, page, beforeFiles) => {
+        commitPage: async (nextFiles, page, beforeFiles, candidate) => {
           const result = await persistAiCommit({
             businessId: commit.confirmed.businessId,
             projectId: commit.confirmed.projectId,
@@ -793,6 +793,7 @@ export async function runLaunchPipeline(
             snapshotForPreflight: commit.result.siteBundleSnapshot ?? null,
             playground: commit.result.playground ?? materializedPlayground ?? null,
             activePagePath: page.route,
+            candidate,
           });
           if (!result.vfsFiles) throw new Error('The authored page commit returned no files.');
           commit.result = { ...commit.result, ...result, persistedRevisionId: result.persistedRevisionId ?? commit.result.persistedRevisionId };
