@@ -910,4 +910,4 @@ preview runtime — extend what exists.
 
 ## Open requests
 - [ ] Builder AI writes straight into the live file system; preview edits apply instantly with no page or preview reload (needs a repro of the reload).
-- [ ] Cross-industry page composition milestone — Slice 1 (Salon + Restaurant proof); plan awaiting approval.
+- [x] Cross-industry page composition — Slice 1 (Salon + Restaurant proof). Next: remaining 9 industries.
