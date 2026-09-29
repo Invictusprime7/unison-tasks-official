@@ -26,6 +26,11 @@ export function LaunchDegradationNote() {
             {items.slice(0, 3).map((item) => (
               <li key={`${item.stage}-${item.code}-${item.at}`} className="text-xs text-muted-foreground">
                 {item.message}
+                {item.detail && (
+                  <span className="mt-0.5 block whitespace-pre-line text-muted-foreground/80">
+                    {item.detail.split('; ').join('\n')}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

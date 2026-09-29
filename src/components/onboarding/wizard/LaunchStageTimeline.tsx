@@ -6,6 +6,7 @@
  * only place the wizard reports pipeline progress — no toasts, no hidden work.
  */
 
+import { useEffect, useState } from "react";
 import { Check, Loader2, AlertCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
@@ -19,6 +20,7 @@ const STAGE_HINT: Record<string, string> = {
   seed: "Setting the visual system",
   enrich: "Composing content",
   preflight: "Checking every page",
+  author: "Designing each page",
   commit: "Saving your project",
   handoff: "Opening the builder",
 };
@@ -74,6 +76,12 @@ export const LaunchStageTimeline = ({
   statusText,
   className,
 }: LaunchStageTimelineProps) => {
+  // Re-render every second so running-stage timers advance between backend events.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
   const activeStage = snapshot.stages.find(
     (stage) => stage.status === "active",
   );
@@ -90,7 +98,7 @@ export const LaunchStageTimeline = ({
         <h2 role="status" className="mt-3 text-2xl font-semibold">
           {failedStage ? "Creation paused" : finished ? "Ready to review" : activeStage ? STAGE_HINT[activeStage.name] : "Preparing your project"}
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">{failedStage ? "Review the message and try again." : "Each step appears as it completes."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{failedStage ? "Review the message and try again." : statusText || "Each step appears as it completes."}</p>
       </div>
       <ol className="relative space-y-1 before:absolute before:bottom-4 before:left-[15px] before:top-4 before:w-px before:bg-border">
         {snapshot.stages.map((stage, index) => {
@@ -105,7 +113,7 @@ export const LaunchStageTimeline = ({
           );
         })}
       </ol>
-      {(snapshot.degradations.length > 0 || statusText) && <details className="border-t border-border pt-4 text-xs text-muted-foreground"><summary className="cursor-pointer font-medium">Launch details{snapshot.degradations.length ? ` · ${snapshot.degradations.length} notes` : ''}</summary>{statusText && <p className="mt-3">{statusText}</p>}{snapshot.degradations.length > 0 && <ul className="mt-3 space-y-2">{snapshot.degradations.map((degradation,index) => <li key={`${degradation.code}-${index}`}>{degradation.message}</li>)}</ul>}</details>}
+      {(snapshot.degradations.length > 0 || statusText) && <details className="border-t border-border pt-4 text-xs text-muted-foreground"><summary className="cursor-pointer font-medium">Launch details{snapshot.degradations.length ? ` · ${snapshot.degradations.length} notes` : ''}</summary>{statusText && <p className="mt-3">{statusText}</p>}{snapshot.degradations.length > 0 && <ul className="mt-3 space-y-2">{snapshot.degradations.map((degradation,index) => <li key={`${degradation.code}-${index}`}>{degradation.message}{degradation.detail && <span className="mt-1 block whitespace-pre-line text-muted-foreground/80">{degradation.detail.split('; ').join('\n')}</span>}</li>)}</ul>}</details>}
     </div>
   );
 };
