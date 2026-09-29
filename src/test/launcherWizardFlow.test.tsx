@@ -51,7 +51,7 @@ it('requires preview readiness and discards the first candidate when regeneratin
  fireEvent.click(screen.getByRole('button',{name:'Continue'}));
  fireEvent.change(screen.getByLabelText('Business name'),{target:{value:'Glow'}});
  fireEvent.click(screen.getByRole('button',{name:'Create site'}));
- await screen.findByRole('heading',{name:'Preview your site'});
+ await screen.findByRole('heading',{name:'Your site is ready to review'});
  expect(screen.getByRole('button',{name:'Open in builder'})).toBeDisabled();
  expect(accepted).toEqual([]);
  fireEvent.click(screen.getByRole('button',{name:'Preview loaded 1'}));
