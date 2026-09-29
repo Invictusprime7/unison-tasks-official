@@ -14,7 +14,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   Loader2,
+  Monitor,
+  Smartphone,
   Sparkle,
   Sparkles,
 } from "lucide-react";
@@ -398,6 +401,9 @@ export const LauncherWizard = ({
     }
   };
 
+  const currentStepIndex = STEP_ORDER.indexOf(step);
+  const selectedThemeIndex = Math.max(0, THEME_PRESETS.findIndex((preset) => preset.id === theme?.id));
+
   return (
     <Dialog
       open={open}
@@ -407,545 +413,207 @@ export const LauncherWizard = ({
         if (!next) reset();
       }}
     >
-      <DialogContent className="max-h-[94dvh] w-[calc(100%-1rem)] max-w-[1080px] gap-0 overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0d14] p-0 text-white shadow-2xl sm:w-[calc(100%-3rem)]">
+      <DialogContent className="max-h-[94dvh] w-[calc(100%-1rem)] max-w-[1040px] gap-0 overflow-hidden rounded-lg border-border bg-background p-0 text-foreground shadow-2xl sm:w-[calc(100%-3rem)]">
         <DialogHeader className="sr-only">
           <DialogTitle>Launch your website</DialogTitle>
         </DialogHeader>
 
-        {/* Stepper + top action */}
-        <div className="flex flex-col gap-4 border-b border-white/[0.08] px-5 py-5 pr-12 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:pr-14">
-          <ol
-            aria-label="Website setup progress"
-            className="flex min-w-0 flex-wrap items-center gap-1.5"
-          >
-            {STEP_META.map((meta) => {
-              const index = STEP_ORDER.indexOf(meta.key);
-              const current = STEP_ORDER.indexOf(step);
-              const state =
-                index < current
-                  ? "done"
-                  : index === current
-                    ? "active"
-                    : "todo";
-              return (
-                <li
-                  key={meta.key}
-                  aria-current={state === "active" ? "step" : undefined}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full border px-1.5 py-1 text-[10px] sm:px-2.5 sm:text-[11px]",
-                    state === "active" &&
-                      "border-cyan-400/40 bg-cyan-400/10 text-cyan-300",
-                    state === "done" && "border-white/10 text-white/45",
-                    state === "todo" && "border-white/[0.06] text-white/25",
-                  )}
-                >
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/[0.08] text-[9px] font-bold">
-                    {state === "done" ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      meta.num
-                    )}
-                  </span>
-                  {meta.label}
-                </li>
-              );
-            })}
-          </ol>
-
-          {step !== "industry" && !review && (
-            <div className="flex shrink-0 items-center gap-2">
+        {!review && (
+          <header className="border-b border-border px-5 py-4 pr-14 sm:px-7 sm:pr-16">
+            <div className="flex items-center justify-between gap-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Create a website</p>
+                  <p className="truncate text-xs text-muted-foreground">{STEP_META[currentStepIndex]?.sublabel}</p>
+                </div>
+              </div>
               {!isLaunching && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goBack}
-                  className="h-8 px-2 text-white/45 hover:text-white"
-                >
-                  <ArrowLeft className="mr-1 h-3.5 w-3.5" />
-                  Back
-                </Button>
-              )}
-              {step === "aesthetic" ? (
-                <Button
-                  size="sm"
-                  disabled={!canContinue || isLaunching}
-                  onClick={handleGenerate}
-                  className="h-8 bg-cyan-500 font-semibold text-[#07080F] hover:bg-cyan-400"
-                >
-                  {isLaunching ? (
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkle className="mr-1.5 h-3.5 w-3.5" />
-                  )}
-                  {isLaunching ? "Generating…" : "Generate site"}
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  disabled={!canContinue || isLaunching}
-                  onClick={goNext}
-                  className="h-8 bg-cyan-500 font-semibold text-[#07080F] hover:bg-cyan-400"
-                >
-                  Continue
-                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-2" aria-label="Website setup progress">
+                  {STEP_META.map((meta, index) => (
+                    <span
+                      key={meta.key}
+                      aria-current={index === currentStepIndex ? "step" : undefined}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all duration-300",
+                        index === currentStepIndex ? "w-8 bg-primary" : index < currentStepIndex ? "w-4 bg-primary/45" : "w-4 bg-muted",
+                      )}
+                    />
+                  ))}
+                  <span className="ml-1 text-xs tabular-nums text-muted-foreground">{currentStepIndex + 1}/3</span>
+                </div>
               )}
             </div>
-          )}
-        </div>
+          </header>
+        )}
 
-        {review && (
-          <div className="space-y-4 p-5" data-testid="wizard-generated-review">
-            <h2 className="text-xl font-semibold">Preview your site</h2>
-            <p className="text-sm text-slate-400">Review this version or generate another before launching.</p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" aria-pressed={previewDevice === 'desktop'} onClick={() => setPreviewDevice('desktop')}>Desktop</Button>
-              <Button variant="outline" aria-pressed={previewDevice === 'mobile'} onClick={() => setPreviewDevice('mobile')}>Mobile</Button>
-              <Button variant="outline" disabled={isLaunching} onClick={handleGenerate}>Regenerate</Button>
-              <Button disabled={isLaunching} variant="outline" onClick={() => { reviewDecision.current?.(false); reviewDecision.current = null; setReview(null); }}>Edit details</Button>
-              <Button disabled={isLaunching || !previewReady} onClick={() => { setIsLaunching(true); reviewDecision.current?.(true); reviewDecision.current = null; }}>{isLaunching ? 'Launching…' : 'Launch this site'}</Button>
+        {review ? (
+          <section className="flex max-h-[94dvh] min-h-0 flex-col" data-testid="wizard-generated-review">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 pr-14 sm:px-7 sm:pr-16">
+              <div>
+                <h2 className="text-lg font-semibold">Your site is ready to review</h2>
+                <p className="text-xs text-muted-foreground">Check the result before opening it in the builder.</p>
+              </div>
+              <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-1">
+                <Button size="icon" variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} aria-label="Desktop preview" aria-pressed={previewDevice === 'desktop'} onClick={() => setPreviewDevice('desktop')} className="h-8 w-8"><Monitor /></Button>
+                <Button size="icon" variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} aria-label="Mobile preview" aria-pressed={previewDevice === 'mobile'} onClick={() => setPreviewDevice('mobile')} className="h-8 w-8"><Smartphone /></Button>
+              </div>
             </div>
-            <div className="h-[65dvh] min-h-96 overflow-hidden rounded-xl border border-white/10">
-              <VFSPreview nodes={[]} files={review.files} activeFile={review.entryPoint} device={previewDevice} forceBackend="sandpack" autoStart={false} showToolbar={false} onReady={handlePreviewReady} onError={handlePreviewError} />
+            <div className="min-h-0 flex-1 bg-muted/30 p-3 sm:p-4">
+              <div className="h-[64dvh] min-h-96 overflow-hidden rounded-md border border-border bg-background">
+                <VFSPreview nodes={[]} files={review.files} activeFile={review.entryPoint} device={previewDevice} forceBackend="sandpack" autoStart={false} showToolbar={false} onReady={handlePreviewReady} onError={handlePreviewError} />
+              </div>
             </div>
-            {launchError && <p role="alert" className="text-rose-300">{launchError}</p>}
+            <div className="flex flex-col-reverse gap-2 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+              <div className="flex gap-2">
+                <Button variant="ghost" disabled={isLaunching} onClick={() => { reviewDecision.current?.(false); reviewDecision.current = null; setReview(null); }}>Edit details</Button>
+                <Button variant="outline" disabled={isLaunching} onClick={handleGenerate}>Try another</Button>
+              </div>
+              <Button disabled={isLaunching || !previewReady} onClick={() => { setIsLaunching(true); reviewDecision.current?.(true); reviewDecision.current = null; }}>
+                {isLaunching ? <Loader2 className="animate-spin" /> : <Sparkle />}
+                {isLaunching ? 'Opening…' : 'Open in builder'}
+              </Button>
+            </div>
+            {launchError && <p role="alert" className="px-7 pb-4 text-sm text-destructive">{launchError}</p>}
+          </section>
+        ) : (
+          <div className="max-h-[calc(94dvh-65px)] overflow-y-auto">
+            {isLaunching && progress ? (
+              <div className="mx-auto flex min-h-[560px] max-w-xl items-center px-6 py-12">
+                <LaunchStageTimeline snapshot={progress} statusText={launchStatus} className="w-full" />
+              </div>
+            ) : (
+              <fieldset disabled={isLaunching} aria-busy={isLaunching} className="mx-auto max-w-4xl px-5 py-7 sm:px-8 sm:py-10">
+                <div key={step} className="animate-fade-in">
+                  {step === "industry" && (
+                    <div className="mx-auto max-w-2xl space-y-7">
+                      <StepHeading title="What are you creating?" subtitle="Describe the business and the outcome you want. We’ll shape the starting point." />
+                      <div className="rounded-lg border border-border bg-card p-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
+                        <label htmlFor="wizard-vision" className="sr-only">Describe your website</label>
+                        <Textarea id="wizard-vision" value={visionPrompt} onChange={(event) => handleVisionPromptChange(event.target.value)} placeholder="A boutique salon with online booking, a lookbook, and a warm, minimal feel…" className="min-h-36 resize-none border-0 bg-transparent p-2 text-base shadow-none focus-visible:ring-0" />
+                        <div className="flex justify-end border-t border-border pt-3">
+                          <Button onClick={applyAiAnalysisAndContinue} disabled={!aiAnalysis}>Continue <ArrowRight /></Button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {PROMPT_PRESETS.map((preset) => (
+                          <Button key={preset.label} type="button" variant="outline" size="sm" onClick={() => handleVisionPromptChange(preset.prompt)} className="rounded-full text-xs font-normal">{preset.label}</Button>
+                        ))}
+                      </div>
+                      {aiAnalysis && (
+                        <div className="flex items-start gap-3 border-l-2 border-primary pl-4" role="status">
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                          <div><p className="text-sm font-medium">Starting point found</p><p className="mt-1 text-xs text-muted-foreground">{INDUSTRY_FOCUS_CARDS.find((card) => card.industry === selectedIndustry)?.label ?? selectedIndustry} · {selectedPages.length + 1} pages · {theme?.label}</p></div>
+                        </div>
+                      )}
+                      <details className="group border-t border-border pt-4">
+                        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">Choose an industry instead <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {INDUSTRY_FOCUS_CARDS.map((card) => (
+                            <Button key={card.industry} type="button" variant="outline" onClick={() => selectIndustry(card.industry, card.systemId)} className="h-auto min-h-20 justify-start whitespace-normal p-3 text-left">
+                              <span className="text-lg">{card.icon}</span><span><span className="block text-sm font-medium">{card.label}</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{card.tagline}</span></span>
+                            </Button>
+                          ))}
+                        </div>
+                      </details>
+                      <details className="group border-t border-border pt-4">
+                        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">Import an existing project <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
+                        <div className="mt-4 flex flex-wrap gap-2"><ImportProjectZipButton onImported={() => onOpenChange(false)} />{prefill?.businessId && <ImportUnisonSiteZipButton businessId={prefill.businessId} onImported={() => onOpenChange(false)} />}</div>
+                      </details>
+                    </div>
+                  )}
+
+                  {step === "questions" && (
+                    <div className="mx-auto max-w-3xl space-y-8">
+                      <StepHeading title="What should the site accomplish?" subtitle="Choose the main outcome first. Related choices appear as you go." />
+                      <section className="space-y-3">
+                        <FieldLabel>Primary goal</FieldLabel>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {PRIMARY_GOALS.map((goal) => <ChoiceCard key={goal.id} active={primaryGoal === goal.id} onClick={() => setPrimaryGoal(goal.id)} icon={goal.icon} title={goal.label} description={goal.description} />)}
+                        </div>
+                      </section>
+                      {primaryGoal && (
+                        <div className="animate-fade-in space-y-7 border-t border-border pt-7">
+                          <section className="space-y-3"><FieldLabel>Visitor actions</FieldLabel><div className="flex flex-wrap gap-2">{CUSTOMER_NEEDS.map((need) => <Chip key={need.id} active={customerNeeds.includes(need.id)} onClick={() => setCustomerNeeds((current) => toggle(current, need.id))}><span>{need.icon}</span>{need.label}</Chip>)}</div></section>
+                          <section className="space-y-3"><FieldLabel>Pages to include</FieldLabel><div className="flex flex-wrap gap-2"><span className="inline-flex items-center rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"><Check className="mr-2 h-3.5 w-3.5" />Home</span>{pageChoices.map((page) => <Chip key={page.id} active={selectedPages.includes(page.id)} onClick={() => setSelectedPages((current) => toggle(current, page.id))}><span>{page.icon}</span>{page.label}</Chip>)}</div></section>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {step === "aesthetic" && (
+                    <div className="space-y-7">
+                      <StepHeading title="Choose the visual direction" subtitle="Preview each style as a real interface, then fine-tune only if you need to." />
+                      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px]">
+                        <div className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                          <StyleTokenCard theme={theme} businessName={businessName} showTokenLedger={false} className="rounded-none border-0" />
+                          <div className="absolute inset-x-3 bottom-3 flex items-center gap-2 overflow-x-auto rounded-lg border border-border/70 bg-background/90 p-2 shadow-xl backdrop-blur-md">
+                            {THEME_PRESETS.map((preset, index) => (
+                              <Button key={preset.id} type="button" variant="ghost" onClick={() => setTheme(preset)} aria-label={`Select ${preset.label} style`} aria-pressed={theme?.id === preset.id} className={cn("h-auto min-w-24 flex-1 flex-col items-stretch gap-2 rounded-md p-2", theme?.id === preset.id && "bg-accent ring-1 ring-ring")}>
+                                <span className="flex h-8 overflow-hidden rounded-sm border border-border" aria-hidden="true"><span className="flex-1" style={{ backgroundColor: preset.palette.bg }} /><span className="w-3" style={{ backgroundColor: preset.palette.accent }} /><span className="w-3" style={{ backgroundColor: preset.palette.accent2 ?? preset.palette.fg }} /></span>
+                                <span className="truncate text-center text-[11px]">{preset.label}</span>
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        <aside className="space-y-5">
+                          <div><FieldLabel>Business name</FieldLabel><Input aria-label="Business name" value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Northside Studio" className="mt-2" /></div>
+                          <div className="space-y-2"><FieldLabel>Selected style</FieldLabel><div><p className="text-base font-semibold">{theme?.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{theme?.description}</p></div></div>
+                          <div><FieldLabel>Experience</FieldLabel><div className="mt-2 grid gap-2">{([['standard','Standard'],['motion-rich','Motion rich'],['immersive','Immersive 3D']] as const).map(([value,label]) => <Chip key={value} active={experience === value} onClick={() => setExperience(value)}>{label}</Chip>)}</div></div>
+                        </aside>
+                      </div>
+                      <details className="group rounded-lg border border-border bg-card px-4 py-3">
+                        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">Fine-tune direction and sections <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
+                        <div className="mt-5 grid gap-6 border-t border-border pt-5 sm:grid-cols-2">
+                          <div><FieldLabel>Visual direction</FieldLabel><div className="mt-2 grid gap-2"><Chip active={artDirectionPackId === null} onClick={() => setArtDirectionPackId(null)}>Auto match</Chip>{visualDirections.map((option) => <Chip key={option.id} active={artDirectionPackId === option.id} disabled={!option.available} title={option.unavailableReason} onClick={() => option.available && setArtDirectionPackId(option.id)}><span className="text-left"><span className="block">{option.name}</span><span className="block text-xs font-normal text-muted-foreground">{option.available ? option.description : option.unavailableReason}</span></span></Chip>)}</div></div>
+                          <div><FieldLabel>Section treatment</FieldLabel><div className="mt-2 grid gap-3">{sectionPickers.length === 0 ? <p className="text-xs text-muted-foreground">Automatic choices will follow the selected style.</p> : sectionPickers.map((picker) => <label key={picker.sectionType} className="grid gap-1 text-xs text-muted-foreground"><span className="capitalize">{picker.sectionType.replace(/-/g, ' ')}</span><select value={sectionPins[picker.sectionType] ?? ''} onChange={(event) => setSectionPins((current) => { const next = {...current}; if (!event.target.value) delete next[picker.sectionType]; else next[picker.sectionType] = event.target.value as VariantId; return next; })} className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"><option value="">Auto</option>{picker.options.map((option) => <option key={option.variantId} value={option.variantId}>{option.name}</option>)}</select></label>)}</div></div>
+                          <div className="sm:col-span-2"><FieldLabel>Social profiles</FieldLabel><div className="mt-2 grid gap-2 sm:grid-cols-2">{(['instagram','facebook','linkedin','youtube'] as const).map((platform) => <Input key={platform} value={socialLinks[platform] || ''} onChange={(event) => setSocialLinks((current) => ({...current,[platform]:event.target.value}))} placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`} aria-label={`${platform} profile URL`} />)}</div></div>
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </div>
+
+                {launchError && <div role="alert" className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{launchError}{launchFailure && <details className="mt-2"><summary className="cursor-pointer text-xs font-medium">Technical details</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[10px]">{JSON.stringify(launchFailure, null, 2)}</pre></details>}</div>}
+
+                {step !== "industry" && (
+                  <footer className="mt-8 flex items-center justify-between border-t border-border pt-5">
+                    <Button variant="ghost" onClick={goBack}><ArrowLeft />Back</Button>
+                    {step === "aesthetic" ? <Button disabled={!canContinue || isLaunching} onClick={handleGenerate}>{isLaunching ? <Loader2 className="animate-spin" /> : <Sparkle />}{isLaunching ? 'Creating…' : 'Create site'}</Button> : <Button disabled={!canContinue || isLaunching} onClick={goNext}>Continue<ArrowRight /></Button>}
+                  </footer>
+                )}
+              </fieldset>
+            )}
           </div>
         )}
-        <div
-          className={cn(
-            "grid gap-8 p-5 sm:p-8",
-            review && "!hidden",
-            step !== "industry" &&
-              !isLaunching &&
-              "lg:grid-cols-[minmax(0,1fr)_280px]",
-          )}
-        >
-          {/* ── Left: selections ─────────────────────────────────────────── */}
-          <fieldset
-            disabled={isLaunching}
-            aria-busy={isLaunching}
-            className={cn("min-w-0 space-y-5", isLaunching && "hidden")}
-          >
-            {step === "industry" && (
-              <>
-                <div className="mx-auto max-w-2xl space-y-6 py-3 sm:py-8">
-                  <div className="space-y-3 text-center">
-                    <span className="inline-flex items-center gap-2 text-xs font-medium text-cyan-300">
-                      <Sparkles className="h-4 w-4" /> Unison AI Studio
-                    </span>
-                    <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                      What would you like to create?
-                    </h2>
-                    <p className="text-sm leading-6 text-slate-400">
-                      Start with your idea. Shape the details. Make it yours.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/15 bg-white/[0.03] p-4 shadow-lg focus-within:border-cyan-400/60">
-                    <label htmlFor="wizard-vision" className="sr-only">
-                      Describe your website
-                    </label>
-                    <Textarea
-                      id="wizard-vision"
-                      value={visionPrompt}
-                      onChange={(e) => handleVisionPromptChange(e.target.value)}
-                      placeholder="A website for Studio Glow, a boutique salon with online booking, a lookbook, and a warm, minimal feel..."
-                      className="min-h-32 resize-y border-0 bg-transparent p-1 text-base text-white shadow-none placeholder:text-slate-500 focus-visible:ring-0"
-                    />
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
-                      <span className="text-xs text-slate-400">
-                        Your business, your audience, your style.
-                      </span>
-                      <Button
-                        onClick={applyAiAnalysisAndContinue}
-                        disabled={!aiAnalysis}
-                        className="rounded-xl bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                      >
-                        Shape my idea <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {PROMPT_PRESETS.map((preset) => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => handleVisionPromptChange(preset.prompt)}
-                        className="rounded-full border border-white/10 px-3 py-2 text-xs text-slate-300 transition-colors hover:border-cyan-400/40 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                  {aiAnalysis && (
-                    <div
-                      className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4"
-                      role="status"
-                    >
-                      <div className="flex items-center gap-2 text-sm font-medium text-cyan-200">
-                        <Check className="h-4 w-4" /> A starting point for your
-                        idea
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {INDUSTRY_FOCUS_CARDS.find(
-                          (card) => card.industry === selectedIndustry,
-                        )?.label ?? selectedIndustry}{" "}
-                        ? {selectedPages.length + 1} pages ? {theme?.label}{" "}
-                        style
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Review your goals, choose your pages, and adjust your
-                        style before building.
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <details className="rounded-xl border border-white/10 p-4">
-                  <summary className="cursor-pointer text-sm text-slate-300">
-                    Or explore by industry
-                  </summary>
-                  <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                    {INDUSTRY_FOCUS_CARDS.map((card) => {
-                      const isAiMatch = aiAnalysis?.industry === card.industry;
-                      return (
-                        <button
-                          key={card.industry}
-                          type="button"
-                          onClick={() =>
-                            selectIndustry(card.industry, card.systemId)
-                          }
-                          className={cn(
-                            "group relative overflow-hidden rounded-xl border p-4 text-left transition-all",
-                            selectedIndustry === card.industry
-                              ? "border-cyan-400/40 bg-cyan-400/[0.06]"
-                              : isAiMatch
-                                ? "border-cyan-400/60 bg-cyan-400/[0.08] shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-                                : "border-white/[0.06] bg-white/[0.02] hover:border-white/15",
-                          )}
-                        >
-                          <div className="relative">
-                            <div className="flex items-center justify-between">
-                              <div className="mb-1.5 text-xl">{card.icon}</div>
-                              {isAiMatch && (
-                                <span className="rounded-full bg-cyan-400/20 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300">
-                                  ✨ AI Pick
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-sm font-semibold">
-                              {card.label}
-                            </div>
-                            <div className="mt-1 text-[11px] leading-4 text-white/35">
-                              {card.tagline}
-                            </div>
-                            {card.defaultTemplateId ? (
-                              <div className="mt-2 text-[9px] uppercase tracking-[0.12em] text-cyan-300/60">
-                                Ready to personalize
-                              </div>
-                            ) : null}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </details>
-                <details className="rounded-xl border border-white/10 p-4">
-                  <summary className="cursor-pointer text-sm text-slate-300">
-                    Bring an existing project
-                  </summary>
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <ImportProjectZipButton
-                      onImported={() => onOpenChange(false)}
-                    />
-                    {prefill?.businessId && (
-                      <ImportUnisonSiteZipButton
-                        businessId={prefill.businessId}
-                        onImported={() => onOpenChange(false)}
-                      />
-                    )}
-                  </div>
-                </details>
-              </>
-            )}
-
-            {step === "questions" && (
-              <>
-                <StepHeading
-                  title="What should the site do for you?"
-                  subtitle="Choose your main goal and how visitors can connect with you."
-                />
-                <FieldLabel>Primary goal</FieldLabel>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {PRIMARY_GOALS.map((goal) => (
-                    <Chip
-                      key={goal.id}
-                      active={primaryGoal === goal.id}
-                      onClick={() => setPrimaryGoal(goal.id)}
-                    >
-                      <span className="mr-1.5">{goal.icon}</span>
-                      {goal.label}
-                    </Chip>
-                  ))}
-                </div>
-
-                <FieldLabel>What customers need to do</FieldLabel>
-                <div className="flex flex-wrap gap-2">
-                  {CUSTOMER_NEEDS.map((need) => (
-                    <Chip
-                      key={need.id}
-                      active={customerNeeds.includes(need.id)}
-                      onClick={() =>
-                        setCustomerNeeds((prev) => toggle(prev, need.id))
-                      }
-                    >
-                      <span className="mr-1.5">{need.icon}</span>
-                      {need.label}
-                    </Chip>
-                  ))}
-                </div>
-
-                <FieldLabel>
-                  Pages to build (Home is always included)
-                </FieldLabel>
-                <div className="flex flex-wrap gap-2">
-                  {pageChoices.map((page) => (
-                    <Chip
-                      key={page.id}
-                      active={selectedPages.includes(page.id)}
-                      onClick={() =>
-                        setSelectedPages((prev) => toggle(prev, page.id))
-                      }
-                    >
-                      <span className="mr-1.5">{page.icon}</span>
-                      {page.label}
-                    </Chip>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {step === "aesthetic" && (
-              <>
-                <StepHeading
-                  title="Name it and choose a style"
-                  subtitle="Choose the look and feel for your whole site. Your selected style guides the build."
-                />
-                <div>
-                  <FieldLabel>Business name</FieldLabel>
-                  <Input
-                    aria-label="Business name"
-                    value={businessName}
-                    onChange={(event) => setBusinessName(event.target.value)}
-                    placeholder="e.g. Northside Studio"
-                    className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Social profiles</FieldLabel>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(
-                      ["instagram", "facebook", "linkedin", "youtube"] as const
-                    ).map((platform) => (
-                      <Input
-                        key={platform}
-                        value={socialLinks[platform] || ""}
-                        onChange={(event) =>
-                          setSocialLinks((current) => ({
-                            ...current,
-                            [platform]: event.target.value,
-                          }))
-                        }
-                        placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`}
-                        aria-label={`${platform} profile URL`}
-                        className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/25"
-                      />
-                    ))}
-                  </div>
-                </div>
-                <FieldLabel>Visual style</FieldLabel>
-                <div className="flex flex-wrap gap-2">
-                  {THEME_PRESETS.map((preset) => (
-                    <Chip
-                      key={preset.id}
-                      active={theme?.id === preset.id}
-                      onClick={() => setTheme(preset)}
-                    >
-                      <span className="mr-1.5">{preset.icon}</span>
-                      {preset.label}
-                    </Chip>
-                  ))}
-                </div>
-                <StyleTokenCard theme={theme} businessName={businessName} />
-                <div>
-                  <FieldLabel>Visual direction</FieldLabel>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Chip active={artDirectionPackId === null} onClick={() => setArtDirectionPackId(null)}>
-                      Auto match
-                    </Chip>
-                    {visualDirections.map((option) => (
-                      <Chip
-                        key={option.id}
-                        active={artDirectionPackId === option.id}
-                        disabled={!option.available}
-                        title={option.unavailableReason}
-                        onClick={() => option.available && setArtDirectionPackId(option.id)}
-                      >
-                        <span className="flex flex-col items-start">
-                          <span>
-                            {option.name}
-                            {!option.available && " — unavailable"}
-                          </span>
-                          <span className="text-[10px] font-normal text-muted-foreground">
-                            {option.available ? option.description : option.unavailableReason}
-                          </span>
-                        </span>
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <FieldLabel>Experience</FieldLabel>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {([
-                      ["standard", "Standard"],
-                      ["motion-rich", "Motion rich"],
-                      ["immersive", "Immersive 3D"],
-                    ] as const).map(([value, label]) => (
-                      <Chip key={value} active={experience === value} onClick={() => setExperience(value)}>
-                        {label}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-                {sectionPickers.length > 0 && (
-                  <div>
-                    <FieldLabel>Customize sections</FieldLabel>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {sectionPickers.map((picker) => (
-                        <label key={picker.sectionType} className="flex flex-col gap-1 text-[11px] text-white/60">
-                          <span className="capitalize">{picker.sectionType.replace(/-/g, " ")}</span>
-                          <select
-                            value={sectionPins[picker.sectionType] ?? ""}
-                            onChange={(event) =>
-                              setSectionPins((current) => {
-                                const next = { ...current };
-                                if (!event.target.value) delete next[picker.sectionType];
-                                else next[picker.sectionType] = event.target.value as VariantId;
-                                return next;
-                              })
-                            }
-                            className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[12px] text-white"
-                          >
-                            <option value="">Auto</option>
-                            {picker.options.map((option) => (
-                              <option key={option.variantId} value={option.variantId}>
-                                {option.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-              </>
-            )}
-
-            {launchError && (
-              <div className="rounded-xl border border-rose-400/25 bg-rose-500/[0.07] px-4 py-3 text-[12px] text-rose-200">
-                <div>{launchError}</div>
-                {launchFailure && (
-                  <details className="mt-2 text-[11px] text-rose-100/75">
-                    <summary className="cursor-pointer font-semibold">
-                      Technical details
-                    </summary>
-                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-black/25 p-2 font-mono text-[10px]">
-                      {JSON.stringify(launchFailure, null, 2)}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            )}
-          </fieldset>
-
-          {/* Right: awareness rail ────────────────────────────────────── */}
-          {(step !== "industry" || progress) && (
-            <aside
-              className={cn(
-                "min-w-0 space-y-4",
-                isLaunching && "mx-auto w-full max-w-xl",
-              )}
-            >
-              {progress ? (
-                <LaunchStageTimeline
-                  snapshot={progress}
-                  statusText={launchStatus}
-                />
-              ) : (
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                  <div className="text-xs font-semibold text-white/80">Your site brief</div>
-                  <p className="mt-2 text-sm text-slate-400">AI will compose your pages around your business, goals and chosen style.</p>
-                  <p className="mt-3 text-sm">{businessName || 'Your business'} ? {selectedIndustry}</p>
-                  <p className="mt-2 text-xs text-slate-400">Pages: {['home', ...selectedPages].join(', ')}</p>
-                </div>
-              )}
-
-
-            </aside>
-          )}
-        </div>
       </DialogContent>
     </Dialog>
   );
 };
 
-const StepHeading = ({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: string;
-}) => (
-  <div>
-    <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
-    <p className="mt-2 text-sm leading-6 text-slate-400">{subtitle}</p>
+const StepHeading = ({ title, subtitle }: { title: string; subtitle: string }) => (
+  <div className="max-w-2xl">
+    <h2 className="text-2xl font-semibold sm:text-3xl">{title}</h2>
+    <p className="mt-2 text-sm leading-6 text-muted-foreground">{subtitle}</p>
   </div>
 );
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="pt-2 text-xs font-medium text-slate-400">{children}</div>
+  <div className="text-xs font-medium text-muted-foreground">{children}</div>
 );
 
-const Chip = ({
-  active,
-  onClick,
-  children,
-  disabled = false,
-  title,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  disabled?: boolean;
-  title?: string;
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    title={title}
-    aria-pressed={active}
-    className={cn(
-      "rounded-xl border px-4 py-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300",
-      active
-        ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
-        : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:border-white/20 hover:text-white",
-      disabled && "cursor-not-allowed opacity-40 hover:border-white/[0.08] hover:text-slate-300",
-    )}
-  >
+const ChoiceCard = ({ active, onClick, icon, title, description }: { active: boolean; onClick: () => void; icon: string; title: string; description: string }) => (
+  <Button type="button" variant="outline" onClick={onClick} aria-pressed={active} className={cn("h-auto min-h-24 items-start justify-start whitespace-normal p-4 text-left", active && "border-primary bg-primary/5 ring-1 ring-primary")}>
+    <span className="text-lg">{icon}</span><span><span className="block text-sm font-medium">{title}</span><span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">{description}</span></span>
+  </Button>
+);
+
+const Chip = ({ active, onClick, children, disabled = false, title }: { active: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean; title?: string }) => (
+  <Button type="button" variant="outline" onClick={onClick} disabled={disabled} title={title} aria-pressed={active} className={cn("h-auto min-h-10 whitespace-normal rounded-md px-3 py-2 text-sm", active && "border-primary bg-primary/10 text-primary ring-1 ring-primary/30")}>
     {children}
-  </button>
+  </Button>
 );
-
 
 export default LauncherWizard;
