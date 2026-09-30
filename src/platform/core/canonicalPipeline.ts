@@ -180,6 +180,8 @@ export interface SiteBundleSnapshot {
 }
 
 export interface SiteBundleSnapshotMeta {
+  /** One-way creative-authority lifecycle; commit authority never changes. */
+  authorshipAuthority?: import('@/services/authorshipAuthority').AuthorshipAuthority;
   /** Source layer that produced this snapshot. */
   source: 'wizard' | 'recompile' | 'import' | 'manual' | 'clone';
   /** Canonical BusinessSystemType — drives VerticalLaunchContract resolution. */

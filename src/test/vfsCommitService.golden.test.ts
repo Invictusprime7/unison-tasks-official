@@ -328,7 +328,13 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       vfsFiles: before,
       routerFile: { path: routerPath, content: before[routerPath] },
       pageRegistry: { pages: { home: { filePath: pagePath } } },
-      meta: { seal: { registeredPageBodyAuthority: 'canonical-compiler' } },
+      meta: {
+        authorshipAuthority: {
+          phase: 'builder-authoring', creativeAuthority: 'builder',
+          commitAuthority: 'vfs-commit-service', launchRevisionId: '99999999-9999-4999-8999-999999999999',
+        },
+        seal: { registeredPageBodyAuthority: 'canonical-compiler' },
+      },
     };
     const afterPage = 'export default function Home(){return <main>Governed AI rewrite</main>}';
     const files = { ...before, [pagePath]: afterPage };
@@ -342,11 +348,15 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       targetPages: [pagePath],
       attempt: 1,
     };
-    const rewritten = await commitMutation({ source: 'ai-builder', identity: IDENTITY,
+    const rewritten = await commitMutation({ source: 'ai-builder', identity: { ...IDENTITY, revisionId: '99999999-9999-4999-8999-999999999999' },
       current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
       patch: aiPatch,
     });
     expect(rewritten.vfsFiles[pagePath]).toBe(afterPage);
+    expect(rewritten.siteBundleSnapshot?.meta.authorshipAuthority).toEqual({
+      phase: 'builder-authoring', creativeAuthority: 'builder',
+      commitAuthority: 'vfs-commit-service', launchRevisionId: '99999999-9999-4999-8999-999999999999',
+    });
     expect(rewritten.candidateId).toBe('candidate-governed-rewrite');
     expect(rewritten.operationIds).toEqual(['pending-ai-operation']);
     expect(rewritten.fileProvenance[pagePath]).toMatchObject({
@@ -367,6 +377,32 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
       patch: legacyFilesToPatchPlan({ [routerPath]: 'export default function App(){return <main>Unauthorized router</main>}' }),
     })).rejects.toThrow('Canonical App.tsx is compiler-owned');
+  });
+
+  it('rejects an implicit Wizard relaunch after Builder receives creative authority', async () => {
+    const path = '/src/pages/Home.tsx';
+    const before = { [path]: 'export default function Home(){return <main>Accepted</main>}' };
+    const snapshot = {
+      vfsFiles: before,
+      pageRegistry: { pages: { home: { filePath: path } } },
+      meta: {
+        authorshipAuthority: {
+          phase: 'builder-authoring', creativeAuthority: 'builder',
+          commitAuthority: 'vfs-commit-service', launchRevisionId: IDENTITY.revisionId,
+        },
+      },
+    };
+
+    await expect(commitMutation({
+      source: 'wizard-launch', identity: IDENTITY,
+      current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
+      patch: legacyFilesToPatchPlan({
+        [path]: 'export default function Home(){return <main>Regenerated</main>}',
+      }),
+    })).rejects.toThrow('explicit regeneration/reset');
+
+    expect(runFullPreflight).not.toHaveBeenCalled();
+    expect(revisionStore).toHaveLength(0);
   });
 
   it('atomically adds page source, registry topology and the compiler-owned route', async () => {

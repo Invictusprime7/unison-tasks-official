@@ -93,6 +93,12 @@ import {
 import { generateUUID } from '@/utils/uuid';
 import { applyTopologyChange, syncTopologyAndRouter } from '@/services/pageTopologyOrchestrator';
 import { deriveFilePath } from '@/services/routeNavigationService';
+import {
+  assertCreativeAuthority,
+  authorityAfterAcceptedCommit,
+  deriveAuthorshipAuthority,
+  stampSnapshotAuthority,
+} from '@/services/authorshipAuthority';
 
 
 
@@ -139,6 +145,8 @@ export interface CommitMutationInput {
     themeTokens?: ThemeTokens;
     /** For wizard-launch source. */
     selections?: CanonicalCommitInput['selections'];
+    /** Explicit user-requested regeneration/reset after launch handoff. */
+    explicitAuthorityReset?: boolean;
     /** Exact Wizard artifact already approved by the user. */
     reviewedArtifact?: {
       siteBundleSnapshot: SiteBundleSnapshot;
@@ -414,6 +422,15 @@ export async function commitMutation(
   // 2. Patch normalisation ---------------------------------------------------
   const patch = input.patch ?? emptyPatchPlan();
   assertPatchPlan(patch, 'commitMutation');
+  const currentAuthority = deriveAuthorshipAuthority({
+    snapshot: input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined,
+    acceptedRevisionId: input.identity.revisionId,
+  });
+  assertCreativeAuthority({
+    source: input.source,
+    authority: currentAuthority,
+    explicitReset: input.options?.explicitAuthorityReset,
+  });
   if (input.source !== 'wizard-launch' && input.source !== 'system-restore') {
     const sealedPaths = input.source === 'theme-change'
       ? new Set<string>()
@@ -1128,6 +1145,14 @@ export async function commitMutation(
   // preflight and explicit transform. This is a metadata stamp only; it never
   // regenerates or substitutes authored source.
   if (snapshotForPersistence && status === 'committed') {
+    snapshotForPersistence = stampSnapshotAuthority(
+      snapshotForPersistence as SiteBundleSnapshot,
+      authorityAfterAcceptedCommit(currentAuthority, input.source),
+    );
+    log('authorshipAuthority', 'info', 'creative authority handed to Builder; commit authority remains VFSCommitService', {
+      source: input.source,
+      authority: (snapshotForPersistence as SiteBundleSnapshot).meta.authorshipAuthority,
+    });
     snapshotForPersistence = restampSealedSourceAuthority(
       snapshotForPersistence as SiteBundleSnapshot,
       files,
@@ -1637,6 +1662,16 @@ async function finalize(args: {
     dryRun,
   });
 
+  const acceptedAuthority = siteBundleSnapshot && status === 'committed'
+    ? authorityAfterAcceptedCommit(
+        deriveAuthorshipAuthority({ snapshot: siteBundleSnapshot, acceptedRevisionId: parentRevisionId }),
+        input.source,
+        input.source === 'wizard-launch' ? persistedRevisionId : undefined,
+      )
+    : null;
+  const returnedSnapshot = siteBundleSnapshot && acceptedAuthority
+    ? stampSnapshotAuthority(siteBundleSnapshot, acceptedAuthority)
+    : siteBundleSnapshot;
   const result: CommitMutationResult = {
 
     status,
@@ -1646,7 +1681,7 @@ async function finalize(args: {
       revisionId: persistedRevisionId ?? input.identity.revisionId,
     },
     vfsFiles,
-    siteBundleSnapshot,
+    siteBundleSnapshot: returnedSnapshot,
     runtimeManifest,
     playground,
     readinessReport,
